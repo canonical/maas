@@ -50,22 +50,65 @@
     <section class="row">
         <div class="wrapper--inner">
             <div class="twelve-col">
-                <h2>Subnet summary</h2>
+                <h2 class="u-float--left">Subnet summary</h2>
+                <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
             </div>
-            <maas-obj-form obj="subnet" manager="subnetManager" table-form="true" pre-process="subnetPreSave" data-ng-disabled="!isSuperUser()">
+            <div class="twelve-col" data-ng-if="editSummary != true">
+                <dl class="six-col">
+                    <dt class="two-col">Name</dt>
+                        <dd class="four-col last-col">{$ subnet.name $}</dd>
+                    <dt class="two-col">CIDR</dt>
+                        <dd class="four-col last-col">{$ subnet.cidr $}</dd>
+                    <dt class="two-col">Gateway IP</dt>
+                        <dd class="four-col last-col">{$ subnet.gateway_ip $}</dd>
+                    <dt class="two-col">DNS</dt>
+                        <dd class="four-col last-col">{$ subnet.dns_servers $}</dd>
+                    <dt class="two-col">Description</dt>
+                        <dd class="four-col last-col">{$ subnet.description $}</dd>
+                </dl>
+                <dl class="six-col last-col">
+                    <dt class="two-col">Managed allocation
+                        <i class="icon icon--info tooltip u-margin--left-small" aria-label="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration."></i></dt>
+                        <dd class="four-col last-col">
+                            <span data-ng-if="subnet.managed == false" class="u-text--sublet">Disabled</span>
+                            <span data-ng-if="subnet.managed == true" class="u-text--success">Active</span>
+                        </dd>
+                    <dt class="two-col">Active discovery
+                        <i class="icon icon--info tooltip u-margin--left-small" aria-label="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></i></dt>
+                        <dd class="four-col last-col">
+                            <span data-ng-if="subnet.active_discovery == false" class="u-text--subtle">Disabled</span>
+                            <span data-ng-if="subnet.active_discovery == true" class="u-text--success">Active</span>
+                        </dd>
+                    <dt class="two-col">Fabric</dt>
+                        <dd class="four-col last-col">{$ subnet.fabric_name $}</dd>
+                    <dt class="two-col">VLAN</dt>
+                        <dd class="four-col last-col">{$ subnet.vlan_name $}</dd>
+                    <dt class="two-col">Space</dt>
+                        <dd class="four-col last-col">
+                            <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
+                            <span data-ng-if="space === null">
+                                (undefined)
+                                <i class="icon icon--warning tooltip"
+                                   style="position: relative; left: 5px; top: -5px;"
+                                   aria-label="This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network."></i>
+                            </span>
+                        </dd>
+                </dl>
+            </div>
+            <maas-obj-form data-ng-if="editSummary == true" obj="subnet" manager="subnetManager" table-form="true" save-on-blur="false" after-save="exitEditSummary" data-ng-disabled="!isSuperUser()">
                 <fieldset class="form__fieldset six-col">
                     <maas-obj-field type="text" key="name" label="Name" placeholder="Subnet name"
-                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                        label-width="two" input-width="three"></maas-obj-field>
                     <maas-obj-field-group>
                         <maas-obj-field type="text" key="cidr" label="CIDR" placeholder="Subnet CIDR"
-                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                            label-width="two" input-width="three"></maas-obj-field>
                         <maas-obj-field type="text" key="gateway_ip" label="Gateway IP" placeholder="Gateway IP"
-                            label-width="two" input-width="three" blur-on-enter="true" class="u-margin--bottom-small"></maas-obj-field>
+                            label-width="two" input-width="three" class="u-margin--bottom-none"></maas-obj-field>
                     </maas-obj-field-group>
                     <maas-obj-field type="text" key="dns_servers" label="DNS" placeholder="DNS nameservers for subnet"
-                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                        label-width="two" input-width="three"></maas-obj-field>
                     <maas-obj-field type="textarea" key="description" label="Description" placeholder="Subnet description"
-                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                        label-width="two" input-width="three"></maas-obj-field>
                 </fieldset>
                 <fieldset class="form__fieldset six-col last-col">
                     <maas-obj-field type="onoffswitch" key="managed" label="Managed allocation"
@@ -78,36 +121,30 @@
                     <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
                         options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
                         label-width="two" input-width="three"></maas-obj-field>
-                    <maas-obj-field type="options" key="vlan" label="VLAN" placeholder="Choose VLAN"
+                    <maas-obj-field type="options" key="vlan" class="u-margin--bottom" label="VLAN" placeholder="Choose VLAN"
                         options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.fabric"
                         label-width="two" input-width="three"></maas-obj-field>
-                    <div class="form__group form__group--adhoc form__group--subtle">
-                        <!-- XXX: The 'style' was needed to make this line up with the padding on the <select/> above. -->
-                        <style>
-                            div.form__group--adhoc div.form__group-label {
-                                padding: 7px 30px 14px 0px !important;
-                            }
-
-                            div.form__group--adhoc div.form__group-input {
-                                padding: 14px 30px 14px 10px !important;
-                            }
-                        </style>
-                        <div class="form__group-label two-col">
-                            Space
-                            <i class="icon icon--info tooltip u-margin--left-tiny"
-                               aria-label="Spaces define which VLANs have security properties in common.&#xa;For example, you might have spaces such as 'dmz', 'storage', or 'management'.&#xa;A space can be assigned on the VLAN details page."></i>
-                        </div>
-                        <div class="form__group-input three-col last-col">
-                            <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
-                            <span data-ng-if="space === null">
-                                (undefined)
-                                <i class="icon icon--warning tooltip"
-                                   style="position: relative; left: 5px; top: -5px;"
-                                   aria-label="This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network."></i>
-                            </span>
-                        </div>
-                    </div>
+                    <dl>
+                        <dt class="two-col u-text--subtle">Space</dt>
+                            <dd class="four-col last-col">
+                                <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
+                                <span data-ng-if="space === null">
+                                    (undefined)
+                                    <i class="icon icon--warning tooltip"
+                                       style="position: relative; left: 5px; top: -5px;"
+                                       aria-label="This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network."></i>
+                                </span>
+                            </dd>
+                    </dl>
                 </fieldset>
+                <div class="six-col">
+                    <maas-obj-errors></maas-obj-errors>
+                </div>
+                <div class="six-col last-col u-align--right">
+                    <button class="button--base button--inline"
+                       data-ng-click="exitEditSummary()">Cancel</button>
+                    <button class="button--positive button--inline" maas-obj-save>Save summary</button>
+                </div>
             </maas-obj-form>
         </div>
     </section>

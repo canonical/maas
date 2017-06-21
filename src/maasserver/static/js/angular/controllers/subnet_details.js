@@ -39,6 +39,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.subnet = null;
+        $scope.editSummary = false;
         $scope.active_discovery_data = null;
         $scope.active_discovery_interval = null;
         $scope.subnets = SubnetsManager.getItems();
@@ -249,6 +250,16 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             }
         };
 
+        // Called when the "edit" button is cliked in the subnet summary
+        $scope.enterEditSummary = function() {
+            $scope.editSummary = true;
+        };
+
+        // Called when the "cancel" button is cliked in the subnet summary
+        $scope.exitEditSummary = function() {
+            $scope.editSummary = false;
+        };
+
         // Called by maas-obj-form before it saves the subnet. The passed
         // subnet is the object right before its sent over the websocket.
         $scope.subnetPreSave = function(subnet, changedFields) {
@@ -334,13 +345,24 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             var updateFabric = function() {
                 $scope.subnet.fabric = (
                     VLANsManager.getItemFromList($scope.subnet.vlan).fabric);
+                $scope.subnet.fabric_name = (
+                  FabricsManager.getItemFromList(subnet.fabric).name);
             };
             var updateSpace = function() {
                 $scope.space = (
                     SpacesManager.getItemFromList($scope.subnet.space));
             };
+            var updateVlan = function() {
+                var vlan = VLANsManager.getItemFromList($scope.subnet.vlan);
+                $scope.subnet.vlan_name = (
+                    VLANsManager.getName(vlan)
+                );
+            };
+
             $scope.$watch("subnet.fabric", updateFabric);
+            $scope.$watch("subnet.fabric_name", updateFabric);
             $scope.$watch("subnet.vlan", updateFabric);
+            $scope.$watch("subnet.vlan_name", updateVlan);
             $scope.$watch("subnet.space", updateSpace);
             $scope.$watch("subnet.cidr", updateIPVersion);
         }

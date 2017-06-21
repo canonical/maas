@@ -422,6 +422,26 @@ describe("SubnetDetailsController", function() {
         });
     });
 
+    describe("editSubnetSummary", function() {
+
+        it("enters edit mode for summary", function() {
+            var controller = makeController();
+            $scope.editSummary = false;
+            $scope.enterEditSummary();
+            expect($scope.editSummary).toBe(true);
+        });
+    });
+
+    describe("exitEditSubnetSummary", function() {
+
+        it("enters edit mode for summary", function() {
+            var controller = makeController();
+            $scope.editSummary = true;
+            $scope.exitEditSummary();
+            expect($scope.editSummary).toBe(false);
+        });
+    });
+
     describe("addStaticRoute", function() {
 
         it("set newStaticRoute", function() {
