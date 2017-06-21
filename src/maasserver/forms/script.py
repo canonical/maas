@@ -48,30 +48,36 @@ class ScriptForm(ModelForm):
             'script',
         )
 
-    def __init__(self, instance=None, **kwargs):
-        super().__init__(instance=instance, **kwargs)
+    def __init__(self, instance=None, data=None, **kwargs):
+        if instance is None:
+            script_data_key = 'data'
+        else:
+            script_data_key = 'new_data'
+
+        data = data.copy()
+        if 'comment' in data and 'script' in data:
+            script_data = {
+                'comment': data.get('comment'),
+                script_data_key: data.get('script'),
+            }
+            data['script'] = script_data
+            data.pop('comment')
+        # Alias type to script_type to allow for consistent naming in the API.
+        if 'type' in data and 'script_type' not in data:
+            data['script_type'] = data['type']
+            # self.data is a QueryDict. pop returns a list containing the value
+            # while directly accessing it returns just the value.
+            data.pop('type')
+
+        super().__init__(instance=instance, data=data, **kwargs)
+
         if instance is None:
             for field in ['name', 'script']:
                 self.fields[field].required = True
-            script_data_key = 'data'
         else:
             for field in ['name', 'script']:
                 self.fields[field].required = False
             self.fields['script'].initial = instance.script
-            script_data_key = 'new_data'
-        if 'comment' in self.data and 'script' in self.data:
-            script_data = {
-                'comment': self.data.get('comment'),
-                script_data_key: self.data.get('script'),
-            }
-            self.data['script'] = script_data
-            self.data.pop('comment')
-        # Alias type to script_type to allow for consistent naming in the API.
-        if 'type' in self.data and 'script_type' not in self.data:
-            self.data['script_type'] = self.data['type']
-            # self.data is a QueryDict. pop returns a list containing the value
-            # while directly accessing it returns just the value.
-            self.data.pop('type')
 
     def clean(self):
         cleaned_data = super().clean()

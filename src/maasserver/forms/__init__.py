@@ -2121,12 +2121,21 @@ class LicenseKeyForm(MAASModelForm):
         # not have to call the api with distro_series=os/series. This occurs
         # in full_clean, so the value is correct before validation occurs on
         # the distro_series field.
+        # XXX Danilo 2017-06-20: with Django 1.11, POST data is a read-only
+        # QueryDict by default.  Unfortunately, per-field validation happens
+        # before clean() is called, and thus it is too late to do this in
+        # clean() where it really belongs.
         if 'distro_series' in self.data and 'osystem' in self.data:
             if '/' not in self.data['distro_series']:
+                if hasattr(self.data, "_mutable"):
+                    was_mutable = self.data._mutable
+                    self.data._mutable = True
                 self.data['distro_series'] = '%s/%s' % (
                     self.data['osystem'],
                     self.data['distro_series'],
                     )
+                if hasattr(self.data, "_mutable"):
+                    self.data._mutable = was_mutable
         super(LicenseKeyForm, self).full_clean()
 
     def clean(self):

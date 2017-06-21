@@ -85,7 +85,7 @@ class DNSResourcesHandler(OperationsHandler):
         :param ip_addresses: (optional) Address (ip or id) to assign to the
             dnsresource.
         """
-        data = request.data
+        data = request.data.copy()
         fqdn = data.get('fqdn', None)
         name = data.get('name', None)
         domainname = data.get('domain', None)
@@ -107,7 +107,7 @@ class DNSResourcesHandler(OperationsHandler):
                     "name:%s" % domainname, user=request.user,
                     perm=NODE_PERMISSION.VIEW)
             data['domain'] = domain.id
-        form = DNSResourceForm(data=request.data, request=request)
+        form = DNSResourceForm(data=data, request=request)
         if form.is_valid():
             return form.save()
         else:

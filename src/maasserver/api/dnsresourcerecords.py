@@ -93,7 +93,7 @@ class DNSResourceRecordsHandler(OperationsHandler):
         :param rrdata: resource data (everything to the right of
             resource type.)
         """
-        data = request.data
+        data = request.data.copy()
         domain = None
         fqdn = data.get('fqdn', None)
         name = data.get('name', None)
@@ -129,14 +129,14 @@ class DNSResourceRecordsHandler(OperationsHandler):
         # Do we already have a DNSResource for this fqdn?
         dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
         if not dnsrr.exists():
-            form = DNSResourceForm(data=request.data, request=request)
+            form = DNSResourceForm(data=data, request=request)
             if form.is_valid():
                 form.save()
             else:
                 raise MAASAPIValidationError(form.errors)
             dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
         data['dnsresource'] = dnsrr
-        form = DNSDataForm(data=request.data)
+        form = DNSDataForm(data=data)
         if form.is_valid():
             return form.save()
         else:
@@ -183,8 +183,9 @@ class DNSResourceRecordHandler(OperationsHandler):
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
             id, request.user, NODE_PERMISSION.ADMIN)
-        request.data['dnsresource'] = dnsdata.dnsresource.id
-        form = DNSDataForm(instance=dnsdata, data=request.data)
+        data = request.data.copy()
+        data['dnsresource'] = dnsdata.dnsresource.id
+        form = DNSDataForm(instance=dnsdata, data=data)
         if form.is_valid():
             return form.save()
         else:

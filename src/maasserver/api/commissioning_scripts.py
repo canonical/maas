@@ -80,9 +80,10 @@ class CommissioningScriptsHandler(OperationsHandler):
             is ignored; MAAS will know it by the name you pass to the request.
         """
         content = Bin(get_content_parameter(request))
-        request.data['script'] = content
-        request.data['script_type'] = SCRIPT_TYPE.COMMISSIONING
-        form = ScriptForm(data=request.data)
+        data = request.data.copy()
+        data['script'] = content
+        data['script_type'] = SCRIPT_TYPE.COMMISSIONING
+        form = ScriptForm(data=data)
         if form.is_valid():
             script = form.save()
             return {
@@ -127,9 +128,10 @@ class CommissioningScriptHandler(OperationsHandler):
         """Update a commissioning script."""
         script = get_object_or_404(Script, name=name)
         content = Bin(get_content_parameter(request))
-        request.data['script'] = content
-        request.data['script_type'] = SCRIPT_TYPE.COMMISSIONING
-        form = ScriptForm(instance=script, data=request.data)
+        data = request.data.copy()
+        data['script'] = content
+        data['script_type'] = SCRIPT_TYPE.COMMISSIONING
+        form = ScriptForm(instance=script, data=data)
         if form.is_valid():
             form.save()
             return rc.ALL_OK

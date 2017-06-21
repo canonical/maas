@@ -30,6 +30,8 @@ class IPRangeForm(MAASModelForm):
             self, data=None, instance=None, request=None, *args, **kwargs):
         if data is None:
             data = {}
+        else:
+            data = data.copy()
         # If this is a new IPRange, fill in the 'user' and 'subnet' fields
         # automatically, if necessary.
         if instance is None:

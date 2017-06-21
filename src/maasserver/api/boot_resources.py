@@ -189,7 +189,7 @@ class BootResourcesHandler(OperationsHandler):
         # If the user provides no parameters to the create command, then
         # django will treat the form as valid, and so it won't actually
         # validate any of the data.
-        data = request.data
+        data = request.data.copy()
         if data is None:
             data = {}
         if 'filetype' not in data:

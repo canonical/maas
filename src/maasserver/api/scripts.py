@@ -85,13 +85,14 @@ class NodeScriptsHandler(OperationsHandler):
         :param comment: A comment about what this change does.
         :type comment: unicode
         """
+        data = request.data.copy()
         if 'script' in request.FILES:
-            request.data['script'] = request.FILES.get('script').read()
+            data['script'] = request.FILES.get('script').read()
         elif len(request.FILES) == 1:
             for name, script in request.FILES.items():
-                request.data['name'] = name
-                request.data['script'] = script.read()
-        form = ScriptForm(data=request.data)
+                data['name'] = name
+                data['script'] = script.read()
+        form = ScriptForm(data=data)
         if form.is_valid():
             return form.save()
         else:
@@ -266,14 +267,15 @@ class NodeScriptHandler(OperationsHandler):
         else:
             script = get_object_or_404(Script, name=name)
 
+        data = request.data.copy()
         if 'script' in request.FILES:
-            request.data['script'] = request.FILES.get('script').read()
+            data['script'] = request.FILES.get('script').read()
         elif len(request.FILES) == 1:
             for name, script_content in request.FILES.items():
-                request.data['name'] = name
-                request.data['script'] = script_content.read()
+                data['name'] = name
+                data['script'] = script_content.read()
 
-        form = ScriptForm(instance=script, data=request.data)
+        form = ScriptForm(instance=script, data=data)
         if form.is_valid():
             return form.save()
         else:
