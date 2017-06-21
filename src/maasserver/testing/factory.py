@@ -767,6 +767,10 @@ class Factory(maastesting.factory.Factory):
         if 'iftype' in kwargs:
             iftype = kwargs['iftype']
             del kwargs['iftype']
+        if 'ip_version' in kwargs and cidr is None:
+            ip_version = kwargs.pop('ip_version')
+        else:
+            ip_version = None
         node = self.make_Node(fabric=fabric, **kwargs)
         if vlan is None and subnet is not None:
             vlan = subnet.vlan
@@ -778,7 +782,7 @@ class Factory(maastesting.factory.Factory):
             vlan.dhcp_on = dhcp_on
             vlan.save()
         if subnet is None:
-            subnet = self.make_Subnet(vlan=vlan, cidr=cidr)
+            subnet = self.make_Subnet(vlan=vlan, cidr=cidr, version=ip_version)
         boot_interface = self.make_Interface(
             iftype, name=ifname, node=node, vlan=vlan,
             mac_address=mac_address)

@@ -20,9 +20,13 @@ from maasserver.preseed_network import (
     compose_curtin_network_config,
     NodeNetworkConfiguration,
 )
+import maasserver.server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -406,8 +410,14 @@ class TestVLANOnBondNetworkLayout(MAASServerTestCase,
 class TestDHCPNetworkLayout(MAASServerTestCase,
                             AssertNetworkConfigMixin):
 
+    scenarios = (
+        ('ipv4', {'ip_version': 4}),
+        ('ipv6', {'ip_version': 6}),
+    )
+
     def test__dhcp_configurations_rendered(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            ip_version=self.ip_version)
         iface = node.interface_set.first()
         subnet = iface.vlan.subnet_set.first()
         factory.make_StaticIPAddress(
@@ -415,6 +425,14 @@ class TestDHCPNetworkLayout(MAASServerTestCase,
             alloc_type=IPADDRESS_TYPE.DHCP,
             interface=iface,
             subnet=subnet)
+        # Patch resolve_hostname() to return the appropriate network version
+        # IP address for MAAS hostname.
+        resolve_hostname = self.patch(
+            maasserver.server_address, "resolve_hostname")
+        if self.ip_version == 4:
+            resolve_hostname.return_value = {IPAddress("127.0.0.1")}
+        else:
+            resolve_hostname.return_value = {IPAddress("::1")}
         config = compose_curtin_network_config(node)
         config_yaml = yaml.safe_load(config[0])
         self.assertThat(
