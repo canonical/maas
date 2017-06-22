@@ -75,21 +75,6 @@ class TestLicenseKeyForm(MAASServerTestCase):
             {'__all__': ['Invalid license key.']},
             form.errors)
 
-    def test_handles_missing_osystem_in_distro_series(self):
-        osystem, release = self.make_os_with_license_key()
-        self.patch_autospec(forms, 'validate_license_key').return_value = True
-        key = factory.make_name('key')
-        definition = {
-            'osystem': osystem['name'],
-            'distro_series': release['name'],
-            'license_key': key,
-            }
-        form = LicenseKeyForm(data=definition.copy())
-        form.save()
-        license_key_obj = LicenseKey.objects.get(
-            osystem=osystem['name'], distro_series=release['name'])
-        self.assertAttributes(license_key_obj, definition)
-
     def test_requires_all_fields(self):
         form = LicenseKeyForm(data={})
         self.assertFalse(form.is_valid(), form.errors)
@@ -106,7 +91,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
             license_key=key)
         definition = {
             'osystem': osystem['name'],
-            'distro_series': release['name'],
+            'distro_series': "%s/%s" % (osystem['name'], release['name']),
             'license_key': key,
             }
         form = LicenseKeyForm(data=definition)

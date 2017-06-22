@@ -38,9 +38,24 @@ class LicenseKeysHandler(OperationsHandler):
         # If the user provides no parametes to the create command, then
         # django will make the request.data=None. This will cause the form
         # to be valid, not returning all the missing fields.
-        data = request.data
-        if data is None:
+        if request.data is None:
             data = {}
+        else:
+            data = request.data.copy()
+
+        if "distro_series" in data:
+            # Preprocess distro_series if present.
+            if "/" in data["distro_series"]:
+                if "osystem" not in data:
+                    # Construct osystem value from distroseries.
+                    data["osystem"] = data["distro_series"].split("/", 1)[0]
+            else:
+                # If distro_series is not of the form "os/series", we combine
+                # osystem with distro_series since that is what LicenseKeyForm
+                # expects.
+                if "osystem" in data:
+                    data["distro_series"] = "%s/%s" % (
+                        data["osystem"], data["distro_series"])
         form = LicenseKeyForm(data=data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)

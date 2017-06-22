@@ -206,6 +206,44 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
             osystem=params['osystem'], distro_series=params['distro_series'])
         self.assertAttributes(license_key, params)
 
+    def test_POST_supports_combined_distro_series(self):
+        # API allows specifying only distro_series containing both
+        # os and series in the "os/series" form.
+        self.become_admin()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        self.patch_autospec(forms, 'validate_license_key').return_value = True
+        params = {
+            'distro_series': "%s/%s" % (osystem['name'], release['name']),
+            'license_key': factory.make_name('key'),
+        }
+        response = self.client.post(reverse('license_keys_handler'), params)
+        self.assertEqual(http.client.OK, response.status_code)
+        license_key = LicenseKey.objects.get(
+            osystem=osystem['name'], distro_series=release['name'])
+        expected_params = {
+            'osystem': osystem['name'],
+            'distro_series': release['name'],
+            'license_key': params['license_key'],
+        }
+        self.assertAttributes(license_key, expected_params)
+
+    def test_POST_requires_osystem(self):
+        # If osystem is not specified and distro_series is not in the
+        # osystem/release form, API call fails.
+        self.become_admin()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        self.patch_autospec(forms, 'validate_license_key').return_value = True
+        params = {
+            'distro_series': release['name'],
+            'license_key': factory.make_name('key'),
+        }
+        response = self.client.post(reverse('license_keys_handler'), params)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
     def test_POST_requires_admin(self):
         osystem = factory.make_name('no-os')
         series = factory.make_name('no-series')

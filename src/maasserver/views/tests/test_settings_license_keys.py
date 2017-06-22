@@ -125,7 +125,7 @@ class LicenseKeyAddTest(MAASServerTestCase):
         add_link = reverse('license-key-add')
         definition = {
             'osystem': osystem['name'],
-            'distro_series': series,
+            'distro_series': "%s/%s" % (osystem['name'], series),
             'license_key': key,
             }
         response = self.client.post(add_link, definition)
@@ -134,7 +134,12 @@ class LicenseKeyAddTest(MAASServerTestCase):
             (response.status_code, extract_redirect(response)))
         new_license_key = LicenseKey.objects.get(
             osystem=osystem['name'], distro_series=series)
-        self.assertAttributes(new_license_key, definition)
+        expected_result = {
+            'osystem': osystem['name'],
+            'distro_series': series,
+            'license_key': key,
+            }
+        self.assertAttributes(new_license_key, expected_result)
 
 
 class LicenseKeyEditTest(MAASServerTestCase):
@@ -151,14 +156,19 @@ class LicenseKeyEditTest(MAASServerTestCase):
             'license-key-edit', args=[key.osystem, key.distro_series])
         definition = {
             'osystem': key.osystem,
-            'distro_series': key.distro_series,
+            'distro_series': "%s/%s" % (key.osystem, key.distro_series),
             'license_key': new_key,
             }
         response = self.client.post(edit_link, definition)
         self.assertEqual(
             (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
-        self.assertAttributes(reload_object(key), definition)
+        expected_result = {
+            'osystem': key.osystem,
+            'distro_series': key.distro_series,
+            'license_key': new_key,
+            }
+        self.assertAttributes(reload_object(key), expected_result)
 
 
 class LicenseKeyDeleteTest(MAASServerTestCase):
