@@ -326,6 +326,7 @@ def get_config(
         "fs_host": local_ip,
         "log_host": server_host,
         "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
+        "http_boot": Config.objects.get_config('http_boot'),
     }
     if machine is not None:
         params["system_id"] = machine.system_id

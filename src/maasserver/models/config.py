@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items."""
@@ -101,7 +101,8 @@ def get_default_config():
         'max_node_testing_results': 10,
         'max_node_installation_results': 1,
         # Notifications.
-        'subnet_ip_exhaustion_threshold_count': 16
+        'subnet_ip_exhaustion_threshold_count': 16,
+        'http_boot': False,
     }
 
 

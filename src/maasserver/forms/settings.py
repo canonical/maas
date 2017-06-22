@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -537,6 +537,14 @@ CONFIG_ITEMS = {
                 "will appear for that subnet"),
             'min_value': 1,
         },
+    },
+    'http_boot': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': "When true all ephemeral environments boot over HTTP.",
+            'required': False
+        }
     },
 }
 

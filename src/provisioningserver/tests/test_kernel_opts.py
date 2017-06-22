@@ -21,14 +21,10 @@ from provisioningserver.drivers import (
 from provisioningserver.kernel_opts import (
     compose_arch_opts,
     compose_kernel_command_line,
-    compose_preseed_opt,
     CURTIN_KERNEL_CMDLINE_NAME,
     get_curtin_kernel_cmdline_sep,
-    get_ephemeral_name,
     get_last_directory,
-    ISCSI_TARGET_NAME_PREFIX,
     KernelParameters,
-    prefix_target_name,
 )
 from testtools.matchers import (
     Contains,
@@ -51,6 +47,8 @@ def make_kernel_parameters(testcase=None, **parms):
         {field: factory.make_name(field)
          for field in KernelParameters._fields
          if field not in parms})
+    if not isinstance(parms['http_boot'], bool):
+        parms['http_boot'] = True
     params = KernelParameters(**parms)
 
     if testcase is not None:
@@ -85,23 +83,6 @@ class TestUtilitiesKernelOpts(MAASTestCase):
         params = make_kernel_parameters()
         self.assertTrue(callable(params))
         self.assertIs(params._replace.__func__, params.__call__.__func__)
-
-    def test_prefix_target_name_adds_prefix(self):
-        prefix = factory.make_name('prefix')
-        target = factory.make_name('tgt')
-        self.patch(kernel_opts, 'ISCSI_TARGET_NAME_PREFIX', prefix)
-
-        self.assertEqual(
-            '%s:%s' % (prefix, target),
-            prefix_target_name(target))
-
-    def test_prefix_target_name_produces_exactly_one_separating_colon(self):
-        target = factory.make_name('tgt')
-
-        full_name = prefix_target_name(target)
-
-        self.assertIn(':' + target, full_name)
-        self.assertNotIn('::' + target, full_name)
 
 
 class TestGetCurtinKernelCmdlineSepTest(MAASTestCase):
@@ -138,59 +119,6 @@ class TestKernelOpts(MAASTestCase):
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, Contains("overlayroot_cfgdisk=disabled"))
 
-    def test_compose_kernel_command_line_includes_preseed_url(self):
-        params = self.make_kernel_parameters()
-        self.assertIn(
-            "auto url=%s" % params.preseed_url,
-            compose_kernel_command_line(params))
-
-    def test_install_compose_kernel_command_line_includes_name_domain(self):
-        params = self.make_kernel_parameters(purpose="install")
-        self.assertThat(
-            compose_kernel_command_line(params),
-            ContainsAll([
-                "hostname=%s" % params.hostname,
-                "domain=%s" % params.domain,
-                ]))
-
-    def test_install_compose_kernel_command_line_omits_domain_if_omitted(self):
-        params = self.make_kernel_parameters(purpose="install", domain=None)
-        kernel_command_line = compose_kernel_command_line(params)
-        self.assertIn("hostname=%s" % params.hostname, kernel_command_line)
-        self.assertNotIn('domain=', kernel_command_line)
-
-    def test_install_compose_kernel_command_line_includes_locale(self):
-        params = self.make_kernel_parameters(purpose="install")
-        locale = "en_US"
-        self.assertIn(
-            "locale=%s" % locale,
-            compose_kernel_command_line(params))
-
-    def test_install_compose_kernel_command_line_includes_log_settings(self):
-        params = self.make_kernel_parameters(purpose="install")
-        # Port 514 (UDP) is syslog.
-        log_port = "514"
-        self.assertThat(
-            compose_kernel_command_line(params),
-            ContainsAll([
-                "log_host=%s" % params.log_host,
-                "log_port=%s" % log_port,
-                ]))
-
-    def test_install_compose_kernel_command_line_includes_di_settings(self):
-        params = self.make_kernel_parameters(purpose="install")
-        self.assertThat(
-            compose_kernel_command_line(params),
-            Contains("text priority=critical"))
-
-    def test_install_compose_kernel_command_line_inc_purpose_opts(self):
-        # The result of compose_kernel_command_line includes the purpose
-        # options for a non "commissioning" node.
-        params = self.make_kernel_parameters(purpose="install")
-        self.assertIn(
-            "netcfg/choose_interface=auto",
-            compose_kernel_command_line(params))
-
     def test_xinstall_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "xinstall" node.
@@ -200,8 +128,7 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator=",
+                "root=squash:http://",
                 "overlayroot=tmpfs",
                 "ip6=off",
                 "ip=::::%s:BOOTIF" % params.hostname]))
@@ -215,8 +142,7 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator=",
+                "root=squash:http://",
                 "overlayroot=tmpfs",
                 "ip=off",
                 "ip6=dhcp"]))
@@ -242,8 +168,7 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator=",
+                "root=squash:http://",
                 "overlayroot=tmpfs",
                 "ip6=off",
                 "ip=::::%s:BOOTIF" % params.hostname]))
@@ -257,8 +182,7 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator=",
+                "root=squash:http://",
                 "overlayroot=tmpfs",
                 "ip=off",
                 "ip6=dhcp"]))
@@ -284,8 +208,7 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator=",
+                "root=squash:http://",
                 "overlayroot=tmpfs",
                 "ip6=off",
                 "ip=::::%s:BOOTIF" % params.hostname]))
@@ -299,8 +222,7 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator=",
+                "root=squash:http://",
                 "overlayroot=tmpfs",
                 "ip=off",
                 "ip6=dhcp"]))
@@ -378,39 +300,17 @@ class TestKernelOpts(MAASTestCase):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "xinstall" node.
         params = self.make_kernel_parameters(purpose="xinstall")
-        ephemeral_name = get_ephemeral_name(
-            params.osystem, params.arch, params.subarch,
-            params.release, params.label)
         self.assertThat(
             compose_kernel_command_line(params),
-            ContainsAll([
-                "iscsi_target_name=%s:%s" % (
-                    ISCSI_TARGET_NAME_PREFIX, ephemeral_name),
-                "iscsi_target_port=3260",
-                "iscsi_target_ip=%s" % params.fs_host,
-                ]))
+            ContainsAll(["root=squash:http://"]))
 
     def test_compose_kernel_command_line_inc_purpose_opts_comm_node(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "commissioning" node.
         params = self.make_kernel_parameters(purpose="commissioning")
-        ephemeral_name = get_ephemeral_name(
-            params.osystem, params.arch, params.subarch,
-            params.release, params.label)
         self.assertThat(
             compose_kernel_command_line(params),
-            ContainsAll([
-                "iscsi_target_name=%s:%s" % (
-                    ISCSI_TARGET_NAME_PREFIX, ephemeral_name),
-                "iscsi_target_port=3260",
-                "iscsi_target_ip=%s" % params.fs_host,
-                ]))
-
-    def test_compose_preseed_kernel_opt_returns_kernel_option(self):
-        dummy_preseed_url = factory.make_name("url")
-        self.assertEqual(
-            "auto url=%s" % dummy_preseed_url,
-            compose_preseed_opt(dummy_preseed_url))
+            ContainsAll(["root=squash:http://"]))
 
     def test_compose_kernel_command_line_inc_arm_specific_option(self):
         params = self.make_kernel_parameters(arch="armhf", subarch="highbank")
@@ -432,3 +332,33 @@ class TestKernelOpts(MAASTestCase):
             arch=factory.make_name("arch"),
             subarch=factory.make_name("subarch"))
         self.assertEqual([], compose_arch_opts(params))
+
+    def test_compose_rootfs_over_http_ipv4(self):
+        params = make_kernel_parameters(fs_host=factory.make_ipv4_address())
+        self.assertThat(
+            compose_kernel_command_line(params),
+            ContainsAll([
+                "ro",
+                "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs" % (
+                    params.fs_host, params.osystem, params.arch,
+                    params.subarch, params.release, params.label)]))
+
+    def test_compose_rootfs_over_http_ipv6(self):
+        params = make_kernel_parameters(fs_host=factory.make_ipv6_address())
+        self.assertThat(
+            compose_kernel_command_line(params),
+            ContainsAll([
+                "ro",
+                "root=squash:http://[%s]:5248/images/%s/%s/%s/%s/%s/squashfs" %
+                (
+                    params.fs_host, params.osystem, params.arch,
+                    params.subarch, params.release, params.label)]))
+
+    def test_compose_rootfs_over_iscsi(self):
+        params = make_kernel_parameters(
+            fs_host=factory.make_ipv6_address(), http_boot=False)
+        self.assertThat(
+            compose_kernel_command_line(params),
+            ContainsAll([
+                "root=/dev/disk/by-path/ip-",
+                "iscsi_initiator="]))

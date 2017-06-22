@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate kernel command-line options for inclusion in PXE configs."""
@@ -6,7 +6,6 @@
 __all__ = [
     'compose_kernel_command_line',
     'KernelParameters',
-    'prefix_target_name',
     ]
 
 from collections import namedtuple
@@ -43,6 +42,7 @@ KernelParametersBase = namedtuple(
         "fs_host",      # Host/IP on which ephemeral filesystems are hosted.
         "extra_opts",   # String of extra options to supply, will be appended
                         # verbatim to the kernel command line
+        "http_boot",    # Whether or not to boot over HTTP.
         ))
 
 
@@ -50,21 +50,6 @@ class KernelParameters(KernelParametersBase):
 
     # foo._replace() is just ugly, so alias it to __call__.
     __call__ = KernelParametersBase._replace
-
-
-def compose_preseed_opt(preseed_url):
-    """Compose a kernel option for preseed URL.
-
-    :param preseed_url: The URL from which a preseed can be fetched.
-    """
-    # See https://help.ubuntu.com/12.04/installation-guide
-    #   /i386/preseed-using.html#preseed-auto
-    return "auto url=%s" % preseed_url
-
-
-def compose_locale_opt():
-    locale = 'en_US'
-    return "locale=%s" % locale
 
 
 def compose_logging_opts(log_host):
@@ -101,19 +86,6 @@ def get_ephemeral_name(osystem, arch, subarch, release, label):
         )
 
 
-def compose_hostname_opts(params):
-    """Return list of hostname/domain options based on `params`.
-
-    The domain is omitted if `params` does not include it.
-    """
-    options = [
-        'hostname=%s' % params.hostname,
-        ]
-    if params.domain is not None:
-        options.append('domain=%s' % params.domain)
-    return options
-
-
 def prefix_target_name(name):
     """Prefix an ISCSI target name with the standard target-name prefix."""
     return "%s:%s" % (ISCSI_TARGET_NAME_PREFIX, name)
@@ -121,8 +93,18 @@ def prefix_target_name(name):
 
 def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
-    if params.purpose in ["commissioning", "xinstall", "enlist"]:
-        # These are kernel parameters read by the ephemeral environment.
+    if params.http_boot:
+        kernel_params = [
+            "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs" % (
+                (
+                    '[%s]' % params.fs_host
+                    if IPAddress(params.fs_host).version == 6
+                    else params.fs_host
+                ),
+                params.osystem, params.arch, params.subarch, params.release,
+                params.label),
+        ]
+    else:
         tname = prefix_target_name(
             get_ephemeral_name(
                 params.osystem, params.arch, params.subarch,
@@ -133,43 +115,38 @@ def compose_purpose_opts(params):
             "iscsi_target_ip=%s" % params.fs_host,
             "iscsi_target_port=3260",
             "iscsi_initiator=%s" % params.hostname,
-            # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
-            # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
-            # family of fs_host.  If BOOTIF is set, IPv6 config uses that
-            # exclusively.
-            (
-                "ip=::::%s:BOOTIF" % params.hostname
-                if IPAddress(params.fs_host).version == 4 else "ip=off"
-            ),
-            (
-                "ip6=dhcp"
-                if IPAddress(params.fs_host).version == 6 else "ip6=off"
-            ),
             # kernel / udev name iscsi devices with this path
-            "ro root=/dev/disk/by-path/ip-%s:%s-iscsi-%s-lun-1" % (
+            "root=/dev/disk/by-path/ip-%s:%s-iscsi-%s-lun-1" % (
                 params.fs_host, "3260", tname),
-            # Read by overlayroot package.
-            "overlayroot=tmpfs",
-            # LP:1533822 - Disable reading overlay data from disk.
-            "overlayroot_cfgdisk=disabled",
-            # Select the MAAS datasource by default.
-            "cc:{'datasource_list': ['MAAS']}end_cc",
-            # Read by cloud-init.
-            "cloud-config-url=%s" % params.preseed_url,
-            # Disable apparmor in the ephemeral environment. This addresses
-            # MAAS bug LP: #1677336 due to LP: #1408106
-            "apparmor=0",
-            ]
-        return kernel_params
-    else:
-        # These are options used by the Debian Installer.
-        return [
-            "netcfg/choose_interface=auto",
-            # Use the text installer, display only critical messages.
-            "text priority=critical",
-            compose_preseed_opt(params.preseed_url),
-            compose_locale_opt(),
-            ] + compose_hostname_opts(params)
+        ]
+
+    kernel_params += [
+        "ro",
+        # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
+        # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
+        # family of fs_host.  If BOOTIF is set, IPv6 config uses that
+        # exclusively.
+        (
+            "ip=::::%s:BOOTIF" % params.hostname
+            if IPAddress(params.fs_host).version == 4 else "ip=off"
+        ),
+        (
+            "ip6=dhcp"
+            if IPAddress(params.fs_host).version == 6 else "ip6=off"
+        ),
+        # Read by overlayroot package.
+        "overlayroot=tmpfs",
+        # LP:1533822 - Disable reading overlay data from disk.
+        "overlayroot_cfgdisk=disabled",
+        # Select the MAAS datasource by default.
+        "cc:{'datasource_list': ['MAAS']}end_cc",
+        # Read by cloud-init.
+        "cloud-config-url=%s" % params.preseed_url,
+        # Disable apparmor in the ephemeral environment. This addresses
+        # MAAS bug LP: #1677336 due to LP: #1408106
+        "apparmor=0",
+        ]
+    return kernel_params
 
 
 def compose_arch_opts(params):

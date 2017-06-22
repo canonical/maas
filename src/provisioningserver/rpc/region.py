@@ -138,6 +138,7 @@ class GetBootConfig(amp.Command):
         (b"log_host", amp.Unicode()),
         (b"extra_opts", amp.Unicode()),
         (b"system_id", amp.Unicode(optional=True)),
+        (b"http_boot", amp.Boolean(optional=True)),
     ]
     errors = {
         BootConfigNoResponse: b"BootConfigNoResponse",
