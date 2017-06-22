@@ -44,21 +44,20 @@ up a LXD profile that is configured properly.
 Dependencies
 ^^^^^^^^^^^^
 
-You can grab MAAS's code manually from Launchpad but Bazaar_ makes it
+You can grab MAAS's code manually from Launchpad but Git_ makes it
 easy to fetch the last version of the code. First of all, install
-Bazaar::
+Git::
 
-    $ sudo apt-get install bzr
+    $ sudo apt install git
 
-.. _Bazaar: http://bazaar.canonical.com/
+.. _Git: https://git-scm.com/
 
 Then go into the directory where you want the code to reside and run::
 
-    $ bzr branch lp:maas maas && cd maas
+    $ git clone https://git.launchpad.net/maas && cd maas
 
-MAAS depends on Postgres 9.1, Apache 2, daemontools, pyinotify, and many
-other packages. To install everything that's needed for running and
-developing MAAS, run::
+MAAS depends on Postgres, isc-dhcp, bind9, and many other packages. To install
+everything that's needed for running and developing MAAS, run::
 
     $ make install-dependencies
 
@@ -84,6 +83,42 @@ configured to use a cache, in order to improve build times.)
   http://pypi.python.org/
 .. _npm:
   https://www.npmjs.com/
+
+
+Git Workflow
+^^^^^^^^^^^^
+
+You will want to adjust your git repository of lp:maas some before you start
+making changes to the code. This includes setting up your own copy of
+the repository and making your changes in branches.
+
+First you will want to rename the origin remote to upstream and create a new
+origin in your namespace.
+
+    $ git remote rename origin upstream
+    $ git remote add origin git+ssh://{launchpad-id}@git.launchpad.net/~{launchpad-id}/maas
+
+Now you can make a branch and start making changes.
+
+    $ git checkout -b new-branch
+
+Once you have made the changes you want, you should commit and push the branch
+to your origin.
+
+    $ git commit -m "My change" -a
+    $ git push origin new-branch
+
+Now you can view that branch on Launchpad and propose it to the maas
+repository.
+
+Once the branch has been merged and your done with it you can update your
+git repository to remove the branch.
+
+    $ git fetch upstream
+    $ git checkout master
+    $ git merge upstream/master
+    $ git branch -d new-branch
+
 
 Optional
 ^^^^^^^^
@@ -424,7 +459,7 @@ MAAS requires a properly configured DHCP server so it can boot machines using
 PXE. MAAS can work with its own instance of the ISC DHCP server, if you
 install the maas-dhcp package::
 
-    $ sudo apt-get install maas-dhcp
+    $ sudo apt install maas-dhcp
 
 Note that maas-dhcpd service definition referencese the maas-rackd
 service, which won't be present if you run a development service. To
@@ -548,7 +583,7 @@ This will generate a migration module named
 ``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
 Don't forget to add that file to the project with::
 
-    $ bzr add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
+    $ git add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
 
 To apply that migration, run::
 
@@ -570,7 +605,7 @@ You will need to edit that file and fill the ``operations`` list with the
 options that need to be performed. Again, don't forget to add that file to the
 project::
 
-    $ bzr add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
+    $ git add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
 
 Once the operations have been added, apply that migration with::
 

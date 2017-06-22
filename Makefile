@@ -24,7 +24,6 @@ endif
 py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
-templates := $(shell find etc/maas/templates -type f)
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
@@ -300,7 +299,7 @@ lint-css:
 
 # Python lint checks are time-intensive, but flake8 now knows how to run
 # parallel jobs, and does so by default.
-lint-py: sources = setup.py src templates twisted
+lint-py: sources = setup.py src twisted
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' -print0 \
@@ -310,7 +309,7 @@ lint-py: bin/flake8
 # be close to 10 but MAAS has many functions that are over that so we
 # start with a much higher number. Over time we can ratchet it down.
 lint-py-complexity: maximum=26
-lint-py-complexity: sources = setup.py src templates twisted
+lint-py-complexity: sources = setup.py src twisted
 lint-py-complexity: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
@@ -318,7 +317,7 @@ lint-py-complexity: bin/flake8
 	  -print0 | xargs -r0 bin/flake8 --config=.flake8 --max-complexity=$(maximum)
 
 # Statically check imports against policy.
-lint-py-imports: sources = setup.py src templates twisted
+lint-py-imports: sources = setup.py src twisted
 lint-py-imports:
 	@utilities/check-imports
 	@find $(sources) -name '*.py' \
@@ -343,7 +342,7 @@ lint-junk:
 	    echo "^ Junk found. Please remove it from the tree." >&2 ; fi
 
 # Apply automated formatting to all Python files.
-format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
+format: sources = $(wildcard *.py contrib/*.py) src twisted utilities etc
 format:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
 

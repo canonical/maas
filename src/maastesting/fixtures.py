@@ -428,8 +428,7 @@ class MAASRootFixture(fixtures.Fixture):
             maas.mkdir(parents=True)
             maas.joinpath("drivers.yaml").symlink_to(
                 skel.joinpath("etc", "maas", "drivers.yaml").resolve())
-            maas.joinpath("templates").symlink_to(
-                skel.joinpath("etc", "maas", "templates").resolve())
+            maas.joinpath("templates").mkdir()
             # Update the environment.
             self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
         else:
