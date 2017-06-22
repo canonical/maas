@@ -2,6 +2,7 @@
 *.egg
 *.egg-info
 *.log
+*.snap
 /.bzr
 /.coverage
 /.coverage.*
@@ -38,8 +39,11 @@
 /media/demo/*
 /media/development
 /parts
+/prime
 /services/*/supervise
+/snap/.snapcraft
 /src/maasserver/static/js/enums.js
+/stage
 /TAGS
 /tags
 /xunit.*.xml
