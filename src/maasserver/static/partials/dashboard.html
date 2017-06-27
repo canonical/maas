@@ -2,10 +2,10 @@
     <div class="wrapper--inner">
         <h1 class="page-header__title">Device discovery</h1>
         <p class="page-header__status">{$ discoveredDevices.length $} items discovered <span class="u-text--loading" data-ng-if="!loaded"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
-        <div class="page-header__controls" data-ng-if="networkDiscovery">
+        <div class="page-header__controls">
             <maas-obj-form obj="networkDiscovery" manager="configManager" inline="true">
                 <maas-obj-field type="onoffswitch" key="value" label="Discovery enabled"
-  on-value="enabled" off-value="disabled" subtle="true" label-left="true"
+  on-value="enabled" off-value="disabled" subtle="true"
   label-info="When enabled, MAAS will use passive techniques, such as listening to&#xa; ARP requests and DNS advertisements, to observe networks attached&#xa; to rack controllers. Active subnet mapping can also be enabled in the&#xa; Device Discovery section of the Settings page."></maas-obj-field>
             </maas-obj-form>
         </div>
