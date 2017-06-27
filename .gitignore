@@ -49,3 +49,6 @@
 /xunit.*.xml
 dropin.cache
 __pycache__
+*.orig
+*~
+\#*\#
