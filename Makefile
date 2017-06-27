@@ -287,7 +287,7 @@ coverage/index.html: bin/coverage .coverage
 
 lint: \
     lint-py lint-py-complexity lint-py-imports \
-    lint-js lint-junk lint-doc lint-rst
+    lint-js lint-doc lint-rst
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -336,23 +336,10 @@ lint-js:
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
 
-# Sometimes junk gets added to MAAS, like .moved files.
-lint-junk:
-	@if bzr ls --recursive --versioned | egrep '[.]moved$$'; then \
-	    echo "^ Junk found. Please remove it from the tree." >&2 ; fi
-
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src twisted utilities etc
 format:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
-
-# Update copyright dates from version history. Try to avoid updating
-# 3rd-party code by checking for "Canonical" or "MAAS" on the same line
-# as the copyright header.
-copyright:
-	@bzr ls --versioned --recursive --kind=file --null | \
-	    xargs -r0 egrep -iI 'copyright.*(canonical|maas)' -lZ | \
-	    xargs -r0 bzr update-copyright --quiet --force-range
 
 check: clean test
 
@@ -456,7 +443,6 @@ define phony_targets
   clean-failed
   clean-styles
   configure-buildout
-  copyright
   coverage-report
   dbharness
   distclean
@@ -470,7 +456,6 @@ define phony_targets
   lint-css
   lint-doc
   lint-js
-  lint-junk
   lint-py
   lint-py-complexity
   lint-py-imports
