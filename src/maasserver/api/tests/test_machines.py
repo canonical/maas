@@ -2052,7 +2052,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         hostname = factory.make_url()
         username = factory.make_name('username')
         password = factory.make_name('password')
-        port = "%s" % random.randint(0, 65535)
+        port = random.randint(0, 65535)
         for chassis_type in ('msftocs', 'recs_box', 'vmware'):
             response = self.client.post(
                 reverse('machines_handler'), {
@@ -2061,7 +2061,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                     'hostname': hostname,
                     'username': username,
                     'password': password,
-                    'port': port,
+                    'port': "%s" % port,
                 })
             self.assertEqual(
                 http.client.OK, response.status_code, response.content)
@@ -2090,6 +2090,44 @@ class TestMachinesAPI(APITestCase.ForUser):
             self.assertEqual(
                 ("port is unavailable with the %s chassis type" %
                  chassis_type).encode('utf-8'), response.content)
+
+    def test_POST_add_chasis_checks_port_too_high(self):
+        self.become_admin()
+        for chassis_type in ('msftocs', 'recs_box', 'vmware'):
+            params = {
+                'op': 'add_chassis',
+                'chassis_type': chassis_type,
+                'hostname': factory.make_url(),
+                'username': factory.make_name('username'),
+                'password': factory.make_name('password'),
+                'port': 65536,
+            }
+            response = self.client.post(reverse('machines_handler'), params)
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                "Invalid port: Please enter a number that is 65535 or smaller"
+                .encode('utf-8'), response.content)
+
+    def test_POST_add_chasis_checks_port_too_low(self):
+        self.become_admin()
+        for chassis_type in ('msftocs', 'recs_box', 'vmware'):
+            params = {
+                'op': 'add_chassis',
+                'chassis_type': chassis_type,
+                'hostname': factory.make_url(),
+                'username': factory.make_name('username'),
+                'password': factory.make_name('password'),
+                'port': random.randint(-2, 0),
+            }
+            response = self.client.post(reverse('machines_handler'), params)
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                "Invalid port: Please enter a number that is 1 or greater"
+                .encode('utf-8'), response.content)
 
     def test_POST_add_chassis_sends_protcol_with_vmware(self):
         self.become_admin()

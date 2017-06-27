@@ -1636,7 +1636,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
         # Only available with vmware, recs_box or msftocs
-        port = get_optional_param(request.POST, 'port')
+        port = get_optional_param(request.POST, 'port',
+                                  validator=validators.Int(min=1, max=65535))
         if port is not None and chassis_type not in ('msftocs', 'recs_box',
                                                      'vmware'):
             return HttpResponseBadRequest(
