@@ -84,6 +84,7 @@ __all__ = [
 
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
+from django.core.exceptions import ViewDoesNotExist
 from django.core.urlresolvers import (
     get_callable,
     get_resolver,
@@ -210,7 +211,11 @@ def get_resource_uri_template(self):
         for i, value in enumerate(resource_uri):
             components[i] = value
         lookup_view, args, kwargs = components
-        lookup_view = get_callable(lookup_view, True)
+        try:
+            lookup_view = get_callable(lookup_view)
+        except (ImportError, ViewDoesNotExist):
+            # Emulate can_fail=True from earlier django versions.
+            pass
 
         possibilities = get_resolver(None).reverse_dict.getlist(lookup_view)
         # The monkey patch is right here: we need to cope with 'possibilities'
@@ -228,7 +233,6 @@ def get_resource_uri_template(self):
                     return _convert(result, params)
     except:
         return None
-
 
 HandlerDocumentation.get_resource_uri_template = get_resource_uri_template
 
