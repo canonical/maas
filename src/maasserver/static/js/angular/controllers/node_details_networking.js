@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Networking Controller
@@ -568,30 +568,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             updateLoaded();
         };
 
-        // Return true if the Node is Ready (or Broken)
-        $scope.isNodeEditingAllowed = function() {
-            if (!$scope.isSuperUser()) {
-                // If the user is not the superuser, pretend it's not Ready.
-                return false;
-            }
-            if ($scope.$parent.isDevice) {
-                // Devices are always Ready, for our purposes, for now.
-                return true;
-            }
-            if ($scope.$parent.isController) {
-                // Controllers are always Ready, for our purposes.
-                return true;
-            }
-            if (angular.isObject($scope.node) &&
-                  ["Ready", "Broken"].indexOf($scope.node.status) === -1) {
-                // If a non-controller node is not Ready or Broken, then no
-                // editing networking.
-                return false;
-            }
-            // All is well, let them edit.
-            return true;
-        };
-
         // Return true if only the name or mac address of an interface can
         // be edited.
         $scope.isLimitedEditingAllowed = function(nic) {
@@ -623,9 +599,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 return false;
             }
             if (angular.isObject($scope.node) &&
-                  ["Ready", "Broken"].indexOf($scope.node.status) === -1) {
-                // If a non-controller node is not ready or broken, disable
-                // networking panel.
+                    ["Ready", "Allocated", "Broken"].indexOf(
+                        $scope.node.status) === -1) {
+                // If a non-controller node is not ready allocated, or broken,
+                // disable networking panel.
                 return true;
             }
             // User must be a superuser and the node must be
@@ -1090,7 +1067,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.canAddAliasOrVLAN = function(nic) {
             if($scope.$parent.isController) {
                 return false;
-            } else if (!$scope.isNodeEditingAllowed()) {
+            } else if ($scope.isAllNetworkingDisabled()) {
                 return false;
             } else {
                 return $scope.canAddAlias(nic) || $scope.canAddVLAN(nic);
@@ -1148,7 +1125,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.canBeRemoved = function() {
             return (
                 !$scope.$parent.isController &&
-                $scope.isNodeEditingAllowed());
+                !$scope.isAllNetworkingDisabled());
         };
 
         // Enter remove mode.

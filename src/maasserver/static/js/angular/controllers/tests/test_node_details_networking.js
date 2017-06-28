@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeNetworkingController.
@@ -2146,7 +2146,7 @@ describe("NodeNetworkingController", function() {
         it("returns false if isController", function() {
             var controller = makeController();
             $parentScope.isController = true;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             spyOn($scope, "canAddAlias").and.returnValue(true);
             spyOn($scope, "canAddVLAN").and.returnValue(true);
             expect($scope.canAddAliasOrVLAN({})).toBe(false);
@@ -2155,7 +2155,7 @@ describe("NodeNetworkingController", function() {
         it("returns false if no node editing", function() {
             var controller = makeController();
             $parentScope.isController = false;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(false);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(true);
             spyOn($scope, "canAddAlias").and.returnValue(true);
             spyOn($scope, "canAddVLAN").and.returnValue(true);
             expect($scope.canAddAliasOrVLAN({})).toBe(false);
@@ -2164,7 +2164,7 @@ describe("NodeNetworkingController", function() {
         it("returns true if can edit alias", function() {
             var controller = makeController();
             $parentScope.isController = false;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             spyOn($scope, "canAddAlias").and.returnValue(true);
             spyOn($scope, "canAddVLAN").and.returnValue(false);
             expect($scope.canAddAliasOrVLAN({})).toBe(true);
@@ -2173,7 +2173,7 @@ describe("NodeNetworkingController", function() {
         it("returns true if can edit VLAN", function() {
             var controller = makeController();
             $parentScope.isController = false;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             spyOn($scope, "canAddAlias").and.returnValue(false);
             spyOn($scope, "canAddVLAN").and.returnValue(true);
             expect($scope.canAddAliasOrVLAN({})).toBe(true);
@@ -2523,21 +2523,21 @@ describe("NodeNetworkingController", function() {
         it("false if isController", function() {
             var controller = makeController();
             $parentScope.isController = true;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             expect($scope.canBeRemoved()).toBe(false);
         });
 
         it("false if no node editing", function() {
             var controller = makeController();
             $parentScope.isController = false;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(false);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(true);
             expect($scope.canBeRemoved()).toBe(false);
         });
 
         it("true if node can be edited", function() {
             var controller = makeController();
             $parentScope.isController = false;
-            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "isAllNetworkingDisabled").and.returnValue(false);
             expect($scope.canBeRemoved()).toBe(true);
         });
     });

@@ -656,7 +656,7 @@
                             <div class="p-notification" data-ng-if="!isController && isAllNetworkingDisabled() && isSuperUser()">
                                 <p class="p-notification__response">Interface
                                   configuration cannot be modified unless the
-                                  node is Ready or Broken.</p>
+                                  node is Ready, Allocated, or Broken.</p>
                             </div>
                             <div class="p-notification--warning" data-ng-if="!isController && isCustomOS()">
                                 <p class="p-notification__response">
@@ -698,15 +698,15 @@
                           </header>
                           <div class="table__body" data-selected-rows>
                               <div class="table__row"
-                                  data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (isNodeEditingAllowed() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
-                                  data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:!isNodeEditingAllowed() | removeInterfaceParents:newBridgeInterface:!isNodeEditingAllowed()">
+                                  data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
+                                  data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:isAllNetworkingDisabled() | removeInterfaceParents:newBridgeInterface:isAllNetworkingDisabled()">
                                   <div class="table__data table-col--3" data-ng-if="!isDevice" aria-label="Select">
                                       <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
                                           data-ng-hide="isAllNetworkingDisabled()"
                                           data-ng-checked="isInterfaceSelected(interface)"
                                           data-ng-click="toggleInterfaceSelect(interface)"
                                           data-ng-disabled="isDisabled()"
-                                          data-ng-if="!isController && isNodeEditingAllowed()">
+                                          data-ng-if="!isController && !isAllNetworkingDisabled()">
                                       <label for="{$ getUniqueKey(interface) $}"></label>
                                   </div>
                                   <div class="table__data table-col--12" aria-label="Name" data-ng-if="!isDevice" data-ng-show="tableInfo.column == 'name'">
@@ -755,7 +755,7 @@
                                       </span>
                                   </div>
                                   <div class="table__data table--mobile-controls table-col--8">
-                                      <div class="table__controls" toggle-ctrl data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
+                                      <div class="table__controls" toggle-ctrl data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
                                           <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
                                           <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
                                               <button class="table__controls-action"
@@ -787,7 +787,7 @@
                                           </div>
                                       </div>
                                   </div>
-                                  <div data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
+                                  <div data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
                                       <div class="table__dropdown" tabindex="0" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
                                           <div class="table__dropdown-title">
                                               <h2 data-ng-click="cancel()" class="u-float--left">
@@ -888,10 +888,10 @@
                                                                input-class="table__input u-margin--none" placeholder="00:00:00:00:00:00"></maas-obj-field>
                                                           <maas-obj-field type="tags" key="tags" label="Tags" label-width="two" input-width="three"
                                                                placeholder="Add a tag"
-                                                               data-ng-if="!isLimitedEditingAllowed(interface) && interface.type !== 'alias'"
+                                                               data-ng-if="!isAllNetworkingDisabled(interface) && interface.type !== 'alias'"
                                                                disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
                                                       </fieldset>
-                                                      <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
+                                                      <fieldset class="form__fieldset six-col last-col" data-ng-if="!isAllNetworkingDisabled(interface)">
                                                           <maas-obj-field type="options" key="fabric" label="Fabric" label-width="two" input-width="three"
                                                               disable-label="false" input-class="table__input u-margin--none"
                                                               data-ng-if="!isDevice"
@@ -976,7 +976,7 @@
                                       </div>
                                   </div>
                               </div>
-                              <div class="table__row is-active" tabindex="0" data-ng-if="isShowingCreateBond() && isNodeEditingAllowed()">
+                              <div class="table__row is-active" tabindex="0" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
                                   <div class="table__data table-col--3">
                                       <input type="checkbox" class="checkbox" name="bond-create" disabled="disabled" checked />
                                       <label for="bond-create"></label>
@@ -1077,7 +1077,7 @@
                                     </div>
                                   </div>
                               </div>
-                              <div class="table__row is-active" tabindex="0" data-ng-if="isShowingCreateBridge() && isNodeEditingAllowed()">
+                              <div class="table__row is-active" tabindex="0" data-ng-if="isShowingCreateBridge() && !isAllNetworkingDisabled()">
                                   <div class="table__data table-col--3">
                                       <input type="checkbox" class="checkbox" id="bond-create" disabled="disabled" checked />
                                       <label for="bridge-create"></label>
@@ -1262,7 +1262,7 @@
                                                           data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.mac_address, true) }">
                                                   </div>
                                               </fieldset>
-                                              <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
+                                              <fieldset class="form__fieldset six-col last-col" data-ng-if="!isAllNetworkingDisabled(interface)">
                                                   <div class="form__group">
                                                       <label for="ip-assignment" class="two-col">IP Assignment</label>
                                                       <select name="ip-assignment" class="three-col"
