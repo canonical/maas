@@ -134,10 +134,10 @@ class ProvisioningServiceMaker:
         rpc_service.setName("rpc")
         return rpc_service
 
-    def _makeNetworksMonitoringService(self, rpc_service):
+    def _makeNetworksMonitoringService(self, rpc_service, clock=reactor):
         from provisioningserver.rackdservices.networks_monitoring_service \
             import RackNetworksMonitoringService
-        networks_monitor = RackNetworksMonitoringService(rpc_service, reactor)
+        networks_monitor = RackNetworksMonitoringService(rpc_service, clock)
         networks_monitor.setName("networks_monitor")
         return networks_monitor
 
@@ -162,12 +162,12 @@ class ProvisioningServiceMaker:
         ntp_service.setName("ntp")
         return ntp_service
 
-    def _makeServices(self, tftp_root, tftp_port):
+    def _makeServices(self, tftp_root, tftp_port, clock=reactor):
         # Several services need to make use of the RPC service.
         rpc_service = self._makeRPCService()
         yield rpc_service
         # Other services that make up the MAAS Region Controller.
-        yield self._makeNetworksMonitoringService(rpc_service)
+        yield self._makeNetworksMonitoringService(rpc_service, clock=clock)
         yield self._makeDHCPProbeService(rpc_service)
         yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
@@ -188,7 +188,7 @@ class ProvisioningServiceMaker:
         # Get something going with the logs.
         logger.configure(verbosity, logger.LoggingMode.TWISTD)
 
-    def makeService(self, options):
+    def makeService(self, options, clock=reactor):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
         add_patches_to_txtftp()
@@ -202,7 +202,7 @@ class ProvisioningServiceMaker:
             tftp_port = config.tftp_port
 
         from provisioningserver import services
-        for service in self._makeServices(tftp_root, tftp_port):
+        for service in self._makeServices(tftp_root, tftp_port, clock=clock):
             service.setServiceParent(services)
 
         return services

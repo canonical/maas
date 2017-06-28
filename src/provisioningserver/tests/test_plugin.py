@@ -101,7 +101,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         """
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
@@ -127,7 +127,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         self.assertThat(service.namedServices, Not(Contains("tftp")))
         self.assertThat(service.namedServices, Contains("tftp-offload"))
@@ -139,41 +139,41 @@ class TestProvisioningServiceMaker(MAASTestCase):
             self.patch(plugin_module, 'add_patches_to_txtftp'))
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service_maker.makeService(options)
+        service_maker.makeService(options, clock=None)
         self.assertThat(mock_tftp_patch, MockCalledOnceWith())
 
     def test_image_download_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         image_service = service.getServiceNamed("image_download")
         self.assertIsInstance(image_service, ImageDownloadService)
 
     def test_node_monitor_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         node_monitor = service.getServiceNamed("node_monitor")
         self.assertIsInstance(node_monitor, NodePowerMonitorService)
 
     def test_networks_monitor_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Spike", "Milligan")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         networks_monitor = service.getServiceNamed("networks_monitor")
         self.assertIsInstance(networks_monitor, RackNetworksMonitoringService)
 
     def test_dhcp_probe_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Spike", "Milligan")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         dhcp_probe = service.getServiceNamed("dhcp_probe")
         self.assertIsInstance(dhcp_probe, DHCPProbeService)
 
     def test_service_monitor_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         service_monitor = service.getServiceNamed("service_monitor")
         self.assertIsInstance(service_monitor, ServiceMonitorService)
 
@@ -181,7 +181,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         # A TFTP service is configured and added to the top-level service.
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         tftp_service = service.getServiceNamed("tftp")
         self.assertIsInstance(tftp_service, TFTPService)
 
@@ -204,7 +204,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
     def test_image_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         image_service = service.getServiceNamed("image_service")
         self.assertIsInstance(image_service, BootImageEndpointService)
         self.assertIsInstance(image_service.site, Site)
@@ -222,6 +222,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
     def test_lease_socket_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, clock=None)
         lease_socket_service = service.getServiceNamed("lease_socket_service")
         self.assertIsInstance(lease_socket_service, LeaseSocketService)
