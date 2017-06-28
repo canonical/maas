@@ -87,6 +87,7 @@ from maasserver.exceptions import NodeActionError
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
+    UnstrippedCharField,
 )
 from maasserver.forms.settings import (
     CONFIG_ITEMS_KEYS,
@@ -1050,7 +1051,7 @@ class KeyForm(MAASModelForm):
 
 
 class SSHKeyForm(KeyForm):
-    key = forms.CharField(
+    key = UnstrippedCharField(
         label="Public key",
         widget=forms.Textarea(attrs={'rows': '5', 'cols': '30'}),
         required=True)
@@ -1061,7 +1062,7 @@ class SSHKeyForm(KeyForm):
 
 
 class SSLKeyForm(KeyForm):
-    key = forms.CharField(
+    key = UnstrippedCharField(
         label="SSL key",
         widget=forms.Textarea(attrs={'rows': '15', 'cols': '30'}),
         required=True)

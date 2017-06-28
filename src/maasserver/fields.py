@@ -125,6 +125,25 @@ class StrippedCharField(forms.CharField):
         return super(StrippedCharField, self).clean(value)
 
 
+class UnstrippedCharField(forms.CharField):
+    """A version of forms.CharField that never strips the whitespace.
+
+    Django 1.9 has introduced a strip argument that controls stripping of
+    whitespace *and* which defaults to True, thus breaking compatibility with
+    1.8 and earlier.
+    """
+    def __init__(self, *args, **kwargs):
+        # Instead of relying on a version check, we check for CharField
+        # constructor having a strip kwarg instead.
+        parent_init = super(UnstrippedCharField, self).__init__
+        if 'strip' in parent_init.__code__.co_varnames:
+            parent_init(*args, strip=False, **kwargs)
+        else:
+            # In Django versions that do not support strip, False was the
+            # default.
+            parent_init(*args, **kwargs)
+
+
 class VerboseRegexField(forms.CharField):
 
     def __init__(self, regex, message, *args, **kwargs):

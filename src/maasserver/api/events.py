@@ -120,7 +120,7 @@ class EventsHandler(OperationsHandler):
             limit = 1 if limit < 1 else limit
 
         # Begin constructing the query.
-        node_events = Event.objects.filter(node=nodes)
+        node_events = Event.objects.filter(node__in=nodes)
 
         # Eliminate logs below the requested level.
         if level in LOGGING_LEVELS_BY_NAME:

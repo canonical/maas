@@ -60,8 +60,14 @@ class DNSResourceForm(MAASModelForm):
         # If it's an IPAddress, then look up the id.
         # Otherwise, just return the input, which is likely to result in an
         # error later.
-        if isinstance(ipaddr, int) or ipaddr.isdigit():
+        if isinstance(ipaddr, int):
             return int(ipaddr)
+        elif isinstance(ipaddr, str) and ipaddr.isdigit():
+            return int(ipaddr)
+        elif isinstance(ipaddr, StaticIPAddress):
+            # In Django 1.11, instead of getting an object ID, Django will
+            # pre-adapt it to a StaticIPAddress.
+            return ipaddr.id
         try:
             IPAddress(ipaddr)
         except (AddrFormatError, ValueError):
