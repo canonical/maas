@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Interface`."""
@@ -92,7 +92,7 @@ INTERFACES_PREFETCH = [
      'children_relationships__child__vlan'),
 ]
 
-ALLOWED_STATES = (NODE_STATUS.READY, NODE_STATUS.BROKEN)
+ALLOWED_STATES = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN)
 
 
 def raise_error_for_invalid_state_on_allocated_operations(
@@ -112,8 +112,8 @@ def raise_error_for_invalid_state_on_allocated_operations(
         allowed.extend(extra_states)
     if node.status not in allowed:
         raise NodeStateViolation(
-            "Cannot %s interface because the machine is not Ready or "
-            "Broken." % operation)
+            "Cannot %s interface because the machine is not Ready, Allocated, "
+            "or Broken." % operation)
 
 
 def raise_error_if_controller(node, operation):
@@ -327,16 +327,8 @@ class InterfacesHandler(OperationsHandler):
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.EDIT)
-        if machine.status not in (
-                NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.ALLOCATED):
-            raise NodeStateViolation(
-                "Cannot create bridge interface because the machine is not "
-                "Ready, Broken, or Allocated.")
-        if (not request.user.is_superuser and
-                machine.status in ALLOWED_STATES):
-            raise NodeStateViolation(
-                "Machine must be alloacted to '%s' to allow bridge "
-                "creation." % request.user.username)
+        raise_error_for_invalid_state_on_allocated_operations(
+            machine, request.user, "create bridge")
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for NodeInterfaces API."""
@@ -43,7 +43,6 @@ STATUSES = (
     NODE_STATUS.FAILED_COMMISSIONING,
     NODE_STATUS.MISSING,
     NODE_STATUS.RESERVED,
-    NODE_STATUS.ALLOCATED,
     NODE_STATUS.DEPLOYING,
     NODE_STATUS.DEPLOYED,
     NODE_STATUS.RETIRED,
@@ -241,7 +240,8 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical_disabled(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
@@ -342,7 +342,8 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_bond(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(status=status)
             vlan = factory.make_VLAN()
             parent_1_iface = factory.make_Interface(
@@ -931,7 +932,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_physical_interface(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(status=status)
             interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)
@@ -969,7 +971,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_bond_interface(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(status=status)
             bond, [nic_0, nic_1], [vlan_10, vlan_11] = make_complex_interface(
                 node)
@@ -984,7 +987,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_update_vlan_interface(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(status=status)
             bond, [nic_0, nic_1], [vlan_10, vlan_11] = make_complex_interface(
                 node)
@@ -1031,7 +1035,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_delete_deletes_interface(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1086,7 +1091,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1324,7 +1330,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_link_subnet_raises_error(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1366,7 +1373,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet()
@@ -1403,7 +1411,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_unlink_subnet_raises_error(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1444,7 +1453,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet()
@@ -1486,7 +1496,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the node link is created.
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             network = factory.make_ipv4_network()
@@ -1508,7 +1519,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the node link is created.
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             network = factory.make_ipv6_network()
@@ -1528,7 +1540,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_set_default_gateway_raises_error(self):
         self.become_admin()
-        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+        for status in (
+                NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.BROKEN):
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
