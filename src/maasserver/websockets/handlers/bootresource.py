@@ -520,9 +520,16 @@ class BootResourceHandler(Handler):
 
         # Load all the nodes, so its not done on every call
         # to the method get_number_of_nodes_deployed_for.
+        # XXX Danilo 2017-06-29: this used to also do
+        #   .only('osystem', 'distro_series')
+        # but that caused "RecursionError: maximum recursion depth exceeded
+        # while calling a Python object" errors with Django 1.11 in
+        #   maasserver.websockets.handlers.tests.test_bootresource
+        # tests.  Since we are filtering on status field which is not in
+        # "only" anyway, I don't think we ever had the benefit of prefetching
+        # only those two fields.
         self.nodes = Node.objects.filter(
-            status__in=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING]).only(
-            'osystem', 'distro_series')
+            status__in=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
         self.default_osystem = Config.objects.get_config(
             'default_osystem')
         self.default_distro_series = Config.objects.get_config(
