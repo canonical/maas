@@ -13,6 +13,7 @@ libjs-angularjs
 libjs-jquery
 libjs-yui3-min
 libpq-dev
+lshw
 postgresql
 python3-all
 python3-apt
@@ -39,6 +40,7 @@ python3-oauth
 python3-oauthlib
 python3-openssl
 python3-paramiko
+python3-petname
 python3-pexpect
 python3-psycopg2
 python3-pyinotify
