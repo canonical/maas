@@ -5,102 +5,89 @@
 
 __all__ = []
 
-from base64 import b64decode
-import html.parser
 from io import BytesIO
 
-from django.conf import settings
+import django.conf
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.http import multipartparser
+from maastesting.testcase import MAASTestCase
 
 
-class HTMLParseError(Exception):
-    """Dummy exception; this has been removed in Python 3.5."""
+class APIClientTestCase(MAASTestCase):
+    """
+    Provide django and django-piston based content/header parsing methods.
 
-# Inject a dummy HTMLParseError exception to allow Django 1.6 to run;
-# later versions of Django deal with this themselves. Sigh.
-html.parser.HTMLParseError = HTMLParseError
-
-
-# Django 1.6 needs to be configured before we can import WSGIRequest.
-if not settings.configured:
-    settings.configure(DEBUG=True)
-
-
-class Base64Decoder:
-    """Hack to get Django's MIME multi-part parser to work in Python 3.5.
-
-    Django 1.6, despite claims to the contrary, is not really ready for Python
-    3.5; we have to hack this fix in.
+    Since they use MultiPartParser and WSGIRequest from Django, they require
+    configuring Django which we want to clear after tests are done.
     """
 
-    def __init__(self, data):
-        self.data = data
+    def setUp(self):
+        super(APIClientTestCase, self).setUp()
+        # Django 1.8 and 1.11 need to be configured before we can use
+        # WSGIRequest and MultiPartParser.
+        if not django.conf.settings.configured:
+            django.conf.settings.configure(DEBUG=True)
 
-    def decode(self, encoding):
-        assert encoding == "base64"
-        return b64decode(self.data)
+    def tearDown(self):
+        # Reset django settings after each test since configuring Django breaks
+        # tests for maascli commands which attempt to really load Django.
+        django.conf.settings = django.conf.LazySettings()
+        super(APIClientTestCase, self).tearDown()
 
-# Yes, really.
-multipartparser.str = Base64Decoder
+    @classmethod
+    def parse_headers_and_body_with_django(cls, headers, body):
+        """Parse `headers` and `body` with Django's :class:`MultiPartParser`.
 
+        `MultiPartParser` is a curiously ugly and RFC non-compliant concoction.
 
-def parse_headers_and_body_with_django(headers, body):
-    """Parse `headers` and `body` with Django's :class:`MultiPartParser`.
+        Amongst other things, it coerces all field names, field data, and
+        filenames into Unicode strings using the "replace" error strategy, so
+        be warned that your data may be silently mangled.
 
-    `MultiPartParser` is a curiously ugly and RFC non-compliant concoction.
+        It also, in 1.3.1 at least, does not recognise any transfer encodings
+        at *all* because its header parsing code was broken.
 
-    Amongst other things, it coerces all field names, field data, and
-    filenames into Unicode strings using the "replace" error strategy, so be
-    warned that your data may be silently mangled.
+        I'm also fairly sure that it'll fall over on headers than span more
+        than one line.
 
-    It also, in 1.3.1 at least, does not recognise any transfer encodings at
-    *all* because its header parsing code was broken.
+        In short, it's a piece of code that inspires little confidence, yet we
+        must work with it, hence we need to round-trip test multipart handling
+        with it.
+        """
+        handler = MemoryFileUploadHandler()
+        meta = {
+            "CONTENT_TYPE": headers["Content-Type"],
+            "CONTENT_LENGTH": headers["Content-Length"],
+            # To make things even more entertaining, 1.8 prefixed meta vars
+            # with "HTTP_" and 1.11 does not.
+            "HTTP_CONTENT_TYPE": headers["Content-Type"],
+            "HTTP_CONTENT_LENGTH": headers["Content-Length"],
+            }
+        parser = multipartparser.MultiPartParser(
+            META=meta, input_data=BytesIO(body.encode("ascii")),
+            upload_handlers=[handler])
+        return parser.parse()
 
-    I'm also fairly sure that it'll fall over on headers than span more than
-    one line.
+    @classmethod
+    def parse_headers_and_body_with_mimer(cls, headers, body):
+        """Use piston's Mimer functionality to handle the content.
 
-    In short, it's a piece of code that inspires little confidence, yet we
-    must work with it, hence we need to round-trip test multipart handling
-    with it.
-    """
-    handler = MemoryFileUploadHandler()
-    meta = {
-        "CONTENT_TYPE": headers["Content-Type"],
-        "CONTENT_LENGTH": headers["Content-Length"],
-        # To make things even more entertaining, 1.8 prefixed meta vars
-        # with "HTTP_" and 1.11 does not.
-        "HTTP_CONTENT_TYPE": headers["Content-Type"],
-        "HTTP_CONTENT_LENGTH": headers["Content-Length"],
-        }
-    parser = multipartparser.MultiPartParser(
-        META=meta, input_data=BytesIO(body.encode("ascii")),
-        upload_handlers=[handler])
-    return parser.parse()
+        :return: The value of 'request.data' after using Piston's
+            translate_mime on the input.
+        """
+        # JAM 2012-10-09 Importing emitters has a side effect of registering
+        #   mime type handlers with utils.translate_mime.
+        from piston3 import emitters
+        emitters  # Imported for side-effects.
+        from piston3.utils import translate_mime
 
-
-def parse_headers_and_body_with_mimer(headers, body):
-    """Use piston's Mimer functionality to handle the content.
-
-    :return: The value of 'request.data' after using Piston's translate_mime on
-        the input.
-    """
-    # JAM 2012-10-09 Importing emitters has a side effect of registering mime
-    #   type handlers with utils.translate_mime. So we must import it, even
-    #   though we don't use it.  However, piston loads Django's QuerySet code
-    #   which fails if you don't have a settings.py available. Which we don't
-    #   during 'test.cluster'. So we import this late.
-    from piston3 import emitters
-    emitters  # Imported for side-effects.
-    from piston3.utils import translate_mime
-
-    environ = {'wsgi.input': BytesIO(body.encode("utf8"))}
-    for name, value in headers.items():
-        environ[name.upper().replace('-', '_')] = value
-    environ['REQUEST_METHOD'] = 'POST'
-    environ['SCRIPT_NAME'] = ''
-    environ['PATH_INFO'] = ''
-    from django.core.handlers.wsgi import WSGIRequest
-    request = WSGIRequest(environ)
-    translate_mime(request)
-    return request.data
+        environ = {'wsgi.input': BytesIO(body.encode("utf8"))}
+        for name, value in headers.items():
+            environ[name.upper().replace('-', '_')] = value
+        environ['REQUEST_METHOD'] = 'POST'
+        environ['SCRIPT_NAME'] = ''
+        environ['PATH_INFO'] = ''
+        from django.core.handlers.wsgi import WSGIRequest
+        request = WSGIRequest(environ)
+        translate_mime(request)
+        return request.data
