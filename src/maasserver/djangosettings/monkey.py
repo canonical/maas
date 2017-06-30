@@ -15,9 +15,5 @@ def patch_get_script_prefix():
     twisted or any other thread, as it does not get the correct prefix when
     using reverse. This converts the local() into an object that is global.
     """
-    try:
-        from django.urls import base
-        base._prefixes = type('', (), {})()
-    except ImportError:
-        from django.core import urlresolvers
-        urlresolvers._prefixes = type('', (), {})()
+    from django.core import urlresolvers
+    urlresolvers._prefixes = type('', (), {})()

@@ -20,12 +20,7 @@ from urllib.parse import (
     urlparse,
 )
 
-
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
-
+from django.core.urlresolvers import reverse
 from maasserver.config import RegionConfiguration
 from provisioningserver.config import (
     ClusterConfiguration,

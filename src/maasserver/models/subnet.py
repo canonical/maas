@@ -373,7 +373,7 @@ class Subnet(CleanSave, TimestampedModel):
         null=False, on_delete=PROTECT)
 
     # XXX:fabric: unique constraint should be relaxed once proper support for
-    # fabrics is implemented. The CIDR must be unique within a Fabric, not
+    # fabrics is implemented. The CIDR must be unique withing a Fabric, not
     # globally unique.
     cidr = CIDRField(
         blank=False, unique=True, editable=True, null=False)
