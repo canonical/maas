@@ -14,6 +14,16 @@ LP: #1695083    Improve NTP IP address selection for MAAS DHCP clients.
 
 LP: #1652298    Device Discovery, Node Listing and Events page performance improvements.
 
+LP: #1694759    RSD Pod refresh shows ComposedNodeState is "Failed"
+
+LP: #1694767    RSD composition not setting local disk tags
+
+LP: #1678339    [2.2] Can't assign a static IP to a physical interface due to incorrect validation
+
+LP: #1693644    Enlistment does not validate min_hwe_kernel\
+
+LP: #1699286    [2.2, trunk] test__renders_ntp_servers_as_comma_separated_list fails randomly
+
 
 2.2.0
 =====
