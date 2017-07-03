@@ -1,5 +1,6 @@
 name: maas
-version: 2.2.0rc3
+version: git
+version-script: utilities/calc-snap-version
 summary: Metal as a Service
 description: |
   Total automation of you physical servers for amazing data center
@@ -130,9 +131,3 @@ parts:
       - -conf
       - -plugins
       - -snapcraft.yaml
-  version:
-    plugin: bzr-version
-    stage:
-      - -*
-    prime:
-      - -*
