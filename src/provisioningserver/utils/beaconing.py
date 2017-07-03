@@ -19,13 +19,16 @@ from gzip import (
     decompress,
 )
 import json
+import math
 import os
 import stat
 import struct
 import subprocess
 import sys
 from textwrap import dedent
+import time
 import uuid
+from uuid import UUID
 
 from bson import BSON
 from bson.errors import BSONError
@@ -48,6 +51,9 @@ from provisioningserver.utils.tcpip import (
 
 
 BEACON_PORT = 5240
+BEACON_IPV4_MULTICAST = "224.0.0.118"
+BEACON_IPV6_MULTICAST = "ff02::15a"
+
 
 BEACON_TYPES = {
     "solicitation": 1,
@@ -69,6 +75,61 @@ BeaconPayload = namedtuple('BeaconPayload', (
     'type',
     'payload',
 ))
+
+
+def uuid_to_timestamp(uuid_str):
+    """Given the specified UUID string, returns the timestamp.
+
+    The timestamp returned should be comparable to what would be returned
+    from `import time; time.time()`.
+
+    :param uuid_str: a UUID in string format
+    :return: float
+    """
+    uuid_time = UUID(uuid_str).time
+    # Reverse the algorithm in uuid.py.
+    timestamp = (uuid_time - 0x01b21dd213814000) * 100 / 1e9
+    return timestamp
+
+
+def age_out_uuid_queue(queue, threshold=120.0):
+    """Ages out a ordered dictionary (using UUID-based keys) based on time.
+
+    The given threshold (in seconds) indicates how old an entry can be
+    before it will be removed from the queue.
+
+    :param queue: An `OrderedDict` with UUID strings as keys.
+    :param threshold: The maximum time an entry can remain in the queue.
+    """
+    removals = []
+    current_time = time.time()
+    for key in queue:
+        beacon_timestamp = uuid_to_timestamp(key)
+        # Don't leave beacons from the future in the queue if the clock
+        # suddenly changes. (This shouldn't happen, since the Fernet TTL
+        # should not have allowed them through. But just in case.)
+        difference = math.fabs(current_time - beacon_timestamp)
+        # Age out beacons greater than two minutes old.
+        if difference > threshold:
+            removals.append(key)
+        else:
+            # If we're already encountering packets that haven't met the age
+            # threshold (and were received more recently, and thus are later
+            # in the queue) then it's time to give up. (Yes, it's possible that
+            # clock skew could be an issue here, but after a couple of minutes,
+            # it won't matter.)
+            break
+    for uuid_to_remove in removals:
+        queue.pop(uuid_to_remove, None)
+
+
+def beacon_to_json(beacon_payload):
+    """Converts the specified beacon into a format suitable for JSON."""
+    return {
+        "version": beacon_payload.version,
+        "type": beacon_payload.type,
+        "payload": beacon_payload.payload,
+    }
 
 
 def create_beacon_payload(beacon_type, payload=None, version=PROTOCOL_VERSION):
@@ -106,7 +167,7 @@ def read_beacon_payload(beacon_bytes):
     Decrypts the inner beacon data if necessary.
 
     :param beacon_bytes: beacon payload (bytes).
-    :return: dict
+    :return: BeaconPayload namedtuple
     """
     if len(beacon_bytes) < BEACON_HEADER_LENGTH_V1:
         raise InvalidBeaconingPacket(
@@ -131,7 +192,7 @@ def read_beacon_payload(beacon_bytes):
         else:
             try:
                 decrypted_data = fernet_decrypt_psk(
-                    payload_bytes, raw=True)
+                    payload_bytes, ttl=60, raw=True)
             except InvalidToken:
                 raise InvalidBeaconingPacket(
                     "Failed to decrypt inner payload: check MAAS secret key.")
@@ -176,18 +237,13 @@ class BeaconingPacket:
         self.valid = None
         self.invalid_reason = None
         self.packet = pkt_bytes
-        self.payload = self.parse()
+        self.data = self.parse()
 
     def parse(self):
-        """Output text-based details about this beaconing packet to the
-        specified file or stream.
-
-        :param out: An object with `write(str)` and `flush()` methods.
-        """
         try:
-            payload = read_beacon_payload(self.packet)
+            beacon = read_beacon_payload(self.packet)
             self.valid = True
-            return payload
+            return beacon
         except InvalidBeaconingPacket as ibp:
             self.valid = False
             self.invalid_reason = ibp.invalid_reason
@@ -213,6 +269,8 @@ def observe_beaconing_packets(input=sys.stdin.buffer, out=sys.stdout):
             try:
                 packet = decode_ethernet_udp_packet(packet_bytes, pcap_header)
                 beacon = BeaconingPacket(packet.payload)
+                if not beacon.valid:
+                    continue
                 output_json = {
                     "source_mac": format_eui(packet.l2.src_eui),
                     "destination_mac": format_eui(packet.l2.dst_eui),
@@ -220,15 +278,15 @@ def observe_beaconing_packets(input=sys.stdin.buffer, out=sys.stdout):
                     "destination_ip": str(packet.l3.dst_ip),
                     "source_port": packet.l4.packet.src_port,
                     "destination_port": packet.l4.packet.dst_port,
+                    "time": pcap_header.timestamp_seconds
                 }
                 if packet.l2.vid is not None:
                     output_json["vid"] = packet.l2.vid
-                if beacon.payload is not None:
-                    output_json['payload'] = beacon.payload
-                    output_json['time'] = pcap_header.timestamp_seconds
-                    out.write(json.dumps(output_json))
-                    out.write('\n')
-                    out.flush()
+                if beacon.data is not None:
+                    output_json.update(beacon_to_json(beacon.data))
+                out.write(json.dumps(output_json))
+                out.write('\n')
+                out.flush()
             except PacketProcessingError as e:
                 err.write(e.error)
                 err.write("\n")

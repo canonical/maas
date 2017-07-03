@@ -11,10 +11,12 @@ from abc import (
     ABCMeta,
     abstractmethod,
 )
+from collections import OrderedDict
 from datetime import timedelta
 import json
 from json.decoder import JSONDecodeError
 import os
+from pprint import pformat
 import re
 
 from provisioningserver.config import is_dev_environment
@@ -23,6 +25,14 @@ from provisioningserver.logger import (
     LegacyLogger,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.utils.beaconing import (
+    age_out_uuid_queue,
+    BEACON_IPV4_MULTICAST,
+    BEACON_PORT,
+    beacon_to_json,
+    create_beacon_payload,
+    read_beacon_payload,
+)
 from provisioningserver.utils.fs import (
     get_maas_provision_command,
     NamedLock,
@@ -47,8 +57,14 @@ from twisted.internet.error import (
     ProcessDone,
     ProcessTerminated,
 )
-from twisted.internet.protocol import ProcessProtocol
+from twisted.internet.interfaces import IReactorMulticast
+from twisted.internet.protocol import (
+    DatagramProtocol,
+    ProcessProtocol,
+)
 from twisted.internet.threads import deferToThread
+from zope.interface.exceptions import DoesNotImplement
+from zope.interface.verify import verifyObject
 
 
 maaslog = get_maas_logger("networks.monitor")
@@ -129,9 +145,6 @@ class ProtocolForObserveARP(JSONPerLineProtocol):
     The difference between `JSONPerLineProtocol` and `ProtocolForObserveARP`
     is that the neighbour observation protocol needs to insert the interface
     metadata into the resultant object before the callback.
-
-    This also ensures that the spawned process is configured as a process
-    group leader for its own process group.
     """
 
     def __init__(self, interface, *args, **kwargs):
@@ -145,6 +158,28 @@ class ProtocolForObserveARP(JSONPerLineProtocol):
     def errLineReceived(self, line):
         line = line.decode("utf-8").rstrip()
         log.msg("observe-arp[%s]:" % self.interface, line)
+
+
+class ProtocolForObserveBeacons(JSONPerLineProtocol):
+    """Protocol used when spawning `maas-rack observe-beacons`.
+
+    The difference between `JSONPerLineProtocol` and
+    `ProtocolForObserveBeacons` is that the beacon observation protocol needs
+    to insert the interface metadata into the resultant object before the
+    callback.
+    """
+
+    def __init__(self, interface, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.interface = interface
+
+    def objectReceived(self, obj):
+        obj['interface'] = self.interface
+        super().objectReceived(obj)
+
+    def errLineReceived(self, line):
+        line = line.decode("utf-8").rstrip()
+        log.msg("observe-beacons[%s]:" % self.interface, line)
 
 
 class ProtocolForObserveMDNS(JSONPerLineProtocol):
@@ -257,6 +292,30 @@ class NeighbourDiscoveryService(ProcessProtocolService):
             self.ifname, callback=self.callback)
 
 
+class BeaconingService(ProcessProtocolService):
+    """Service to spawn the per-interface device discovery subprocess."""
+
+    def __init__(self, ifname: str, callback: callable):
+        self.ifname = ifname
+        self.callback = callback
+        super().__init__()
+
+    def getDescription(self) -> str:
+        return "Beaconing process for %s" % self.ifname
+
+    def getProcessParameters(self):
+        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
+        return [
+            maas_rack_cmd,
+            b"observe-beacons",
+            self.ifname.encode("utf-8")
+        ]
+
+    def createProcessProtocol(self):
+        return ProtocolForObserveBeacons(
+            self.ifname, callback=self.callback)
+
+
 class MDNSResolverService(ProcessProtocolService):
     """Service to spawn the per-interface device discovery subprocess."""
 
@@ -276,6 +335,173 @@ class MDNSResolverService(ProcessProtocolService):
 
     def createProcessProtocol(self):
         return ProtocolForObserveMDNS(callback=self.callback)
+
+
+class BeaconingSocketProtocol(DatagramProtocol):
+    """Protocol to handle beaconing packets received from the socket layer."""
+
+    def __init__(
+            self, reactor, process_incoming=False, debug=True, interface='::',
+            loopback=False, port=BEACON_PORT):
+        super().__init__()
+        self.reactor = reactor
+        self.process_incoming = process_incoming
+        self.debug = debug
+        # These queues keep track of beacons that have recently been sent
+        # or received by the protocol. Ordering is needed here so that we can
+        # later age out the least-recently-added packets without traversing the
+        # entire dictionary.
+        self.tx_queue = OrderedDict()
+        self.rx_queue = OrderedDict()
+        self.listen_port = None
+        try:
+            # Need to ensure that the passed-in reactor is, in fact, a "real"
+            # reactor, and not None, or a mock reactor used in tests.
+            verifyObject(IReactorMulticast, reactor)
+            self.listen_port = reactor.listenMulticast(
+                port, self, interface=interface, listenMultiple=True)
+            self.transport.joinGroup(BEACON_IPV4_MULTICAST)
+            self.transport.setLoopbackMode(loopback)
+            # XXX mpontillo 2017-06-21: Twisted doesn't support IPv6 here yet.
+            # self.transport.joinGroup(BEACON_IPV6_MULTICAST)
+        except DoesNotImplement:
+            pass
+
+    def stopProtocol(self):
+        super().stopProtocol()
+        if self.listen_port is not None:
+            return self.listen_port.stopListening()
+        return None
+
+    def send_beacon(self, beacon, destination_address):
+        """Send a beacon to the specified destination.
+
+        :param beacon: The `BeaconPayload` namedtuple to send. Must have a
+            `payload` ivar containing a 'uuid' element.
+        :param destination_address: The UDP/IP (destination, port) tuple. IPv4
+            addresses must be in IPv4-mapped IPv6 format.
+        :return: True if the beacon was sent, False otherwise.
+        """
+        try:
+            self.transport.write(beacon.bytes, destination_address)
+            # If the packet cannot be sent for whatever reason, OSError will
+            # be raised, and we won't record sending a beacon we didn't
+            # actually send.
+            self.tx_queue[beacon.payload['uuid']] = beacon
+            age_out_uuid_queue(self.tx_queue)
+            return True
+        except OSError as e:
+            if self.debug is True:
+                log.msg("Error while sending beacon: %s" % e)
+        return False
+
+    def beaconReceived(self, beacon_json):
+        """Called whenever a beacon is received.
+
+        This method is responsible for updating the `tx_queue` and `rx_queue`
+        data structures, and determining if the incoming beacon is meaningful
+        for determining network topology.
+
+        :param beacon_json: The normalized beacon JSON, which can come either
+            from the external tcpdump-based process, or from the sockets layer
+            (with less information about the received packet).
+        """
+        rx_uuid = beacon_json.get('payload', {}).get("uuid")
+        if rx_uuid is None:
+            if self.debug is True:
+                log.msg(
+                    "Rejecting incoming beacon: no UUID found: \n%s" % (
+                        pformat(beacon_json)))
+            return
+        own_beacon = False
+        if self.tx_queue.get(rx_uuid):
+            own_beacon = True
+        is_dup = self.remember_beacon_and_check_duplicate(rx_uuid, beacon_json)
+        if self.debug is True:
+            log.msg("%s %sreceived:\n%s" % (
+                "Own beacon" if own_beacon else "Beacon",
+                "(duplicate) " if is_dup else "",
+                beacon_json))
+        # From what we know so far, we can infer some facts about the network.
+        # (1) If we received our own beacon, that means the interface we sent
+        # the packet out on is on the same fabric as the interface that
+        # received it.
+        # (2) If we receive a duplicate beacon on two different interfaces,
+        # that means those two interfaces are on the same fabric.
+        reply_ip = beacon_json['source_ip']
+        reply_port = beacon_json['source_port']
+        if ':' not in reply_ip:
+            # Since we opened an IPv6-compatible socket, need IPv6 syntax
+            # here to send to IPv4 addresses.
+            reply_ip = '::ffff:' + reply_ip
+        reply_address = (reply_ip, reply_port)
+        beacon_type = beacon_json['type']
+        if beacon_type == "solicitation":
+            receive_interface_info = self.get_receive_interface_info(
+                beacon_json)
+            payload = {
+                "interface": receive_interface_info,
+                "acks": rx_uuid
+            }
+            reply = create_beacon_payload("advertisement", payload)
+            self.send_beacon(reply, reply_address)
+
+    def remember_beacon_and_check_duplicate(self, rx_uuid, beacon_json):
+        """Records an incoming beacon based on its UUID and JSON.
+
+        Organizes incoming beacons in the `rx_queue` by creating a list of
+        beacons received [on different interfaces] per UUID.
+
+        :param rx_uuid: The UUID of the incoming beacon.
+        :param beacon_json: The incoming beacon (in JSON format).
+        :return: True if the beacon was a duplicate, otherwise False.
+        """
+        duplicate_received = False
+        # Need to age out before doing anything else; we don't want to match
+        # a duplicate packet and then delete it immediately after.
+        age_out_uuid_queue(self.rx_queue)
+        rx_packets_for_uuid = self.rx_queue.get(rx_uuid, [])
+        if len(rx_packets_for_uuid) > 0:
+            duplicate_received = True
+        rx_packets_for_uuid.append(beacon_json)
+        self.rx_queue[rx_uuid] = rx_packets_for_uuid
+        return duplicate_received
+
+    def get_receive_interface_info(self, context):
+        """Returns a dictionary representing information about the receive
+        interface, given the context of the beacon. The context can be the
+        limited information received from the socket layer, or the extended
+        information from the monitoring process.
+        """
+        receive_interface_info = {
+            "name": context.get('interface'),
+            "source_ip": context.get('source_ip'),
+            "destination_ip": context.get('destination_ip'),
+            "source_mac": context.get('source_mac'),
+            "destination_mac": context.get('destination_mac'),
+        }
+        if 'vid' in context:
+            receive_interface_info['vid'] = context['vid']
+        return receive_interface_info
+
+    def datagramReceived(self, datagram, addr):
+        """Called by Twisted when a UDP datagram is received.
+
+        Note: In the typical use case, the MAAS server will ignore packets
+        coming into this method. We need to listen to the socket normally,
+        however, so that the underlying network stack will send ICMP
+        destination (port) unreachable replies to anyone trying to send us
+        beacons. However, at other times, (such as while running the test
+        commands), we *will* listen to the socket layer for beacons.
+        """
+        if self.process_incoming is True:
+            context = {
+                "source_ip": addr[0],
+                "source_port": addr[1]
+            }
+            beacon_json = beacon_to_json(read_beacon_payload(datagram))
+            beacon_json.update(context)
+            self.beaconReceived(beacon_json)
 
 
 class NetworksMonitoringLock(NamedLock):
@@ -324,6 +550,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self.interface_monitor.setName("updateInterfaces")
         self.interface_monitor.clock = self.clock
         self.interface_monitor.setServiceParent(self)
+        self.beaconing_protocol = BeaconingSocketProtocol(clock)
 
     def updateInterfaces(self):
         """Update interfaces, catching and logging errors.
@@ -388,12 +615,19 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         This MUST be overridden in subclasses.
         """
 
+    def reportBeacons(self, beacons):
+        """Receives a report of an observed beacon packet."""
+        for beacon in beacons:
+            log.msg("Received beacon: %r" % beacon)
+            self.beaconing_protocol.beaconReceived(beacon)
+
     def stopService(self):
         """Stop the service.
 
         Ensures that sole responsibility for monitoring networks is released.
         """
         d = super().stopService()
+        self.beaconing_protocol.stopProtocol()
         d.addBoth(callOut, self._releaseSoleResponsibility)
         return d
 
@@ -473,6 +707,13 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         service.setName("neighbour_discovery:" + ifname)
         service.setServiceParent(self)
 
+    def _startBeaconing(self, ifname):
+        """"Start neighbour discovery service on the specified interface."""
+        service = BeaconingService(ifname, self.reportBeacons)
+        service.clock = self.clock
+        service.setName("beaconing:" + ifname)
+        service.setServiceParent(self)
+
     def _startMDNSDiscoveryService(self):
         """Start resolving mDNS entries on attached networks."""
         try:
@@ -519,6 +760,30 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 service.disownServiceParent()
                 maaslog.info(
                     "Stopped neighbour observation service for %s." % ifname)
+
+    def _startBeaconingServices(self, new_interfaces):
+        """Start monitoring services for the specified set of interfaces."""
+        for ifname in new_interfaces:
+            # Sanity check to ensure the service isn't already started.
+            try:
+                self.getServiceNamed("beaconing:" + ifname)
+            except KeyError:
+                # This is an expected exception. (The call inside the `try`
+                # is only necessary to ensure the service doesn't exist.)
+                self._startBeaconing(ifname)
+
+    def _stopBeaconingServices(self, deleted_interfaces):
+        """Stop monitoring services for the specified set of interfaces."""
+        for ifname in deleted_interfaces:
+            try:
+                service = self.getServiceNamed("beaconing:" + ifname)
+            except KeyError:
+                # Service doesn't exist, so no need to stop it.
+                pass
+            else:
+                service.disownServiceParent()
+                maaslog.info(
+                    "Stopped beaconing service for %s." % ifname)
 
     def _shouldMonitorMDNS(self, monitoring_state):
         # If any interface is configured for mDNS, we must start the monitoring
@@ -591,11 +856,17 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             log.msg("Starting neighbour discovery for interfaces: %r" % (
                 new_interfaces))
             self._startNeighbourDiscoveryServices(new_interfaces)
+            # XXX mpontillo 2017-07-12: for testing, just start beaconing
+            # services on all the interfaces enabled for active discovery.
+            self._startBeaconingServices(new_interfaces)
         if len(deleted_interfaces) > 0:
             log.msg(
                 "Stopping neighbour discovery for interfaces: %r" % (
                     deleted_interfaces))
             self._stopNeighbourDiscoveryServices(deleted_interfaces)
+            # XXX mpontillo 2017-07-12: this should be separately configured.
+            # (see similar comment in the 'start' path above.)
+            self._stopBeaconingServices(deleted_interfaces)
         self._monitored = monitored_interfaces
 
     def _interfacesRecorded(self, interfaces):

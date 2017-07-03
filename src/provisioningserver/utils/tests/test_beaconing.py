@@ -6,14 +6,20 @@
 __all__ = []
 
 from argparse import ArgumentParser
+from collections import OrderedDict
 from gzip import compress
 import io
+import math
 import random
 import struct
 import subprocess
 from tempfile import NamedTemporaryFile
+import time
 from unittest.mock import Mock
-from uuid import UUID
+from uuid import (
+    UUID,
+    uuid1,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -26,21 +32,61 @@ from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import beaconing as beaconing_module
 from provisioningserver.utils.beaconing import (
     add_arguments,
+    age_out_uuid_queue,
     BEACON_HEADER_FORMAT_V1,
+    beacon_to_json,
     BEACON_TYPES,
     BeaconingPacket,
+    BeaconPayload,
     create_beacon_payload,
     InvalidBeaconingPacket,
     read_beacon_payload,
     run,
+    uuid_to_timestamp,
 )
 from provisioningserver.utils.script import ActionScriptError
 from testtools.matchers import (
+    Contains,
     Equals,
+    HasLength,
     Is,
     IsInstance,
+    LessThan,
+    Not,
 )
 from testtools.testcase import ExpectedException
+
+
+class TestUUIDToTimestamp(MAASTestCase):
+
+    def test__round_trip_preserves_timestamp(self):
+        expected_timestamp = time.time()
+        uuid = str(uuid1())
+        actual_timestamp = uuid_to_timestamp(uuid)
+        difference = math.fabs(actual_timestamp - expected_timestamp)
+        # Tolerate a difference of ~3 seconds. We'll age out packets on the
+        # order of minutes, so that should be good enough.
+        self.assertThat(difference, LessThan(3.0))
+
+
+class TestBeaconToJSON(MAASTestCase):
+    """Tests for `beacon_to_json()` function."""
+
+    def test__preserves_version_type_and_payload__discards_bytes(self):
+        test_bytes = factory.make_bytes()
+        test_version = factory.make_string()
+        test_type = factory.make_string()
+        test_payload = {
+            factory.make_string(): factory.make_string()
+        }
+        beacon = BeaconPayload(
+            test_bytes, test_version, test_type, test_payload)
+        beacon_json = beacon_to_json(beacon)
+        self.assertThat(beacon_json["version"], Equals(test_version))
+        self.assertThat(beacon_json["type"], Equals(test_type))
+        self.assertThat(beacon_json["payload"], Equals(test_payload))
+        self.assertThat(beacon_json, Not(Contains("bytes")))
+        self.assertThat(beacon_json, HasLength(3))
 
 
 class TestCreateBeaconPayload(SharedSecretTestCase):
@@ -286,3 +332,67 @@ class TestObserveBeaconsCommand(MAASTestCase):
         os.setpgrp.side_effect = exception_type
         self.assertRaises(exception_type, run, [])
         self.assertThat(os.setpgrp, MockCalledOnceWith())
+
+
+class TestAgeOutUUIDQueue(MAASTestCase):
+    """Tests for `age_out_uuid_queue()` function."""
+
+    def test__does_not_remove_fresh_entries(self):
+        uuid_now = str(uuid1())
+        queue = OrderedDict()
+        queue[uuid_now] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(1))
+
+    def test__keeps_entries_from_the_reasonable_past(self):
+        uuid_from_the_past = factory.make_UUID_with_timestamp(
+            time.time() - 60.0)
+        queue = OrderedDict()
+        queue[uuid_from_the_past] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(1))
+
+    def test__keeps_entries_from_the_reasonable_future(self):
+        uuid_from_the_future = factory.make_UUID_with_timestamp(
+            time.time() + 60.0)
+        queue = OrderedDict()
+        queue[uuid_from_the_future] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(1))
+
+    def test__removes_entries_from_the_past(self):
+        uuid_from_the_past = factory.make_UUID_with_timestamp(
+            time.time() - 123.0)
+        queue = OrderedDict()
+        queue[uuid_from_the_past] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(0))
+
+    def test__removes_entries_from_the_future(self):
+        uuid_from_the_future = factory.make_UUID_with_timestamp(
+            time.time() + 123.0)
+        queue = OrderedDict()
+        queue[uuid_from_the_future] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(0))
+
+    def test__removes_entries_from_the_distant_past(self):
+        uuid_from_the_past = '00000000-0000-1000-aaaa-aaaaaaaaaaaa'
+        queue = OrderedDict()
+        queue[uuid_from_the_past] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(0))
+
+    def test__removes_entries_from_the_far_future(self):
+        uuid_from_the_future = 'ffffffff-ffff-1fff-0000-000000000000'
+        queue = OrderedDict()
+        queue[uuid_from_the_future] = {}
+        self.assertThat(queue, HasLength(1))
+        age_out_uuid_queue(queue)
+        self.assertThat(queue, HasLength(0))

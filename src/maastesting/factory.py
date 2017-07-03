@@ -30,7 +30,10 @@ from unittest import mock
 import urllib.error
 import urllib.parse
 import urllib.request
-from uuid import uuid1
+from uuid import (
+    UUID,
+    uuid1,
+)
 
 from distro_info import UbuntuDistroInfo
 from maastesting.fixtures import TempDirectory
@@ -254,6 +257,23 @@ class Factory:
 
     def make_UUID(self):
         return str(uuid1())
+
+    def make_UUID_with_timestamp(self, timestamp, clock_seq=None, node=None):
+        if node is None:
+            node = random.getrandbits(48) | 0x010000000000
+        if clock_seq is None:
+            clock_seq = random.getrandbits(14)
+        timestamp = int(timestamp * 1e9 / 100) + 0x01b21dd213814000
+        time_low = timestamp & 0xffffffff
+        time_mid = (timestamp >> 32) & 0xffff
+        time_hi_version = (timestamp >> 48) & 0x0fff
+        clock_seq_low = clock_seq & 0xff
+        clock_seq_hi_variant = (clock_seq >> 8) & 0x3f
+        fields = (
+            time_low, time_mid, time_hi_version, clock_seq_hi_variant,
+            clock_seq_low, node
+        )
+        return str(UUID(fields=fields, version=1))
 
     def _make_random_network(
             self, slash=None, but_not=EMPTY_SET, disjoint_from=None,

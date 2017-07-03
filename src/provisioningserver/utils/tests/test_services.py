@@ -6,6 +6,7 @@
 __all__ = []
 
 from functools import partial
+import random
 import threading
 from unittest.mock import (
     call,
@@ -27,8 +28,12 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
+from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import services
+from provisioningserver.utils.beaconing import create_beacon_payload
 from provisioningserver.utils.services import (
+    BeaconingService,
+    BeaconingSocketProtocol,
     JSONPerLineProtocol,
     MDNSResolverService,
     NeighbourDiscoveryService,
@@ -36,6 +41,7 @@ from provisioningserver.utils.services import (
     NetworksMonitoringService,
     ProcessProtocolService,
     ProtocolForObserveARP,
+    ProtocolForObserveBeacons,
 )
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -47,6 +53,7 @@ from testtools.matchers import (
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    Deferred,
     DeferredQueue,
     inlineCallbacks,
     succeed,
@@ -382,6 +389,21 @@ class TestProtocolForObserveARP(MAASTestCase):
             callback, MockCallsMatch(call([{"interface": ifname}])))
 
 
+class TestProtocolForObserveBeacons(MAASTestCase):
+    """Tests for `ProtocolForObserveBeacons`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_adds_interface(self):
+        callback = Mock()
+        ifname = factory.make_name('eth')
+        proto = ProtocolForObserveBeacons(ifname, callback=callback)
+        proto.makeConnection(Mock(pid=None))
+        proto.outReceived(b"{}\n")
+        self.expectThat(
+            callback, MockCallsMatch(call([{"interface": ifname}])))
+
+
 class MockProcessProtocolService(ProcessProtocolService):
 
     def __init__(self):
@@ -566,6 +588,58 @@ class TestNeighbourDiscoveryService(MAASTestCase):
             % (ifname, ifname)))
 
 
+class TestBeaconingService(MAASTestCase):
+    """Tests for `BeaconingService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__returns_expected_arguments(self):
+        ifname = factory.make_name('eth')
+        service = BeaconingService(ifname, Mock())
+        args = service.getProcessParameters()
+        self.assertThat(args, HasLength(3))
+        self.assertTrue(args[0].endswith(b'maas-rack'))
+        self.assertTrue(args[1], Equals(b"observe-beacons"))
+        self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
+
+    @inlineCallbacks
+    def test__restarts_process_after_finishing(self):
+        ifname = factory.make_name('eth')
+        service = BeaconingService(ifname, Mock())
+        mock_process_params = self.patch(service, 'getProcessParameters')
+        mock_process_params.return_value = [b'/bin/echo', b'{}']
+        service.clock = Clock()
+        service.startService()
+        # Wait for the protocol to finish
+        service.clock.advance(0.0)
+        yield service._protocol.done
+        # Advance the clock (should start the service again)
+        interval = service.step
+        service.clock.advance(interval)
+        # The Deferred should have been recreated.
+        self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
+        yield service._protocol.done
+        service.stopService()
+
+    @inlineCallbacks
+    def test__protocol_logs_stderr(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+        ifname = factory.make_name('eth')
+        service = BeaconingService(ifname, lambda _: None)
+        protocol = service.createProcessProtocol()
+        reactor.spawnProcess(protocol, b"sh", (b"sh", b"-c", b"exec cat >&2"))
+        protocol.transport.write(
+            b"Lines written to stderr are logged\n"
+            b"with a prefix, with no exceptions.\n")
+        protocol.transport.closeStdin()
+        yield protocol.done
+        self.assertThat(logger.output, Equals(
+            "observe-beacons[%s]: Lines written to stderr are logged\n"
+            "---\n"
+            "observe-beacons[%s]: with a prefix, with no exceptions."
+            % (ifname, ifname)))
+
+
 class TestMDNSResolverService(MAASTestCase):
     """Tests for `MDNSResolverService`."""
 
@@ -594,3 +668,82 @@ class TestMDNSResolverService(MAASTestCase):
             "observe-mdns: Lines written to stderr are logged\n"
             "---\n"
             "observe-mdns: with a prefix, with one exception:"))
+
+
+def wait_for_rx_packets(beacon_protocol, count, deferred=None):
+    """Waits for a BeaconingSocketProtocol to transmit `count` packets."""
+    if deferred is None:
+        deferred = Deferred()
+    if len(beacon_protocol.rx_queue) >= count:
+        deferred.callback(None)
+    else:
+        reactor.callLater(
+            0.001, wait_for_rx_packets, beacon_protocol, count,
+            deferred=deferred)
+    return deferred
+
+
+class TestBeaconingSocketProtocol(SharedSecretTestCase):
+    """Tests for `BeaconingSocketProtocol`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=15)
+
+    @inlineCallbacks
+    def test__creates_listen_port_when_run_with_IReactorMulticast(self):
+        # Note: Always use a random port for testing. (port=0)
+        protocol = BeaconingSocketProtocol(reactor, port=0)
+        self.assertThat(protocol.listen_port, Not(Is(None)))
+        # This tests that the post gets closed properly; otherwise the test
+        # suite will complain about things left in the reactor.
+        yield protocol.stopProtocol()
+
+    def test__skips_creating_listen_port_when_run_with_fake_reactor(self):
+        # Note: Always use a random port for testing. (port=0)
+        protocol = BeaconingSocketProtocol(Clock(), port=0)
+        self.assertThat(protocol.listen_port, Is(None))
+        # No listen port, so stopProtocol() shouldn't return a Deferred.
+        result = protocol.stopProtocol()
+        self.assertThat(result, Is(None))
+
+    @inlineCallbacks
+    def test__sends_and_receives_beacons(self):
+        # Note: Always use a random port for testing. (port=0)
+        logger = self.useFixture(TwistedLoggerFixture())
+        protocol = BeaconingSocketProtocol(
+            reactor, port=0, process_incoming=True, loopback=True,
+            interface="::", debug=True)
+        self.assertThat(protocol.listen_port, Not(Is(None)))
+        listen_port = protocol.listen_port._realPortNumber
+        self.write_secret()
+        beacon = create_beacon_payload("solicitation", {})
+        rx_uuid = beacon.payload['uuid']
+        # XXX: We can't test IPv6 here until we either join the group
+        # manually, or Twisted gains support for joining IPv6 groups.
+        destination = random.choice(["::ffff:127.0.0.1", "::1"])
+        protocol.send_beacon(beacon, (destination, listen_port))
+        # Since we've instructed the protocol to loop back packets for testing,
+        # it should have sent a multicast solicitation, received it back, sent
+        # an advertisement, then received it back. So we'll wait for two
+        # packets to be sent.
+        yield wait_for_rx_packets(protocol, 2)
+        # Grab the beacon we know we transmitted and then received.
+        transmitted = protocol.tx_queue.pop(rx_uuid, None)
+        received = protocol.rx_queue.pop(rx_uuid, None)
+        self.assertThat(transmitted, Equals(beacon))
+        self.assertThat(received[0]['payload']['uuid'], Equals(rx_uuid))
+        # Grab the subsequent packets from the queues.
+        transmitted = protocol.tx_queue.popitem()[1]
+        received = protocol.rx_queue.popitem()[1]
+        # We should have received a second packet to ack the first beacon.
+        self.assertThat(received[0]['payload']['acks'], Equals(rx_uuid))
+        # We should have transmitted an advertisement in response to the
+        # solicitation.
+        self.assertThat(transmitted.type, Equals('advertisement'))
+        # This tests that the post gets closed properly; otherwise the test
+        # suite will complain about things left in the reactor.
+        yield protocol.stopProtocol()
+        # In debug mode, the logger should have printed each packet.
+        self.assertThat(
+            logger.output,
+            DocTestMatches(
+                '...Own beacon received:...Own beacon received:...'))
