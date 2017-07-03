@@ -26,6 +26,8 @@ LP: #1699286    [2.2, trunk] test__renders_ntp_servers_as_comma_separated_list f
 
 LP: #1650396    Interface configuration cannot be modified unless the node is Ready or Broken.
 
+LP: #1695229    Badblocks: Value too large for defined data type invalid end block
+
 LP: #1682374    [2.2, UI, mobile] The navigation doesn't work on mobile
 
 LP: #1669744    [2.x, UI] [Device discovery] Enable/Disable toggle is hidden
