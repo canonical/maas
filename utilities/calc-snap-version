@@ -7,34 +7,23 @@ Calculates the version of the snap using git and the version defined in
 src/maasserver/__init__.py.
 """
 
-import ast
 import os
 import sys
 import subprocess
 
 
-# Get the path to the src/maasserver/__init__.py.
+# Get the path to the repository.
 repo_path = os.path.dirname(
     os.path.dirname(os.path.abspath(os.path.realpath(__file__))))
-init_path = os.path.join(repo_path, 'src', 'maasserver', '__init__.py')
 
-# Get the syntax tree for the file, since we don't want to actually import
-# that file into this script.
-with open(init_path, 'r') as stream:
-    init_ast = ast.parse(stream.read())
+# Get the most recent tag.
+recent_tag = subprocess.check_output(
+    ['git', '-C', repo_path, 'describe', '--abbrev=0'],
+    stderr=subprocess.DEVNULL).decode(sys.getfilesystemencoding()).strip()
 
-# Get the version from the parsed ast tree.
-version = None
-for node in ast.walk(init_ast):
-    if isinstance(node, ast.Assign):
-        if node.targets:
-            if node.targets[0].id == '__version__':
-                version = node.value.s
-                break
-
-# Unable to get the version then just set it to 'master'.
-if not version:
-    version = 'master'
+# Replace the first '-' with '~' if present.
+if '-' in recent_tag:
+    recent_tag = '%s~%s' % tuple(recent_tag.split('-', 1))
 
 # Describe number of commits in git.
 revno = subprocess.check_output(
@@ -43,7 +32,7 @@ revno = subprocess.check_output(
 
 # Describe commit hash from git.
 commit = subprocess.check_output(
-    ['git', '-C', repo_path, 'describe', '--abbrev=7', '--always', '--dirty'],
+    ['git', '-C', repo_path, 'rev-parse', 'HEAD'],
     stderr=subprocess.DEVNULL).decode(sys.getfilesystemencoding()).strip()
 
-print('%s-%s-%s-snap' % (version, revno, commit))
+print('%s-%s-g%s-snap' % (recent_tag, revno, commit[:7]))
