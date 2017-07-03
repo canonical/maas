@@ -48,10 +48,17 @@ class RunBadBlocks(Thread):
         self.returncode = None
 
     def run(self):
+        blocksize = check_output(
+            ['sudo', '-n', 'blockdev', '--getbsz', self.drive['PATH']],
+            timeout=TIMEOUT, stderr=DEVNULL).strip()
         if self.destructive:
-            cmd = ['sudo', '-n', 'badblocks', '-v', '-w', self.drive['PATH']]
+            cmd = [
+                'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-w',
+                self.drive['PATH']]
         else:
-            cmd = ['sudo', '-n', 'badblocks', '-v', '-n', self.drive['PATH']]
+            cmd = [
+                'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-n',
+                self.drive['PATH']]
         # Run badblocks and capture its output. Once all threads have completed
         # output the results serially so output is proerly grouped.
         with Popen(cmd, stdout=PIPE, stderr=STDOUT) as proc:

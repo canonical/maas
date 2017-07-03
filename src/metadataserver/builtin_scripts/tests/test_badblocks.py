@@ -127,6 +127,7 @@ class TestSmartCTL(MAASTestCase):
         drive = self.make_drive(with_path=True)
         run_bad_blocks = badblocks.RunBadBlocks(drive, True)
         output = factory.make_string()
+        self.patch(badblocks, 'check_output').return_value = '4096'
         mock_popen = self.patch(badblocks, 'Popen')
         mock_popen.return_value = Popen(['echo', '-n', output], stdout=PIPE)
 
@@ -137,13 +138,16 @@ class TestSmartCTL(MAASTestCase):
         self.assertThat(
             mock_popen,
             MockCalledOnceWith(
-                ['sudo', '-n', 'badblocks', '-v', '-w', drive['PATH']],
-                stdout=PIPE, stderr=STDOUT))
+                [
+                    'sudo', '-n', 'badblocks', '-b', '4096', '-v', '-w',
+                    drive['PATH'],
+                ], stdout=PIPE, stderr=STDOUT))
 
     def test_run_nondestructive(self):
         drive = self.make_drive(with_path=True)
         run_bad_blocks = badblocks.RunBadBlocks(drive, False)
         output = factory.make_string()
+        self.patch(badblocks, 'check_output').return_value = '4096'
         mock_popen = self.patch(badblocks, 'Popen')
         mock_popen.return_value = Popen(['echo', '-n', output], stdout=PIPE)
 
@@ -154,8 +158,10 @@ class TestSmartCTL(MAASTestCase):
         self.assertThat(
             mock_popen,
             MockCalledOnceWith(
-                ['sudo', '-n', 'badblocks', '-v', '-n', drive['PATH']],
-                stdout=PIPE, stderr=STDOUT))
+                [
+                    'sudo', '-n', 'badblocks', '-b', '4096', '-v', '-n',
+                    drive['PATH'],
+                ], stdout=PIPE, stderr=STDOUT))
 
     def test_run_badblocks(self):
         drive = {
@@ -166,6 +172,7 @@ class TestSmartCTL(MAASTestCase):
         }
         self.patch(badblocks, 'list_drives').return_value = [drive]
         output = factory.make_string()
+        self.patch(badblocks, 'check_output').return_value = '4096'
         mock_popen = self.patch(badblocks, 'Popen')
         mock_popen.return_value = Popen(['echo', '-n', output], stdout=PIPE)
         mock_print = self.patch(badblocks, 'print')
@@ -192,6 +199,7 @@ class TestSmartCTL(MAASTestCase):
         }
         self.patch(badblocks, 'list_drives').return_value = [drive]
         output = factory.make_string()
+        self.patch(badblocks, 'check_output').return_value = '4096'
         mock_popen = self.patch(badblocks, 'Popen')
         mock_popen.return_value = Popen(
             'echo -n %s; exit 1' % output, stdout=PIPE, shell=True)
