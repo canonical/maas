@@ -118,8 +118,12 @@ class IPRange(CleanSave, TimestampedModel):
         User, default=None, blank=True, null=True, editable=True,
         on_delete=PROTECT)
 
+    # In Django 1.8, CharFields with null=True, blank=True had a default
+    # of '' (empty string), whereas with at least 1.11 that is None.
+    # Force the former behaviour, since the documentation is not very clear
+    # on what should happen.
     comment = CharField(
-        max_length=255, null=True, blank=True, editable=True)
+        max_length=255, null=True, blank=True, editable=True, default='')
 
     def __repr__(self):
         return (

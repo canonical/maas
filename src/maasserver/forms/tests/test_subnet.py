@@ -111,6 +111,7 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({
             "cidr": cidr,
             "fabric": fabric.id,
+            "vlan": None,
         })
         self.assertTrue(form.is_valid(), form.errors)
         subnet = form.save()
@@ -126,6 +127,7 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({
             "cidr": cidr,
             "vid": vlan.vid,
+            "vlan": None,
         })
         self.assertTrue(form.is_valid(), form.errors)
         subnet = form.save()
@@ -142,6 +144,7 @@ class TestSubnetForm(MAASServerTestCase):
             "cidr": cidr,
             "fabric": fabric.id,
             "vid": vlan.vid,
+            "vlan": None,
         })
         self.assertTrue(form.is_valid(), form.errors)
         subnet = form.save()
