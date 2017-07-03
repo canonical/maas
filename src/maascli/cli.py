@@ -206,6 +206,8 @@ def register_cli_commands(parser):
     if management is not None and is_maasserver_available():
         os.environ.setdefault(
             "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
+        from django import setup as django_setup
+        django_setup()
         load_regiond_commands(management, parser)
 
 

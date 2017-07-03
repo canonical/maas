@@ -24,10 +24,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
 )
-from apiclient.testing.django import (
-    parse_headers_and_body_with_django,
-    parse_headers_and_body_with_mimer,
-)
+from apiclient.testing.django import APIClientTestCase
 from maastesting.factory import factory
 from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
@@ -177,7 +174,7 @@ def make_client(root=None, result=None):
     return MAASClient(auth, FakeDispatcher(result=result), root)
 
 
-class TestMAASClient(MAASTestCase):
+class TestMAASClient(APIClientTestCase):
 
     def test_make_url_joins_root_and_path(self):
         path = make_path()
@@ -256,7 +253,7 @@ class TestMAASClient(MAASTestCase):
         params = {factory.make_string(): factory.make_string()}
         url, headers, body = make_client()._formulate_change(
             make_path(), params)
-        post, _ = parse_headers_and_body_with_django(headers, body)
+        post, _ = self.parse_headers_and_body_with_django(headers, body)
         self.assertEqual(
             {name: [value] for name, value in params.items()}, post)
 
@@ -275,7 +272,7 @@ class TestMAASClient(MAASTestCase):
             AfterPreprocessing(json.loads, Equals(params)),
             ]
         self.assertThat(observed, MatchesListwise(expected))
-        data = parse_headers_and_body_with_mimer(headers, body)
+        data = self.parse_headers_and_body_with_mimer(headers, body)
         self.assertEqual(params, data)
 
     def test_get_dispatches_to_resource(self):
@@ -332,7 +329,7 @@ class TestMAASClient(MAASTestCase):
         client = make_client()
         client.post(make_path(), method, parameter=param)
         request = client.dispatcher.last_call
-        post, _ = parse_headers_and_body_with_django(
+        post, _ = self.parse_headers_and_body_with_django(
             request["headers"], request["data"])
         self.assertTrue(request["request_url"].endswith('?op=%s' % (method,)))
         self.assertEqual({"parameter": [param]}, post)
@@ -347,7 +344,7 @@ class TestMAASClient(MAASTestCase):
         request = client.dispatcher.last_call
         self.assertEqual('application/json',
                          request['headers'].get('Content-Type'))
-        content = parse_headers_and_body_with_mimer(
+        content = self.parse_headers_and_body_with_mimer(
             request['headers'], request['data'])
         self.assertTrue(request["request_url"].endswith('?op=%s' % (method,)))
         self.assertEqual({'param': param, 'list_param': list_param}, content)
@@ -360,7 +357,7 @@ class TestMAASClient(MAASTestCase):
 
         client.post(path, method, parameter=param)
         request = client.dispatcher.last_call
-        post, _ = parse_headers_and_body_with_django(
+        post, _ = self.parse_headers_and_body_with_django(
             request["headers"], request["data"])
         self.assertTrue(request["request_url"].endswith(path))
         self.assertEqual({"parameter": [param]}, post)

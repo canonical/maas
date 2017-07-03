@@ -12,10 +12,9 @@ from apiclient.multipart import (
     encode_multipart_data,
     get_content_type,
 )
-from apiclient.testing.django import parse_headers_and_body_with_django
+from apiclient.testing.django import APIClientTestCase
 from django.utils.datastructures import MultiValueDict
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     EndsWith,
     StartsWith,
@@ -28,7 +27,7 @@ ahem_django_ahem = (
     "of Django.")
 
 
-class TestMultiPart(MAASTestCase):
+class TestMultiPart(APIClientTestCase):
 
     def test_get_content_type_guesses_type(self):
         guess = get_content_type('text.txt')
@@ -65,7 +64,7 @@ class TestMultiPart(MAASTestCase):
             headers["Content-Type"],
             StartsWith("multipart/form-data; boundary="))
         # Round-trip through Django's multipart code.
-        post, files = parse_headers_and_body_with_django(headers, body)
+        post, files = self.parse_headers_and_body_with_django(headers, body)
         self.assertEqual(
             {name: [value] for name, value in params.items()}, post,
             ahem_django_ahem)
@@ -97,7 +96,7 @@ class TestMultiPart(MAASTestCase):
             StartsWith("multipart/form-data; boundary="))
         # Round-trip through Django's multipart code.
         params_out, files_out = (
-            parse_headers_and_body_with_django(headers, body))
+            self.parse_headers_and_body_with_django(headers, body))
         params_out_expected = MultiValueDict()
         params_out_expected.appendlist("one", "ABC")
         params_out_expected.appendlist("one", "XYZ")
@@ -119,6 +118,6 @@ class TestMultiPart(MAASTestCase):
             ]
         body, headers = encode_multipart_data(params_in, [])
         params_out, files_out = (
-            parse_headers_and_body_with_django(headers, body))
+            self.parse_headers_and_body_with_django(headers, body))
         self.assertEqual({'one': ['ABC', 'XYZ', 'UVW']}, params_out)
         self.assertSetEqual(set(), set(files_out))
