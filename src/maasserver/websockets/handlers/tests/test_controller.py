@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.controller`"""
@@ -6,7 +6,7 @@
 __all__ = []
 
 from maasserver.enum import NODE_TYPE
-from maasserver.forms import AdminMachineWithMACAddressesForm
+from maasserver.forms import ControllerForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
@@ -68,14 +68,14 @@ class TestControllerHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = ControllerHandler(user, {})
         self.assertEqual(
-            AdminMachineWithMACAddressesForm,
+            ControllerForm,
             handler.get_form_class("create"))
 
     def test_get_form_class_for_update(self):
         user = factory.make_admin()
         handler = ControllerHandler(user, {})
         self.assertEqual(
-            AdminMachineWithMACAddressesForm,
+            ControllerForm,
             handler.get_form_class("update"))
 
     def test_check_images(self):

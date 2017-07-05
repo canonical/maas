@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The MAAS WebSockets protocol."""
@@ -218,7 +218,7 @@ class WebSocketProtocol(Protocol):
     def dataReceived(self, data):
         """Received message from client and queue up the message."""
         try:
-            message = json.loads(data.decode("ascii"))
+            message = json.loads(data.decode('utf-8'))
         except ValueError:
             # Only accept JSON data over the protocol. Close the connect
             # with invalid data.

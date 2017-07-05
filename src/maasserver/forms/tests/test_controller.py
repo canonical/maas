@@ -18,6 +18,7 @@ class TestControllerForm(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'zone',
+                'domain',
                 'power_type',
                 'power_parameters',
             ],
@@ -70,3 +71,15 @@ class TestControllerForm(MAASServerTestCase):
             instance=rack)
         rack = form.save()
         self.assertEqual(zone.name, rack.zone.name)
+
+    def test__sets_domain(self):
+        rack = factory.make_RackController()
+        domain = factory.make_Domain()
+        form = ControllerForm(
+            data={
+                'domain': domain.name,
+                'power_parameters_skip_check': 'true',
+            },
+            instance=rack)
+        rack = form.save()
+        self.assertEqual(domain.name, rack.domain.name)

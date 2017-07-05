@@ -60,6 +60,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Node header section.
         $scope.header = {
             editing: false,
+            editing_domain: false,
             hostname: {
                 value: ""
             },
@@ -127,7 +128,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         function updateHeader() {
             // Don't update the value if in editing mode. As this would
             // overwrite the users changes.
-            if($scope.header.editing) {
+            if($scope.header.editing || $scope.header.editing_domain) {
                 return;
             }
             $scope.header.hostname.value = $scope.node.fqdn;
@@ -757,6 +758,25 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 !$scope.isController);
         };
 
+        // Called to edit the domain name.
+        $scope.editHeaderDomain = function() {
+            if($scope.canEdit()) {
+                return;
+            }
+
+            // Do nothing if already editing because we don't want to reset
+            // the current value.
+            if($scope.header.editing_domain) {
+                return;
+            }
+            $scope.header.editing = false;
+            $scope.header.editing_domain = true;
+
+            // Set the value to the hostname, as hostname and domain are edited
+            // using different fields.
+            $scope.header.hostname.value = $scope.node.hostname;
+        };
+
         // Called to edit the node name.
         $scope.editHeader = function() {
             if(!$scope.canEdit()) {
@@ -769,6 +789,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
             $scope.header.editing = true;
+            $scope.header.editing_domain = false;
 
             // Set the value to the hostname, as hostname and domain are edited
             // using different fields.
@@ -778,7 +799,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Return true when the hostname or domain in the header is invalid.
         $scope.editHeaderInvalid = function() {
             // Not invalid unless editing.
-            if(!$scope.header.editing) {
+            if(!$scope.header.editing && !$scope.header.editing_domain) {
                 return false;
             }
 
@@ -793,6 +814,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Called to cancel editing of the node hostname and domain.
         $scope.cancelEditHeader = function() {
             $scope.header.editing = false;
+            $scope.header.editing_domain = false;
             updateHeader();
         };
 
@@ -803,6 +825,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
             $scope.header.editing = false;
+            $scope.header.editing_domain = false;
 
             // Copy the node and make the changes.
             var node = angular.copy($scope.node);
