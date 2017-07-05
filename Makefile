@@ -579,59 +579,70 @@ services/regiond2/@deps: bin/maas-region bin/maas-rack
 # Package building
 #
 
-# This ought to be as simple as using bzr builddeb --export-upstream but it
-# has a bug and always considers apt-source tarballs before the specified
-# branch. Instead, export to a local tarball which is always found. Make sure
-# the packages listed in `required-packages/build` are installed before using
-# this.
+# This ought to be as simple as using
+#   gbp buildpackage --git-debian-branch=packaging
+# but it is not: without investing more time, we manually pre-build the source
+# tree and run debuild.
 
-# Old names.
-PACKAGING := $(abspath ../packaging.trunk)
-PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging
-
-packaging-tree = $(PACKAGING)
-packaging-branch = $(PACKAGING_BRANCH)
+packaging-tree = $(abspath ../maas-packaging)
+packaging-repo = https://git.launchpad.net/maas/
+packaging-branch = "packaging"
 
 packaging-build-area := $(abspath ../build-area)
 packaging-version = $(shell \
-   dpkg-parsechangelog -l$(packaging-tree)/debian/changelog \
-       | sed -rne 's,^Version: ([^-]+).*,\1,p')
+    utilities/calc-snap-version | sed s/[-]snap//)
+tmp_changelog := $(shell tempfile)
+packaging-dir := maas_$(packaging-version)
+packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
 $(packaging-build-area):
 	mkdir -p $(packaging-build-area)
 
 -packaging-fetch:
-	bzr branch $(packaging-branch) $(packaging-tree)
+	git clone $(packaging-repo) -b $(packaging-branch) $(packaging-tree)
 
 -packaging-pull:
-	bzr pull -d $(packaging-tree)
+	(cd $(packaging-tree) && git checkout packaging && git pull)
 
 -packaging-refresh: -packaging-$(shell \
     test -d $(packaging-tree) && echo "pull" || echo "fetch")
 
 -packaging-export-orig: $(packaging-build-area)
-	bzr export $(packaging-export-extra) --root=maas-$(packaging-version).orig \
-	    $(packaging-build-area)/maas_$(packaging-version).orig.tar.gz
+	git archive --format=tar.gz $(packaging-export-extra) \
+            --prefix=$(packaging-dir)/ \
+	    -o $(packaging-build-area)/$(packaging-orig-targz) HEAD
 
-# To build binary packages from uncommitted changes:
-#     make package-export-extra=--uncommitted package
-package: -packaging-refresh -packaging-export-orig
-	bzr bd --merge $(packaging-tree) --result-dir=$(packaging-build-area) -- -uc -us
+-packaging-export-orig-uncommitted: $(packaging-build-area)
+	git ls-files --others --exclude-standard --cached | \
+	    xargs tar --transform 's,^,$(packaging-dir)/,' -czf $(packaging-build-area)/$(packaging-orig-targz)
+
+-packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
+
+-package-tree: -packaging-refresh -packaging-export
+	rm -rf $(packaging-build-area)/$(packaging-dir)
+	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
+	(cd $(packaging-tree) && git archive --format=tar HEAD debian | \
+	  (cd $(packaging-build-area)/$(packaging-dir) && tar x))
+	echo "maas ($(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
+	    > $(tmp_changelog)
+	tail -n +2 $(packaging-tree)/debian/changelog >> $(tmp_changelog)
+	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
+
+package: -package-tree
+	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
 	@echo Binary packages built, see $(packaging-build-area).
 
-# ... or use the `package-dev` target.
-package-dev: packaging-export-extra = --uncommitted
-package-dev: package
+# To build binary packages from uncommitted changes call "make package-dev".
+package-dev:
+	make export-uncommitted=yes package
 
-# To build a source package from uncommitted changes:
-#     make package-export-extra=--uncommitted source-package
-source-package: -packaging-refresh -packaging-export-orig
-	bzr bd --merge $(packaging-tree) --result-dir=$(packaging-build-area) -- -S -uc -us
+source-package: -package-tree
+	(cd $(packaging-build-area)/$(packaging-dir) && debuild -S -uc -us)
 	@echo Source package built, see $(packaging-build-area).
 
-# ... or use the `source-package-dev` target.
-source-package-dev: packaging-export-extra = --uncommitted
-source-package-dev: source-package
+# To build source packages from uncommitted changes call "make package-dev".
+source-package-dev:
+	make export-uncommitted=yes source-package
 
 # To rebuild packages (i.e. from a clean slate):
 package-rebuild: package-clean package
@@ -662,9 +673,12 @@ print-%:
 
 define phony_package_targets
   -packaging-export-orig
+  -packaging-export-orig-uncommitted
+  -packaging-export
   -packaging-fetch
   -packaging-pull
   -packaging-refresh
+  -package-tree
   package
   package-clean
   package-dev
