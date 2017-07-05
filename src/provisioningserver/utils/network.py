@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generic helpers for `netaddr` and network-related types."""
@@ -1192,6 +1192,31 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
     return interfaces
 
 
+def enumerate_assigned_ips(ifdata):
+    """Yields each IP address assigned to an interface.
+
+    :param ifdata: The value of the interface data returned from
+        `get_all_interfaces_definition()`.
+    :return: generator yielding each IP address as a string.
+    """
+    links = ifdata["links"]
+    return (link['address'].split('/')[0] for link in links)
+
+
+def enumerate_ipv4_addresses(ifdata):
+    """Yields each IPv4 address assigned to an interface.
+
+    :param ifdata: The value of the interface data returned from
+        `get_all_interfaces_definition()`.
+    :return: generator yielding each IPv4 address as a string.
+    """
+    return (
+        ip
+        for ip in enumerate_assigned_ips(ifdata)
+        if IPAddress(ip).version == 4
+    )
+
+
 def has_ipv4_address(interfaces: dict, interface: str) -> bool:
     """Returns True if the specified interface has an IPv4 address assigned.
 
@@ -1201,10 +1226,9 @@ def has_ipv4_address(interfaces: dict, interface: str) -> bool:
     :param interfaces: The output of `get_all_interfaces_definition()`.
     :param interface: The interface name to check.
     """
-    links = interfaces[interface]["links"]
     address_families = {
-        IPAddress(link['address'].split('/')[0]).version
-        for link in links
+        IPAddress(ip).version
+        for ip in enumerate_assigned_ips(interfaces[interface])
     }
     return 4 in address_families
 

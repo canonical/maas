@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Networks monitoring service."""
@@ -18,6 +18,8 @@ from json.decoder import JSONDecodeError
 import os
 from pprint import pformat
 import re
+import socket
+import struct
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import (
@@ -28,6 +30,7 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.beaconing import (
     age_out_uuid_queue,
     BEACON_IPV4_MULTICAST,
+    BEACON_IPV6_MULTICAST,
     BEACON_PORT,
     beacon_to_json,
     create_beacon_payload,
@@ -37,7 +40,10 @@ from provisioningserver.utils.fs import (
     get_maas_provision_command,
     NamedLock,
 )
-from provisioningserver.utils.network import get_all_interfaces_definition
+from provisioningserver.utils.network import (
+    enumerate_ipv4_addresses,
+    get_all_interfaces_definition,
+)
 from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import (
     callOut,
@@ -337,13 +343,110 @@ class MDNSResolverService(ProcessProtocolService):
         return ProtocolForObserveMDNS(callback=self.callback)
 
 
+def interface_info_to_beacon_remote_payload(ifname, ifdata):
+    """Converts the specified interface information entry to a beacon payload.
+
+    :param ifname: The name of the interface.
+        (The key from `get_all_interfaces_definition()`.)
+    :param ifdata: The information for the interface.
+        (The value from `get_all_interfaces_definition()`.)
+    :return: A subset of the ifdata, with the addition of the 'name' key,
+        which will be set to the given `ifname`.
+    """
+    remote = ifdata.copy()
+    remote['name'] = ifname
+    # It will be obvious to the receiver that the source interface
+    # was enabled. ;-)
+    remote.pop('enabled', None)
+    # Don't need all the links, just the one that originated this
+    # packet.
+    remote.pop('links', None)
+    # Remote doesn't need to know the source or index.
+    remote.pop('source', None)
+    remote.pop('index', None)
+    # The subnet will be replaced by the value of each subnet link, but if
+    # no link is configured, None is the default.
+    remote['subnet'] = None
+    return remote
+
+
+def set_ipv4_multicast_source_address(sock, source_address):
+    """Sets the given socket up to send multicast from the specified source.
+
+    Ensures the multicast TTL is set to 1, so that packets are not forwarded
+    beyond the local link.
+
+    :param sock: An opened IP socket.
+    :param source_address: A string representing an IPv4 source address.
+    """
+    sock.setsockopt(
+        socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+    sock.setsockopt(
+        socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
+        socket.inet_aton(source_address))
+
+
+def set_ipv6_multicast_source_ifindex(sock, ifindex):
+    """Sets the given socket up to send multicast from the specified source.
+
+    Ensures the multicast hop limit is set to 1, so that packets are not
+    forwarded beyond the local link.
+
+    :param sock: An opened IP socket.
+    :param ifindex: An integer representing the interface index.
+    """
+    sock.setsockopt(
+        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 1)
+    packed_ifindex = struct.pack('I', ifindex)
+    sock.setsockopt(
+        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF,
+        packed_ifindex)
+
+
+def join_ipv6_beacon_group(sock, ifindex):
+    """Joins the MAAS IPv6 multicast group using the specified UDP socket.
+
+    :param sock: An opened IPv6 UDP socket.
+    :param ifindex: The interface index that should join the multicast group.
+    """
+    # XXX mpontillo 2017-06-21: Twisted doesn't support IPv6 here yet.
+    # It would be nice to do this:
+    # transport.joinGroup(BEACON_IPV6_MULTICAST)
+    ipv6_join_sockopt_args = (
+        socket.inet_pton(socket.AF_INET6, BEACON_IPV6_MULTICAST) +
+        struct.pack("I", ifindex)
+    )
+    sock.setsockopt(
+        socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
+        ipv6_join_sockopt_args)
+
+
+def set_ipv6_multicast_loopback(sock, loopback):
+    """Sets IPv6 multicast loopback mode on the specified UDP socket.
+
+    This isn't used in MAAS under normal circumstances, but it is useful for
+    testing.
+
+    :param sock: An opened IPv6 UDP socket.
+    :param loopback: If True, will set up the socket to loop back transmitted
+        multicast to the receive path.
+    """
+    sock.setsockopt(
+        socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_LOOP,
+        struct.pack("I", 1 if loopback else 0))
+
+
 class BeaconingSocketProtocol(DatagramProtocol):
     """Protocol to handle beaconing packets received from the socket layer."""
 
     def __init__(
             self, reactor, process_incoming=False, debug=True, interface='::',
-            loopback=False, port=BEACON_PORT):
+            loopback=False, port=BEACON_PORT, interfaces=None):
         super().__init__()
+        if interfaces is None:
+            # The interfaces list is used to join multicast groups, so if it
+            # wasn't passed in, don't join any.
+            interfaces = {}
         self.reactor = reactor
         self.process_incoming = process_incoming
         self.debug = debug
@@ -360,10 +463,29 @@ class BeaconingSocketProtocol(DatagramProtocol):
             verifyObject(IReactorMulticast, reactor)
             self.listen_port = reactor.listenMulticast(
                 port, self, interface=interface, listenMultiple=True)
-            self.transport.joinGroup(BEACON_IPV4_MULTICAST)
-            self.transport.setLoopbackMode(loopback)
-            # XXX mpontillo 2017-06-21: Twisted doesn't support IPv6 here yet.
-            # self.transport.joinGroup(BEACON_IPV6_MULTICAST)
+            sock = self.transport.getHandle()
+            if loopback is True:
+                # This is only necessary for testing.
+                self.transport.setLoopbackMode(loopback)
+                set_ipv6_multicast_loopback(sock, loopback)
+                self.transport.joinGroup(
+                    BEACON_IPV4_MULTICAST, interface="127.0.0.1")
+                # Loopback interface always has ifindex == 1.
+                join_ipv6_beacon_group(sock, 1)
+            for _, ifdata in interfaces.items():
+                # Merely joining the group with the default parameters is not
+                # enough, since we want to join the group on *all* interfaces.
+                # So we need to join each group using an assigned IPv4 address
+                # on each Ethernet interface.
+                for ip in enumerate_ipv4_addresses(ifdata):
+                    self.transport.joinGroup(
+                        BEACON_IPV4_MULTICAST, interface=ip)
+                    # Use the first IP address on each interface. Since the
+                    # underlying interface is the same, joining using a
+                    # secondary IP address on the same interface will produce
+                    # an "Address already in use" error.
+                    break
+                join_ipv6_beacon_group(sock, ifdata['index'])
         except DoesNotImplement:
             pass
 
@@ -392,8 +514,82 @@ class BeaconingSocketProtocol(DatagramProtocol):
             return True
         except OSError as e:
             if self.debug is True:
-                log.msg("Error while sending beacon: %s" % e)
+                log.msg("Error while sending beacon to %r: %s" % (
+                    destination_address, e))
         return False
+
+    def send_multicast_beacon(self, source, beacon, port=BEACON_PORT):
+        """Sends out a multicast beacon from the specified source.
+
+        :param source: The source address of the beacon. If specified as a text
+            string, will assume an IPv4 address was specified. If an integer
+            was specified, IPv6 is assumed, and the integer will be interpreted
+            as an interface index.
+        :param beacon: The beacon bytes to send (as the UDP payload).
+        :param port: The destination port of the beacon. (optional)
+        """
+        # Sending multicast to a particular interface requires setting socket
+        # options on the socket that Twisted has opened for us. Twisted itself
+        # only support selection of IPv4 interfaces, so there are a few extra
+        # hoops to jump through here.
+        sock = self.transport.getHandle()
+        if isinstance(source, str):
+            set_ipv4_multicast_source_address(sock, source)
+            # We're sending to an IPv4 multicast address using an IPv6 socket
+            # in IPv4-compatible mode.
+            destination_ip = "::ffff:" + BEACON_IPV4_MULTICAST
+        else:
+            set_ipv6_multicast_source_ifindex(sock, source)
+            destination_ip = BEACON_IPV6_MULTICAST
+        self.send_beacon(beacon, (destination_ip, port))
+
+    def send_multicast_beacons(
+            self, interfaces, beacon_type='solicitation', verbose=False):
+        """Sends out multicast beacons on each interface in `interfaces`.
+
+        :param interfaces: The output of `get_all_interfaces_definition()`.
+        :param beacon_type: Type of beacon to send. (Default: 'solicitation'.)
+        :param verbose: If True, will log the payload of each beacon sent.
+        """
+        for ifname, ifdata in interfaces.items():
+            log.msg("Sending multicast beacon on '%s'." % ifname)
+            if not ifdata['enabled']:
+                continue
+            remote = interface_info_to_beacon_remote_payload(ifname, ifdata)
+            # We'll make slight adjustments to the beacon payload depending
+            # on the configured source subnet (if any), but the basic payload
+            # is ready.
+            payload = {"remote": remote}
+            links = ifdata["links"]
+            if len(links) == 0:
+                # No configured links, so try sending out a link-local IPv6
+                # multicast beacon.
+                beacon = create_beacon_payload(beacon_type, payload)
+                if verbose:
+                    log.msg("Beacon payload:\n%s" % pformat(beacon.payload))
+                self.send_multicast_beacon(ifdata["index"], beacon)
+                continue
+            sent_ipv6 = False
+            for link in ifdata["links"]:
+                subnet = link["address"]
+                remote['subnet'] = subnet
+                address = subnet.split("/")[0]
+                beacon = create_beacon_payload(beacon_type, payload)
+                if verbose:
+                    log.msg("Beacon payload:\n%s" % pformat(beacon.payload))
+                if ':' not in address:
+                    # An IPv4 socket requires the source address to be the
+                    # IPv4 address assigned to the interface.
+                    self.send_multicast_beacon(address, beacon)
+                else:
+                    # An IPv6 socket requires the source address to be the
+                    # interface index.
+                    self.send_multicast_beacon(ifdata["index"], beacon)
+                    sent_ipv6 = True
+            if not sent_ipv6:
+                remote['subnet'] = None
+                beacon = create_beacon_payload(beacon_type, payload)
+                self.send_multicast_beacon(ifdata["index"], beacon)
 
     def beaconReceived(self, beacon_json):
         """Called whenever a beacon is received.
@@ -550,7 +746,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self.interface_monitor.setName("updateInterfaces")
         self.interface_monitor.clock = self.clock
         self.interface_monitor.setServiceParent(self)
-        self.beaconing_protocol = BeaconingSocketProtocol(clock)
+        self.beaconing_protocol = None
 
     def updateInterfaces(self):
         """Update interfaces, catching and logging errors.
@@ -627,7 +823,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         Ensures that sole responsibility for monitoring networks is released.
         """
         d = super().stopService()
-        self.beaconing_protocol.stopProtocol()
+        if self.beaconing_protocol is not None:
+            self.beaconing_protocol.stopProtocol()
         d.addBoth(callOut, self._releaseSoleResponsibility)
         return d
 
@@ -872,5 +1069,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     def _interfacesRecorded(self, interfaces):
         """The given `interfaces` were recorded successfully."""
         self._recorded = interfaces
+        if self.beaconing_protocol is None:
+            self.beaconing_protocol = BeaconingSocketProtocol(
+                self.clock, interfaces=interfaces)
         if self.enable_monitoring is True:
             self._configureNetworkDiscovery(interfaces)

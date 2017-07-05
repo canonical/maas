@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.5
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Command-line interface for the MAAS provisioning component."""
@@ -16,6 +16,7 @@ import provisioningserver.utils.beaconing
 import provisioningserver.utils.dhcp
 import provisioningserver.utils.scan_network
 from provisioningserver.utils.script import MainScript
+import provisioningserver.utils.send_beacons
 
 
 script_commands = {
@@ -27,6 +28,7 @@ script_commands = {
     'observe-beacons': provisioningserver.utils.beaconing,
     'observe-mdns': provisioningserver.utils.avahi,
     'observe-dhcp': provisioningserver.utils.dhcp,
+    'send-beacons': provisioningserver.utils.send_beacons,
     'scan-network': provisioningserver.utils.scan_network,
     'register': provisioningserver.register_command,
     'support-dump': provisioningserver.support_dump,

@@ -47,6 +47,8 @@ from provisioningserver.utils.network import (
     bytes_to_int,
     clean_up_netifaces_address,
     coerce_to_valid_hostname,
+    enumerate_assigned_ips,
+    enumerate_ipv4_addresses,
     find_ip_via_arp,
     find_mac_via_arp,
     format_eui,
@@ -1548,16 +1550,17 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
 
-class TestHasIPv4Address(MAASTestCase):
+class InterfaceLinksTestCase(MAASTestCase):
     """Tests for `has_ipv4_address()`."""
 
-    def make_interfaces(self, name, address=None):
+    def make_interfaces(self, name, addresses=None):
         links = []
-        if address is not None:
-            links.append({
-                'address': address,
-                'mode': 'static'
-            })
+        if addresses is not None:
+            for address in addresses:
+                links.append({
+                    'address': address,
+                    'mode': 'static'
+                })
         return {
             name: {
                 'enabled': True,
@@ -1570,6 +1573,10 @@ class TestHasIPv4Address(MAASTestCase):
             }
         }
 
+
+class TestHasIPv4Address(InterfaceLinksTestCase):
+    """Tests for `has_ipv4_address()`."""
+
     def test__returns_false_for_no_ip_address(self):
         ifname = factory.make_name('eth')
         self.assertThat(
@@ -1580,15 +1587,30 @@ class TestHasIPv4Address(MAASTestCase):
         ifname = factory.make_name('eth')
         address = "%s/64" % factory.make_ipv6_address()
         self.assertThat(
-            has_ipv4_address(self.make_interfaces(ifname, address), ifname),
+            has_ipv4_address(self.make_interfaces(ifname, [address]), ifname),
             Equals(False))
 
     def test__returns_true_for_ipv4_address(self):
         ifname = factory.make_name('eth')
         address = "%s/24" % factory.make_ipv4_address()
         self.assertThat(
-            has_ipv4_address(self.make_interfaces(ifname, address), ifname),
+            has_ipv4_address(self.make_interfaces(ifname, [address]), ifname),
             Equals(True))
+
+
+class TestEnumerateAddresses(InterfaceLinksTestCase):
+    """Tests for `enumerate_assigned_ips` and `enumerate_ipv4_addresses()`."""
+
+    def test__returns_appropriate_assigned_ip_addresses(self):
+        ifname = factory.make_name('eth')
+        ipv6_address = factory.make_ipv6_address()
+        ipv4_address = factory.make_ipv4_address()
+        interfaces = self.make_interfaces(
+            ifname, [ipv6_address + "/64", ipv4_address + "/24"])
+        ip_addresses = list(enumerate_assigned_ips(interfaces[ifname]))
+        ipv4_addresses = list(enumerate_ipv4_addresses(interfaces[ifname]))
+        self.assertThat(ip_addresses, Equals([ipv6_address, ipv4_address]))
+        self.assertThat(ipv4_addresses, Equals([ipv4_address]))
 
 
 class TestGetInterfaceChildren(MAASTestCase):

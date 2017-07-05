@@ -706,7 +706,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         self.assertThat(result, Is(None))
 
     @inlineCallbacks
-    def test__sends_and_receives_beacons(self):
+    def test__sends_and_receives_unicast_beacons(self):
         # Note: Always use a random port for testing. (port=0)
         logger = self.useFixture(TwistedLoggerFixture())
         protocol = BeaconingSocketProtocol(
@@ -717,8 +717,6 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         self.write_secret()
         beacon = create_beacon_payload("solicitation", {})
         rx_uuid = beacon.payload['uuid']
-        # XXX: We can't test IPv6 here until we either join the group
-        # manually, or Twisted gains support for joining IPv6 groups.
         destination = random.choice(["::ffff:127.0.0.1", "::1"])
         protocol.send_beacon(beacon, (destination, listen_port))
         # Since we've instructed the protocol to loop back packets for testing,
@@ -747,3 +745,54 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             logger.output,
             DocTestMatches(
                 '...Own beacon received:...Own beacon received:...'))
+
+    @inlineCallbacks
+    def test__send_multicast_beacon_sets_ipv4_source(self):
+        # Note: Always use a random port for testing. (port=0)
+        protocol = BeaconingSocketProtocol(
+            reactor, port=0, process_incoming=True, loopback=True,
+            interface="::", debug=False)
+        self.assertThat(protocol.listen_port, Not(Is(None)))
+        listen_port = protocol.listen_port._realPortNumber
+        self.write_secret()
+        beacon = create_beacon_payload("advertisement", {})
+        protocol.send_multicast_beacon("127.0.0.1", beacon, port=listen_port)
+        # Verify that we received the packet.
+        yield wait_for_rx_packets(protocol, 1)
+        yield protocol.stopProtocol()
+
+    @inlineCallbacks
+    def test__send_multicast_beacon_sets_ipv6_source(self):
+        # Due to issues beyond my control, this test doesn't do what I expected
+        # it to do. But it's still useful for code coverage (to make sure no
+        # blatant exceptions occur in the IPv6 path).
+        # self.skipTest(
+        #    "IPv6 loopback multicast isn't working, for whatever reason.")
+        # Since we can't test IPv6 multicast on the loopback interface, another
+        # method can be used to verify that it's working:
+        # (1) sudo tcpdump -i <physical-interface> 'udp and port == 5240'
+        # (2) bin/maas-rack send-beacons -p 5240
+        # Verifying IPv6 (and IPv4) multicast group join behavior can be
+        # validated by doing something like:
+        # (1) bin/maas-rack send-beacons -t 600
+        #     (the high timeout will cause it to wait for 10 minutes)
+        # (2) ip maddr show | egrep 'ff02::15a|224.0.0.118|$'
+        # The expected result from command (2) will be that 'egrep' will
+        # highlight the MAAS multicast groups in red text. Any Ethernet
+        # interface with an assigned IPv4 address should have joined the
+        # 224.0.0.118 group. All Ethernet interfaces should have joined the
+        # 'ff02::15a' group.
+        # Note: Always use a random port for testing. (port=0)
+        protocol = BeaconingSocketProtocol(
+            reactor, port=0, process_incoming=True, loopback=True,
+            interface="::", debug=False)
+        self.assertThat(protocol.listen_port, Not(Is(None)))
+        listen_port = protocol.listen_port._realPortNumber
+        self.write_secret()
+        beacon = create_beacon_payload("advertisement", {})
+        # The loopback interface ifindex should always be 1; this is saying
+        # to send an IPv6 multicast on ifIndex == 1.
+        protocol.send_multicast_beacon(1, beacon, port=listen_port)
+        # Instead of skipping the test, just don't expect to receive anything.
+        # yield wait_for_rx_packets(protocol, 1)
+        yield protocol.stopProtocol()
