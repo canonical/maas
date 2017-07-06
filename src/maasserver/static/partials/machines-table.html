@@ -41,7 +41,7 @@
     </thead>
     <tbody vs-repeat vs-scroll-parent="window">
         <tr
-            data-ng-repeat="node in filteredMachines = (machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id"
+            data-ng-repeat="node in table.filteredMachines = (table.machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id"
             data-ng-class="{ 'table--error': machineHasError({ $machine: node }), selected: node.$selected }">
             <td class="table-col--3" aria-label="Select node" data-ng-if="!hideCheckboxes">
                 <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />

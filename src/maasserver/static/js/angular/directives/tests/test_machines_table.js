@@ -72,11 +72,12 @@ describe("maasMachinesTable", function() {
           column: 'fqdn',
           predicate: 'fqdn',
           reverse: false,
-          allViewableChecked: false
+          allViewableChecked: false,
+          machines: MachinesManager.getItems(),
+          filteredMachines: [],
+          osinfo: GeneralManager.getData("osinfo")
         });
-        expect(scope.machines).toBe(MachinesManager.getItems());
-        expect(scope.filteredMachines).toEqual([]);
-        expect(scope.osinfo).toBe(GeneralManager.getData("osinfo"));
+        expect(scope.table.machines).toBe(MachinesManager.getItems());
     });
 
     it("polls for osinfo once loaded", function() {
@@ -110,7 +111,7 @@ describe("maasMachinesTable", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             scope.table.allViewableChecked = true;
-            scope.filteredMachines = [];
+            scope.table.filteredMachines = [];
             scope.updateAllChecked();
             expect(scope.table.allViewableChecked).toBe(false);
         });
@@ -120,7 +121,7 @@ describe("maasMachinesTable", function() {
                 var directive = compileDirective();
                 var scope = directive.isolateScope();
                 scope.table.allViewableChecked = true;
-                scope.filteredMachines = [{
+                scope.table.filteredMachines = [{
                     $selected: true
                 }, {
                     $selected: false
@@ -133,7 +134,7 @@ describe("maasMachinesTable", function() {
             function() {
                 var directive = compileDirective();
                 var scope = directive.isolateScope();
-                scope.filteredMachines = [{
+                scope.table.filteredMachines = [{
                     $selected: true
                 }, {
                     $selected: true
@@ -151,7 +152,7 @@ describe("maasMachinesTable", function() {
             var machine = makeMachine();
             MachinesManager.selectItem(machine.system_id);
             scope.table.allViewableChecked = true;
-            scope.filteredMachines = [machine];
+            scope.table.filteredMachines = [machine];
             scope.toggleCheckAll();
             expect(machine.$selected).toBe(false);
             expect(scope.table.allViewableChecked).toBe(false);
@@ -162,7 +163,7 @@ describe("maasMachinesTable", function() {
             var scope = directive.isolateScope();
             var machine = makeMachine();
             scope.table.allViewableChecked = false;
-            scope.filteredMachines = [machine];
+            scope.table.filteredMachines = [machine];
             scope.toggleCheckAll();
             expect(machine.$selected).toBe(true);
             expect(scope.table.allViewableChecked).toBe(true);
@@ -183,7 +184,7 @@ describe("maasMachinesTable", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var machine = makeMachine();
-            scope.filteredMachines = [machine];
+            scope.table.filteredMachines = [machine];
             scope.toggleChecked(machine);
             expect(machine.$selected).toBe(true);
             expect(scope.table.allViewableChecked).toBe(true);
@@ -193,7 +194,7 @@ describe("maasMachinesTable", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var machine = makeMachine();
-            scope.filteredMachines = [machine];
+            scope.table.filteredMachines = [machine];
             MachinesManager.selectItem(machine.system_id);
             scope.toggleChecked(machine);
             expect(machine.$selected).toBe(false);
@@ -275,7 +276,7 @@ describe("maasMachinesTable", function() {
         it("returns release title from osinfo", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            scope.osinfo = {
+            scope.table.osinfo = {
                 releases: [
                     ['ubuntu/xenial', 'Ubuntu Xenial']
                 ]
@@ -287,7 +288,7 @@ describe("maasMachinesTable", function() {
         it("returns release name when not in osinfo", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            scope.osinfo = {
+            scope.table.osinfo = {
                 releases: []
             };
             expect(scope.getReleaseTitle('ubuntu/xenial')).toBe(
@@ -297,7 +298,7 @@ describe("maasMachinesTable", function() {
         it("returns release name when osinfo.releases undefined", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            scope.osinfo = {
+            scope.table.osinfo = {
             };
             expect(scope.getReleaseTitle('ubuntu/xenial')).toBe(
                 'ubuntu/xenial');
@@ -324,7 +325,7 @@ describe("maasMachinesTable", function() {
                 osystem: "ubuntu",
                 distro_series: "xenial"
             };
-            scope.osinfo = {
+            scope.table.osinfo = {
                 releases: [
                     ['ubuntu/xenial', 'Ubuntu Xenial']
                 ]
@@ -341,7 +342,7 @@ describe("maasMachinesTable", function() {
                 osystem: "ubuntu",
                 distro_series: "xenial"
             };
-            scope.osinfo = {
+            scope.table.osinfo = {
                 releases: [
                     ['ubuntu/xenial', 'Ubuntu Xenial']
                 ]
@@ -358,7 +359,7 @@ describe("maasMachinesTable", function() {
                 osystem: "ubuntu",
                 distro_series: "xenial"
             };
-            scope.osinfo = {
+            scope.table.osinfo = {
                 releases: [
                     ['ubuntu/xenial', 'Ubuntu 16.04 LTS "Xenial Xerus"']
                 ]
@@ -376,7 +377,7 @@ describe("maasMachinesTable", function() {
             var scope = directive.isolateScope();
 
             var machines = [{}];
-            scope.filteredMachines = machines;
+            scope.table.filteredMachines = machines;
 
             $scope.$digest();
             expect($scope.onListingChange).toHaveBeenCalledWith(machines);
