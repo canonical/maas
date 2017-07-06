@@ -43,24 +43,24 @@ angular.module('MAAS').directive('maasMachinesTable', [
           column: 'fqdn',
           predicate: 'fqdn',
           reverse: false,
-          allViewableChecked: false
+          allViewableChecked: false,
+          machines: MachinesManager.getItems(),
+          filteredMachines: [],
+          osinfo: GeneralManager.getData("osinfo")
         };
-        scope.machines = MachinesManager.getItems();
-        scope.filteredMachines = [];
-        scope.osinfo = GeneralManager.getData("osinfo");
 
         // Ensures that the checkbox for select all is the correct value.
         scope.updateAllChecked = function() {
           // Not checked when the filtered machines are empty.
-          if(scope.filteredMachines.length === 0) {
+          if(scope.table.filteredMachines.length === 0) {
               scope.table.allViewableChecked = false;
               return;
           }
 
           // Loop through all filtered machines and see if all are checked.
           var i;
-          for(i = 0; i < scope.filteredMachines.length; i++) {
-              if(!scope.filteredMachines[i].$selected) {
+          for(i = 0; i < scope.table.filteredMachines.length; i++) {
+              if(!scope.table.filteredMachines[i].$selected) {
                   scope.table.allViewableChecked = false;
                   return;
               }
@@ -72,12 +72,12 @@ angular.module('MAAS').directive('maasMachinesTable', [
         scope.toggleCheckAll = function() {
           if(scope.table.allViewableChecked) {
             angular.forEach(
-              scope.filteredMachines, function(machine) {
+              scope.table.filteredMachines, function(machine) {
                 MachinesManager.unselectItem(machine.system_id);
               });
           } else {
             angular.forEach(
-              scope.filteredMachines, function(machine) {
+              scope.table.filteredMachines, function(machine) {
                 MachinesManager.selectItem(machine.system_id);
               });
           }
@@ -118,9 +118,9 @@ angular.module('MAAS').directive('maasMachinesTable', [
 
         // Returns the release title from osinfo.
         scope.getReleaseTitle = function(os_release) {
-          if(angular.isArray(scope.osinfo.releases)) {
-            for(i = 0; i < scope.osinfo.releases.length; i++) {
-              var release = scope.osinfo.releases[i];
+          if(angular.isArray(scope.table.osinfo.releases)) {
+            for(i = 0; i < scope.table.osinfo.releases.length; i++) {
+              var release = scope.table.osinfo.releases[i];
               if(release[0] === os_release) {
                 return release[1];
               }
@@ -150,9 +150,9 @@ angular.module('MAAS').directive('maasMachinesTable', [
         };
 
         // When the list of filtered machines change update the all checkbox.
-        scope.$watchCollection("filteredMachines", function() {
+        scope.$watchCollection("table.filteredMachines", function() {
           scope.updateAllChecked();
-          scope.onListingChange({$machines: scope.filteredMachines});
+          scope.onListingChange({$machines: scope.table.filteredMachines});
         });
 
         // Load the required managers and start polling for osinfo.
