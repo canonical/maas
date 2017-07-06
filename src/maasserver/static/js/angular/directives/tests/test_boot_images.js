@@ -1588,11 +1588,11 @@ describe("maasBootImages", function() {
             expect(scope.getSaveSelectionText()).toBe('Saving...');
         });
 
-        it("returns 'Save selection' when not saving", function() {
+        it("returns 'Update selection' when not saving", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             scope.saving = false;
-            expect(scope.getSaveSelectionText()).toBe('Save selection');
+            expect(scope.getSaveSelectionText()).toBe('Update selection');
         });
     });
 

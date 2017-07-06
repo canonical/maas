@@ -697,7 +697,7 @@ angular.module('MAAS').directive('maasBootImages', [
                     if($scope.saving) {
                         return "Saving...";
                     } else {
-                        return "Save selection";
+                        return "Update selection";
                     }
                 };
 
