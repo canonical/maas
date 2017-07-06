@@ -462,13 +462,13 @@ class DHCPRequestMonitor:
         return set(str(server.address) for server in self.servers)
 
 
-@attr.s
+@attr.s(hash=True)
 class DHCPServer:
     server = attr.ib(convert=IPAddress)
     address = attr.ib(convert=IPAddress)
 
     def __str__(self):
-        """Returns eitehr a longer format string (if the address we received
+        """Returns either a longer format string (if the address we received
         the packet from is different from the DHCP server address specified in
         the packet) or a single IP address (if the address we received the
         packet from and the server address are the same).

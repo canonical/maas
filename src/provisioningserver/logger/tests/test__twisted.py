@@ -37,6 +37,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesAll,
     MatchesDict,
+    StartsWith,
 )
 from twisted import logger
 from twisted.python.failure import Failure
@@ -146,9 +147,11 @@ class TestLegacyLogger(MAASTestCase):
         })
         self.assertThat(events, HasLength(1))
         self.assertThat(events[0], MatchesDict(expected))
+        # Twisted 16.6.0 (see issue #8858) now includes a traceback,
+        # so we only match on the beginning of the string.
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            Equals("<when> [%s#critical] %s\n" % (namespace, message)))
+            StartsWith("<when> [%s#critical] %s\n" % (namespace, message)))
 
 
 class TestObserveTwistedInternetTCP(MAASTestCase):
