@@ -1,0 +1,4 @@
+etc/maas
+var/lib/maas
+var/lib/maas/boot-resources
+var/log/maas

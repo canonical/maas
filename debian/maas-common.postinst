@@ -1,0 +1,40 @@
+#!/bin/sh
+
+set -e
+
+configure_logging() {
+    # Logging directory (/var/log/maas)
+    chown maas:maas /var/log/maas/
+
+    if [ ! -f /var/log/maas/maas.log ]; then
+        touch /var/log/maas/maas.log
+    fi
+    chown syslog:syslog /var/log/maas/maas.log
+    # Make sure rsyslog reads our config
+    systemctl restart rsyslog >/dev/null 2>&1 || true
+}
+
+configure_lib_dir() {
+    # Ensure lib dir has correct permissions
+    chown maas:maas /var/lib/maas/
+
+    if [ -d /var/lib/maas/gnupg ]; then
+        chown -R maas:maas /var/lib/maas/gnupg
+    fi
+}
+
+add_user_group(){
+    local user="maas"
+    local group="maas"
+    local home="/var/lib/maas"
+    addgroup --quiet --system "$group" || true
+    adduser --quiet --system --group --home "$home" "$user" || true
+}
+
+ln -sf /usr/share/maas/maas-rsyslog.conf /etc/rsyslog.d/99-maas.conf
+
+add_user_group
+configure_logging
+configure_lib_dir
+
+#DEBHELPER#

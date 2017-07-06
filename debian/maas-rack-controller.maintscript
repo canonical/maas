@@ -1,0 +1,9 @@
+rm_conffile /etc/maas/bootresources.yaml 1.7.0~beta1+bzr2781-0ubuntu1
+rm_conffile /etc/maas/maas_local_celeryconfig_cluster.py 1.7.0~beta3+bzr3043-0ubuntu1
+rm_conffile /etc/init/maas-cluster-celery.conf 1.7.0~beta3+bzr3043-0ubuntu1
+rm_conffile /etc/init/maas-pserv.conf 1.7.0~beta3+bzr3043-0ubuntu1
+rm_conffile /etc/init/maas-cluster.conf 1.7.0~beta6+bzr3231-0ubuntu1
+rm_conffile /etc/init/maas-cluster-register.conf 1.7.0~beta6+bzr3231-0ubuntu1
+rm_conffile /etc/maas/maas-cluster-http.conf 1.8.0~alpha1+bzr3522-0ubuntu1
+rm_conffile /etc/init/maas-clusterd.conf 2.0.0~alpha1+bzr4635-0ubuntu1
+rm_conffile /lib/systemd/system/maas-clusterd.service 2.0.0~alpha1+bzr4635-0ubuntu1

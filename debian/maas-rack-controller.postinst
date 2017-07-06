@@ -1,0 +1,168 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+db_version 2.0
+
+RELEASE=`lsb_release -rs` || RELEASE=""
+
+configure_logging() {
+    # Give appropriate permissions
+    if [ ! -f /var/log/maas/rackd.log ]; then
+        touch /var/log/maas/rackd.log
+    fi
+    chown maas:maas /var/log/maas/rackd.log
+}
+
+configure_libdir() {
+    # create var dir
+    if [ ! -d /var/lib/maas/boot-resources ]; then
+        mkdir -p /var/lib/maas/boot-resources
+    fi
+    # Ensure /var/lib/maas/boot-resources has correct ownership
+    chown -R maas:maas /var/lib/maas/boot-resources
+
+    # If /var/lib/maas/secret exists, ensure ownership and
+    # permissions are correct
+    if [ -f /var/lib/maas/secret ]; then
+        chown maas:maas /var/lib/maas/secret
+        chmod 0640 /var/lib/maas/secret
+    fi
+
+    if [ -f /var/lib/maas/maas_id ]; then
+       chown maas:maas /var/lib/maas/maas_id
+    fi
+
+    # Ensure dhcpd related files have the correct permissions
+    if [ -f /var/lib/maas/dhcpd.conf ]; then
+        chown root:maas /var/lib/maas/dhcpd.conf
+    fi
+    if [ -f /var/lib/maas/dhcpd-interfaces ]; then
+        chown root:maas /var/lib/maas/dhcpd-interfaces
+    fi
+    if [ -f /var/lib/maas/dhcpd6.conf ]; then
+        chown maas:maas /var/lib/maas/dhcpd6.conf
+    fi
+    if [ -f /var/lib/maas/dhcpd6-interfaces ]; then
+        chown maas:maas /var/lib/maas/dhcpd6-interfaces
+    fi
+    if [ -S /var/lib/maas/dhcpd.sock ]; then
+        chown maas:maas /var/lib/maas/dhcpd.sock
+    fi
+}
+
+configure_maas_tgt() {
+    # Ensure that iSCSI targets get re-defined on reboot.
+    # Creates a softlink in /etc/tgt/conf.d/ that points to the current
+    # boot images' tgt configuration.
+    mkdir -p /etc/tgt/conf.d
+    ln -sf /var/lib/maas/boot-resources/current/maas.tgt /etc/tgt/conf.d/maas.conf
+}
+
+extract_cluster_uuid(){
+    # Extract ClUSTER_UUID setting from config file $1. This will work
+    # on the old the cluster config file (which is shell).
+    awk '{ split($1,array,"\"")} END{print array[2] }' "$1"
+}
+
+extract_maas_url(){
+    # Extract the MAAS_URL setting from the config file $1.
+    grep -Eo "https?://[^ ]+" "$1" | cut -d"\"" -f1
+}
+
+configure_cluster_uuid(){
+    # This will configure a UUID if one has not previously been set.
+    maas-rack config --init
+}
+
+configure_cluster_authbind() {
+    MAAS_UID="`id -u maas`"
+    if [ ! -f "/etc/authbind/byuid/$MAAS_UID" ]; then
+        if [ ! -d "/etc/authbind/byuid" ]; then
+            mkdir -p /etc/authbind/byuid
+            chmod 755 /etc/authbind
+            chmod 755 /etc/authbind/byuid
+        fi
+    fi
+    echo '0.0.0.0/0:68,69' >/etc/authbind/byuid/$MAAS_UID
+    echo '::/0,68-69' >>/etc/authbind/byuid/$MAAS_UID
+    chown maas:maas /etc/authbind/byuid/$MAAS_UID
+    chmod 700 /etc/authbind/byuid/$MAAS_UID
+}
+
+configure_maas_url(){
+    # Get the MAAS URL on configure/reconfigure and write it to the conf files.
+    db_get maas-rack-controller/maas-url || true
+    if [ -n "$RET" ]; then
+        maas-rack config --region-url "$RET"
+    fi
+}
+
+configure_shared_secret() {
+    db_get maas-rack-controller/shared-secret || true
+    if [ -n "$RET" ]; then
+        echo "$RET" | maas-rack install-shared-secret
+        chown maas:maas /var/lib/maas/secret
+        chmod 0640 /var/lib/maas/secret
+    fi
+}
+
+upgrade_from_cluster_controller() {
+    # If we are upgrading from an older (1.7, 1.8) version, then we need
+    # to obtain the cluster UUID from the old configuration file and set
+    # it with the new configuration tool.
+    if [ -f /etc/maas/maas_cluster.conf ]; then
+        uuid=$(extract_cluster_uuid /etc/maas/maas_cluster.conf)
+        maas-rack config --uuid "$uuid"
+        maas_url=$(extract_maas_url /etc/maas/maas_cluster.conf)
+        maas-rack config --region-url "$maas_url"
+        db_set maas-rack-controller/maas-url "$maas_url"
+        mv /etc/maas/maas_cluster.conf /etc/maas/maas_cluster.conf.maas-old
+        mv /etc/maas/pserv.yaml /etc/maas/pserv.yaml.maas-old
+    fi
+    # If we are upgrading from (1.9, 1.10) version, then we need to obtain
+    # the maas_url and set it to debconf. Otherwise, the config file used
+    # is exactly the same.
+    if [ -f /etc/maas/clusterd.conf.1.10 ]; then
+        mv /etc/maas/clusterd.conf.1.10 /etc/maas/rackd.conf
+        maas_url=$(extract_maas_url /etc/maas/rackd.conf)
+        db_set maas-rack-controller/maas-url "$maas_url"
+    fi
+}
+
+# Unconditionally ensure that there is at least an empty configuration
+# file. This does *not* overwrite any existing configuration.
+maas-rack config
+
+if [ "$1" = "configure" ] && [ -z "$2" ]; then
+    configure_logging
+    configure_libdir
+    configure_maas_tgt
+    configure_maas_url
+    configure_cluster_uuid
+    configure_cluster_authbind
+    maas-rack upgrade-cluster
+    upgrade_from_cluster_controller
+    configure_shared_secret
+
+elif [ -n "$DEBCONF_RECONFIGURE" ]; then
+    configure_maas_url
+    # Only ask for a shared secret when the region is not installed
+    # on the same system.
+    if [ ! -f /usr/sbin/maas-region ]; then
+        db_input high maas-rack-controller/shared-secret
+        db_go
+    fi
+    configure_shared_secret
+
+elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0ubuntu1; then
+    configure_logging
+    configure_libdir
+    configure_cluster_authbind
+    maas-rack upgrade-cluster
+fi
+
+db_stop
+
+#DEBHELPER#

@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the maas package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: maas\n"
+"Report-Msgid-Bugs-To: maas@packages.debian.org\n"
+"POT-Creation-Date: 2016-04-20 12:24-0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../maas-region-controller.templates:1001
+msgid "Ubuntu MAAS PXE/Provisioning network address:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../maas-region-controller.templates:1001
+msgid ""
+"The Ubuntu MAAS Server automatically detects the IP address that is used for "
+"PXE and provisioning. However, it needs to be in the same network as the "
+"clients. If the automatically detected address is not in the same network as "
+"the clients, it must be changed."
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../maas-region-controller.templates:2001
+msgid "Ubuntu MAAS username"
+msgstr ""
+
+#. Type: string
+#. Description
+#. Type: password
+#. Description
+#: ../maas-region-controller.templates:2001
+#: ../maas-region-controller.templates:3001
+msgid ""
+"The Ubuntu MAAS server requires the administrator to create a username and "
+"password combination."
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../maas-region-controller.templates:2001
+msgid "Please provide the username for the MAAS account."
+msgstr ""
+
+#. Type: password
+#. Description
+#: ../maas-region-controller.templates:3001
+msgid "Ubuntu MAAS password"
+msgstr ""
+
+#. Type: password
+#. Description
+#: ../maas-region-controller.templates:3001
+msgid "Please provide the password for the MAAS account."
+msgstr ""

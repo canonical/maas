@@ -1,0 +1,2 @@
+rm_conffile /etc/init/maas-celery.conf 0.1+bzr971+dfsg-0ubuntu2
+rm_conffile /etc/dbconfig-common/maas.conf 0.1+bzr971+dfsg-0ubuntu2

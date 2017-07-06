@@ -1,0 +1,307 @@
+Source: maas
+Section: net
+Priority: optional
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Build-Depends: debhelper (>= 8.1.0~),
+               dh-apport,
+               dh-python,
+               dh-systemd,
+               po-debconf,
+               python3-all,
+               python3-django,
+               python3-setuptools,
+               python3-twisted
+Standards-Version: 3.9.7
+X-Python3-Version: >= 3.5
+Homepage: http://maas.io/
+
+Package: maas
+Architecture: all
+Depends: maas-rack-controller (= ${binary:Version}),
+         maas-region-controller (= ${binary:Version}),
+         python3-django-maas (= ${binary:Version}),
+         ${misc:Depends}
+Description: "Metal as a Service" is a physical cloud and IPAM
+ MAAS runs a software-defined data centre - it turns a collection of physical
+ servers and switches into a bare metal cloud with full open source IP address
+ management (IPAM) and instant provisioning on demand.
+ .
+ MAAS controls the servers through IPMI or another BMC or  converged chassis
+ controller such as Cisco UCS. It provides a full inventory  of components,
+ and can install Ubuntu, CentOS or Windows very fast on any  server under
+ its control. It can also track and provide DHCP and DNS for other devices
+ on the network.
+ .
+ MAAS handles VLANs and fabrics that span many trunked switches, as well as
+ the routing-centric infrastructure typically used for large-scale OpenStack
+ or other scale-out deployments. MAAS manages IP addresses and provides APIs
+ for address assignment and release. MAAS can also allocate IP addresses for
+ containers on machines, and release them when the machine is repurposed. MAAS
+ provides PXE, DHCP, DNS and other low-level  services to ensure the cluster
+ works smoothly.
+ .
+ MAAS works with any configuration system, and is recommended by the teams
+ behind both Chef and Juju as a physical provisioning system.
+ .
+ MAAS provides:
+ .
+  * Hardware inventory of servers
+  * Dynamic provisioning based on name or attributes such as disk, RAM, cores,
+    nics, networking, gpu’s or architecture
+  * DNS and DHCP as needed
+  * PXE boot services
+ .
+ This package is a metapackage which installs all of the separate components
+ of MAAS on a single machine.
+
+Package: maas-common
+Architecture: all
+Depends: rsyslog,
+         ${misc:Depends}
+Breaks: maas ( <= 0.1+bzr1048+dfsg-0ubuntu1 )
+Replaces: maas ( <= 0.1+bzr1048+dfsg-0ubuntu1 )
+Description: MAAS server common files
+ This package contains the common files for any MAAS installation.
+
+Package: maas-region-api
+Architecture: all
+Depends: apache2,
+         bind9utils,
+         iproute2,
+         libjs-angularjs,
+         libjs-yui3-full,
+         libjs-yui3-min,
+         maas-cli (=${binary:Version}),
+         maas-common (= ${binary:Version}),
+         maas-proxy (= ${binary:Version}),
+         ntp,
+         python3-bson,
+         python3-django,
+         python3-django-maas (= ${binary:Version}),
+         python3-django-piston3,
+         python3-djorm-ext-pgarray,
+         python3-maas-provisioningserver (= ${binary:Version}),
+         python3-petname,
+         python3-requests,
+         ubuntu-cloudimage-keyring,
+         ${misc:Depends},
+         ${python3:Depends}
+Conflicts: maas-region-controller-min
+Replaces: maas-region-controller-min
+Provides: maas-region-controller-min
+Description: Region controller API service for MAAS
+ The MAAS region controller consists of REST API services and a postgres
+ database. This package installs only the API services (maas-regiond).
+ Use it to scale out the API front-end of your MAAS region controller.
+
+Package: maas-region-controller
+Architecture: all
+Depends: avahi-utils,
+         dbconfig-pgsql,
+         iputils-ping,
+         maas-dns (= ${binary:Version}),
+         maas-region-api (= ${binary:Version}),
+         postgresql (>= 9.1),
+         tcpdump,
+         ${misc:Depends},
+Recommends: openssh-server
+Suggests: nmap
+Description: Region Controller for MAAS
+ The MAAS region controller (maas-regiond) is the REST API server for
+ all MAAS clients, and the postgres database that maintains machine
+ state for the entire data centre (or “region”). The region controller 
+ an be scaled-out and highly available given the appropriate postgres
+ setup and additional API servers.
+ .
+ This package installs the postgres database and the API server, so it
+ is appropriate for the initial installation of a new MAAS region. To
+ scale out the controller or make it highly available, install
+ maas-region-controller-api on additional servers and ensure the
+ postgres database is HA too.
+
+Package: python3-maas-provisioningserver
+Section: python
+Architecture: all
+Depends: archdetect-deb,
+         lshw,
+         openssh-client,
+         python3-attr,
+         python3-bson,
+         python3-crochet,
+         python3-curtin (>> 0.1.0~bzr478),
+         python3-distro-info,
+         python3-formencode,
+         python3-jsonschema,
+         python3-lxml,
+         python3-maas-client (= ${binary:Version}),
+         python3-netifaces,
+         python3-oauth,
+         python3-oauthlib,
+         python3-paramiko,
+         python3-pexpect,
+         python3-pyparsing,
+         python3-pyvmomi,
+         python3-seamicroclient,
+         python3-simplejson,
+         python3-simplestreams,
+         python3-tempita,
+         python3-twisted,
+         python3-txtftp,
+         python3-yaml,
+         python3-zope.interface,
+         isc-dhcp-client,
+         iproute2,
+         ${misc:Depends},
+         ${python3:Depends}
+Description: MAAS server provisioning libraries (Python 3)
+ This package provides the MAAS provisioning server python libraries.
+ .
+ This package contains Python 3 libraries.
+
+Package: maas-cli
+Architecture: all
+Depends: python3-maas-client (= ${binary:Version}),
+         ${misc:Depends},
+         ${python3:Depends}
+Conflicts: maas-region-controller-min (<= 1.5+bzr1909-0ubuntu1)
+Replaces: maas-region-controller-min (<= 1.5+bzr1909-0ubuntu1)
+Description: MAAS client and command-line interface
+ This package contains the 'maas' command-line interface, which
+ talks to the MAAS region controller REST API. Use the maas command
+ to login to MAAS and drive the data centre entirely from the
+ command-line.
+
+Package: python3-maas-client
+Section: python
+Architecture: all
+Depends: python3-httplib2,
+         python3-oauth,
+         ${misc:Depends},
+         ${python3:Depends}
+Breaks: python-maas-client, maas-cli ( <= 2.0.0~alpha4+bzr4843-0ubuntu1 )
+Replaces: python-maas-client, maas-cli ( <= 2.0.0~alpha4+bzr4843-0ubuntu1 )
+Description: MAAS python API client (Python 3)
+ This package contains the MAAS client API Python modules.
+ .
+ This package contains Python 3 modules.
+
+Package: maas-rack-controller
+Architecture: all
+Depends: authbind,
+         avahi-utils,
+         bind9utils,
+         distro-info,
+         freeipmi-tools,
+         grub-common,
+         iputils-ping,
+         maas-cli (=${binary:Version}),
+         maas-common (=${binary:Version}),
+         maas-dhcp (=${binary:Version}),
+         ntp,
+         pxelinux | syslinux-common (<< 3:6.00~pre4+dfsg-5),
+         python3-httplib2,
+         python3-maas-provisioningserver (=${binary:Version}),
+         python3-netaddr,
+         python3-tempita,
+         python3-twisted,
+         python3-zope.interface,
+         syslinux-common,
+         tcpdump,
+         tgt,
+         uuid-runtime,
+         wget,
+         ${misc:Depends},
+         ${python3:Depends}
+Suggests: amtterm, ipmitool, libvirt-bin, nmap, wsmancli
+Conflicts: tftpd-hpa
+Breaks: python-maas-provisioningserver,
+        maas-cluster-controller
+Replaces: python-maas-provisioningserver,
+          maas-cluster-controller
+Description: Rack Controller for MAAS
+ The MAAS rack controller (maas-rackd) provides highly available, fast
+ and local broadcast services to the machines provisioned by MAAS. You
+ need a MAAS rack controller attached to each fabric (which is a set of
+ trunked switches). You can attach multiple rack controllers to these
+ physical networks for high availability, with secondary rack controllers
+ automatically stepping to provide these services if the primary rack
+ controller fails.
+ .
+ A common configuration is to have a rack controller in each rack, with
+ a fast primary network interface to the rack switch and secondary
+ network interfaces on one or two other nearby racks for high
+ availability redundancy.
+ .
+ This package depends on the necessary components to provide iSCSI,
+ DHCP, TFTP and power management.
+
+Package: python3-django-maas
+Section: python
+Architecture: all
+Depends: python3-apt,
+         python3-attr,
+         python3-convoy,
+         python3-crochet,
+         python3-curtin (>> 0.1.0~bzr478),
+         python3-lxml,
+         python3-maas-client (= ${binary:Version}),
+         python3-markupsafe,
+         python3-netaddr,
+         python3-psycopg2,
+         python3-sphinx,
+         python3-tempita,
+         python3-twisted,
+         python3-zope.interface,
+         ${misc:Depends},
+         ${python3:Depends}
+Breaks: python-django-maas
+Replaces: python-django-maas
+Description: MAAS server Django web framework (Python 3)
+ This package provides the Django web framework for MAAS.
+ .
+ This package contains Python 3 modules.
+
+Package: maas-dhcp
+Architecture: all
+Depends: isc-dhcp-server (>= 4.3.3-5ubuntu10~), ${misc:Depends}
+Description: MAAS DHCP server
+ This package installs and configures a DHCP server that can be used by
+ MAAS, and enhances the overall MAAS user experience.
+
+Package: maas-dns
+Architecture: all
+Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
+         maas-region-api (= ${binary:Version}),
+         ${misc:Depends}
+Conflicts: dnsmasq
+Description: MAAS DNS server
+ This package installs and configures a DNS server that can be used by
+ MAAS, and enhances the overall MAAS user experience.
+
+Package: maas-proxy
+Architecture: all
+Depends: squid (>> 3.5), ${misc:Depends}
+Conflicts: squid-deb-proxy
+Description: MAAS Caching Proxy
+ This package installs and configures a Caching Proxy server that can be
+ used by MAAS. It enhances the overall MAAS user experience.
+
+Package: maas-region-udeb
+Package-Type: udeb
+Section: debian-installer
+Architecture: all
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends}
+XB-Installer-Menu-Item: 2350
+Description: Install a MAAS server (installer integration)
+
+Package: maas-rack-udeb
+Package-Type: udeb
+Section: debian-installer
+Architecture: all
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends}
+XB-Installer-Menu-Item: 2350
+Description: Install a MAAS Rack controller (installer integration)

@@ -1,0 +1,84 @@
+#!/usr/bin/make -f
+
+BUILDHOME = $(CURDIR)/debian/build
+PYTHON3 = $(shell py3versions -d)
+# Python enum modules.
+py_enums := $(wildcard src/*/enum.py)
+
+%:
+	dh $@ --with python3,apport,systemd --buildsystem=pybuild
+
+override_dh_auto_test:
+	# do nothing as we don't want the tests to run because they require
+	# internet access
+
+override_dh_installinit:
+	dh_installinit -p maas-region-api --name=maas-regiond --no-start
+	dh_installinit -p maas-region-api --name=maas-regiond-worker@  --no-start
+	dh_installinit -p maas-rack-controller --name=maas-rackd
+	dh_installinit -p maas-proxy --name=maas-proxy
+	dh_installinit -p maas-dhcp --name=maas-dhcpd
+	dh_installinit -p maas-dhcp --name=maas-dhcpd6
+
+override_dh_systemd_enable:
+	dh_systemd_enable -p maas-region-api --name=maas-regiond
+	dh_systemd_enable -p maas-rack-controller --name=maas-rackd
+	dh_systemd_enable -p maas-proxy --name=maas-proxy
+	dh_systemd_enable -p maas-dhcp --name=maas-dhcpd
+	dh_systemd_enable -p maas-dhcp --name=maas-dhcpd6
+
+override_dh_systemd_start:
+	dh_systemd_start -p maas-region-api --no-start maas-regiond.service
+	dh_systemd_start -p maas-rack-controller maas-rackd.service
+	dh_systemd_start -p maas-proxy maas-proxy.service
+	dh_systemd_start -p maas-dhcp maas-dhcpd.service
+	dh_systemd_start -p maas-dhcp maas-dhcpd6.service
+
+override_dh_auto_build:
+	dh_auto_build
+
+	mkdir -p $(BUILDHOME)
+	HOME=$(BUILDHOME) PYTHONPATH=$(CURDIR)/src/ $(PYTHON3)	\
+		$(CURDIR)/src/maasserver/utils/jsenums.py	\
+		$(py_enums) > $(BUILDHOME)/enums.js
+
+override_dh_auto_install:
+	dh_auto_install
+
+	# Move static files
+	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/web/static
+	mv $(CURDIR)/debian/tmp/usr/lib/$(PYTHON3)/*-packages/maasserver/static \
+                $(CURDIR)/debian/tmp/usr/share/maas/web/
+
+	# Remove scss directory from static files
+	rm -rf $(CURDIR)/debian/tmp/usr/share/maas/web/scss
+
+	# Install built enums.js file.
+	cp $(BUILDHOME)/enums.js $(CURDIR)/debian/tmp/usr/share/maas/web/static/js/
+
+	# install the apparmor profile
+	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d
+	install -m 644 $(CURDIR)/debian/maas-dhcp.apparmor \
+	    $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d/maas
+
+	# install python3 twisted plugins
+	set -ex; for python in $(PYTHON3); do \
+		dh_install twisted/plugins/maasregiond.py usr/lib/$$python/dist-packages/twisted/plugins -pmaas-region-api; \
+		dh_install twisted/plugins/maasrackd.py usr/lib/$$python/dist-packages/twisted/plugins -pmaas-rack-controller; \
+	done
+
+	dh_install --list-missing
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf $(BUILDHOME)
+	rm -rf src/*.egg-info
+
+DEB_DEBIAN_DIR=$(dir $(firstword $(MAKEFILE_LIST)))
+REV=$(shell dpkg-parsechangelog -l$(DEB_DEBIAN_DIR)/changelog \
+              | sed -rne 's,^Version: .*[+~]bzr([0-9]+).*,\1,p')
+VER=$(shell dpkg-parsechangelog -l$(DEB_DEBIAN_DIR)/changelog \
+              | sed -rne 's,^Version: ([^-]+).*,\1,p')
+get-orig-source:
+	bzr export -r $(REV) --root=maas-$(VER).orig \
+             maas_$(VER).orig.tar.gz lp:maas/2.2

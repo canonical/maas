@@ -1,0 +1,28 @@
+[Unit]
+Description=MAAS Region Controller (Worker %i)
+Documentation=https://maas.io/
+Requires=network-online.target
+After=network-online.target
+PartOf=maas-regiond.service
+# This will go away one we support new config files.
+ConditionPathExists=/etc/maas/regiond.conf
+
+[Service]
+User=maas
+Group=maas
+Restart=always
+RestartSec=10s
+Environment="MAAS_REGIOND_WORKER_ID=%i"
+Environment="DJANGO_SETTINGS_MODULE=maasserver.djangosettings.settings"
+Environment="LOGFILE=/var/log/maas/regiond.log"
+# Logs go to the journal; read them with:
+#   journalctl -u maas-regiond-worker@*
+# Logs also go to $LOGFILE for backward compatibility. The journal
+# should now be preferred as $LOGFILE will be removed.
+ExecStart=/bin/sh -c \
+    'exec twistd3 --nodaemon --pidfile= \
+       --logger=provisioningserver.logger.EventLogger maas-regiond 2>&1 | \
+     tee -a $LOGFILE'
+
+[Install]
+WantedBy=maas-regiond.service

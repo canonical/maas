@@ -1,0 +1,1 @@
+maas-common: binary-without-manpage usr/lib/maas/maas-delete-file usr/lib/maas/maas-write-file

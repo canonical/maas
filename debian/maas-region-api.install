@@ -1,0 +1,20 @@
+# Install static files
+debian/tmp/usr/share/maas/web/static
+
+# Install Apache Config
+debian/tmp/usr/share/maas/maas-http.conf
+
+# Install new preseed files
+debian/tmp/etc/maas/preseeds
+
+# Install driver configuration file
+debian/tmp/etc/maas/drivers.yaml
+
+# Install winrm certificate generation script
+debian/tmp/usr/bin/maas-generate-winrm-cert
+
+# Install all other stuff
+debian/extras/maas-region usr/sbin
+debian/extras/20-maas.conf etc/rsyslog.d
+debian/extras/maas_remote_syslog_compress etc/cron.d
+debian/extras/99-maas-region-sudoers etc/sudoers.d

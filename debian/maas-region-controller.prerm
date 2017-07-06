@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+#DEBHELPER#
+
+invoke-rc.d apache2 stop || true
+invoke-rc.d maas-regiond stop || true
+
+. /usr/share/dbconfig-common/dpkg/prerm.pgsql
+dbc_go maas-region-controller $@

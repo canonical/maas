@@ -1,0 +1,2496 @@
+maas (2.2.2-0ubuntu1) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 06 Jul 2017 15:26:53 -0400
+
+maas (2.2.1-6078-g2a6d96e-0ubuntu1~17.10.1) artful; urgency=medium
+
+  * New upstream release, MAAS 2.2.1.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 08 Jun 2017 19:31:42 -0400
+
+maas (2.2.0+bzr6054-0ubuntu2) artful; urgency=medium
+
+  * debian/rules: Fix FTBFS in artful.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 08 Jun 2017 18:57:01 -0400
+
+maas (2.2.0+bzr6054-0ubuntu1) artful; urgency=medium
+
+  * New upstream release, MAAS 2.2.0.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 18 May 2017 11:08:43 -0400
+
+maas (2.2.0~rc4+bzr6048-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release, MAAS 2.2.0 RC 4.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 27 Apr 2017 16:10:06 -0400
+
+maas (2.2.0~rc3+bzr6025-0ubuntu1) artful; urgency=medium
+
+  * New upstream release, MAAS 2.2.0 RC 3.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 21 Apr 2017 09:49:58 -0400
+
+maas (2.2.0~rc2+bzr5983-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release, MAAS 2.2.0 RC 2.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 15 Apr 2017 00:17:22 -0400
+
+maas (2.2.0~rc1+bzr5922-0ubuntu2) zesty; urgency=medium
+
+  * Bump depends version on python3-curtin. (LP: #1680175)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Apr 2017 13:51:58 -0400
+
+maas (2.2.0~rc1+bzr5922-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release, MAAS 2.2.0 RC 1. (FFe LP: #1667141)
+  * debian/maas-common.logrotate: Rotate maas.log weekly, instead of daily.
+    Store logs for 8 weeks. (LP: #1677005)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 28 Mar 2017 11:08:38 -0400
+
+maas (2.2.0~beta4+bzr5856-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release, MAAS 2.2.0 Beta 4. (FFe LP: #1667141)
+    - Add support to disable components.
+    - Improve RSD details page. Show composed machines and power tab.
+    - Add NTP & Internet connectivity tests.
+    - UX improvements - Change to new tab system to improve navigation.
+    - Error surfacing - For interfaces of Machines & Devices.
+    - Windows deployments - support to select the root/boot disk.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 16 Mar 2017 16:10:26 +0000
+
+maas (2.2.0~beta3+bzr5815-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release. MAAS 2.2.0 Beta 3 (FFe LP: #1667141):
+    - Introduce storage verification smoke tests.
+    - Introduce notifications API.
+    - Add device details page.
+    - Introduce Wedge BMC discovery during commissioning.
+    - Add pod listing & details page.
+    - Add dynamic composition for virsh devices.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 15 Feb 2017 08:37:25 -0500
+
+maas (2.2.0~beta2+bzr5717-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release. MAAS 2.2.0 Beta 2 (bzr5717):
+    - Introduce initial support for Intel RSD.
+    - Introduce IPv6 IPMI auto-discovery.
+    - Introduce notifications.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 30 Jan 2017 15:55:02 -0500
+
+maas (2.2.0~beta1+bzr5675-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release. MAAS 2.2.0 Beta 1 (bzr5675):
+    - Changing the concept of Spaces to a L2 layer.
+    - Support for DHCP relays.
+    - Introduce the concept of UNMANAGED subnets.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 11 Jan 2017 13:34:46 +0200
+
+maas (2.2.0~alpha1+bzr5614-0ubuntu1) zesty; urgency=medium
+
+  * New upstream release. MAAS 2.2.0 Alpha 1 (bzr5614):
+    - Don't install Django settings into /usr/share/maas/maas. For
+      regiond these were squatting the `maas` namespace, preventing its
+      use elsewhere (LP: #1646748)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 21 Nov 2016 20:01:31 -0500
+
+maas (2.1.1+bzr5501-0ubuntu1) zesty; urgency=medium
+
+  * MAAS new upstream bugfix release. MAAS 2.1.1 bzr 5544.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 24 Oct 2016 11:28:59 -0400
+
+maas (2.1.0+bzr5480-0ubuntu1) yakkety; urgency=medium
+
+  * MAAS new upstream bugfix release. MAAS 2.1.0 (0-day SRU LP: #1633064):
+    - TestPartition.test_get_partition_number_returns_starting_at_2_for_ppc64el
+      fails spuriously (LP: #1569365)
+    - "Deployed" and "Deploying" are too similar (LP: #1598470)
+    - Users' maas api keys do not have a name (LP: #1536354)
+    - [2.1] Incorrect logging message - showing SERVICE_STATE.ON (LP: #1631358)
+    - [2.1 UI] Images page "Queued for download" is confusing when selections
+      are not saved (LP: #1631420)
+    - [2.1b1] Dashboard column widths for discovered items are
+      wonky (LP: #1631024)
+    - [2.1b1] 'Registering existing rack controller' (LP: #1631022)
+    - [2.1] Command 'interface link-subnet' does not work (LP: #1629604)
+    - [FUJ] SSH input field not indicated for invalid username & the error
+      is incomprehensible (LP: #1628114)
+    - [2.1 ipv6] DHCP generation should not fail when address-family
+      conflicts are present (LP: #1629475)
+    - [2.0rc2] Commissioning node with gateway_link_v4 set fails. (LP: #1603466)
+    - [2.1, 2.0 UI] Error when using dhcp range with pre-existing dynamic
+      reservation (LP: #1608555)
+    - [2.1b2] Node failed to be released, because of the following error:
+      'NoneType' object has no attribute 'addErrback' (LP: #1632815)
+    - [2.1, Yakkety, UI] UI error when adding a chassis (LP: #1632395)
+    - [2.0, 2.1 UI] Other reserved IP ranges disappear when one of them is
+      deleted on Subnet details page. (LP: #1631079)
+    - [2.1b1] MAAS fails to deploy systems with 3+ TB disks (LP: #1630667)
+    - [2.1 Yakkety UI] Unable to select nodes (LP: #1630633)
+    - [2.0, 2.1] Release and list IPs reserved by another user (LP: #1629061)
+    - [2.0rc2] Changing DNSSEC validation does not trigger configuration
+      file update (LP: #1605476)
+    - [2.1] Failed to mount a partition and it doesn't surface error. (LP: #1631152)
+    - [2.1. Yakkety] "Map subnet" action doesn't work. (LP: #1632862)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Oct 2016 21:47:25 -0400
+
+maas (2.1.0~beta2+bzr5454-0ubuntu1) yakkety; urgency=medium
+
+  * MAAS new upstream bugfix release. MAAS 2.1.0 beta 2 (bzr5454):
+    - [2.1] Bootloaders not downloaded on initial import (LP: #1630394)
+    - Cryptic error when PXE-boot requires an image not yet imported (LP: #1611949)
+    - [2.0, 2.1, UI] MAAS webui allows boot disk to be changed on an
+      already deployed node (LP: #1625676)
+    - [2.1] Rename "Networks" tab to "Subnets" (LP: #1630591)
+    - [2.1] netaddr assumes MAC OUI is ascii (LP: #1628761)
+    - [2.1, 2.0] Can't input dynamic range on "Enable DHCP" after I deleted
+      the dynamic range (LP: #1619262)
+    - Machine unable to pxe with no-such-image while non-related images are
+      being imported (LP: #1612203)
+    - External DHCP detection is broken for a variety of reasons (LP: #1628645)
+    - [2.1] expected string or bytes-like object (LP: #1627362)
+    - [2.1] When trying to release a node, it gets stuck in releasing if
+      there is no rack controller to power control (LP: #1614659)
+    - WebUI needs a filter for deployed OS (LP: #1445941)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Oct 2016 10:59:45 -0400
+
+maas (2.1.0~beta1+bzr5433-0ubuntu1) yakkety; urgency=medium
+
+  * MAAS new upstream release. MAAS 2.1.0 beta 1 (bzr5433):
+    - Support for new version of streams.
+    - Bootloaders are now downloaded from the streams.
+    - Support for Low Latency kernels.
+    - Support for new hardware enablement kernels.
+    - Device discovery
+      - UI ability to Map a network as an action.
+      - Ability to select interval of active discovery.
+      - Ability to enable active discovery per subnet.
+  * Remove old template files on package removal.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 27 Sep 2016 14:44:26 -0400
+
+maas (2.1.0~alpha4+bzr5397-0ubuntu1) yakkety; urgency=medium
+
+  * MAAS new upstream release, MAAS 2.1.0 alpha 4 (bzr5397):
+    - Complete First User Journey (Ability to import keys from GH/LP).
+    - User profile has ability to import keys from GH/LP as well.
+    - Device discovery:
+      - Ability to clear records that may be incorrect.
+      - Ability to 'Map networks' via the API.
+    - Import NTP configuration via vendor-data and DHCP.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 19 Sep 2016 17:21:47 -0400
+
+maas (2.1.0~alpha3+bzr5368-0ubuntu1) yakkety; urgency=medium
+
+  * New upstream release, MAAS 2.1.0 Alpha 3 (bzr5363):
+    - First user journey (SSH key import not yet available).
+    - Allow the user to import SSH keys from LP or GH (only API/CLI).
+    - Provide NTP services. Region and Rack Controllers now provide NTP
+      services. Machines are also deployed with NTP configuration via.
+      + Add cloud-init vendor data to support configuring the machine with
+        NTP settings.
+    - Images page complete redesign and transition to AngularJS.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 19 Sep 2016 17:21:20 -0400
+
+maas (2.1.0~alpha2+bzr5321-0ubuntu1) yakkety; urgency=medium
+
+  * New upstream release, MAAS 2.1.0 Alpha 2 (bzr5321):
+    - Commissioning user data and PXE templates no longer user configs.
+      They are no longer shipped on /etc/maas.
+    - Adds support for Device Discovery (Backend and API).
+    - [UI] Better error surfacing for DHCP snippets and Package Repositories.
+  * Add depends on avahi-utils, ntp, and tcpdump.
+  * Old templates still exist. Move them so users know they are no longer
+    user (LP: #1619202)
+  * Create the /etc/ntp directory. MAAS writes custom NTP configuration
+    to /etc/ntp/maas.conf because ntpd is allowed by AppArmor to read
+    configuration only from /etc/ntp.conf and /etc/ntp/**.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 31 Aug 2016 20:25:17 +0100
+
+maas (2.1.0~alpha1+bzr5300-0ubuntu1) yakkety; urgency=medium
+
+  * New upstream release, MAAS 2.1.0 Alpha 1 (bzr5300):
+    - Advanced networking - static routes.
+    - Machine networking - bridge configuration.
+    - Machine networking - UI redesign and tags.
+    - Derived (mirrors) and additional repositories.
+    - Maintenance - Rescue Mode.
+    - Device discovery - backend.
+    - NTP support - backend.
+  * Give MAAS on both region and rack the ability to start, restart, and
+    get the status of the local NTP service.
+  * Depend on python3-attr for the region and rack controllers.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 03 Aug 2016 10:51:50 -0400
+
+maas (2.0.0~rc3+bzr5180-0ubuntu2) yakkety; urgency=medium
+
+  * Really fix by the determination of the default gateway, otherwise
+    automatically chose localhost. (LP: #1607112)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 27 Jul 2016 22:20:09 -0400
+
+maas (2.0.0~rc3+bzr5180-0ubuntu1) yakkety; urgency=medium
+
+  * New upstream release, 2.0.0 RC3 bzr5180:
+    - CLI version command doesn't work (2.0) (LP: #1557434)
+    - [2.0rc1] MAAS does not respect default subnet's DNS server when
+      choosing default DNS (LP: #1576116)
+    - [2.0RC1] MAAS displays every power query on the summarized view of
+      node event log (LP: #1594991)
+    - [2.0] Loading latest machine events can make web browser
+      unresponsive (LP: #1598028)
+    - [2.0rc1] MAAS doesn't honor DNS settings for a subnet for
+      DHCP (LP: #1600720)
+    - [2.0rc1] drop arm64/efi grub module workaround (LP: #1600285)
+    - maas login yields "ImportError: No module named
+      'maasserver'" (LP: #1604169)
+    - [doc] events API limit,before, after options not
+      documented (LP: #1604901)
+    - RackController.get_image_sync_status causes huge load
+      on regiond process (LP: #1604465)
+    - [2.0b8] MAAS is automatically monitoring timeouts. (LP: #1598149)
+    - [2.0] Error messaging about monitor expiry has been
+      dropped (LP: #1605252)
+    - [2.0rc2] Can't get node-results via cli/api (LP: #1602721)
+    - node set to "failed deployment" for no visible reason (LP: #1604962)
+    - Event log should always include a reason why a node was
+      marked Failed Deployment (LP: #1604987)
+  * If no default route is present in the system, configure maas_url on
+    regiond.conf to localhost to allow the user to tell MAAS what IP to use.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 22 Jul 2016 18:05:45 -0400
+
+maas (2.0.0~rc2+bzr5156-0ubuntu1) yakkety; urgency=medium
+
+  * New upstream release, 2.0.0 RC2 bzr5156:
+    - Pick up wrong grub.cfg if another filesystem exists (LP: #1582070)
+    - [2.0] confusing reverse DNS lookups because MAAS creates multiple
+      PTR records (LP: #1599223)
+    - [2.0] reverse DNS sometimes assigns FQDN where it should assign
+      IFACE.FQDN (LP: #1600259)
+    - [2.0rc1] after upgrade from 2.0b3, Error on request (13)
+      subnet.list: 'NoneType' object is not iterable (LP: #1599997)
+    - [2.0rc1] Image import dates are inconsistent (LP: #1598461)
+    - [2.0rc1] Following fresh install maas command fails
+      PermissionError: [Errno 13] Permission denied:
+      '/home/ubuntu/.maascli.db' (LP: #1598937)
+    - [1.9.3,2.0] cannot create more than 4 partitions when disk is
+      configured with mbr (LP: #1597787)
+    - [1.9,2.0,UX] Can't add aliases when parent interface is set to
+      'DCHP' (LP: #1600267)
+    - [1.9,2.0,UX] Creating a Bcache disk is not prevented when is not
+      created in partition (LP: #1600198)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 06 Jul 2016 09:49:41 -0400
+
+maas (2.0.0~rc1+bzr5143-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 RC1 bzr5143:
+    - Determine a method for how to reconnect a deleted rack controller (LP: #1576357)
+    - [2.0b7, regression] maas-rack register makes up a new hostname (LP: #1592246)
+    - [2.0b8] HMC power driver regression -- Not able to connect via SSH. (LP: #1595753)
+    - [2.0b7] Date and time format should be consistent accross logs (LP: #1592885)
+    - [2.0b8] Unable to set default gateway interface (LP: #1597324)
+    - [1.9] VMware power management fails when VMs are organized in nested subfolders (LP: #1515188)
+    - [2.0] maas 2.0 pxeboot fails on PowerNV (LP: #1596046)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 28 Jun 2016 16:58:20 -0400
+
+maas (2.0.0~beta8+bzr5134-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta8 bzr5134:
+    - Allow ed25519 and ecdsa ssh keys (LP: #1590081)
+    - [2.0b2, UI] Can't add a device and it does not show why. (LP: #1462078)
+    - [2.0b3] Interfaces on region controllers are not
+      discovered (LP: #1573626)
+    - [2.0b4, UI] No feedback when failing to assign static IP address on
+      the Node Details Page (LP: #1562107)
+    - [2.0b5] No way to read settings, like proxy, for non-admin
+      users (LP: #1583670)
+    - [2.0b5] Commissing with LVM breaks deployments (LP: #1585016)
+    - [2.0b5] dns templates still in /etc/maas/templates (LP: #1581729)
+    - [2.0b6] django.db.utils.IntegrityError: insert or update on
+      table "piston3_consumer" (LP: #1588907)
+    - [2.0b6] Image status stays out-of-sync after adding custom image (LP: #1581130)
+    - [2.0b6] core count not updated during commissioning if MAAS
+      previously stored a higher core count (LP: #1590144)
+    - [2.0b7] Adding rack controller instructions could be in the
+      GUI (LP: #1592282)
+    - [2.0b7] Enlisting output returns objects (LP: #1592132)
+    - [2.0b7, UI] Can't sort IP addresses under a subnet details
+      page (LP: #1592137)
+    - [2.0b7] Nodes API doesn't show regions (LP: #1593789)
+  * /etc/maas/templates/dns is obsolete. (LP: #1581729)
+  * Switch to OpenSSH for SSH public key validation. Previously
+    Twisted's conch was used but it does not yet support the newer ecdsa
+    and ed25519 key types. (LP: #1590081)
+  * debian/control: maas-region-api depends on maas-cli.
+  * debian/maas-region-api.postinst: Ensure rsyslog is restarted.
+  * debian/maas-region-controller.postinst: Ensure maas_url ends with 5240.
+  * Versioned Depend on squid
+  * debian/maas-region-controller.config: Ensure dbc_go is not run when
+    dbconfig common is not yet installed.
+  * Wait for squid to finish starting before returning from the start command.
+    LP: #1592954
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 14 Jun 2016 17:08:48 -0400
+
+maas (2.0.0~beta7+bzr5112-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 7 bzr5112:
+   - [2.0b5] p.refresh.get_swap_size misconverting units (LP: #1587896)
+   - get_interfaces_definition is not thread-safe (LP: #1587896)
+   - [2.0] Cannot create an IP reservation with a hostname (LP: #1590021)
+   - [2.0b5] request to http://.../MAAS/metadata/status/<systemdid>/latest
+     failed (LP: #1581723)
+   - [2.0b4] Rack Controller fail to update commissioning info? (LP: #1577953)
+   - [2.0b6, UI] When I delete a fabric, it takes me back to the
+     Node listing page (LP: #1589562)
+   - [2.0b6, UI] When I delete a space, it takes me back to the
+     Node listing page (LP: #1589596)
+   - [2.0b5, UI] No form validation when adding a subnet, space,
+     fabric or vlan (LP: #1588298)
+   - [2.0b6, UI] Message "No IP ranges have been reserved for this subnet."
+     doesn't go away after adding IP Range (LP: #1589606)
+   - [2.0b6, UI] Can't add a VLAN over the WebUI (LP: #1589583)
+   - [2.6b6, UI] Adding a fabric with an optional name ends up with a new
+     fabric with automatically assigned name (LP: #1589560)
+   - [2.6b6, UI] Adding a space with an optional name ends up with a new
+     space with automatically assigned name (LP: #1589595)
+   - Auto detection of running virtual environment during commissioning
+     almost always fails (LP: #1590946)
+   - [2.0b6] Cannot allocate a node based on its system_id (LP: #1590991)
+   - [2.0,1.9] 3rd party HP drivers (archive hostname renamed) - deployment
+     fails (LP: #1591093)
+   - [2.0b4 UI] MAAS WebUI doesn't quickly refresh when deleting
+     machines (LP: #1581219)
+   - [2.0b4] Can attempt to commission enlisted nodes without chosen
+     power type (LP: #1579215)
+   - [2.0b6] Can edit fabric and subnet on deployed node (LP: #1590499)
+   - [2.0b6] some arm64 systems need ipmi_ssif module in addition to
+     ipmi_si (LP: #1591395)
+   - [2.0] maas createadmin fails (LP: #1591346)
+   - [2.0b6] Attempting to delete a VLAN that cannot be deleted, shows
+     traceback in regiond.log (LP: #1589587)
+   - [2.0b6] Commisioning fails on machines without HW
+     virtualization (LP: #1591958)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 06 Jun 2016 18:54:19 -0400
+
+maas (2.0.0~beta6+bzr5073-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 6 bzr5073:
+    - Spurious failures in test_regionservice (LP: #1572646)
+    - use http for stream mirror, not https (LP: #1582836)
+    - MAAS version API call should not require authentication (LP: #1583715)
+    - Detect and identify NIC SR-IOV capability (LP: #1572740)
+    - [1.9,2.0]Commissioning fails when BIOS reports floppy drive,
+      but there is none installed (LP: #1584211)
+    - [1.9,2.0] DNS record created against IPv6 address when it is not
+      on the PXE interface (LP: #1584850)
+    - [2.0] MaaS 2.0 BMC information not removed when nodes are removed (LP: #1586555)
+    - [2.0] IPMI driver does not handle timeouts correctly (LP: #1508741)
+    - [2.0] Display RAM amount to the first decimal place in the UI  (LP: #1585759)
+    - [2.0] Expose the refresh rack controller action over the UI (LP: #1585760)
+    - [2.0] Rename maas-nodegrou-worker to MAAS (LP: #1585768)
+    - [2.0a1] MAAS should ensure that BMC password is correct before
+      saving (LP: #1553841)
+    - [2.0b2] DNS zone serials are not stable (LP: #1571645)
+    - [2.0b2] If you deploy a machine in MAAS, and manually install a
+      rack controller in it, it disappears from the machine list" (LP: #1570985)
+    - [2.0b3] rack / region controllers are visible to non-admins (LP: #1576417)
+    - [2.0b4] external maas-rack-controller logs to syslog instead of
+      maas.log (LP: #1577972)
+    - [2.0b4] twisted.internet.error.ConnectionDone: Connection was
+      closed cleanly. (LP: #1580817)
+    - [2.0b4 UI/API] No notifications rack controller is disconnected.
+      No power type available (LP: #1581318)
+    - [2.0b5] AMT machines using wsman do not netboot (LP: #1580350)
+    - [2.0b5] When installing secondary region controller on its on,
+      last image sync is never (LP: #1581737)
+    - [2.0b5] Can't force the import of images per Rack Controller (LP: #1583685)
+    - [2.0b5] After changing proxy, MAAS cannot install images (LP: #1585649)
+    - [2.0b5] MAAS doesn't import default images automatically (LP: #1584936)
+    - [2.0b5] Trying to assign an IP address statically to a device results
+      in builtins.AttributeError: 'NoneType' object has no attribute
+      'link_subnet' (LP: #1558635)
+    - [2.0b5] duplicate key on startup: Key (vid, fabric_id)=(2, 0)
+      already exists. (LP: #1583333)
+    - [2.0b5] Deployed regions should be able to transistion back to
+      machines (LP: #1588531)
+    - [2.0b5] domain details page does not update as the domain contents
+      change (LP: #1581224)
+    - [2.0b5] Cannot disable DHCP if you remove the subnet first ("Cannot
+      configure DHCP: At least one dynamic range is required.") (LP: #1583392)
+    - [2.0b5] builtins.ValueError: invalid literal for int() with base 10 (LP: #1588846)
+    - [2.0, UI] Bulk actions-Nodes action doesn’t apply should be red (LP: #1585628)
+    - [2.0, UI] Add fabric, VLAN, Space show's badly place form (LP: #1587936)
+    - [2.0, UI] 'Commission' a node under the Node Listing Page shows actions
+      not correctly formatted.  (LP: #1587939)
+    - [2.0, UI] Add domain show's badly place form (LP: #1587998)
+    - [2.0, UI] There's no spacing between combo boxes under the Machine
+      Details page (LP: #1588000)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 03 Jun 2016 18:05:32 -0400
+
+maas (2.0.0~beta5+bzr5026-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 5 bzr5026:
+    - [UI 2.0b1] Impossible to change subnet CIDR or gateway with
+      instant editing (LP: #1572076)
+    - [UI 2.0b1] Network details page doesn't have CSS for
+      editting (LP: #1568102)
+    - [UI 2.0b2] Can't edit fabric's, vlans, subnets from the
+      WebUI (LP: #1571670)
+    - [UI 2.0b2] Can't add/edit/delete IP ranges through UI  (LP: #1571672)
+    - [UI/Backend 2.0b2] Can't delete a rack controller from the Rack
+      Details Page  (LP: #1570990)
+    - [UI 2.0b3] interface addresses on rack controller details page
+      not updated automatically  (LP: #1576267)
+    - [UI 2.0b4] Actions list is unordered  (LP: #1577386)
+    - [UI 2.0b4] I can 'add special filesystem' when the machine is
+      deployed  (LP: #1580827)
+    - [1.9] wrong subnet in DHCP answer when multiple networks are
+      present  (LP: #1521618)
+    - [2.0] include maas resetMachine() API primitive  (LP: #1536346)
+    - [2.0] Re-commissioning doesn't detect storage changes (LP: #1575567)
+    - [2.0] Expose custom network in non ubuntu deployments (LP: #1570002)
+    - [2.0a4] Reserved IP ranges should be allowed to be created by
+      standard users  (LP: #1580260)
+    - [2.0b2] 6 Core system is listed as having a single CPU  (LP: #1542353)
+    - [2.0b2] Cannot delete a rack controller that was previously a
+      'machine' (LP: #1570995)
+    - [2.0b3] IP Ranges section on the subnet page should be shown
+      even if no ranges  (LP: #1576758)
+    - [2.0b3] Tag changes depend on rack / cluster connection  (LP: #1372544)
+    - [2.0b4] Rack Controller fail to update commissioning info?  (LP: #1577953)
+    - [2.0b4] Rack Controller mark-broken / mark-fixed  (LP: #1577954)
+    - [2.0b4] Registering external rack controller tracebacks  (LP: #1577970)
+    - [2.0b4] RackControllerService flooding log with:
+      'RegionAdvertisingService' object has no attribute 'processId'  (LP: #1578800)
+    - [2.0b4] set_initial_networking_configuration shouldn't raise
+      ValidationError  (LP: #1580405)
+    - [2.0b4] Disks less than 4MB in size cause a traceback on the
+      MAAS server  (LP: #1580280)
+    - [2.0b4] Rack Controller details page shows "never" under last
+      image sync  (LP: #1577974)
+    - [2.0b4] Machines successfully commission but don't get marked
+      'Ready'  (LP: #1580285)
+    - [2.0b4] Region RPC losing connection and raising exception (LP: #1581654)
+    - [2.0b4] unregisterConnection() missing 1 required positional
+      argument: 'host'  (LP: #1580771)
+  * debian/maas-dhcp.posinst: Pipe error messages correctly to not show
+    messages when disabling isc-dhcp-server init scripts. (LP: #1570911)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 06 May 2016 09:56:40 -0500
+
+maas (2.0.0~beta4+bzr4985-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 4 bzr4985:
+    - Disk erasing with Xenial results it abnormal poweroff (LP: #1527634)
+    - UI Nodes page shows 'ascii' codec can't decode byte (LP: #1555864)
+    - When power_type changed to manual "power_state" was not set to "unknown" (LP: #1574003)
+    - MAAS Rack Controller doesn't log when it is importing images. (LP: #1571007)
+    - rackd fails to register vlan interfaces with "vlan" naming scheme (LP: #1575945)
+    - Traceback deleting fabric (LP: #1573492)
+    - adding files with paths in the filename confuses maas (LP: #1566108)
+    - MAAS does not add node to DNS Domain (LP: #1571621)
+    - tag only supports 'nodes' and and not 'machines' or 'controller's (LP: #1573644)
+    - enlistment fails: /tmp/sh.UZ7qJT/bin/maas-enlist: archdetect: not found (LP: #1573264)
+    - creating a dnsresource-record at the root of a zone should allow fqdn= (LP: #1562919)
+    - In the domain details pages, sometimes names have links to nodes when they should not (LP: #1573690)
+    - Can't power on/off Rack Controller (LP: #1576854)
+    - ipranges create raises incorrect error for missing type (LP: #1573660)
+    - fabric and space pages fail to update automatically (LP: #1557597)
+    - Subnet page doesn't show which machine or device owns an IP address (LP: #1567150)
+    - MAAS Controller listing page doesn't indicate whne a rack is downloading images (LP: #1571680)
+    - Deleting user in UI leads to 500 (LP: #1573219)
+    - maas enlistment of power8 found ipmi 1.5 should do ipmi 2.0 (LP: #1556219)
+  * debian/extras/20-maas.conf: Better organize rsyslog logs.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 30 Apr 2016 18:40:26 -0400
+
+maas (2.0.0~beta3+bzr4941-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 3 bzr4941 (Standing FFe LP: #1553261)
+  * Remove some leftover references to Cluster.
+  * Run debconf-updatepo.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 15 Apr 2016 22:27:56 -0400
+
+maas (2.0.0~beta2+bzr4920-0ubuntu2) xenial; urgency=medium
+
+  * debian/control: Add missing dep on python3-httplib2
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 15 Apr 2016 22:23:55 -0400
+
+maas (2.0.0~beta2+bzr4920-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 2 bzr4920 (Standing FFe LP: #1553261)
+  * Only create the squid cache if we have a configuration file.
+    LP: #1568847
+  * Re-add shared debconf templates.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 07 Apr 2016 18:22:00 -0400
+
+maas (2.0.0~beta1+bzr4873-0ubuntu2) xenial; urgency=medium
+
+  * Add maas-region-udeb and maas-rack-udeb to be used as part of the
+    Ubuntu Server Installer (LP: #1561954)
+    - ensure maas-rack-controller and maas-region-controller can be fully
+      preseeded.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 05 Apr 2016 17:02:32 -0400
+
+maas (2.0.0~beta1+bzr4873-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 beta 1 bzr4873 (Standing FFe LP: #1553261)
+    - DHCP Snippets WebUI.
+    - Ensure proxy configuration ACL's subnets MAAS knows about.
+    - DNS High Availability.
+  * debian/control: Move 'maascli' package install to
+    python3-maas-client (LP: #1563859)
+  * Improve way on how upgrades ensures correct permissions
+    and ownership (LP: #1563799 , LP: #1563779)
+  * Improve the way how removals clean the system (LP: #1563337)
+  * Reflect new names and website for systemd units (LP: #1563807)
+  * maas-proxy now uses a custom-built config, instead of a boilerplate.
+    LP: #1379567
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 28 Mar 2016 16:47:58 -0400
+
+maas (2.0.0~alpha4+bzr4843-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 alpha 4 bzr4843 (Standing FFe LP: #1553261)
+    - DHCP Snippets backend and API.
+    - Rack controller WebUI Served VLANs & Service Tracking
+    - Rsyslog during enlistment/commissioning.
+  * Ensure /etc/maas/templates/power gets removed on upgrade
+  * debian/control: Update homepage and package descriptions.
+    (LP: #1562036, LP: #1562034, LP: #1562062)
+  * Rename maas-reigon-controller-min to maas-region-api (LP: #1562069)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 23 Mar 2016 12:27:27 -0400
+
+maas (2.0.0~alpha3+bzr4810-0ubuntu1) xenial; urgency=medium
+
+  * New upstream release, 2.0.0 bzr 4810 (Standing FFe LP: #1553261)
+    - New Networks WebUI
+      + Add Fabrics and Spaces details page.
+      + Actions to Add/Remove Fabrics, VLANs, Spaces, Subnets.
+    - Storage WebUI
+      + Mount options
+      + Swap Partitions
+    - WebUI to change a Machine's domain.
+    - Rack Controller details page now shows 'Server VLANs'
+    - Add maas-rack support-dump command.
+    - Fixes:
+      + python3-maas-client API 2.0 no loger use op but MAASClient.post
+        requires it (LP: #1555393)
+      + Fail to commission when Fabric on Machine Interface doesn't match
+        Rack Controller Fabric. (LP: #1554566)
+      + TFTP back-end crashes (LP: #1553848)
+      + Can't deploy a node, no interfaces on rack controller (LP: #1554999)
+  * Update dhcpd permissions to conform with most recent paranoia described
+    on LP: 1543794, so capability dac_override is not granted.
+  * Update versioned depend on isc-dhcp-server
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 14 Mar 2016 18:34:53 -0400
+
+maas (2.0.0~alpha2+bzr4776-0ubuntu1) xenial; urgency=medium
+
+  * New usptream release, 2.0.0 bzr 4776 (LP: #1553261).
+  * maas-dns Depends: bind9 >= 1:9.10.3.dfsg.P2-5 for better system time.
+    LP: #1553176.
+  * debian/extras/maas-{region,rack}: Replace maas-region-admin
+    and maas-provision, respectively (LP: #1553791)
+  * debian/maas-region-controller.postrm: Correctly handle removal by
+    dbconfig-common. (LP: #1553648)
+  * debian/extras/99-maas-region-sudoers: Allow running systemctl for
+    bind9 and maas-proxy to support service tracking. (LP: #1555308)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 01 Feb 2016 18:18:52 +0100
+
+maas (2.0.0~alpha1+bzr4736-0ubuntu1) xenial; urgency=medium
+
+  * New usptream release, 2.0.0 bzr 4736 (LP: #1553261):
+    - Deprecate Cluster Controllers in favor of Rack Controllers.
+    - Deprecate API 1.0 in favor if API 2.0.
+    - DHCP & Rack Controller High Availability.
+    - Networking - IP Ranges.
+    - Networking - DNS.
+    - BMC Model.
+  * Rename maas-cluster* to maas-rack* and handle the upgrade path.
+  * Fix installation of init scripts and daemon systemd units.
+  * Allow 'dhcpd' to access /usr/sbin/maas-provision via
+    sudoers file (LP: #1552775)
+  * debian/extras/maas: Replace shell wrapper with python. (LP: #1553605)
+  * debian/control: Depends on iproute2 instead. (LP: #1553647)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 01 Feb 2016 18:18:52 +0100
+
+maas (1.10.0+bzr4572-0ubuntu2) xenial; urgency=medium
+
+  * debian/maas-region-controller.config: Ensure we truly preseed db
+    setting so we always use localhost and it never asks the user.
+  * debian/control: Suggests on python3-pyvmomi
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 01 Feb 2016 17:04:27 +0100
+
+maas (1.10.0+bzr4572-0ubuntu1) xenial; urgency=medium
+
+  * New upstram release, 1.10.0 bzr 4572:
+    - Support python3, drop support for python2.
+    - Support django 1.8+.
+  * debian/control:
+    - Remove all Upstart related services.
+    - Remove python-django16 dependency.
+    - Add python-petname dependency.
+    - Change dependency python-django-piston to python-django-piston3.
+    - Depends on dbconfig-pgsql instead of dbconfig-common.
+  * debian/maas-region-controller.config:
+    - Preseed dbconfig common to not ask for PG server to use.
+  * debian/maas-region-controller-min.maas-regiond-worker@.service: Don't
+    depend on postgresql.service anymore, as it would prevent regiond
+    to run on machines with a remote PostgreSQL.
+  * debian/rules: Refactor installation of init scripts so that they are
+    correctly handled, and maas-regiond is not started on install.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 13 Nov 2015 13:13:42 +0000
+
+maas (1.9.0~rc1+bzr4496-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 rc1, bzr4496
+    - MAAS uses wrong IP for DNS record (creates against the
+      bond). (LP: #LP: #1515498)
+    - Local archive ignored for deployment. Works for commissioning
+      and enlistment. (LP: #1515671)
+    - Fix handling of multiple StaticIPAddress rows with empty IP
+      addresses. (LP: #1513485)
+    - Lease parser failure - doesn't update IP on the PXE
+      NIC. (LP: #1513485)
+    - Cannot claim sticky IP address for device with
+      parent. (LP: #1514486)
+    - Cluster downloads boot-images from managed network (pxe) instead
+      of network used to connect to Region. (LP: #1514883)
+    - Updating/modifying/assigning vlans, spaces, fabrics, subnets
+      doesn't allow specifying names and lock to ID's. (LP: #1510917)
+    - MAAS should prevent deploying nodes with PXE interface
+      'unconfigured'. (LP: #1513095)
+    - MTU should be a set on the VLAN, and able to override on the
+      interface. (LP: #1508056)
+    - Internal Server Error when creating/editing cluster interface
+      when the Cluster is disconnected. (LP: #1439476)
+    - Non-interactive way to change password. (LP: #1510224)
+    - When a bond is created all IP address associated with the bond
+      members should be removed. (LP: #1513111)
+    - MAAS does not provide a dump of the config it passes to curtin for
+      networking and storage. (LP: #1487135)
+    - MAAS should not offer EXT3, rather VFAT, EXT2, EXT4. (LP: #1512959)
+    - Network constraints for juju. (LP: #1505031)
+    - Creating a partition or a Volume Group on the whole disk leaves
+      free space. (LP: #1509535)
+    - Should not allow partitions to be created on bcache
+      device. (LP: #1511493)
+    - Storage section should only be editable when Ready or
+      Allocated. (LP: #1503475)
+    - maasserver.api.tests.test_fannetworks.TestFanNetworksAPI.test_read
+      fails randomly. (LP: #1512832)
+    - creating a logical volume on a partition that is too small almost
+      works, resulting in strange error messages. (LP: #1508754)
+    - [UI] Keep selected nodes selected after action. (LP: #1503925)
+    - [UI] Refresh UI cache after an upgrade to avoid seeing
+      garbage. (LP: #1515380)
+    - [UI] Boot disk is not lighted nor can be changed. (LP: #1510106)
+    - [UI] Can't remove / delete a partition with a filesystem under
+      'Available disks and partitions'. (LP: #1510118)
+    - [UI] Creating a partition should allow to select filesystem and
+      mountpoint. (LP: #1510153)
+    - [UI] When selecting a device, ensure padding between buttons is
+      20px. (LP: #1510468)
+    - [UI] Misaligned mount point column on used disks table. (LP: #1510455)
+    - [UI] Align the individual storage actions with the name field,
+      rather than the tickbox. (LP: #1510469)
+    - [UI] can't add physical interface. (LP: #1503479)
+    - [UI] Containers (lxc, kvm) data missing on node details. (LP: #1503474)
+    - [UI] Unable to unmount a filesystem in the UI. (LP: #1513271)
+    - [UI] Animation missing on show members and select node. (LP: #1503536)
+    - [UI] Add tooltips to icons. (LP: #1510482)
+    - [UI] Add tooltips to inactive buttons. (LP: #1510486)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 05 Nov 2015 08:29:06 -0500
+
+maas (1.9.0~beta2+bzr4456-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 beta2, bzr4456:
+    - New capabilities for subnets, vlan, spaces and
+      fabrics. (LP: #LP: #1511257)
+    - Upgrade left a PXE NIC"s on nodes without a subnet associated
+      causing deploy issues. (LP: #LP: #1509077)
+    - DNS record doesn't get created against the PXE
+      interface (LP: #1512109)
+    - bcache cache_mode setting not configured on
+      servers (LP: #1510334)
+    - Administrators unable to delete users using the API (LP: #1510210)
+    - Can create a VolumeGroup (vg0) without having created
+      a partition on the boot disk (LP: #1509536)
+    - set-boot-disk yields in a machine not being able to
+      deploy (LP: #1501400)
+    - Deploying Other OS' (CentOS, Windows) should not configure
+      custom storage (LP: #1504956)
+    - Add RAID 10 support (LP: #1509164)
+    - MAAS should download grub from grub-efi-amd64-signed package
+      instead of the archive path (LP: #1511437)
+    - Fails to deploy with UEFI (LP: #1510120)
+    - previous owner of node can use oauth creds to retrieve current
+      owner's user-data (LP: #1507586)
+    - IP range validation for too small ranges (LP: #1507630)
+    - test__calls_update_host_maps_for_next_ip_managed_subnet
+      can fail randomly (LP: #1507630)
+    - No way to disable maas-proxy (LP: #1511071)
+    - [UI] HWE naming needs to be clearer (LP: #1505034))
+    - [UI] Angular $digest loop issue on node details page (LP: #1509476)
+    - [UI] New nodes interfaces doesn't show which interface is the
+      PXE interface (LP: #1509473)
+    - [UI] When partitioning, there should be 20px padding between
+      the sizing fields (LP: #1510471)
+    - [UI] On the available table, add model and serial to the
+      name column (LP: #1510467)
+    - [UI] On the available table, change “available space” to
+      “size” for consistency (LP: #1510466)
+    - [UI] when formatting/mounting, the button says “Format & Mount”
+      this should just be “Mount” (LP: #1510472)
+    - [UI] Tickbox on create bond networking (LP: #1503533)
+    - [UI] On the file system table, change name to “File system”
+      (lower case S) (LP: #1510447)
+    - [UI] When creating bcache and raid, remove the empty column
+      between the config fields. (LP: #1510474)
+    - [UI] On the available table, make sure all buttons are
+      lowercase (LP: #1510488)
+    - [UI] Subnets filter doesn't show network, it shows name
+      instead (LP: #1511174)
+    - [UI] can't edit / add storage tags (LP: #1509417)
+    - [UI] Hover state for networking doesn't work (LP: #1510891)
+    - [UI] change "edit tag" link to icon storage (LP: #1510458)
+    - [UI] Can no longer see the IP address PXE interface gets
+      on commissioning (LP: #1510629)
+  * debian/control: Bump Dep on python-curtin to > 0.1.0~bzr275.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 28 Oct 2015 21:20:39 -0400
+
+maas (1.9.0~beta1+bzr4417-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 beta1, bzr4415:
+    - Various UI fixes and improvements
+    - Add ability to create LVM.
+    - Add ability to create RAID.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 22 Oct 2015 14:05:50 -0400
+
+maas (1.9.0~alpha5+bzr4398-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 Alpha 5, bzr4398:
+    - Various UI fixes and improvements.
+    - Add ability to create partitions in the UI.
+    - Add ability to create Bcache (create cache sets and backing devices).
+    - Check and warns users about missing power driver tools (LP: #1381000).
+    - Add fabric class_type.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 15 Oct 2015 21:22:44 -0700
+
+maas (1.9.0~alpha4+bzr4371-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 Alpha 4, bzr4371:
+    - Various UI fixes and improvements.
+    - Various concurrency issues fixed.
+    - Do not create MBR bigger than 2 TiB, otherwise MAAS will fail to
+      deploy on disks larger than 2 TiB.
+    - Fix broken migration due to missing import (LP: #1504340)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 07 Oct 2015 13:02:53 -0700
+
+maas (1.9.0~alpha3+bzr4355-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 Alpha 3, bzr4355
+    - Node network configuration (VLAN, aliases, bond's).
+    - Subnets page.
+    - Mount, Unmount filesystems. Formatting, unformatting.
+    - Create partitions.
+    - Checks for missing power drivers tool and warns the users.
+  * debian/control: Recommends on apache2.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 29 Sep 2015 12:53:36 -0400
+
+maas (1.9.0~alpha2+bzr4322-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 Alpha 2, bzr4322:
+    - Native support for Network Configuration (IP assignment, VLANs, bonds)
+    - First class support for CentOS
+    - Status updates from curtin/cloud-init
+    - Support for fabrics, spaces, subnets and fans.
+    - Support for commissioning actions.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 01 Sep 2015 19:04:39 -0400
+
+maas (1.9.0~alpha1+bzr4221-0ubuntu1) wily; urgency=medium
+
+  * New upstream release, 1.9.0 Alpha 1, bzr4218:
+    - Native storage support (Flat, LVM, bcache, RAID).
+    - New config files (regiond.conf, clusterd.conf)
+    - New Python Power Drivers.
+    - Better support for HWE Kernels.
+
+  [ Scott Moser ]
+  * maas-proxy: sync apt specific squid config with squid-deb-proxy
+    (LP: #1474417)
+
+  [ Raphaël Badin ]
+  * Enable proxy_wstunnel module.
+  * Drop dependency on python-iscpy: the code has been integrated into
+    MAAS. (LP: #1413388).
+
+  [ Gavin Panella ]
+  * Use new local configuration support for the cluster.
+
+  [ Andres Rodriguez ]
+  * Refactor maas-dns upgrade code so it doesn't break local DNS config
+    and it gets migrated (LP: #1413388)
+    - debian/maas-region-controller.postinst: Ensure DNS config
+      migration is always run.
+  * debian/control: Make maas-dns a Dependy of maas-region-controller.
+  * Update the location of dhcpd.conf and dhcpd6.conf to be /var/lib/maas/
+    and handle upgrades. (LP: #1482857)
+  * Move /etc/maas/maas-proxy.conf to /usr/share/maas/maas-proxy.conf as
+    this is not a config we want users to modify. (LP: #1482859)
+  * Move /etc/maas/maas-http.conf to /usr/share/maas/maas-http.conf as
+    this is not a config we want users to modify. (LP: #1482858)
+  * debian/control:
+    - Add missing dependency on python-curtin.
+    - Drop python-lockfile as it is no longer used.
+    - Depend on python-curtin >= 0.1.0~bzr247.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 12 Jun 2015 14:16:47 -0400
+
+maas (1.8.0+bzr4001-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 09 Jun 2015 20:57:42 -0400
+
+maas (1.8.0~rc3+bzr4000-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 RC3 bzr4000.
+
+  [ Raphaël Badin ]
+  * Remove unused dependencies: python-amqp and python-txamqp.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 04 Jun 2015 16:32:02 -0400
+
+maas (1.8.0~rc2+bzr3989-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 RC2 bzr3983.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 02 Jun 2015 09:27:54 -0400
+
+maas (1.8.0~rc1+bzr3972-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 RC1 bzr3972.
+  * debian/copyright: Add copyright headers for ng-tags-input.js.
+  * debian/control: Bump Standards-Version
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 27 May 2015 20:16:40 -0400
+
+maas (1.8.0~beta8+bzr3951-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 beta 8 bzr3951.
+
+  [ Raphaël Badin ]
+  * debian/extras/99-maas-sudoers: Allow maas to check the status of
+    maas-dhcpd and maas-dhcp6 and start these services (LP: #1457708).
+
+  [ Andres Rodriguez ]
+  * debian/rules: Ensure maas-regiond-worker is not started in packaging.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 21 May 2015 19:18:22 -0400
+
+maas (1.8.0~beta7+bzr3926-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 beta 7 bzr3926.
+
+  [ Andres Rodriguez ]
+  * debian/{maas-cluster-controller,maas-common,
+    maas-region-controller-min}.postinst: Cleaned up to correctly create
+    log dir permissions (LP: #1457191)
+
+  [ Gavin Panella ]
+  * Create maas-regiond workers for systemd.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 20 May 2015 17:03:13 -0400
+
+maas (1.8.0~beta6+bzr3891-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 beta 6 bzr3904:
+
+  [ Gavin Panella ]
+  * Drop the use of daemontools in favor of having upstart track
+    thread processes:
+    - d/maas-region-controller-min.maas-regiond.upstart: Drop use of
+      daemontools; use maas-regiond-worker
+    - d/maas-region-controller-min.maas-regiond-worker.upstart: Add.
+    - d/control: Drop depends on daemontools.
+
+  [ Andres Rodriguez ]
+  * debian/maas-common.{postinst,logrotate}: Create maas.log if non-existent
+    and add log rotation, provided maas.log exists both in the Region
+    and in the Cluster (LP: #1381603)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 09 May 2015 15:03:17 +0100
+
+maas (1.8.0~beta5+bzr3867-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0 Beta 5 bzr3867.
+
+  [ Andres Rodriguez ]
+  * d/p/02-pserv.yaml: Fix config file (LP: #1449862)
+
+  [ Mike Pontillo ]
+  * Run DNS reconfiguration if either 'forwarders' or 'dnssec-validation'
+    keywords exist in named.conf.options (LP: #1384334)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 24 Apr 2015 18:55:47 -0400
+
+maas (1.8.0~beta4+bzr3844-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release. 1.8.0 Beta 4 bzr2344
+  * debian/maas-dhcpd.maas-dhcpd.service: Remove whitespace in unit that
+    was making systemd crash (LP: #1446699)
+  * debian/maas-proxy.maas-proxy.service: Fix proxy to correctly run
+    pre-start script.
+  * debian/maas-dns.postinst: Ensure permissions are fixed also on upgrade.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 21 Apr 2015 13:00:49 -0400
+
+maas (1.8.0~beta3+bzr3825-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release. 1.8.0 Beta3 bzr3825 (LP: #1432666):
+    - Fixx issues with concurrent DB access and the isolation level
+      that made MAAS unusable in highload environments.
+
+  [ Gavin Panella ]
+  * Run one maas-regiond per CPU core.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 16 Apr 2015 21:26:21 +0200
+
+maas (1.8.0~beta2+bzr3814-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release. 1.8.0 Beta2 bzr3814.
+
+  [ Andres Rodriguez ]
+  * Restart apache2 after the region is restarted on a install. (LP: #1438782)
+
+  [ Mike Pontillo ]
+  * Stop maas-clusterd in prerm so that database purge succeeds (LP: #1044559)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 06 Apr 2015 11:00:00 -0400
+
+maas (1.8.0~beta1+bzr3777-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release. 1.8.0 Beta1 bzr 3777.
+
+  [ Mike Pontillo ]
+  * debian/extras/maas-region-admin: Fix Path setting.
+  * debian/control: Properly depend on python-apt
+
+  [ Andres Rodriguez ]
+  * debian/maas-dhcp.maas-dhcpd[6].service: Fix units to correctly run
+    in vivid.
+  * debian/maas-proxy.maas-proxy.service: Fix unit to use correct daemon.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 30 Mar 2015 19:17:47 -0400
+
+maas (1.8.0~alpha9+bzr3750-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release. MAAS 1.9.0 Alpha 9 bzr3692:
+    - fix bulk actions for isolation level changes.
+    - fix commissioning related isolation level / transaction issues.
+
+  [ Andres Rodriguez ]
+  * Make sure MAAS works with python-django16 in vivid.
+
+  [Gavin Panella]
+  * debian/extras/99-maas-sudoers
+    debian/maas-cluster-controller.install
+    - Do not install maas-import-pxe-files; it is no longer used, and is
+      not present in upstream.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 20 Mar 2015 20:27:02 -0400
+
+maas (1.8.0~alpha8+bzr3692-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha8 bzr 3692:
+    - Fix bulk actions to not fail due to transaction errors.
+
+  [ Steve Langasek ]
+  * Depend on pxelinux for pxelinux.0, not on syslinux-dev. (LP: #1433697)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 17 Mar 2015 18:46:41 -0400
+
+maas (1.8.0~alpha7+bzr3664-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha7 bzr3664
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 10 Mar 2015 16:36:40 -0400
+
+maas (1.8.0~alpha6+bzr3625-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha6 bzr3625:
+    - Add ability to select OS when we Deploy via a bulk action.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 06 Mar 2015 18:10:46 -0500
+
+maas (1.8.0~alpha5+bzr3609-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha5 bzr3601:
+    - Add new 'Devices' page in the WebUI.
+    - Add support for VMWare's vSphere.
+  * debian/control:
+    - Add Depends on python-pyvmomi; Drop Depends on python-pyscss.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 05 Mar 2015 11:31:14 -0500
+
+maas (1.8.0~alpha4+bzr3581-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha4 bzr3581:
+    - Adds new 'Add Hardware' button on the WebUI.
+    - Adds new 'Add Chassis' button on the WebUI.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 27 Feb 2015 19:50:00 -0500
+
+maas (1.8.0~alpha3+bzr3568-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha3 bzr3568
+    - Adds support for Microsoft OCP Chassis.
+  * debian/control:
+    - Add python-bson as a depends.
+    - Remove python-pyscss as a build dependency.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 24 Feb 2015 15:47:07 -0500
+
+maas (1.8.0~alpha2+bzr3545-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha2 bzr3545
+  * debian/control:
+    - Depends on libjs-angularjs (LP: #1423457)
+    - Depends on ubuntu-cloudimage-keyring for region (LP: #1424287)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 18 Feb 2015 16:31:02 -0500
+
+maas (1.8.0~alpha1+bzr3523-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release, 1.8.0~alpha1 bzr3523
+
+  [ Blake Rouse ]
+  * debian/control: added python-pyscss as a build dependency.
+  * debian/rules: build scss files to maas-styles.css and remove scss files
+    from the static files directory.
+
+  [ Jeroen Vermeulen ]
+  * debian/maas-cluster-controller.postinst: configure MAAS_URL through new
+    "maas-provision configure-maas-url" sub-command instead of with "sed".
+
+  [ Andres Rodriguez ]
+  * Set 'maas' homedir to '/var/lib/maas' (LP: #1399016):
+    - debian/maas-common.postinst: Do not try to update 'maas'
+      home user dir on upgrade.
+  * debian/control: Tighten Dependency versioning of some packages.
+  * debian/maas-region-controller-min.preinst: Handle upgrades to remove
+    legacy files.
+  * debian/maas-region-controller{-min}.postinst: Simplify postinsts.
+  * Drop depends on python-celery, python-oops, python-oops-twisted,
+    python-oops-datedir-repo, python-oosp-wsgi
+  * Drop maas-cluster-http.conf; Drop depends on apache2 for
+    maas-cluster-controller.
+
+  [ Gavin Panella ]
+  * debian/maas-region-controller-min.maas-regiond.upstart
+    - Upstart script for the new maas-regiond.
+    - Use setuid/setgid to drop root privs before running script.
+    - Don't write a pid file.
+  * debian/maas-cluster-controller.maas-clusterd.upstart
+    - Start maas-clusterd; it's no longer called maas-pserv.
+  * debian/maas-region-controller-min.install
+    - Don't install wsgi.py; it's no longer used.
+  * debian/rules
+    - Install maas-regiond plugin.
+  * debian/maas-region-controller-min.apport
+    debian/maas-region-controller-min.logrotate
+    debian/maas-region-controller-min.postinst
+    debian/maas-region-controller.postinst
+    - Change maas-django.log to regiond.log.
+  * debian/maas-region-controller.postinst
+    - Restart maas-regiond after installation.
+    - a2enmod rewrite module (LP: #1236544)
+  * debian/maas-region-controller.postinst
+    - Restart maas-regiond after installation.
+  * debian/control
+    debian/maas-region-controller-min.postinst
+    debian/maas-region-controller.postinst
+    - mod_wsgi is no longer used.
+  * debian/maas-region-controller-min.logrotate
+    - No longer used; maas-regiond uses rotatelogs.
+    - a2enmod rewrite module (LP: #1236544)
+  * debian/patches/01-fix-database-settings.patch
+    - Move STATIC_ROOT setting upstream.
+    - Simplify database configuration hunk.
+  * debian/maas-cluster-controller.logrotate
+    debian/maas-region-controller.logrotate
+    - Use copytruncate; even though it's sub-optimal, this is currently
+      the best way to integrate logrotate with twistd.
+    - Limit the size of the logs to 50MB, but don't rotate unless
+      they're more than 10MB.
+    - Drop privileges and run as maas/maas.
+  * debian/maas-region-controller-min.maas-regiond.upstart
+    debian/maas-cluster-controller.maas-clusterd.upstart
+    - Redirect stdout and stderr from twistd directly to the daemon's
+      respective log file.
+  * debian/maas-region-controller-min.apport
+    - pserv.log has been renamed to clusterd.log.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 14 Nov 2014 09:04:29 -0500
+
+maas (1.7.0+bzr3299-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release, 1.7.0.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 14 Nov 2014 08:38:39 -0500
+
+maas (1.7.0~rc3+bzr3299-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release, RC3 bzr 3299
+    - Fix dashboard tooltip messages which had stopped being displayed
+      (LP: #1390434)
+
+ -- Julian Edwards <julian.edwards@canonical.com>  Tue, 11 Nov 2014 12:23:07 +1000
+
+maas (1.7.0~rc2+bzr3297-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release, RC2 bzr 3297
+    - Allow marking a node in the DISK_ERASING state as broken (LP: #1388919)
+    - Prevent concurrent allocations of static IP addresses from returning
+      the same clashing address. (LP: #1387262)
+
+  [ Andres Rodriguez ]
+  * debian/maas-cluster-controller.postinst: Make sure that cluster sets
+    the correct permissions for proxy log dir if running on the same
+    system. (LP: #1377964)
+
+ -- Julian Edwards <julian.edwards@canonical.com>  Fri, 07 Nov 2014 09:30:52 +1000
+
+maas (1.7.0~rc1+bzr3295-0ubuntu1) trusty; urgency=medium
+
+  * New Upstream Release, RC1 bzr 3295
+    - If using MSCM (Moonshot Chassis Manager) on a M300, do not overwrite
+      power parameters (LP: #1382075)
+    - Do not write DNS hostmaps if its PXE Mac is not on a managed cluster
+      interface. (LP: #1382108)
+    - Show os field in boot source selections API. (LP: #1384383)
+    - Add documentation for new Import Images features (LP: #1384010)
+    - Allow releasing if Failed to Disk Wipe or Release (LP: #1384821)
+    - Handle missing subarch when creating a node via RPC for
+      probe-and-enlist methods (LP: #1384778)
+    - Update default waiting policy for power actions to increase time of
+      wait to handle different type of BMC's (LP: #1384758)
+    - Use HTTP_PROXY to download images if configured (LP: #1384464)
+    - Return 503 response for PowerActionAlreadyInProgress and add a
+      'Retry-after' Header. (LP: #1384001)
+    - Stop ImportResourcesService from crashing when an import fails
+      (LP: #1386722)
+    - Convert TFTP request paths that contain backslashes to forward
+      slashes. (LP: #1387191)
+    - Do not try to delete synced boot images if not new ones are present
+      to handle a weird race. (LP: #1387133)
+    - Fix storage unit shown on the node edit page (LP: #1387431)
+    - Use CompressedAmpList in UpdateLeases to now parse
+      ~3500 leases (LP: #1387515, LP: #1387515)
+    - Updated XPath expression for discovering storage capacity from new
+      lshw changes. (LP: #1387380)
+    - Add sub status field on API.
+    - Generate DNS mappings for the Dynamic IP range. Hostname generation
+      is limited to /16. (LP: #1382190)
+    - Use configured HTTP Proxy to download boot images (LP: #1384464)
+  * debian/extras/maas-proxy-common.sh: Ensure that permissions are correct
+    before starting maas-proxy. (LP: #1382266)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 27 Oct 2014 21:53:43 -0400
+
+maas (1.7.0~beta8+bzr3272-0ubuntu1) utopic; urgency=medium
+
+  * New Upstream Release, Beta 8 bzr 3272.
+    - Maintain backward compatibility with status codes to not break
+      client MAAS API users.  (LP: #1383609)
+    - Allow users to disable DHCP NIC scanning during commissioning otherwise
+      this can lead machines not being able to commission (LP: #1383384)
+    - Ensure that MAAS can correctly download, and install HWE Kernels, and
+      not crash in the process. (LP: #1357532, LP: #1382281)
+    - Add a lock to ensure we don't give the same 2 systems to two different
+      users when acquiring a machine. (LP: #1382575)
+
+  [ Michael McCracken ]
+  * debian/maas-dns.postrm: ensure named.conf is cleaned of maas
+    includes (LP: #1346538)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 22 Oct 2014 12:55:08 -0400
+
+maas (1.7.0~beta7+bzr3266-0ubuntu1) utopic; urgency=medium
+
+  * New Upstream Snapshot, Beta 7 bzr3266
+
+  [ Jeroen Vermeulen ]
+  * debian/extras/99-maas-sudoers
+    debian/maas-dhcp.postinst
+    debian/rules
+    - Add second DHCP server instance for IPv6.
+  * debian/maas-region-controller-min.install
+    debian/maas-region-controller-min.lintian-overrides
+    - Install deployment user-data: maas_configure_interfaces.py script.
+  * debian/maas-cluster-controller.links
+    debian/maas-cluster-controller.install
+    debian/maas-cluster-controller.postinst
+    - Reflect Celery removal changes made in trunk r3067.
+    - Don't install celeryconfig_cluster.py any longer.
+    - Don't install maas_local_celeryconfig_cluster.py any longer.
+    - Don't symlink maas_local_celeryconfig_cluster.py from /etc to /usr.
+    - Don't insert UUID into maas_local_celeryconfig_cluster.py.
+
+  [ Andres Rodriguez ]
+  * debian/maas-region-controller-min.postrm: Cleanup lefover files.
+  * debian/maas-dhcp.postrm: Clean leftover configs.
+  * Provide new maas-proxy package that replaces the usage of
+    squid-deb-proxy:
+    - debian/control: New maas-proxy package that replaces the usage
+      of squid-deb-proxy; Drop depends on squid-deb-proxy.
+    - Add upstrart job.
+    - Ensure squid3 is stopped as maas-proxy uses a caching proxy.
+  * Remove Celery references to cluster controller:
+    - Rename upstart job from maas-pserv to maas-cluster; rename
+      maas-cluster-celery to maas-cluster-register. Ensure services
+      are stopped on upgrade.
+    - debian/maintscript: Cleanup config files.
+    - Remove all references to the MAAS celery daemon and config
+      files as we don't use it like that anymore
+  * Move some entries in debian/maintscript to
+    debian/maas-cluster-controller.maintscript
+  * Remove usage of txlongpoll and rabbitmq-server. Handle upgrades
+    to ensure these are removed correctly.
+
+  [ Jason Hobbs ]
+  * debian/maas-region-controller-min.install: Install
+    maas-generate-winrm-cert script.
+
+  [ Raphaël Badin ]
+  * debian/extras/maas-region-admin: Bypass django-admin as it prints
+    spurious messages to stdout (LP: #1365130).
+
+  [Louis Bouchard]
+  * debian/maas-cluster-controller.postinst:
+    - Exclude /var/log/maas/rsyslog when changing ownership
+      (LP: #1346703)
+
+  [Gavin Panella]
+  * debian/maas-cluster-controller.maas-clusterd.upstart:
+    - Don't start-up the cluster controller unless a shared-secret has
+      been installed.
+  * debian/maas-cluster-controller.maas-cluster-register.upstart: Drop.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 21 Aug 2014 19:36:30 -0400
+
+maas (1.7.0~beta1+bzr2781-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release, 1.7.0 Beta 1
+
+  [Diogo Matsubara]
+  * debian/control:
+    - maas-cluster-controller depends on syslinux-dev |
+      syslinux-common (LP: #1328659)
+    - python-maas-provisioningserver depends on
+      python-paramiko (LP: #1334401)
+
+  [Jeroen Vermeulen]
+  * debian/extras/99-maas-sudoers:
+    - Let maas user import, including sudo tgt-admin and sudo uec2roottar.
+  * debian/maas-cluster-controller.install:
+    - Stop installing obsolete file bootresources.yaml.
+
+  [ Raphaël Badin ]
+  * debian/control:
+    - maas-cluster-controller depends on python-pexpect
+  * debian/extras/99-maas-sudoers:
+    - Add rule 'maas-dhcp-server stop' job.
+
+  [ Greg Lutostanski ]
+  * debian/control:
+    - maas-cluster-controller depends on grub-common
+    - maas-provisioningserver not maas-cluster-controller depends on
+      python-pexpect (LP: #1352273)
+    - maas-provisioningserver not maas-cluster-controller depends on
+      python-seamicroclient (LP: #1332532)
+
+  [ Gavin Panella ]
+  * debian/maas-cluster-controller.postinst
+    - Allow maas-pserv to bind to all IPv6 addresses too.
+
+  [ Julian Edwards ]
+  * debian/maas-region-controller-min.apport
+    debian/maas-region-controller-min.logrotate
+    debian/maas-region-controller-min.postinst
+    debian/maas-region-controller.postinst
+    - Change the log file name maas.log to maas-django.log
+  * debian/maas-cluster-controller.postinst
+    debian/maas-common.install
+    debian/maas-region-controller-min.postinst
+    debian/maas-region-controller.postinst
+    - Install /var/log/maas/maas.log as a syslog file.
+    - Ensure logging is set up for upgrades
+
+  [ Graham Binns ]
+  * debian/maas-region-controller.postinst:
+    - Add symlinks for squid3, squid-deb-proxy and apache log directories to
+      /var/log/maas.
+
+  [ Andres Rodriguez ]
+  * debian/maas-region-controller.postinst: Force symlink creation
+    for external logs.
+  * debian/maas-region-controller.postinst: Do not change celery's
+    rabbitmq password on upgrade that to not lock remote
+    Cluster Controllers if upgrading from 1.5+. (LP: #1300507)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 21 Aug 2014 14:05:40 -0400
+
+maas (1.5+bzr2252-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release
+    - Add support to install Third Party Drivers. In order for this to be
+      used the user will have to go to the Settings page to enable the
+      installation of these drivers. (LP: #1305839)
+    - Use release images instead of daily. (LP: #1306701)
+    - Quote interface name in dhcpd.template, otherwise DHCP server fails
+      to start. (LP: #1306335)
+    - Fix IntegrityError, when multiple processes are trying to register
+      the same component. (LP: #1307415)
+    - Add missing armhf commissioning template (LP: #1307780)
+  * debian/maas-region-controller-min.install: Install drivers.yaml.
+  * debian/maas-region-controller.postinst: No longer show the
+    installation note by default. (LP: #1284652)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 09 Apr 2014 19:02:00 -0400
+
+maas (1.5+bzr2236-0ubuntu1) trusty; urgency=medium
+
+  * New upstream bugfix release.
+    - Fix simplestreams path to use the new data source path. (LP: #1305118)
+    - Fix commissioning_distro_series validation failure. (LP: #1304408)
+    - Fix DB migration 0072_remove_ipmi_autodetec. (LP: #1302156)
+    - Update documentation.
+  * debian/maas-region-controller-min.maas-region-celery.upstart,
+    debian/maas-region-controller-min.maas-txlongpoll.upstart: Fix ISO
+    install by making sure rabbitmq user is really created if it does not
+    exist (LP: #1298559)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 09 Apr 2014 18:36:55 -0400
+
+maas (1.5+bzr2230-0ubuntu1) trusty; urgency=medium
+
+  * New upstream bugfix release:
+    - Fix Cluster Controller to handle deprecated config items gracefull.
+      Otherwise it fails on upgrades. (LP: #1302772)
+    - Fix documentation generation and referencing. (LP: #1302956)
+    - Ensure we PXE boot when we turn on SM15K systems. (LP: #1303915)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 07 Apr 2014 10:26:51 -0400
+
+maas (1.5+bzr2227-0ubuntu1) trusty; urgency=medium
+
+  * New upstream bugfix release:
+    - Fix catching exceptions raised by
+      twisted.conch.ssh.keys.Key.fromString (LP: #1298788)
+    - Fix validationg in default NodeGroupInterface.broadcast_ip making it
+      optional. (LP: #1299374)
+    - Drop install-pxe-bootloader as it conflicts with newer import script.
+    - Remove references to old import script.
+    - Fix changes that cause overwriting of existing entries.
+    - Fix inappropriate ValidationError when defining networks with nested
+      (but non-identical) address ranges. (LP: #1299114)
+    - Fix issue where if a node does not provide an architecture type on dhcp
+      request, or no other boot method is available for that architecture,
+      the node still uses pxelinux.0 to boot. (LP: #1300285)
+    - Take an advisory lock to prevent concurrent creation of the
+      eventloops table. (LP: #1300363)
+    - Remove the cloud_images_archive setting, as it conflicts with new
+      import script. (LP: #1300587)
+    - Add a 'logout confirmation' page. Using this, the logout action is
+      protected against CSRF attacks because it uses a POST request, in
+      conjunction with Django's CSRF protection feature. (LP: #1298790)
+    - Fix cluster listings when dealing with large number of clusters by
+      paginating it. (LP: #1301242)
+    - Change list_boot_images() so that it can cope with a missing boot
+      images directory: this happens if the reporting task runs before the
+      images have been imported. (LP: #213984)
+    - Fix internal server error on fast path installer. (LP: #1293676)
+    - Fix uploading files using maas-cli. (LP: #1187826)
+    - Fix SM15k Invalid Power Control and Fix enlisting machines with
+      2.0 api. (LP: #1302818, LP: #1302819)
+
+  [ Andres Rodriguez ]
+  * debian/maas-cluster-controller.install: Install UEFI templates
+  * debian/maas-cluster-controller.dirs: Create 'boot-resources' dir.
+
+  [ Jason Hobbs ]
+  * debian/extras/99-maas: Allow access to keyserver.ubuntu.com via
+    squid-deb-proxy.
+
+  [Jeroen Vermeulen]
+  * debian/maas-cluster-controller.postinst:
+    - Make the tgt config link point to the new boot-resources dir.
+  * debian/maas-region-controller-min.dirs:
+    - Don't create /var/lib/maas/tftp.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 03 Apr 2014 13:45:02 -0400
+
+maas (1.5+bzr2204-0ubuntu1) trusty; urgency=low
+
+  * New upstream release (LP: #1281881)
+
+  [ Andres Rodriguez ]
+  * debian/maas-region-controller-min.templates: Set installation note to false
+    by default.
+  * Check rabbitmqctl is present before running commands:
+    - debian/maas-region-controller-min.maas-region-celery.upstart.
+    - debian/maas-region-controller-min.maas-txlongpoll.upstart.
+  * make sure maas_longpoll rabbitmq user is created/with correct password on
+    a package reconfigure.
+  * debian/maas-dns.postinst: Fix upgrade setup of named.conf.options.
+  * debian/maas-cluster-controller.install: Install UEFI templates (LP: #1299143)
+
+  [ Julian Edwards ]
+  * debian/extas/maas: Echo warning to stderr so json stdout is not polluted
+  * debian/maas-cluster-controller.postinst: Run upgrade-cluster on each
+    upgrade
+  * debian/maas-dns.postinst: Call edit_named_options to add a line in
+    /etc/bind/named.conf.options that includes the
+    /etc/named/maas/named.conf.options.inside.maas file.
+  * debian/control:
+    - maas-dns depends on python-iscpy
+    - maas-cluster-controller depends on python-seamicroclient
+  * debian/maas-cluster-controller.install: Install bootresources.yaml
+
+  [ Dustin Kirkland ]
+  * debian/control: LP: #1297097
+    - clean up package descriptions, modernize, and more clearly/simply
+      explain what each package does
+    - drop "Ubuntu" in front of MAAS, clean up command line/API description
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 28 Mar 2014 10:43:53 -0400
+
+maas (1.5+bzr1977-0ubuntu1) trusty; urgency=low
+
+  * New upstream bugfix release.
+    - setup.py: Install missing shell snippet
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 19 Feb 2014 16:31:45 -0500
+
+maas (1.5+bzr1976-0ubuntu1) trusty; urgency=low
+
+  * New upstream release.
+  * debian/maas-cluster-controller.postinst: Make sure upgrades handle
+    authbind upgrades too.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sun, 16 Feb 2014 22:56:36 -0500
+
+maas (1.5+bzr1951-0ubuntu1) trusty; urgency=low
+
+  * New upstream release
+  * debian/maas-cluster-controller.postinst: Also authbind port 69.
+  * debian/maas-cluster-controller.maas-pserv.upstart: Export MAAS_URL.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 15 Feb 2014 16:16:38 -0500
+
+maas (1.5+bzr1948-0ubuntu2) trusty; urgency=low
+
+  * debian/maas-cluster-controller.postinst: Make sure generator on
+    pserv.yaml is updated on upgrade or reconfigure. (LP: #1273197)
+  * debian/maas-cluster-controller.maas-pserv.upstart: Make sure maas-pserv
+    is started with authbind.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 15 Feb 2014 13:55:20 -0500
+
+maas (1.5+bzr1948-0ubuntu1) trusty; urgency=low
+
+  * New upstream release.
+
+  [ Graham Binns ]
+  * debian/control: Depends on python-jsonschema.
+
+  [ Andres Rodriguez ]
+  * debian/maas-region-controller-min.posinst: Make txlongpoll.yaml only
+    readable by the app and not world readeable.
+  * debian/patches/02-pserv-config.patch: Refreshed.
+
+  [ Julian Edwards ]
+  * debian/extras/maas-cli renamed to debian/extras/maas, and introduce
+    a deprecation warning in favour of using maas over maas-cli.
+  * debian/extras/maas renamed to debian/extras/maas-region-admin
+  * debian/maas-cli.install: install debian/extras/maas
+  * debian/maas-dns.postinst: Invoke maas-region-admin instead of maas
+  * debian/maas-region-controller-min.install: install maas-region-admin
+    instead of maas
+  * debian/maas-region-controller.postinst: Invoke maas-region-admin instead
+    of maas
+  * debian/maas-cli.links: Link from maas to maas-cli for backward compat.
+
+  [ Seth Arnold ]
+  * debian/maas-region-controller-min.postinst: Make sure txlongpoll.yaml
+    gets correct permissions on upgrade (LP: #1254034)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 15 Feb 2014 12:08:23 -0500
+
+maas (1.5+bzr1909-0ubuntu1) trusty; urgency=low
+
+  * New upstream release.
+
+  [ Dustin Kirkland ]
+  * debian/maas-region-controller-min.postinst: Fix typo in sed. Remove
+    double quotes. (LP: #1274448)
+
+  [ Andres Rodriguez ]
+  * debian/control: Add depends on python-crochet.
+  * Get rid of dfsg on the versioning as we no longer strip any code from
+    the orig tarball.
+    - debian/rules: Do not strip any files out of the tarball.
+  * debian/patches/*: Refreshed.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 31 Jan 2014 09:38:51 -0500
+
+maas (1.4+bzr1853+dfsg-0ubuntu1) trusty; urgency=low
+
+  * New upstream release
+
+ -- Dustin Kirkland <kirkland@ubuntu.com>  Tue, 28 Jan 2014 08:41:41 +0000
+
+maas (1.4+bzr1849+dfsg-0ubuntu1) trusty; urgency=low
+
+  * New upstream release.
+
+  [ Gavin Panella ]
+  * debian/control: Remove all dependencies on Avahi and DBUS.
+
+ -- Julian Edwards <julian.edwards@canonical.com>  Tue, 28 Jan 2014 17:12:22 +1000
+
+maas (1.4+bzr1820+dfsg-0ubuntu1) trusty; urgency=low
+
+  * New upstream Release.
+
+  [ Jeroen Vermeulen ]
+  * Move maas-probe-dhcp from maas-dhcp to python-maas-provisioningserver.
+
+  [ Andres Rodriguez ]
+  * debian/maas-region-controller.postinst: Make sure maas-txlongpoll and
+    maas-region-celery get restarted.
+  * debian/control:
+    - python-maas-provisioningserver Breaks/Replaces for maas-dhcp due to
+      moving files around packages.
+    - Suggests ipmitool, libvirt-bin, amtterm.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 15 Jan 2014 00:24:58 -0500
+
+maas (1.4+bzr1817+dfsg-0ubuntu1) trusty; urgency=low
+
+  * New upstream release
+
+  [ Andres Rodriguez ]
+  * debian/maas-dns.postinst: Drop write_dns_config as this is run by
+    celery jobs.
+  * debian/maas-region-controller.templates: Rename template to
+    maas-region-controller-min.templates
+  * debian/control: Depends on python-amqp; Conflicts on python-librabbitmq.
+
+  [ Julian Edwards ]
+  * New maas-probe-dhcp script to detect DHCP servers
+    - debian/extras/maas-probe-dhcp: New script
+    - debian/maas-dhcp.install: Install new maas-probe-dhcp script
+    - maas-dhcp.lintian-overrides: New maas-probe-dhcp script has no manpage
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 15 Jan 2014 00:23:44 -0500
+
+maas (1.4+bzr1789+dfsg-0ubuntu1) trusty; urgency=low
+
+  * New upstream release
+
+  [ Jeroen Vermeulen ]
+  * Keep legacy import_ephemerals config for now.
+
+  [ Andres Rodriguez ]
+  * debian/maas-region-controller.postinst: Allo default-maas-url debconf
+    option to be preseeded.
+  * Make use of authbind to allow maas-cluster-celery bind port as non-root.
+    - debian/control: Depends on authbind for maas-cluster-controller.
+    - debian/maas-cluster-controller.{postinst,postrm}: Handle creation
+      and removal of required authbind file.
+  * Split maas-region-controller into maas-region-controller-min.
+    - debian/maas-region-controller-min.{postinst,postrm,prerm}: Handle
+      basic configuration for rsyslogd, squid-deb-proxy, and maas-url.
+    - debian/control: Depends on maas-region-controller-min, postgresql
+      and rabbitmq-server for maas-region-controller.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 10 Oct 2013 17:07:51 -0400
+
+maas (1.4+bzr1693+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New Upstream Release (LP: #1218526)
+    - This new upstream release contains fixes and improvements of the
+      features approved by the FFe above.
+    - Fixes commissioning failure on Saucy with 'Failed Test' (LP: #1237364)
+    - Fixes access of static images over http  (LP: #1236544)
+  * d/maas-cluster-controller.postinst: a2enmod version module (LP: #1236544)
+  * d/control: Bump depends on python-django to 1.4. (LP: #1236572)
+  * d/maas-dhcp.postinst: Fail gracefully if apparmor_parser fails, allowing
+    to install maas-dhcp during an ISO install. (LP: #1236786)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 04 Oct 2013 12:33:05 -0400
+
+maas (1.4+bzr1656+dfsg-0ubuntu2) saucy; urgency=low
+
+  * debian/control: Recommends on maas-dns instead of Depends for region
+    because maas-dns needs the region installed first.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 03 Oct 2013 10:36:20 -0400
+
+maas (1.4+bzr1656+dfsg-0ubuntu1) saucy; urgency=low
+
+  [ Andres Rodriguez ]
+  * New upstream bugfix release.
+    - Respect filters for ephemerals_script.py.
+  * debian/control: Depends on ubuntu-cloudimage-keyring instead of
+    ubuntu-cloud-keyring; depends on python-distro-info.
+  * debian/control: Remove suggests on maas-dhcp and maas-dns as they are
+    now dependencies.
+
+  [ Scott Moser ]
+  * debian/control: Bump depends on isc-dhcp-server to 4.2.4
+  * debian/maas-dhcp.maas-dhcp-server.upstart: Change ownership of leases
+    file to root:root, and run the daemon as dhcpd:dhcpd.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 01 Oct 2013 15:26:34 -0400
+
+maas (1.4+bzr1655+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New Upstream release. (LP: #1218526)
+  * debian/control:
+    - Depends on python-djorm-ext-pgarray, python-curtin,
+      python-simplestreams, ubuntu-cloud-keyring.
+    - Depends on maas-dns, maas-dhcp to get them seeded and
+      into main (LP: #1227353)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 28 Aug 2013 11:17:44 -0400
+
+maas (1.4+bzr1551+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New upstream release
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 15 Aug 2013 16:20:41 -0400
+
+maas (1.4+bzr1548+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New upstream release
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 18 Jul 2013 10:15:10 -0400
+
+maas (1.4+bzr1539+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New upstream release
+  * Symlink apache2 config into /etc/apache2/conf-enabled/ instead of
+    /etc/apache2/conf.d as apache2.4 no longer supports the latter.
+    - debian/maas-cluster-controller.{postinst,postrm}
+    - debian/maas-region-controller.{postinst,postrm}
+  * debian/control: Bump Standards-Version to 3.9.4.
+  * debian/maas-cluster-controller.lintian-overrides: Remove unneeded
+    override and add a new one.
+  * debian/maas-region-controller.lintian-overrides: Add extra overrides.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 03 Jul 2013 17:11:02 -0400
+
+maas (1.4+bzr1538+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New upstream release
+  * debian/patches/04-setup-dont-user-list-snippets.patch: Drop. Merged
+    Upstream.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 13 Jun 2013 20:06:35 -0400
+
+maas (1.4+bzr1527+dfsg-0ubuntu1) saucy; urgency=low
+
+  * debian/patches/04-setup-dont-user-list-snippets.patch: Drop importing
+    maasserver modules to list snippets in favor to using glob. Otherwise
+    we would have to add various non necessary Build-Dependencies.
+
+  [ Jeroen Vermeulen ]
+  * Install templates into /etc/maas/templates/.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 03 Jun 2013 17:59:31 -0400
+
+maas (1.4+bzr1505+dfsg-0ubuntu1) saucy; urgency=low
+
+  * New upstream release
+
+  [ Steve Langasek ]
+  * Add missing dependency on iproute to maas-region-controller, for use of
+    /sbin/ip in postinst.
+
+  [ Julian Edwards ]
+  * debian/maas-dhcp.maas-dhcp-server.upstart:
+    - Detect 12.04 as the host OS and install with correct permissions. This
+      allows the same packaging to be used in the 12.04 backport.
+
+  [ Andres Rodriguez ]
+  * Update packaging to support FPI:
+    - debian/control: Depends on apache2 for maas-cluster-controller.
+    - debian/maas-cluster-controller.install: Install http config file.
+    - debian/maas-cluster-controller.{postinst,postrm}: Handle symlink creation
+      and deletion.
+  * debian/maas-region-controller.install: Install preseeds in
+    etc/maas/preseeds. (LP: #1073463)
+
+  [ Jeroen Vermeulen ]
+  * In the source tree, /etc/maas/pserv.yaml has moved from etc/ to etc/maas/.
+  * Install templates into /etc/maas/templates/.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 03 Jun 2013 16:53:14 -0400
+
+maas (1.3+bzr1455+dfsg-0ubuntu1) raring; urgency=low
+
+  * New upstream bugfix release.
+    - Fixes and returns the 'resource_url' with the 'canonical' url for
+      a file that is fetched using the API (LP: #1154142)
+
+  [ Andres Rodriguez ]
+  * debian/control:
+    - Change Conflicts/Replaces for Breaks/Replaces.
+    - Conflicts on tftpd-hpa and dnsmasq.
+    - Do not pre-depends, but Depends on ${misc:Depends} for 'maas'.
+
+  [ Steve Langasek ]
+  * postinst scripts are never called with 'reconfigure' as the script
+    argument.  Remove references to this (mythical) invocation.
+  * always call 'set -e' from maintainer scripts instead of passing 'sh -e'
+    as the interpreter, so that scripts will behave correctly when run via
+    'sh -x'.
+  * invoke-rc.d is never allowed to not exist - simplify scripts (and make
+    them better policy-compliant) by invoking unconditionally.  (The only
+    possible exception is in the postrm, where it's *theoretically* possible
+    for invoke-rc.d to be missing if the user has completely stripped
+    down their system; that's a fairly unreasonable corner case, but we
+    might as well be correct if it ever happens.)
+  * db_get+db_set is a no-op; don't call db_set to push back a value we just
+    got from db_get.
+  * Omit superfluous calls to 'exit 0' at the end of each script.
+  * Remove maas-cluster-controller prerm script, which called debconf for no
+    reason.
+  * Don't invoke debconf in the postrm script either, debhelper already does
+    this for us.
+  * Other miscellaneous maintainer script fixes
+  * debian/maas-common.postinst: call adduser and addgroup unconditionally;
+    the tools are already designed to DTRT, we don't need to check for the
+    user/group existence before calling them nor should we worry about
+    calling them only once on first install.
+  * debian/maas-common.postrm: delete the maas group, not just the user,
+    as the comment in the code implies we should do.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 19 Mar 2013 15:38:22 -0400
+
+maas (1.3+bzr1452+dfsg-0ubuntu1) raring; urgency=low
+
+  * New upstream release.
+    - MAAS file storage mechanism is shifting from a single shared
+      namespace to a per-user namespace. Operators of the majority
+      of MAAS systems will not notice any change. However, operators
+      of the most complex installations may find that a new
+      "shared-environment" user is created, and that some resources
+      are reassigned to it, such as API credentials and SSH public
+      keys. This provides a transitional environment that mimics the
+      behaviour of a shared namespace.
+
+  [ Raphaël Badin ]
+  * debian/control: maas-region-controller depends on bind9utils.
+    (LP: #1103195)
+  * debian/maas-dns.postinst: Call write_dns_config.
+    (LP: #1085865).
+  * debian/maas-cluster-controller.postinst: Fix the name of the config
+    file (/etc/maas/pserv.yaml and not /etc/maas/pserv.conf)
+    (LP: #1083542).
+  * debian/extras/99-maas-sudoers: Add 'SETENV:' to sudo rule
+    to allow preserving the environment when running
+    /usr/sbin/maas-import-pxe-files via sudo.
+  * debian/maas-dns.postinst: fix permissions and group ownership of
+    file /etc/bind/maas/named.conf.rndc.maas. (LP: #1066935)
+  * debian/control: Remove the dependency of maas-cluster-controller
+    on rabbitmq-server. (LP: #1072744)
+  * debian/extras/99-maas-sudoers: Add sudo rule for script
+    /usr/sbin/maas-import-pxe-files.
+  * debian/maas-cluster-controller.install: Removed commissioning-user-data
+    script.
+
+  [ Julian Edwards ]
+  * debian/maas-region-controller.install: Remove installation of maas-gc; it
+    is no longer required as upstream no longer stores files in the filesystem.
+    (LP: #1069734)
+  * debian/maas-cluster-controller.postinst: Ensure that /etc/maas/pserv.yaml
+    is updated when reconfiguring. (LP: #1081212)
+
+  [ Jeroen Vermeulen ]
+  * debian/maas-cluster-controller.install: Install import scripts.
+  * debian/maas-cluster-controller.postinst: Configure tgt (the iSCSI server)
+    so the import script can install files to it.
+  * debian/maas-cluster-controller.postrm: Clean up tgt config.
+  * debian/maas-region-controller.install: Move import scripts out to the
+    cluster controller, and drop the maas-import-isos compatibility script.
+  * debian/maas-region-controller.postinst: Remove tgt config.
+  * debian/maas-region-controller.postrm: Remove tgt config cleanup.
+  * Bump code revision to include latest user_data.template fixes.
+
+  [ Gavin Panella ]
+  * debian/extras/99-maas: squashfs image download is no longer needed.
+  * debian/maas-cluster-controller.install: maas-import-squashfs and its
+    configuration file are no longer part of upstream.
+  * debian/maas-cluster-controller.install: The maas-import-pxe-files cron
+    task is no longer used.
+  * debian/maas-cluster-controller.postinst: Remove leading comment
+    markers from the 'generator' line in pserv.yaml.
+
+  [ Andres Rodriguez ]
+  * debian/control:
+    - maas-cluster-controller Conflicts with tftpd-hpa (LP: #1076028)
+    - maas-dns: Conflicts with dnsmasq
+    - maas-cluster-controller Conflicts/Replaces maas-region-controller as
+      import scripts are no longer shipped in the region.
+    - debian/control: Depends on distro-info for maas-cluster-controller
+      instead of maas-region-controller (LP: #1103194)
+  * debian/maas-cluster-controller.config: If URL has been detected,
+    add /MAAS if it doesn't contain it. This helps upgrades from versions
+    where DEFAULT_MAAS_URL didn't use /MAAS.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 04 Mar 2013 11:49:44 -0500
+
+maas (0.1+bzr1269+dfsg-0ubuntu1) quantal-proposed; urgency=low
+
+  * New upstream bugfix release
+    - Fixes commissioning failing to set memory attribute. (LP: #1064638)
+    - Fixes node listing by adding pagination (LP: #1064672)
+    - Changes default bind rndc key which breaks initscripts (LP: #1066938)
+    - Fixes invalid DNS config once node is enlisted (LP: #1066958)
+    - Reference documentation link to correct URL (LP: #1067261)
+
+  [ Andres Rodriguez ]
+  * debian/rules: Change upstream branch.
+
+  [ Gavin Panella ]
+  * debian/maas-dns.postinst: Remove MAAS-related include lines from named's
+    config before adding a new one (LP: #1066929)
+
+  [ Raphael Badin ]
+  * debian/extras/maas-region-celeryd: Remove whitespace that affects DNS
+    rabbitmq queue. (LP: #1067929)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 16 Oct 2012 10:31:37 -0400
+
+maas (0.1+bzr1264+dfsg-0ubuntu2) quantal; urgency=low
+
+  * Fix MAAS not working after CD/preseed install (LP: #1065763)
+    - debian/extras/maas-region-celeryd: Add wrapper to run celery from
+      the upstart job.
+    - debian/extras/maas-region-controller.maas-region-celery.upstart: Create
+      rabbitmq user if it does not exists.
+  * debian/control: Remove unneeded deps on python-txtftp for some binary pkgs.
+  * debian/maas-region-controller.postinst: Minor fix referencing variable.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 11 Oct 2012 17:38:08 -0400
+
+maas (0.1+bzr1264+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New upstream release.
+
+  [ Raphaël Badin ]
+  * debian/maas-region-controller.postinst: Enable proxy_http module.
+  * debian/maas-cluster-controller.postinst: Create /var/lib/maas. (LP: #1065062)
+
+  [ Andres Rodriguez ]
+  * Install maas-provision with python-maas-provisioningserver (LP: #1065171):
+    - debian/python-maas-provisioningserver.install: Install
+    - debian/control: Add Conflicts/Replaces with maas-cluster-controller
+      to handle upgrades.
+  * debian/patches/04-fix-ipmi-enlistment.patch: Drop. Merged Upstream.
+  * debian/control: Depends on maas-region-controller for maas-dns.
+  * debian/maas-region-controller.postinst: Set the correct host for
+    BROKER_URL (LP: #1065080)
+  * Handle creation of user/group in maas-common.
+  * debian/maas-region-controller.config: Always source dbconfig scripts.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 10 Oct 2012 11:17:21 -0400
+
+maas (0.1+bzr1243+dfsg-0ubuntu3) quantal; urgency=low
+
+  * 04-fix-ipmi-enlistment.patch: retry maas-enlist without power parameters
+    on failure. This allows enlistment to continue working with Precise
+    ephemeral images before the Precise SRU for maas-enlist lands.
+    (LP: #1064922).
+
+ -- Robie Basak <robie.basak@canonical.com>  Wed, 10 Oct 2012 13:29:16 +0000
+
+maas (0.1+bzr1243+dfsg-0ubuntu2) quantal; urgency=low
+
+  * debian/patches/99-ipmi-user-too-long.patch: Fix username too long for
+    IPMI user created on enlistment (LP: #1064832)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 10 Oct 2012 01:00:29 -0400
+
+maas (0.1+bzr1243+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New upstream release. (LP: #1064596)
+  * debian/patches/99-temporary-fix-constraints.patch: Dropped.
+  * debian/control:
+    - ${python:Depends} for maas-common.
+    - Add missing Depends for python-maas-provisioningserver (LP: #1064542)
+  * debian/maas-cluster-controller.postinst: Create /var/log/maas if it
+    doesn't exist (LP: #1064539)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 08 Oct 2012 17:02:56 -0400
+
+maas (0.1+bzr1223+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New upstream release. (LP: #1062518)
+
+  [ Julian Edwards ]
+  * Split packaging of 'maas' into maas-{region,cluster}-controller
+    - debian/control: Update accordingly.
+    - debian/*.install: Move files accordingly
+    - debian/*.{postinst,postrm,preinst}: Move files accordingly.
+  * Ensure isc-dhcp-server is disabled when installing maas-dhcp.
+  * Ensure maas-dns creates the maas user before trying to chown files.
+  * Make maas-cluster-controller autoconfigure itself when upgrading from the
+    old maas package. (LP: #1059416)
+  * Add missing prerm file for maas-cluster-controller so that .pyc files
+    are cleaned up. (LP: #1059973)
+
+  [ Raphaël Badin ]
+  * Install maas_local_celeryconfig.py in /etc/maas and symlink to
+    /usr/share/maas.
+  * debian/maas.postinst: Create rabbitmq celery user/vhost.
+  * debian/maas.postinst: Update BROKER_URL in maas_local_celeryconfig.py.
+  * Use maas_local_celeryconfig_cluster.py as the local celery
+    configuration file for the cluster worker.
+  * debian/maas-region-controller.maas-region-celery.upstart: Add region
+    worker upstart script.
+  * Rename cluster worker upstart script into
+    maas-cluster-controller.maas-clluster-celery.upstart.
+  * maas-cluster-controller.maas-celery.upstart: use "celeryconfig_cluster"
+    as the Celery config module.
+  * debian/maas-common.install: Install celeryconfig_common.py.
+  * debian/maas-cluster-controller.install: Install celeryconfig_cluster.py.
+  * debian/maas-region-controller.install: Install celeryconfig.py.
+  * Split celery config into cluster and region configs.
+  * Add region celeryd upstart config.
+  * Define CELERY_CONFIG_MODULE in
+    maas-cluster-controller.maas-cluster-celery.upstart
+
+  [ Jeroen Vermeulen ]
+  * Make maas_local_celery_config.py non-world readable.
+  * Make maas_local_celeryconfig_cluster.py non-world readable.
+  * Set root:maas ownership of local cluster config only *after*
+    the maas user/group have been created
+
+  [ Andres Rodriguez ]
+  * debian/maas.postinst:
+    - Always restart apache2.
+    - Handle upgrades for new upstream release.
+    - Handle upgrades for celery rabbitmq worker.
+  * Add binary package to install client tool.
+    - debian/extras/maas-cli: Add binary.
+    - debian/maas-cli.install: Add. Install maascli and apiclient.
+    - debian/control: Add binary package.
+  * debian/control:
+    - Depends on freeipmi-tools instead of ipmitool.
+    - Conflicts/Replaces on maas for python-maas-client.
+    - Depends on python-netifaces, python-lxml.
+  * Add python-maas-client binary package:
+    - debian/python-maas-client.install: Add. Install 'apiclient' python module.
+    - debian/control: Add package. python-django-maas and maas-cli now
+      Depend on it.
+  * debian/rules: Install maas-dhcp-server upstart job.
+  * debian/maas.postrm: Remove celery worker rabbitmq user and host.
+  * debian/extras/99-maas-sudoers: Add for maas-dhcp-server upstart job
+    instead of isc-dhcp-server (LP: #1055951)
+  * debian/maas-region-controller.postinst: Cleanup upgrade rules.
+  * debian/maas-cluster-controller.postinst: Fix 'local' usage.
+  * debian/maas-common.install: Install celeryconfig in appropriate location.
+  * debian/maas-cluster-controller.postrm: Add and delete maas user.
+  * debian/maas-dhcp.postinst: Stop isc-dhcp-server not isc_dhcp_server.
+  * debian/maas-region-controller.postinst:
+    - Always update passwords on upgrade. No longer check versioning. (LP: #1060094).
+    - Add MAAS server to allowed mirror in squid-deb-proxy
+    - Source dbconfig conf file for maas-region-controller on upgrade because
+      it writes a new config file and no longer preservers the previous password.
+  * debian/maas-cluster-controller.maas-cluster-celery.upstart: Remove set{uid/gid}.
+  * debian/maas-region-controller.install: Install maas-import-squashfs
+  * Handle removal of non existant files (LP: #1059556):
+    - debian/maintscript: Added to handle removal of conffiles.
+    - debian/control: Add Pre-depends and bump debhelper version.
+  * update po files for the templates.
+  * debian/extras/99-maas: Install in usr/share/maas/conf and symlink to the
+    appropriate etc dir.
+  * debian/maas-cluster-controller.config: Source debconf at the beginning of the
+    script. (LP: #1063857)
+  * debian/patches/99-temporary-fix-constraints.patch: Fix constraints maaping
+    when deploying with juju. Temporary until it gets merged upstream
+
+  [ Robie Basak ]
+  * Add maas-cluster-controller dependency on uuid-runtime, needed for uuidgen
+    by postinst.
+
+  [ Scott Moser ]
+  * debian/maas-dhcp.{install,apparmor,postrm} install apparmor profile into
+    /etc/apparmor.d/dhcpd.d (LP: #1049177), and update apparmor profile for
+    /usr/sbin/dhcpd on install/remove
+  * get the ip address for the dhcp server in config
+
+  [ Diogo Matsubara ]
+  * Add initial tests to be run by autotests:
+    - debian/control: XS-Testsuite: autopkgtest
+    - debian/tests/control: Add
+    - debian/tests/maas-package-test: Add
+    - tests/maas-integration.py: Add
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 08 Oct 2012 13:10:23 -0400
+
+maas (0.1+bzr971+dfsg-0ubuntu2) quantal; urgency=low
+
+  * debian/extras/99-maas-sudoers: Add missing rule for
+    maas-provision. (LP: #1046397)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 05 Sep 2012 12:36:58 -0400
+
+maas (0.1+bzr971+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New upstream release (LP: #1044367)
+
+  [ Julian Edwards ]
+  * Fix 02-pserv-config.patch to handle new default tftp directory
+
+  [ Andres Rodriguez ]
+  * debian/maas.postinst:
+    - include '/MAAS' for DEFAULT_MAAS_URL.(LP: #1033956)
+    - Update bzr version to safely upgrade.
+  * Add maas-dns package that configures DNS in MAAS (LP: #1030860)
+  * Remove cobbler related bits
+    - debian/maas.postinst: Drop cobbler configuration
+    - debian/maas.install: Drop installation of snippets/preseeds.
+    - debian/control:
+      + Drop Depends on maas-provision. (LP: #975473)
+      + Depends on bind9utils.
+      + Depends on python-lockfile (LP: #1037400)
+      Add necessary Conflicts/Replaces. Add conflicts to tftpd-hpa and dnsmasq.
+      Depends on isc-dhcp-server for maas-dhcp, and syslinux-common.
+    - debian/extras/maas-provision: Add missing "$@" (LP: #1040462)
+    - debian/patches:
+      + 02-pserv-config.patch: Updated. Do not patch cobbler related bits.
+        patch tftp config to default.
+  * maas-dhcp: Re-add to handle initial configuration of MAAS DHCP server.
+  * Allow restart of 'isc-dhcp-server' by adding a sudoers file:
+    - debian/extras/99-maas-sudoers: Added.
+    - debian/maas.install: Install 99-maas-sudoers
+  * Minor improvements on dbconfig-common handling:
+    - debian/maas.config: Only call dbc_go when scripts present.
+    - debian/maas.postrm: Only call dbc_go when config file exists.
+  * debian/maas.maas-celery.upstart: Enable Beat and set scheduler db file.
+  * debian/maas-dns.postinst: Set correct permissions. (LP: #1042868)
+  * debian/maas-dhcp.config:
+    - Ask whether we want to enable DHCP (LP: #1044229)
+    - Add debconf question for network interfaces
+  * debian/maas.prerm: Stop services before removing database (LP: #1044559)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 02 Aug 2012 09:01:43 -0400
+
+maas (0.1+bzr777+dfsg-0ubuntu1) quantal-proposed; urgency=low
+
+  * New upstream release
+  * Only run 'maas' command as root. (LP: #974046)
+    - debian/extras/maas: Check id.
+    - debian/maas.install: Install in 'sbin'.
+  * debian/maas.postinst:
+    - restart apache2 after everything gets processed.
+    - Update version to handle upgrades.
+  * debian/extras/maas-provision: Add wrapper to access 'maasprovisiong'
+    command line.
+  * debian/patches/99_temporary_fix_path.patch: Dropped. No longer needed.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 17 Jul 2012 08:28:36 -0400
+
+maas (0.1+bzr745+dfsg-0ubuntu2) quantal; urgency=low
+
+  * debian/control: Build-Dep on python-django instead of
+    python-django-configglue
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 17 Jul 2012 08:24:25 -0400
+
+maas (0.1+bzr745+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New Upstream Release
+  * debian/patches:
+    - 99_power_fixes.patch: Dropped. Merged Upstream.
+    - 99_enums_js.patch: Dropped. No longer needed.
+  * Automatically build enums.js:
+    - debian/control: Build-Depends on python-django-configglue
+    - debian/rules: Build and install enums.js.
+  * debian/maas.postinst: Update version to handle upgrades
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 12 Jul 2012 16:34:11 -0400
+
+maas (0.1+bzr740+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New upstream release
+  * debian/control: Depends on python-txtftp.
+  * debian/rules: Do not ship python-tx-tftp.
+  * debian/maas.postinst: Update version to upgrade successfully.
+  * debian/patches:
+    - 02-pserv-config.patch: Refreshed.
+    - 99_enums_js.patch: Updated.
+    - 99_power_fixes.patch: Added temporarily to enable IPMI
+    - 99_temporary_fix_path.patch: Added temporarily to not fail when
+      importing celeryconfig
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 03 Jul 2012 17:54:49 -0400
+
+maas (0.1+bzr709+dfsg-0ubuntu1) quantal; urgency=low
+
+  * New Upstream release
+  * debian/control:
+    - Depends on python-celery, python-tempita, libjs-yui3-{full,min},
+      libjs-raphael
+  * debian/maas.install:
+    - Install apiclient, celeryconfig.py, maas-import-pxe-files, preseeds_v2.
+    - Update to install various files from chroot, rather tha manually copy
+      them from the source.
+  * debian/maas.links: symlink celeryconfig.py
+  * debian/maas.maas-celery.upstart: Add job.
+  * debian/rules:
+    - Install celery upstart job.
+    - Do not install jslibs as packages are now used.
+    - Drop copying of maas_local_settings_sample.py as source now ships
+      a maas_local_settings.py
+  * debian/patches:
+    - 04-maas-http-fix.patch: Drop. Merged upstream.
+    - 01-fix-database-settings.patch: Refreshed.
+    - 99_enums_js.patch: Added until creation of enum.js / build process
+      is fixed.
+  * debian/maas.postinst: Update bzr version to correctly handle upgrades.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 03 Jul 2012 17:42:37 -0400
+
+maas (0.1+bzr482+dfsg-0ubuntu1) precise; urgency=low
+
+  * New upstream release (Fixes LP: #981103)
+  * debian/maas.postinst:
+    - Make sure rabbitmq and postgresql are started on upgrade (LP: #981282)
+    - Handle upgrades from any lower than 0.1+bzr462+dfsg-0ubuntu1 to
+      correctly re-generate passwords, and not have db sync/migrate issues
+      as config has changed upstream.
+    - Correctly set Passwords for PSERV, otherwise it won't set new passwords.
+  * Allow MAAS_DEFAULT_URL reconfiguration. (LP: #980970)
+    - debian/maas.config: Add reconfigure validation to correctly allow it,
+      and ask a question.
+    - debian/maas.postinst: Reconfigure DEFAULT_MAAS_URL as well as cobbler
+      server and next_server for PXE/Provisioning.
+    - debian/maas.templates: Add debconf question and update info.
+  * Do not lose MAAS_DEFAULT_URL settings on upgrade (LP: #984309)
+  * debian/maas.postinst:
+    - Set cobbler password in between quotes (LP: #984427)
+    - Do not change permissions to maas.log (LP: #980915)
+  * no longer use maas-cloudimg2ephemeral, but rather use premade images
+    at http://maas.ubuntu.com
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 17 Apr 2012 23:44:46 -0700
+
+maas (0.1+bzr462+dfsg-0ubuntu1) precise; urgency=low
+
+  * New upstream release (LP: #980240)
+
+  [ Scott Moser ]
+  * add dependency on distro-info (LP: #949442)
+  * debian/control: add dependency on tgt for ephemeral iscsi environment
+
+  [ Andres Rodriguez ]
+  * Make package lintian clean:
+    - maas{-dhcp}.lintian-overrides: Add to make lintian clean.
+    - debian/control: Add missing dependencies; correct section and desc.
+    - debian/maas.postinst: Do not use absolute path for rabbitmqctl.
+    - debian/patches: Add headers to all patches.
+  * debian/maas-dhcp.postrm: Added to disable dnsmasq in cobbler on removal.
+  * debian/maas.config: Do not set a password with pwgen as it is not an
+    essential package; allow dbconfig-common to create a password instead by
+    creating an empty question. (LP: #977475)
+  * Run MAAS, pserv, txlongpoll as non-root user. (LP: #975436)
+    - debian/maas.postinst: Create user/group; set correct permissions for
+      directories.
+    - debian/maas.postrm: Remove user/group; restart apache2.
+    - debian/maas.maas-{pserv,txlongpoll}.upstart: Update to run as non-root
+      'maas' user.
+  * debian/patches/01-fix-database-settings.patch: Remove adding of PSERV_URL.
+  * debian/maas.postinst:
+    - Handle config file upgrade from versions lower than 0.1+bzr445+dfsg-0ubuntu1,
+      by creating new passwords and updating accordingly
+    - use local variables in functions.
+    - Handle maas tgt configuration for upgrades from 0.1+bzr459+dfsg-0ubuntu1.
+  * debian/extras/99-maas: Add squid-deb-proxy file to enable PPAs. (LP: #979383)
+  * debian/maas.install: Install missing commissioning-user-data script.
+
+  [ Dave Walker (Daviey) ]
+  * debian/patches/02-pserv-config.patch: Refreshed to apply to updated config.
+
+  [ Gavin Panella ]
+  * debian/maas.postinst: Update pserv.yaml and maas_local_settings.py to use
+    password.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 12 Apr 2012 16:37:53 -0400
+
+maas (0.1+bzr415+dfsg-0ubuntu2) precise; urgency=low
+
+  * debian/maas-dhcp.{config,postinst}:
+    - Fix not setting new values on fresh install. (LP: #975321)
+    - Fix unsetting domain, otherwise, even if disabled, it will always be set.
+  * debian/control: Depends on maas for maas-dhcp.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 06 Apr 2012 15:30:44 -0400
+
+maas (0.1+bzr415+dfsg-0ubuntu1) precise; urgency=low
+
+  * debian/control: Update package descriptions; Suggests maas-dhcp for maas
+    and add a maas-dhcp binary.
+  * Add maas-dhcp package to configure a DHCP server.
+    - debian/maas-dhcp.config: Add to ask debconf questions about range,
+      gateway, and domain.
+    - debian/maas-dhcp.postinst: Handle update of config values.
+    - debian/maas-dhcp.templates: Debconf questions.
+  * debian/po: Update for templates.
+  * Add message telling MAAS URL after installation.
+    - debian/maas.templates: Add message.
+    - debian/maas.postinst: Display message.
+  * debian/maas.config: Hide dbconfig-install question.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 04 Apr 2012 14:47:13 -0400
+
+maas (0.1+bzr400+dfsg-0ubuntu1) precise; urgency=low
+
+  * debian/patches/{02-pserv-config,03-txlongpoll-config}.patch: Refreshed.
+  * debian/maas.install: Install maas-gc cronjob.
+  * Add apport hook.
+    - debian/maas.apport: Add hook.
+    - debian/rules: Install with apport.
+  * debian/maas.logrotate: Add logrotate for txlongpoll and pserv logs.
+  * Create 'var/lib/media/maas/storage' on postinst to have right permissions.
+    - debian/maas.dirs: Drop dir creation.
+    - debian/maas.postinst: Create dir with correct permissions.
+    - debian/maas.postrm: Remove dir on purge.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 03 Apr 2012 14:50:34 -0400
+
+maas (0.1+bzr378+dfsg-0ubuntu1) precise; urgency=low
+
+  * maas.dirs: Create var/lib/maas/media/storage for juju storage.
+  * maas.postinst:
+    - Give correct permissions to above dir.
+    - stop apache2 before db upgrade, and restart after.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 29 Mar 2012 19:28:13 -0400
+
+maas (0.1+bzr363+dfsg-0ubuntu1) precise; urgency=low
+
+  [ Dave Walker (Daviey) ]
+  * debian/control: Add openssh-server as a Recommends, and wrap-and-sort.
+
+  [ Andres Rodriguez ]
+  * debian/maas.postinst:
+    - Do not start apache with apache2ctl. Use invoke-rc.d instead to not
+      fail in the installer.
+    - For start of postgresql before creating the DB, otherwise it will
+      fail in the installer.
+    - Add check of invoke-rc.d for syslog.
+    - Add check of invoke-rc.d for rabbitmq-server; Add check for rabbitmqctl
+    - Add db_stop, in case invoke-rc.d fails.
+  * debian/control: Tight python-django-maas dependency.
+  * debian/postrm: Add check for rabbitmqctl.
+  * debian/maas.maas-txlongpoll.upstart: Create rabbitmq longpoll user/vhost
+    and set permissions if they don't exist. Start on rabbitmq-server-running.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 27 Mar 2012 14:49:56 -0400
+
+maas (0.1+bzr338+dfsg-0ubuntu1) precise; urgency=low
+
+  [ Dave Walker (Daviey) ]
+  * d/patches/03-txlongpoll-config.patch: Resolve typo error from prior patch.
+    - LP: #961031
+
+  [ Andres Rodriguez ]
+  * debian/maas.config: Don't allow reconfigure.
+  * debian/maas.postinst: Don't allow reconfigure. Run sync/migrate db on
+    all upgrades.
+
+  [ Scott Moser ]
+  * add rsylog config for logging node boots (LP: 960149)
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 22 Mar 2012 10:56:58 -0400
+
+maas (0.1+bzr315+dfsg-0ubuntu1) precise; urgency=low
+
+  * New upstream snapshot.
+
+  [ Dave Walker ]
+  * debian/maas.postinst: Do not import ISO's at install time.
+  * debian/control:
+    - Drop run-one, it's not a requirement and currently in universe.
+    - Drop python-setproctitle, no longer required.
+
+  [ Andres Rodriguez ]
+  * debian/control: Depends on python-avahi, python-dbus, and avahi-daemon.
+  * debian/maas.postinst:
+    - Only syncdb if dbconfig db creation was selected.
+    - Set rabbitmq/longpoll settings
+  * debian/patches/03-txlongpoll-config.patch: Updated broker settings for
+    rabbitmq.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 20 Mar 2012 20:10:58 -0400
+
+maas (0.1+bzr300+dfsg-0ubuntu1) precise; urgency=low
+
+  * debian/patches:
+    - 01-fix-database-settings.patch: Update PSERV_URL port.
+    - 02-pserv-config.patch: Update, and set 'maas' as username.
+    - 03-longpoll-config.patch: Update.
+  * debian/maas.install: Install preseeds and snippets.
+  * debian/maas.postinst:
+    - Set password for 'maas' cobbler username (in pserv and cobbler).
+    - Set DEFAULT_MAAS_URL to IP of interface with default gateway.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 16 Mar 2012 14:59:16 -0400
+
+maas (0.1+bzr295+dfsg-0ubuntu2) precise; urgency=low
+
+  * debian/patches:
+    - 01-fix-database-settings.patch: Update to set PSERV_URL.
+    - 02-pserv-config.patch: Set port to 8001.
+  * debian/maas.postinst: Run maas-import-isos on install.
+  * debian/control: Depends on rabbitmq-server.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 15 Mar 2012 18:14:08 -0400
+
+maas (0.1+bzr295+dfsg-0ubuntu1) precise; urgency=low
+
+  * debian/maas.upstart: Specify pidfile and conffile.
+  * debian/maas.postinst:
+    - Only run syncdb if dbconfig postinst file exists.
+    - Fix file permissions.
+  * debian/maas.{postrm,prerm}: Add dbconfig-common support.
+  * Add txlongpoll support for packaging:
+    - debian/control: Depends on python-txlongpoll.
+    - debian/maas.maas-longpoll.upstart: Added to start txlongpoll.
+    - debian/maas.install: Install txlongpoll.yaml
+  * debian/extras/maas: Improvements.
+  * debian/maas.maas.upstart: Moved from debian/maas.upstart.
+  * debian/maas.postinst: Touch logfile to set correct permissions (LP: #955400)
+  * debian/maas.logrotate: Add.
+  * debian/patches/03-txlongpoll-config.patch: Add default settings.
+  * debian/maas.config: Only run dbconfig-common on configure/reconfigure.
+  * Install maas_local_settings.py in /etc/maas and symlink to usr/share/maas
+  * Update references from MaaS to MAAS.
+  * Remove podebconf as templates no longer exist.
+    - debian/po: Remove.
+    - debian/control: Drop Build-Depends on po-debconf
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 15 Mar 2012 15:28:14 -0400
+
+maas (0.1+bzr266+dfsg-0ubuntu1) precise; urgency=low
+
+  * Remove support for squid3 and use squid-deb-proxy instead.
+  * debian/extras/maas: Add to handle syncdb and creation of admin user.
+  * Add debconf questions to ask for user/pass:
+    - debian/maas.{template,config}: Add
+    - debian/maas.postinst: Ask debconf questions.
+    - debian/po: Add translation templates.i
+  * debian/maas.postinst: Enable wsgi module; drop squid3 steps.
+  * debian/maas.postrm: removed.
+  * debian/patches/01-fix-database-settings.patch: Custom database settings
+    and static files path.
+  * debian/{rules,maas.install}: Install maas static files in
+    'usr/share/maas/web/static'.
+  * Integrate cobbler:
+    - debian/maas.install: Install pserv twisted plugin, and config.
+    - debian/maas.upstart: Created to start plugin daemon.
+    - debian/patches/02-pserv-config.patch: Custom pserv config.
+  * Integrate dbconfig-common:
+    - debian/maas.config: Added and default user/pass and database.
+    - debian/maas.{postinst,postrm}: Added handling for dbconfig-common
+  * debian/control: Depends on python-convoy.
+  * debian/rules: Update path to removal of dsfg files.
+  * debian/patches/01-fix-database-settings.patch: Updated.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 13 Mar 2012 14:31:50 -0400
+
+maas (0.1+bzr232+dfsg-0ubuntu1) precise; urgency=low
+
+  * New upstream snapshot.
+
+  [ Dave Walker ]
+  * debian/control:
+    - Changed depends from psycopg2 to python-psycopg2 and dropped versioning.
+      - LP: #937982
+
+  [ Andres Rodriguez ]
+  * debian/maas.install: Install maas-import-isos and related files.
+  * Integrate squid3 as proxy solution:
+    - debian/extras/squid.conf: Added
+    - debian/control: Depend on squid3.
+    - debian/maas.{postinst,postrm}: Handle installation/removal of custom
+      squid config file.
+  * Split into different binary packages (maas,python-django-maas).
+    - debian/maas.postinst: Handle the apache2 configuration.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 07 Mar 2012 12:46:17 -0500
+
+maas (0.1+bzr171+dfsg-0ubuntu1) precise; urgency=low
+
+  * New upstream snapshot, post 0.1 release.
+  * debian/control:
+    - Drop depends on rabbitmq-server, no longer required.
+  * debian/watch: Introduced watch file.
+
+ -- Dave Walker (Daviey) <DaveWalker@ubuntu.com>  Thu, 23 Feb 2012 13:08:12 +0000
+
+maas (0.1~bzr146+dfsg-0ubuntu1) precise; urgency=low
+
+  * Initial release
+
+ -- Julian Edwards <julian.edwards@canonical.com>  Thu, 16 Jan 2012 15:29:07 +0000
