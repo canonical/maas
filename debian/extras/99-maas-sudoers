@@ -1,0 +1,16 @@
+maas ALL= NOPASSWD: /bin/systemctl status maas-dhcpd
+maas ALL= NOPASSWD: /bin/systemctl start maas-dhcpd
+maas ALL= NOPASSWD: /bin/systemctl restart maas-dhcpd
+maas ALL= NOPASSWD: /bin/systemctl stop maas-dhcpd
+maas ALL= NOPASSWD: /bin/systemctl status maas-dhcpd6
+maas ALL= NOPASSWD: /bin/systemctl start maas-dhcpd6
+maas ALL= NOPASSWD: /bin/systemctl restart maas-dhcpd6
+maas ALL= NOPASSWD: /bin/systemctl stop maas-dhcpd6
+maas ALL= NOPASSWD: /bin/systemctl status tgt
+maas ALL= NOPASSWD: /bin/systemctl start tgt
+maas ALL= NOPASSWD: /bin/systemctl disable maas-rackd
+maas ALL= NOPASSWD: /bin/systemctl stop maas-rackd
+maas ALL= NOPASSWD: /usr/sbin/maas-rack scan-network *
+maas ALL= NOPASSWD: /usr/lib/maas/maas-network-monitor
+maas ALL= NOPASSWD: /usr/lib/maas/maas-beacon-monitor
+maas ALL= NOPASSWD: SETENV: /usr/sbin/tgt-admin, /usr/bin/uec2roottar

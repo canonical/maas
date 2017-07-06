@@ -1,0 +1,77 @@
+#!/bin/sh -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+db_version 2.0
+
+# This conf script is capable of backing up
+db_capb backup
+
+logfile=/var/lib/preseed/log
+set_question () {
+	echo "$1 $2 $3 $4" >>"$logfile"
+	if ! db_fget "$2" seen; then
+		db_register debian-installer/dummy "$2"
+		db_subst "$2" ID "$2"
+		db_fget "$2" seen
+	fi
+	if [ "$RET" = false ]; then
+		db_set "$2" "$4"
+		db_fset "$2" seen true
+	fi
+}
+
+STATE=1
+while [ "$STATE" != 0 -a "$STATE" != 4 ]; do
+    case "$STATE" in
+    1)
+        # This is a confirmation that we want to install MAAS. If we don't
+        # then we exit the MAAS installation process
+        db_input high maas-rack-udeb/rack-confirmation || true
+    ;;
+    2)
+        #Ask for MAAS url
+        db_get maas-rack-udeb/rack-confirmation
+        if [ "$RET" != "true" ]; then
+            break
+        fi
+        db_input critical maas-rack-udeb/maas-url || true
+    ;;
+
+    3)
+        # Ask for Shared Secret
+        db_input critical maas-rack-udeb/shared-secret || true
+    ;;
+
+    esac
+
+    if db_go; then
+        STATE=$(($STATE + 1))
+    else
+        STATE=$(($STATE - 1))
+    fi
+done
+db_capb
+
+db_get maas-rack-udeb/rack-confirmation
+if [ "$RET" != "true" ]; then
+    # MAAS rack controller won't be installed
+    exit 0
+fi
+
+db_get maas-rack-udeb/maas-url
+url="$RET"
+if [ -n "$url" ]; then
+    set_question maas-rack-controller maas-rack-controller/maas-url string "$url"
+fi
+
+db_get maas-rack-udeb/shared-secret
+secret="$RET"
+if [ -n "$secret" ]; then
+    set_question maas-rack-controller maas-rack-controller/shared-secret password "$secret"
+fi
+
+# Tell the package manager that we will be installing MAAS Rack Controller
+db_set pkgsel/include maas-rack-controller
+set_question tasksel tasksel/first multiselect "standard, server"
+exit 0

@@ -1,0 +1,19 @@
+[Unit]
+Description=MAAS Proxy
+Requires=network-online.target
+After=network-online.target
+ConditionPathExists=/var/lib/maas/maas-proxy.conf
+
+[Service]
+Type=forking
+PIDFile=/run/squid.pid
+Restart=always
+ExecStartPre=/bin/mkdir -p /run/maas/proxy
+ExecStartPre=/bin/sh -ec '\
+    . /usr/share/maas/maas-proxy-common.sh; \
+    pre_start'
+ExecStart=/usr/sbin/squid -Y -f /var/lib/maas/maas-proxy.conf
+ExecReload=/usr/sbin/squid -k reconfigure
+
+[Install]
+WantedBy=multi-user.target

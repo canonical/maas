@@ -1,0 +1,82 @@
+#!/bin/sh -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+db_version 2.0
+
+# This conf script is capable of backing up
+db_capb backup
+
+logfile=/var/lib/preseed/log
+set_question () {
+	echo "$1 $2 $3 $4" >>"$logfile"
+	if ! db_fget "$2" seen; then
+		db_register debian-installer/dummy "$2"
+		db_subst "$2" ID "$2"
+		db_fget "$2" seen
+	fi
+	if [ "$RET" = false ]; then
+		db_set "$2" "$4"
+		db_fset "$2" seen true
+	fi
+}
+
+
+STATE=1
+while [ "$STATE" != 0 -a "$STATE" != 4 ]; do
+    case "$STATE" in
+    1)
+        # This is a confirmation that we want to install MAAS. If we don't
+        # then we exit the MAAS installation process
+        db_input high maas-region-udeb/maas-confirmation || true
+    ;;
+
+    2)
+        # Ask for username
+        db_get maas-region-udeb/maas-confirmation
+        if [ "$RET" != "true" ]; then
+            break
+        fi
+        db_input critical maas-region-udeb/username || true
+    ;;
+
+    3)
+        # Ask for password
+        db_get maas-region-udeb/username
+        if [ -n "$RET" ]; then
+            db_input critical maas-region-udeb/password || true
+        fi
+    ;;
+
+    esac
+
+    if db_go; then
+        STATE=$(($STATE + 1))
+    else
+        STATE=$(($STATE - 1))
+    fi
+done
+db_capb
+
+db_get maas-region-udeb/maas-confirmation
+if [ "$RET" != "true" ]; then
+   # MAAS won't be installed
+   exit 0
+fi
+# Only preseed username/password combination if both have been
+# input in the installer. If no $password has been input, do not
+# preseed
+db_get maas-region-udeb/username
+username="$RET"
+if [ -n "$username" ]; then
+    db_get maas-region-udeb/password
+    password="$RET"
+    if [ -n "$password" ]; then
+        set_question maas-region-controller maas/username string "$username"
+        set_question maas-region-controller maas/password password "$password"
+    fi
+fi
+# Tell the package manager that we will be installing MAAS
+db_set pkgsel/include maas
+set_question tasksel tasksel/first multiselect "standard, server"
+exit 0

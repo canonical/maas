@@ -1,0 +1,2 @@
+rm_conffile /etc/init/maas-dhcp-server.conf 1.7.0~beta6+bzr3231-0ubuntu1
+rm_conffile /etc/init/maas-dhcpv6-server.conf 1.7.0~beta6+bzr3231-0ubuntu1

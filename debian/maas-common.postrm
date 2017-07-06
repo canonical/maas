@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    purge)
+        # Deleting user/group
+        if getent passwd maas >/dev/null; then
+            deluser maas || true
+            delgroup maas || true
+        fi
+        rm -rf /var/log/maas/maas.log
+        rm -rf /var/lib/maas/gnupg
+        rm -rf /var/lib/maas/secret
+        rm -rf /var/lib/maas/maas_id
+
+esac
+
+rm -f /etc/rsyslog.d/99-maas.conf
+
+#DEBHELPER#

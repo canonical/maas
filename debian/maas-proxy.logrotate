@@ -1,0 +1,24 @@
+#
+# Logrotate fragment for squid-deb-proxy.
+#
+/var/log/maas/proxy/*.log {
+ daily
+ compress
+ delaycompress
+ rotate 2
+ missingok
+ nocreate
+ sharedscripts
+ postrotate
+  if [ -x /usr/sbin/squid ]; then
+      SQUID=/usr/sbin/squid
+  elif  [ -x /usr/sbin/squid3 ]; then
+      SQUID=/usr/sbin/squid3
+  else
+      echo "No squid binary found"
+      exit 1
+  fi
+
+  test ! -e /var/run/maas-proxy.pid || $SQUID -f /var/lib/maas/maas-proxy.conf -k rotate
+ endscript
+}

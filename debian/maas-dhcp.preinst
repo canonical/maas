@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ "$1" = "upgrade" ] && dpkg --compare-versions "$2" lt 1.7.0~beta6+bzr3232-0ubuntu1; then
+    if [ -f /etc/init/maas-dhcp-server.conf ]; then
+        invoke-rc.d maas-dhcp-server stop
+    fi
+    if [ -f /etc/init/maas-dhcpv6-server.conf ]; then
+        invoke-rc.d maas-dhcpv6-server stop
+    fi
+fi
+
+#DEBHELPER#

@@ -1,0 +1,56 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ "$1" = "install" ]; then
+    if [ -f /etc/init/maas-pserv.conf ]; then
+        invoke-rc.d maas-pserv stop
+    fi
+
+    if [ -f /etc/init/maas-cluster-celery.conf ]; then
+        invoke-rc.d maas-cluster-celery stop
+    fi
+
+    if [ -f /var/log/maas/celery.log ]; then
+        rm -rf /var/log/maas/celery.log
+    fi
+
+    if [ -f /etc/init/maas-cluster.conf ]; then
+        invoke-rc.d maas-cluster stop
+    fi
+
+    if [ -f /var/log/maas/pserv.log ]; then
+        rm -rf /var/log/maas/pserv.log
+    fi
+
+    if [ -f /etc/apache2/conf-enabled/maas-cluster-http.conf ]; then
+        rm -rf /etc/apache2/conf-enabled/maas-cluster-http.conf
+    fi
+
+    if [ -f /etc/init/maas-clusterd.conf ] || [ -f /lib/systemd/system/maas-clusterd.service ]; then
+        invoke-rc.d maas-clusterd stop
+    fi
+
+    if [ -f /etc/maas/clusterd.conf ]; then
+        mv /etc/maas/clusterd.conf /etc/maas/clusterd.conf.1.10
+    fi
+
+    if [ -f /var/log/maas/clusterd.log ]; then
+        mv /var/log/maas/clusterd.log /var/log/maas/rackd.log
+    fi
+
+fi
+
+if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
+    if [ -d /etc/maas/templates/power ]; then
+        rm -rf /etc/maas/templates/power
+    fi
+
+    if [ -d /etc/maas/templates/dhcp ]; then
+        mv /etc/maas/templates/dhcp /etc/maas/templates/dhcp.maas-old
+    fi
+fi
+
+#DEBHELPER#

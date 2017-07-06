@@ -1,0 +1,38 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
+
+    if [ -f /etc/init/maas-txlongpoll.conf ]; then
+        invoke-rc.d maas-txlongpoll stop
+    fi
+
+    if [ -f /var/log/maas/txlongpoll.log ]; then
+        rm -rf /var/log/maas/txlongpoll.log
+    fi
+
+    if [ -f /etc/init/maas-region-celery.conf ]; then
+        invoke-rc.d maas-region-celery stop
+    fi
+
+    if [ -f /var/log/maas/celery-region.log ]; then
+        rm -rf /var/log/maas/celery-region.log
+    fi
+
+    if [ -f /var/log/maas/maas-django.log ]; then
+        rm -rf /var/log/maas/maas-django.log
+    fi
+
+    if [ -d /var/lib/maas/media ]; then
+        rm -rf /var/lib/maas/media
+    fi
+
+    if [ -d /etc/maas/templates ]; then
+        mv /etc/maas/templates /etc/maas/templates.maas-old
+    fi
+
+fi
+#DEBHELPER#

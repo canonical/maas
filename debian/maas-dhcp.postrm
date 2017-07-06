@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+   dhcpd_prof="/etc/apparmor.d/usr.sbin.dhcpd"
+   if [ -f "${dhcpd_prof}" ] &&
+      command -v apparmor_parser >/dev/null 2>&1; then
+      apparmor_parser --replace --write-cache --skip-read-cache "${dhcpd_prof}" || true
+   fi
+   if [ "$1" = "purge" ]; then
+      rm -rf /var/lib/maas/dhcp
+   fi
+fi
+
+#DEBHELPER#

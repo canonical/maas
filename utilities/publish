@@ -1,0 +1,31 @@
+#!/bin/sh -e
+
+ROOTDIR=$(pwd)
+BUILDDIR=$ROOTDIR/build_pkg
+
+case "$1" in
+    experimental3)
+        dput -f ppa:maas-maintainers/experimental3 $BUILDDIR/maas*source.changes
+    ;;
+    next)
+        dput -f ppa:maas/next $BUILDDIR/maas*source.changes
+    ;;
+    next-proposed)
+        dput -f ppa:maas/next-proposed $BUILDDIR/maas*source.changes
+    ;;
+    experimental)
+        echo "experimental"
+        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*trusty*source.changes
+        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*vivid*source.changes
+        dput -f ppa:maas-maintainers/experimental $BUILDDIR/maas*wily*source.changes
+    ;;
+    proposed)
+        dput -f ppa:maas/proposed $BUILDDIR/maas*source.changes
+    ;;
+    stable)
+        dput -f ppa:maas/stable $BUILDDIR/maas*source.changes
+    ;;
+    *)
+        dput -f $1 $BUILDDIR/maas*source.changes
+    ;;
+esac

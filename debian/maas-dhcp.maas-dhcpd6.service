@@ -1,0 +1,28 @@
+[Unit]
+Description=MAAS instance of ISC DHCP server for IPv6
+Documentation=man:dhcpd(8)
+Wants=network-online.target
+After=network-online.target
+After=time-sync.target
+BindsTo=maas-rackd.service
+ConditionPathExists=/var/lib/maas/dhcpd6.conf
+ConditionPathExists=/var/lib/maas/dhcpd6-interfaces
+
+[Service]
+# Allow dhcp server to write lease and pid file as 'dhcpd' user
+ExecStartPre=/bin/mkdir -p /run/maas/dhcp
+# The leases files need to be root:dhcpd even when dropping privileges
+ExecStartPre=/bin/mkdir -p /var/lib/maas/dhcp
+# Start the daemon
+ExecStart=/bin/sh -ec '\
+    INTERFACES=$(cat /var/lib/maas/dhcpd6-interfaces); \
+    LEASES_FILE=/var/lib/maas/dhcp/dhcpd6.leases; \
+    [ -e $LEASES_FILE ] || touch $LEASES_FILE; \
+    /usr/sbin/maas-dhcp-helper clean $LEASES_FILE; \
+    chown root:dhcpd /var/lib/maas/dhcp $LEASES_FILE; \
+    chmod 775 /var/lib/maas/dhcp ; chmod 664 $LEASES_FILE; \
+    exec dhcpd -user dhcpd -group dhcpd -f -6 -pf /run/maas/dhcp/dhcpd6.pid \
+        -cf /var/lib/maas/dhcpd6.conf -lf $LEASES_FILE $INTERFACES'
+
+[Install]
+WantedBy=multi-user.target

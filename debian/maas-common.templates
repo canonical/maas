@@ -1,0 +1,54 @@
+Template: maas/installation-note
+Type: note
+Default: false
+_Description: Ubuntu MAAS Server
+ The Ubuntu MAAS Server has been installed in your system. You
+ can access the MAAS Web interface here:
+ .
+    http://${MAAS_URL}/MAAS
+ .
+ If the automatically detected address above is not in the same
+ network as the MAAS clients, you need to reconfigure it:
+ .
+    sudo dpkg-reconfigure maas-region-controller
+
+Template: maas/default-maas-url
+Type: string
+_Description: Ubuntu MAAS PXE/Provisioning network address:
+ The Ubuntu MAAS Server automatically detects the IP address
+ that is used for PXE and provisioning. However, it needs to be
+ in the same network as the clients. If the automatically
+ detected address is not in the same network as the clients, it
+ must be changed.
+
+Template: maas/username
+Type: string
+_Description: Ubuntu MAAS username
+ The Ubuntu MAAS server requires the administrator to create a
+ username and password combination.
+ .
+ Please provide the username for the MAAS account.
+
+Template: maas/password
+Type: password
+_Description: Ubuntu MAAS password
+ The Ubuntu MAAS server requires the administrator to create a
+ username and password combination.
+ .
+ Please provide the password for the MAAS account.
+
+Template: maas-rack-controller/maas-url
+Type: string
+_Description: Ubuntu MAAS API address:
+ The MAAS cluster controller and nodes need to contact the MAAS region
+ controller API.  Set the URL at which they can reach the MAAS API remotely,
+ e.g. "http://192.168.1.1/MAAS".
+ Since nodes must be able to access this URL, localhost or 127.0.0.1 are not
+ useful values here.
+
+Template: maas-rack-controller/shared-secret
+Type: password
+_Description: MAAS Rack Controller Shared Secret:
+ The MAAS rack controller needs to contact the MAAS region controller
+ with the shared secret found in /var/lib/maas/secret on the region controller.
+ Set the shared secret here.

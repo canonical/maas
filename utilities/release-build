@@ -1,0 +1,62 @@
+#!/bin/sh -e
+
+ROOTDIR=$(pwd)
+BUILDDIR=$ROOTDIR/build_pkg
+if [ ! -d $BUILDDIR ]; then
+    mkdir $BUILDDIR
+fi
+
+error() {
+	echo "ERROR: $@" >&2
+	exit 1
+}
+
+usage () {
+    echo "Usage:"
+    echo "    $0 [commit (defaults to HEAD)]"
+    exit 1
+}
+
+if [ -z "$1" ]; then
+    echo "WARNING: No commit specified, using HEAD instead"
+    COMMIT="HEAD"
+else
+    COMMIT="$2"
+fi
+
+PKG=$(head -n1 debian/changelog | awk '{print $1}')
+MAJOR_VER=$(head -n 1 debian/changelog | sed 's/^.*(//' | sed 's/).*//' | sed 's/-.*//')
+REV_COUNT=$(git rev-list --count $COMMIT)
+REV_SHORT=$(git rev-parse --short $COMMIT)
+FULL_VER="$MAJOR_VER-$REV_COUNT-g$REV_SHORT"
+TARBALL="maas_$FULL_VER.orig.tar.gz"
+
+get_orig_source() {
+        git archive --format=tar.gz --prefix="${PKG}-${FULL_VER}.orig/" ${COMMIT} -o ${TARBALL}
+	
+}
+# Obtain the tarball from a local branch
+get_orig_source
+
+# Copy the tarball to the local dir
+mv "${TARBALL}" "$BUILDDIR"
+
+# Update the changelog
+sed -i "s/${MAJOR_VER}-0ubuntu1/${FULL_VER}-0ubuntu1/i" debian/changelog
+
+# Untar
+cd $BUILDDIR
+tar zxvf ${PKG}_${FULL_VER}.orig.tar.gz
+cd "${PKG}-${FULL_VER}.orig/"
+cp -r $ROOTDIR/debian .
+sed -i "s/) UNRELEASED;/~16.04.1) xenial;/i" debian/changelog
+debuild -S -sa
+sed -i "s/~16.04.1) xenial;/~16.10.1) yakkety;/" debian/changelog
+debuild -S
+sed -i "s/~16.10.1) yakkety;/~17.04.1) zesty;/" debian/changelog
+debuild -S
+sed -i "s/~17.04.1) zesty;/~17.10.1) artful;/" debian/changelog
+debuild -S
+
+cd $ROOTDIR
+sed -i "s/${FULL_VER}-0ubuntu1/${MAJOR_VER}-0ubuntu1/i" debian/changelog

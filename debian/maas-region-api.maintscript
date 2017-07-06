@@ -1,0 +1,7 @@
+rm_conffile /etc/maas/txlongpoll.yaml 1.7.0~beta4+bzr3124-0ubuntu1
+rm_conffile /etc/init/maas-txlongpoll.conf 1.7.0~beta4+bzr3124-0ubuntu1
+rm_conffile /etc/init/maas-region-celery.conf 1.7.0~beta4+bzr3124-0ubuntu1
+rm_conffile /etc/maas/maas_local_celerconfig.py 1.7.0~beta4+bzr3124-0ubuntu1
+rm_conffile /usr/share/maas/maas_local_celerconfig.py 1.7.0~beta4+bzr3124-0ubuntu1
+rm_conffile /etc/maas/maas_local_celeryconfig.py 1.7.0~beta4+bzr3124-0ubuntu1
+rm_conffile /etc/maas/maas-http.conf 1.9.0~alpha1+bzr4190-0ubuntu1

@@ -20,6 +20,7 @@
 /.run-e2e
 /bin
 /build
+/build_pkg
 /coverage
 /coverage.xml
 /db

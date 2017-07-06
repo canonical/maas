@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "purge" ]; then
+    rm -rf /var/cache/maas-proxy
+    rm -rf /var/log/maas/proxy
+    rm -rf /var/spool/maas-proxy
+    rm -rf /var/lib/maas/maas-proxy.conf
+fi
+
+#DEBHELPER#

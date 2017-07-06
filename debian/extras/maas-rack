@@ -1,0 +1,87 @@
+#!/usr/bin/python3
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+)
+
+str = None
+
+__metaclass__ = type
+__all__ = []
+
+import grp
+import os
+import pwd
+import sys
+
+
+def check_users(users):
+    """Check that the runnig user is in users."""
+    uid = os.getuid()
+    for user in users:
+        if user is None:
+            # Special case: this means any user is allowed.
+            return None
+        user_uid = pwd.getpwnam(user)[2]
+        if uid == user_uid:
+            return user
+    raise SystemExit("This utility may only be run as %s." % ", ".join(users))
+
+
+def set_group():
+    # Ensure that we're running as the `maas` group.
+    try:
+        gr_maas = grp.getgrnam("maas")
+    except KeyError:
+        raise SystemExit("No such group: maas")
+    else:
+        os.setegid(gr_maas.gr_gid)
+
+
+def set_umask():
+    # Prevent creation of world-readable (or writable, executable) files.
+    os.umask(0o007)
+
+
+def run():
+    # Run the main provisioning script.
+    from provisioningserver.__main__ import main
+    main()
+
+
+def main():
+    if 'maas-provision' in sys.argv[0]:
+        sys.stderr.write(
+            "WARNING: The maas-provision command is deprecated and will be "
+            "removed in a future version. From now on please use 'maas-rack' "
+            "instead.\n")
+
+    # Allow dhcpd user to call dhcp-notify, and maas user to call observe-arp.
+    users = ["root"]
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "dhcp-notify":
+            users.append("dhcpd")
+        if sys.argv[1] == "observe-arp":
+            users.append("maas")
+        if sys.argv[1] == "observe-beacons":
+            users.append("maas")
+        if sys.argv[1] == "observe-mdns":
+            # Any user can call this. (It might be necessary for a normal
+            # user to call this for support/debugging purposes.)
+            users.append(None)
+
+    # Only set the group and umask when running as root.
+    if check_users(users) == "root":
+        set_group()
+        set_umask()
+
+    # Run the script.
+    run()
+
+
+if __name__ == "__main__":
+    main()

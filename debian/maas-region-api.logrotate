@@ -1,0 +1,15 @@
+/var/log/maas/regiond.log {
+ rotate 5
+ weekly
+ compress
+ missingok
+ # copytruncate may lose log messages at the moment of rotation, but
+ # there is no better way to integrate twistd and logrotate.
+ copytruncate
+ # The logs are all owned by the `maas` user, so drop privs.
+ su maas maas
+ # Don't rotate unless the log is at least 10MB.
+ minsize 10M
+ # Force rotation if the log grows beyond 50MB.
+ maxsize 50M
+}

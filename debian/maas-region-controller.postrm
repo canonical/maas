@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+RELEASE=`lsb_release -rs` ||  RELEASE=""
+
+if [ -f /usr/share/dbconfig-common/dpkg/postrm ]; then
+    . /usr/share/dbconfig-common/dpkg/postrm.pgsql
+    dbc_go maas-region-controller $@
+fi
+
+case "$1" in
+    purge)
+        # Deleting old/new config files
+        rm -rf /etc/maas/maas_local_settings.py.maas-old
+esac
+
+#DEBHELPER#
+
+db_stop

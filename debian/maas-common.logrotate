@@ -1,0 +1,13 @@
+/var/log/maas/maas.log
+{
+        rotate 8
+        weekly
+        missingok
+        notifempty
+        delaycompress
+        compress
+        # Don't rotate unless the log is at least 10MB.
+        minsize 10M
+        # Force rotation if the log grows beyond 50MB.
+        maxsize 50M
+}

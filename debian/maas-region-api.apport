@@ -1,0 +1,72 @@
+#!/usr/bin/python
+
+'''apport hook for maas-region-controller
+
+(c) 2012-2014 Canonical Ltd.
+Author: Andres Rodriguez <andres.rodriguez@canonical.com>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.  See http://www.gnu.org/copyleft/gpl.html for
+the full text of the license.
+'''
+
+import os.path
+import subprocess
+import tempfile
+
+from apport.hookutils import (
+    attach_conffiles,
+    attach_file,
+    attach_file_if_exists,
+    attach_related_packages,
+)
+
+
+def attach_journal_logs(report, key, *units):
+    """Capture logs from systemd's journal."""
+    if os.path.exists("/bin/journalctl"):
+        cmd = ['/bin/journalctl', '--utc', '--since=-24hours']
+        cmd.extend("--unit=%s" % unit for unit in units)
+        with tempfile.NamedTemporaryFile() as logfile:
+            subprocess.call(cmd, stdout=logfile, stderr=logfile)
+            attach_file(report, logfile.name, key)
+
+
+def add_info(report, ui):
+    response = ui.yesno(
+        "The contents of /etc/maas/regiond.conf and /etc/maas/rackd.conf "
+        "may help developers diagnose your bug more quickly. However, it may "
+        "contain sensitive information. Do you want to include it in your bug "
+        "report?")
+
+    if response is None:
+        # The user cancelled.
+        raise StopIteration
+    elif response is True:
+        # The user agreed to include the configuration files.
+        attach_conffiles(report, 'maas')
+        attach_file_if_exists(
+            report, '/etc/maas/regiond.conf', 'MAASRegionConfig')
+        attach_file_if_exists(
+            report, '/etc/maas/rackd.conf', 'MAASClusterConfig')
+    else:
+        # The user declined to include the configuration files.
+        pass
+
+    # Attaching log files (Upstart).
+    attach_file_if_exists(
+        report, '/var/log/maas/regiond.log', 'MAASRegionLog')
+    attach_file_if_exists(
+        report, '/var/log/maas/rackd.log', 'MAASClusterLog')
+
+    # Attaching log files (systemd). These will overwrite the logs above on a
+    # system where systemd is available.
+    attach_journal_logs(
+        report, "MAASRegionLog", "maas-regiond", "maas-regiond-worker@*")
+    attach_journal_logs(
+        report, "MAASClusterLog", "maas-rackd")
+
+    # Attaching related packages info
+    attach_related_packages(report, ['python-django-maas', 'apparmor'])
