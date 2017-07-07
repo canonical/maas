@@ -121,11 +121,13 @@
             </div>
         </main>
     </div>
-    <button class="button--secondary button--inline"
-      data-ng-disabled="newRange"
-      data-ng-click="addRange('reserved')">Reserve range</a>
-    <button class="button--secondary button--inline"
-      data-ng-if="isSuperUser()"
-      data-ng-disabled="newRange"
-      data-ng-click="addRange('dynamic')">Reserve dynamic range</a>
+    <div>
+        <button class="button--secondary button--inline"
+          data-ng-disabled="newRange"
+          data-ng-click="addRange('reserved')">Reserve range</button>
+        <button class="button--secondary button--inline"
+          data-ng-if="isSuperUser()"
+          data-ng-disabled="newRange"
+          data-ng-click="addRange('dynamic')">Reserve dynamic range</button>
+    </div>
 </div>
