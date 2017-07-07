@@ -77,6 +77,7 @@ parts:
     source: .
     requirements: requirements.txt
     build-packages:
+      - bzr
       - git
       - libffi-dev
       - libpq-dev
