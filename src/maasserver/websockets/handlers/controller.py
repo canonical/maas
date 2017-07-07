@@ -8,11 +8,12 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
-from maasserver.forms import AdminMachineWithMACAddressesForm
+from maasserver.forms import ControllerForm
 from maasserver.models.node import (
     Controller,
     RackController,
 )
+from maasserver.websockets.base import HandlerError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
 
@@ -40,7 +41,7 @@ class ControllerHandler(MachineHandler):
             'link_subnet',
             'unlink_subnet',
         ]
-        form = AdminMachineWithMACAddressesForm
+        form = ControllerForm
         exclude = [
             "status_expires",
             "parent",
@@ -73,6 +74,13 @@ class ControllerHandler(MachineHandler):
         listen_channels = [
             "controller",
         ]
+
+    def get_form_class(self, action):
+        """Return the form class used for `action`."""
+        if action in ("create", "update"):
+            return ControllerForm
+        else:
+            raise HandlerError("Unknown action: %s" % action)
 
     def get_queryset(self):
         """Return `QuerySet` for controllers only viewable by `user`."""

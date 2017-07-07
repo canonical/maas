@@ -8,6 +8,8 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1686678    Allows the domain of controllers to be changed in the UI.
+
 
 2.2.1
 =====

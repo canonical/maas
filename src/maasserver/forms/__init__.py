@@ -860,12 +860,16 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
     class Meta:
         model = Controller
 
-        fields = ['zone']
+        fields = ['zone', 'domain']
 
     zone = forms.ModelChoiceField(
         label="Physical zone", required=False,
         initial=Zone.objects.get_default_zone,
         queryset=Zone.objects.all(), to_field_name='name')
+
+    domain = forms.ModelChoiceField(
+        required=False, initial=Domain.objects.get_default_domain,
+        queryset=Domain.objects.all(), to_field_name='name')
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         super(ControllerForm, self).__init__(
@@ -873,6 +877,7 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
         WithPowerTypeMixin.set_up_power_fields(self, data, instance)
         if instance is not None:
             self.initial['zone'] = instance.zone.name
+            self.initial['domain'] = instance.domain.name
 
     def clean(self):
         cleaned_data = super(ControllerForm, self).clean()

@@ -11,21 +11,23 @@
             <h1 class="page-header__title">
                 <span contenteditable="true"
                     data-ng-class="{ editable: canEdit(), 'has-error': editHeaderInvalid(), editmode: header.editing }"
+                    data-ng-show="canEdit()"
                     data-ng-model="header.hostname.value"
                     data-ng-disabled="!canEdit()"
                     data-maas-editing="editHeader()"></span>
-                <span class="page-header__title-dot ng-hide" data-ng-show="header.editing">.</span>
+                <span ng-click="editHeaderDomain()" data-ng-show="!canEdit()">{$ header.hostname.value $}</span> 
+                <span class="page-header__title-dot ng-hide" data-ng-show="header.editing || header.editing_domain">.</span>
                 <select class="page-header__title-domain ng-hide"
-                    data-ng-show="header.editing"
+                    data-ng-show="header.editing || header.editing_domain"
                     data-ng-model="header.domain.selected"
                     data-ng-options="domain as domain.name for domain in header.domain.options">
                 </select>
             </h1>
             <button class="button--base button--inline u-margin--bottom-small ng-hide"
-                data-ng-show="header.editing"
+                data-ng-show="header.editing || header.editing_domain"
                 data-ng-click="cancelEditHeader()">Cancel</button>
             <button class="button--positive button--inline u-margin--bottom-small ng-hide"
-                data-ng-show="header.editing"
+                data-ng-show="header.editing || header.editing_domain"
                 data-ng-disabled="editHeaderInvalid()"
                 data-ng-click="saveEditHeader()">Save</button>
 

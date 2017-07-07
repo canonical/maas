@@ -1468,23 +1468,74 @@ describe("NodeDetailsController", function() {
             });
     });
 
+    describe("editHeaderDomain", function() {
+
+        it("doesnt set editing false and editing_domain true if cannot edit",
+           function() {
+            var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(true);
+            $scope.header.editing = true;
+            $scope.header.editing_domain = false;
+            $scope.editHeaderDomain();
+            expect($scope.header.editing).toBe(true);
+            expect($scope.header.editing_domain).toBe(false);
+        });
+
+        it("sets editing to false and editing_domain to true if able",
+           function() {
+            var controller = makeController();
+            $scope.node = node;
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.header.editing = true;
+            $scope.header.editing_domain = false;
+            $scope.editHeaderDomain();
+            expect($scope.header.editing).toBe(false);
+            expect($scope.header.editing_domain).toBe(true);
+        });
+
+        it("sets header.hostname.value to node hostname", function() {
+            var controller = makeController();
+            $scope.node = node;
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.editHeaderDomain();
+            expect($scope.header.hostname.value).toBe(node.hostname);
+        });
+
+        it("doesnt reset header.hostname.value on multiple calls", function() {
+            var controller = makeController();
+            $scope.node = node;
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.editHeaderDomain();
+            var updatedName = makeName("name");
+            $scope.header.hostname.value = updatedName;
+            $scope.editHeaderDomain();
+            expect($scope.header.hostname.value).toBe(updatedName);
+        });
+    });
+
     describe("editHeader", function() {
 
-        it("doesnt set editing to true if cannot edit", function() {
+        it("doesnt set editing true and editing_domain false if cannot edit",
+           function() {
             var controller = makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
             $scope.header.editing = false;
+            $scope.header.editing_domain = true;
             $scope.editHeader();
             expect($scope.header.editing).toBe(false);
+            expect($scope.header.editing_domain).toBe(true);
         });
 
-        it("sets editing to true if able", function() {
+        it("sets editing to true and editing_domain to false if able",
+           function() {
             var controller = makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
             $scope.header.editing = false;
+            $scope.header.editing_domain = true;
             $scope.editHeader();
             expect($scope.header.editing).toBe(true);
+            expect($scope.header.editing_domain).toBe(false);
         });
 
         it("sets header.hostname.value to node hostname", function() {
@@ -1509,9 +1560,10 @@ describe("NodeDetailsController", function() {
 
     describe("editHeaderInvalid", function() {
 
-        it("returns false if not editing", function() {
+        it("returns false if not editing and not editing_domain", function() {
             var controller = makeController();
             $scope.header.editing = false;
+            $scope.header.editing_domain = false;
             $scope.header.hostname.value = "abc_invalid.local";
             expect($scope.editHeaderInvalid()).toBe(false);
         });
@@ -1519,6 +1571,7 @@ describe("NodeDetailsController", function() {
         it("returns true for bad values", function() {
             var controller = makeController();
             $scope.header.editing = true;
+            $scope.header.editing_domain = false;
             var values = [
                 {
                     input: "aB0-z",
@@ -1546,12 +1599,15 @@ describe("NodeDetailsController", function() {
 
     describe("cancelEditHeader", function() {
 
-        it("sets editing to false for nameHeader section", function() {
+        it("sets editing and editing_domain to false for nameHeader section",
+           function() {
             var controller = makeController();
             $scope.node = node;
             $scope.header.editing = true;
+            $scope.header.editing_domain = true;
             $scope.cancelEditHeader();
             expect($scope.header.editing).toBe(false);
+            expect($scope.header.editing_domain).toBe(false);
         });
 
         it("sets header.hostname.value back to fqdn", function() {
@@ -1572,8 +1628,10 @@ describe("NodeDetailsController", function() {
             spyOn($scope, "editHeaderInvalid").and.returnValue(true);
             var sentinel = {};
             $scope.header.editing = sentinel;
+            $scope.header.editing_domain = sentinel;
             $scope.saveEditHeader();
             expect($scope.header.editing).toBe(sentinel);
+            expect($scope.header.editing_domain).toBe(sentinel);
         });
 
         it("sets editing to false", function() {
@@ -1584,10 +1642,12 @@ describe("NodeDetailsController", function() {
 
             $scope.node = node;
             $scope.header.editing = true;
+            $scope.header.editing_domain = true;
             $scope.header.hostname.value = makeName("name");
             $scope.saveEditHeader();
 
             expect($scope.header.editing).toBe(false);
+            expect($scope.header.editing_domain).toBe(false);
         });
 
         it("calls updateItem with copy of node", function() {
