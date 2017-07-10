@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Storage Controller
@@ -1094,10 +1094,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
 
             // Save the options.
-            MachinesManager.updateFilesystem(
-                $scope.node, disk.block_id, disk.partition_id,
-                disk.$options.fstype, disk.$options.mountPoint,
-                disk.$options.mountOptions, disk.$options.tags);
+            MachinesManager.updateDisk(
+                $scope.node, disk.block_id, params);
 
             // Set the options on the object so no flicker occurs while waiting
             // for the new object to be received.
