@@ -38,7 +38,14 @@ from twisted.internet.defer import DeferredSemaphore
 
 
 max_threads_for_default_pool = 50
-max_threads_for_database_pool = 20
+
+# Maximum number of database connections this worker can use. 9 connections is
+# allowed as 1 is reserved for the `PostgresListener`. Allowing each worker to
+# have a maximum of 10 connections open at a time. A region controller with
+# 4 workers will use a maximum of 40 connections. This allows 2 region
+# controllers to run without needing to increase the maximum number of
+# PostgreSQL connection (default is 100 connections).
+max_threads_for_database_pool = 9
 
 
 def make_default_pool(maxthreads=max_threads_for_default_pool):
