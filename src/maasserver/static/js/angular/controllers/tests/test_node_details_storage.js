@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeStorageController.
@@ -3048,14 +3048,14 @@ describe("NodeStorageController", function() {
                     name: name
                 }
             };
-            spyOn(MachinesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateDisk");
 
             $scope.availableConfirmEdit(disk);
             expect(disk.name).toBe(name);
-            expect(MachinesManager.updateFilesystem).toHaveBeenCalled();
+            expect(MachinesManager.updateDisk).toHaveBeenCalled();
         });
 
-        it("calls updateDisks with new name for logical volume", function() {
+        it("calls updateDisk with new name for logical volume", function() {
             var controller = makeController();
             var disk = {
                 name: "vg0-lvnew",
@@ -3072,10 +3072,10 @@ describe("NodeStorageController", function() {
                     name: "vg0-lvold"
                 }
             };
-            spyOn(MachinesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateDisk");
 
             $scope.availableConfirmEdit(disk);
-            expect(MachinesManager.updateFilesystem).toHaveBeenCalled();
+            expect(MachinesManager.updateDisk).toHaveBeenCalled();
         });
 
     });

@@ -8,6 +8,8 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1651165	Update the disk when editing the disk in the UI and not only the filesystem. This saves a new disk name if that was changed. Code for any filesystem updates is still in tact via the machine websocket handler update_disk method.
+
 LP: #1686678    Allows the domain of controllers to be changed in the UI.
 
 
