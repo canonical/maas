@@ -235,6 +235,16 @@ def configure_ipmi_user(username, password):
     apply_ipmi_user_settings(user_settings)
 
 
+def set_ipmi_lan_channel_settings():
+    """Enable IPMI-over-Lan (Lan_Channel) if it is disabled"""
+    for mode in ['Lan_Channel:Volatile_Access_Mode',
+                 'Lan_Channel:Non_Volatile_Access_Mode']:
+        output = bmc_get(mode)
+        show_re = re.compile('%s\s+Always_Available' % mode.split(':')[1])
+        if show_re.search(output) is None:
+            bmc_set(mode, 'Always_Available')
+
+
 def commit_ipmi_settings(config):
     run_command(('bmc-config', '--commit', '--filename', config))
 
@@ -295,6 +305,10 @@ def main():
     IPMI_MAAS_PASSWORD = generate_random_password()
 
     configure_ipmi_user(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD)
+
+    # Attempt to enable IPMI Over Lan. If it is disabled, MAAS won't
+    # be able to remotely communicate to the BMC.
+    set_ipmi_lan_channel_settings()
 
     # Commit other IPMI settings
     if args.configdir:

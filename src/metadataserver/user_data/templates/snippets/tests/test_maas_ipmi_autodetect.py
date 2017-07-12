@@ -15,6 +15,7 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
 from snippets import maas_ipmi_autodetect
@@ -33,6 +34,7 @@ from snippets.maas_ipmi_autodetect import (
     pick_user_number,
     pick_user_number_from_list,
     run_command,
+    set_ipmi_lan_channel_settings,
     verify_ipmi_user_settings,
 )
 
@@ -568,3 +570,59 @@ class TestGetIPMIIPAddress(MAASTestCase):
             '_bmc_get_ipmi_addresses').side_effect = ret_val
         actual = get_ipmi_ip_address()
         self.assertEqual(self.expected, actual)
+
+
+class TestEnableLanChannel(MAASTestCase):
+
+    def test_enable_lan_channel_if_disabled(self):
+        """Test that Lan_Channel gets enabled if it is disabled"""
+        # Mock the response of the BMC
+        response = (
+            "Section Lan_Channel\n"
+            "    Volatile_Access_Mode    Disabled\n"
+            "    Non_Volatile_Access_Mode    Disabled\n"
+            "EndSection"
+        )
+        self.patch(
+            maas_ipmi_autodetect, 'bmc_get').return_value = response
+
+        # Mock the function 'bmc_set'
+        bmc_set_mock = self.patch(
+            maas_ipmi_autodetect, 'bmc_set')
+
+        # Call the function
+        set_ipmi_lan_channel_settings()
+
+        # Check that the 'bmc_set_mock' was called
+        self.assertThat(
+            bmc_set_mock,
+            MockAnyCall(
+                'Lan_Channel:Volatile_Access_Mode', 'Always_Available'))
+        self.assertThat(
+            bmc_set_mock,
+            MockAnyCall(
+                'Lan_Channel:Non_Volatile_Access_Mode', 'Always_Available'))
+
+    def test_dont_enable_lan_channel_if_already_enabled(self):
+        """Test that Lan_Channel doesn't get enabled if disabled."""
+        # Mock the response of the BMC
+        response = (
+            "Section Lan_Channel\n"
+            "    Volatile_Access_Mode    Always_Available\n"
+            "    Non_Volatile_Access_Mode    Always_Available\n"
+            "EndSection"
+        )
+        self.patch(
+            maas_ipmi_autodetect, 'bmc_get').return_value = response
+
+        # Mock the function 'bmc_set'
+        bmc_set_mock = self.patch(
+            maas_ipmi_autodetect, 'bmc_set')
+
+        # Call the function
+        set_ipmi_lan_channel_settings()
+
+        # Check that the 'bmc_set' mock function (bmc_set_mock) was not called.
+        self.assertThat(
+            bmc_set_mock,
+            MockNotCalled())
