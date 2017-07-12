@@ -27,7 +27,6 @@ from maasserver.models import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_user_agent
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import (
     DEFAULT_IMAGES_URL,
@@ -44,6 +43,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
 )
+from provisioningserver.utils.version import get_maas_version_user_agent
 from requests.exceptions import ConnectionError
 from twisted.internet.defer import inlineCallbacks
 

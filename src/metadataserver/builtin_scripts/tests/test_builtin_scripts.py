@@ -11,13 +11,13 @@ from maasserver.models import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.utils.version import get_maas_version
 from metadataserver.builtin_scripts import (
     BUILTIN_SCRIPTS,
     load_builtin_scripts,
 )
 from metadataserver.enum import SCRIPT_TYPE_CHOICES
 from metadataserver.models import Script
+from provisioningserver.utils.version import get_maas_version
 
 
 class TestBuiltinScripts(MAASServerTestCase):

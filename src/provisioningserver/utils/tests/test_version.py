@@ -1,9 +1,10 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test version utilities."""
 
 __all__ = []
+
 
 import os.path
 import random
@@ -13,15 +14,15 @@ from unittest.mock import (
     sentinel,
 )
 
-from maasserver import __version__ as old_version
-from maasserver.utils import version
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import (
     shell,
     snappy,
+    version,
 )
+from provisioningserver.utils.version import DEFAULT_VERSION as old_version
 from testtools.matchers import (
     GreaterThan,
     Is,
@@ -57,12 +58,24 @@ class TestGetVersionFromAPT(MAASTestCase):
         package = MagicMock()
         package.current_ver.ver_str = sentinel.ver_str
         mock_cache = {
-            version.REGION_PACKAGE_NAME: package,
+            version.RACK_PACKAGE_NAME: package
             }
         self.patch(version.apt_pkg, "Cache").return_value = mock_cache
         self.assertIs(
             sentinel.ver_str,
-            version.get_version_from_apt(version.REGION_PACKAGE_NAME))
+            version.get_version_from_apt(version.RACK_PACKAGE_NAME))
+
+    def test__returns_ver_str_from_second_package_if_first_not_found(self):
+        package = MagicMock()
+        package.current_ver.ver_str = sentinel.ver_str
+        mock_cache = {
+            version.REGION_PACKAGE_NAME: package,
+        }
+        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
+        self.assertIs(
+            sentinel.ver_str,
+            version.get_version_from_apt(
+                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
 
 
 class TestGetMAASBranchVersion(MAASTestCase):
@@ -133,7 +146,8 @@ class TestGetMAASVersion(TestVersionTestCase):
         self.expectThat(
             version.get_maas_version(), Is(sentinel.version))
         self.expectThat(
-            mock_apt, MockCalledOnceWith(version.REGION_PACKAGE_NAME))
+            mock_apt, MockCalledOnceWith(
+                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
 
     def test__uses_snappy_get_snap_version(self):
         self.patch(snappy, 'running_in_snap').return_value = True
@@ -267,7 +281,8 @@ class TestVersionMethodsCached(TestVersionTestCase):
         self.assertEqual(first_return_value, second_return_value)
         # Apt has only been called once.
         self.expectThat(
-            mock_apt, MockCalledOnceWith(version.REGION_PACKAGE_NAME))
+            mock_apt, MockCalledOnceWith(
+                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
 
 
 class TestGetMAASVersionTuple(MAASTestCase):

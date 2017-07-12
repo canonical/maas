@@ -42,7 +42,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
-from maasserver.utils.version import get_maas_version_user_agent
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import (
@@ -52,6 +51,7 @@ from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
 )
 from provisioningserver.import_images.helpers import ImageSpec
+from provisioningserver.utils.version import get_maas_version_user_agent
 from requests.exceptions import ConnectionError
 from testtools.matchers import HasLength
 

@@ -43,7 +43,6 @@ from maasserver.models import (
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_user_agent
 from maasserver.websockets.base import (
     Handler,
     HandlerError,
@@ -65,6 +64,7 @@ from provisioningserver.utils.twisted import (
     callOut,
     FOREVER,
 )
+from provisioningserver.utils.version import get_maas_version_user_agent
 from twisted.internet.defer import Deferred
 
 

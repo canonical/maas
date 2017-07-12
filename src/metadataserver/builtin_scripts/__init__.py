@@ -15,10 +15,10 @@ from attr.validators import (
     instance_of,
     optional,
 )
-from maasserver.utils.version import get_maas_version
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
 from provisioningserver.utils.fs import read_text_file
+from provisioningserver.utils.version import get_maas_version
 from zope.interface import (
     Attribute,
     implementer,

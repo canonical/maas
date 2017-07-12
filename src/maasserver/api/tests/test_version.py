@@ -13,7 +13,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.api.version import API_CAPABILITIES_LIST
 from maasserver.testing.api import APITestCase
-from maasserver.utils import version as version_module
+from provisioningserver.utils import version as version_module
 
 
 class TestVersionAPIBasics(APITestCase.ForAnonymousAndUserAndAdmin):

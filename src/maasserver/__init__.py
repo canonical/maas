@@ -13,8 +13,10 @@ __all__ = [
 import logging
 from os import environ
 
+from provisioningserver.utils import version
 
-__version__ = '2.3.0'
+
+__version__ = version.DEFAULT_VERSION
 
 default_app_config = 'maasserver.apps.MAASConfig'
 

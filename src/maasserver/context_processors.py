@@ -11,7 +11,7 @@ __all__ = [
 from django.conf import settings
 from maasserver.config import RegionConfiguration
 from maasserver.models import Config
-from maasserver.utils.version import (
+from provisioningserver.utils.version import (
     get_maas_doc_version,
     get_maas_version_ui,
 )

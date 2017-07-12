@@ -33,9 +33,9 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     list_release_choices,
 )
-from maasserver.utils.version import get_maas_version_ui
 from maasserver.websockets.base import Handler
 import petname
+from provisioningserver.utils.version import get_maas_version_ui
 
 
 class GeneralHandler(Handler):

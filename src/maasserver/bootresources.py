@@ -77,10 +77,6 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import (
-    get_maas_version_tuple,
-    get_maas_version_user_agent,
-)
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
@@ -110,6 +106,10 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     pause,
     synchronous,
+)
+from provisioningserver.utils.version import (
+    get_maas_version_tuple,
+    get_maas_version_user_agent,
 )
 from simplestreams import util as sutil
 from simplestreams.mirrors import (

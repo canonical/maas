@@ -12,7 +12,7 @@ import json
 
 from django.http import HttpResponse
 from maasserver.api.support import AnonymousOperationsHandler
-from maasserver.utils.version import get_maas_version_subversion
+from provisioningserver.utils.version import get_maas_version_subversion
 
 # MAAS capabilities. See docs/version.rst for documentation.
 CAP_NETWORKS_MANAGEMENT = 'networks-management'

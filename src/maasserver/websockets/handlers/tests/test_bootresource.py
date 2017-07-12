@@ -32,7 +32,6 @@ from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
-from maasserver.utils.version import get_maas_version_user_agent
 from maasserver.websockets.base import (
     HandlerError,
     HandlerValidationError,
@@ -54,6 +53,7 @@ from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
 )
+from provisioningserver.utils.version import get_maas_version_user_agent
 from testtools.matchers import (
     ContainsAll,
     HasLength,

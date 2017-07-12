@@ -92,7 +92,6 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_user_agent
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
@@ -115,6 +114,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     DeferredValue,
 )
+from provisioningserver.utils.version import get_maas_version_user_agent
 from testtools.matchers import (
     Contains,
     ContainsAll,
