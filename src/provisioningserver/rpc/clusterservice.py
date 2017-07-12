@@ -1230,8 +1230,8 @@ class ClusterClientService(TimerService, object):
         if eventloop in self.connections:
             if self.connections[eventloop] is connection:
                 del self.connections[eventloop]
+        # Disable DHCP when no connections to a region controller.
         if len(self.connections) == 0:
-            # No connections to any region. DHCP should be turned off.
             stopping_services = []
             dhcp_v4 = service_monitor.getServiceByName("dhcpd")
             if dhcp_v4.is_on():
@@ -1246,3 +1246,6 @@ class ClusterClientService(TimerService, object):
                     "Lost all connections to region controllers. "
                     "Stopping service(s) %s." % ",".join(stopping_services))
                 service_monitor.ensureServices()
+        # Lower the interval so a re-check happens sooner instead of its
+        # currently set interval.
+        self._update_interval(0, 0)
