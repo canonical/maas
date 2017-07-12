@@ -61,7 +61,7 @@ from twisted.protocols import amp
 class RegisterRackController(amp.Command):
     """Register a rack controller with the region controller.
 
-    This is the second step of the Authenticate, Register, Commision
+    This is the second step of the Authenticate, Register, Commission
     process.
 
     :since: 2.0

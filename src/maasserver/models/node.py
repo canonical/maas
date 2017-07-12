@@ -1312,7 +1312,7 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as being deployed."""
         # Avoid circular dependencies
         from metadataserver.models import ScriptSet
-        if self.on_network() is False:
+        if not self.on_network():
             raise ValidationError(
                 {"network":
                  ["Node must be configured to use a network"]})
@@ -4108,7 +4108,7 @@ class Controller(Node):
         machine must have power information."""
         return self.status == NODE_STATUS.DEPLOYED and self.bmc is not None
 
-    def _update_interface(self, name, config):
+    def _update_interface(self, name, config, create_fabrics=True):
         """Update a interface.
 
         :param name: Name of the interface.
@@ -4116,7 +4116,11 @@ class Controller(Node):
             /etc/network/interfaces on the rack controller.
         """
         if config["type"] == "physical":
-            return self._update_physical_interface(name, config)
+            return self._update_physical_interface(
+                name, config, create_fabrics=create_fabrics)
+        elif not create_fabrics:
+            # Defer child interface creation until fabrics are known.
+            return None
         elif config["type"] == "vlan":
             return self._update_vlan_interface(name, config)
         elif config["type"] == "bond":
@@ -4128,7 +4132,7 @@ class Controller(Node):
                 "Unkwown interface type '%s' for '%s'." % (
                     config["type"], name))
 
-    def _update_physical_interface(self, name, config):
+    def _update_physical_interface(self, name, config, create_fabrics=True):
         """Update a physical interface.
 
         :param name: Name of the interface.
@@ -4137,57 +4141,75 @@ class Controller(Node):
         """
         new_vlan = None
         mac_address = config["mac_address"]
+        update_fields = set()
+        is_enabled = config['enabled']
         interface, created = PhysicalInterface.objects.get_or_create(
             mac_address=mac_address, defaults={
                 "node": self,
                 "name": name,
-                "enabled": config["enabled"],
+                "enabled": is_enabled,
             })
-        if created:
-            # Make sure that the VLAN on the interface is correct. When
-            # links exists on this interface we place it into the correct
-            # VLAN. If it cannot be determined and its a new interface it
-            # gets placed on its own fabric.
-            connected_to_subnets = self._get_connected_subnets(
-                config["links"])
-            if len(connected_to_subnets) == 0:
-                # Not connected to any known subnets. We add it to its own
-                # fabric unless this is the very first interface on this
-                # rack controller. The first interface always goes on
-                # the default VLAN on the default fabric.
-                if Interface.objects.filter(node=self).count() > 1:
-                    new_fabric = Fabric.objects.create()
-                    new_vlan = new_fabric.get_default_vlan()
-                    interface.vlan = new_vlan
-                    interface.save()
-                else:
-                    interface.vlan = (
-                        Fabric.objects.get_default_fabric().get_default_vlan())
-                    interface.save()
-        else:
+        if create_fabrics and interface.vlan is None:
+            new_vlan = self._update_vlan_for_interface(
+                interface, config, new_vlan)
+        if not created:
             if interface.node.id != self.id:
                 # MAC address was on a different node. We need to move
                 # it to its new owner. In the process we delete all of its
                 # current links because they are completely wrong.
                 interface.ip_addresses.all().delete()
                 interface.node = self
+                update_fields.add('node')
             interface.name = name
-            interface.enabled = config["enabled"]
-            interface.save()
+            update_fields.add('name')
+        if interface.enabled != is_enabled:
+            interface.enabled = is_enabled
+            update_fields.add('enabled')
 
         # Update all the IP address on this interface. Fix the VLAN the
         # interface belongs to so its the same as the links.
+        if create_fabrics:
+            self._update_physical_links(
+                interface, config, new_vlan, update_fields)
+        if len(update_fields) > 0:
+            interface.save(update_fields=list(update_fields))
+        return interface
+
+    def _update_physical_links(self, interface, config, new_vlan,
+                               update_fields):
         update_ip_addresses = self._update_links(interface, config["links"])
         linked_vlan = self._get_first_sticky_vlan_from_ip_addresses(
             update_ip_addresses)
         if linked_vlan is not None:
             interface.vlan = linked_vlan
-            interface.save()
+            update_fields.add('vlan')
             if new_vlan is not None and linked_vlan.id != new_vlan.id:
                 # Create a new VLAN for this interface and it was not used as
                 # a link re-assigned the VLAN this interface is connected to.
                 new_vlan.fabric.delete()
-        return interface
+
+    def _update_vlan_for_interface(self, interface, config, new_vlan):
+        # Make sure that the VLAN on the interface is correct. When
+        # links exists on this interface we place it into the correct
+        # VLAN. If it cannot be determined and its a new interface it
+        # gets placed on its own fabric.
+        connected_to_subnets = self._get_connected_subnets(
+            config["links"])
+        if len(connected_to_subnets) == 0:
+            # If the default VLAN on the default fabric has no interfaces
+            # associated with it, the first interface will be placed there
+            # (rather than creating a new fabric).
+            default_vlan = VLAN.objects.get_default_vlan()
+            interfaces_on_default_vlan = Interface.objects.filter(
+                vlan=default_vlan).count()
+            if interfaces_on_default_vlan == 0:
+                new_vlan = default_vlan
+            else:
+                new_fabric = Fabric.objects.create()
+                new_vlan = new_fabric.get_default_vlan()
+            interface.vlan = new_vlan
+            interface.save()
+        return new_vlan
 
     def _get_or_create_vlan_interface(self, name, vlan, parent):
         """Wrapper to get_or_create for VLAN interfaces.
@@ -4598,11 +4620,14 @@ class Controller(Node):
             for interface in interfaces
         }
 
-    def update_interfaces(self, interfaces):
+    def update_interfaces(self, interfaces, create_fabrics=True):
         """Update the interfaces attached to the controller.
 
         :param interfaces: Interfaces dictionary that was parsed from
             /etc/network/interfaces on the controller.
+        :param create_fabrics: If True, creates fabrics associated with each
+            VLAN. Otherwise, creates the interfaces but does not create any
+            links or VLANs.
         """
         # Get all of the current interfaces on this controller.
         current_interfaces = {
@@ -4634,11 +4659,17 @@ class Controller(Node):
             # Note: the interface that comes back from this call may be None,
             # if we decided not to model an interface based on what the rack
             # sent.
-            interface = self._update_interface(name, settings)
+            interface = self._update_interface(
+                name, settings, create_fabrics=create_fabrics)
             if interface is not None:
                 interface.update_discovery_state(discovery_mode, settings)
             if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
+
+        if not create_fabrics:
+            # This could be an existing rack controller re-registering,
+            # so don't delete interfaces during this phase.
+            return
 
         # Remove all the interfaces that no longer exist. We do this in reverse
         # order so the child is deleted before the parent.

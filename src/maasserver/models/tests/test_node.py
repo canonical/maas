@@ -6693,14 +6693,35 @@ class TestReportMDNSEntries(MAASServerTestCase):
 class TestUpdateInterfaces(MAASServerTestCase):
 
     scenarios = (
-        ("rack", dict(node_type=NODE_TYPE.RACK_CONTROLLER)),
-        ("region", dict(node_type=NODE_TYPE.REGION_CONTROLLER)),
+        ("rack", dict(
+            node_type=NODE_TYPE.RACK_CONTROLLER,
+            two_phase=False)),
+        ("region", dict(
+            node_type=NODE_TYPE.REGION_CONTROLLER,
+            two_phase=False)),
         ("region+rack", dict(
-            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)),
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            two_phase=False)),
+        ("rack_two_phase", dict(
+            node_type=NODE_TYPE.RACK_CONTROLLER,
+            two_phase=True)),
+        ("region_two_phase", dict(
+            node_type=NODE_TYPE.REGION_CONTROLLER,
+            two_phase=True)),
+        ("region+rack_two_phase", dict(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            two_phase=True)),
     )
 
     def create_empty_controller(self):
         return factory.make_Node(node_type=self.node_type).as_self()
+
+    def update_interfaces(self, controller, interfaces):
+        if not self.two_phase:
+            controller.update_interfaces(interfaces)
+        else:
+            controller.update_interfaces(interfaces, create_fabrics=False)
+            controller.update_interfaces(interfaces, create_fabrics=True)
 
     def test__order_of_calls_to_update_interface_is_always_the_same(self):
         controller = self.create_empty_controller()
@@ -6741,18 +6762,32 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        expected_call_order = [
-            call("eth0", interfaces["eth0"]),
-            call("eth1", interfaces["eth1"]),
-            call("eth2", interfaces["eth2"]),
-            call("bond0", interfaces["bond0"]),
-            call("bond0.10", interfaces["bond0.10"]),
-        ]
+        if not self.two_phase:
+            expected_call_order = [
+                call("eth0", interfaces["eth0"], create_fabrics=True),
+                call("eth1", interfaces["eth1"], create_fabrics=True),
+                call("eth2", interfaces["eth2"], create_fabrics=True),
+                call("bond0", interfaces["bond0"], create_fabrics=True),
+                call("bond0.10", interfaces["bond0.10"], create_fabrics=True),
+            ]
+        else:
+            expected_call_order = [
+                call("eth0", interfaces["eth0"], create_fabrics=False),
+                call("eth1", interfaces["eth1"], create_fabrics=False),
+                call("eth2", interfaces["eth2"], create_fabrics=False),
+                call("bond0", interfaces["bond0"], create_fabrics=False),
+                call("bond0.10", interfaces["bond0.10"], create_fabrics=False),
+                call("eth0", interfaces["eth0"], create_fabrics=True),
+                call("eth1", interfaces["eth1"], create_fabrics=True),
+                call("eth2", interfaces["eth2"], create_fabrics=True),
+                call("bond0", interfaces["bond0"], create_fabrics=True),
+                call("bond0.10", interfaces["bond0.10"], create_fabrics=True),
+            ]
         # Perform multiple times to make sure the call order is always
         # the same.
         for _ in range(5):
             mock_update_interface = self.patch(controller, "_update_interface")
-            controller.update_interfaces(interfaces)
+            self.update_interfaces(controller, interfaces)
             self.assertThat(
                 mock_update_interface, MockCallsMatch(*expected_call_order))
 
@@ -6774,7 +6809,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": False,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -6847,7 +6882,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
 
     def _test_vlans_with_alternate_naming_conventions(
             self, controller, interfaces):
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -6886,7 +6921,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 enabled=True,
             ))
         self.assertThat(list(eth0_0102.parents.all()), Equals([eth0]))
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -6957,7 +6992,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "monitored": False
             }
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -7002,7 +7037,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "monitored": False
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         # Disable the interfaces so that we can make sure neighbour discovery
         # is properly disabled on update.
         interfaces = {
@@ -7024,7 +7059,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "monitored": False
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -7065,7 +7100,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
@@ -7109,7 +7144,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
@@ -7163,7 +7198,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
@@ -7210,7 +7245,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -7255,7 +7290,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -7306,7 +7341,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -7354,7 +7389,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(1))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7396,7 +7431,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(1))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7444,7 +7479,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(1))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7497,7 +7532,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7564,7 +7599,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7647,7 +7682,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "vid": vid_on_fabric,
         }
         maaslog = self.patch(node_module, "maaslog")
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7709,7 +7744,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7760,7 +7795,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": new_vlan.vid,
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7825,7 +7860,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "vid": new_vlan.vid,
         }
         maaslog = self.patch(node_module, "maaslog")
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
@@ -7891,7 +7926,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(3))
         bond_interface = BondInterface.objects.get(
             node=controller, mac_address=interfaces["bond0"]["mac_address"])
@@ -7938,7 +7973,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(3))
         bond_interface = BridgeInterface.objects.get(
             node=controller, mac_address=interfaces["br0"]["mac_address"])
@@ -7989,7 +8024,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(bond0), MatchesStructure.byEquality(
@@ -8038,7 +8073,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(br0), MatchesStructure.byEquality(
@@ -8093,7 +8128,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(eth0), MatchesStructure.byEquality(
@@ -8166,7 +8201,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(eth0), MatchesStructure.byEquality(
@@ -8239,7 +8274,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Not(Is(None)))
@@ -8270,7 +8305,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(br0), Not(Is(None)))
@@ -8294,7 +8329,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Is(None))
@@ -8318,7 +8353,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(br0), Is(None))
@@ -8371,7 +8406,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "vid": bond0_vlan.vid,
             "enabled": True,
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = PhysicalInterface.objects.get(
             node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
@@ -8482,7 +8517,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
             "vid": br0_vlan.vid,
             "enabled": True,
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = PhysicalInterface.objects.get(
             node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
@@ -8813,7 +8848,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = PhysicalInterface.objects.get(
             node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
@@ -9048,7 +9083,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = PhysicalInterface.objects.get(
             node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
@@ -9122,7 +9157,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 'type': 'physical'
             }
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = get_one(
             PhysicalInterface.objects.filter(node=controller, name='eth0'))
         br0 = get_one(
@@ -9153,7 +9188,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 'type': 'physical'
             },
         }
-        controller.update_interfaces(interfaces)
+        self.update_interfaces(controller, interfaces)
         eth0 = get_one(
             PhysicalInterface.objects.filter(node=controller, name='eth0'))
         br0 = get_one(

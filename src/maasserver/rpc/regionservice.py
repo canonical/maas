@@ -531,6 +531,27 @@ def getRegionID():
             lambda advertising: advertising.region_id)
 
 
+@inlineCallbacks
+def isLoopbackURL(url):
+    """Checks if the specified URL refers to a loopback address.
+
+    :return: True if the URL refers to the loopback interface, otherwise False.
+    """
+    if url is not None:
+        if url.hostname is not None:
+            is_loopback = yield deferToThread(
+                resolves_to_loopback_address, url.hostname)
+        else:
+            # Empty URL == localhost.
+            is_loopback = True
+    else:
+        # We need to pass is_loopback in, but it is only checked if url
+        # is not None.  None is the "I don't know and you won't ask"
+        # state for this boolean.
+        is_loopback = None
+    return is_loopback
+
+
 @implementer(IConnection)
 class RegionServer(Region):
     """The RPC protocol supported by a region controller, server version.
@@ -551,6 +572,33 @@ class RegionServer(Region):
     hostIsRemote = False
 
     @inlineCallbacks
+    def initResponder(self, rack_controller):
+        """Set up local connection identifiers for this RPC connection.
+
+        Sets up connection identifiers, and adds the connection into the
+        service and the database.
+
+        :param rack_controller: A RackController model object representing the
+            remote rack controller.
+        """
+        self.ident = rack_controller.system_id
+        self.factory.service._addConnectionFor(self.ident, self)
+        # A local rack is treated differently to one that's remote.
+        self.host = self.transport.getHost()
+        self.hostIsRemote = isinstance(
+            self.host, (IPv4Address, IPv6Address))
+        # Only register the connection into the database when it's a valid
+        # IPv4 or IPv6. Only time it is not an IPv4 or IPv6 address is
+        # when mocking a connection.
+        if self.hostIsRemote:
+            advertising = yield (
+                self.factory.service.advertiser.advertising.get())
+            process = yield deferToDatabase(advertising.getRegionProcess)
+            yield deferToDatabase(
+                advertising.registerConnection,
+                process, rack_controller, self.host)
+
+    @inlineCallbacks
     def authenticateCluster(self):
         """Authenticate the cluster."""
         secret = yield get_shared_secret()
@@ -565,52 +613,29 @@ class RegionServer(Region):
     @inlineCallbacks
     def register(
             self, system_id, hostname, interfaces, url, nodegroup_uuid=None):
+        result = yield self._register(
+            system_id, hostname, interfaces, url, nodegroup_uuid)
+        return result
 
+    @inlineCallbacks
+    def _register(
+            self, system_id, hostname, interfaces, url, nodegroup_uuid=None,
+            create_fabrics=True):
         try:
             # Register, which includes updating interfaces.
-            if url is not None:
-                if url.hostname is not None:
-                    is_loopback = yield deferToThread(
-                        resolves_to_loopback_address, url.hostname)
-                else:
-                    # Empty URL == localhost.
-                    is_loopback = True
-            else:
-                # We need to pass is_loopback in, but it is only checked if url
-                # is not None.  None is the "I don't know and you won't ask"
-                # state for this boolean.
-                is_loopback = None
+            is_loopback = yield isLoopbackURL(url)
             rack_controller = yield deferToDatabase(
                 rackcontrollers.register, system_id=system_id,
                 hostname=hostname, interfaces=interfaces, url=url,
-                is_loopback=is_loopback)
+                is_loopback=is_loopback, create_fabrics=create_fabrics)
 
             # Check for upgrade.
             if nodegroup_uuid is not None:
                 yield deferToDatabase(
-                    rackcontrollers.handle_upgrade,
-                    rack_controller, nodegroup_uuid)
+                    rackcontrollers.handle_upgrade, rack_controller,
+                    nodegroup_uuid)
 
-            # Set the identifier and add the connection into the service
-            # and into the database.
-            self.ident = rack_controller.system_id
-            self.factory.service._addConnectionFor(self.ident, self)
-
-            # A local rack is treated differently to one that's remote.
-            self.host = self.transport.getHost()
-            self.hostIsRemote = isinstance(
-                self.host, (IPv4Address, IPv6Address))
-
-            # Only register the connection into the database when it's a valid
-            # IPv4 or IPv6. Only time it is not an IPv4 or IPv6 address is
-            # when mocking a connection.
-            if self.hostIsRemote:
-                advertising = yield (
-                    self.factory.service.advertiser.advertising.get())
-                process = yield deferToDatabase(advertising.getRegionProcess)
-                yield deferToDatabase(
-                    advertising.registerConnection,
-                    process, rack_controller, self.host)
+            yield self.initResponder(rack_controller)
 
             # Rack controller is now registered. Log this status.
             log.msg(

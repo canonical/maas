@@ -76,7 +76,7 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
 @transactional
 def register(
         system_id=None, hostname='', interfaces=None,
-        url=None, is_loopback=None):
+        url=None, is_loopback=None, create_fabrics=True):
     """Register a new rack controller if not already registered.
 
     Attempt to see if the rack controller was already registered as a node.
@@ -156,8 +156,8 @@ def register(
         rackcontroller.owner = worker_user.get_worker_user()
         update_fields.append("owner")
     rackcontroller.save(update_fields=update_fields)
-    # Update networking information every time we see a rack.
-    rackcontroller.update_interfaces(interfaces)
+    # Update interfaces, if requested.
+    rackcontroller.update_interfaces(interfaces, create_fabrics=create_fabrics)
     return rackcontroller
 
 
