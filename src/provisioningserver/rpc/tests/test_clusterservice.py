@@ -471,6 +471,16 @@ class TestPatchedURI(MAASTestCase):
         self.expectThat(uri.port, Equals(port))
 
 
+def make_inert_client_service():
+    service = ClusterClientService(Clock())
+    # ClusterClientService's superclass, TimerService, creates a
+    # LoopingCall with now=True. We neuter it here to allow
+    # observation of the behaviour of _update_interval() for
+    # example.
+    service.call = (lambda: None, (), {})
+    return service
+
+
 class TestClusterClientService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -757,22 +767,34 @@ class TestClusterClientService(MAASTestCase):
 
     def test__drop_connection(self):
         connection = Mock()
-        service = ClusterClientService(Clock())
+        service = make_inert_client_service()
+        service.startService()
         service._drop_connection(connection)
         self.assertThat(
             connection.transport.loseConnection,
             MockCalledOnceWith())
 
     def test__remove_connection_removes_from_connections(self):
-        service = ClusterClientService(Clock())
+        service = make_inert_client_service()
+        service.startService()
         endpoint = Mock()
         connection = Mock()
         service.connections[endpoint] = connection
         service.remove_connection(endpoint, connection)
         self.assertThat(service.connections, Equals({}))
 
+    def test__remove_connection_lowers_recheck_interval(self):
+        service = make_inert_client_service()
+        service.startService()
+        endpoint = Mock()
+        connection = Mock()
+        service.connections[endpoint] = connection
+        service.remove_connection(endpoint, connection)
+        self.assertEquals(service.step, service.INTERVAL_LOW)
+
     def test__remove_connection_stops_both_dhcpd_and_dhcpd6(self):
-        service = ClusterClientService(Clock())
+        service = make_inert_client_service()
+        service.startService()
         endpoint = Mock()
         connection = Mock()
         service.connections[endpoint] = connection
@@ -941,17 +963,8 @@ class TestClusterClientServiceIntervals(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def make_inert_client_service(self):
-        service = ClusterClientService(Clock())
-        # ClusterClientService's superclass, TimerService, creates a
-        # LoopingCall with now=True. We neuter it here to allow
-        # observation of the behaviour of _update_interval() for
-        # example.
-        service.call = (lambda: None, (), {})
-        return service
-
     def test__calculate_interval(self):
-        service = self.make_inert_client_service()
+        service = make_inert_client_service()
         service.startService()
         service.clock.advance(self.time_running)
         self.assertEqual(
@@ -985,8 +998,8 @@ class TestClusterClient(MAASTestCase):
     def make_running_client(self):
         client = clusterservice.ClusterClient(
             address=("example.com", 1234), eventloop="eventloop:pid=12345",
-            service=ClusterClientService(Clock()))
-        client.service.running = True
+            service=make_inert_client_service())
+        client.service.startService()
         return client
 
     def patch_authenticate_for_success(self, client):
