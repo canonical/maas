@@ -12,6 +12,8 @@ LP: #1651165	Update the disk when editing the disk in the UI and not only the fi
 
 LP: #1686678    Allows the domain of controllers to be changed in the UI.
 
+LP: #1703713    Fix missing link on domain details page
+
 
 2.2.1
 =====
