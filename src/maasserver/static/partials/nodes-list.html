@@ -34,9 +34,7 @@
                     data-ng-show="addDeviceScope.viewable">Cancel add device</button>
             </div>
             <div data-ng-show="tabs.devices.selectedItems.length">
-                <span class="page-header__controls-feedback u-margin--right" data-ng-click="showSelected('devices')">
-                    {$ tabs.devices.selectedItems.length $} Selected
-                </span>
+                <a class="u-display--inline u-margin--right" data-ng-click="showSelected('devices')">{$ tabs.devices.selectedItems.length $} Selected</a>
                 <div data-maas-cta="tabs.devices.takeActionOptions"
                     data-ng-model="tabs.devices.actionOption"
                     data-ng-change="actionOptionSelected('devices')">
@@ -55,9 +53,7 @@
                         data-ng-show="tabs.controllers.addController">Close add rack controller</button>
             </div>
             <div data-ng-show="tabs.controllers.selectedItems.length">
-                <span class="page-header__controls-feedback u-margin--right" data-ng-click="showSelected('controllers')">
-                    {$ tabs.controllers.selectedItems.length $} Selected
-                </span>
+                <a class="u-display--inline u-margin--right" data-ng-click="showSelected('controllers')">{$ tabs.controllers.selectedItems.length $} Selected</a>
                 <div data-maas-cta="tabs.controllers.takeActionOptions"
                     data-ng-model="tabs.controllers.actionOption"
                     data-ng-change="actionOptionSelected('controllers')">
@@ -644,6 +640,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 data-ng-class="{ 'is-active': currentpage === 'devices'}"
                 data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize></button>
             <button class="page-navigation__link tooltip"
+                data-ng-if="isSuperUser()"
                 aria-label="A node that provides MAAS services."
                 data-ng-class="{ 'is-active': currentpage === 'controllers'}"
                 data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize></button>

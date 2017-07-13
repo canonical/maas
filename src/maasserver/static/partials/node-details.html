@@ -252,7 +252,7 @@
                 </div>
             </div>
             <form class="form form--stack twelve-col">
-                <fieldset class="form__fieldset six-col ng-hide" data-ng-show="isSuperUser() && !isController">
+                <fieldset class="form__fieldset six-col ng-hide" data-ng-show="!isController">
                     <div class="form__group">
                         <label for="zone" class="form__group-label two-col">Zone</label>
                         <div class="form__group-input three-col">
@@ -306,26 +306,6 @@
                         </div>
                     </div>
                 </fieldset>
-                <div data-ng-hide="isSuperUser() || isController">
-                    <dl>
-                        <dt class="two-col">Zone</dt>
-                            <dd class="four-col last-col">
-                                {$ node.zone.name $}
-                            </dd>
-                        <dt class="two-col" data-ng-if="!isDevice">Architecture</dt>
-                            <dd class="four-col last-col">
-                                {$ node.architecture || "Missing" $}
-                            </dd>
-                        <dt class="two-col">Owner</dt>
-                            <dd class="four-col last-col">
-                                {$ node.owner || "Unassigned" $}
-                            </dd>
-                        <dt class="two-col">Tags</dt>
-                            <dd class="four-col last-col">
-                                {$ node.tags.join(', ') $}
-                            </dd>
-                    </dl>
-                </div>
                 <div class="six-col" data-ng-if="isController">
                     <dl>
                         <dt class="two-col">Type</dt>
