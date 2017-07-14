@@ -176,7 +176,7 @@ class IPMIPowerDriver(PowerDriver):
             'mac_address', "Power MAC", scope=SETTING_SCOPE.NODE)
     ]
     ip_extractor = make_ip_extractor('power_address')
-    wait_time = (4, 8, 12)
+    wait_time = (4, 8, 16, 32)
 
     def detect_missing_packages(self):
         if not shell.has_command_available('ipmipower'):
