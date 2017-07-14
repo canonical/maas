@@ -1806,12 +1806,11 @@ class Node(CleanSave, TimestampedModel):
         old_status = self.status
         self.status = NODE_STATUS.COMMISSIONING
         self.owner = user
-        # Set min_hwe_kernel to min_hwe_kernel if it isn't set incase
-        # commissioning failed and the user set the min globally and is
-        # retrying.
-        if not self.min_hwe_kernel:
-            self.min_hwe_kernel = Config.objects.get_config(
-                'default_min_hwe_kernel')
+        # Set min_hwe_kernel to default_min_hwe_kernel.
+        # This makes sure that the min_hwe_kernel is up to date
+        # with what is stored in the settings.
+        self.min_hwe_kernel = Config.objects.get_config(
+            'default_min_hwe_kernel')
         self.save()
 
         try:

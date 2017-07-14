@@ -2465,7 +2465,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_start, MockCalledOnceWith(
             admin, user_data, NODE_STATUS.NEW, allow_power_cycle=True))
 
-    def test_start_commissioning_sets_min_hwe_kernel(self):
+    def test_start_commissioning_sets_min_hwe_kernel_when_not_set(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
@@ -2476,10 +2476,27 @@ class TestNode(MAASServerTestCase):
             node_module, 'generate_user_data_for_status')
         generate_user_data_for_status.return_value = user_data
         admin = factory.make_admin()
-        Config.objects.set_config('default_min_hwe_kernel', 'hwe-v')
+        Config.objects.set_config('default_min_hwe_kernel', 'hwe-16.04')
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
-        self.assertEqual('hwe-v', node.min_hwe_kernel)
+        self.assertEqual('hwe-16.04', node.min_hwe_kernel)
+
+    def test_start_commissioning_sets_min_hwe_kernel_when_previously_set(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, min_hwe_kernel='ga-16.04')
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = (
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
+        user_data = factory.make_string().encode('ascii')
+        generate_user_data_for_status = self.patch(
+            node_module, 'generate_user_data_for_status')
+        generate_user_data_for_status.return_value = user_data
+        admin = factory.make_admin()
+        Config.objects.set_config('default_min_hwe_kernel', 'hwe-16.04')
+        node.start_commissioning(admin)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertEqual('hwe-16.04', node.min_hwe_kernel)
 
     def test_start_commissioning_starts_node_if_already_on(self):
         node = factory.make_Node(
