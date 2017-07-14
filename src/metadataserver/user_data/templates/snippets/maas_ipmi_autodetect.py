@@ -242,7 +242,14 @@ def set_ipmi_lan_channel_settings():
         output = bmc_get(mode)
         show_re = re.compile('%s\s+Always_Available' % mode.split(':')[1])
         if show_re.search(output) is None:
-            bmc_set(mode, 'Always_Available')
+            # Some BMC's don't support setting Lan_Channel (see LP: #1287274).
+            # If that happens, it would cause the script to fail preventing
+            # the script from continuing. To address this, simply catch the
+            # error, return and allow the script to continue.
+            try:
+                bmc_set(mode, 'Always_Available')
+            except subprocess.CalledProcessError:
+                return
 
 
 def commit_ipmi_settings(config):

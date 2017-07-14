@@ -12,6 +12,7 @@ from unittest.mock import call
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    HasLength,
     MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
@@ -626,3 +627,23 @@ class TestEnableLanChannel(MAASTestCase):
         self.assertThat(
             bmc_set_mock,
             MockNotCalled())
+
+    def test_set_ipmi_lan_channel_handles_calledprocesserror(self):
+        "Test that set_ipmi_lan_channel handles CalledProcessError"
+        response = (
+            "Section Lan_Channel\n"
+            "    Volatile_Access_Mode    Always_Available\n"
+            "    Non_Volatile_Access_Mode    Always_Available\n"
+            "EndSection"
+        )
+        self.patch(
+            maas_ipmi_autodetect, 'bmc_get').return_value = response
+        bmc_set_mock = self.patch(
+            maas_ipmi_autodetect, 'bmc_set')
+        bmc_set_mock.side_effect = subprocess.CalledProcessError(
+            1, 'bmc-set')
+        set_ipmi_lan_channel_settings()
+        self.assertRaises(
+            subprocess.CalledProcessError, bmc_set_mock)
+        self.assertThat(
+            bmc_set_mock.call_args_list, HasLength(1))
