@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -88,19 +88,30 @@ def storage_validator(value):
         raise ValidationError('Malformed storage constraint, "%s".' % value)
 
 NETWORKING_CONSTRAINT_NAMES = {
-    'space',
-    'not_space',
-    'fabric_class',
-    'not_fabric_class',
-    'subnet_cidr',
-    'not_subnet_cidr',
-    'vid',
-    'not_vid',
+    'id',
+    'not_id',
     'fabric',
     'not_fabric',
+    'fabric_class',
+    'not_fabric_class',
+    'ip',
+    'not_ip',
+    'mode',
+    'name',
+    'not_name',
+    'hostname',
+    'not_hostname',
     'subnet',
     'not_subnet',
-    'mode',
+    'space',
+    'not_space',
+    'subnet_cidr',
+    'not_subnet_cidr',
+    'type',
+    'vlan',
+    'not_vlan',
+    'vid',
+    'not_vid',
     'tag',
     'not_tag',
 }
