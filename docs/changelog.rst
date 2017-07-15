@@ -8,11 +8,15 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1700802    Add missing networking constraint names.
+
+LP: #1702690    Set the machine's min_hwe_kernel to the setting's default_min_hwe_kernel when commissioning.
+
 LP: #1651165	Update the disk when editing the disk in the UI and not only the filesystem. This saves a new disk name if that was changed. Code for any filesystem updates is still in tact via the machine websocket handler update_disk method.
 
 LP: #1686678    Allows the domain of controllers to be changed in the UI.
 
-LP: #1703713    Fix missing link on domain details page
+LP: #1703713    Fix missing link on domain details page.
 
 
 2.2.1
