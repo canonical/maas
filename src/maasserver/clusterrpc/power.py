@@ -204,7 +204,10 @@ def power_query_all(system_id, hostname, power_info, timeout=30):
     deferreds = []
     call_order = []
     clients = getAllClients()
+    rack_used = set()
     for client in clients:
+        if client.ident in rack_used:
+            continue
         d = client(
             PowerQuery,
             system_id=system_id, hostname=hostname,
