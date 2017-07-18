@@ -990,11 +990,10 @@ class RegionService(service.Service, object):
 
     @asynchronous(timeout=FOREVER)
     def getAllClients(self):
-        """Return a list of all connected :class:`common.Client`s."""
+        """Return a list with one connection per rack controller."""
         return [
-            common.Client(conn)
+            common.Client(random.choice(list(conns)))
             for conns in self.connections.values()
-            for conn in conns
         ]
 
     @asynchronous(timeout=FOREVER)

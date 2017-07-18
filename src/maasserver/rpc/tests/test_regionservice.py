@@ -100,7 +100,9 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesAll,
+    MatchesAny,
     MatchesListwise,
+    MatchesSetwise,
     MatchesStructure,
     Not,
 )
@@ -884,10 +886,16 @@ class TestRegionService(MAASTestCase):
         c4 = DummyConnection()
         service.connections[uuid2].update({c3, c4})
         clients = service.getAllClients()
-        self.assertItemsEqual(clients, {
-            common.Client(c1), common.Client(c2),
-            common.Client(c3), common.Client(c4),
-        })
+        self.assertThat(list(clients), MatchesAny(
+            MatchesSetwise(
+                Equals(common.Client(c1)), Equals(common.Client(c3))),
+            MatchesSetwise(
+                Equals(common.Client(c1)), Equals(common.Client(c4))),
+            MatchesSetwise(
+                Equals(common.Client(c2)), Equals(common.Client(c3))),
+            MatchesSetwise(
+                Equals(common.Client(c2)), Equals(common.Client(c4))),
+        ))
 
     def test_addConnectionFor_adds_connection(self):
         service = RegionService(sentinel.advertiser)
