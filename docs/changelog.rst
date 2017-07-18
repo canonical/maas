@@ -18,6 +18,18 @@ LP: #1686678    Allows the domain of controllers to be changed in the UI.
 
 LP: #1703713    Fix missing link on domain details page.
 
+LP: #1609496    Increase & add 'wait_time' for IPMI to work around issues with older & broken BMC's.
+
+LP: #1701056    Show correct information for a device details page as a normal user
+
+LP: #1701052    Do not show the controllers tab as a normal user
+
+LP: #1703845    Set the re-check interval for rack to region RPC connections to the lowest value when a RPC connection is closed or lost.
+
+LP: #1703403    Lower the maximum number of connections per worker to 9 connections is allowed as 1 is reserved.
+
+LP: #1704489    [2.2] Duplicate communication is occurring to the same rack controller
+
 
 2.2.1
 =====
