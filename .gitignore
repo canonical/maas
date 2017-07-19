@@ -56,3 +56,4 @@ __pycache__
 *.orig
 *~
 \#*\#
+*.tar.gz
