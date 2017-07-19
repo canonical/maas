@@ -28,7 +28,9 @@ LP: #1703845    Set the re-check interval for rack to region RPC connections to 
 
 LP: #1703403    Lower the maximum number of connections per worker to 9 connections is allowed as 1 is reserved.
 
-LP: #1704489    [2.2] Duplicate communication is occurring to the same rack controller
+LP: #1704489    Duplicate communication is occurring to the same rack controller
+
+LP: #1705254    RegionService can raise unexpected exceptions for an empty connection list
 
 
 2.2.1

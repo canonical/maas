@@ -1,4 +1,3 @@
-bson==0.4.3
 convoy==0.4.4
 crochet==1.5.0
 django==1.8
@@ -13,7 +12,8 @@ paramiko==1.16.3
 petname==2.0
 pexpect==4.2.0
 psycopg2==2.6.2
-pyopenssl==16.0.0
+pymongo==3.2
+pyopenssl==16.2.0
 pyparsing==2.0.7
 pyvmomi==6.0.0.2016.6
 requests==2.11.0
