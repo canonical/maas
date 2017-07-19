@@ -9213,6 +9213,34 @@ class TestUpdateInterfaces(MAASServerTestCase):
         self.assertIsNotNone(eth0)
         self.assertIsNotNone(br0)
 
+    def test_disabled_interfaces_do_not_create_fabrics(self):
+        controller = self.create_empty_controller()
+        interfaces = {
+            'eth0': {
+                'enabled': True,
+                'links': [],
+                'mac_address': '52:54:00:77:15:e3',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'eth1': {
+                'enabled': False,
+                'links': [],
+                'mac_address': '52:54:00:77:15:e4',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+        }
+        self.update_interfaces(controller, interfaces)
+        eth0 = get_one(
+            PhysicalInterface.objects.filter(node=controller, name='eth0'))
+        eth1 = get_one(
+            PhysicalInterface.objects.filter(node=controller, name='eth1'))
+        self.assertIsNotNone(eth0.vlan)
+        self.assertIsNone(eth1.vlan)
+
 
 class TestRackControllerRefresh(MAASTransactionServerTestCase):
 

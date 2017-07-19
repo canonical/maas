@@ -4148,9 +4148,16 @@ class Controller(Node):
                 "name": name,
                 "enabled": is_enabled,
             })
-        if create_fabrics and interface.vlan is None:
-            new_vlan = self._update_vlan_for_interface(
-                interface, config, new_vlan)
+        # Don't update the VLAN unless:
+        # (1) We're at the phase where we're creating fabrics.
+        #     (that is, beaconing has already completed)
+        # (2) The interface's VLAN wasn't previously known.
+        # (3) The interface is administratively enabled.
+        if create_fabrics and interface.vlan is None and is_enabled:
+            new_vlan = self._guess_vlan_for_interface(interface, config)
+            if new_vlan is not None:
+                interface.vlan = new_vlan
+                update_fields.add('vlan')
         if not created:
             if interface.node.id != self.id:
                 # MAC address was on a different node. We need to move
@@ -4187,14 +4194,20 @@ class Controller(Node):
                 # a link re-assigned the VLAN this interface is connected to.
                 new_vlan.fabric.delete()
 
-    def _update_vlan_for_interface(self, interface, config, new_vlan):
+    def _guess_vlan_for_interface(self, interface, config):
         # Make sure that the VLAN on the interface is correct. When
         # links exists on this interface we place it into the correct
         # VLAN. If it cannot be determined and its a new interface it
         # gets placed on its own fabric.
+        new_vlan = None
         connected_to_subnets = self._get_connected_subnets(
             config["links"])
-        if len(connected_to_subnets) == 0:
+        if len(connected_to_subnets) > 0:
+            for subnet in connected_to_subnets:
+                new_vlan = subnet.vlan
+                if new_vlan is not None:
+                    break
+        if new_vlan is None:
             # If the default VLAN on the default fabric has no interfaces
             # associated with it, the first interface will be placed there
             # (rather than creating a new fabric).
@@ -4206,8 +4219,6 @@ class Controller(Node):
             else:
                 new_fabric = Fabric.objects.create()
                 new_vlan = new_fabric.get_default_vlan()
-            interface.vlan = new_vlan
-            interface.save()
         return new_vlan
 
     def _get_or_create_vlan_interface(self, name, vlan, parent):
