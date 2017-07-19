@@ -13,7 +13,7 @@ petname==2.0
 pexpect==4.2.0
 psycopg2==2.6.2
 pymongo==3.2
-pyopenssl==16.0.0
+pyopenssl==16.2.0
 pyparsing==2.0.7
 pyvmomi==6.0.0.2016.6
 requests==2.11.0

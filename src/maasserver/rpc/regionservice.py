@@ -992,21 +992,25 @@ class RegionService(service.Service, object):
     def getAllClients(self):
         """Return a list with one connection per rack controller."""
         return [
-            common.Client(random.choice(list(conns)))
-            for conns in self.connections.values()
+            common.Client(random.choice(list(connections)))
+            for connections in self.connections.values()
+            if len(connections) > 0
         ]
 
     @asynchronous(timeout=FOREVER)
     def getRandomClient(self):
-        """Return a list of all connected :class:`common.Client`s."""
-        clients = list(self.connections.values())
-        if len(clients) == 0:
+        """Return a random connected :class:`common.Client`."""
+        connections = list(self.connections.values())
+        if len(connections) == 0:
             raise exceptions.NoConnectionsAvailable(
                 "Unable to connect to any rack controller; no connections "
                 "available.")
         else:
-            conns = list(random.choice(clients))
-            return common.Client(random.choice(conns))
+            connection = random.choice(connections)
+            # The connection object is a set of RegionServer objects.
+            # Make sure a sane set was returned.
+            assert len(connection) > 0, "Connection set empty."
+            return common.Client(random.choice(list(connection)))
 
 
 def ignoreCancellation(failure):

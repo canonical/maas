@@ -80,7 +80,10 @@ from provisioningserver.rpc import (
     common,
     exceptions,
 )
-from provisioningserver.rpc.exceptions import CannotRegisterRackController
+from provisioningserver.rpc.exceptions import (
+    CannotRegisterRackController,
+    NoConnectionsAvailable,
+)
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
@@ -91,6 +94,7 @@ from provisioningserver.utils.twisted import (
     callInReactorWithTimeout,
     DeferredValue,
 )
+from testtools import ExpectedException
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
@@ -873,6 +877,21 @@ class TestRegionService(MAASTestCase):
         service = RegionService(sentinel.advertiser)
         service.connections.clear()
         self.assertThat(service.getAllClients(), Equals([]))
+
+    @wait_for_reactor
+    def test_getAllClients_empty_connections(self):
+        service = RegionService(sentinel.advertiser)
+        service.connections.clear()
+        uuid1 = factory.make_UUID()
+        service.connections[uuid1] = set()
+        self.assertThat(service.getAllClients(), Equals([]))
+
+    @wait_for_reactor
+    def test_getRandomClient_empty_raises_NoConnectionsAvailable(self):
+        service = RegionService(sentinel.advertiser)
+        service.connections.clear()
+        with ExpectedException(NoConnectionsAvailable):
+            service.getRandomClient()
 
     @wait_for_reactor
     def test_getAllClients(self):
