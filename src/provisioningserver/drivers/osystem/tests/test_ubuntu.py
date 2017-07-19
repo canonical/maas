@@ -19,12 +19,7 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 class TestUbuntuOS(MAASTestCase):
 
     def get_lts_release(self):
-        # XXX ltrager 2016-04-06 - python3-distro-info won't set the latest lts
-        # to Xenial until its been released. So we can start testing MAAS 2.0
-        # with Xenial by default override it here. Once Xenial is released this
-        # can be removed
-        # return UbuntuDistroInfo().lts()
-        return "xenial"
+        return UbuntuDistroInfo().lts()
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()
@@ -50,6 +45,16 @@ class TestUbuntuOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 BOOT_IMAGE_PURPOSE.DISKLESS,
                 ])
+
+    def test_is_release_supported(self):
+        osystem = UbuntuOS()
+        info = UbuntuDistroInfo()
+        self.assertTrue(osystem.is_release_supported(random.choice(info.all)))
+
+    def test_get_lts_release(self):
+        # Canary so we know when the lts changes
+        osystem = UbuntuOS()
+        self.assertEquals('xenial', osystem.get_lts_release())
 
     def test_get_default_release(self):
         osystem = UbuntuOS()

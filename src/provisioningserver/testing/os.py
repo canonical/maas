@@ -34,9 +34,6 @@ class FakeOS(OperatingSystem):
     def get_boot_image_purposes(self, *args):
         return self.purpose
 
-    def is_release_supported(self, release):
-        return release in self.fake_list
-
     def get_supported_releases(self):
         return self.fake_list
 

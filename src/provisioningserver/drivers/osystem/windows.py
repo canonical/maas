@@ -55,10 +55,6 @@ class WindowsOS(OperatingSystem):
             purposes.append(BOOT_IMAGE_PURPOSE.INSTALL)
         return purposes
 
-    def is_release_supported(self, release):
-        """Return True when the release is supported, False otherwise."""
-        return release in WINDOWS_CHOICES
-
     def get_default_release(self):
         """Gets the default release to use when a release is not
         explicit."""
@@ -66,7 +62,7 @@ class WindowsOS(OperatingSystem):
 
     def get_release_title(self, release):
         """Return the title for the given release."""
-        return WINDOWS_CHOICES.get(release)
+        return WINDOWS_CHOICES.get(release, release)
 
     def requires_license_key(self, release):
         return release in REQUIRE_LICENSE_KEY

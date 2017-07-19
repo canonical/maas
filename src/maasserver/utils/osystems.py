@@ -25,7 +25,6 @@ from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
-from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import (
     BootResource,
     BootSourceCache,
@@ -75,11 +74,11 @@ def list_all_usable_releases(osystems):
             # When custom images are returned by list_all_usable_osystems
             # the osystem name is 'custom' and the release name to whatever
             # the user specified.
-            if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            if '/' in resource.name:
+                osystem, release = resource.name.split('/')
+            else:
                 osystem = 'custom'
                 release = resource.name
-            else:
-                osystem, release = resource.name.split('/')
             if osystem not in titles:
                 titles[osystem] = {}
             titles[osystem][release] = resource.extra['title']

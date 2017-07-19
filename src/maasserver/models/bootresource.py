@@ -187,6 +187,7 @@ class BootResourceManager(Manager):
                     rtypes = [
                         BOOT_RESOURCE_TYPE.SYNCED,
                         BOOT_RESOURCE_TYPE.GENERATED,
+                        BOOT_RESOURCE_TYPE.UPLOADED,
                     ]
                     name = '%s/%s' % (image['osystem'], image['release'])
                 else:
@@ -442,9 +443,17 @@ class BootResource(CleanSave, TimestampedModel):
         """
         if self.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
             if '/' in self.name:
-                raise ValidationError(
-                    "%s boot resource cannot contain a '/' in it's name." % (
-                        self.display_rtype))
+                # Avoid circular dependency
+                from maasserver.clusterrpc.osystems import (
+                    gen_all_known_operating_systems,
+                )
+                osystem = self.name.split('/')[0]
+                if osystem not in {
+                        i['name'] for i in gen_all_known_operating_systems()}:
+                    raise ValidationError(
+                        "%s boot resource cannot contain a '/' in it's name "
+                        "unless it starts with a supported operating system."
+                        % (self.display_rtype))
         elif self.rtype in RTYPE_REQUIRING_OS_SERIES_NAME:
             if '/' not in self.name:
                 raise ValidationError(

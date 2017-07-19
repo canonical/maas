@@ -2283,11 +2283,19 @@ class BootResourceForm(MAASModelForm):
         If the passed resource already has a match in the database then that
         resource is returned. If not then the passed resource is returned.
         """
+        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            # Uploaded BootResources were previously generated, now they're
+            # uploaded. Search for both to convert.
+            rtypes = [
+                BOOT_RESOURCE_TYPE.UPLOADED, BOOT_RESOURCE_TYPE.GENERATED]
+        else:
+            rtypes = [resource.type]
         existing_resource = get_one(
             BootResource.objects.filter(
-                rtype=resource.rtype,
+                rtype__in=rtypes,
                 name=resource.name, architecture=resource.architecture))
         if existing_resource is not None:
+            existing_resource.rtype = resource.rtype
             return existing_resource
         return resource
 
@@ -2335,24 +2343,14 @@ class BootResourceForm(MAASModelForm):
         This implementation of `save` does not support the `commit` argument.
         """
         resource = super(BootResourceForm, self).save(commit=False)
-
-        # XXX blake_r 2014-09-22 bug=1361370: Temporarily support the ability
-        # to upload a generated image. This should only exist while CentOS and
-        # Windows images need to be uploaded, rather than synced or generated.
-        if '/' not in resource.name:
-            label = 'uploaded'
-            resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
-        else:
-            label = 'generated'
-            resource.rtype = BOOT_RESOURCE_TYPE.GENERATED
-
+        resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
         resource = self.get_existing_resource(resource)
         resource.extra = {'subarches': resource.architecture.split('/')[1]}
         if 'title' in self.cleaned_data:
             resource.extra['title'] = self.cleaned_data['title']
 
         resource.save()
-        resource_set = self.create_resource_set(resource, label)
+        resource_set = self.create_resource_set(resource, 'uploaded')
         self.create_resource_file(
             resource_set, self.cleaned_data)
         return resource

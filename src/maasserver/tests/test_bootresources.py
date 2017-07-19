@@ -200,11 +200,11 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
 
     def get_product_name_for_resource(self, resource):
         arch, subarch = resource.architecture.split('/')
-        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+        if '/' in resource.name:
+            os, series = resource.name.split('/')
+        else:
             os = 'custom'
             series = resource.name
-        else:
-            os, series = resource.name.split('/')
         return 'maas:boot:%s:%s:%s:%s' % (os, arch, subarch, series)
 
     def make_usable_product_boot_resource(

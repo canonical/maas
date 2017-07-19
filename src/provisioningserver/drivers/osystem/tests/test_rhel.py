@@ -34,23 +34,6 @@ class TestRHEL(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 ])
 
-    def test_is_release_supported(self):
-        name_supported = {
-            "rhel6": True,
-            "rhel65": True,
-            "rhel7": True,
-            "rhel71": True,
-            "cent65": False,
-            "rhel711": True,
-            "rhel-title": True,
-            "rhel71.custom": True,
-            factory.make_name("name"): False,
-            }
-        osystem = RHELOS()
-        for name, supported in name_supported.items():
-            self.expectThat(
-                osystem.is_release_supported(name), Equals(supported))
-
     def test_get_default_release(self):
         osystem = RHELOS()
         expected = osystem.get_default_release()

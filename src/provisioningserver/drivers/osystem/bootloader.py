@@ -18,10 +18,6 @@ class BootLoaderOS(OperatingSystem):
     name = 'bootloader'
     title = 'Bootloader'
 
-    def is_release_supported(self, release):
-        # All releases are supported, they're pulled from the Ubuntu archive.
-        return True
-
     def get_default_release(self):
         # No Default bootloader as it depends on the arch.
         return ''

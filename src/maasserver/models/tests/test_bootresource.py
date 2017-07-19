@@ -10,6 +10,7 @@ from datetime import datetime
 import random
 
 from django.core.exceptions import ValidationError
+from maasserver.clusterrpc import osystems
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -770,6 +771,26 @@ class TestBootResource(MAASServerTestCase):
             rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=name, architecture=arch)
         self.assertRaises(
             ValidationError, resource.save)
+
+    def test_validation_allows_any_uploaded_name_slash_with_supported_os(self):
+        osystem = factory.make_name('osystem')
+        self.patch(
+            osystems, 'gen_all_known_operating_systems').return_value = [
+                {'name': osystem}]
+        name = '%s/%s' % (osystem, factory.make_name('release'))
+        arch = '%s/%s' % (
+            factory.make_name('arch'), factory.make_name('subarch'))
+        resource = BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=name, architecture=arch)
+        resource.save()
+
+    def test_validation_allows_any_uploaded_name_without_slash(self):
+        name = factory.make_name('name')
+        arch = '%s/%s' % (
+            factory.make_name('arch'), factory.make_name('subarch'))
+        resource = BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=name, architecture=arch)
+        resource.save()
 
     def test_create_raises_error_on_not_unique(self):
         name = '%s/%s' % (

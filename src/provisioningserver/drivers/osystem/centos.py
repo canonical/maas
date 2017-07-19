@@ -35,10 +35,6 @@ class CentOS(OperatingSystem):
             BOOT_IMAGE_PURPOSE.XINSTALL
             ]
 
-    def is_release_supported(self, release):
-        matched = DISTRO_MATCHER.match(release)
-        return matched is not None
-
     def get_default_release(self):
         """Gets the default release to use when a release is not
         explicit."""

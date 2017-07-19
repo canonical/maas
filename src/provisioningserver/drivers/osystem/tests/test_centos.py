@@ -34,23 +34,6 @@ class TestCentOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 ])
 
-    def test_is_release_supported(self):
-        name_supported = {
-            "centos6": True,
-            "centos65": True,
-            "centos7": True,
-            "centos71": True,
-            "cent65": False,
-            "centos711": True,
-            "centos-title": True,
-            "centos71.custom": True,
-            factory.make_name("name"): False,
-            }
-        osystem = CentOS()
-        for name, supported in name_supported.items():
-            self.expectThat(
-                osystem.is_release_supported(name), Equals(supported))
-
     def test_get_default_release(self):
         osystem = CentOS()
         expected = osystem.get_default_release()

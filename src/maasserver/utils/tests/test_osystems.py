@@ -10,6 +10,7 @@ import random
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
+from maasserver.clusterrpc import osystems
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
@@ -149,6 +150,21 @@ class TestReleases(MAASServerTestCase):
         title = factory.make_name('title')
         factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=release['name'],
+            extra={'title': title})
+        self.assertEquals(
+            title,
+            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
+
+    def test_list_all_usable_releases_finds_uploaded_with_osystem(self):
+        release = make_rpc_release()
+        osystem = make_rpc_osystem(releases=[release])
+        title = factory.make_name('title')
+        self.patch(
+            osystems, 'gen_all_known_operating_systems').return_value = [
+                {'name': osystem['name']}]
+        factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name='%s/%s' % (osystem['name'], release['name']),
             extra={'title': title})
         self.assertEquals(
             title,
