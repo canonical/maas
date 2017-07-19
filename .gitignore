@@ -15,6 +15,7 @@
 /.idea/scopes
 /.idea/workspace.xml
 /.installed.cfg
+/.pybuild/
 /.noseids
 /.run
 /.run-e2e
@@ -24,6 +25,8 @@
 /coverage
 /coverage.xml
 /db
+/debian/build/
+/debian/debhelper-build-stamp
 /develop-eggs
 /dist
 /docs/api.rst
