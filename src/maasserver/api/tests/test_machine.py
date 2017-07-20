@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Machine API."""
@@ -326,6 +326,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_sets_osystem_and_distro_series(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
@@ -367,6 +368,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_sets_license_key(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
@@ -415,6 +417,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_sets_default_distro_series(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
@@ -432,6 +435,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_works_if_series_already_set(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         osystem = Config.objects.get_config('default_osystem')
         distro_series = Config.objects.get_config('default_distro_series')
         make_usable_osystem(
@@ -467,6 +471,26 @@ class TestMachineAPI(APITestCase.ForUser):
             ),
             (response.status_code, json_load_bytes(response.content)))
 
+    def test_POST_deploy_fails_when_preseed_not_rendered(self):
+        mock_get_curtin_merged_config = self.patch(
+            machines_module, "get_curtin_merged_config")
+        mock_get_curtin_merged_config.side_effect = Exception('error')
+        osystem = Config.objects.get_config('default_osystem')
+        distro_series = Config.objects.get_config('default_distro_series')
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series])
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type='manual',
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self))
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'deploy'})
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(b"Failed to render preseed: error", response.content)
+
     def test_POST_deploy_validates_hwe_kernel_with_default_distro_series(self):
         architecture = make_usable_architecture(self, subarch_name="generic")
         machine = factory.make_Node(
@@ -495,6 +519,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_may_be_repeated(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
@@ -515,6 +540,7 @@ class TestMachineAPI(APITestCase.ForUser):
             node_module.RackControllerManager, "filter_by_url_accessible"
             ).return_value = [rack_controller]
         self.patch(node_module.Node, "_power_control_node")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='virsh', architecture=make_usable_architecture(self),
@@ -536,6 +562,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_passes_comment(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         rack_controller = factory.make_RackController()
         machine = factory.make_Node(
             owner=self.user, interface=True,
@@ -565,6 +592,7 @@ class TestMachineAPI(APITestCase.ForUser):
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         machine_start = self.patch(node_module.Machine, 'start')
+        self.patch(machines_module, "get_curtin_merged_config")
         machine_start.return_value = False
         self.client.post(
             self.get_machine_uri(machine), {
@@ -578,6 +606,7 @@ class TestMachineAPI(APITestCase.ForUser):
     def test_POST_deploy_doesnt_reset_power_options_bug_1569102(self):
         self.become_admin()
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         rack_controller = factory.make_RackController()
         machine = factory.make_Node(
             owner=self.user, interface=True,
@@ -600,6 +629,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_allocates_ready_machines(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             status=NODE_STATUS.READY, interface=True,
             power_type='manual',
@@ -631,6 +661,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_passes_agent_name(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             status=NODE_STATUS.READY, interface=True,
             power_type='manual',
@@ -650,6 +681,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_passes_comment_on_acquire(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine_method = self.patch(node_module.Machine, 'acquire')
         machine = factory.make_Node(
             status=NODE_STATUS.READY, owner=self.user, interface=True,
@@ -673,6 +705,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_deploy_passes_bridge_settings(self):
         self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
         machine_method = self.patch(node_module.Machine, 'acquire')
         machine = factory.make_Node(
             status=NODE_STATUS.READY, owner=self.user, interface=True,

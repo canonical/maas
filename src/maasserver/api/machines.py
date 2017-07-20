@@ -443,6 +443,13 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+        # Check that the curtin preseeds renders correctly.
+        try:
+            get_curtin_merged_config(machine)
+        except Exception as e:
+            raise MAASAPIBadRequest(
+                "Failed to render preseed: %s" % e)
+
         return self.power_on(request, system_id)
 
     @operation(idempotent=False)

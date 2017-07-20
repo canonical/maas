@@ -44,6 +44,7 @@ from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
 )
+from maasserver.preseed import get_curtin_config
 from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
     validate_hwe_kernel,
@@ -344,6 +345,12 @@ class Deploy(NodeAction):
             self.node.save()
         except ValidationError as e:
             raise NodeActionError(e)
+
+        try:
+            get_curtin_config(self.node)
+        except Exception as e:
+            raise NodeActionError(
+                "Failed to retrieve curtin config: %s" % e)
 
         try:
             self.node.start(self.user)

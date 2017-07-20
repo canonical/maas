@@ -56,6 +56,7 @@ from maasserver.models.partition import (
     PARTITION_ALIGNMENT_SIZE,
 )
 from maasserver.node_action import compile_node_actions
+import maasserver.node_action as node_action_module
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
@@ -2059,6 +2060,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.patch(Machine, 'on_network').return_value = True
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         self.patch(Machine, "_start").return_value = None
+        self.patch(node_action_module, 'get_curtin_config')
         osystem = make_usable_osystem(self)
         handler = MachineHandler(user, {})
         handler.action({

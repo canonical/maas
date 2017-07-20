@@ -49,6 +49,7 @@ from maasserver.node_action import (
     SetZone,
     Test,
 )
+import maasserver.node_action as node_action_module
 from maasserver.node_status import (
     MONITORED_STATUSES,
     NODE_TESTING_RESET_READY_TRANSITIONS,
@@ -499,10 +500,27 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='manual', owner=user)
-        node_start = self.patch(node, 'start')
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
         Deploy(node, user).execute()
-        self.assertThat(
-            node_start, MockCalledOnceWith(user))
+        self.expectThat(
+            mock_get_curtin_config, MockCalledOnceWith(node))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user))
+
+    def test_Deploy_raises_NodeActionError_for_no_curtin_config(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.ALLOCATED,
+            power_type='manual', owner=user)
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_get_curtin_config.side_effect = NodeActionError('error')
+        error = self.assertRaises(
+            NodeActionError, Deploy(node, user).execute)
+        self.assertEqual(
+            "Failed to retrieve curtin config: error", str(error))
 
     def test_Deploy_raises_NodeActionError_for_invalid_os(self):
         user = factory.make_User()
@@ -527,7 +545,9 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='manual', owner=user)
-        self.patch(node, 'start')
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
@@ -536,6 +556,10 @@ class TestDeployAction(MAASServerTestCase):
             "distro_series": release_name
         }
         Deploy(node, user).execute(**extra)
+        self.expectThat(
+            mock_get_curtin_config, MockCalledOnceWith(node))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
         self.expectThat(
             node.distro_series, Equals(release_name))
@@ -545,7 +569,9 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='manual', owner=user)
-        self.patch(node, 'start')
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
@@ -554,6 +580,10 @@ class TestDeployAction(MAASServerTestCase):
             "distro_series": release_name + '*'
         }
         Deploy(node, user).execute(**extra)
+        self.expectThat(
+            mock_get_curtin_config, MockCalledOnceWith(node))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
         self.expectThat(
             node.distro_series, Equals(release_name))
@@ -563,12 +593,18 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='manual', owner=user)
-        self.patch(node, 'start')
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
         osystem = make_osystem_with_releases(self)
         extra = {
             "distro_series": osystem["releases"][0]["name"],
         }
         Deploy(node, user).execute(**extra)
+        self.expectThat(
+            mock_get_curtin_config, MockCalledOnceWith(node))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(""))
         self.expectThat(node.distro_series, Equals(""))
 
@@ -577,24 +613,36 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='manual', owner=user)
-        self.patch(node, 'start')
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
         osystem = make_osystem_with_releases(self)
         extra = {
             "osystem": osystem["name"],
         }
         Deploy(node, user).execute(**extra)
+        self.expectThat(
+            mock_get_curtin_config, MockCalledOnceWith(node))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(""))
         self.expectThat(node.distro_series, Equals(""))
 
     def test_Deploy_allocates_node_if_node_not_already_allocated(self):
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
-        self.patch(node, 'start')
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
         action = Deploy(node, user)
         action.execute()
 
-        self.assertEqual(user, node.owner)
-        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+        self.expectThat(
+            mock_get_curtin_config, MockCalledOnceWith(node))
+        self.expectThat(
+            mock_node_start, MockCalledOnceWith(user))
+        self.expectThat(user, Equals(node.owner))
+        self.expectThat(NODE_STATUS.ALLOCATED, Equals(node.status))
 
 
 class TestDeployActionTransactional(MAASTransactionServerTestCase):
