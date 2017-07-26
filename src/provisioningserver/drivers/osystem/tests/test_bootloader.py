@@ -13,11 +13,6 @@ from provisioningserver.drivers.osystem.bootloader import BootLoaderOS
 
 class TestCustomOS(MAASTestCase):
 
-    def test_is_release_supported(self):
-        osystem = BootLoaderOS()
-        self.assertTrue(
-            osystem.is_release_supported(factory.make_name('release')))
-
     def test_get_default_release(self):
         osystem = BootLoaderOS()
         self.assertEquals("", osystem.get_default_release())

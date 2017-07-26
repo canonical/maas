@@ -27,11 +27,6 @@ class CustomOS(OperatingSystem):
         # Custom images can only be used with XINSTALL.
         return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
-    def is_release_supported(self, release):
-        """Return True when the release is supported, False otherwise."""
-        # All release are supported, since the user uploaded it.
-        return True
-
     def get_default_release(self):
         """Gets the default release to use when a release is not
         explicit."""

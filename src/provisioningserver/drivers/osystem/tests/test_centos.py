@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the CentOS module."""
@@ -34,21 +34,6 @@ class TestCentOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 ])
 
-    def test_is_release_supported(self):
-        name_supported = {
-            "centos6": True,
-            "centos65": True,
-            "centos7": True,
-            "centos71": True,
-            "cent65": False,
-            "cent": False,
-            "centos711": False,
-            }
-        osystem = CentOS()
-        for name, supported in name_supported.items():
-            self.expectThat(
-                osystem.is_release_supported(name), Equals(supported))
-
     def test_get_default_release(self):
         osystem = CentOS()
         expected = osystem.get_default_release()
@@ -62,9 +47,10 @@ class TestCentOS(MAASTestCase):
             "centos7": "CentOS 7",
             "centos70": "CentOS 7",  # See LP: #1654063
             "centos71": "CentOS 7.1",
-            "cent65": None,
-            "cent": None,
-            "centos711": None,
+            "centos65": "CentOS 6.5",
+            "cent": "CentOS cent",
+            "centos711": "CentOS 7.1 1",
+            "centos71-custom": "CentOS 7.1 custom",
             }
         osystem = CentOS()
         for name, title in name_titles.items():

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Osystem Drivers."""
@@ -67,10 +67,6 @@ class OperatingSystem(metaclass=ABCMeta):
         """Title of the operating system."""
 
     @abstractmethod
-    def is_release_supported(self, release):
-        """Return True when the release is supported, False otherwise."""
-
-    @abstractmethod
     def get_default_release(self):
         """Return the default release to use when none is specified.
 
@@ -95,6 +91,11 @@ class OperatingSystem(metaclass=ABCMeta):
         :param label: Label of boot image.
         :return: list of supported purposes
         """
+
+    def is_release_supported(self, release):
+        """Return True when the release is supported, False otherwise."""
+        # If the osystem matches assume all releases are supported.
+        return True
 
     def format_release_choices(self, releases):
         """Format the release choices that are presented to the user.

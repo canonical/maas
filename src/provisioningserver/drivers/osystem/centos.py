@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """CentOS Operating System."""
@@ -14,31 +14,26 @@ from provisioningserver.drivers.osystem import (
     OperatingSystem,
 )
 
-
-DISTRO_SERIES_DEFAULT = 'centos65'
-
-# Regex matcher that is used to check if the release is supported.
-# It needs to match the name "centosXY". Where "X" is the major version
-# and "Y" is the minor version.
-DISTRO_MATCHER = re.compile("centos(?P<major>[0-9])(?P<minor>[0-9])?\Z")
+# Regex matcher that is used to check if the release is supported. The release
+# name just has to start with 'centos' to be supported but the major, minor,
+# and title are found if available to help format the title.
+DISTRO_MATCHER = re.compile(
+    '^centos((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
+    re.I)
+DISTRO_SERIES_DEFAULT = 'centos70'
 
 
 class CentOS(OperatingSystem):
     """CentOS operating system."""
 
-    name = "centos"
-    title = "CentOS"
+    name = 'centos'
+    title = 'CentOS'
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
         return [
             BOOT_IMAGE_PURPOSE.XINSTALL
             ]
-
-    def is_release_supported(self, release):
-        """Return True when the release is supported, False otherwise."""
-        matched = DISTRO_MATCHER.match(release)
-        return matched is not None
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
@@ -49,10 +44,14 @@ class CentOS(OperatingSystem):
         """Return the title for the given release."""
         matched = DISTRO_MATCHER.match(release)
         if matched is None:
-            return None
-        matched_dict = matched.groupdict()
-        major = matched_dict['major']
-        minor = matched_dict['minor']
+            # This should never happen as is_release_supported will return
+            # false but just in case it does...
+            return "%s %s" % (self.title, release)
+
+        ret = self.title
+        major = matched.group('major')
+        minor = matched.group('minor')
+        title = matched.group('title')
         # MAAS provided images via streams are not bound to a minor
         # release version, which means we always provide the latest
         # available release from CentOS 6 and CentOS 7.  To address
@@ -65,9 +64,14 @@ class CentOS(OperatingSystem):
         # from the stream and the minor version doesn't match to what
         # we publish. As such, we ensure that we only return minor
         # if we have any other version other that X.0, 7.0 and 6.6.
-        if minor is None or minor == '0':
-            return "CentOS %s" % major
+        if major is not None and minor is None or minor == '0':
+            ret = "%s %s" % (ret, major)
         elif major == '6' and minor == '6':
-            return "CentOS %s" % major
-        else:
-            return "CentOS %s.%s" % (major, minor)
+            ret = "%s %s" % (ret, major)
+        elif None not in (major, minor):
+            ret = "%s %s.%s" % (ret, major, minor)
+
+        if title is not None:
+            ret = "%s %s" % (ret, title)
+
+        return ret

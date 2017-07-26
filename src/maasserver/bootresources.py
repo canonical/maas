@@ -224,11 +224,11 @@ class SimpleStreamsHandler:
     def get_boot_resource_identifiers(self, resource):
         """Return tuple (os, arch, subarch, series) for the given resource."""
         arch, subarch = resource.split_arch()
-        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+        if '/' in resource.name:
+            os, series = resource.name.split('/')
+        else:
             os = 'custom'
             series = resource.name
-        else:
-            os, series = resource.name.split('/')
         return (os, arch, subarch, series)
 
     def get_product_name(self, resource):

@@ -51,15 +51,6 @@ class TestCustomOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 ])
 
-    def test_is_release_supported(self):
-        osystem = CustomOS()
-        releases = [factory.make_name('release') for _ in range(3)]
-        supported = [
-            osystem.is_release_supported(release)
-            for release in releases
-            ]
-        self.assertEqual([True, True, True], supported)
-
     def test_get_default_release(self):
         osystem = CustomOS()
         self.assertEqual("", osystem.get_default_release())

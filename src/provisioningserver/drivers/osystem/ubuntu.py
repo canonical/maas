@@ -42,15 +42,7 @@ class UbuntuOS(OperatingSystem):
 
     def get_lts_release(self):
         """Return the latest Ubuntu LTS release."""
-        lts_release = self.ubuntu_distro_info.lts()
-        # XXX ltrager 2016-04-06 - python3-distro-info won't set the latest lts
-        # to Xenial until its been released. So we can start testing MAAS 2.0
-        # with Xenial by default override it here. Once Xenial is released this
-        # can be removed
-        if lts_release == "trusty":
-            return "xenial"
-        else:
-            return lts_release
+        return self.ubuntu_distro_info.lts()
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
