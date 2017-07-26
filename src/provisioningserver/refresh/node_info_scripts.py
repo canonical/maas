@@ -612,7 +612,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
-        'timeout': timedelta(minutes=5),
+        'timeout': timedelta(minutes=10),
         'run_on_controller': False,
     }),
     (LIST_MODALIASES_OUTPUT_NAME, {
