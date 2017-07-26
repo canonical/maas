@@ -240,7 +240,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface.save()
         self.assertEquals(new_vlan, reload_object(subnet).vlan)
 
-    def test__doesnt_move_link_subnets_when_vlan_is_None(self):
+    def test__doesnt_move_link_subnets_when_target_vlan_is_None(self):
         node = self.maker()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         old_vlan = interface.vlan
@@ -250,6 +250,18 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface.vlan = None
         interface.save()
         self.assertEquals(old_vlan, reload_object(subnet).vlan)
+
+    def test__doesnt_move_link_subnets_when_source_vlan_is_None(self):
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=None)
+        old_vlan = interface.vlan
+        subnet = factory.make_Subnet(vlan=old_vlan)
+        factory.make_StaticIPAddress(
+            subnet=subnet, interface=interface)
+        interface.vlan = factory.make_VLAN()
+        interface.save()
+        self.assertEquals(interface.vlan, reload_object(subnet).vlan)
 
     def test__moves_children_vlans_to_same_fabric(self):
         node = self.maker()

@@ -214,6 +214,8 @@ def interface_vlan_update(instance, old_values, **kwargs):
             NODE_TYPE.REGION_CONTROLLER,
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+        if old_vlan_id is None:
+            return
         # Interface VLAN was changed on a controller. Move all linked subnets
         # to that new VLAN, unless the new VLAN is None. When the VLAN is
         # None then the administrator is say that the interface is now

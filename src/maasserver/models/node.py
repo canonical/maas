@@ -4184,7 +4184,7 @@ class Controller(Node):
     def _update_physical_links(self, interface, config, new_vlan,
                                update_fields):
         update_ip_addresses = self._update_links(interface, config["links"])
-        linked_vlan = self._get_first_sticky_vlan_from_ip_addresses(
+        linked_vlan = self._guess_best_vlan_from_ip_addresses(
             update_ip_addresses)
         if linked_vlan is not None:
             interface.vlan = linked_vlan
@@ -4381,7 +4381,7 @@ class Controller(Node):
         If a static IP address is allocated, give preferential treatment to
         the VLAN that IP address resides on.
         """
-        linked_vlan = self._get_first_sticky_vlan_from_ip_addresses(
+        linked_vlan = self._guess_best_vlan_from_ip_addresses(
             update_ip_addresses)
         if linked_vlan is not None:
             interface.vlan = linked_vlan
@@ -4417,8 +4417,11 @@ class Controller(Node):
         """Return a set of subnets that `links` belongs to."""
         subnets = set()
         for link in links:
-            if link["mode"] == "static":
-                ip_addr = IPNetwork(link["address"])
+            if link["mode"] == "static" or link["mode"] == "dhcp":
+                address = link.get("address", None)
+                if address is None:
+                    continue
+                ip_addr = IPNetwork(address)
                 subnet = get_one(Subnet.objects.filter(cidr=str(ip_addr.cidr)))
                 if subnet is not None:
                     subnets.add(subnet)
@@ -4439,12 +4442,15 @@ class Controller(Node):
                 return ip_address
         return None
 
-    def _get_first_sticky_vlan_from_ip_addresses(self, ip_addresses):
+    def _guess_best_vlan_from_ip_addresses(self, ip_addresses):
         """Return the first VLAN for a STICKY IP address in `ip_addresses`."""
+        second_best = None
         for ip_address in ip_addresses:
             if ip_address.alloc_type == IPADDRESS_TYPE.STICKY:
                 return ip_address.subnet.vlan
-        return None
+            elif ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
+                second_best = ip_address.subnet.vlan
+        return second_best
 
     def _update_links(
             self, interface, links, force_vlan=False, use_interface_vlan=True):

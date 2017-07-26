@@ -9281,6 +9281,53 @@ class TestUpdateInterfaces(MAASServerTestCase):
         self.assertIsNotNone(eth0.vlan)
         self.assertIsNone(eth1.vlan)
 
+    def test_subnet_seen_on_second_controller_does_not_create_fabric(self):
+        alice = self.create_empty_controller()
+        bob = self.create_empty_controller()
+        alice_interfaces = {
+            'eth0': {
+                'enabled': True,
+                'links': [{'address': '192.168.0.1/24', 'mode': 'dhcp'}],
+                'mac_address': '52:54:00:77:15:e3',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'eth1': {
+                'enabled': False,
+                'links': [],
+                'mac_address': '52:54:00:77:15:e4',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+        }
+        bob_interfaces = {
+            'eth0': {
+                'enabled': True,
+                'links': [{'address': '192.168.0.2/24', 'mode': 'dhcp'}],
+                'mac_address': '52:54:00:87:25:f3',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'eth1': {
+                'enabled': False,
+                'links': [],
+                'mac_address': '52:54:00:87:25:f4',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+        }
+        self.update_interfaces(alice, alice_interfaces)
+        self.update_interfaces(bob, bob_interfaces)
+        alice_eth0 = get_one(
+            PhysicalInterface.objects.filter(node=alice, name='eth0'))
+        bob_eth0 = get_one(
+            PhysicalInterface.objects.filter(node=bob, name='eth0'))
+        self.assertThat(alice_eth0.vlan, Equals(bob_eth0.vlan))
+
 
 class TestRackControllerRefresh(MAASTransactionServerTestCase):
 
