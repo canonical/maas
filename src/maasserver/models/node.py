@@ -4455,7 +4455,7 @@ class Controller(Node):
             interface.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED))
         updated_ip_addresses = set()
-        if use_interface_vlan:
+        if use_interface_vlan and interface.vlan is not None:
             vlan = interface.vlan
         elif len(links) > 0:
             fabric = Fabric.objects.create()

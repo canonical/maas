@@ -9151,6 +9151,46 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 vlan=br0_vlan,
             ))
 
+    def test_registers_bridge_with_disabled_parent(self):
+        controller = self.create_empty_controller()
+        interfaces = {
+            'eth0': {
+                'enabled': True,
+                'links': [{
+                    'address': '10.0.0.2/24',
+                    'gateway': '10.0.0.1',
+                    'mode': 'static'
+                }],
+                'mac_address': '52:54:00:3a:01:35',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'virbr0': {
+                'enabled': True,
+                'links': [{
+                    'address': '192.168.122.1/24', 'mode': 'static'
+                }],
+                'mac_address': '52:54:00:3a:01:36',
+                'parents': ['virbr0-nic'],
+                'source': 'ipaddr',
+                'type': 'bridge'
+            },
+            'virbr0-nic': {
+                'enabled': False,
+                'mac_address': '52:54:00:3a:01:36',
+                'links': [],
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            }
+        }
+        self.update_interfaces(controller, interfaces)
+        subnet = get_one(Subnet.objects.filter(cidr='10.0.0.0/24'))
+        self.assertIsNotNone(subnet)
+        subnet = get_one(Subnet.objects.filter(cidr='192.168.122.0/24'))
+        self.assertIsNotNone(subnet)
+
     def test_registers_bridge_with_no_parents_and_links(self):
         controller = self.create_empty_controller()
         interfaces = {
