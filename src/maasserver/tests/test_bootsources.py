@@ -253,8 +253,10 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         factory.make_BootSource(keyring_data=b'1234')
         cache_boot_sources()
         self.assertEqual(
-            (proxy_address, proxy_address),
-            (capture.env['http_proxy'], capture.env['https_proxy']))
+            (proxy_address, proxy_address, '127.0.0.1,localhost'),
+            (
+                capture.env['http_proxy'], capture.env['https_proxy'],
+                capture.env['no_proxy']))
 
     def test__passes_user_agent_with_maas_version(self):
         mock_download = self.patch(

@@ -87,6 +87,11 @@ def get_simplestreams_env():
         if http_proxy is not None:
             env['http_proxy'] = http_proxy
             env['https_proxy'] = http_proxy
+            # When the proxy environment variables are set they effect the
+            # entire process, including controller refresh. When the region
+            # needs to refresh itself it sends itself results over HTTP to
+            # 127.0.0.1.
+            env['no_proxy'] = '127.0.0.1,localhost'
     return env
 
 
