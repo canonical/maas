@@ -1405,11 +1405,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # XXX AndresRodriguez 2016-10-27: If new params are added and are not
         # constraints, these need to be added to IGNORED_FIELDS in
         # src/maasserver/node_constraint_filter_forms.py.
-        input_constraints = str([
-            param for param in request.data.lists() if param[0] != 'op'])
+        input_constraints = [
+            param for param in request.data.lists() if param[0] != 'op']
         maaslog.info(
             "Request from user %s to acquire a machine with constraints: %s",
-            request.user.username, input_constraints)
+            request.user.username, str(input_constraints))
         agent_name, bridge_all, bridge_fd, bridge_stp, comment = (
             get_allocation_parameters(request))
         verbose = get_optional_param(
@@ -1450,7 +1450,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "storage": storage,
                 }
                 pods = Pod.objects.all()
-                if pods:
+                # We don't want to compose a machine from a pod if the
+                # constraints contain tags.
+                if pods and not any(
+                        'tags' in constraint
+                        for constraint in input_constraints):
                     if form.cleaned_data.get('pod'):
                         pods = pods.filter(name=form.cleaned_data.get('pod'))
                     elif form.cleaned_data.get('pod_type'):
@@ -1477,7 +1481,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     message = (
                         'No available machine matches constraints: %s '
                         '(resolved to "%s")' % (
-                            input_constraints, constraints))
+                            str(input_constraints), constraints))
                 raise NodesNotAvailable(message)
             if not dry_run:
                 machine.acquire(

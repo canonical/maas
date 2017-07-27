@@ -8,6 +8,8 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1706196    Exclude pod machine composition during allocation if tags are supplied.
+
 LP: #1700802    Add missing networking constraint names.
 
 LP: #1702690    Set the machine's min_hwe_kernel to the setting's default_min_hwe_kernel when commissioning.
