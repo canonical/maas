@@ -24,7 +24,8 @@ module.exports = function(config) {
       '../../src/maasserver/static/js/angular/maas.js',
       '../../src/maasserver/static/js/angular/testing/*.js',
       '../../src/maasserver/static/js/angular/*/*.js',
-      '../../src/maasserver/static/js/angular/*/tests/test_*.js'
+      '../../src/maasserver/static/js/angular/*/tests/test_*.js',
+      '../../src/maasserver/static/partials/*.html'
     ],
 
 
@@ -36,8 +37,17 @@ module.exports = function(config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
+        '../../src/maasserver/static/partials/*.html': ['ng-html2js']
     },
 
+    ngHtml2JsPreprocessor: {
+        // If your build process changes the path to your templates,
+        // use stripPrefix and prependPrefix to adjust it.
+        stripPrefix: ".*src/maasserver/",
+
+        // the name of the Angular module to create
+        moduleName: 'MAAS.templates'
+    },
 
     // test results reporter to use
     // possible values: 'dots', 'progress'
@@ -79,7 +89,8 @@ module.exports = function(config) {
       'karma-firefox-launcher',
       'karma-opera-launcher',
       'karma-phantomjs-launcher',
-      'karma-failed-reporter'
+      'karma-failed-reporter',
+      'karma-ng-html2js-preprocessor'
     ]
   });
 };

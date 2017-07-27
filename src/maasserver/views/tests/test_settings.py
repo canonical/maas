@@ -107,7 +107,7 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(
             new_name, Config.objects.get_config('maas_name'))
 
-    def test_settings_network_POST(self):
+    def test_proxy_proxy_POST(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -116,13 +116,56 @@ class SettingsTest(MAASServerTestCase):
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
-                prefix='network',
+                prefix='proxy',
                 data={
                     'http_proxy': new_proxy,
+                    'enable_http_proxy': True,
+                    'use_peer_proxy': True,
                 }))
         self.assertEqual(
             http.client.FOUND, response.status_code, response.content)
         self.assertEqual(new_proxy, Config.objects.get_config('http_proxy'))
+        self.assertTrue(Config.objects.get_config('enable_http_proxy'))
+        self.assertTrue(Config.objects.get_config('use_peer_proxy'))
+
+    def test_settings_dns_POST(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+        self.client_log_in(as_admin=True)
+        new_upstream = "8.8.8.8"
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='dns',
+                data={
+                    'upstream_dns': new_upstream,
+                    'dnssec_validation': 'no',
+                }))
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            new_upstream, Config.objects.get_config('upstream_dns'))
+        self.assertEqual('no', Config.objects.get_config('dnssec_validation'))
+
+    def test_settings_ntp_POST(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+        self.client_log_in(as_admin=True)
+        new_servers = "ntp.example.com"
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='ntp',
+                data={
+                    'ntp_servers': new_servers,
+                    'ntp_external_only': True,
+                }))
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
+        self.assertEqual(new_servers, Config.objects.get_config('ntp_servers'))
+        self.assertTrue(Config.objects.get_config('ntp_external_only'))
 
     def test_settings_commissioning_POST(self):
         self.client_log_in(as_admin=True)

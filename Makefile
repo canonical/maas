@@ -187,6 +187,7 @@ define karma-deps
   karma-opera-launcher@0.3.0
   karma-phantomjs-launcher@0.2.3
   karma-failed-reporter@0.0.3
+  karma-ng-html2js-preprocessor@1.0.0
   phantomjs@2.1.7
 endef
 

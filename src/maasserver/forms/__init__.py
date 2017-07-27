@@ -1418,12 +1418,21 @@ class MAASForm(ConfigForm):
     enable_analytics = get_config_field('enable_analytics')
 
 
-class NetworkForm(ConfigForm):
-    """Settings page, Network section."""
+class ProxyForm(ConfigForm):
+    """Settings page, Proxy section."""
     enable_http_proxy = get_config_field('enable_http_proxy')
+    use_peer_proxy = get_config_field('use_peer_proxy')
     http_proxy = get_config_field('http_proxy')
+
+
+class DNSForm(ConfigForm):
+    """Settings page, DNS section."""
     upstream_dns = get_config_field('upstream_dns')
     dnssec_validation = get_config_field('dnssec_validation')
+
+
+class NTPForm(ConfigForm):
+    """Settings page, NTP section."""
     ntp_servers = get_config_field('ntp_servers')
     ntp_external_only = get_config_field('ntp_external_only')
 

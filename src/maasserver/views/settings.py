@@ -33,12 +33,14 @@ from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     CommissioningForm,
     DeployForm,
+    DNSForm,
     EditUserForm,
     GlobalKernelOptsForm,
     MAASForm,
     NetworkDiscoveryForm,
-    NetworkForm,
     NewUserCreationForm,
+    NTPForm,
+    ProxyForm,
     StorageSettingsForm,
     ThirdPartyDriversForm,
     UbuntuForm,
@@ -211,8 +213,22 @@ def settings(request):
         return response
 
     # Process the network form.
-    network_form, response = process_form(
-        request, NetworkForm, reverse('settings'), 'network',
+    proxy_form, response = process_form(
+        request, ProxyForm, reverse('settings'), 'proxy',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
+    # Process the DNS form.
+    dns_form, response = process_form(
+        request, DNSForm, reverse('settings'), 'dns',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
+    # Process the NTP form.
+    ntp_form, response = process_form(
+        request, NTPForm, reverse('settings'), 'ntp',
         "Configuration updated.")
     if response is not None:
         return response
@@ -279,7 +295,9 @@ def settings(request):
             'show_license_keys': show_license_keys,
             'license_keys': license_keys,
             'maas_form': maas_form,
-            'network_form': network_form,
+            'proxy_form': proxy_form,
+            'dns_form': dns_form,
+            'ntp_form': ntp_form,
             'network_discovery_form': network_discovery_form,
             'third_party_drivers_form': third_party_drivers_form,
             'storage_settings_form': storage_settings_form,
