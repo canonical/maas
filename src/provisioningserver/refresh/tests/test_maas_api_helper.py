@@ -596,6 +596,24 @@ class TestCaptureScriptOutput(MAASTestCase):
         # This is a complete XML document; we've captured all output.
         self.assertThat(etree.fromstring(stdout).tag, Equals("list"))
 
+    def test__interprets_backslash(self):
+        proc = Popen(
+            'bash -c "echo -en \bmas\bas"',
+            stdout=PIPE, stderr=PIPE, shell=True)
+        self.assertThat(
+            self.capture(proc), MatchesListwise((
+                Equals(0), Equals("maas"), Equals(""), Equals("maas")
+            )))
+
+    def test__interprets_carriage_return(self):
+        proc = Popen(
+            'bash -c "echo -en foo\rmaas"',
+            stdout=PIPE, stderr=PIPE, shell=True)
+        self.assertThat(
+            self.capture(proc), MatchesListwise((
+                Equals(0), Equals("maas"), Equals(""), Equals("maas")
+            )))
+
     def test__timeout(self):
         # The timeout is padded by 60 seconds, override it so the test can
         # run quickly.

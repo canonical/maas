@@ -17,6 +17,7 @@ from datetime import (
 from email.utils import parsedate
 import json
 import mimetypes
+import os
 import random
 import selectors
 import socket
@@ -296,8 +297,12 @@ def capture_script_output(
         # Pad the timeout by 60 seconds to allow for cleanup.
         timeout = datetime.now() + timedelta(seconds=(timeout_seconds + 60))
 
-    with open(stdout_path, 'wb') as out, open(stderr_path, 'wb') as err:
-        with open(combined_path, 'wb') as combined:
+    # Create the file and then open it in read write mode for terminal
+    # emulation.
+    for path in (stdout_path, stderr_path, combined_path):
+        open(path, 'w').close()
+    with open(stdout_path, 'r+b') as out, open(stderr_path, 'r+b') as err:
+        with open(combined_path, 'r+b') as combined:
             with selectors.DefaultSelector() as selector:
                 selector.register(proc.stdout, selectors.EVENT_READ, out)
                 selector.register(proc.stderr, selectors.EVENT_READ, err)
@@ -342,5 +347,37 @@ def _select_script_output(selector, combined, timeout):
             if len(chunk) == 0:  # EOF
                 selector.unregister(key.fileobj)
             else:
-                key.data.write(chunk)
-                combined.write(chunk)
+                # The list comprehension is needed to get byte objects instead
+                # of their numeric value.
+                for i in [chunk[i:i + 1] for i in range(len(chunk))]:
+                    for f in [key.data, combined]:
+                        # Some applications don't properly detect that they are
+                        # not being run in a terminal and refresh output for
+                        # progress bars, counters, and spinners. These
+                        # characters quickly add up making the log difficult to
+                        # read. When writing output from an application emulate
+                        # a terminal so readable data is captured.
+                        if i == b'\b':
+                            # Backspace - Go back one space, if we can.
+                            if f.tell() != 0:
+                                f.seek(-1, os.SEEK_CUR)
+                        elif i == b'\r':
+                            # Carriage return - Seek to the beginning of the
+                            # line, as indicated by a line feed, or file.
+                            while f.tell() != 0:
+                                f.seek(-1, os.SEEK_CUR)
+                                if f.read(1) == b'\n':
+                                    # Check if line feed was found.
+                                    break
+                                else:
+                                    # The read advances the file position by
+                                    # one so seek back again.
+                                    f.seek(-1, os.SEEK_CUR)
+                        elif i == b'\n':
+                            # Line feed - Some applications do a carriage
+                            # return and then a line feed. The data on the line
+                            # should be saved, not overwritten.
+                            f.seek(0, os.SEEK_END)
+                            f.write(i)
+                        else:
+                            f.write(i)
