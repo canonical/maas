@@ -14,7 +14,8 @@ from maasserver import forms
 from maasserver.testing.factory import factory
 
 
-def make_arch(with_subarch=True, arch_name=None, subarch_name=None):
+def make_arch(with_subarch=True, arch_name=None, subarch_name=None,
+              extra=None):
     """Generate an arbitrary architecture name.
 
     :param with_subarch: Should the architecture include a slash and a
@@ -22,7 +23,7 @@ def make_arch(with_subarch=True, arch_name=None, subarch_name=None):
     """
     if arch_name is None:
         arch_name = factory.make_name('arch')
-    factory.make_default_ubuntu_release_bootable(arch_name)
+    factory.make_default_ubuntu_release_bootable(arch_name, extra=extra)
     if with_subarch:
         if subarch_name is None:
             subarch_name = factory.make_name('sub')
@@ -50,7 +51,8 @@ def patch_usable_architectures(testcase, architectures=None):
 
 
 def make_usable_architecture(
-        testcase, with_subarch=True, arch_name=None, subarch_name=None):
+        testcase, with_subarch=True, arch_name=None, subarch_name=None,
+        extra=None):
     """Return arbitrary architecture name, and make it "usable."
 
     A usable architecture is one for which boot images are available.
@@ -66,6 +68,6 @@ def make_usable_architecture(
     """
     arch = make_arch(
         with_subarch=with_subarch, arch_name=arch_name,
-        subarch_name=subarch_name)
+        subarch_name=subarch_name, extra=extra)
     patch_usable_architectures(testcase, [arch])
     return arch

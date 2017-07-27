@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import json
 import random
+from urllib import parse
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -69,6 +70,33 @@ class TestIPRangesAPI(APITestCase.ForUser):
             "end_ip": "10.0.0.20",
             "subnet": "%d" % subnet.id,
         })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(data['start_ip'], Equals('10.0.0.10'))
+        self.assertThat(data['end_ip'], Equals('10.0.0.20'))
+        self.assertThat(data['subnet']['id'], Equals(subnet.id))
+
+    def test_create_dynamic_encoded(self):
+        """
+        There is a quirk in Django where the resulting handler will get a
+        mutable dictionary in some instances (with just a json body) and an
+        immutable dictionary in others (In the case for form encoded body).
+
+        Specifying a content type of x-www-form-urlencoded should cause
+        Django to produce an immutable dictionary.
+
+        :return:
+        """
+        self.become_admin()
+        uri = get_ipranges_uri()
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        response = self.client.post(uri, parse.urlencode(
+            {"type": "dynamic",
+             "start_ip": "10.0.0.10",
+             "end_ip": "10.0.0.20",
+             "subnet": "%d" % subnet.id}),
+            'application/x-www-form-urlencoded')
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
@@ -172,9 +200,7 @@ class TestIPRangeAPI(APITestCase.ForUser):
             subnet, '10.0.0.2', '10.0.0.10', user=self.user)
         uri = get_iprange_uri(iprange)
         comment = factory.make_name("comment")
-        response = self.client.put(uri, {
-            "comment": comment,
-        })
+        response = self.client.put(uri, {"comment": comment})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         self.assertEqual(

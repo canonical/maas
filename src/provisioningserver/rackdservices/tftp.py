@@ -20,6 +20,7 @@ from provisioningserver.boot import (
     get_remote_mac,
 )
 from provisioningserver.drivers import ArchitectureRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
     send_node_event_mac_address,
@@ -182,13 +183,28 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
         Calls `MarkNodeFailed` for the machine if its a known machine.
         """
+        is_ephemeral = False
+        try:
+            osystem_obj = OperatingSystemRegistry.get_item(params['osystem'],
+                                                           default=None)
+            purposes = osystem_obj \
+                .get_boot_image_purposes(params["arch"], params["subarch"],
+                                         params.get("release", ""),
+                                         params.get("label", ""))
+            if "ephemeral" in purposes:
+                is_ephemeral = True
+        except:
+            pass
+
         system_id = params.pop("system_id", None)
-        if params["purpose"] == "local":
+        if params["purpose"] == "local" and not is_ephemeral:
             # Local purpose doesn't use a boot image so jsut set the label
             # to "local", but this value will no be used.
             params["label"] = "local"
             return params
         else:
+            if params["purpose"] == "local" and is_ephemeral:
+                params["purpose"] = "ephemeral"
             boot_image = get_boot_image(params)
             if boot_image is None:
                 # No matching boot image.

@@ -7,6 +7,9 @@ __all__ = [
     "get_config",
 ]
 
+import re
+import shlex
+
 from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
@@ -65,6 +68,7 @@ def event_log_pxe_request(machine, purpose):
         'commissioning': "commissioning",
         'rescue': "rescue mode",
         'xinstall': "installation",
+        'ephemeral': "ephemeral",
         'local': "local boot",
         'poweroff': "power off",
     }
@@ -119,6 +123,52 @@ def get_boot_filenames(arch, subarch, osystem, series):
         boot_dtb = None
 
     return kernel, initrd, boot_dtb
+
+
+def merge_kparams_with_extra(kparams, extra_kernel_opts):
+    if kparams is None or kparams == '':
+        return extra_kernel_opts
+
+    """
+    This section will merge the kparams with the extra opts. Our goal is to
+    start with what is in kparams and then look to extra_opts for anything
+    to add to or override settings in kparams. Anything in extra_opts, which
+    can be set through tabs, takes precedence so we use that to start with.
+    """
+    final_params = ''
+    if extra_kernel_opts is not None and extra_kernel_opts != '':
+        # We need to remove spaces from the tempita subsitutions so the split
+        #  command works as desired.
+        final_params = re.sub('{{\s*([\w\.]*)\s*}}', '{{\g<1>}}',
+                              extra_kernel_opts)
+
+    # Need to get a list of all kernel params in the extra opts.
+    elist = []
+    if len(final_params) > 0:
+        tmp = shlex.split(final_params)
+        for tparam in tmp:
+            idx = tparam.find('=')
+            key = tparam[0:idx]
+            elist.append(key)
+
+    # Go through all the kernel params as normally set.
+    new_kparams = re.sub('{{\s*([\w\.]*)\s*}}', '{{\g<1>}}', kparams)
+    params = shlex.split(new_kparams)
+    for param in params:
+        idx = param.find('=')
+        key = param[0:idx]
+        value = param[idx + 1:len(param)]
+
+        # The call to split will remove quotes, so we add them back in if
+        #  needed.
+        if value.find(" ") > 0:
+            value = '"' + value + '"'
+
+        # if the param is not in extra_opts, use the one from here.
+        if key not in elist:
+            final_params = final_params + ' ' + key + '=' + value
+
+    return final_params
 
 
 @synchronous
@@ -249,6 +299,10 @@ def get_config(
                 extra_kernel_opts = None
         else:
             extra_kernel_opts = effective_kernel_opts
+
+        kparams = BootResource.objects.get_kparams_for_node(machine)
+        extra_kernel_opts = merge_kparams_with_extra(kparams,
+                                                     extra_kernel_opts)
     else:
         purpose = "commissioning"  # enlistment
         preseed_url = compose_enlistment_preseed_url(rack_controller)

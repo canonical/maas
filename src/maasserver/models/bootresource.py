@@ -336,6 +336,28 @@ class BootResourceManager(Manager):
                     return kernel.extra['kpackage']
         return None
 
+    def get_kparams_for_node(self, node):
+        """Return the kernel package name for the kernel specified."""
+        arch = node.split_arch()[0]
+        os_release = node.get_osystem() + '/' + node.get_distro_series()
+
+        # Before hwe_kernel was introduced the subarchitecture was the
+        # hwe_kernel simple stream still uses this convention
+        if node.hwe_kernel is None or node.hwe_kernel == '':
+            hwe_arch = arch + '/generic'
+        else:
+            hwe_arch = arch + '/' + node.hwe_kernel
+
+        resource = self.filter(name=os_release, architecture=hwe_arch).first()
+        if resource:
+            latest_set = resource.get_latest_set()
+            if latest_set:
+                kernel = latest_set.files.filter(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).first()
+                if kernel and 'kparams' in kernel.extra:
+                    return kernel.extra['kparams']
+        return None
+
     def get_available_commissioning_resources(self):
         """Return list of Ubuntu boot resources that can be used for
         commissioning.

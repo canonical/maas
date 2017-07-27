@@ -606,8 +606,14 @@ class BootResourceStore(ObjectStore):
         # values to expose in the simplestreams endpoint on the region.
         # src_{package,release,version} is useful in determining where the
         # bootloader came from.
+        #
+        # Updated the list below to allow for a simplestream server to also
+        # provide an extra field called 'kparams' which allows someone to also
+        # specify kernel parameters that are unique to the release. This is
+        # needed for certain ephemeral images.
         for extra_key in [
-                'kpackage', 'src_package', 'src_release', 'src_version']:
+                'kpackage', 'src_package', 'src_release', 'src_version',
+                'kparams']:
             if extra_key in product:
                 rfile.extra[extra_key] = product[extra_key]
 

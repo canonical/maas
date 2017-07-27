@@ -30,6 +30,7 @@ from maasserver.models import (
     BootSourceCache,
     Config,
 )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 
 
 def list_all_usable_osystems():
@@ -446,6 +447,16 @@ def validate_hwe_kernel(
        (not architecture or architecture == '') or
        (not distro_series or distro_series == '')):
         return hwe_kernel
+
+    # If we are dealing with an ephemeral image, just return the hwe_kernel
+    # as-is, i.e. just stick with generic.
+    osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
+    if osystem_obj is not None:
+        arch, subarch = architecture.split('/')
+        purposes = osystem_obj.get_boot_image_purposes(arch, subarch,
+                                                       distro_series, '*')
+        if "ephemeral" in purposes:
+            return hwe_kernel
 
     # If we're not deploying Ubuntu we are just setting the kernel to be used
     # during deployment

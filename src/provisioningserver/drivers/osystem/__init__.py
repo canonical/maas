@@ -32,7 +32,8 @@ class BOOT_IMAGE_PURPOSE:
     DISKLESS = 'diskless'
     #: Bootloader for enlistment, commissioning, and deployment
     BOOTLOADER = 'bootloader'
-
+    #: Usable for ephemeral boots
+    EPHEMERAL = 'ephemeral'
 
 # A cluster-side representation of a Node, relevant to the osystem code,
 # with only minimal fields.
@@ -210,6 +211,7 @@ from provisioningserver.drivers.osystem.rhel import RHELOS
 from provisioningserver.drivers.osystem.custom import CustomOS
 from provisioningserver.drivers.osystem.windows import WindowsOS
 from provisioningserver.drivers.osystem.suse import SUSEOS
+from provisioningserver.drivers.osystem.caringo import CaringoOS
 
 builtin_osystems = [
     UbuntuOS(),
@@ -220,6 +222,7 @@ builtin_osystems = [
     CustomOS(),
     WindowsOS(),
     SUSEOS(),
+    CaringoOS(),
     ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)

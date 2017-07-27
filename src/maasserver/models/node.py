@@ -165,6 +165,7 @@ from netaddr import (
 )
 import petname
 from piston3.models import Token
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
@@ -3350,7 +3351,18 @@ class Node(CleanSave, TimestampedModel):
             # Install the node if netboot is enabled,
             # otherwise boot locally.
             if self.netboot:
-                return "xinstall"
+                arch, subarch = self.split_arch()
+                osystem_obj = OperatingSystemRegistry.get_item(self.osystem,
+                                                               default=None)
+                if osystem_obj is None:
+                    return "xinstall"
+
+                purposes = osystem_obj.get_boot_image_purposes(arch, subarch,
+                                                               '', '*')
+                if "ephemeral" in purposes:
+                    return "ephemeral"
+                else:
+                    return "xinstall"
             else:
                 return "local"
         elif (self.status == NODE_STATUS.DEPLOYED or

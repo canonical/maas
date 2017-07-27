@@ -1694,7 +1694,8 @@ class Factory(maastesting.factory.Factory):
             # cases this will always be true. The simplestreams content from
             # maas.io, is formatted this way.
             self.make_boot_resource_file_with_content(
-                resource_set, filename=filename, filetype=filetype, size=None)
+                resource_set, filename=filename, filetype=filetype, size=None,
+                extra=extra)
         return resource
 
     def make_incomplete_boot_resource(
@@ -1724,7 +1725,7 @@ class Factory(maastesting.factory.Factory):
                 size=size, content=content)
         return resource
 
-    def make_default_ubuntu_release_bootable(self, arch=None):
+    def make_default_ubuntu_release_bootable(self, arch=None, extra=None):
         if arch is None:
             arch = self.make_name('arch')
         default_osystem = Config.objects.get_config(
@@ -1742,7 +1743,8 @@ class Factory(maastesting.factory.Factory):
             with transaction.atomic():
                 return self.make_usable_boot_resource(
                     name=default_name, architecture=architecture,
-                    kflavor='generic', rtype=BOOT_RESOURCE_TYPE.SYNCED)
+                    kflavor='generic', rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                    extra=extra)
 
     def make_BlockDevice(
             self, node=None, name=None, id_path=None, size=None,

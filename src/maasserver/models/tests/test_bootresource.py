@@ -727,6 +727,31 @@ class TestGetKpackageForNode(MAASServerTestCase):
         self.assertIsNone(BootResource.objects.get_kpackage_for_node(node))
 
 
+class TestGetKparamsForNode(MAASServerTestCase):
+    """Tests for `get_kparams_for_node`."""
+
+    def test__returns_kpackage(self):
+        resource = factory.make_BootResource(
+            name="ubuntu/trusty", architecture="amd64/hwe-t",
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(
+            resource_set, filename="boot-kernel", filetype="boot-kernel",
+            extra={"kpackage": "linux-image-generic-lts-trusty",
+                   "kparams": "a=b"})
+        node = factory.make_Node(
+            interface=True, power_type='manual', osystem='ubuntu',
+            distro_series='trusty', architecture='amd64/generic',
+            hwe_kernel='hwe-t')
+        self.assertEqual(
+            "a=b",
+            BootResource.objects.get_kparams_for_node(node))
+
+    def test__returns_none(self):
+        node = factory.make_Node()
+        self.assertIsNone(BootResource.objects.get_kparams_for_node(node))
+
+
 class TestBootResource(MAASServerTestCase):
     """Tests for the `BootResource` model."""
 

@@ -26,6 +26,7 @@ from provisioningserver.utils.fs import (
     atomic_copy,
     atomic_symlink,
 )
+import tempita
 
 
 maaslog = get_maas_logger('pxe')
@@ -113,8 +114,18 @@ class PXEBootMethod(BootMethod):
         template = self.get_template(
             kernel_params.purpose, kernel_params.arch,
             kernel_params.subarch)
+        kernel_params.mac = extra.get('mac', '')
         namespace = self.compose_template_namespace(kernel_params)
-        return BytesReader(template.substitute(namespace).encode("utf-8"))
+
+        # We are going to do 2 passes of tempita substitution because there
+        # may be things like kernel params which include variables that can
+        # only be populated at run time and thus contain variables themselves.
+        # For example, an OS may need a kernel parameter that points back to
+        # fs_host and the kernel parameter comes through as part of the simple
+        # stream.
+        step1 = template.substitute(namespace)
+        return BytesReader(tempita.Template(step1).substitute(namespace)
+                           .encode("utf-8"))
 
     def _link_simplestream_bootloaders(self, stream_path, destination):
         super()._link_simplestream_bootloaders(stream_path, destination)

@@ -161,7 +161,8 @@ def extract_image_params(path, maas_meta):
         image = dict(
             osystem=osystem, architecture=arch, subarchitecture=subarch,
             release=release, label=label, purpose=purpose)
-        if purpose == BOOT_IMAGE_PURPOSE.XINSTALL:
+        if purpose == BOOT_IMAGE_PURPOSE.XINSTALL \
+                or purpose == BOOT_IMAGE_PURPOSE.EPHEMERAL:
             xinstall_path, xinstall_type = osystem_obj.get_xinstall_parameters(
                 arch, subarch, release, label)
             image['xinstall_path'] = xinstall_path

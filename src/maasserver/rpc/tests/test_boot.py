@@ -29,12 +29,14 @@ from maasserver.rpc.boot import (
     event_log_pxe_request,
     get_boot_filenames,
     get_config,
+    merge_kparams_with_extra,
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.utils.osystems import get_release_from_distro_info
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -47,6 +49,24 @@ from testtools.matchers import (
 )
 
 
+class TestKparamsMerge(MAASServerTestCase):
+
+    def test_simple_merge(self):
+        expected_state = 'a=b b=c'
+        calculated_state = merge_kparams_with_extra('a=b', 'b=c')
+        self.assertItemsEqual(expected_state, calculated_state)
+
+    def test_override_merge(self):
+        expected_state = 'a=b b=d'
+        calculated_state = merge_kparams_with_extra('a=b b=c', 'b=d')
+        self.assertItemsEqual(expected_state, calculated_state)
+
+    def test_override_with_add_merge(self):
+        expected_state = 'a=b b=d c=e'
+        calculated_state = merge_kparams_with_extra('a=b b=c', 'b=d c=e')
+        self.assertItemsEqual(expected_state, calculated_state)
+
+
 class TestGetConfig(MAASServerTestCase):
 
     def setUp(self):
@@ -55,6 +75,23 @@ class TestGetConfig(MAASServerTestCase):
 
     def make_node(self, arch_name=None, **kwargs):
         architecture = make_usable_architecture(self, arch_name=arch_name)
+        return factory.make_Node_with_Interface_on_Subnet(
+            architecture="%s/generic" % architecture.split('/')[0],
+            **kwargs)
+
+    def make_node_with_extra(self, arch_name=None, extra=None, **kwargs):
+        """
+        Need since if we pass "extra" as part of kwargs, the code that creates
+        a node will fail since "extra" isn't a valid parameter for that code
+        path.
+
+        :param arch_name:
+        :param extra:
+        :param kwargs:
+        :return:
+        """
+        architecture = make_usable_architecture(self, arch_name=arch_name,
+                                                extra=extra)
         return factory.make_Node_with_Interface_on_Subnet(
             architecture="%s/generic" % architecture.split('/')[0],
             **kwargs)
@@ -91,6 +128,44 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         # Should not raise BootConfigNoResponse.
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
+
+    def test__returns_kparams_for_known_node(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+
+        """
+        The make_node function will result in a boot resource being created
+        with an architecture that looks like "arch-YYY/hwe-Z", with YYY being
+        a random string and Z being the first letter of the default
+        commissioning image. If we don't create a node with this same kernel
+        name, the node will use an architecture name of arch-YYY/generic which
+        means the get_config won't find the matching boot resource file with
+        the kparams attribute.
+        """
+        default_series = Config.objects.get_config(
+            name='commissioning_distro_series')
+        release = get_release_from_distro_info(default_series)
+        hwe_kernel = "hwe-%s" % (release['version'].split()[0])
+
+        node = self.make_node_with_extra(status=NODE_STATUS.DEPLOYING,
+                                         extra={'kparams': 'a=b'},
+                                         hwe_kernel=hwe_kernel)
+
+        """
+        Create a tag so that we can make sure the kparams attribute got merged
+        with the tag's kernel_opts attribute.
+        """
+        tag = factory.make_Tag(kernel_opts="b=c")
+        node.tags.add(tag)
+
+        mac = node.get_boot_interface().mac_address
+        config = get_config(rack_controller.system_id, local_ip, remote_ip,
+                            mac=mac)
+        extra = config.get('extra_opts', None)
+
+        self.assertIn('b=c', extra)
+        self.assertIn('a=b', extra)
 
     def test__raises_BootConfigNoResponse_for_unknown_node(self):
         rack_controller = factory.make_RackController()
