@@ -162,8 +162,7 @@ class TestLLDPScripts(MAASTestCase):
             check_call.call_args_list,
             [
                 call(("apt-get", "install", "--yes", "lldpd")),
-                call(("systemctl", "daemon-reload")),
-                call(("service", "lldpd", "restart"))
+                call(("systemctl", "restart", "lldpd")),
             ])
         # lldpd's config was updated to include an updated DAEMON_ARGS
         # setting. Note that the new comment is on a new line, and

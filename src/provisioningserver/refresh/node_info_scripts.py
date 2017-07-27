@@ -363,15 +363,15 @@ def lldpd_install(config_file):
         fd.write('\n')  # Ensure there's a newline.
         fd.write('# Configured by MAAS:\n')
         fd.write('DAEMON_ARGS="-c -f -s -e -r"\n')
-    # Reload initctl configuration in order to make sure that the
-    # lldpd init script is available before restart, otherwise
-    # it might cause gathering node info to fail. This is due bug
-    # (LP: #882147) in the kernel.
     if os.path.isdir("/run/systemd/system"):
-        check_call(("systemctl", "daemon-reload"))
+        check_call(("systemctl", "restart", "lldpd"))
     else:
+        # Reload initctl configuration in order to make sure that the
+        # lldpd init script is available before restart, otherwise
+        # it might cause gathering node info to fail. This is due bug
+        # (LP: #882147) in the kernel.
         check_call(("initctl", "reload-configuration"))
-    check_call(("service", "lldpd", "restart"))
+        check_call(("service", "lldpd", "restart"))
 
 
 # This function must be entirely self-contained. It must not use
