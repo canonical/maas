@@ -34,6 +34,12 @@ LP: #1704489    Duplicate communication is occurring to the same rack controller
 
 LP: #1705254    RegionService can raise unexpected exceptions for an empty connection list
 
+LP: #1705508    Set the no_proxy environment variable to 127.0.0.1,localhost.
+
+LP: #1705792    Emulate a terminal when logging script output
+
+LP: #1701694    Allow uploading images with the format osystem/release.
+
 
 2.2.1
 =====

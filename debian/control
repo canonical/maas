@@ -163,7 +163,7 @@ Architecture: all
 Depends: python3-maas-client (= ${binary:Version}),
          ${misc:Depends},
          ${python3:Depends}
-Conflicts: maas-region-controller-min (<= 1.5+bzr1909-0ubuntu1)
+Conflicts: maas-region-controller-min (<= 1.5+bzr1909-0ubuntu1), python3-googleapi
 Replaces: maas-region-controller-min (<= 1.5+bzr1909-0ubuntu1)
 Description: MAAS client and command-line interface
  This package contains the 'maas' command-line interface, which
