@@ -1055,6 +1055,26 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(machine_tag_names, response_json['tag_names'])
 
+    def test_POST_allocate_does_not_compose_machine_by_tags(self):
+        pod = factory.make_Pod()
+        pod.architectures = [random.choice([
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ])]
+        pod.save()
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        factory.make_Tag('fast')
+        factory.make_Tag('stable')
+        # Legacy call using comma-separated tags.
+        response = self.client.post(reverse('machines_handler'), {
+            'op': 'allocate',
+            'tags': ['fast', 'stable'],
+        })
+        self.assertThat(response, HasStatusCode(http.client.CONFLICT))
+        self.assertThat(mock_compose, MockNotCalled())
+
     def test_POST_allocate_allocates_machine_by_negated_tags(self):
         tagged_machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
