@@ -2,103 +2,74 @@
 Changelog
 =========
 
-2.2.0 (beta1)
-=============
+2.3.0 (alpha1)
+==============
 
-Important announcements
------------------------
+Important annoucements
+----------------------
 
-**Migrating MAAS L3 to L2 spaces**
- MAAS 2.2 has changed the definition of spaces from a Layer 3 concept to a
- Layer 2 concept.
+**Machine Network configuration now deferred to cloud-init.**
+ The machine network configuration is now deferred to cloud-init. In previous
+ MAAS (and curtin) releases, the machine network configuration was performed
+ by curtin during the installation process. In an effort to consolidate and
+ improve robustness, network configuration has now been consolidated in
+ cloud-init.
 
- The spaces definition in MAAS (first introduced in MAAS 1.9) is “a set of
- subnets that can mutually communicate”. The assumption is that these spaces
- can route to each other, and have appropriate firewall rules for their
- purposes. (For example, a dmz space might contain subnets with internet
- access, and a storage space might contain subnets that can access the same
- storage networks.) Juju uses the current definition in order to ensure that
- deployed applications have access to networks appropriate for the services
- they provide.
+ Since MAAS 2.3 now depends on the latest version of curtin, the network
+ configuration is now deferred to cloud-init. As such, while MAAS will
+ continue to send the network configuration to curtin for backwards
+ compatibility, curtin itself will defer the network configuration to
+ cloud-init. Cloud-init will then perform such configuration on first boot
+ after the installation process has completed.
 
- The current definition of spaces as a L3 concept is problematic, in that
- sometimes Juju wants to deploy applications that themselves create a Layer 3
- subnet. Therefore, it was decided that the concept of spaces will be pushed
- down a layer (to apply to VLANs in MAAS).
 
- With spaces as a Layer 2 concept, it is is now “a set of VLANs whose subnets
- can mutually communicate”.
+New Features & Improvements
+---------------------------
 
- As such, starting from MAAS 2.2b1:
+**Django 1.11 support**
+ MAAS 2.3 now supports the latest Django LTS version, Django 1.11. This
+ allows MAAS to work with the newer Django version in Ubuntu Artful, which
+ serves as a preparation for the next Ubuntu LTS release.
 
-  * VLANs will gain a ‘space’ reference, and subnets will have their spaces
-    migrated to the VLANs they are on. On upgrades, if two subnets on the same
-    VLAN are in different spaces, the most recently created space will be used
-    for both.
+  * Users running MAAS from the snap in any Ubuntu release will use Django 1.11.
+  * Users running MAAS in Ubuntu Artful will use Django 1.11.
+  * Users running MAAS in Ubuntu Xenial will continue to use Django 1.9.
 
-  * Spaces will become optional. Fresh installs will not have a default space
-    (e.g. space-0). On upgrades, if only the default space (space-0) exists,
-    it will be removed.
+**Upstream Proxy**
+ MAAS 2.3 now supports the ability to use an upstream proxy. Doing so, provides
+ greater flexibility for closed environments provided that:
 
- The following API changes will occur in MAAS 2.2:
+  * It allows MAAS itself to use the corporate proxy at the same time as
+    allowing machines to continue to use the MAAS proxy.
+  * It allows machines that don’t have access to the corporate proxy, to have
+    access to other pieces of the infrastructure via MAAS’ proxy.
 
-  * Editing a subnet's space will no longer be possible (breaks backwards
-    compatibility). Spaces must now be edited each VLAN. For backward
-    compatibility, the subnets endpoint will present the underlying VLAN’s space.
+ Adding upstream proxy support als includes an improved configuration on the
+ settings page. Please refer to Settings > Proxy for more details.
 
- Recommended actions for MAAS administrators prior to upgrading to MAAS 2.2:
+**Fabric deduplication and beaconing**
+ MAAS is introducing a beaconing to improve the fabric creation and network
+ infrastructure discovery. Beaconing is not yet turned by default in
+ MAAS 2.3 Alpha 1, however, improvements to fabric discovery and creation have
+ been made as part of this process. As of alpha 1 MAAS will no longer create
+ empty fabrics.
 
-  * Ensure that no two subnets in the same VLAN are in different spaces, so that
-    the upgrade path migrates the expected space to the VLAN. Ensure that each
-    VLAN with an assigned space will contain subnets which can mutually
-    communicate with other subnets whose VLAN is in the same space. This will
-    allow backward compatibility with Juju charms which use the Layer 3 definition
-    of spaces.
+**Ephemeral Images over HTTP**
+ Historically, MAAS has used ‘tgt’ to provide images over iSCSI for the
+ ephemeral environments (e.g commissioning, deployment environment, rescue
+ mode, etc). MAAS 2.3 changes that behavior in favor of loading images via
+ HTTP. This means that ‘tgt’ will be dropped as a dependency in following
+ releases.
 
- NOTE: Please note that not breakage is expected, provided that most people are not
- using spaces. For those who we know are, they are using them in a compatible way.
- If you experience some type of issue, please contact us.
+ MAAS 2.3 Alpha 1 includes this feature behind a feature flag. While the
+ feature is enabled by default, users experiencing issues who would want
+ to go back to use 'tgt' can do so by turning of the feature flag:
 
-Major new features
-------------------
+   maas <user> maas set-config name=http_boot value=False
 
-**DHCP Relay support**
- The ability to model the usage of DHCP relays in your networking configuration has
- been added to MAAS. The allows an administrator to identify which VLANs will be
- relayed through another VLAN running a MAAS DHCP server. This will configure the
- MAAS DHCP server running on the primary and/or secondary rack controller to include
- the shared network statement for that VLAN. Note: MAAS does not run a DHCP relay
- service, it is up to the administrator to configure the DHCP relay service on the
- VLAN and point it at the primary and/or secondary rack controller running the MAAS DHCP.
-
-**Unmanaged subnets**
- In MAAS 2.0, the concept of a “static range” (a specific range of addresses in which
- MAAS was allowed to freely allocate addresses from) was removed from MAAS, in favor
- of the idea that MAAS managing entire subnets. As such, the only way to tell MAAS to
- not allocate certain sections of a subnet is to add a reserved IP range.
-
- Starting from MAAS 2.2b1, however, MAAS enhances this functionality by introducing a
- new concept, called unamanged subnets. Setting a Subnet in MAAS as unmanaged, allows
- administrators to prevent MAAS from using that subnet for automatic IP assignment.
- In other words, it is a way to tell MAAS that it knows about a subnet but that it
- shouldn’t use it.
-
-Other notable changes
----------------------
-
-**MAAS is now responsive**
- For all of those users that use (or would like to use) MAAS WebUI from their Phone
- or Tablet, will now have a better user experience, provided that starting from
- 2.2b1, MAAS is now responsive.
-
- Phone or Table users will see a new slick design for those devices. Thanks for
- the Ubuntu Web team for putting the effort into making MAAS look great in smaller
- devices.
-
-Known issues and workarounds
+Issues fixed in this release
 ----------------------------
 
-**Cannot add a device from the dashboard**
- Please see LP #1659959 for more information.
+Issues fixed in this release are detailed at:
 
- https://bugs.launchpad.net/maas/+bug/1659959
+ https://launchpad.net/maas/+milestone/2.3.0alpha1

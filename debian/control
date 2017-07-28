@@ -180,6 +180,7 @@ Depends: python3-httplib2,
          ${python3:Depends}
 Breaks: python-maas-client, maas-cli ( <= 2.0.0~alpha4+bzr4843-0ubuntu1 )
 Replaces: python-maas-client, maas-cli ( <= 2.0.0~alpha4+bzr4843-0ubuntu1 )
+Conflicts: python3-googleapi
 Description: MAAS python API client (Python 3)
  This package contains the MAAS client API Python modules.
  .

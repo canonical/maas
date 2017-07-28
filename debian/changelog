@@ -1,10 +1,15 @@
 maas (2.3.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
 
+  * New upstream release, 2.3.0 alpha1:
+    - Support for django 1.11.
+    - Support for upstream proxy.
+    - Support ephemeral image via HTTP instead of iSCSI.
   * Add "maas-rack observe-beacons" to list of commands capable of
     running as the "maas" user.
   * Add /usr/lib/maas/maas-beacon-monitor script.
   * Add maas-beacon-monitor script to sudoers file.
     (Allows observation of UDP traffic sent to port 5240.)
+  * Conflicts with python3-googleapi
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 28 Jun 2017 14:53:05 -0400
 
