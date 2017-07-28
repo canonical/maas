@@ -102,7 +102,7 @@ def get_default_config():
         'max_node_installation_results': 1,
         # Notifications.
         'subnet_ip_exhaustion_threshold_count': 16,
-        'http_boot': False,
+        'http_boot': True,
     }
 
 
