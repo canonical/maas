@@ -1,4 +1,10 @@
-maas (2.3.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 29 Jul 2017 11:10:14 +0100
+
+maas (2.3.0~alpha1-6165-geae082b-0ubuntu1) artful; urgency=medium
 
   * New upstream release, 2.3.0 alpha1:
     - Support for django 1.11.
@@ -11,7 +17,7 @@ maas (2.3.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
     (Allows observation of UDP traffic sent to port 5240.)
   * Conflicts with python3-googleapi
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 28 Jun 2017 14:53:05 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 29 Jul 2017 10:56:23 +0100
 
 maas (2.2.0+bzr6054-0ubuntu2) artful; urgency=medium
 
