@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module:`maasserver.utils.views`."""
@@ -31,6 +31,7 @@ from django.core.urlresolvers import get_resolver
 from django.db import connection
 from django.http import HttpResponse
 from fixtures import FakeLogger
+from maasserver.exceptions import MAASAPIException
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -279,6 +280,25 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             ...
             maastesting.factory.TestException#...: %s
             """ % (request.path, exc_msg)))
+
+    def test__handle_uncaught_exception_raises_error_on_api_exception(self):
+        handler = views.WebApplicationHandler()
+        request = make_request()
+        request.path = factory.make_name("path")
+
+        # Capture an exc_info tuple with traceback.
+        exc_type = MAASAPIException
+        exc_msg = factory.make_name("message")
+        try:
+            raise exc_type(exc_msg)
+        except exc_type:
+            exc_info = sys.exc_info()
+
+        response = handler.handle_uncaught_exception(
+            request=request, resolver=get_resolver(None),
+            exc_info=exc_info)
+        self.assertThat(
+            response.status_code, Equals(http.client.INTERNAL_SERVER_ERROR))
 
     def test__get_response_catches_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")

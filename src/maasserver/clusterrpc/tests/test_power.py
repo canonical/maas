@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test for :py:mod:`maasserver.clusterrpc.power`."""
@@ -20,6 +20,7 @@ from maasserver.clusterrpc.power import (
     power_query_all,
 )
 from maasserver.enum import POWER_STATE
+from maasserver.exceptions import PowerProblem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -35,6 +36,8 @@ from provisioningserver.rpc.cluster import (
     PowerOn,
     PowerQuery,
 )
+from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
+from testtools import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import (
     fail,
@@ -72,6 +75,17 @@ class TestPowerNode(MAASServerTestCase):
                 context=power_info.power_parameters,
             ))
 
+    def test__raises_power_problem(self):
+        node = factory.make_Node()
+        client = Mock()
+        client.return_value = fail(
+            PowerActionAlreadyInProgress('Houston, we have a problem.'))
+
+        with ExpectedException(PowerProblem, "Houston, we have a problem."):
+            wait_for_reactor(self.power_func)(
+                client, node.system_id, node.hostname,
+                node.get_effective_power_info())
+
 
 class TestPowerCycle(MAASServerTestCase):
     """Tests for `power_cycle`."""
@@ -92,6 +106,17 @@ class TestPowerCycle(MAASServerTestCase):
                 power_type=power_info.power_type,
                 context=power_info.power_parameters,
             ))
+
+    def test__raises_power_problem(self):
+        node = factory.make_Node()
+        client = Mock()
+        client.return_value = fail(
+            PowerActionAlreadyInProgress('Houston, we have a problem.'))
+
+        with ExpectedException(PowerProblem, "Houston, we have a problem."):
+            wait_for_reactor(power_cycle)(
+                client, node.system_id, node.hostname,
+                node.get_effective_power_info())
 
 
 class TestPowerQuery(MAASServerTestCase):

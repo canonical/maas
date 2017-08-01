@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """View utilities configuration."""
@@ -19,6 +19,7 @@ from django.core.handlers.wsgi import WSGIHandler
 from django.core.urlresolvers import get_resolver
 from django.db import transaction
 from django.template.response import SimpleTemplateResponse
+from maasserver.exceptions import MAASAPIException
 from maasserver.utils.orm import (
     gen_retry_intervals,
     is_retryable_failure,
@@ -152,6 +153,8 @@ class WebApplicationHandler(WSGIHandler):
             self.__retry.add(response)
         elif is_retryable_failure(exc_value):
             self.__retry.add(response)
+        elif isinstance(exc_value, MAASAPIException):
+            return exc_value.make_http_response()
         else:
             logger.error(
                 "500 Internal Server Error @ %s" % request.path,
