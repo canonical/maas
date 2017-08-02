@@ -1,12 +1,12 @@
 <header class="page-header" sticky media-query="min-width: 769px" window-width>
     <div class="wrapper--inner">
-        <h1 class="page-header__title">Device discovery</h1>
+        <h1 class="page-header__title">Network discovery</h1>
         <p class="page-header__status">{$ discoveredDevices.length $} items discovered <span class="u-text--loading" data-ng-if="!loaded"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
         <div class="page-header__controls">
             <maas-obj-form obj="networkDiscovery" manager="configManager" inline="true">
                 <maas-obj-field type="onoffswitch" key="value" label="Discovery enabled"
   on-value="enabled" off-value="disabled" subtle="true"
-  label-info="When enabled, MAAS will use passive techniques, such as listening to&#xa; ARP requests and DNS advertisements, to observe networks attached&#xa; to rack controllers. Active subnet mapping can also be enabled in the&#xa; Device Discovery section of the Settings page."></maas-obj-field>
+  label-info="When enabled, MAAS will use passive techniques, such as listening to&#xa; ARP requests and DNS advertisements, to observe networks attached&#xa; to rack controllers. Active subnet mapping can also be enabled in the&#xa; Network Discovery section of the Settings page."></maas-obj-field>
             </maas-obj-form>
         </div>
       </div>
@@ -23,7 +23,7 @@
                 <header class="table__head" data-ng-if="windowWidth >= 769" sticky sticky-class="table__head--sticky" offset="88" media-query="min-width: 768px">
                     <div class="table__row">
                         <div class="table__header table-col--37">Name</div>
-                        <div class="table__header table-col--15">Mac address</div>
+                        <div class="table__header table-col--15">MAC address</div>
                         <div class="table__header table-col--13">IP</div>
                         <div class="table__header table-col--15">Rack</div>
                         <div class="table__header table-col--20">Last seen</div>
@@ -53,7 +53,8 @@
                         <div data-ng-if="discovery.first_seen !== selectedDevice"
                             data-ng-dblclick="toggleSelected(discovery.first_seen)">
                             <div class="table__data table-col--37" aria-label="Name">
-                                <button class="button--base button--inline button--no-padding" aria-label="Click to edit and add device" data-ng-click="toggleSelected(discovery.first_seen)"><strong>{$ getDiscoveryName(discovery) $}</strong></button>
+                                <button class="button--base button--inline button--no-padding" aria-label="Click to edit and add device" data-ng-click="toggleSelected(discovery.first_seen)" data-ng-if="getDiscoveryName(discovery) !== 'unknown'"><strong>{$ getDiscoveryName(discovery) $}</strong></button>
+                                <button class="button--base button--inline button--no-padding text--subtle" aria-label="Click to edit and add device" data-ng-click="toggleSelected(discovery.first_seen)" data-ng-if="getDiscoveryName(discovery) === 'unknown'">{$ getDiscoveryName(discovery) $}</button>
                                 <i data-ng-show="discovery.is_external_dhcp === true" class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP."></i>
                             </div>
                             <div class="table__data table-col--15" aria-label="MAC">

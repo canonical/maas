@@ -131,7 +131,7 @@ describe("DashboardController", function() {
                 mac_organization: "mac-org",
                 mac_address: "00:11:22:33:44:55"
             };
-            var expected_name = "unknown-mac-org-33-44-55";
+            var expected_name = "unknown";
             expect($scope.getDiscoveryName(discovery)).toBe(expected_name);
         });
 
@@ -142,7 +142,7 @@ describe("DashboardController", function() {
                 mac_organization: null,
                 mac_address: "00:11:22:33:44:55"
             };
-            var expected_name = "unknown-00-11-22-33-44-55";
+            var expected_name = "unknown";
             expect($scope.getDiscoveryName(discovery)).toBe(expected_name);
         });
     });
