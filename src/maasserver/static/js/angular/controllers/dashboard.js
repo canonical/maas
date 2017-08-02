@@ -54,7 +54,7 @@ angular.module('MAAS').controller('DashboardController', [
         // Return the name name for the Discovery.
         $scope.getDiscoveryName = function(discovery) {
             if(discovery.hostname === null) {
-                return 'unknown'
+                return 'unknown';
             }
             else {
                 return discovery.hostname;
@@ -81,6 +81,9 @@ angular.module('MAAS').controller('DashboardController', [
                 var discovered = DiscoveriesManager.getItemFromList(deviceId);
                 var hostname = $scope.getDiscoveryName(discovered);
                 var domain;
+                if(hostname === 'unknown') {
+                    hostname = '';
+                }
                 if(hostname.indexOf('.') > 0) {
                     domain = DomainsManager.getDomainByName(
                         hostname.slice(hostname.indexOf('.') + 1));
