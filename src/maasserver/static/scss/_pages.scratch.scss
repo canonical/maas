@@ -532,7 +532,7 @@
 
   tags-input {
     display: block;
-    
+
     .autocomplete {
       margin-top: -1px;
       position: absolute;
@@ -574,6 +574,10 @@
         }
       }
     }
+  }
+
+  #tags {
+    display: block;
   }
 
   .tags--inline {
