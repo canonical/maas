@@ -116,6 +116,7 @@ from provisioningserver.utils.fs import (
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import makeDeferredWithProcessProtocol
+from provisioningserver.utils.version import get_maas_version
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -1366,8 +1367,68 @@ class TestClusterClient(MAASTestCase):
         self.assertTrue(result)
 
         self.assertDocTestMatches(
-            "Rack controller '...' registered (via eventloop:pid=12345).",
+            "Rack controller '...' registered (via eventloop:pid=12345) with "
+            "MAAS version 2.2 or below.",
             logger.output)
+
+    @inlineCallbacks
+    def test_registerRackWithRegion_logs_version_if_supplied(self):
+        client = self.make_running_client()
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with({
+            "system_id": "...",
+            "version": "2.3.0"
+        })
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+
+        self.assertDocTestMatches(
+            "Rack controller '...' registered (via eventloop:pid=12345) with "
+            " MAAS version 2.3.0.",
+            logger.output)
+
+    @inlineCallbacks
+    def test_registerRackWithRegion_logs_unknown_version_if_empty(self):
+        client = self.make_running_client()
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with({
+            "system_id": "...",
+            "version": ""
+        })
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+
+        self.assertDocTestMatches(
+            "Rack controller '...' registered (via eventloop:pid=12345) with "
+            " unknown MAAS version.",
+            logger.output)
+
+    @inlineCallbacks
+    def test_registerRackWithRegion_calls_UpdateInterfaces_for_beaconing(self):
+        client = self.make_running_client()
+        callRemote = self.patch_autospec(client, "callRemote")
+        interfaces = self.patch_autospec(
+            clusterservice, "get_all_interfaces_definition")
+        interfaces.return_value = sentinel.INTERFACES
+        callRemote.side_effect = always_succeed_with({
+            "system_id": "...",
+            "beacon_support": True,
+        })
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+        most_recent_call = callRemote.call_args_list[-1]
+        self.assertThat(
+            most_recent_call, Equals(call(
+                region.UpdateInterfaces, system_id="...",
+                interfaces=sentinel.INTERFACES)))
 
     @inlineCallbacks
     def test_registerRackWithRegion_sets_localIdent(self):
@@ -1411,7 +1472,8 @@ class TestClusterClient(MAASTestCase):
             protocol.RegisterRackController, MockCalledOnceWith(
                 protocol, system_id='', hostname=hostname,
                 interfaces=interfaces, url=urlparse(maas_url),
-                nodegroup_uuid=None))
+                nodegroup_uuid=None, beacon_support=True,
+                version=get_maas_version()))
         # Clear cache for the next test
         set_maas_id(None)
 
@@ -1465,7 +1527,8 @@ class TestClusterClient(MAASTestCase):
             protocol.RegisterRackController, MockCalledOnceWith(
                 protocol, system_id='', hostname=hostname,
                 interfaces=interfaces, url=urlparse(maas_url),
-                nodegroup_uuid=None))
+                nodegroup_uuid=None, beacon_support=True,
+                version=get_maas_version()))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

@@ -106,6 +106,7 @@ from provisioningserver.utils.twisted import (
     makeDeferredWithProcessProtocol,
     suppress,
 )
+from provisioningserver.utils.version import get_maas_version
 from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
@@ -731,6 +732,7 @@ class ClusterClient(Cluster):
         self.authenticated = DeferredValue()
         self.ready = DeferredValue()
         self.localIdent = None
+        self.remoteVersion = None
 
     @property
     def ident(self):
@@ -748,6 +750,7 @@ class ClusterClient(Cluster):
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
 
+    @inlineCallbacks
     def registerRackWithRegion(self):
         # Grab the URL the rack uses to communicate to the region API along
         # with the cluster UUID. It is possible that the cluster UUID is blank.
@@ -761,30 +764,49 @@ class ClusterClient(Cluster):
             # Cannot send None over RPC when the system_id is not set.
             system_id = ''
 
-        # Gather the interface definition and hostname.
+        # Gather the required information for registration.
         interfaces = get_all_interfaces_definition()
         hostname = gethostname()
+        parsed_url = urlparse(url)
+        version = get_maas_version()
 
-        def cb_register(data):
+        try:
+            # Note: we indicate support for beacons here, and act differently
+            # later depending on if the region we're registering with supports
+            # them or not.
+            data = yield self.callRemote(
+                region.RegisterRackController, system_id=system_id,
+                hostname=hostname, interfaces=interfaces, url=parsed_url,
+                nodegroup_uuid=cluster_uuid, beacon_support=True,
+                version=version)
             self.localIdent = data["system_id"]
             set_maas_id(self.localIdent)
+            version = data.get("version", None)
+            if version is None:
+                version_log = "MAAS version 2.2 or below"
+            elif version == "":
+                version_log = "unknown MAAS version"
+            else:
+                version_log = "MAAS version " + version
             log.msg(
-                "Rack controller '%s' registered (via %s)."
-                % (self.localIdent, self.eventloop))
-            return True
+                "Rack controller '%s' registered (via %s) with %s." % (
+                    self.localIdent, self.eventloop, version_log))
 
-        def eb_register(failure):
-            failure.trap(exceptions.CannotRegisterRackController)
+            # If the region supports beacons, full registration of rack
+            # interfaces will not have occurred yet. So we'll have to call
+            # UpdateInterfaces to ensure the region has all the required
+            # interface metadata.
+            beacon_support = data.get("beacon_support", False)
+            if beacon_support:
+                yield self.callRemote(
+                    region.UpdateInterfaces, system_id=self.localIdent,
+                    interfaces=interfaces)
+            return True
+        except exceptions.CannotRegisterRackController:
             log.msg(
                 "Rack controller REJECTED by the region (via %s)."
                 % self.eventloop)
             return False
-
-        d = self.callRemote(
-            region.RegisterRackController, system_id=system_id,
-            hostname=hostname, interfaces=interfaces, url=urlparse(url),
-            nodegroup_uuid=cluster_uuid)
-        return d.addCallbacks(cb_register, eb_register)
 
     @inlineCallbacks
     def performHandshake(self):

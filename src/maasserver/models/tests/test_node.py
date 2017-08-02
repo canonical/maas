@@ -6712,33 +6712,34 @@ class TestUpdateInterfaces(MAASServerTestCase):
     scenarios = (
         ("rack", dict(
             node_type=NODE_TYPE.RACK_CONTROLLER,
-            two_phase=False)),
+            two_phase=False, passes=1)),
         ("region", dict(
             node_type=NODE_TYPE.REGION_CONTROLLER,
-            two_phase=False)),
+            two_phase=False, passes=2)),
         ("region+rack", dict(
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-            two_phase=False)),
+            two_phase=False, passes=1)),
         ("rack_two_phase", dict(
             node_type=NODE_TYPE.RACK_CONTROLLER,
-            two_phase=True)),
+            two_phase=True, passes=2)),
         ("region_two_phase", dict(
             node_type=NODE_TYPE.REGION_CONTROLLER,
-            two_phase=True)),
+            two_phase=True, passes=1)),
         ("region+rack_two_phase", dict(
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-            two_phase=True)),
+            two_phase=True, passes=2))
     )
 
     def create_empty_controller(self):
         return factory.make_Node(node_type=self.node_type).as_self()
 
     def update_interfaces(self, controller, interfaces):
-        if not self.two_phase:
-            controller.update_interfaces(interfaces)
-        else:
-            controller.update_interfaces(interfaces, create_fabrics=False)
-            controller.update_interfaces(interfaces, create_fabrics=True)
+        for _ in range(self.passes):
+            if not self.two_phase:
+                controller.update_interfaces(interfaces)
+            else:
+                controller.update_interfaces(interfaces, create_fabrics=False)
+                controller.update_interfaces(interfaces, create_fabrics=True)
 
     def test__order_of_calls_to_update_interface_is_always_the_same(self):
         controller = self.create_empty_controller()
@@ -6786,7 +6787,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 call("eth2", interfaces["eth2"], create_fabrics=True),
                 call("bond0", interfaces["bond0"], create_fabrics=True),
                 call("bond0.10", interfaces["bond0.10"], create_fabrics=True),
-            ]
+            ] * self.passes
         else:
             expected_call_order = [
                 call("eth0", interfaces["eth0"], create_fabrics=False),
@@ -6799,7 +6800,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 call("eth2", interfaces["eth2"], create_fabrics=True),
                 call("bond0", interfaces["bond0"], create_fabrics=True),
                 call("bond0.10", interfaces["bond0.10"], create_fabrics=True),
-            ]
+            ] * self.passes
         # Perform multiple times to make sure the call order is always
         # the same.
         for _ in range(5):
@@ -7730,13 +7731,13 @@ class TestUpdateInterfaces(MAASServerTestCase):
         vlan_addresses = list(vlan_interface.ip_addresses.all())
         self.assertThat(vlan_addresses, HasLength(0))
         self.assertThat(
-            maaslog.error, MockCalledOnceWith(
+            maaslog.error, MockCallsMatch(*[call(
                 "Unable to update IP address '%s' assigned to "
                 "interface '%s' on controller '%s'. Subnet '%s' "
                 "for IP address is not on VLAN '%s.%d'." % (
                     vlan_ip, "eth0.%d" % vid_on_fabric, controller.hostname,
                     wrong_subnet.name, wrong_subnet.vlan.fabric.name,
-                    wrong_subnet.vlan.vid)))
+                    wrong_subnet.vlan.vid))] * self.passes))
 
     def test__existing_physical_with_no_links_new_vlan_no_links(self):
         controller = self.create_empty_controller()
@@ -7903,12 +7904,12 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 subnet=None,
             ))
         self.assertThat(
-            maaslog.error, MockCalledOnceWith(
+            maaslog.error, MockCallsMatch(*[call(
                 "Unable to correctly identify VLAN for interface '%s' "
                 "on controller '%s'. Placing interface on VLAN '%s.%d' "
                 "without address assignments." % (
                     "eth0.%d" % new_vlan.vid, controller.hostname,
-                    new_vlan.fabric.name, new_vlan.vid)))
+                    new_vlan.fabric.name, new_vlan.vid))] * self.passes))
         for link in links_to_remove:
             self.expectThat(reload_object(link), Is(None))
 

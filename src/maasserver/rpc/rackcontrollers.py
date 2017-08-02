@@ -76,7 +76,7 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
 @transactional
 def register(
         system_id=None, hostname='', interfaces=None,
-        url=None, is_loopback=None, create_fabrics=True):
+        url=None, is_loopback=None, create_fabrics=True, version=None):
     """Register a new rack controller if not already registered.
 
     Attempt to see if the rack controller was already registered as a node.
@@ -103,29 +103,31 @@ def register(
 
     this_region = RegionController.objects.get_running_controller()
     node = find(system_id, hostname, interfaces)
+    version_log = "2.2 or below" if version is None else version
     if node is None:
         node = RackController.objects.create(hostname=hostname, domain=domain)
         maaslog.info(
-            "New rack controller '%s' was created by region '%s' upon "
-            "first connection.",
-            node.hostname, this_region.hostname)
+            "New rack controller '%s' running version %s was created by "
+            "region '%s' upon first connection.", node.hostname, version_log,
+            this_region.hostname)
     elif node.is_rack_controller:
         if is_master_process():
             # Only the master process logs to the maaslog.
             maaslog.info(
-                "Existing rack controller '%s' has connected to region '%s'.",
-                node.hostname, this_region.hostname)
+                "Existing rack controller '%s' running version %s has "
+                "connected to region '%s'.", node.hostname, version_log,
+                this_region.hostname)
     elif node.is_region_controller:
         maaslog.info(
-            "Region controller '%s' converted into a region and rack "
-            "controller.",
-            node.hostname)
+            "Region controller '%s' running version %s converted into a "
+            "region and rack controller.", node.hostname, version_log)
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         node.save()
     else:
         maaslog.info(
-            "Region controller '%s' converted '%s' into a rack controller.",
-            this_region.hostname, node.hostname)
+            "Region controller '%s' converted '%s' running version %s into a "
+            "rack controller.", this_region.hostname, node.hostname,
+            version_log)
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.save()
 

@@ -94,6 +94,7 @@ from provisioningserver.utils.twisted import (
     callInReactorWithTimeout,
     DeferredValue,
 )
+from provisioningserver.utils.version import get_maas_version
 from testtools import ExpectedException
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
@@ -393,8 +394,42 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "hostname": rack_controller.hostname,
                 "interfaces": {},
             })
-        self.assertEquals(
-            {"system_id": rack_controller.system_id}, response)
+        self.assertThat(
+            response['system_id'], Equals(rack_controller.system_id))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_acks_beacon_support(self):
+        yield self.installFakeRegionAdvertisingService()
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        response = yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "interfaces": {},
+                "beacon_support": True,
+            })
+        self.assertThat(
+            response['beacon_support'], Is(True))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_acks_version(self):
+        yield self.installFakeRegionAdvertisingService()
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        response = yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "interfaces": {},
+                "version": "2.3",
+            })
+        self.assertThat(
+            response['version'], Equals(get_maas_version()))
 
     @wait_for_reactor
     @inlineCallbacks

@@ -95,6 +95,7 @@ from provisioningserver.utils.twisted import (
     pause,
     synchronous,
 )
+from provisioningserver.utils.version import get_maas_version
 from twisted.application import service
 from twisted.internet import (
     defer,
@@ -612,22 +613,34 @@ class RegionServer(Region):
     @region.RegisterRackController.responder
     @inlineCallbacks
     def register(
-            self, system_id, hostname, interfaces, url, nodegroup_uuid=None):
+            self, system_id, hostname, interfaces, url, nodegroup_uuid=None,
+            beacon_support=False, version=None):
+        # If beacons is None, register in legacy mode.
+        create_fabrics = True if beacon_support else False
         result = yield self._register(
-            system_id, hostname, interfaces, url, nodegroup_uuid)
+            system_id, hostname, interfaces, url,
+            nodegroup_uuid=nodegroup_uuid, create_fabrics=create_fabrics,
+            version=version)
+        if beacon_support:
+            # The remote supports beaconing, so acknowledge that.
+            result['beacon_support'] = True
+        if version:
+            # The remote supports version checking, so reply to that.
+            result['version'] = get_maas_version()
         return result
 
     @inlineCallbacks
     def _register(
             self, system_id, hostname, interfaces, url, nodegroup_uuid=None,
-            create_fabrics=True):
+            create_fabrics=True, version=None):
         try:
             # Register, which includes updating interfaces.
             is_loopback = yield isLoopbackURL(url)
             rack_controller = yield deferToDatabase(
                 rackcontrollers.register, system_id=system_id,
                 hostname=hostname, interfaces=interfaces, url=url,
-                is_loopback=is_loopback, create_fabrics=create_fabrics)
+                is_loopback=is_loopback, create_fabrics=create_fabrics,
+                version=version)
 
             # Check for upgrade.
             if nodegroup_uuid is not None:

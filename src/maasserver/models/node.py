@@ -4166,7 +4166,7 @@ class Controller(Node):
         # (2) The interface's VLAN wasn't previously known.
         # (3) The interface is administratively enabled.
         if create_fabrics and interface.vlan is None and is_enabled:
-            new_vlan = self._guess_vlan_for_interface(interface, config)
+            new_vlan = self._guess_vlan_for_interface(config)
             if new_vlan is not None:
                 interface.vlan = new_vlan
                 update_fields.add('vlan')
@@ -4206,14 +4206,13 @@ class Controller(Node):
                 # a link re-assigned the VLAN this interface is connected to.
                 new_vlan.fabric.delete()
 
-    def _guess_vlan_for_interface(self, interface, config):
+    def _guess_vlan_for_interface(self, config):
         # Make sure that the VLAN on the interface is correct. When
         # links exists on this interface we place it into the correct
         # VLAN. If it cannot be determined and its a new interface it
         # gets placed on its own fabric.
         new_vlan = None
-        connected_to_subnets = self._get_connected_subnets(
-            config["links"])
+        connected_to_subnets = self._get_connected_subnets(config["links"])
         if len(connected_to_subnets) > 0:
             for subnet in connected_to_subnets:
                 new_vlan = subnet.vlan

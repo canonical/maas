@@ -75,9 +75,13 @@ class RegisterRackController(amp.Command):
         (b"url", ParsedURL(optional=True)),
         # The old nodegroup UUID.
         (b"nodegroup_uuid", amp.Unicode(optional=True)),
+        (b"beacon_support", amp.Boolean(optional=True)),
+        (b"version", amp.Unicode(optional=True)),
     ]
     response = [
         (b"system_id", amp.Unicode()),
+        (b"beacon_support", amp.Boolean(optional=True)),
+        (b"version", amp.Unicode(optional=True)),
     ]
     errors = {
         CannotRegisterRackController: b"CannotRegisterRackController",

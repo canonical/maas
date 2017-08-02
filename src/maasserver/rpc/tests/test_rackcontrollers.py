@@ -170,7 +170,19 @@ class TestRegisterRackController(MAASServerTestCase):
         self.patch(rackcontrollers, "is_master_process").return_value = True
         register(system_id=node.system_id)
         self.assertEqual(
-            "Existing rack controller '%s' has connected to region '%s'." % (
+            "Existing rack controller '%s' running version 2.2 or below has "
+            "connected to region '%s'." % (
+                node.hostname, self.this_region.hostname),
+            logger.output.strip())
+
+    def test_logs_finding_existing_node_when_master_with_version(self):
+        logger = self.useFixture(FakeLogger("maas"))
+        node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+        self.patch(rackcontrollers, "is_master_process").return_value = True
+        register(system_id=node.system_id, version="4.0")
+        self.assertEqual(
+            "Existing rack controller '%s' running version 4.0 has "
+            "connected to region '%s'." % (
                 node.hostname, self.this_region.hostname),
             logger.output.strip())
 
@@ -185,9 +197,18 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Region controller '%s' converted into a region and "
-            "rack controller.\n" %
-            node.hostname, logger.output)
+            "Region controller '%s' running version 2.2 or below converted "
+            "into a region and rack controller.\n" % node.hostname,
+            logger.output)
+
+    def test_logs_converting_region_controller_with_version(self):
+        logger = self.useFixture(FakeLogger("maas"))
+        node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
+        register(system_id=node.system_id, version="7.8")
+        self.assertEqual(
+            "Region controller '%s' running version 7.8 converted "
+            "into a region and rack controller.\n" % node.hostname,
+            logger.output)
 
     def test_converts_existing_node(self):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
@@ -199,8 +220,19 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Region controller '%s' converted '%s' into a rack "
-            "controller.\n" % (self.this_region.hostname, node.hostname),
+            "Region controller '%s' converted '%s' running version 2.2 or "
+            "below into a rack controller.\n" % (
+                self.this_region.hostname, node.hostname),
+            logger.output)
+
+    def test_logs_converting_existing_node_with_version(self):
+        logger = self.useFixture(FakeLogger("maas"))
+        node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
+        register(system_id=node.system_id, version="1.10.2")
+        self.assertEqual(
+            "Region controller '%s' converted '%s' running version 1.10.2 "
+            "into a rack controller.\n" % (
+                self.this_region.hostname, node.hostname),
             logger.output)
 
     def test_creates_new_rackcontroller(self):
@@ -229,8 +261,18 @@ class TestRegisterRackController(MAASServerTestCase):
         hostname = factory.make_name("hostname")
         register(hostname=hostname)
         self.assertEqual(
-            "New rack controller '%s' was created by region '%s' upon first "
-            "connection." % (
+            "New rack controller '%s' running version 2.2 or below was "
+            "created by region '%s' upon first connection." % (
+                hostname, self.this_region.hostname),
+            logger.output.strip())
+
+    def test_logs_creating_new_rackcontroller_with_version(self):
+        logger = self.useFixture(FakeLogger("maas"))
+        hostname = factory.make_name("hostname")
+        register(hostname=hostname, version="4.2")
+        self.assertEqual(
+            "New rack controller '%s' running version 4.2 was "
+            "created by region '%s' upon first connection." % (
                 hostname, self.this_region.hostname),
             logger.output.strip())
 
