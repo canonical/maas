@@ -12,7 +12,6 @@ import random
 from unittest.mock import ANY
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.api import discoveries as discoveries_module
 from maasserver.api.discoveries import (
     get_controller_summary,
@@ -27,6 +26,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,

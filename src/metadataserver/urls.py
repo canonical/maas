@@ -69,11 +69,11 @@ node_patterns = [
         r'^status/(?P<system_id>[\w\-]+)$', status_handler,
         name='metadata-status'),
     url(
-        r'^/*(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        r'^[/]*(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         meta_data_handler,
         name='metadata-meta-data'),
     url(
-        r'^/*(?P<version>[^/]+)/user-data$', user_data_handler,
+        r'^[/]*(?P<version>[^/]+)/user-data$', user_data_handler,
         name='metadata-user-data'),
     # Commissioning scripts.  This is a blatant MAAS extension to the
     # metadata API, hence the "maas-" prefix.
@@ -82,16 +82,16 @@ node_patterns = [
     # definitive. maas-scripts is xz compressed while
     # maas-commissioning-scripts is not.
     url(
-        r'^/*(?P<version>[^/]+)/maas-scripts',
+        r'^[/]*(?P<version>[^/]+)/maas-scripts',
         maas_scripts_handler, name='maas-scripts'),
     url(
-        r'^/*(?P<version>[^/]+)/maas-commissioning-scripts',
+        r'^[/]*(?P<version>[^/]+)/maas-commissioning-scripts',
         commissioning_scripts_handler, name='commissioning-scripts'),
     url(
-        r'^/*(?P<version>[^/]+)/', version_index_handler,
+        r'^[/]*(?P<version>[^/]+)/', version_index_handler,
         name='metadata-version'),
     url(
-        r'^/*', index_handler, name='metadata'),
+        r'^[/]*', index_handler, name='metadata'),
 ]
 
 # The curtin-specific metadata API.  Only the user-data end-point is
@@ -99,17 +99,17 @@ node_patterns = [
 # normal metadata API.
 curtin_patterns = [
     url(
-        r'^/*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        r'^[/]*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         meta_data_handler,
         name='curtin-metadata-meta-data'),
     url(
-        r'^/*curtin/(?P<version>[^/]+)/user-data$', curtin_user_data_handler,
+        r'^[/]*curtin/(?P<version>[^/]+)/user-data$', curtin_user_data_handler,
         name='curtin-metadata-user-data'),
     url(
-        r'^/*curtin/(?P<version>[^/]+)/', version_index_handler,
+        r'^[/]*curtin/(?P<version>[^/]+)/', version_index_handler,
         name='curtin-metadata-version'),
     url(
-        r'^/*curtin[/]*$', index_handler, name='curtin-metadata'),
+        r'^[/]*curtin[/]*$', index_handler, name='curtin-metadata'),
 ]
 
 
@@ -121,12 +121,12 @@ by_id_patterns = [
     # without authentication.  This is a security threat.
     url(
         # could-init adds additional slashes in front of urls.
-        r'^/*(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$',
+        r'^[/]*(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$',
         meta_data_anon_handler,
         name='metadata-node-by-id'),
     url(
         # cloud-init adds additional slashes in front of urls.
-        r'^/*(?P<version>[^/]+)/enlist-preseed/$',
+        r'^[/]*(?P<version>[^/]+)/enlist-preseed/$',
         meta_data_anon_handler,
         name='metadata-enlist-preseed'),
 ]
@@ -137,17 +137,18 @@ by_id_patterns = [
 by_mac_patterns = [
     url(
         # could-init adds additional slashes in front of urls.
-        r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/meta-data/(?P<item>.*)$',
+        r'^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/'
+        r'meta-data/(?P<item>.*)$',
         meta_data_by_mac_handler,
         name='metadata-meta-data-by-mac'),
     url(
         # could-init adds additional slashes in front of urls.
-        r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$',
+        r'^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$',
         user_data_by_mac_handler,
         name='metadata-user-data-by-mac'),
     url(
         # could-init adds additional slashes in front of urls.
-        r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/',
+        r'^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/',
         version_index_by_mac_handler,
         name='metadata-version-by-mac'),
 ]
@@ -155,16 +156,16 @@ by_mac_patterns = [
 # Anonymous enlistment entry point
 enlist_metadata_patterns = [
     url(
-        r'^/*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        r'^[/]*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         enlist_meta_data_handler,
         name='enlist-metadata-meta-data'),
     url(
-        r'^/*enlist/(?P<version>[^/]+)/user-data$', enlist_user_data_handler,
+        r'^[/]*enlist/(?P<version>[^/]+)/user-data$', enlist_user_data_handler,
         name='enlist-metadata-user-data'),
     url(
-        r'^/*enlist/(?P<version>[^/]+)[/]*$', enlist_version_index_handler,
+        r'^[/]*enlist/(?P<version>[^/]+)[/]*$', enlist_version_index_handler,
         name='enlist-version'),
-    url(r'^/*enlist[/]*$', enlist_index_handler, name='enlist'),
+    url(r'^[/]*enlist[/]*$', enlist_index_handler, name='enlist'),
 ]
 
 

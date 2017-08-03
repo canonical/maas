@@ -8,11 +8,11 @@ __all__ = []
 import http.client
 import random
 
-from django.core.urlresolvers import reverse
 from maasserver.models.fannetwork import FanNetwork
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,

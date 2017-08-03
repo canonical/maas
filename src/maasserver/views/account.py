@@ -19,7 +19,6 @@ from django.contrib.auth.views import (
     login as dj_login,
     logout as dj_logout,
 )
-from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponseForbidden,
     HttpResponseNotAllowed,
@@ -32,6 +31,7 @@ from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
 )
+from maasserver.utils.django_urls import reverse
 
 
 def login(request):

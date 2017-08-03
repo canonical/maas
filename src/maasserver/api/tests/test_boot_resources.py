@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 import random
 
-from django.core.urlresolvers import reverse
 from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
@@ -30,6 +29,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     post_commit_hooks,
     reload_object,

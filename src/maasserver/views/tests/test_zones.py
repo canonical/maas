@@ -15,7 +15,6 @@ from urllib.parse import (
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.models import (
     Config,
@@ -28,6 +27,7 @@ from maasserver.testing import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maasserver.views.zones import (
     ZoneAdd,

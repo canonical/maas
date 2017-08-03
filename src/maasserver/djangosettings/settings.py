@@ -86,8 +86,6 @@ PISTON_DISPLAY_ERRORS = False
 # same model, so we silence the warnings that Piston gives.
 PISTON_IGNORE_DUPE_MODELS = True
 
-TEMPLATE_DEBUG = DEBUG
-
 YUI_DEBUG = DEBUG
 
 # Set this to where YUI3 files can be found.
@@ -209,6 +207,7 @@ TEMPLATES = [
                 "maasserver.context_processors.yui",
                 "maasserver.context_processors.global_options",
             ],
+            'debug': DEBUG,
         },
     },
 ]

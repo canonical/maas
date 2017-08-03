@@ -14,7 +14,6 @@ __all__ = [
 from django.contrib import messages
 from django.contrib.auth.forms import AdminPasswordChangeForm
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import (
     get_object_or_404,
@@ -50,6 +49,7 @@ from maasserver.models import (
     LicenseKey,
     UserProfile,
 )
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.osystems import (
     get_osystem_from_osystems,
     get_release_from_osystem,

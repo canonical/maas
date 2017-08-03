@@ -27,7 +27,6 @@ from unittest.mock import (
 
 from crochet import wait_for
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.db import (
     connections,
     transaction,
@@ -85,6 +84,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils import absolute_reverse
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,

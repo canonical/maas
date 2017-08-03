@@ -18,7 +18,6 @@ from django.conf.urls import (
     url,
 )
 from django.core.exceptions import ImproperlyConfigured
-from django.core.urlresolvers import reverse
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
     describe_api,
@@ -42,6 +41,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
+from maasserver.utils.django_urls import reverse
 from maastesting.matchers import (
     IsCallable,
     MockCalledOnceWith,

@@ -13,7 +13,6 @@ from django.contrib.auth import (
     REDIRECT_FIELD_NAME,
     SESSION_KEY,
 )
-from django.core.urlresolvers import reverse
 from lxml.html import (
     fromstring,
     tostring,
@@ -30,6 +29,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from testtools.matchers import (
     ContainsDict,
     Equals,

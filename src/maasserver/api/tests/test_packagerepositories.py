@@ -9,13 +9,13 @@ import http.client
 import json
 import random
 
-from django.core.urlresolvers import reverse
 from maasserver.api.packagerepositories import (
     DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
 )
 from maasserver.models import PackageRepository
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

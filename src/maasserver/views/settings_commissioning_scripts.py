@@ -9,7 +9,6 @@ __all__ = [
     ]
 
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.generic import (
@@ -17,6 +16,7 @@ from django.views.generic import (
     DeleteView,
 )
 from maasserver.forms import CommissioningScriptForm
+from maasserver.utils.django_urls import reverse
 from metadataserver.models import Script
 
 # The anchor of the commissioning scripts slot on the settings page.

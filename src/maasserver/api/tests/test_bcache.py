@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 from uuid import uuid4
 
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
@@ -21,6 +20,7 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     json_load_bytes,
 )
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,

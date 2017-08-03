@@ -11,7 +11,6 @@ __all__ = [
 from base64 import b64encode
 import http.client
 
-from django.core.urlresolvers import reverse
 from django.http import (
     Http404,
     HttpResponse,
@@ -28,6 +27,7 @@ from maasserver.exceptions import (
     MAASAPINotFound,
 )
 from maasserver.models import FileStorage
+from maasserver.utils.django_urls import reverse
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc

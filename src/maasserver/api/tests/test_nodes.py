@@ -10,7 +10,6 @@ import json
 import random
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
@@ -24,6 +23,7 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils import ignore_unused
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 

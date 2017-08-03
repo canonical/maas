@@ -15,7 +15,6 @@ from unittest.mock import (
 )
 
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from maasserver.api.doc import get_api_description_hash
 from maasserver.api.support import (
     admin_method,
@@ -31,6 +30,7 @@ from maasserver.models.config import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maastesting.testcase import MAASTestCase
 from piston3.authentication import NoAuthentication
 from testtools.matchers import (

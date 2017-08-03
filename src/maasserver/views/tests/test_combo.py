@@ -10,11 +10,11 @@ import http.client
 import os
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maasserver.views.combo import (
     get_absolute_location,
     get_combo_view,

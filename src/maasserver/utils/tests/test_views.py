@@ -27,7 +27,6 @@ from django.core.handlers.wsgi import (
     WSGIHandler,
     WSGIRequest,
 )
-from django.core.urlresolvers import get_resolver
 from django.db import connection
 from django.http import HttpResponse
 from fixtures import FakeLogger
@@ -38,6 +37,7 @@ from maasserver.testing.testcase import (
     SerializationFailureTestCase,
 )
 from maasserver.utils import views
+from maasserver.utils.django_urls import get_resolver
 from maasserver.utils.orm import (
     make_deadlock_failure,
     post_commit_hooks,

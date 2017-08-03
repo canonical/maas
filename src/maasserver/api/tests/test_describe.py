@@ -9,17 +9,17 @@ import http.client
 from operator import itemgetter
 from urllib.parse import urlparse
 
-import django.core.urlresolvers
-from django.core.urlresolvers import (
-    get_script_prefix,
-    reverse,
-)
 from django.test.client import RequestFactory
 from maasserver.api.doc import get_api_description_hash
 from maasserver.api.doc_handler import describe
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import (
+    get_script_prefix,
+    reverse,
+    set_script_prefix,
+)
 from maastesting.testcase import MAASTestCase
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
@@ -117,9 +117,8 @@ class TestDescribeAbsoluteURIs(MAASTestCase):
         # set the prefix.  But clean this up after the test or it will
         # break other tests!
         original_prefix = get_script_prefix()
-        self.addCleanup(
-            django.core.urlresolvers.set_script_prefix, original_prefix)
-        django.core.urlresolvers.set_script_prefix(script_name)
+        self.addCleanup(set_script_prefix, original_prefix)
+        set_script_prefix(script_name)
 
     def test_handler_uris_are_absolute(self):
         params = self.make_params()

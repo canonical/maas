@@ -13,7 +13,6 @@ import string
 from unittest.mock import Mock
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver import urls_api as urlconf
 from maasserver.api import (
     machines as machines_module,
@@ -44,6 +43,7 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maastesting.matchers import MockCalledOnceWith

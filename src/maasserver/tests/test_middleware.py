@@ -18,7 +18,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from fixtures import FakeLogger
 from maasserver import middleware as middleware_module
@@ -43,6 +42,7 @@ from maasserver.middleware import (
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     make_deadlock_failure,
     make_serialization_failure,

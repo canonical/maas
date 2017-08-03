@@ -9,7 +9,6 @@ __all__ = [
 
 from base64 import b64encode
 
-from django.core.urlresolvers import reverse
 from formencode.validators import Int
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import (
@@ -18,6 +17,7 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
+from maasserver.utils.django_urls import reverse
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import ScriptResult
 

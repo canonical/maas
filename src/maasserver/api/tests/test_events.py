@@ -19,7 +19,6 @@ from urllib.parse import (
 )
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.api import events as events_module
 from maasserver.api.tests.test_nodes import RequestFixture
 from maasserver.enum import NODE_TYPE
@@ -27,6 +26,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils import ignore_unused
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maastesting.djangotestcase import count_queries
 from testtools.matchers import (
     AfterPreprocessing,

@@ -9,7 +9,6 @@ import http.client
 import json
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
@@ -30,6 +29,7 @@ from maasserver.utils import (
     strip_domain,
 )
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_one,
     reload_object,

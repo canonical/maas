@@ -10,7 +10,6 @@ __all__ = [
     ]
 
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.generic import (
@@ -20,6 +19,7 @@ from django.views.generic import (
 )
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
+from maasserver.utils.django_urls import reverse
 
 # The anchor of the license keys slot on the settings page.
 LICENSE_KEY_ANCHOR = 'license_keys'

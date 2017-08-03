@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -24,6 +23,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     reload_object,
     transactional,

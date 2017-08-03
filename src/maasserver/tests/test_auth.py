@@ -8,7 +8,6 @@ __all__ = []
 from functools import partial
 import http.client
 
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_PERMISSION,
@@ -20,6 +19,7 @@ from maasserver.models import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from metadataserver.nodeinituser import get_node_init_user
 
 

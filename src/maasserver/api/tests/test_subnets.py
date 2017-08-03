@@ -10,7 +10,6 @@ import json
 import random
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -25,6 +24,7 @@ from maasserver.testing.factory import (
     factory,
     RANDOM,
 )
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from provisioningserver.utils.network import (
     inet_ntop,

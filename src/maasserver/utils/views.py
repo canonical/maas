@@ -16,10 +16,10 @@ from weakref import WeakSet
 
 from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler
-from django.core.urlresolvers import get_resolver
 from django.db import transaction
 from django.template.response import SimpleTemplateResponse
 from maasserver.exceptions import MAASAPIException
+from maasserver.utils.django_urls import get_resolver
 from maasserver.utils.orm import (
     gen_retry_intervals,
     is_retryable_failure,

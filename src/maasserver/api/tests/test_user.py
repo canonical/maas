@@ -10,7 +10,6 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -21,6 +20,7 @@ from maasserver.models import (
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.django_urls import reverse
 from testtools.matchers import (
     ContainsAll,
     Equals,

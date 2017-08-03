@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver import forms
 from maasserver.clusterrpc.testing.osystems import (
@@ -23,6 +22,7 @@ from maasserver.testing import (
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
 from maasserver.views.settings_license_keys import LICENSE_KEY_ANCHOR

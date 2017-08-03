@@ -8,7 +8,6 @@ __all__ = [
     'NetworksHandler',
     ]
 
-from django.core.urlresolvers import reverse
 from maasserver.api.support import (
     admin_method,
     operation,
@@ -22,6 +21,7 @@ from maasserver.models import (
     Node,
     Subnet,
 )
+from maasserver.utils.django_urls import reverse
 from piston3.utils import rc
 
 

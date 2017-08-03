@@ -14,7 +14,6 @@ from unittest.mock import (
 
 import bson
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -34,6 +33,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import osystems
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,

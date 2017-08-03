@@ -14,7 +14,6 @@ import os
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
@@ -45,6 +44,7 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
 )
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import post_commit_do
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper

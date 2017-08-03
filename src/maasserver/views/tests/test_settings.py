@@ -9,7 +9,6 @@ import http.client
 from unittest import skip
 
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
@@ -32,6 +31,7 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
 

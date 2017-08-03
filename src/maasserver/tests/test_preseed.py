@@ -14,7 +14,6 @@ from unittest.mock import sentinel
 from urllib.parse import urlparse
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.compose_preseed import (
@@ -83,6 +82,7 @@ from maasserver.testing.testcase import (
 from maasserver.third_party_drivers import DriversConfig
 from maasserver.utils import absolute_reverse
 from maasserver.utils.curtin import curtin_supports_webhook_events
+from maasserver.utils.django_urls import reverse
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,

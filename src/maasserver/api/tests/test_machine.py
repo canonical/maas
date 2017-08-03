@@ -11,7 +11,6 @@ from random import choice
 from unittest.mock import ANY
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import forms
 from maasserver.api import machines as machines_module
@@ -54,6 +53,7 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     post_commit,
     reload_object,

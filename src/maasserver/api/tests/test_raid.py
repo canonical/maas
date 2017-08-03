@@ -10,7 +10,6 @@ import json
 import uuid
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -23,6 +22,7 @@ from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import human_readable_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,

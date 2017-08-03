@@ -6,7 +6,6 @@ __all__ = [
     "PodsHandler",
     ]
 
-from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
@@ -21,6 +20,7 @@ from maasserver.forms.pods import (
 )
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
+from maasserver.utils.django_urls import reverse
 from piston3.utils import rc
 from provisioningserver.drivers.pod import Capabilities
 

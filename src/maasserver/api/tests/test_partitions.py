@@ -11,13 +11,13 @@ import random
 from uuid import uuid4
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import round_size_to_nearest_block
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,

@@ -10,7 +10,6 @@ import json
 from operator import itemgetter
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.forms.settings import CONFIG_ITEMS_KEYS
 from maasserver.models import PackageRepository
 from maasserver.models.config import (
@@ -24,6 +23,7 @@ from maasserver.testing.osystems import (
     make_usable_osystem,
     patch_usable_osystems,
 )
+from maasserver.utils.django_urls import reverse
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from testtools.content import text_content

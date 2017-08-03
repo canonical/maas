@@ -13,7 +13,6 @@ __all__ = [
 
 from apiclient.utils import urlencode
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic import (
     CreateView,
@@ -22,6 +21,7 @@ from django.views.generic import (
 )
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
+from maasserver.utils.django_urls import reverse
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,

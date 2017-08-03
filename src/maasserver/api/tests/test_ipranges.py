@@ -11,10 +11,10 @@ import random
 from urllib import parse
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.models.iprange import IPRange
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,

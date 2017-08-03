@@ -10,13 +10,13 @@ __all__ = [
 
 from base64 import b64encode
 
-from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.script import ScriptForm
+from maasserver.utils.django_urls import reverse
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import Script

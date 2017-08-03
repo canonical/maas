@@ -10,7 +10,6 @@ __all__ = [
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.shortcuts import (
     get_object_or_404,
     render,
@@ -21,6 +20,7 @@ from maasserver.forms import (
     SSLKeyForm,
 )
 from maasserver.models import SSLKey
+from maasserver.utils.django_urls import reverse
 from maasserver.views import (
     HelpfulDeleteView,
     process_form,

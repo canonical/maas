@@ -8,12 +8,12 @@ __all__ = []
 import json
 
 from crochet import wait_for
-from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.utils.django_urls import reverse
 from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.testing import MAASIDFixture

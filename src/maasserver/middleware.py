@@ -28,7 +28,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -50,6 +49,7 @@ from maasserver.exceptions import MAASAPIException
 from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.rpc import getAllClients
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import is_retryable_failure
 from maasserver.views.combo import MERGE_VIEWS
 from provisioningserver.rpc.exceptions import (

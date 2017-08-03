@@ -13,7 +13,6 @@ from urllib.parse import (
     urlparse,
 )
 
-from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.client import RequestFactory
 from maasserver.testing.config import RegionConfigurationFixture
@@ -28,6 +27,7 @@ from maasserver.utils import (
     strip_domain,
     synchronised,
 )
+from maasserver.utils.django_urls import reverse
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.config import ClusterConfigurationFixture
 

@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.testing import (
     extract_redirect,
@@ -16,6 +15,7 @@ from maasserver.testing import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.django_urls import reverse
 from maasserver.views.settings_commissioning_scripts import (
     COMMISSIONING_SCRIPTS_ANCHOR,
 )

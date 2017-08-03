@@ -9,11 +9,11 @@ import http.client
 import json
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.models import SSLKey
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import get_one
 
 

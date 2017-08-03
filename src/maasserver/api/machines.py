@@ -12,7 +12,6 @@ import re
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import (
     HttpResponse,
@@ -89,6 +88,7 @@ from maasserver.storage_layouts import (
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_first,
     reload_object,

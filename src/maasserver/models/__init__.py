@@ -85,11 +85,6 @@ __all__ = [
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
 from django.core.exceptions import ViewDoesNotExist
-from django.core.urlresolvers import (
-    get_callable,
-    get_resolver,
-    get_script_prefix,
-)
 from django.db.models.signals import post_save
 from maasserver import logger
 from maasserver.enum import (
@@ -180,6 +175,11 @@ from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
+from maasserver.utils.django_urls import (
+    get_callable,
+    get_resolver,
+    get_script_prefix,
+)
 from piston3.doc import HandlerDocumentation
 from provisioningserver.utils import is_instance_or_subclass
 

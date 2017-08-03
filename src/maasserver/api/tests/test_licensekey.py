@@ -7,7 +7,6 @@ __all__ = []
 
 import http.client
 
-from django.core.urlresolvers import reverse
 from maasserver import forms
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
@@ -18,6 +17,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_one,
     reload_object,

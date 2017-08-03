@@ -14,7 +14,6 @@ from unittest.mock import (
 
 from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
 from maasserver.models.node import generate_node_system_id
@@ -29,6 +28,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testclient import MAASSensibleOAuthClient
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,

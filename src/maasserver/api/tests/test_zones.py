@@ -9,10 +9,10 @@ import http.client
 import json
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.models import Zone
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.django_urls import reverse
 
 
 class TestZonesAPI(APITestCase.ForUser):

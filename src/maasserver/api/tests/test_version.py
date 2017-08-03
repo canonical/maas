@@ -10,9 +10,9 @@ import http.client
 import json
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from maasserver.api.version import API_CAPABILITIES_LIST
 from maasserver.testing.api import APITestCase
+from maasserver.utils.django_urls import reverse
 from provisioningserver.utils import version as version_module
 
 

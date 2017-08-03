@@ -15,8 +15,9 @@ from maasserver.djangosettings import (
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings: import_settings() below will actually re-set it
-# to a tuple as set in settings.INSTALLED_APPS.
+# to a tuple as set in settings.INSTALLED_APPS, and TEMPLATES to a dict.
 INSTALLED_APPS = None
+TEMPLATES = {}
 
 # Extend base settings.
 import_settings(settings)
@@ -44,10 +45,10 @@ DHCP_CONNECT = os.environ.get("MAAS_DHCP_CONNECT", "0") == "1"
 PROXY_CONNECT = False
 
 # Invalid strings should be visible.
-TEMPLATE_STRING_IF_INVALID = '#### INVALID STRING ####'
 
 DEBUG = True
-TEMPLATE_DEBUG = DEBUG
+TEMPLATES[0]['OPTIONS']['string_if_invalid'] = '#### INVALID STRING ####'
+TEMPLATES[0]['OPTIONS']['debug'] = DEBUG
 YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
 STATIC_ROOT = os.path.join(

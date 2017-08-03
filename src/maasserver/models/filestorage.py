@@ -11,7 +11,6 @@ __all__ = [
 from uuid import uuid4
 
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -22,6 +21,7 @@ from django.db.models import (
 from django.utils.http import urlencode
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.utils.django_urls import reverse
 from metadataserver.fields import (
     Bin,
     BinaryField,

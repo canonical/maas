@@ -10,7 +10,6 @@ import json
 import random
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.test import RequestFactory
 from maasserver import (
     eventloop,
@@ -56,6 +55,7 @@ from maasserver.utils import (
     ignore_unused,
     osystems,
 )
+from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
