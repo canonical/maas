@@ -54,7 +54,10 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
-from maasserver import DefaultMeta
+from maasserver import (
+    DefaultMeta,
+    locks,
+)
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
     power_cycle,
@@ -143,6 +146,7 @@ from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
 )
+from maasserver.utils import synchronised
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -151,6 +155,7 @@ from maasserver.utils.orm import (
     post_commit,
     post_commit_do,
     transactional,
+    with_connection,
 )
 from maasserver.utils.threads import (
     callOutToDatabase,
@@ -209,6 +214,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     deferWithTimeout,
+    synchronous,
 )
 from twisted.internet.defer import (
     Deferred,
@@ -4647,6 +4653,10 @@ class Controller(Node):
             for interface in interfaces
         }
 
+    @synchronous
+    @with_connection
+    @synchronised(locks.rack_registration)
+    @transactional
     def update_interfaces(self, interfaces, create_fabrics=True):
         """Update the interfaces attached to the controller.
 

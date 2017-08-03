@@ -75,11 +75,13 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         super().__init__(enable_monitoring=enable_monitoring, *args, **kwargs)
         self.iterations = DeferredQueue()
         self.interfaces = []
+        self.update_interface__calls = 0
 
     def getDiscoveryState(self):
         return {}
 
     def updateInterfaces(self):
+        self.update_interface__calls += 1
         d = super().updateInterfaces()
         d.addBoth(self.iterations.put)
         return d
@@ -99,8 +101,8 @@ class TestNetworksMonitoringService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def makeService(self):
-        service = StubNetworksMonitoringService()
+    def makeService(self, *args, **kwargs):
+        service = StubNetworksMonitoringService(*args, **kwargs)
         self.addCleanup(service._releaseSoleResponsibility)
         return service
 
@@ -145,6 +147,16 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.assertThat(logger.output, DocTestMatches(
             "Failed to update and/or record network interface configuration"
             "..."))
+
+    @inlineCallbacks
+    def test_starting_service_triggers_interface_update(self):
+        get_interfaces = self.patch(services, "get_all_interfaces_definition")
+        get_interfaces.side_effect = [sentinel.config]
+        clock = Clock()
+        service = self.makeService(clock=clock)
+        yield service.startService()
+        self.assertThat(service.update_interface__calls, Equals(1))
+        yield service.stopService()
 
     @inlineCallbacks
     def test_recordInterfaces_called_when_nothing_previously_recorded(self):

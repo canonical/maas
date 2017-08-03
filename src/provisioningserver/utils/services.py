@@ -1011,8 +1011,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         # Don't bother calling the region if the interface dictionary
         # hasn't yet been populated, or was intentionally set to nothing.
         if len(interfaces) > 0:
-            monitoring_state = yield maybeDeferred(
-                self.getDiscoveryState)
+            monitoring_state = yield maybeDeferred(self.getDiscoveryState)
         else:
             monitoring_state = {}
         # If the monitoring state has changed, we need to potentially start

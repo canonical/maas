@@ -791,16 +791,10 @@ class ClusterClient(Cluster):
             log.msg(
                 "Rack controller '%s' registered (via %s) with %s." % (
                     self.localIdent, self.eventloop, version_log))
-
             # If the region supports beacons, full registration of rack
-            # interfaces will not have occurred yet. So we'll have to call
-            # UpdateInterfaces to ensure the region has all the required
-            # interface metadata.
-            beacon_support = data.get("beacon_support", False)
-            if beacon_support:
-                yield self.callRemote(
-                    region.UpdateInterfaces, system_id=self.localIdent,
-                    interfaces=interfaces)
+            # interfaces will not have occurred yet. The networks monitoring
+            # service is responsible for updating the interfaces
+            # post-registration.
             return True
         except exceptions.CannotRegisterRackController:
             log.msg(

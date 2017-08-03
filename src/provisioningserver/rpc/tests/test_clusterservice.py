@@ -1412,25 +1412,6 @@ class TestClusterClient(MAASTestCase):
             logger.output)
 
     @inlineCallbacks
-    def test_registerRackWithRegion_calls_UpdateInterfaces_for_beaconing(self):
-        client = self.make_running_client()
-        callRemote = self.patch_autospec(client, "callRemote")
-        interfaces = self.patch_autospec(
-            clusterservice, "get_all_interfaces_definition")
-        interfaces.return_value = sentinel.INTERFACES
-        callRemote.side_effect = always_succeed_with({
-            "system_id": "...",
-            "beacon_support": True,
-        })
-        result = yield client.registerRackWithRegion()
-        self.assertTrue(result)
-        most_recent_call = callRemote.call_args_list[-1]
-        self.assertThat(
-            most_recent_call, Equals(call(
-                region.UpdateInterfaces, system_id="...",
-                interfaces=sentinel.INTERFACES)))
-
-    @inlineCallbacks
     def test_registerRackWithRegion_sets_localIdent(self):
         client = self.make_running_client()
 
