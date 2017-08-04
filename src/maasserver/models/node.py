@@ -4760,6 +4760,10 @@ class Controller(Node):
         if response['distro_series'] != '':
             self.distro_series = response['distro_series']
             update_fields.append('distro_series')
+        # MAAS 2.3+ will send an empty dictionary on purpose, but older
+        # versions of the MAAS rack will send real data (and it might arrive
+        # in a more timely manner than the UpdateInterfaces call from the
+        # NetworksMonitoringService).
         if response['interfaces'] != {}:
             self.update_interfaces(response['interfaces'])
         if len(update_fields) > 0:

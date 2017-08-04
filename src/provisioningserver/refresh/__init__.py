@@ -20,7 +20,6 @@ from provisioningserver.refresh.maas_api_helper import (
     SignalException,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
-from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -73,13 +72,19 @@ def get_sys_info():
         distro_series = os_release['VERSION_ID']
     else:
         distro_series = ''
-    return {
+    result = {
         'hostname': socket.gethostname().split('.')[0],
         'architecture': get_architecture(),
         'osystem': osystem,
         'distro_series': distro_series,
-        'interfaces': get_all_interfaces_definition(),
+        # In MAAS 2.3+, the NetworksMonitoringService is solely responsible for
+        # interface update, because interface updates need to include beaconing
+        # data. The key and empty dictionary are necessary for backward
+        # compatibility; the region will ignore the empty dictionary in
+        # _process_sys_info().
+        'interfaces': {}
     }
+    return result
 
 
 def signal_wrapper(*args, **kwargs):

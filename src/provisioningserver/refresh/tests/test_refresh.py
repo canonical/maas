@@ -70,7 +70,6 @@ class TestHelpers(MAASTestCase):
         osystem = factory.make_name('id')
         distro_series = factory.make_name('ubuntu_codename')
         architecture = factory.make_name('architecture')
-        interfaces = factory.make_name('interfaces')
         self.patch(refresh.socket, 'gethostname').return_value = hostname
         self.patch_autospec(refresh, 'get_os_release').return_value = {
             'ID': osystem,
@@ -78,14 +77,12 @@ class TestHelpers(MAASTestCase):
         }
         self.patch_autospec(
             refresh, 'get_architecture').return_value = architecture
-        self.patch_autospec(
-            refresh, 'get_all_interfaces_definition').return_value = interfaces
         self.assertThat({
             'hostname': hostname,
             'architecture': architecture,
             'osystem': osystem,
             'distro_series': distro_series,
-            'interfaces': interfaces,
+            'interfaces': {},
             }, Equals(refresh.get_sys_info()))
 
     def test_get_sys_info_on_host(self):
@@ -96,7 +93,6 @@ class TestHelpers(MAASTestCase):
         osystem = factory.make_name('name')
         distro_series = factory.make_name('version_id')
         architecture = factory.make_name('architecture')
-        interfaces = factory.make_name('interfaces')
         self.patch(refresh.socket, 'gethostname').return_value = hostname
         self.patch_autospec(refresh, 'get_os_release').return_value = {
             'NAME': osystem,
@@ -104,32 +100,27 @@ class TestHelpers(MAASTestCase):
         }
         self.patch_autospec(
             refresh, 'get_architecture').return_value = architecture
-        self.patch_autospec(
-            refresh, 'get_all_interfaces_definition').return_value = interfaces
         self.assertThat({
             'hostname': hostname,
             'architecture': architecture,
             'osystem': osystem,
             'distro_series': distro_series,
-            'interfaces': interfaces,
+            'interfaces': {},
             }, Equals(refresh.get_sys_info()))
 
     def test_get_sys_info_empty(self):
         hostname = factory.make_hostname()
         architecture = factory.make_name('architecture')
-        interfaces = factory.make_name('interfaces')
         self.patch(refresh.socket, 'gethostname').return_value = hostname
         self.patch_autospec(refresh, 'get_os_release').return_value = {}
         self.patch_autospec(
             refresh, 'get_architecture').return_value = architecture
-        self.patch_autospec(
-            refresh, 'get_all_interfaces_definition').return_value = interfaces
         self.assertThat({
             'hostname': hostname,
             'architecture': architecture,
             'osystem': '',
             'distro_series': '',
-            'interfaces': interfaces,
+            'interfaces': {},
             }, Equals(refresh.get_sys_info()))
 
 
