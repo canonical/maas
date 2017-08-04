@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to nodes."""
@@ -12,6 +12,7 @@ from functools import partial
 import logging
 
 from maasserver.enum import POWER_STATE
+from maasserver.exceptions import PowerProblem
 from maasserver.rpc import getAllClients
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
@@ -21,6 +22,7 @@ from provisioningserver.rpc.cluster import (
     PowerOn,
     PowerQuery,
 )
+from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -63,10 +65,17 @@ def power_node(command, client, system_id, hostname, power_info):
     # they can choose to chain onto it, or to "cap it off", so that
     # result gets consumed (Twisted will complain if an error is not
     # consumed).
-    return client(
+    d = client(
         command, system_id=system_id, hostname=hostname,
         power_type=power_info.power_type,
         context=power_info.power_parameters)
+
+    def eb_service_unavailable(failure):
+        if failure.check(PowerActionAlreadyInProgress):
+            raise PowerProblem(str(failure.value))
+
+    d.addErrback(eb_service_unavailable)
+    return d
 
 
 power_off_node = partial(power_node, PowerOff)
@@ -101,10 +110,17 @@ def power_cycle(client, system_id, hostname, power_info):
     # they can choose to chain onto it, or to "cap it off", so that
     # result gets consumed (Twisted will complain if an error is not
     # consumed).
-    return client(
+    d = client(
         PowerCycle, system_id=system_id, hostname=hostname,
         power_type=power_info.power_type,
         context=power_info.power_parameters)
+
+    def eb_service_unavailable(failure):
+        if failure.check(PowerActionAlreadyInProgress):
+            raise PowerProblem(str(failure.value))
+
+    d.addErrback(eb_service_unavailable)
+    return d
 
 
 @asynchronous(timeout=15)
