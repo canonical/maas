@@ -105,3 +105,5 @@ def run(args, stdout=sys.stdout):
     if args.verbose:
         print("Transmit queue:\n%s" % pformat(protocol.tx_queue), file=stdout)
         print("Receive queue:\n%s" % pformat(protocol.rx_queue), file=stdout)
+        print("Topology hints:\n%s" % pformat(
+            protocol.topology_hints), file=stdout)

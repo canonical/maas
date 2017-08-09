@@ -100,6 +100,7 @@ class FakeBeaconingSocketProtocol:
 
     tx_queue = []
     rx_queue = []
+    topology_hints = []
 
 
 class TestSendBeaconsProtocolInteraction(

@@ -6,7 +6,9 @@
 __all__ = [
     "BeaconingPacket",
     "BeaconPayload",
+    "ReceivedBeacon",
     "InvalidBeaconingPacket",
+    "TopologyHint",
     "create_beacon_payload",
     "read_beacon_payload",
     "add_arguments",
@@ -74,6 +76,25 @@ BeaconPayload = namedtuple('BeaconPayload', (
     'version',
     'type',
     'payload',
+))
+
+ReceivedBeacon = namedtuple('ReceivedBeacon', (
+    'uuid',
+    'json',
+    'ifname',
+    'ifinfo',
+    'vid',
+    'reply_address',
+    'multicast',
+))
+
+TopologyHint = namedtuple('TopologyHint', (
+    'ifname',
+    'vid',
+    'hint',
+    'related_ifname',
+    'related_vid',
+    'related_mac',
 ))
 
 

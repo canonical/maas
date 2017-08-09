@@ -20,7 +20,9 @@ from pprint import pformat
 import re
 import socket
 import struct
+import time
 
+from netaddr import IPAddress
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import (
     get_maas_logger,
@@ -35,6 +37,8 @@ from provisioningserver.utils.beaconing import (
     beacon_to_json,
     create_beacon_payload,
     read_beacon_payload,
+    ReceivedBeacon,
+    TopologyHint,
 )
 from provisioningserver.utils.fs import (
     get_maas_provision_command,
@@ -343,18 +347,21 @@ class MDNSResolverService(ProcessProtocolService):
         return ProtocolForObserveMDNS(callback=self.callback)
 
 
-def interface_info_to_beacon_remote_payload(ifname, ifdata):
+def interface_info_to_beacon_remote_payload(ifname, ifdata, rx_vid=None):
     """Converts the specified interface information entry to a beacon payload.
 
     :param ifname: The name of the interface.
         (The key from `get_all_interfaces_definition()`.)
     :param ifdata: The information for the interface.
         (The value from `get_all_interfaces_definition()`.)
+    :param rx_vid: The VID this beacon is being sent or received on.
+        If missing (or zero), this indicates unknown/untagged.
     :return: A subset of the ifdata, with the addition of the 'name' key,
         which will be set to the given `ifname`.
     """
     remote = ifdata.copy()
-    remote['name'] = ifname
+    if ifname is not None:
+        remote['name'] = ifname
     # It will be obvious to the receiver that the source interface
     # was enabled. ;-)
     remote.pop('enabled', None)
@@ -367,6 +374,8 @@ def interface_info_to_beacon_remote_payload(ifname, ifdata):
     # The subnet will be replaced by the value of each subnet link, but if
     # no link is configured, None is the default.
     remote['subnet'] = None
+    if rx_vid is not None:
+        remote['vid'] = rx_vid
     return remote
 
 
@@ -440,13 +449,17 @@ class BeaconingSocketProtocol(DatagramProtocol):
     """Protocol to handle beaconing packets received from the socket layer."""
 
     def __init__(
-            self, reactor, process_incoming=False, debug=True, interface='::',
+            self, reactor, process_incoming=False, debug=True, interface="::",
             loopback=False, port=BEACON_PORT, interfaces=None):
         super().__init__()
+        self.interface = interface
+        self.loopback = loopback
+        self.port = port
         if interfaces is None:
             # The interfaces list is used to join multicast groups, so if it
             # wasn't passed in, don't join any.
             interfaces = {}
+        self.interfaces = interfaces
         self.reactor = reactor
         self.process_incoming = process_incoming
         self.debug = debug
@@ -456,38 +469,48 @@ class BeaconingSocketProtocol(DatagramProtocol):
         # entire dictionary.
         self.tx_queue = OrderedDict()
         self.rx_queue = OrderedDict()
+        self.topology_hints = OrderedDict()
         self.listen_port = None
+        self.mcast_requested = False
+        self.last_solicited_mcast = 0
+        self._join_multicast_groups()
+
+    def _join_multicast_groups(self):
         try:
             # Need to ensure that the passed-in reactor is, in fact, a "real"
             # reactor, and not None, or a mock reactor used in tests.
-            verifyObject(IReactorMulticast, reactor)
-            self.listen_port = reactor.listenMulticast(
-                port, self, interface=interface, listenMultiple=True)
-            sock = self.transport.getHandle()
-            if loopback is True:
-                # This is only necessary for testing.
-                self.transport.setLoopbackMode(loopback)
-                set_ipv6_multicast_loopback(sock, loopback)
-                self.transport.joinGroup(
-                    BEACON_IPV4_MULTICAST, interface="127.0.0.1")
-                # Loopback interface always has ifindex == 1.
-                join_ipv6_beacon_group(sock, 1)
-            for _, ifdata in interfaces.items():
-                # Merely joining the group with the default parameters is not
-                # enough, since we want to join the group on *all* interfaces.
-                # So we need to join each group using an assigned IPv4 address
-                # on each Ethernet interface.
-                for ip in enumerate_ipv4_addresses(ifdata):
-                    self.transport.joinGroup(
-                        BEACON_IPV4_MULTICAST, interface=ip)
-                    # Use the first IP address on each interface. Since the
-                    # underlying interface is the same, joining using a
-                    # secondary IP address on the same interface will produce
-                    # an "Address already in use" error.
-                    break
-                join_ipv6_beacon_group(sock, ifdata['index'])
+            verifyObject(IReactorMulticast, self.reactor)
         except DoesNotImplement:
-            pass
+            return
+        self.listen_port = self.reactor.listenMulticast(
+            self.port, self, interface=self.interface, listenMultiple=True)
+        sock = self.transport.getHandle()
+        if self.loopback is True:
+            # This is only necessary for testing.
+            self.transport.setLoopbackMode(self.loopback)
+            set_ipv6_multicast_loopback(sock, self.loopback)
+            self.transport.joinGroup(
+                BEACON_IPV4_MULTICAST, interface="127.0.0.1")
+            # Loopback interface always has ifindex == 1.
+            join_ipv6_beacon_group(sock, 1)
+        for _, ifdata in self.interfaces.items():
+            # Merely joining the group with the default parameters is not
+            # enough, since we want to join the group on *all* interfaces.
+            # So we need to join each group using an assigned IPv4 address
+            # on each Ethernet interface.
+            for ip in enumerate_ipv4_addresses(ifdata):
+                self.transport.joinGroup(
+                    BEACON_IPV4_MULTICAST, interface=ip)
+                # Use the first IP address on each interface. Since the
+                # underlying interface is the same, joining using a
+                # secondary IP address on the same interface will produce
+                # an "Address already in use" error.
+                break
+            join_ipv6_beacon_group(sock, ifdata['index'])
+
+    def updateInterfaces(self, interfaces):
+        self.interfaces = interfaces
+        self._join_multicast_groups()
 
     def stopProtocol(self):
         super().stopProtocol()
@@ -591,6 +614,155 @@ class BeaconingSocketProtocol(DatagramProtocol):
                 beacon = create_beacon_payload(beacon_type, payload)
                 self.send_multicast_beacon(ifdata["index"], beacon)
 
+    def solicitationReceived(self, beacon: ReceivedBeacon):
+        """Called whenever a solicitation beacon is received.
+
+        Replies to each soliciation with a corresponding advertisement.
+        """
+        remote = interface_info_to_beacon_remote_payload(
+            beacon.ifname, beacon.ifinfo, beacon.vid)
+        # Construct the reply payload.
+        payload = {
+            "remote": remote,
+            "acks": beacon.uuid
+        }
+        reply = create_beacon_payload("advertisement", payload)
+        self.send_beacon(reply, beacon.reply_address)
+        if len(self.interfaces) > 0:
+            self.queueMulticastAdvertisement()
+
+    def dequeueMulticastAdvertisement(self):
+        """
+        Callback to send multicast beacon advertisements.
+
+        See `queueMulticastAdvertisement`, which schedules this method to run.
+        """
+        mtime = time.monotonic()
+        self.last_solicited_mcast = mtime
+        self.mcast_requested = False
+        log.msg("Sending multicast beacon advertisements.")
+        self.send_multicast_beacons(self.interfaces, 'advertisement')
+
+    def queueMulticastAdvertisement(self):
+        """
+        Requests that multicast advertisements be sent out on every interface.
+
+        Ensures that advertisements will not be sent more than once every
+        five seconds.
+        """
+        if self.mcast_requested:
+            # A multicast advertisement has been requested already.
+            return
+        mtime = time.monotonic()
+        # Ensure the minimum time between multicast replies is 5 seconds.
+        if mtime > self.last_solicited_mcast + 5:
+            timeout = 0
+        else:
+            timeout = max(mtime - self.last_solicited_mcast, 5)
+        self.mcast_requested = True
+        self.reactor.callLater(timeout, self.dequeueMulticastAdvertisement)
+
+    def processTopologyHints(self, rx: ReceivedBeacon):
+        """
+        Called when a beacon received, in order to infer network topology.
+
+        :param rx: The `ReceivedBeacon` namedtuple.
+        """
+        age_out_uuid_queue(self.topology_hints)
+        hints = self.topology_hints.get(rx.uuid, set())
+        # From what we know so far, we can infer some facts about the network,
+        # assuming we received a multicast beacon. (Unicast beacons cannot
+        # be used to infer fabric connectivity, since they could have been
+        # forwarded by a router).
+        # (1) If we received our own beacon, that means the interface we sent
+        # the packet out on is on the same fabric as the interface that
+        # received it.
+        own_beacon = rx.json.get('own_beacon', False)
+        if rx.multicast and own_beacon:
+            self._add_own_beacon_hints(hints, rx)
+        # (2) If we receive a duplicate beacon on two different interfaces,
+        # that means those two interfaces are on the same fabric.
+        is_dup = rx.json.get('is_dup', False)
+        if rx.multicast and is_dup:
+            self._add_duplicate_beacon_hints(hints, rx)
+        remote_ifinfo = rx.json.get('payload', {}).get('remote', None)
+        if remote_ifinfo is not None and not own_beacon:
+            self._add_remote_fabric_hints(hints, remote_ifinfo, rx)
+        if len(hints) > 0:
+            self.topology_hints[rx.uuid] = hints
+            # XXX mpontillo 2017-08-07: temporary logging
+            log.msg("New topology hints [%s]:\n%s" % (rx.uuid, pformat(hints)))
+            all_hints = set()
+            for hints in self.topology_hints.values():
+                all_hints |= hints
+            log.msg("Topology hint summary:\n%s" % pformat(all_hints))
+
+    def _add_remote_fabric_hints(self, hints, remote_ifinfo, rx):
+        """Adds hints for remote networks that are either on-link or routable.
+
+        Since MAAS only uses link-local multicast, we can assume that multicast
+        beacons indicate an on-link network. If a unicast beacon was received,
+        we can assume that the two endpoints are mutually routable.
+        """
+        remote_ifname = remote_ifinfo.get('name')
+        remote_vid = remote_ifinfo.get('vid')
+        remote_mac = remote_ifinfo.get('mac_address')
+        hint = "on_remote_network" if rx.multicast else "routable_to"
+        if remote_ifname is not None and remote_mac is not None:
+            hints.add(TopologyHint(
+                rx.ifname, rx.vid, hint, remote_ifname, remote_vid,
+                remote_mac))
+
+    def _add_duplicate_beacon_hints(self, hints, rx):
+        """Adds hints regarding duplicate beacons received.
+
+        If a duplicate beacon is received, we can infer that each interface
+        that received the beacon is on the same fabric.
+        """
+        if rx.ifname is not None:
+            received_beacons = self.rx_queue.get(rx.uuid, [])
+            duplicate_interfaces = set()
+            for beacon in received_beacons:
+                if beacon.ifname is not None:
+                    duplicate_interfaces.add((beacon.ifname, beacon.vid))
+                if len(duplicate_interfaces) > 1:
+                    # The same beacon was received on more than one interface.
+                    for ifname1, vid1 in duplicate_interfaces:
+                        for ifname2, vid2 in duplicate_interfaces:
+                            if ifname1 == ifname2 and vid1 == vid2:
+                                continue
+                            hints.add(TopologyHint(
+                                ifname1, vid1, "same_local_fabric_as", ifname2,
+                                vid2, None))
+
+    def _add_own_beacon_hints(self, hints, rx):
+        """Adds hints regarding own beacons received.
+
+        If we receive our own beacon, it either means we have two interfaces
+        on the same fabric, or a misconfiguration has occurred.
+        """
+        if rx.ifname is not None:
+            # We received our own solicitation.
+            sent_beacon = self.tx_queue.get(rx.uuid, None)
+            if sent_beacon is not None:
+                sent_ifname = sent_beacon.payload.get('remote', {}).get('name')
+                if sent_ifname == rx.ifname:
+                    # Someone sent us our own beacon. This indicates a network
+                    # misconfiguration such as a loop/broadcast storm, or
+                    # a malicious attack.
+                    hints.add(TopologyHint(
+                        sent_ifname, None, "rx_own_beacon_on_tx_interface",
+                        rx.ifname, rx.vid, None))
+                else:
+                    hints.add(TopologyHint(
+                        sent_ifname, None, "rx_own_beacon_on_other_interface",
+                        rx.ifname, rx.vid, None
+                    ))
+
+    def advertisementReceived(self, beacon: ReceivedBeacon):
+        """Called when an advertisement beacon is received."""
+        pass
+
     def beaconReceived(self, beacon_json):
         """Called whenever a beacon is received.
 
@@ -602,28 +774,42 @@ class BeaconingSocketProtocol(DatagramProtocol):
             from the external tcpdump-based process, or from the sockets layer
             (with less information about the received packet).
         """
-        rx_uuid = beacon_json.get('payload', {}).get("uuid")
-        if rx_uuid is None:
+        beacon = self.make_ReceivedBeacon(beacon_json)
+        if beacon.uuid is None:
             if self.debug is True:
                 log.msg(
                     "Rejecting incoming beacon: no UUID found: \n%s" % (
                         pformat(beacon_json)))
             return
         own_beacon = False
-        if self.tx_queue.get(rx_uuid):
+        if beacon.uuid in self.tx_queue:
             own_beacon = True
-        is_dup = self.remember_beacon_and_check_duplicate(rx_uuid, beacon_json)
+        beacon_json['own_beacon'] = own_beacon
+        is_dup = self.remember_beacon_and_check_duplicate(beacon)
+        beacon_json['is_dup'] = is_dup
         if self.debug is True:
             log.msg("%s %sreceived:\n%s" % (
                 "Own beacon" if own_beacon else "Beacon",
                 "(duplicate) " if is_dup else "",
                 beacon_json))
-        # From what we know so far, we can infer some facts about the network.
-        # (1) If we received our own beacon, that means the interface we sent
-        # the packet out on is on the same fabric as the interface that
-        # received it.
-        # (2) If we receive a duplicate beacon on two different interfaces,
-        # that means those two interfaces are on the same fabric.
+        beacon_type = beacon_json['type']
+        self.processTopologyHints(beacon)
+        if own_beacon:
+            # No need to reply to our own beacon. We already know we received
+            # it, and we already acted on that when we processed the hints.
+            return
+        if beacon_type == "solicitation":
+            self.solicitationReceived(beacon)
+        elif beacon_type == "advertisement":
+            self.advertisementReceived(beacon)
+
+    def make_ReceivedBeacon(self, beacon_json) -> ReceivedBeacon:
+        """
+        Creates a ReceivedBeacon object to organize the specified beacon JSON.
+
+        :param beacon_json: received beacon JSON
+        :return: `ReceivedBeacon` namedtuple
+        """
         reply_ip = beacon_json['source_ip']
         reply_port = beacon_json['source_port']
         if ':' not in reply_ip:
@@ -631,36 +817,37 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # here to send to IPv4 addresses.
             reply_ip = '::ffff:' + reply_ip
         reply_address = (reply_ip, reply_port)
-        beacon_type = beacon_json['type']
-        if beacon_type == "solicitation":
-            receive_interface_info = self.get_receive_interface_info(
-                beacon_json)
-            payload = {
-                "interface": receive_interface_info,
-                "acks": rx_uuid
-            }
-            reply = create_beacon_payload("advertisement", payload)
-            self.send_beacon(reply, reply_address)
+        destination_ip = beacon_json.get('destination_ip')
+        multicast = False
+        if destination_ip is not None:
+            ip = IPAddress(destination_ip)
+            multicast = ip.is_multicast()
+        uuid = beacon_json.get('payload', {}).get("uuid")
+        ifname = beacon_json.get('interface')
+        ifinfo = self.interfaces.get(ifname, {})
+        vid = beacon_json.get('vid')
+        beacon = ReceivedBeacon(
+            uuid, beacon_json, ifname, ifinfo, vid, reply_address, multicast)
+        return beacon
 
-    def remember_beacon_and_check_duplicate(self, rx_uuid, beacon_json):
+    def remember_beacon_and_check_duplicate(self, beacon: ReceivedBeacon):
         """Records an incoming beacon based on its UUID and JSON.
 
         Organizes incoming beacons in the `rx_queue` by creating a list of
         beacons received [on different interfaces] per UUID.
 
-        :param rx_uuid: The UUID of the incoming beacon.
-        :param beacon_json: The incoming beacon (in JSON format).
+        :param beacon: The incoming beacon (a ReceivedBeacon namedtuple).
         :return: True if the beacon was a duplicate, otherwise False.
         """
         duplicate_received = False
         # Need to age out before doing anything else; we don't want to match
         # a duplicate packet and then delete it immediately after.
         age_out_uuid_queue(self.rx_queue)
-        rx_packets_for_uuid = self.rx_queue.get(rx_uuid, [])
+        rx_packets_for_uuid = self.rx_queue.get(beacon.uuid, [])
         if len(rx_packets_for_uuid) > 0:
             duplicate_received = True
-        rx_packets_for_uuid.append(beacon_json)
-        self.rx_queue[rx_uuid] = rx_packets_for_uuid
+        rx_packets_for_uuid.append(beacon)
+        self.rx_queue[beacon.uuid] = rx_packets_for_uuid
         return duplicate_received
 
     def get_receive_interface_info(self, context):
@@ -713,7 +900,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     Parse ``/etc/network/interfaces`` and the output from ``ip addr show`` to
     update MAAS's records of network interfaces on this host.
 
-    :param reactor: An `IReactor` instance.
+    :param clock: An `IReactor` instance.
     """
 
     interval = timedelta(seconds=30).total_seconds()
@@ -1071,5 +1258,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         if self.beaconing_protocol is None:
             self.beaconing_protocol = BeaconingSocketProtocol(
                 self.clock, interfaces=interfaces)
+        else:
+            self.beaconing_protocol.updateInterfaces(interfaces)
         if self.enable_monitoring is True:
             self._configureNetworkDiscovery(interfaces)
