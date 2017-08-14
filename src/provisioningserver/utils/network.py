@@ -94,6 +94,9 @@ OuterRange = TypeVar('OuterRange', IPRange, IPNetwork, bytes, str)
 # were passed into the `netaddr.IPAddress` constructor.
 MaybeIPAddress = TypeVar('MaybeIPAddress', IPAddress, bytes, str, int)
 
+IPAddressOrNetwork = TypeVar(
+    'IPAddressOrNetwork', IPNetwork, IPAddress, bytes, str, int)
+
 
 class IPRANGE_TYPE:
     """Well-known purpose types for IP ranges."""
@@ -1346,3 +1349,35 @@ def coerce_to_valid_hostname(hostname):
     if hostname == '' or len(hostname) > 64:
         return None
     return hostname
+
+
+def get_source_address(destination_ip: IPAddressOrNetwork):
+    """Returns the local source address for the specified destination IP.
+
+    :param destination_ip: Can be an IP address in string format, an IPNetwork,
+        or an IPAddress object.
+    :return: the string representation of the local IP address that would be
+        used for communication with the specified destination.
+    """
+    if isinstance(destination_ip, IPNetwork):
+        destination_ip = IPAddress(destination_ip.first + 1)
+    else:
+        destination_ip = make_ipaddress(destination_ip)
+    af = AF_INET if destination_ip.version == 4 else AF_INET6
+    with socket.socket(af, socket.SOCK_DGRAM) as sock:
+        peername = str(destination_ip)
+        local_address = "0.0.0.0" if af == socket.AF_INET else "::"
+        try:
+            # Note: this sets up the socket *just enough* to get the source
+            # address. No network traffic will be transmitted.
+            sock.bind((local_address, 0))
+            sock.connect((peername, 7))
+            sockname = sock.getsockname()
+            own_ip = sockname[0]
+            return own_ip
+        except OSError:
+            # Probably "can't assign requested address", which probably means
+            # we tried to connect to an IPv6 address, but IPv6 is not
+            # configured. Could also happen if a network or broadcast address
+            # is passed in, or we otherwise cannot route to the destination.
+            return None

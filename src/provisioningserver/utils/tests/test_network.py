@@ -59,6 +59,7 @@ from provisioningserver.utils.network import (
     get_eui_organization,
     get_interface_children,
     get_mac_organization,
+    get_source_address,
     has_ipv4_address,
     hex_str_to_bytes,
     inet_ntop,
@@ -2171,3 +2172,30 @@ class TestCoerceHostname(MAASTestCase):
 
     def test_returns_none_if_result_too_large(self):
         self.assertIsNone(coerce_to_valid_hostname('a' * 65))
+
+
+class TestGetSourceAddress(MAASTestCase):
+
+    def test__accepts_ipnetwork(self):
+        self.assertThat(
+            get_source_address(IPNetwork("127.0.0.1/8")), Equals("127.0.0.1"))
+
+    def test__accepts_ipaddress(self):
+        self.assertThat(
+            get_source_address(IPAddress("127.0.0.1")), Equals("127.0.0.1"))
+
+    def test__accepts_string(self):
+        self.assertThat(
+            get_source_address("127.0.0.1"), Equals("127.0.0.1"))
+
+    def test__supports_ipv6(self):
+        self.assertThat(
+            get_source_address("::1"), Equals("::1"))
+
+    def test__returns_none_if_no_route_found(self):
+        self.assertThat(
+            get_source_address("127.0.0.0"), Is(None))
+
+    def test__returns_appropriate_address_for_global_ip(self):
+        self.assertThat(
+            get_source_address("8.8.8.8"), Not(Is(None)))
