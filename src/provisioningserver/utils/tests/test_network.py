@@ -51,11 +51,14 @@ from provisioningserver.utils.network import (
     format_eui,
     get_all_addresses_for_interface,
     get_all_interface_addresses,
+    get_all_interface_source_addresses,
+    get_all_interface_subnets,
     get_all_interfaces_definition,
     get_default_monitored_interfaces,
     get_eui_organization,
     get_interface_children,
     get_mac_organization,
+    get_source_address,
     has_ipv4_address,
     hex_str_to_bytes,
     inet_ntop,
@@ -1518,6 +1521,52 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
 
+class TestGetAllInterfacesSubnets(MAASTestCase):
+    """Tests for `get_all_interface_subnets()`."""
+
+    def test_includes_unique_subnets(self):
+        interface_definition = {
+            'eth0': {
+                'links': [{
+                    'address': '192.168.122.1/24',
+                }, {
+                    'address': '192.168.122.3/24',
+                }],
+            },
+            'eth1': {
+                'links': [{
+                    'address': '192.168.123.1/24',
+                }, {
+                    'address': '192.168.123.2/24',
+                }]
+            }
+        }
+        self.patch(
+            network_module,
+            'get_all_interfaces_definition').return_value = (
+                interface_definition)
+        self.assertEquals(
+            set([
+                IPNetwork('192.168.122.1/24'), IPNetwork('192.168.123.1/24')]),
+            get_all_interface_subnets())
+
+
+class TestGetAllInterfacesSourceAddresses(MAASTestCase):
+    """Tests for `get_all_interface_source_addresses()`."""
+
+    def test_includes_unique_subnets(self):
+        interface_subnets = set([
+            IPNetwork('192.168.122.1/24'), IPNetwork('192.168.123.1/24')])
+        self.patch(
+            network_module,
+            'get_all_interface_subnets').return_value = interface_subnets
+        self.patch(network_module, 'get_source_address').side_effect = [
+            '192.168.122.1', None]
+        self.assertEquals(
+            set(['192.168.122.1']),
+            get_all_interface_source_addresses())
+
+
 class TestHasIPv4Address(MAASTestCase):
     """Tests for `has_ipv4_address()`."""
 
@@ -2119,3 +2168,30 @@ class TestCoerceHostname(MAASTestCase):
 
     def test_returns_none_if_result_too_large(self):
         self.assertIsNone(coerce_to_valid_hostname('a' * 65))
+
+
+class TestGetSourceAddress(MAASTestCase):
+
+    def test__accepts_ipnetwork(self):
+        self.assertThat(
+            get_source_address(IPNetwork("127.0.0.1/8")), Equals("127.0.0.1"))
+
+    def test__accepts_ipaddress(self):
+        self.assertThat(
+            get_source_address(IPAddress("127.0.0.1")), Equals("127.0.0.1"))
+
+    def test__accepts_string(self):
+        self.assertThat(
+            get_source_address("127.0.0.1"), Equals("127.0.0.1"))
+
+    def test__supports_ipv6(self):
+        self.assertThat(
+            get_source_address("::1"), Equals("::1"))
+
+    def test__returns_none_if_no_route_found(self):
+        self.assertThat(
+            get_source_address("127.0.0.0"), Is(None))
+
+    def test__returns_appropriate_address_for_global_ip(self):
+        self.assertThat(
+            get_source_address("8.8.8.8"), Not(Is(None)))

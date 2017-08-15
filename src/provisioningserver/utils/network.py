@@ -94,6 +94,9 @@ OuterRange = TypeVar('OuterRange', IPRange, IPNetwork, bytes, str)
 # were passed into the `netaddr.IPAddress` constructor.
 MaybeIPAddress = TypeVar('MaybeIPAddress', IPAddress, bytes, str, int)
 
+IPAddressOrNetwork = TypeVar(
+    'IPAddressOrNetwork', IPNetwork, IPAddress, bytes, str, int)
+
 
 class IPRANGE_TYPE:
     """Well-known purpose types for IP ranges."""
@@ -1191,6 +1194,39 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
     return interfaces
 
 
+def get_all_interface_subnets():
+    """Returns all subnets that this machine has access to.
+
+    Uses the `get_all_interfaces_definition` to get the available interfaces,
+    and returns a set of subnets for the machine.
+
+    :return: set of IP networks
+    :rtype: set of `IPNetwork`
+    """
+    return set(
+        IPNetwork(link["address"])
+        for interface in get_all_interfaces_definition().values()
+        for link in interface["links"]
+    )
+
+
+def get_all_interface_source_addresses():
+    """Return one source address per subnets defined on this machine.
+
+    Uses the `get_all_interface_subnets` and `get_source_address` to determine
+    the best source addresses for this machine.
+
+    :return: set of IP addresses
+    :rtype: set of `str`
+    """
+    source_addresses = set()
+    for network in get_all_interface_subnets():
+        src = get_source_address(network)
+        if src is not None:
+            source_addresses.add(src)
+    return source_addresses
+
+
 def has_ipv4_address(interfaces: dict, interface: str) -> bool:
     """Returns True if the specified interface has an IPv4 address assigned.
 
@@ -1321,3 +1357,35 @@ def coerce_to_valid_hostname(hostname):
     if hostname == '' or len(hostname) > 64:
         return None
     return hostname
+
+
+def get_source_address(destination_ip: IPAddressOrNetwork):
+    """Returns the local source address for the specified destination IP.
+
+    :param destination_ip: Can be an IP address in string format, an IPNetwork,
+        or an IPAddress object.
+    :return: the string representation of the local IP address that would be
+        used for communication with the specified destination.
+    """
+    if isinstance(destination_ip, IPNetwork):
+        destination_ip = IPAddress(destination_ip.first + 1)
+    else:
+        destination_ip = make_ipaddress(destination_ip)
+    af = AF_INET if destination_ip.version == 4 else AF_INET6
+    with socket.socket(af, socket.SOCK_DGRAM) as sock:
+        peername = str(destination_ip)
+        local_address = "0.0.0.0" if af == socket.AF_INET else "::"
+        try:
+            # Note: this sets up the socket *just enough* to get the source
+            # address. No network traffic will be transmitted.
+            sock.bind((local_address, 0))
+            sock.connect((peername, 7))
+            sockname = sock.getsockname()
+            own_ip = sockname[0]
+            return own_ip
+        except OSError:
+            # Probably "can't assign requested address", which probably means
+            # we tried to connect to an IPv6 address, but IPv6 is not
+            # configured. Could also happen if a network or broadcast address
+            # is passed in, or we otherwise cannot route to the destination.
+            return None
