@@ -173,7 +173,7 @@ def wipe_quickly(kname):
     the device.
     """
     print_flush("%s: starting quick wipe." % kname.decode('ascii'))
-    buf = b'\0' * 1024 * 1024  # 1 MiB
+    buf = b'\0' * 1024 * 1024 * 2  # 2 MiB
     with open(DEV_PATH % kname, "wb") as fp:
         fp.write(buf)
         fp.seek(-len(buf), 2)
