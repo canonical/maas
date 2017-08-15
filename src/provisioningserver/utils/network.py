@@ -1195,6 +1195,39 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
     return interfaces
 
 
+def get_all_interface_subnets():
+    """Returns all subnets that this machine has access to.
+
+    Uses the `get_all_interfaces_definition` to get the available interfaces,
+    and returns a set of subnets for the machine.
+
+    :return: set of IP networks
+    :rtype: set of `IPNetwork`
+    """
+    return set(
+        IPNetwork(link["address"])
+        for interface in get_all_interfaces_definition().values()
+        for link in interface["links"]
+    )
+
+
+def get_all_interface_source_addresses():
+    """Return one source address per subnets defined on this machine.
+
+    Uses the `get_all_interface_subnets` and `get_source_address` to determine
+    the best source addresses for this machine.
+
+    :return: set of IP addresses
+    :rtype: set of `str`
+    """
+    source_addresses = set()
+    for network in get_all_interface_subnets():
+        src = get_source_address(network)
+        if src is not None:
+            source_addresses.add(src)
+    return source_addresses
+
+
 def enumerate_assigned_ips(ifdata):
     """Yields each IP address assigned to an interface.
 

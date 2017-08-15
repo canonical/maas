@@ -54,6 +54,8 @@ from provisioningserver.utils.network import (
     format_eui,
     get_all_addresses_for_interface,
     get_all_interface_addresses,
+    get_all_interface_source_addresses,
+    get_all_interface_subnets,
     get_all_interfaces_definition,
     get_default_monitored_interfaces,
     get_eui_organization,
@@ -1551,8 +1553,54 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
 
+class TestGetAllInterfacesSubnets(MAASTestCase):
+    """Tests for `get_all_interface_subnets()`."""
+
+    def test_includes_unique_subnets(self):
+        interface_definition = {
+            'eth0': {
+                'links': [{
+                    'address': '192.168.122.1/24',
+                }, {
+                    'address': '192.168.122.3/24',
+                }],
+            },
+            'eth1': {
+                'links': [{
+                    'address': '192.168.123.1/24',
+                }, {
+                    'address': '192.168.123.2/24',
+                }]
+            }
+        }
+        self.patch(
+            network_module,
+            'get_all_interfaces_definition').return_value = (
+                interface_definition)
+        self.assertEquals(
+            set([
+                IPNetwork('192.168.122.1/24'), IPNetwork('192.168.123.1/24')]),
+            get_all_interface_subnets())
+
+
+class TestGetAllInterfacesSourceAddresses(MAASTestCase):
+    """Tests for `get_all_interface_source_addresses()`."""
+
+    def test_includes_unique_subnets(self):
+        interface_subnets = set([
+            IPNetwork('192.168.122.1/24'), IPNetwork('192.168.123.1/24')])
+        self.patch(
+            network_module,
+            'get_all_interface_subnets').return_value = interface_subnets
+        self.patch(network_module, 'get_source_address').side_effect = [
+            '192.168.122.1', None]
+        self.assertEquals(
+            set(['192.168.122.1']),
+            get_all_interface_source_addresses())
+
+
 class InterfaceLinksTestCase(MAASTestCase):
-    """Tests for `has_ipv4_address()`."""
+    """Test case for `TestHasIPv4Address` and `TestEnumerateAddresses`."""
 
     def make_interfaces(self, name, addresses=None):
         links = []

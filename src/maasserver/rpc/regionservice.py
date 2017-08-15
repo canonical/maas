@@ -81,6 +81,7 @@ from provisioningserver.security import calculate_digest
 from provisioningserver.utils.events import EventGroup
 from provisioningserver.utils.network import (
     get_all_interface_addresses,
+    get_all_interface_source_addresses,
     resolves_to_loopback_address,
 )
 from provisioningserver.utils.ps import is_pid_running
@@ -1209,7 +1210,14 @@ class RegionAdvertisingService(service.Service):
             if port is None:
                 return set()  # Not serving yet.
             else:
-                addresses = set()
+                addresses = get_all_interface_source_addresses()
+                if len(addresses) > 0:
+                    return set(
+                        (addr, port)
+                        for addr in addresses
+                    )
+                # There are no non-loopback addresses, so return loopback
+                # address as a fallback.
                 loopback_addresses = set()
                 for addr in get_all_interface_addresses():
                     ipaddr = IPAddress(addr)
@@ -1217,14 +1225,7 @@ class RegionAdvertisingService(service.Service):
                         continue  # Don't advertise link-local addresses.
                     if ipaddr.is_loopback():
                         loopback_addresses.add((addr, port))
-                    else:
-                        addresses.add((addr, port))
-                if len(addresses) > 0:
-                    return addresses
-                else:
-                    # There are no non-loopback addresses, so return loopback
-                    # address as a fallback.
-                    return loopback_addresses
+                return loopback_addresses
 
 
 class RegionAdvertising:

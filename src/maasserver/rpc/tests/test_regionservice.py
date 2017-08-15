@@ -65,6 +65,7 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
     Provides,
 )
 from maastesting.runtest import MAASCrochetRunTest
@@ -1304,10 +1305,13 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         getPort = getServiceNamed.return_value.getPort
         getPort.return_value = port
 
-    def patch_addresses(self, addresses):
+    def patch_addresses(self, source_addresses, old_addresses):
+        get_all_interface_source_addresses = self.patch(
+            regionservice, "get_all_interface_source_addresses")
+        get_all_interface_source_addresses.return_value = source_addresses
         get_all_interface_addresses = self.patch(
             regionservice, "get_all_interface_addresses")
-        get_all_interface_addresses.return_value = addresses
+        get_all_interface_addresses.return_value = old_addresses
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1321,7 +1325,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         dump = yield deferToDatabase(RegionAdvertising.dump)
         self.assertItemsEqual([], dump)
 
-    def test__getAddresses_excluding_loopback(self):
+    def test__getAddresses_uses_source_addresses(self):
         service = RegionAdvertisingService()
 
         example_port = factory.pick_port()
@@ -1346,11 +1350,10 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             str(netaddr.ip.IPV6_LOOPBACK),
         }
         self.patch_addresses(
-            example_ipv4_addrs | example_ipv6_addrs |
+            example_ipv4_addrs | example_ipv6_addrs,
             example_link_local_addrs | example_loopback_addrs)
 
-        # IPv6 addresses, link-local addresses and loopback are excluded, and
-        # thus not advertised.
+        # Only the source addresses are returned.
         self.assertItemsEqual(
             [(addr, example_port)
                 for addr in example_ipv4_addrs.union(example_ipv6_addrs)],
@@ -1360,8 +1363,11 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             eventloop.services.getServiceNamed,
             MockCalledOnceWith("rpc"))
         self.assertThat(
-            regionservice.get_all_interface_addresses,
+            regionservice.get_all_interface_source_addresses,
             MockCalledOnceWith())
+        self.assertThat(
+            regionservice.get_all_interface_addresses,
+            MockNotCalled())
 
     def test__getAddresses_including_loopback(self):
         service = RegionAdvertisingService()
@@ -1369,6 +1375,16 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         example_port = factory.pick_port()
         self.patch_port(example_port)
 
+        example_ipv4_addrs = set()
+        for _ in range(5):
+            ip = factory.make_ipv4_address()
+            if not netaddr.IPAddress(ip).is_loopback():
+                example_ipv4_addrs.add(ip)
+        example_ipv6_addrs = set()
+        for _ in range(5):
+            ip = factory.make_ipv6_address()
+            if not netaddr.IPAddress(ip).is_loopback():
+                example_ipv6_addrs.add(ip)
         example_link_local_addrs = {
             factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
             factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
@@ -1379,6 +1395,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             str(netaddr.ip.IPV6_LOOPBACK),
         }
         self.patch_addresses(
+            set(),
+            example_ipv4_addrs | example_ipv6_addrs |
             example_link_local_addrs | example_loopback_addrs)
 
         # Only IPv4 loopback is exposed.
@@ -1389,6 +1407,9 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         self.assertThat(
             eventloop.services.getServiceNamed,
             MockCalledOnceWith("rpc"))
+        self.assertThat(
+            regionservice.get_all_interface_source_addresses,
+            MockCalledOnceWith())
         self.assertThat(
             regionservice.get_all_interface_addresses,
             MockCalledOnceWith())
