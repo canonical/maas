@@ -3,11 +3,15 @@
 
 __all__ = [
     "Script",
+    "translate_hardware_type",
+    "translate_script_parallel",
+    "translate_script_type",
 ]
 
 import datetime
 
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
     CASCADE,
@@ -18,14 +22,72 @@ from django.db.models import (
     OneToOneField,
     TextField,
 )
+from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
 from metadataserver import DefaultMeta
 from metadataserver.enum import (
+    HARDWARE_TYPE,
+    HARDWARE_TYPE_CHOICES,
+    SCRIPT_PARALLEL,
+    SCRIPT_PARALLEL_CHOICES,
     SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
+
+
+def translate_script_type(script_type):
+    if isinstance(script_type, int) or script_type.isdigit():
+        ret = int(script_type)
+        for script_type_id, _ in SCRIPT_TYPE_CHOICES:
+            if ret == script_type_id:
+                return ret
+        raise ValidationError('Invalid script type numeric value.')
+    elif script_type in ['test', 'testing']:
+        return SCRIPT_TYPE.TESTING
+    elif script_type in ['commission', 'commissioning']:
+        return SCRIPT_TYPE.COMMISSIONING
+    else:
+        raise ValidationError('Script type must be testing or commissioning')
+
+
+def translate_hardware_type(hardware_type):
+    if isinstance(hardware_type, int) or hardware_type.isdigit():
+        ret = int(hardware_type)
+        for hardware_type_id, _ in HARDWARE_TYPE_CHOICES:
+            if ret == hardware_type_id:
+                return ret
+        raise ValidationError('Invalid hardware type numeric value.')
+    elif hardware_type in ['node', 'machine', 'controller']:
+        return HARDWARE_TYPE.NODE
+    elif hardware_type in ['cpu', 'processor']:
+        return HARDWARE_TYPE.CPU
+    elif hardware_type in ['memory', 'ram']:
+        return HARDWARE_TYPE.MEMORY
+    elif hardware_type in ['storage', 'disk', 'ssd']:
+        return HARDWARE_TYPE.STORAGE
+    else:
+        raise ValidationError(
+            'Hardware type must be node, cpu, memory, or storage')
+
+
+def translate_script_parallel(parallel):
+    if isinstance(parallel, int) or parallel.isdigit():
+        ret = int(parallel)
+        for script_parallel_id, _ in SCRIPT_PARALLEL_CHOICES:
+            if ret == script_parallel_id:
+                return ret
+        raise ValidationError('Invalid script parallel numeric value.')
+    elif parallel in ['disabled', 'none']:
+        return SCRIPT_PARALLEL.DISABLED
+    elif parallel in ['instance', 'name']:
+        return SCRIPT_PARALLEL.INSTANCE
+    elif parallel in ['any', 'enabled']:
+        return SCRIPT_PARALLEL.ANY
+    else:
+        raise ValidationError(
+            'Script parallel must be disabled, instance, or any.')
 
 
 class ScriptManager(Manager):
@@ -70,6 +132,23 @@ class Script(CleanSave, TimestampedModel):
     script_type = IntegerField(
         choices=SCRIPT_TYPE_CHOICES, default=SCRIPT_TYPE.TESTING)
 
+    # The hardware the script configures or tests.
+    hardware_type = IntegerField(
+        choices=HARDWARE_TYPE_CHOICES, default=HARDWARE_TYPE.NODE)
+
+    # Whether the script can run in parallel with other scripts.
+    parallel = IntegerField(
+        choices=SCRIPT_PARALLEL_CHOICES, default=SCRIPT_PARALLEL.DISABLED)
+
+    # Any results which will be made availble after the script is run.
+    results = JSONObjectField(blank=True, default={})
+
+    # Parameters which may be passed to the script and their constraints.
+    parameters = JSONObjectField(blank=True, default={})
+
+    # apt, snap, dpkg, to install or archives to extract.
+    packages = JSONObjectField(blank=True, default={})
+
     # 0 is no timeout
     timeout = DurationField(default=datetime.timedelta())
 
@@ -86,6 +165,14 @@ class Script(CleanSave, TimestampedModel):
             if self.script_type == script_type:
                 return script_type_name
         return 'unknown'
+
+    @property
+    def hardware_type_name(self):
+        return HARDWARE_TYPE_CHOICES[self.hardware_type][1]
+
+    @property
+    def parallel_name(self):
+        return SCRIPT_PARALLEL_CHOICES[self.parallel][1]
 
     def __str__(self):
         return self.name

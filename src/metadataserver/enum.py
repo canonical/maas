@@ -8,6 +8,12 @@ __all__ = [
     'SIGNAL_STATUS_CHOICES',
     'RESULT_TYPE',
     'RESULT_TYPE_CHOICES',
+    'SCRIPT_STATUS',
+    'SCRIPT_STATUS_CHOICES',
+    'HARDWARE_TYPE',
+    'HARDWARE_TYPE_CHOICES',
+    'SCRIPT_PARALLEL',
+    'SCRIPT_PARALLEL_CHOICES',
     ]
 
 
@@ -74,4 +80,34 @@ SCRIPT_STATUS_CHOICES = (
     (SCRIPT_STATUS.FAILED, "Failed"),
     (SCRIPT_STATUS.TIMEDOUT, "Timed out"),
     (SCRIPT_STATUS.ABORTED, "Aborted"),
+)
+
+
+class HARDWARE_TYPE:
+
+    NODE = 0
+    CPU = 1
+    MEMORY = 2
+    STORAGE = 3
+
+
+HARDWARE_TYPE_CHOICES = (
+    (HARDWARE_TYPE.NODE, "Node"),
+    (HARDWARE_TYPE.CPU, "CPU"),
+    (HARDWARE_TYPE.MEMORY, "Memory"),
+    (HARDWARE_TYPE.STORAGE, "Storage"),
+)
+
+
+class SCRIPT_PARALLEL:
+
+    DISABLED = 0
+    INSTANCE = 1
+    ANY = 2
+
+
+SCRIPT_PARALLEL_CHOICES = (
+    (SCRIPT_PARALLEL.DISABLED, "Disabled"),
+    (SCRIPT_PARALLEL.INSTANCE, "Run along other instances of this script"),
+    (SCRIPT_PARALLEL.ANY, "Run along any other script."),
 )

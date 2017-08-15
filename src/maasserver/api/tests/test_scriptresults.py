@@ -20,7 +20,10 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from metadataserver.enum import RESULT_TYPE
+from metadataserver.enum import (
+    HARDWARE_TYPE_CHOICES,
+    RESULT_TYPE_CHOICES,
+)
 
 
 class TestNodeScriptResultsAPI(APITestCase.ForUser):
@@ -65,46 +68,54 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
 
     def test_GET_filters_by_type(self):
         node = factory.make_Node()
+        result_type = factory.pick_choice(RESULT_TYPE_CHOICES)
         script_sets = [
-            {
-                'names': [
-                    RESULT_TYPE.COMMISSIONING, 'commission', 'commissioning'],
-                'script_set_ids': [
-                    factory.make_ScriptSet(
-                        node=node, result_type=RESULT_TYPE.COMMISSIONING).id
-                    for _ in range(3)],
-            },
-            {
-                'names': [
-                    RESULT_TYPE.TESTING, 'test', 'testing'],
-                'script_set_ids': [
-                    factory.make_ScriptSet(
-                        node=node, result_type=RESULT_TYPE.TESTING).id
-                    for _ in range(3)],
-            },
-            {
-                'names': [
-                    RESULT_TYPE.INSTALLATION, 'install', 'installation'],
-                'script_set_ids': [
-                    factory.make_ScriptSet(
-                        node=node, result_type=RESULT_TYPE.INSTALLATION).id
-                    for _ in range(3)],
-            },
+            factory.make_ScriptSet(result_type=result_type, node=node)
+            for _ in range(3)
         ]
-        # Script sets for different nodes.
+
         for _ in range(10):
-            factory.make_ScriptSet()
+            factory.make_ScriptSet(
+                node=node,
+                result_type=factory.pick_choice(
+                    RESULT_TYPE_CHOICES, but_not=[result_type]))
 
-        for script_set in script_sets:
-            for name in script_set['names']:
-                response = self.client.get(
-                    self.get_script_results_uri(node), {'type': name})
-                self.assertThat(response, HasStatusCode(http.client.OK))
-                parsed_results = json_load_bytes(response.content)
+        response = self.client.get(
+            self.get_script_results_uri(node), {'type': result_type})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
 
-                self.assertItemsEqual(
-                    script_set['script_set_ids'],
-                    [result['id'] for result in parsed_results])
+        self.assertItemsEqual(
+            [script_set.id for script_set in script_sets],
+            [parsed_result['id'] for parsed_result in parsed_results])
+
+    def test_GET_filters_by_hardware_type(self):
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script_set = factory.make_ScriptSet()
+        scripts = [
+            factory.make_Script(hardware_type=hardware_type)
+            for _ in range(3)
+        ]
+        for script in scripts:
+            factory.make_ScriptResult(script_set=script_set, script=script)
+
+        for _ in range(10):
+            script = factory.make_Script(
+                hardware_type=factory.pick_choice(
+                    HARDWARE_TYPE_CHOICES, but_not=[hardware_type]))
+            factory.make_ScriptResult(script_set=script_set, script=script)
+
+        response = self.client.get(
+            self.get_script_results_uri(script_set.node),
+            {'hardware_type': hardware_type})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
+
+        self.assertItemsEqual(
+            [script.id for script in scripts],
+            [
+                parsed_result['script_id']
+                for parsed_result in parsed_results[0]['results']])
 
     def test_GET_include_output(self):
         node = factory.make_Node()
@@ -258,6 +269,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'started': fmt_time(script_result.started),
                 'ended': fmt_time(script_result.ended),
                 'runtime': script_result.runtime,
+                'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
                 }, result)
@@ -303,6 +315,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'started': fmt_time(script_result.started),
                 'ended': fmt_time(script_result.ended),
                 'runtime': script_result.runtime,
+                'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
                 'output': b64encode(script_result.output).decode(),
@@ -361,9 +374,36 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'started': fmt_time(script_result.started),
                 'ended': fmt_time(script_result.ended),
                 'runtime': script_result.runtime,
+                'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
                 }, result)
+
+    def test_GET_filters_by_hardware_type(self):
+        script_set = self.make_scriptset()
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        scripts = [
+            factory.make_Script(hardware_type=hardware_type)
+            for _ in range(3)
+        ]
+        for script in scripts:
+            factory.make_ScriptResult(script_set=script_set, script=script)
+        for _ in range(3):
+            script = factory.make_Script(
+                hardware_type=factory.pick_choice(
+                    HARDWARE_TYPE_CHOICES, but_not=[hardware_type]))
+            factory.make_ScriptResult(script_set=script_set, script=script)
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set),
+            {'hardware_type': hardware_type}
+        )
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_result = json_load_bytes(response.content)
+        results = parsed_result.pop('results')
+        self.assertItemsEqual(
+            [script.id for script in scripts],
+            [result['script_id'] for result in results])
 
     def test_DELETE(self):
         # Users are unable to delete the current-commissioning or
@@ -584,3 +624,23 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 self.assertEqual(0o644, member.mode)
                 self.assertEqual(
                     script_result.output, tar.extractfile(path).read())
+
+    def test_download_filters_by_hardware_type(self):
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        script = factory.make_Script(hardware_type=hardware_type)
+        other_script = factory.make_Script(hardware_type=factory.pick_choice(
+            HARDWARE_TYPE_CHOICES, but_not=[hardware_type]))
+        script_set = self.make_scriptset()
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, script=script)
+        factory.make_ScriptResult(script_set=script_set, script=other_script)
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set),
+            {
+                'op': 'download',
+                'filter': script_result.id,
+                'hardware_type': hardware_type,
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEquals(script_result.output, response.content)

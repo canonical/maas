@@ -11,6 +11,7 @@ from base64 import (
 )
 from email.utils import format_datetime
 import http.client
+import json
 import random
 
 from maasserver.models import VersionedTextFile
@@ -21,7 +22,8 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
-    SCRIPT_TYPE,
+    HARDWARE_TYPE_CHOICES,
+    SCRIPT_PARALLEL_CHOICES,
     SCRIPT_TYPE_CHOICES,
 )
 from metadataserver.models import Script
@@ -45,6 +47,9 @@ class TestScriptsAPI(APITestCase.ForUser):
         description = factory.make_name('description')
         tags = [factory.make_name('tag') for _ in range(3)]
         script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        parallel = factory.pick_choice(SCRIPT_PARALLEL_CHOICES)
+        packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
         script_content = factory.make_string()
@@ -58,6 +63,9 @@ class TestScriptsAPI(APITestCase.ForUser):
                 'description': description,
                 'tags': ','.join(tags),
                 'type': script_type,
+                'hardware_type': hardware_type,
+                'parallel': parallel,
+                'packages': json.dumps(packages),
                 'timeout': timeout,
                 'destructive': destructive,
                 'script': factory.make_file_upload(
@@ -75,6 +83,9 @@ class TestScriptsAPI(APITestCase.ForUser):
             tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
+        # self.assertEquals(hardware_type, script.hardware_type)
+        # self.assertEquals(parallel, script.parallel)
+        # self.assertDictEqual(packages, script.packages)
         self.assertEquals(timeout, script.timeout.seconds)
         self.assertEquals(destructive, script.destructive)
         self.assertEquals(script_content, script.script.data)
@@ -87,6 +98,9 @@ class TestScriptsAPI(APITestCase.ForUser):
         description = factory.make_name('description')
         tags = [factory.make_name('tag') for _ in range(3)]
         script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        parallel = factory.pick_choice(SCRIPT_PARALLEL_CHOICES)
+        packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
         script_content = factory.make_string()
@@ -99,6 +113,9 @@ class TestScriptsAPI(APITestCase.ForUser):
                 'description': description,
                 'tags': ','.join(tags),
                 'type': script_type,
+                'hardware_type': hardware_type,
+                'parallel': parallel,
+                'packages': json.dumps(packages),
                 'timeout': timeout,
                 'destructive': destructive,
                 'comment': comment,
@@ -115,6 +132,9 @@ class TestScriptsAPI(APITestCase.ForUser):
             tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
+        # self.assertEquals(hardware_type, script.hardware_type)
+        # self.assertEquals(parallel, script.parallel)
+        # self.assertDictEqual(packages, script.packages)
         self.assertEquals(timeout, script.timeout.seconds)
         self.assertEquals(destructive, script.destructive)
         self.assertEquals(script_content, script.script.data)
@@ -137,39 +157,33 @@ class TestScriptsAPI(APITestCase.ForUser):
             [script.id for script in scripts],
             [parsed_result['id'] for parsed_result in parsed_results])
 
-    def test_GET_filters_by_script_type_testing(self):
-        scripts = [
-            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
-            for _ in range(3)
-        ]
+    def test_GET_filters_by_script_type(self):
+        script = factory.make_Script()
         for _ in range(3):
-            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+            factory.make_Script(script_type=factory.pick_choice(
+                SCRIPT_TYPE_CHOICES, but_not=[script.script_type]))
 
         response = self.client.get(
-            self.get_scripts_uri(), {'type': 'testing'})
+            self.get_scripts_uri(), {'type': script.script_type})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
         self.assertItemsEqual(
-            [script.id for script in scripts],
-            [parsed_result['id'] for parsed_result in parsed_results])
+            [script.id], [result['id'] for result in parsed_results])
 
-    def test_GET_filters_by_script_type_commissioning(self):
-        scripts = [
-            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
-            for _ in range(3)
-        ]
+    def test_GET_filters_by_hardware_type(self):
+        script = factory.make_Script()
         for _ in range(3):
-            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            factory.make_Script(hardware_type=factory.pick_choice(
+                HARDWARE_TYPE_CHOICES, but_not=[script.hardware_type]))
 
         response = self.client.get(
-            self.get_scripts_uri(), {'type': 'commissioning'})
+            self.get_scripts_uri(), {'hardware_type': script.hardware_type})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
         self.assertItemsEqual(
-            [script.id for script in scripts],
-            [parsed_result['id'] for parsed_result in parsed_results])
+            [script.id], [result['id'] for result in parsed_results])
 
     def test_GET_filters(self):
         tags = [factory.make_name('tag') for _ in range(3)]
@@ -250,6 +264,13 @@ class TestScriptAPI(APITestCase.ForUser):
             'tags': script.tags,
             'type': script.script_type,
             'type_name': script.script_type_name,
+            'hardware_type': script.hardware_type,
+            'hardware_type_name': script.hardware_type_name,
+            'parallel': script.parallel,
+            'parallel_name': script.parallel_name,
+            'results': script.results,
+            'parameters': script.parameters,
+            'packages': script.packages,
             'timeout': str(script.timeout),
             'destructive': script.destructive,
             'default': script.default,
@@ -286,6 +307,13 @@ class TestScriptAPI(APITestCase.ForUser):
             'tags': script.tags,
             'type': script.script_type,
             'type_name': script.script_type_name,
+            'hardware_type': script.hardware_type,
+            'hardware_type_name': script.hardware_type_name,
+            'parallel': script.parallel,
+            'parallel_name': script.parallel_name,
+            'results': script.results,
+            'parameters': script.parameters,
+            'packages': script.packages,
             'timeout': str(script.timeout),
             'destructive': script.destructive,
             'default': script.default,
@@ -332,6 +360,10 @@ class TestScriptAPI(APITestCase.ForUser):
         description = factory.make_name('description')
         tags = [factory.make_name('tag') for _ in range(3)]
         script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        parallel = factory.pick_choice(SCRIPT_PARALLEL_CHOICES)
+        packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
         script_content = factory.make_string()
@@ -345,6 +377,9 @@ class TestScriptAPI(APITestCase.ForUser):
                 'description': description,
                 'tags': ','.join(tags),
                 'type': script_type,
+                'hardware_type': hardware_type,
+                'parallel': parallel,
+                'packages': json.dumps(packages),
                 'timeout': timeout,
                 'destructive': destructive,
                 'script': factory.make_file_upload(
@@ -361,6 +396,9 @@ class TestScriptAPI(APITestCase.ForUser):
             tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
+        # self.assertEquals(hardware_type, script.hardware_type)
+        # self.assertEquals(parallel, script.parallel)
+        # self.assertDictEqual(packages, script.packages)
         self.assertEquals(timeout, script.timeout.seconds)
         self.assertEquals(destructive, script.destructive)
         self.assertEquals(script_content, script.script.data)
@@ -375,6 +413,9 @@ class TestScriptAPI(APITestCase.ForUser):
         description = factory.make_name('description')
         tags = [factory.make_name('tag') for _ in range(3)]
         script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
+        parallel = factory.pick_choice(SCRIPT_PARALLEL_CHOICES)
+        packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
         script_content = factory.make_string()
@@ -387,6 +428,9 @@ class TestScriptAPI(APITestCase.ForUser):
                 'description': description,
                 'tags': ','.join(tags),
                 'type': script_type,
+                'hardware_type': hardware_type,
+                'parallel': parallel,
+                'packages': json.dumps(packages),
                 'timeout': timeout,
                 'destructive': destructive,
                 'comment': comment,
@@ -401,6 +445,9 @@ class TestScriptAPI(APITestCase.ForUser):
             tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
+        # self.assertEquals(hardware_type, script.hardware_type)
+        # self.assertEquals(parallel, script.parallel)
+        # self.assertDictEqual(packages, script.packages)
         self.assertEquals(timeout, script.timeout.seconds)
         self.assertEquals(destructive, script.destructive)
         self.assertEquals(script_content, script.script.data)

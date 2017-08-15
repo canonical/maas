@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import json
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
@@ -19,8 +21,13 @@ class TestScriptHandler(MAASServerTestCase):
             'name': script.name,
             'title': script.title,
             'description': script.description,
-            'script_type': script.script_type,
             'tags': script.tags,
+            'script_type': script.script_type,
+            'hardware_type': script.hardware_type,
+            'parallel': script.parallel,
+            'results': json.dumps(script.results),
+            'parameters': json.dumps(script.parameters),
+            'packages': json.dumps(script.packages),
             'timeout': '0%s' % str(script.timeout),
             'destructive': script.destructive,
             'default': script.default,

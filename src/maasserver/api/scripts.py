@@ -11,6 +11,7 @@ __all__ = [
 from base64 import b64encode
 from email.utils import format_datetime
 
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import (
@@ -29,8 +30,11 @@ from maasserver.api.utils import (
 )
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.script import ScriptForm
-from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
+from metadataserver.models.script import (
+    translate_hardware_type,
+    translate_script_type,
+)
 from piston3.utils import rc
 
 
@@ -103,7 +107,11 @@ class NodeScriptsHandler(OperationsHandler):
 
         :param type: Only return scripts with the given type. This can be
             testing or commissioning. Defaults to showing both.
-        :type script_type: unicode
+        :type type: unicode
+
+        :param hardware_type: Only return scripts for the given hardware type.
+            Can be node, cpu, memory, or storage. Defaults to all.
+        :type hardware_type: unicode
 
         :param include_script: Include the base64 encoded script content.
         :type include_script: bool
@@ -116,15 +124,21 @@ class NodeScriptsHandler(OperationsHandler):
 
         script_type = get_optional_param(request.GET, 'type')
         if script_type is not None:
-            if script_type.isdigit():
-                script_type = int(script_type)
-            elif script_type in ['test', 'testing']:
-                script_type = SCRIPT_TYPE.TESTING
-            elif script_type in ['commission', 'commissioning']:
-                script_type = SCRIPT_TYPE.COMMISSIONING
+            try:
+                script_type = translate_script_type(script_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
             else:
-                raise MAASAPIValidationError('Unknown script type')
-            qs = qs.filter(script_type=script_type)
+                qs = qs.filter(script_type=script_type)
+
+        hardware_type = get_optional_param(request.GET, 'hardware_type')
+        if hardware_type is not None:
+            try:
+                hardware_type = translate_hardware_type(hardware_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
+            else:
+                qs = qs.filter(hardware_type=hardware_type)
 
         include_script = get_optional_param(
             request.GET, 'include_script', False, Bool)
@@ -157,6 +171,13 @@ class NodeScriptHandler(OperationsHandler):
         'tags',
         'type',
         'type_name',
+        'hardware_type',
+        'hardware_type_name',
+        'parallel',
+        'parallel_name',
+        'results',
+        'parameters',
+        'packages',
         'timeout',
         'destructive',
         'history',

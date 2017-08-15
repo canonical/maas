@@ -129,7 +129,9 @@ import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
 from metadataserver.enum import (
+    HARDWARE_TYPE_CHOICES,
     RESULT_TYPE_CHOICES,
+    SCRIPT_PARALLEL_CHOICES,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
@@ -666,8 +668,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_Script(
             self, name=None, title=None, description=None, tags=None,
-            script_type=None, timeout=None, destructive=False, default=False,
-            script=None):
+            script_type=None, hardware_type=None, parallel=None, timeout=None,
+            destructive=False, default=False, script=None, **kwargs):
         if name is None:
             name = self.make_name('name')
         if title is None:
@@ -678,14 +680,19 @@ class Factory(maastesting.factory.Factory):
             tags = [factory.make_name('tag') for _ in range(3)]
         if script_type is None:
             script_type = self.pick_choice(SCRIPT_TYPE_CHOICES)
+        if hardware_type is None:
+            hardware_type = self.pick_choice(HARDWARE_TYPE_CHOICES)
+        if parallel is None:
+            parallel = self.pick_choice(SCRIPT_PARALLEL_CHOICES)
         if timeout is None:
             timeout = timedelta(seconds=random.randint(0, 600))
         if script is None:
             script = VersionedTextFile.objects.create(data=self.make_string())
         return Script.objects.create(
             name=name, title=title, description=description, tags=tags,
-            script_type=script_type, timeout=timeout, destructive=destructive,
-            default=default, script=script)
+            script_type=script_type, hardware_type=hardware_type,
+            parallel=parallel, timeout=timeout, destructive=destructive,
+            default=default, script=script, **kwargs)
 
     def make_ScriptSet(self, last_ping=None, node=None, result_type=None):
         if last_ping is None:

@@ -23,7 +23,79 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from metadataserver.models import ScriptSet
+from metadataserver.models.scriptset import translate_result_type
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+
+
+class TestTranslateResultType(MAASServerTestCase):
+    """Test translate_result_type."""
+    scenarios = [
+        ('numeric testing', {
+            'value': RESULT_TYPE.TESTING,
+            'return_value': RESULT_TYPE.TESTING,
+        }),
+        ('numeric commissioning', {
+            'value': RESULT_TYPE.COMMISSIONING,
+            'return_value': RESULT_TYPE.COMMISSIONING,
+        }),
+        ('numeric installation', {
+            'value': RESULT_TYPE.INSTALLATION,
+            'return_value': RESULT_TYPE.INSTALLATION,
+        }),
+        ('numeric string testing', {
+            'value': str(RESULT_TYPE.TESTING),
+            'return_value': RESULT_TYPE.TESTING,
+        }),
+        ('numeric string commissioning', {
+            'value': str(RESULT_TYPE.COMMISSIONING),
+            'return_value': RESULT_TYPE.COMMISSIONING,
+        }),
+        ('numeric string installation', {
+            'value': str(RESULT_TYPE.INSTALLATION),
+            'return_value': RESULT_TYPE.INSTALLATION,
+        }),
+        ('invalid id', {
+            'value': random.randint(100, 1000),
+            'exception': 'Invalid result type numeric value.',
+        }),
+        ('test', {
+            'value': 'test',
+            'return_value': RESULT_TYPE.TESTING,
+        }),
+        ('testing', {
+            'value': 'testing',
+            'return_value': RESULT_TYPE.TESTING,
+        }),
+        ('commission', {
+            'value': 'commission',
+            'return_value': RESULT_TYPE.COMMISSIONING,
+        }),
+        ('commissioning', {
+            'value': 'commissioning',
+            'return_value': RESULT_TYPE.COMMISSIONING,
+        }),
+        ('install', {
+            'value': 'install',
+            'return_value': RESULT_TYPE.INSTALLATION,
+        }),
+        ('installation', {
+            'value': 'installation',
+            'return_value': RESULT_TYPE.INSTALLATION,
+        }),
+        ('invalid value', {
+            'value': factory.make_name('value'),
+            'exception': (
+                'Result type must be commissioning, testing, or installation.')
+        }),
+    ]
+
+    def test_translate_result_type(self):
+        if hasattr(self, 'exception'):
+            with self.assertRaisesRegex(ValidationError, self.exception):
+                translate_result_type(self.value)
+        else:
+            self.assertEquals(
+                self.return_value, translate_result_type(self.value))
 
 
 class TestScriptSetManager(MAASServerTestCase):

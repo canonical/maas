@@ -55,6 +55,10 @@ class ScriptResult(CleanSave, TimestampedModel):
     script = ForeignKey(
         Script, editable=False, blank=True, null=True, on_delete=SET_NULL)
 
+    # Any parameters set by MAAS or the user which should be passed to the
+    # running script.
+    parameters = JSONObjectField(blank=True, default={})
+
     script_version = ForeignKey(
         VersionedTextFile, blank=True, null=True, editable=False,
         on_delete=SET_NULL)

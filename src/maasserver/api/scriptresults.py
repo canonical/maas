@@ -16,6 +16,7 @@ import os
 import tarfile
 import time
 
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import (
@@ -31,8 +32,9 @@ from maasserver.api.utils import get_optional_param
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.models import Node
-from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import ScriptSet
+from metadataserver.models.script import translate_hardware_type
+from metadataserver.models.scriptset import translate_result_type
 from piston3.utils import rc
 
 
@@ -44,7 +46,7 @@ def fmt_time(dt):
         return format_datetime(dt)
 
 
-def filter_script_results(script_set, filters):
+def filter_script_results(script_set, filters, hardware_type=None):
     if filters is None:
         script_results = list(script_set)
     else:
@@ -60,6 +62,12 @@ def filter_script_results(script_set, filters):
                 if (f == script_result.name or f in tags or
                         (f.isdigit() and int(f) == script_result.id)):
                     script_results.append(script_result)
+    if hardware_type is not None:
+        script_results = [
+            script_result for script_result in script_results
+            if script_result.script is not None and
+            script_result.script.hardware_type == hardware_type
+        ]
     return sorted(script_results, key=lambda script_result: script_result.name)
 
 
@@ -82,6 +90,10 @@ class NodeScriptResultsHandler(OperationsHandler):
                      all.
         :type type: unicode
 
+        :param hardware_type: Only return scripts for the given hardware type.
+            Can be node, cpu, memory, or storage. Defaults to all.
+        :type script_type: unicode
+
         :param include_output: Include base64 encoded output from the script.
         :type include_output: bool
 
@@ -99,25 +111,28 @@ class NodeScriptResultsHandler(OperationsHandler):
         if filters is not None:
             filters = filters.split(',')
         if result_type is not None:
-            if result_type.isdigit():
-                result_type = int(result_type)
-            elif result_type in ['test', 'testing']:
-                result_type = RESULT_TYPE.TESTING
-            elif result_type in ['commission', 'commissioning']:
-                result_type = RESULT_TYPE.COMMISSIONING
-            elif result_type in ['install', 'installation']:
-                result_type = RESULT_TYPE.INSTALLATION
+            try:
+                result_type = translate_result_type(result_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
             else:
-                raise MAASAPIValidationError(
-                    'Unknown type "%s": type must be the type numeric value '
-                    'testing, commissioning, or installation.')
-            qs = ScriptSet.objects.filter(node=node, result_type=result_type)
+                qs = ScriptSet.objects.filter(
+                    node=node, result_type=result_type)
         else:
             qs = ScriptSet.objects.filter(node=node)
+
+        hardware_type = get_optional_param(request.GET, 'hardware_type')
+        if hardware_type is not None:
+            try:
+                hardware_type = translate_hardware_type(hardware_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
+
         ret = []
         for script_set in qs:
             script_set.include_output = include_output
             script_set.filters = filters
+            script_set.hardware_type = hardware_type
             ret.append(script_set)
         return ret
 
@@ -183,7 +198,7 @@ class NodeScriptResultHandler(OperationsHandler):
     def results(cls, script_set):
         results = []
         for script_result in filter_script_results(
-                script_set, script_set.filters):
+                script_set, script_set.filters, script_set.hardware_type):
             result = {
                 'id': script_result.id,
                 'created': format_datetime(script_result.created),
@@ -195,6 +210,7 @@ class NodeScriptResultHandler(OperationsHandler):
                 'started': fmt_time(script_result.started),
                 'ended': fmt_time(script_result.ended),
                 'runtime': script_result.runtime,
+                'parameters': script_result.parameters,
                 'script_id': script_result.script_id,
                 'script_revision_id': script_result.script_version_id,
             }
@@ -231,6 +247,10 @@ class NodeScriptResultHandler(OperationsHandler):
         id can either by the script set id, current-commissioning,
         current-testing, or current-installation.
 
+        :param hardware_type: Only return scripts for the given hardware type.
+            Can be node, cpu, memory, or storage. Defaults to all.
+        :type script_type: unicode
+
         :param include_output: Include base64 encoded output from the script.
         :type include_output: bool
 
@@ -244,8 +264,15 @@ class NodeScriptResultHandler(OperationsHandler):
         filters = get_optional_param(request.GET, 'filters', None, String)
         if filters is not None:
             filters = filters.split(',')
+        hardware_type = get_optional_param(request.GET, 'hardware_type')
+        if hardware_type is not None:
+            try:
+                hardware_type = translate_hardware_type(hardware_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
         script_set.include_output = include_output
         script_set.filters = filters
+        script_set.hardware_type = hardware_type
         return script_set
 
     @admin_method
@@ -266,6 +293,10 @@ class NodeScriptResultHandler(OperationsHandler):
         id can either by the script set id, current-commissioning,
         current-testing, or current-installation.
 
+        :param hardware_type: Only return scripts for the given hardware type.
+            Can be node, cpu, memory, or storage. Defaults to all.
+        :type script_type: unicode
+
         :param filters: A comma seperated list to show only results that ran
                         with a script name or tag.
         :type filters: unicode
@@ -285,8 +316,15 @@ class NodeScriptResultHandler(OperationsHandler):
         times = {}
         if filters is not None:
             filters = filters.split(',')
+        hardware_type = get_optional_param(request.GET, 'hardware_type')
+        if hardware_type is not None:
+            try:
+                hardware_type = translate_hardware_type(hardware_type)
+            except ValidationError as e:
+                raise MAASAPIValidationError(e)
 
-        for script_result in filter_script_results(script_set, filters):
+        for script_result in filter_script_results(
+                script_set, filters, hardware_type):
             mtime = time.mktime(script_result.updated.timetuple())
             if output == 'combined':
                 files[script_result.name] = script_result.output

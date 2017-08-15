@@ -3,6 +3,7 @@
 
 __all__ = [
     "ScriptSet",
+    "translate_result_type",
 ]
 from datetime import timedelta
 
@@ -38,6 +39,24 @@ from metadataserver.enum import (
 )
 from metadataserver.models.script import Script
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+
+
+def translate_result_type(result_type):
+    if isinstance(result_type, int) or result_type.isdigit():
+        ret = int(result_type)
+        for result_type_id, _ in RESULT_TYPE_CHOICES:
+            if ret == result_type_id:
+                return ret
+        raise ValidationError('Invalid result type numeric value.')
+    elif result_type in ['test', 'testing']:
+        return RESULT_TYPE.TESTING
+    elif result_type in ['commission', 'commissioning']:
+        return RESULT_TYPE.COMMISSIONING
+    elif result_type in ['install', 'installation']:
+        return RESULT_TYPE.INSTALLATION
+    else:
+        raise ValidationError(
+            'Result type must be commissioning, testing, or installation.')
 
 
 class ScriptSetManager(Manager):
