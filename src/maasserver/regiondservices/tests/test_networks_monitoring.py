@@ -52,7 +52,8 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             }
         }
 
-        service = RegionNetworksMonitoringService(reactor)
+        service = RegionNetworksMonitoringService(
+            reactor, enable_beaconing=False)
         service.getInterfaces = lambda: succeed(interfaces)
 
         with FakeLogger("maas") as logger:

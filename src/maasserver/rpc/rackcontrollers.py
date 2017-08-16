@@ -222,10 +222,10 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
 
 @synchronous
 @transactional
-def update_interfaces(system_id, interfaces):
+def update_interfaces(system_id, interfaces, topology_hints=None):
     """Update the interface definition on the rack controller."""
     rack_controller = RackController.objects.get(system_id=system_id)
-    rack_controller.update_interfaces(interfaces)
+    rack_controller.update_interfaces(interfaces, topology_hints)
 
 
 @synchronous

@@ -4657,7 +4657,8 @@ class Controller(Node):
     @with_connection
     @synchronised(locks.rack_registration)
     @transactional
-    def update_interfaces(self, interfaces, create_fabrics=True):
+    def update_interfaces(
+            self, interfaces, topology_hints=None, create_fabrics=True):
         """Update the interfaces attached to the controller.
 
         :param interfaces: Interfaces dictionary that was parsed from

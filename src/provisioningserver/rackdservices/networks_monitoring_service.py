@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetDiscoveryState,
     ReportMDNSEntries,
@@ -16,6 +17,8 @@ from provisioningserver.rpc.region import (
     UpdateInterfaces,
 )
 from provisioningserver.utils.services import NetworksMonitoringService
+from provisioningserver.utils.twisted import pause
+from twisted.internet.defer import inlineCallbacks
 
 
 maaslog = get_maas_logger("networks.monitor")
@@ -44,20 +47,21 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
             d.addCallback(getState)
             return d
 
-    def recordInterfaces(self, interfaces):
+    @inlineCallbacks
+    def recordInterfaces(self, interfaces, hints=None):
         """Record the interfaces information to the region."""
-        def record(client):
-            # On first run perform a refresh
+        while self.running:
+            try:
+                client = yield self.clientService.getClientNow()
+            except NoConnectionsAvailable:
+                yield pause(1.0)
+                continue
             if self._recorded is None:
-                return client(RequestRackRefresh, system_id=client.localIdent)
-            else:
-                return client(
-                    UpdateInterfaces, system_id=client.localIdent,
-                    interfaces=interfaces)
-
-        d = self.clientService.getClientNow()
-        d.addCallback(record)
-        return d
+                yield client(RequestRackRefresh, system_id=client.localIdent)
+            yield client(
+                UpdateInterfaces, system_id=client.localIdent,
+                interfaces=interfaces, topology_hints=hints)
+            break
 
     def reportNeighbours(self, neighbours):
         """Report neighbour information to the region."""

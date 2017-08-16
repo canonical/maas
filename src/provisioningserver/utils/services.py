@@ -28,7 +28,6 @@ from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
 )
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.beaconing import (
     age_out_uuid_queue,
     BEACON_IPV4_MULTICAST,
@@ -52,7 +51,7 @@ from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import (
     callOut,
     deferred,
-    suppress,
+    pause,
     terminateProcess,
 )
 from twisted.application.internet import TimerService
@@ -425,9 +424,15 @@ def join_ipv6_beacon_group(sock, ifindex):
         socket.inet_pton(socket.AF_INET6, BEACON_IPV6_MULTICAST) +
         struct.pack("I", ifindex)
     )
-    sock.setsockopt(
-        socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
-        ipv6_join_sockopt_args)
+    try:
+        sock.setsockopt(
+            socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
+            ipv6_join_sockopt_args)
+    except OSError:
+        # Do this on a best-effort basis. We might get an "Address already in
+        # use" error if the group is already joined, or (for whatever reason)
+        # it is not possible to join a multicast group using this interface.
+        pass
 
 
 def set_ipv6_multicast_loopback(sock, loopback):
@@ -472,6 +477,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         self.topology_hints = OrderedDict()
         self.listen_port = None
         self.mcast_requested = False
+        self.mcast_solicitation = False
         self.last_solicited_mcast = 0
         self._join_multicast_groups()
 
@@ -482,8 +488,9 @@ class BeaconingSocketProtocol(DatagramProtocol):
             verifyObject(IReactorMulticast, self.reactor)
         except DoesNotImplement:
             return
-        self.listen_port = self.reactor.listenMulticast(
-            self.port, self, interface=self.interface, listenMultiple=True)
+        if self.listen_port is None:
+            self.listen_port = self.reactor.listenMulticast(
+                self.port, self, interface=self.interface, listenMultiple=True)
         sock = self.transport.getHandle()
         if self.loopback is True:
             # This is only necessary for testing.
@@ -511,6 +518,34 @@ class BeaconingSocketProtocol(DatagramProtocol):
     def updateInterfaces(self, interfaces):
         self.interfaces = interfaces
         self._join_multicast_groups()
+
+    def getAllTopologyHints(self):
+        """Returns the set of unique topology hints."""
+        # When beaconing runs, hints attached to individual packets might
+        # come to the same conclusion about the implied fabric connectivity.
+        # Use a set to prevent the region from processing duplicate hints.
+        all_hints = set()
+        for hints in self.topology_hints.values():
+            all_hints |= hints
+        return all_hints
+
+    def getJSONTopologyHints(self):
+        """Returns all topology hints as a list of dictionaries.
+
+        This method is used for sending data via the RPC layer, so be cautious
+        when modifying. In addition, keys with no value are filtered out
+        of the resulting dictionary, so that the hints are smaller on the wire.
+        """
+        all_hints = self.getAllTopologyHints()
+        json_hints = [
+            {
+                key: value
+                for key, value in hint._asdict().items()
+                if value is not None
+            }
+            for hint in all_hints
+        ]
+        return json_hints
 
     def stopProtocol(self):
         super().stopProtocol()
@@ -629,27 +664,36 @@ class BeaconingSocketProtocol(DatagramProtocol):
         reply = create_beacon_payload("advertisement", payload)
         self.send_beacon(reply, beacon.reply_address)
         if len(self.interfaces) > 0:
-            self.queueMulticastAdvertisement()
+            self.queueMulticastBeaconing()
 
-    def dequeueMulticastAdvertisement(self):
+    def dequeueMulticastBeaconing(self):
         """
         Callback to send multicast beacon advertisements.
 
         See `queueMulticastAdvertisement`, which schedules this method to run.
         """
         mtime = time.monotonic()
+        beacon_type = (
+            'solicitation' if self.mcast_solicitation else 'advertisement')
+        log.msg("Sending multicast beacon %ss." % beacon_type)
+        self.send_multicast_beacons(self.interfaces, beacon_type)
         self.last_solicited_mcast = mtime
         self.mcast_requested = False
-        log.msg("Sending multicast beacon advertisements.")
-        self.send_multicast_beacons(self.interfaces, 'advertisement')
+        self.mcast_solicitation = False
 
-    def queueMulticastAdvertisement(self):
+    def queueMulticastBeaconing(self, solicitation=False):
         """
         Requests that multicast advertisements be sent out on every interface.
 
         Ensures that advertisements will not be sent more than once every
         five seconds.
+
+        :param solicitation: If true, sends solicitations rather than
+            advertisements. Solicitations are used to initiate "full beaconing"
+            with peers; advertisements do not generate beacon replies.
         """
+        if solicitation is True:
+            self.mcast_solicitation = True
         if self.mcast_requested:
             # A multicast advertisement has been requested already.
             return
@@ -660,7 +704,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         else:
             timeout = max(mtime - self.last_solicited_mcast, 5)
         self.mcast_requested = True
-        self.reactor.callLater(timeout, self.dequeueMulticastAdvertisement)
+        self.reactor.callLater(timeout, self.dequeueMulticastBeaconing)
 
     def processTopologyHints(self, rx: ReceivedBeacon):
         """
@@ -692,9 +736,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             self.topology_hints[rx.uuid] = hints
             # XXX mpontillo 2017-08-07: temporary logging
             log.msg("New topology hints [%s]:\n%s" % (rx.uuid, pformat(hints)))
-            all_hints = set()
-            for hints in self.topology_hints.values():
-                all_hints |= hints
+            all_hints = self.getAllTopologyHints()
             log.msg("Topology hint summary:\n%s" % pformat(all_hints))
 
     def _add_remote_fabric_hints(self, hints, remote_ifinfo, rx):
@@ -905,7 +947,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
     interval = timedelta(seconds=30).total_seconds()
 
-    def __init__(self, clock=None, enable_monitoring=True):
+    def __init__(
+            self, clock=None, enable_monitoring=True, enable_beaconing=True):
         # Order is very important here. First we set the clock to the passed-in
         # reactor, so that unit tests can fake out the clock if necessary.
         # Then we call super(). The superclass will set up the structures
@@ -916,9 +959,11 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self.clock = clock
         super().__init__()
         self.enable_monitoring = enable_monitoring
+        self.enable_beaconing = enable_beaconing
         # The last successfully recorded interfaces.
         self._recorded = None
         self._monitored = frozenset()
+        self._beaconing = frozenset()
         self._monitoring_state = {}
         self._monitoring_mdns = False
         self._locked = False
@@ -935,33 +980,25 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self.interface_monitor.setServiceParent(self)
         self.beaconing_protocol = None
 
+    @inlineCallbacks
     def updateInterfaces(self):
         """Update interfaces, catching and logging errors.
 
         This can be overridden by subclasses to conditionally update based on
         some external configuration.
         """
-        d = maybeDeferred(self._assumeSoleResponsibility)
-
-        def update(responsible):
-            if responsible:
-                d = maybeDeferred(self.getInterfaces)
-                d.addCallback(self._updateInterfaces)
-                return d
-
-        def failed(failure):
-            log.err(
-                failure,
-                "Failed to update and/or record network interface "
-                "configuration: %s" % failure.getErrorMessage())
-
-        d = d.addCallback(update)
-        # During the update, we might fail to get the interface monitoring
-        # state from the region. We can safely ignore this, as it will be
-        # retried shortly.
-        d.addErrback(suppress, NoConnectionsAvailable)
-        d.addErrback(failed)
-        return d
+        responsible = self._assumeSoleResponsibility()
+        if responsible:
+            interfaces = None
+            try:
+                interfaces = yield maybeDeferred(self.getInterfaces)
+                yield self._updateInterfaces(interfaces)
+            except BaseException as e:
+                msg = (
+                    "Failed to update and/or record network interface "
+                    "configuration: %s; interfaces: %r" % (e, interfaces)
+                )
+                log.err(None, msg)
 
     def getInterfaces(self):
         """Get the current network interfaces configuration.
@@ -978,7 +1015,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def recordInterfaces(self, interfaces):
+    def recordInterfaces(self, interfaces, hints=None):
         """Record the interfaces information.
 
         This MUST be overridden in subclasses.
@@ -1050,21 +1087,48 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # If we were monitoring neighbours on any interfaces, we need to
             # stop the monitoring services.
             self._configureNetworkDiscovery({})
+            if self.beaconing_protocol is not None:
+                self._configureBeaconing({})
 
+    @inlineCallbacks
     def _updateInterfaces(self, interfaces):
         """Record `interfaces` if they've changed."""
         if interfaces != self._recorded:
-            d = maybeDeferred(self.recordInterfaces, interfaces)
+            hints = None
+            if self.enable_beaconing:
+                self._configureBeaconing(interfaces)
+                # Wait for beaconing to do its thing.
+                yield pause(3.0)
+                # Retry beacon soliciations, in case any packet loss occurred
+                # the first time.
+                self.beaconing_protocol.queueMulticastBeaconing(
+                    solicitation=True)
+                yield pause(3.0)
+                hints = self.beaconing_protocol.getJSONTopologyHints()
+            yield maybeDeferred(self.recordInterfaces, interfaces, hints)
             # Note: _interfacesRecorded() will reconfigure discovery after
             # recording the interfaces, so there is no need to call
             # _configureNetworkDiscovery() here.
-            d.addCallback(callOut, self._interfacesRecorded, interfaces)
-            return d
+            self._interfacesRecorded(interfaces)
         else:
             # If the interfaces didn't change, we still need to poll for
             # monitoring state changes.
-            d = maybeDeferred(self._configureNetworkDiscovery, interfaces)
-            return d
+            yield maybeDeferred(self._configureNetworkDiscovery, interfaces)
+
+    def _getInterfacesForBeaconing(self, interfaces: dict):
+        """Return the interfaces which will be used for beaconing.
+
+        :return: The set of interface names to run beaconing on.
+        """
+        # Don't beacon when running the test suite/dev env.
+        # In addition, if we don't own the lock, we should not be beaconing.
+        if is_dev_environment() or not self._locked or interfaces is None:
+            return set()
+        monitored_interfaces = {
+            ifname for ifname, ifdata in interfaces.items()
+            if ifdata['monitored'] is True
+        }
+        return monitored_interfaces
 
     def _getInterfacesForNeighbourDiscovery(
             self, interfaces: dict, monitoring_state: dict):
@@ -1227,6 +1291,32 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # doesn't matter for mDNS discovery purposes.)
             pass
 
+    def _configureBeaconing(self, interfaces):
+        beaconing_interfaces = self._getInterfacesForBeaconing(interfaces)
+        # Calculate the difference between the sets. We need to know which
+        # interfaces were added and deleted (with respect to the interfaces we
+        # were already beaconing on).
+        new_interfaces = beaconing_interfaces.difference(self._beaconing)
+        deleted_interfaces = self._beaconing.difference(beaconing_interfaces)
+        if len(new_interfaces) > 0:
+            log.msg("Starting beaconing for interfaces: %r" % (new_interfaces))
+            self._startBeaconingServices(new_interfaces)
+        if len(deleted_interfaces) > 0:
+            log.msg(
+                "Stopping beaconing for interfaces: %r" % (deleted_interfaces))
+            self._stopBeaconingServices(deleted_interfaces)
+        self._beaconing = beaconing_interfaces
+        if self.beaconing_protocol is None:
+            self.beaconing_protocol = BeaconingSocketProtocol(
+                self.clock, interfaces=interfaces)
+        else:
+            self.beaconing_protocol.updateInterfaces(interfaces)
+        # If the interfaces have changed, perform beaconing again.
+        # An empty dictionary will be passed in when the service stops, so
+        # don't bother sending out beacons we won't reply to.
+        if len(interfaces) > 0:
+            self.beaconing_protocol.queueMulticastBeaconing(solicitation=True)
+
     def _configureNeighbourDiscovery(self, interfaces, monitoring_state):
         monitored_interfaces = self._getInterfacesForNeighbourDiscovery(
             interfaces, monitoring_state)
@@ -1239,26 +1329,15 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             log.msg("Starting neighbour discovery for interfaces: %r" % (
                 new_interfaces))
             self._startNeighbourDiscoveryServices(new_interfaces)
-            # XXX mpontillo 2017-07-12: for testing, just start beaconing
-            # services on all the interfaces enabled for active discovery.
-            self._startBeaconingServices(new_interfaces)
         if len(deleted_interfaces) > 0:
             log.msg(
                 "Stopping neighbour discovery for interfaces: %r" % (
                     deleted_interfaces))
             self._stopNeighbourDiscoveryServices(deleted_interfaces)
-            # XXX mpontillo 2017-07-12: this should be separately configured.
-            # (see similar comment in the 'start' path above.)
-            self._stopBeaconingServices(deleted_interfaces)
         self._monitored = monitored_interfaces
 
     def _interfacesRecorded(self, interfaces):
         """The given `interfaces` were recorded successfully."""
         self._recorded = interfaces
-        if self.beaconing_protocol is None:
-            self.beaconing_protocol = BeaconingSocketProtocol(
-                self.clock, interfaces=interfaces)
-        else:
-            self.beaconing_protocol.updateInterfaces(interfaces)
         if self.enable_monitoring is True:
             self._configureNetworkDiscovery(interfaces)

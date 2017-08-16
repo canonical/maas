@@ -479,7 +479,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
         update_interfaces(rack_controller.system_id, sentinel.interfaces)
         self.assertThat(
             patched_update_interfaces,
-            MockCalledOnceWith(sentinel.interfaces))
+            MockCalledOnceWith(sentinel.interfaces, None))
 
 
 class TestReportNeighbours(MAASServerTestCase):

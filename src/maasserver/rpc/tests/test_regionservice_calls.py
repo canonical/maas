@@ -1182,7 +1182,8 @@ class TestRegionProtocol_UpdateInterfaces(MAASTransactionServerTestCase):
         self.assertThat(
             update_interfaces,
             MockCalledOnceWith(
-                params['system_id'], params['interfaces']))
+                params['system_id'], params['interfaces'],
+                topology_hints=None))
 
 
 class TestRegionProtocol_ReportNeighbours(MAASTestCase):

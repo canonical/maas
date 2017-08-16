@@ -19,6 +19,7 @@
 /.noseids
 /.run
 /.run-e2e
+/*.orig.tar.gz
 /bin
 /build
 /build_pkg
@@ -57,4 +58,3 @@ __pycache__
 *~
 \#*\#
 .#*
-*.tar.gz

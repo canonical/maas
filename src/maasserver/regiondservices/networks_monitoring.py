@@ -23,9 +23,10 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         """Get interface monitoring state from the region."""
         return deferToDatabase(self.getInterfaceMonitoringStateFromDatabase)
 
-    def recordInterfaces(self, interfaces):
+    def recordInterfaces(self, interfaces, hints=None):
         """Record the interfaces information."""
-        return deferToDatabase(self.recordInterfacesIntoDatabase, interfaces)
+        return deferToDatabase(
+            self.recordInterfacesIntoDatabase, interfaces, hints)
 
     def reportNeighbours(self, neighbours):
         """Record the specified list of neighbours."""
@@ -42,10 +43,10 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         return region_controller.get_discovery_state()
 
     @transactional
-    def recordInterfacesIntoDatabase(self, interfaces):
+    def recordInterfacesIntoDatabase(self, interfaces, hints):
         """Record the interfaces information."""
         region_controller = RegionController.objects.get_running_controller()
-        region_controller.update_interfaces(interfaces)
+        region_controller.update_interfaces(interfaces, hints)
 
     @transactional
     def recordNeighboursIntoDatabase(self, neighbours):

@@ -460,6 +460,7 @@ class UpdateInterfaces(amp.Command):
     arguments = [
         (b'system_id', amp.Unicode()),
         (b'interfaces', StructureAsJSON()),
+        (b'topology_hints', StructureAsJSON(optional=True)),
     ]
     response = []
     errors = []

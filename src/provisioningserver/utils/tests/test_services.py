@@ -76,8 +76,12 @@ from twisted.python.failure import Failure
 class StubNetworksMonitoringService(NetworksMonitoringService):
     """Concrete subclass for testing."""
 
-    def __init__(self, enable_monitoring=False, *args, **kwargs):
-        super().__init__(enable_monitoring=enable_monitoring, *args, **kwargs)
+    def __init__(
+            self, enable_monitoring=False, enable_beaconing=False,
+            *args, **kwargs):
+        super().__init__(
+            *args, enable_monitoring=enable_monitoring,
+            enable_beaconing=enable_beaconing, **kwargs)
         self.iterations = DeferredQueue()
         self.interfaces = []
         self.update_interface__calls = 0
@@ -91,7 +95,7 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         d.addBoth(self.iterations.put)
         return d
 
-    def recordInterfaces(self, interfaces):
+    def recordInterfaces(self, interfaces, hints=None):
         self.interfaces.append(interfaces)
 
     def reportNeighbours(self, neighbours):
@@ -221,13 +225,13 @@ class TestNetworksMonitoringService(MAASTestCase):
             # recordInterfaces is called the first time, as expected.
             recordInterfaces.reset_mock()
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockCalledOnceWith({}))
+            self.assertThat(recordInterfaces, MockCalledOnceWith({}, None))
 
             # recordInterfaces is called the second time too; the service noted
             # that it crashed last time and knew to run it again.
             recordInterfaces.reset_mock()
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockCalledOnceWith({}))
+            self.assertThat(recordInterfaces, MockCalledOnceWith({}, None))
 
             # recordInterfaces is NOT called the third time; the service noted
             # that the configuration had not changed.
@@ -1004,3 +1008,128 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         }
         self.assertThat(hints, Equals(expected_hints))
         yield protocol.stopProtocol()
+
+    @inlineCallbacks
+    def test__getJSONTopologyHints_converts_hints_to_dictionary(self):
+        # Note: Always use a random port for testing. (port=0)
+        protocol = BeaconingSocketProtocol(
+            reactor, port=0, process_incoming=False, loopback=True,
+            interface="::", debug=True)
+        # Don't try to send out any replies.
+        self.patch(services, 'create_beacon_payload')
+        self.patch(protocol, 'send_beacon')
+        # Need to generate a real UUID with the current time, so it doesn't
+        # get aged out.
+        uuid = str(uuid1())
+        # Make the protocol think we sent a beacon with this UUID already.
+        tx_mac = factory.make_mac_address()
+        fake_tx_beacon = FakeBeaconPayload(
+            uuid, ifname='eth1', mac=tx_mac, vid=100)
+        fake_rx_beacon = {
+            "source_ip": "127.0.0.1",
+            "source_port": 5240,
+            "destination_ip": "224.0.0.118",
+            "interface": "eth0",
+            "type": "solicitation",
+            "payload": fake_tx_beacon.payload
+        }
+        protocol.beaconReceived(fake_rx_beacon)
+        all_hints = protocol.getJSONTopologyHints()
+        expected_hints = [
+            # Note: since vid=None on the received beacon, we expect that
+            # the hint won't have a 'vid' field.
+            dict(
+                ifname='eth0', hint="on_remote_network",
+                related_ifname='eth1', related_vid=100,
+                related_mac=tx_mac),
+        ]
+        self.assertThat(all_hints, Equals(expected_hints))
+        yield protocol.stopProtocol()
+
+    @inlineCallbacks
+    def test__queues_multicast_beacon_soliciations_upon_request(self):
+        # Note: Always use a random port for testing. (port=0)
+        clock = Clock()
+        protocol = BeaconingSocketProtocol(
+            clock, port=0, process_incoming=False, loopback=True,
+            interface="::", debug=True)
+        # Don't try to send out any replies.
+        self.patch(services, 'create_beacon_payload')
+        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
+        self.patch(protocol, 'send_beacon')
+        yield protocol.queueMulticastBeaconing(solicitation=True)
+        clock.advance(0)
+        self.assertThat(
+            send_mcast_mock, MockCalledOnceWith({}, 'solicitation'))
+
+    @inlineCallbacks
+    def test__multicasts_at_most_once_per_five_seconds(self):
+        # Note: Always use a random port for testing. (port=0)
+        clock = Clock()
+        protocol = BeaconingSocketProtocol(
+            clock, port=0, process_incoming=False, loopback=True,
+            interface="::", debug=True)
+        # Don't try to send out any replies.
+        self.patch(services, 'create_beacon_payload')
+        monotonic_mock = self.patch(services.time, 'monotonic')
+        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
+        self.patch(protocol, 'send_beacon')
+        monotonic_mock.side_effect = [
+            # Initial queue
+            6,
+            # Initial dequeue
+            6,
+            # Second queue (hasn't yet been 5 seconds)
+            10,
+            # Third queue
+            11,
+            # Second dequeue
+            11,
+        ]
+        yield protocol.queueMulticastBeaconing()
+        clock.advance(0)
+        self.assertThat(
+            send_mcast_mock, MockCalledOnceWith({}, 'advertisement'))
+        send_mcast_mock.reset_mock()
+        yield protocol.queueMulticastBeaconing()
+        yield protocol.queueMulticastBeaconing(solicitation=True)
+        clock.advance(4.9)
+        self.assertThat(
+            send_mcast_mock, MockNotCalled())
+        clock.advance(0.1)
+        self.assertThat(
+            send_mcast_mock, MockCalledOnceWith({}, 'solicitation'))
+
+    @inlineCallbacks
+    def test__multiple_beacon_requests_coalesced(self):
+        # Note: Always use a random port for testing. (port=0)
+        clock = Clock()
+        protocol = BeaconingSocketProtocol(
+            clock, port=0, process_incoming=False, loopback=True,
+            interface="::", debug=True)
+        # Don't try to send out any replies.
+        self.patch(services, 'create_beacon_payload')
+        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
+        self.patch(protocol, 'send_beacon')
+        yield protocol.queueMulticastBeaconing()
+        yield protocol.queueMulticastBeaconing()
+        clock.advance(5)
+        self.assertThat(
+            send_mcast_mock, MockCalledOnceWith({}, 'advertisement'))
+
+    @inlineCallbacks
+    def test__solicitation_wins_when_multiple_requests_queued(self):
+        # Note: Always use a random port for testing. (port=0)
+        clock = Clock()
+        protocol = BeaconingSocketProtocol(
+            clock, port=0, process_incoming=False, loopback=True,
+            interface="::", debug=True)
+        # Don't try to send out any replies.
+        self.patch(services, 'create_beacon_payload')
+        send_mcast_mock = self.patch(protocol, 'send_multicast_beacons')
+        self.patch(protocol, 'send_beacon')
+        yield protocol.queueMulticastBeaconing()
+        yield protocol.queueMulticastBeaconing(solicitation=True)
+        clock.advance(5)
+        self.assertThat(
+            send_mcast_mock, MockCalledOnceWith({}, 'solicitation'))

@@ -404,14 +404,15 @@ class Region(RPCProtocol):
         return d
 
     @region.UpdateInterfaces.responder
-    def update_interfaces(self, system_id, interfaces):
+    def update_interfaces(self, system_id, interfaces, topology_hints=None):
         """update_interfaces()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
         """
         d = deferToDatabase(
-            rackcontrollers.update_interfaces, system_id, interfaces)
+            rackcontrollers.update_interfaces, system_id, interfaces,
+            topology_hints=topology_hints)
         d.addCallback(lambda args: {})
         return d
 
@@ -616,8 +617,10 @@ class RegionServer(Region):
     def register(
             self, system_id, hostname, interfaces, url, nodegroup_uuid=None,
             beacon_support=False, version=None):
-        # If beacons is None, register in legacy mode.
-        create_fabrics = True if beacon_support else False
+        # Hold off on fabric creation if the remote controller
+        # supports beacons; it will happen later when UpdateInterfaces is
+        # called.
+        create_fabrics = False if beacon_support else True
         result = yield self._register(
             system_id, hostname, interfaces, url,
             nodegroup_uuid=nodegroup_uuid, create_fabrics=create_fabrics,
