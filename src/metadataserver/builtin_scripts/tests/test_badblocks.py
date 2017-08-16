@@ -1,7 +1,7 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test smartctl functions."""
+"""Test badblocks functions."""
 
 __all__ = []
 
@@ -24,7 +24,7 @@ from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import badblocks
 
 
-class TestSmartCTL(MAASTestCase):
+class TestRunBadBlocks(MAASTestCase):
 
     def make_drive(self, name=None, model=None, serial=None, with_path=False):
         if name is None:
