@@ -7,7 +7,10 @@ __all__ = [
     "ScriptForm",
 ]
 from datetime import timedelta
+import json
+import re
 
+from django.core.exceptions import ValidationError
 from django.forms import (
     CharField,
     DurationField,
@@ -15,8 +18,18 @@ from django.forms import (
 )
 from maasserver.fields import VersionedTextFileField
 from maasserver.utils.forms import set_form_error
-from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.enum import (
+    HARDWARE_TYPE,
+    SCRIPT_PARALLEL,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import Script
+from metadataserver.models.script import (
+    translate_hardware_type,
+    translate_script_parallel,
+    translate_script_type,
+)
+import yaml
 
 
 class ScriptForm(ModelForm):
@@ -24,6 +37,20 @@ class ScriptForm(ModelForm):
     script_type = CharField(
         label='Script type', required=False, help_text='Script type',
         initial=str(SCRIPT_TYPE.TESTING))
+
+    hardware_type = CharField(
+        label='Hardware type', required=False,
+        help_text='The hardware type the script configures or tests.',
+        initial=str(HARDWARE_TYPE.NODE))
+
+    parallel = CharField(
+        label='Parallel', required=False,
+        help_text='Whether the script may run in parallel with other scripts.',
+        initial=str(SCRIPT_PARALLEL.DISABLED))
+
+    packages = CharField(
+        label='Packages', required=False,
+        help_text='Packages to be installed with script.', initial='')
 
     timeout = DurationField(
         label='Timeout', required=False,
@@ -43,6 +70,9 @@ class ScriptForm(ModelForm):
             'description',
             'tags',
             'script_type',
+            'hardware_type',
+            'parallel',
+            'packages',
             'timeout',
             'destructive',
             'script',
@@ -79,27 +109,199 @@ class ScriptForm(ModelForm):
                 self.fields[field].required = False
             self.fields['script'].initial = instance.script
 
-    def clean(self):
-        cleaned_data = super().clean()
-        script_type = cleaned_data['script_type']
-        if script_type.isdigit():
-            cleaned_data['script_type'] = int(script_type)
-        elif script_type in ['test', 'testing']:
-            cleaned_data['script_type'] = SCRIPT_TYPE.TESTING
-        elif script_type in ['commission', 'commissioning']:
-            cleaned_data['script_type'] = SCRIPT_TYPE.COMMISSIONING
-        elif script_type == '':
-            cleaned_data['script_type'] = self.instance.script_type
+        # Reading the embedded YAML must happen at the end of initialization
+        # so the fields set are validated.
+        if 'script' in self.data:
+            self._read_script()
+
+    def _validate_results(self, results={}):
+        valid = True
+        if isinstance(results, list):
+            for result in results:
+                if not isinstance(result, str):
+                    set_form_error(
+                        self, 'results',
+                        'Each result in a result list must be a string.')
+                    valid = False
+        elif isinstance(results, dict):
+            for result in results.values():
+                if 'title' not in result:
+                    set_form_error(
+                        self, 'results',
+                        'title must be included in a result dictionary.')
+                    valid = False
+                for key in ['title', 'description']:
+                    if key in result and not isinstance(result[key], str):
+                        set_form_error(
+                            self, 'results', '%s must be a string.' % key)
+                        valid = False
         else:
             set_form_error(
-                self, 'script_type',
-                'Must be %d, test, testing, %d, commission, or commissioning.'
-                % (SCRIPT_TYPE.TESTING, SCRIPT_TYPE.COMMISSIONING))
+                self, 'results',
+                'results must be a list of strings or a dictionary of '
+                'dictionaries.')
+            valid = False
+        return valid
+
+    def _read_script(self):
+        """Read embedded YAML configuration in a script.
+
+        Search for supported MAAS script metadata in the script and
+        read the values. Leading '#' are ignored. If the values are
+        fields they will be entered in the form.
+        """
+        yaml_delim = re.compile(
+            '\s*#\s*-+\s*(Start|End) MAAS (?P<version>\d+\.\d+) '
+            'script metadata\s+-+', re.I)
+        found_version = None
+        yaml_content = ''
+
+        if isinstance(self.data['script'], dict):
+            if 'new_data' in self.data['script']:
+                script = self.data['script']['new_data']
+            else:
+                script = self.data['script']['data']
+        else:
+            script = self.data['script']
+        for line in script.splitlines():
+            m = yaml_delim.search(line)
+            if m is not None:
+                if found_version is None and m.group('version') == '1.0':
+                    # Found the start of the embedded YAML
+                    found_version = m.group('version')
+                    continue
+                elif found_version == m.group('version'):
+                    # Found the end of the embedded YAML
+                    break
+            elif found_version is not None and line.strip() != '':
+                # Capture all lines inbetween the deliminator
+                if '#' not in line:
+                    set_form_error(self, 'script', 'Missing "#" on YAML line.')
+                    return
+                yaml_content += '%s\n' % line.split('#', 1)[1]
+
+        try:
+            parsed_yaml = yaml.safe_load(yaml_content)
+        except yaml.YAMLError as err:
+            set_form_error(self, 'script', 'Invalid YAML: %s' % err)
+            return
+
+        if not isinstance(parsed_yaml, dict):
+            return
+
+        self.instance.results = parsed_yaml.pop('results', {})
+        self.instance.parameters = parsed_yaml.pop('parameters', [])
+
+        # Tags must be a comma seperated string for the form.
+        tags = parsed_yaml.pop('tags', None)
+        if tags is not None and 'tags' not in self.data:
+            self.data['tags'] = ','.join(tags)
+
+        # Timeout must be a string for the form.
+        timeout = parsed_yaml.pop('timeout', None)
+        if timeout is not None and 'timeout' not in self.data:
+            self.data['timeout'] = str(timeout)
+
+        # Packages must be a JSON string for the form.
+        packages = parsed_yaml.pop('packages', None)
+        if packages is not None and 'packages' not in self.data:
+            self.data['packages'] = json.dumps(packages)
+
+        for key, value in parsed_yaml.items():
+            if key in self.fields:
+                if key not in self.data:
+                    self.data[key] = value
+                else:
+                    set_form_error(
+                        self, key,
+                        'May not override values defined in embedded YAML.')
+
+    def clean_packages(self):
+        if self.cleaned_data['packages'] == '':
+            return self.instance.packages
+        else:
+            packages = json.loads(self.cleaned_data['packages'])
+
+            # Automatically convert into a list incase only one package is
+            # needed.
+            for key in ['apt', 'snap', 'url']:
+                if key in packages and not isinstance(packages[key], list):
+                    packages[key] = [packages[key]]
+
+            if 'apt' in packages:
+                for package in packages['apt']:
+                    if not isinstance(package, str):
+                        set_form_error(
+                            self, 'packages',
+                            'Each apt package must be a string.')
+            if 'snap' in packages:
+                for package in packages['snap']:
+                    if isinstance(package, dict):
+                        if ('name' not in package or
+                                not isinstance(package['name'], str)):
+                            set_form_error(
+                                self, 'packages',
+                                'Snap package name must be defined.')
+                        if ('channel' in package and
+                                package['channel'] not in [
+                                    'stable', 'edge', 'beta', 'candidate']):
+                            set_form_error(
+                                self, 'packages',
+                                'Snap channel must be stable, edge, beta, '
+                                'or candidate.')
+                        if ('mode' in package and package['mode'] not in [
+                                'classic', 'dev', 'jail']):
+                            set_form_error(
+                                self, 'packages',
+                                'Snap mode must be classic, dev, or jail.')
+                        if ('revision' in package and
+                                (not isinstance(package['revision'], int) or
+                                 package['revision'] < 0)):
+                            set_form_error(
+                                self, 'packages',
+                                'Snap revision must be a positive integer.')
+                    elif not isinstance(package, str):
+                        set_form_error(
+                            self, 'packages', 'Snap package must be a string.')
+            return packages
+
+    def clean(self):
+        cleaned_data = super().clean()
         # If a field wasn't passed in keep the old values when updating.
         if self.instance.id is not None:
             for field in self._meta.fields:
                 if field not in self.data:
                     cleaned_data[field] = getattr(self.instance, field)
+
+        script_type = cleaned_data['script_type']
+        if script_type == '':
+            cleaned_data['script_type'] = self.instance.script_type
+        else:
+            try:
+                cleaned_data['script_type'] = translate_script_type(
+                    script_type)
+            except ValidationError as e:
+                set_form_error(self, 'script_type', e)
+
+        hardware_type = cleaned_data['hardware_type']
+        if hardware_type == '':
+            cleaned_data['hardware_type'] = self.instance.hardware_type
+        else:
+            try:
+                cleaned_data['hardware_type'] = translate_hardware_type(
+                    hardware_type)
+            except ValidationError as e:
+                set_form_error(self, 'hardware_type', e)
+
+        parallel = cleaned_data['parallel']
+        if parallel == '':
+            cleaned_data['parallel'] = self.instance.parallel
+        else:
+            try:
+                cleaned_data['parallel'] = translate_script_parallel(parallel)
+            except ValidationError as e:
+                set_form_error(self, 'parallel', e)
+
         return cleaned_data
 
     def is_valid(self):
@@ -134,6 +336,10 @@ class ScriptForm(ModelForm):
                 '"comment" may only be used when specifying a "script" '
                 'as well.')
             valid = False
+
+        if 'script' in self.data:
+            if not self._validate_results(self.instance.results):
+                valid = False
 
         if (not valid and self.instance.script_id is not None and
                 self.initial.get('script') != self.instance.script_id):
