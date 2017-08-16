@@ -1545,6 +1545,29 @@ describe("maasBootImages", function() {
             expect(scope.canSaveSelection()).toBe(false);
         });
 
+        it("returns true if deleting one commissioning series", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.saving = false;
+            spyOn(scope, "ltsIsSelected").and.returnValue(true);
+            scope.bootResources.ubuntu = {
+                commissioning_series: makeName("series")
+            };
+            scope.ubuntuImages = [
+                {
+                    beingDeleted: true,
+                    name: scope.bootResources.ubuntu.commissioning_series,
+                    arch: makeName("arch")
+                },
+                {
+                    beingDeleted: false,
+                    name: scope.bootResources.ubuntu.commissioning_series,
+                    arch: makeName("arch")
+                }
+            ];
+            expect(scope.canSaveSelection()).toBe(true);
+        });
+
         it("returns false if saving", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();

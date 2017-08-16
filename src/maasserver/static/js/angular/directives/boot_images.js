@@ -672,15 +672,25 @@ angular.module('MAAS').directive('maasBootImages', [
                 // Return true if can save the current selection.
                 $scope.canSaveSelection = function() {
                     var commissioning_series_being_deleted = false;
+                    var commissioning_series_arches = 0;
                     var i;
+                    for(i = 0; i < $scope.ubuntuImages.length; i++) {
+                        if($scope.ubuntuImages[i].name ===
+                           $scope.bootResources.ubuntu.commissioning_series) {
+                            commissioning_series_arches++;
+                        }
+                    }
                     // Only prevent the current commissioning series from
-                    // being deleted. If the current commissioning series isn't
-                    // currently selected another LTS may be choosen,
-                    // downloaded, and configured as the commissioning series.
+                    // being deleted if it isn't the commissioning series isn't
+                    // available on another architecture.. If the current
+                    // commissioning series isn't currently selected another
+                    // LTS may be choosen, downloaded, and configured as the
+                    // commissioning series.
                     for(i = 0; i < $scope.ubuntuImages.length; i++) {
                         if($scope.ubuntuImages[i].beingDeleted &&
                            $scope.ubuntuImages[i].name ===
-                           $scope.bootResources.ubuntu.commissioning_series) {
+                           $scope.bootResources.ubuntu.commissioning_series &&
+                           commissioning_series_arches === 1) {
                             commissioning_series_being_deleted = true;
                             break;
                         }
