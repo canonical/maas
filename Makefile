@@ -1,4 +1,4 @@
-python := python3.5
+python := python3
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.

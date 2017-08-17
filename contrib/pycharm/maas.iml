@@ -16,7 +16,7 @@
       <excludeFolder url="file://$MODULE_DIR$/local" />
       <excludeFolder url="file://$MODULE_DIR$/logs" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.5.1+ (/usr/bin/python3.5)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.5.1+ (/usr/bin/python3)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Buildout Eggs" level="project" />
     <orderEntry type="library" name="Buildout Eggs" level="project" />
