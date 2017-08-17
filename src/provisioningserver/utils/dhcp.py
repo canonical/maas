@@ -21,6 +21,8 @@ import sys
 from textwrap import dedent
 
 from netaddr import IPAddress
+from provisioningserver.path import get_path
+from provisioningserver.utils import sudo
 from provisioningserver.utils.network import (
     bytes_to_ipaddress,
     format_eui,
@@ -252,9 +254,10 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
+        cmd = sudo(
+            [get_path("/usr/lib/maas/maas-dhcp-monitor"), args.interface])
         network_monitor = subprocess.Popen(
-            ["sudo", "--non-interactive", "/usr/lib/maas/maas-dhcp-monitor",
-             args.interface], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL
         )
         infile = network_monitor.stdout

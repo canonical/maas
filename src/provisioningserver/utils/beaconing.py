@@ -35,6 +35,7 @@ from uuid import UUID
 from bson import BSON
 from bson.errors import BSONError
 from cryptography.fernet import InvalidToken
+from provisioningserver.path import get_path
 from provisioningserver.security import (
     fernet_decrypt_psk,
     fernet_encrypt_psk,
@@ -353,7 +354,8 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
-        cmd = sudo(["/usr/lib/maas/maas-beacon-monitor", args.interface])
+        cmd = sudo(
+            [get_path("/usr/lib/maas/maas-beacon-monitor"), args.interface])
         network_monitor = subprocess.Popen(
             cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
         infile = network_monitor.stdout
