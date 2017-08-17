@@ -4125,7 +4125,7 @@ class Controller(Node):
         machine must have power information."""
         return self.status == NODE_STATUS.DEPLOYED and self.bmc is not None
 
-    def _update_interface(self, name, config, create_fabrics=True):
+    def _update_interface(self, name, config, create_fabrics=True, hints=None):
         """Update a interface.
 
         :param name: Name of the interface.
@@ -4134,7 +4134,7 @@ class Controller(Node):
         """
         if config["type"] == "physical":
             return self._update_physical_interface(
-                name, config, create_fabrics=create_fabrics)
+                name, config, create_fabrics=create_fabrics, hints=hints)
         elif not create_fabrics:
             # Defer child interface creation until fabrics are known.
             return None
@@ -4149,7 +4149,8 @@ class Controller(Node):
                 "Unkwown interface type '%s' for '%s'." % (
                     config["type"], name))
 
-    def _update_physical_interface(self, name, config, create_fabrics=True):
+    def _update_physical_interface(
+            self, name, config, create_fabrics=True, hints=None):
         """Update a physical interface.
 
         :param name: Name of the interface.
@@ -4172,7 +4173,10 @@ class Controller(Node):
         # (2) The interface's VLAN wasn't previously known.
         # (3) The interface is administratively enabled.
         if create_fabrics and interface.vlan is None and is_enabled:
-            new_vlan = self._guess_vlan_for_interface(config)
+            if hints is not None:
+                new_vlan = self._guess_vlan_from_hints(name, hints)
+            if new_vlan is None:
+                new_vlan = self._guess_vlan_for_interface(config)
             if new_vlan is not None:
                 interface.vlan = new_vlan
                 update_fields.add('vlan')
@@ -4211,6 +4215,67 @@ class Controller(Node):
                 # Create a new VLAN for this interface and it was not used as
                 # a link re-assigned the VLAN this interface is connected to.
                 new_vlan.fabric.delete()
+
+    def _guess_vlan_from_hints(self, ifname, hints):
+        """Returns the VLAN the interface is present on based on beaconing.
+
+        Goes through the list of hints and uses them to determine which VLAN
+        the interface on this Node with the given `ifname` is on.
+        """
+        relevant_hints = (
+            hint for hint in hints
+            # For now, just consider hints for the interface currently being
+            # processed, where beacons were sent and received without a VLAN
+            # tag.
+            if hint.get('ifname') == ifname and
+            hint.get('vid') is None and hint.get('related_vid') is None
+        )
+        existing_vlan = None
+        for hint in relevant_hints:
+            hint_type = hint.get('hint')
+            related_mac = hint.get('related_mac')
+            related_ifname = hint.get('related_ifname')
+            if hint_type == 'on_remote_network' and related_mac is not None:
+                related_interface = self._find_related_interface(
+                    False, related_ifname, related_mac)
+            elif hint_type in (
+                    'rx_own_beacon_on_other_interface',
+                    'same_local_fabric_as'):
+                related_interface = self._find_related_interface(
+                    True, related_ifname)
+            # Found an interface that corresponds to the relevant hint.
+            # If it has a VLAN defined, use it!
+            if related_interface is not None:
+                if related_interface.vlan is not None:
+                    existing_vlan = related_interface.vlan
+                    break
+        return existing_vlan
+
+    def _find_related_interface(
+            self, own_interface: bool, related_ifname: str,
+            related_mac: str=None):
+        """Returns a related interface matching the specified criteria.
+
+        :param own_interface: if True, only search for "own" interfaces.
+            (That is, interfaces belonging to the current node.)
+        :param related_ifname: The name of the related interface to find.
+        :param related_mac: The MAC address of the related interface to find.
+        :return: the related interface, or None if one could not be found.
+        """
+        filter_args = dict()
+        if related_mac is not None:
+            filter_args['mac_address'] = related_mac
+        if own_interface:
+            filter_args['node'] = self
+        related_interface = PhysicalInterface.objects.filter(
+            **filter_args).first()
+        if related_interface is None and related_mac is not None:
+            # Couldn't find a physical interface; it could be a private
+            # bridge.
+            filter_args['name'] = related_ifname
+            related_interface = BridgeInterface.objects.filter(
+                **filter_args).first()
+        return related_interface
 
     def _guess_vlan_for_interface(self, config):
         # Make sure that the VLAN on the interface is correct. When
@@ -4663,6 +4728,8 @@ class Controller(Node):
 
         :param interfaces: Interfaces dictionary that was parsed from
             /etc/network/interfaces on the controller.
+        :param topology_hints: List of dictionaries representing hints
+            about fabric/VLAN connectivity.
         :param create_fabrics: If True, creates fabrics associated with each
             VLAN. Otherwise, creates the interfaces but does not create any
             links or VLANs.
@@ -4698,7 +4765,8 @@ class Controller(Node):
             # if we decided not to model an interface based on what the rack
             # sent.
             interface = self._update_interface(
-                name, settings, create_fabrics=create_fabrics)
+                name, settings, create_fabrics=create_fabrics,
+                hints=topology_hints)
             if interface is not None:
                 interface.update_discovery_state(discovery_mode, settings)
             if interface is not None and interface.id in current_interfaces:
