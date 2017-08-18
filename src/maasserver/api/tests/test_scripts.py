@@ -27,6 +27,7 @@ from metadataserver.enum import (
     SCRIPT_TYPE_CHOICES,
 )
 from metadataserver.models import Script
+from testtools.matchers import ContainsAll
 
 
 class TestScriptsAPI(APITestCase.ForUser):
@@ -79,9 +80,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
-        if script.destructive:
-            tags.append('destructive')
-        self.assertItemsEqual(tags, script.tags)
+        self.assertThat(script.tags, ContainsAll(tags))
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(hardware_type, script.hardware_type)
         self.assertEquals(parallel, script.parallel)
@@ -128,9 +127,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
-        if script.destructive:
-            tags.append('destructive')
-        self.assertItemsEqual(tags, script.tags)
+        self.assertThat(script.tags, ContainsAll(tags))
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(hardware_type, script.hardware_type)
         self.assertEquals(parallel, script.parallel)
@@ -187,7 +184,7 @@ class TestScriptsAPI(APITestCase.ForUser):
 
     def test_GET_filters(self):
         tags = [factory.make_name('tag') for _ in range(3)]
-        scripts = [factory.make_Script(tags=tags) for _ in range(3)]
+        scripts = [factory.make_Script(tags=list(tags)) for _ in range(3)]
         name_script = factory.make_Script()
         scripts.append(name_script)
         for _ in range(3):
@@ -195,7 +192,7 @@ class TestScriptsAPI(APITestCase.ForUser):
 
         response = self.client.get(
             self.get_scripts_uri(), {
-                'filters': '%s,%s' % (random.choice(tags), name_script),
+                'filters': '%s,%s' % (random.choice(tags), name_script.name),
             })
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -392,9 +389,7 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
-        if script.destructive:
-            tags.append('destructive')
-        self.assertItemsEqual(tags, script.tags)
+        self.assertThat(script.tags, ContainsAll(tags))
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(hardware_type, script.hardware_type)
         self.assertEquals(parallel, script.parallel)
@@ -441,9 +436,7 @@ class TestScriptAPI(APITestCase.ForUser):
 
         self.assertEquals(name, script.name)
         self.assertEquals(description, script.description)
-        if script.destructive:
-            tags.append('destructive')
-        self.assertItemsEqual(tags, script.tags)
+        self.assertThat(script.tags, ContainsAll(tags))
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(hardware_type, script.hardware_type)
         self.assertEquals(parallel, script.parallel)
@@ -630,7 +623,8 @@ class TestScriptAPI(APITestCase.ForUser):
     def test_remove_tag(self):
         self.become_admin()
         script = factory.make_Script(destructive=False)
-        removed_tag = random.choice(script.tags)
+        removed_tag = random.choice(
+            [tag for tag in script.tags if 'tag' in tag])
         response = self.client.post(
             self.get_script_uri(script),
             {

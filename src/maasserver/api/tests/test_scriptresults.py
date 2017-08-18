@@ -165,7 +165,10 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
             self.get_script_results_uri(node),
             {'filters': ','.join([
                 name_filter_script.name,
-                random.choice(tag_filter_script.tags)])})
+                random.choice([
+                    tag for tag in tag_filter_script.tags
+                    if 'tag' in tag
+                    ])])})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
@@ -338,7 +341,10 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {'filters': '%s,%s,%d' % (
                 filtered_results[0].name,
-                random.choice(filtered_results[1].script.tags),
+                random.choice([
+                    tag for tag in filtered_results[1].script.tags
+                    if 'tag' in tag
+                    ]),
                 filtered_results[2].id)})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_result = json_load_bytes(response.content)
@@ -604,7 +610,10 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'filetype': 'tar.xz',
                 'filters': '%s,%s,%d' % (
                     filtered_results[0].name,
-                    random.choice(filtered_results[1].script.tags),
+                    random.choice([
+                        tag for tag in filtered_results[1].script.tags
+                        if 'tag' in tag
+                        ]),
                     filtered_results[2].id),
             })
         self.assertThat(response, HasStatusCode(http.client.OK))

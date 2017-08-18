@@ -18,6 +18,13 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: memtester
+# title: Memory integrity
+# description: Run memtester against all available userspace memory.
+# script_type: test
+# --- End MAAS 1.0 script metadata ---
 
 sudo -n apt-get install -q -y memtester
 echo

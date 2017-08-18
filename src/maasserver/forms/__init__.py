@@ -16,7 +16,6 @@ __all__ = [
     "ClaimIPForm",
     "ClaimIPForMACForm",
     "CommissioningForm",
-    "CommissioningScriptForm",
     "ConfigForm",
     "ControllerForm",
     "CreateBcacheForm",
@@ -69,7 +68,6 @@ __all__ = [
 from collections import Counter
 from functools import partial
 import json
-import pipes
 import re
 
 from django import forms
@@ -187,9 +185,6 @@ from maasserver.utils.osystems import (
     validate_min_hwe_kernel,
 )
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.enum import SCRIPT_TYPE
-from metadataserver.fields import Bin
-from metadataserver.models import Script
 from netaddr import (
     IPNetwork,
     valid_ipv6,
@@ -1629,32 +1624,6 @@ class TagForm(MAASModelForm):
         except etree.XPathSyntaxError as e:
             raise ValidationError('Invalid xpath expression: %s' % (e,))
         return definition
-
-
-class CommissioningScriptForm(Form):
-
-    content = forms.FileField(
-        label="Commissioning script", allow_empty_file=False)
-
-    def __init__(self, instance=None, *args, **kwargs):
-        super(CommissioningScriptForm, self).__init__(*args, **kwargs)
-
-    def clean_content(self):
-        content = self.cleaned_data['content']
-        name = content.name
-        if pipes.quote(name) != name:
-            raise forms.ValidationError(
-                "Name contains disallowed characters, e.g. space or quotes.")
-        if Script.objects.filter(name=name).exists():
-            raise forms.ValidationError(
-                "A script with that name already exists.")
-        return content
-
-    def save(self, *args, **kwargs):
-        content = self.cleaned_data['content']
-        Script.objects.create(
-            name=content.name, script=Bin(content.read()),
-            script_type=SCRIPT_TYPE.COMMISSIONING)
 
 
 class UnconstrainedMultipleChoiceField(MultipleChoiceField):

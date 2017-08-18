@@ -21,6 +21,17 @@
 
 # Download the index.sjson file used by MAAS to download images to validate
 # internet connectivity.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: internet-connectivity
+# title: Network validation
+# description: Check if the system has access to the Internet.
+# tags: [network, internet]
+# script_type: test
+# parallel: any
+# timeout: 00:05:00
+# --- End MAAS 1.0 script metadata ---
+
 URL="https://images.maas.io/ephemeral-v3/daily/streams/v1/index.sjson"
 echo "Attempting to retrieve: $URL"
 curl -ILSsv -A maas_internet_connectivity_test $URL

@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# stress_ng_memory_long - Run stress-ng memory tests over 12 hours.
+# stress_ng_memory_long - Run stress-ng memory tests for 12 hours.
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
@@ -18,6 +18,17 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: stress-ng-memory-long
+# title: Memory integrity
+# description: Run stress-ng memory tests for 12 hours.
+# script_type: test
+# hardware_type: memory
+# packages:
+#   apt: stress-ng
+# timeout: 12:00:00
+# --- End MAAS 1.0 script metadata ---
 
 source /etc/os-release
 if [ $VERSION_ID == '14.04' ]; then

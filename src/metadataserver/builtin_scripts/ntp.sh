@@ -22,6 +22,16 @@
 # cloud-init configures ntp to use the rack controller or a user configured
 # external ntp server before running the test scripts. This test ensures that
 # the configured NTP server is accessible.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: ntp
+# title: NTP validation
+# description: Run ntp clock set to verify NTP connectivity.
+# tags: [network, ntp]
+# script_type: test
+# parallel: any
+# timeout: 00:01:00
+# --- End MAAS 1.0 script metadata ---
 
 source /etc/os-release
 

@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# stress-ng-cpu-long - Run stress-ng memory tests over 12 hours.
+# stress-ng-cpu-long - Run stress-ng memory tests for 12 hours.
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
@@ -18,6 +18,16 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: stress-ng-cpu-long
+# title: CPU validation
+# description: Run stress-ng memory tests for 12 hours.
+# script_type: test
+# packages:
+#   apt: stress-ng
+# timeout: 12:00:00
+# --- End MAAS 1.0 script metadata ---
 
 source /etc/os-release
 if [ $VERSION_ID == '14.04' ]; then

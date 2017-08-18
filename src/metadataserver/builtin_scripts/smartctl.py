@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# smartctl - Run smartctl on all drives in parellel
+# {{name}} - {{description}}
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
@@ -18,6 +18,21 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: {{name}}
+# title: {{title}}
+# description: {{description}}
+# tags: {{if 'validate' in name}}commissioning{{endif}}
+# script_type: test
+# hardware_type: storage
+# parallel: instance
+# parameters:
+#   disk: {type: storage}
+# packages:
+#   apt: smartctl
+# timeout: {{timeout}}
+# --- End MAAS 1.0 script metadata ---
 
 import re
 from subprocess import (

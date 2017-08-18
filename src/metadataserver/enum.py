@@ -91,6 +91,7 @@ class HARDWARE_TYPE:
     STORAGE = 3
 
 
+# Labels are also used for autotagging scripts.
 HARDWARE_TYPE_CHOICES = (
     (HARDWARE_TYPE.NODE, "Node"),
     (HARDWARE_TYPE.CPU, "CPU"),

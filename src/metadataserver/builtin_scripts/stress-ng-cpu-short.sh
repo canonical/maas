@@ -18,6 +18,17 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: stress-ng-cpu-short
+# title: CPU validation
+# description: Run stress-ng memory tests for 5 minutes.
+# script_type: test
+# hardware_type: cpu
+# packages:
+#   apt: stress-ng
+# timeout: 00:05:00
+# --- End MAAS 1.0 script metadata ---
 
 source /etc/os-release
 if [ $VERSION_ID == '14.04' ]; then

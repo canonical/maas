@@ -13,6 +13,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
     HARDWARE_TYPE,
+    HARDWARE_TYPE_CHOICES,
     SCRIPT_PARALLEL,
     SCRIPT_TYPE,
 )
@@ -308,7 +309,8 @@ class TestScript(MAASServerTestCase):
 
     def test_remove_tag(self):
         script = factory.make_Script()
-        removed_tag = random.choice(script.tags)
+        removed_tag = random.choice(
+            [tag for tag in script.tags if 'tag' in tag])
         script.remove_tag(removed_tag)
         script.save()
         self.assertNotIn(removed_tag, reload_object(script).tags)
@@ -331,3 +333,10 @@ class TestScript(MAASServerTestCase):
         script.destructive = False
         script.save()
         self.assertNotIn('destructive', reload_object(script).tags)
+
+    def test_adds_tags_for_hardware_types(self):
+        script = factory.make_Script(tags=[], destructive=False)
+        for hw_type, hw_type_label in HARDWARE_TYPE_CHOICES:
+            script.hardware_type = hw_type
+            script.save()
+            self.assertItemsEqual([hw_type_label.lower()], script.tags)

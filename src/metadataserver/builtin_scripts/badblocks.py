@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# badblocks - Run badblocks on all drives in parallel
+# {{name}} - {{description}}
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
@@ -18,6 +18,22 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: {{name}}
+# title: Storage integrity
+# description: {{description}}
+# script_type: test
+# hardware_type: storage
+# parallel: instance
+# results:
+#   badblocks:
+#     title: Bad blocks
+#     description: The number of bad blocks found on the storage device.
+# parameters:
+#   disk: {type: storage}
+# destructive: {{if 'destructive' in name}}True{{else}}False{{endif}}
+# --- End MAAS 1.0 script metadata ---
 
 import re
 import shlex

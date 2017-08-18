@@ -4,16 +4,20 @@
 """Script form."""
 
 __all__ = [
+    "CommissioningScriptForm",
     "ScriptForm",
 ]
 from datetime import timedelta
 import json
+import pipes
 import re
 
 from django.core.exceptions import ValidationError
 from django.forms import (
     CharField,
     DurationField,
+    FileField,
+    Form,
     ModelForm,
 )
 from maasserver.fields import VersionedTextFileField
@@ -78,7 +82,8 @@ class ScriptForm(ModelForm):
             'script',
         )
 
-    def __init__(self, instance=None, data=None, **kwargs):
+    def __init__(self, instance=None, data=None, edit_default=False, **kwargs):
+        self.edit_default = edit_default
         if instance is None:
             script_data_key = 'data'
         else:
@@ -190,16 +195,38 @@ class ScriptForm(ModelForm):
             return
 
         self.instance.results = parsed_yaml.pop('results', {})
-        self.instance.parameters = parsed_yaml.pop('parameters', [])
+        self.instance.parameters = parsed_yaml.pop('parameters', {})
+
+        # Tags and timeout may not be updated from new embedded YAML. This
+        # allows users to receive updated scripts from an upstream maintainer,
+        # such as Canonical, while maintaining user defined tags and timeout.
 
         # Tags must be a comma seperated string for the form.
         tags = parsed_yaml.pop('tags', None)
-        if tags is not None and 'tags' not in self.data:
-            self.data['tags'] = ','.join(tags)
+        if (tags is not None and self.instance.id is None and
+                'tags' not in self.data):
+            tags_valid = True
+            if isinstance(tags, str):
+                self.data['tags'] = tags
+            elif isinstance(tags, list):
+                for tag in tags:
+                    if not isinstance(tag, str):
+                        tags_valid = False
+                        continue
+                if tags_valid:
+                    self.data['tags'] = ','.join(tags)
+            else:
+                tags_valid = False
+            if not tags_valid:
+                set_form_error(
+                    self, 'tags',
+                    'Embedded tags must be a string of comma seperated '
+                    'values, or a list of strings.')
 
         # Timeout must be a string for the form.
         timeout = parsed_yaml.pop('timeout', None)
-        if timeout is not None and 'timeout' not in self.data:
+        if (timeout is not None and self.instance.id is None and
+                'timeout' not in self.data):
             self.data['timeout'] = str(timeout)
 
         # Packages must be a JSON string for the form.
@@ -228,12 +255,13 @@ class ScriptForm(ModelForm):
                 if key in packages and not isinstance(packages[key], list):
                     packages[key] = [packages[key]]
 
-            if 'apt' in packages:
-                for package in packages['apt']:
-                    if not isinstance(package, str):
-                        set_form_error(
-                            self, 'packages',
-                            'Each apt package must be a string.')
+            for key in ['apt', 'url']:
+                if key in packages:
+                    for package in packages[key]:
+                        if not isinstance(package, str):
+                            set_form_error(
+                                self, 'packages',
+                                'Each %s package must be a string.' % key)
             if 'snap' in packages:
                 for package in packages['snap']:
                     if isinstance(package, dict):
@@ -307,7 +335,7 @@ class ScriptForm(ModelForm):
     def is_valid(self):
         valid = super().is_valid()
 
-        if valid and self.instance.default:
+        if valid and self.instance.default and not self.edit_default:
             for field in self.Meta.fields:
                 if field in ['tags', 'timeout']:
                     continue
@@ -318,6 +346,8 @@ class ScriptForm(ModelForm):
                     valid = False
 
         name = self.data.get('name')
+        # none is used to tell the API to not run testing_scripts during
+        # commissioning.
         if name is not None and name.lower() == 'none':
             set_form_error(self, 'name', '"none" is a reserved name.')
             valid = False
@@ -326,6 +356,12 @@ class ScriptForm(ModelForm):
         # id.
         if name is not None and name.isdigit():
             set_form_error(self, 'name', 'Cannot be a number.')
+            valid = False
+
+        if name is not None and pipes.quote(name) != name:
+            set_form_error(
+                self, 'name',
+                'Name contains disallowed characters, e.g. space or quotes.')
             valid = False
 
         # If comment and script exist __init__ combines both fields into a dict
@@ -347,3 +383,55 @@ class ScriptForm(ModelForm):
             # created by the VersionedTextFileField.
             self.instance.script.delete()
         return valid
+
+
+class CommissioningScriptForm(Form):
+    """CommissioningScriptForm for the UI
+
+    The CommissioningScriptForm accepts a commissioning script from the
+    settings page in the UI. This form handles accepting the file upload
+    and setting the script_type to commissioning if no script_script is
+    set in the embedded YAML. The ScriptForm above validates the script
+    itself.
+    """
+
+    content = FileField(label="Commissioning script", allow_empty_file=False)
+
+    def __init__(self, instance=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def clean_content(self):
+        content = self.cleaned_data['content']
+        script_name = content.name
+        script_content = content.read().decode()
+        try:
+            script = Script.objects.get(name=script_name)
+        except Script.DoesNotExist:
+            form = ScriptForm(data={'script': script_content})
+            # If the form isn't valid due to the name it may be because the
+            # embedded YAML doesn't define a name. Try again defining it.
+            if not form.is_valid() and 'name' in form.errors:
+                form = ScriptForm(
+                    data={'name': script_name, 'script': script_content})
+        else:
+            form = ScriptForm(data={'script': script_content}, instance=script)
+
+        self._form = form
+        return content
+
+    def is_valid(self):
+        valid = super().is_valid()
+
+        if not self._form.is_valid():
+            self.errors.update(self._form.errors)
+            return False
+        else:
+            return valid
+
+    def save(self, *args, **kwargs):
+        script = self._form.save(*args, **kwargs, commit=False)
+        # If the embedded script data did not set a script type set it to
+        # commissioning.
+        if 'script_type' not in self._form.data:
+            script.script_type = SCRIPT_TYPE.COMMISSIONING
+        script.save()

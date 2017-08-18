@@ -192,4 +192,11 @@ class Script(CleanSave, TimestampedModel):
             self.add_tag('destructive')
         else:
             self.remove_tag('destructive')
+
+        for hw_type, hw_type_label in HARDWARE_TYPE_CHOICES:
+            if hw_type == self.hardware_type:
+                self.add_tag(hw_type_label.lower())
+            else:
+                self.remove_tag(hw_type_label.lower())
+
         return super().save(*args, **kwargs)

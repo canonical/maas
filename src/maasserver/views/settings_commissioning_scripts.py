@@ -15,7 +15,7 @@ from django.views.generic import (
     CreateView,
     DeleteView,
 )
-from maasserver.forms import CommissioningScriptForm
+from maasserver.forms.script import CommissioningScriptForm
 from maasserver.utils.django_urls import reverse
 from metadataserver.models import Script
 
