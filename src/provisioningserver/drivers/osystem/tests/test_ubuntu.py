@@ -24,7 +24,10 @@ class TestUbuntuOS(MAASTestCase):
     def get_release_title(self, release):
         info = UbuntuDistroInfo()
         for row in info._avail(info._date):
-            if row['series'] == release:
+            row_dict = row
+            if not isinstance(row, dict):
+                row_dict = row.__dict__
+            if row_dict['series'] == release:
                 return info._format("fullname", row)
         return None
 

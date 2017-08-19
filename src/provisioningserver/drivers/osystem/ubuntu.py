@@ -71,7 +71,14 @@ class UbuntuOS(OperatingSystem):
         """
         info = self.ubuntu_distro_info
         for row in info._avail(info._date):
-            if row['series'] == release:
+            # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries
+            # or lists, and it now returns objects instead. In this case, we
+            # return either the object or the dictionary so get_release_title
+            # handles the formating correctly.
+            row_dict = row
+            if not isinstance(row, dict):
+                row_dict = row.__dict__
+            if row_dict['series'] == release:
                 return row
         return None
 

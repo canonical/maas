@@ -49,7 +49,14 @@ class TestGeneralHandler(MAASServerTestCase):
     def make_boot_sources(self):
         kernels = []
         ubuntu = UbuntuDistroInfo()
-        for row in ubuntu._rows:
+        # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries or
+        # lists, and it now returns objects instead. As such, we need to
+        # handle both cases for backwards compatibility.
+        try:
+            ubuntu_rows = ubuntu._rows
+        except AttributeError:
+            ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
+        for row in ubuntu_rows:
             release_year = int(row['version'].split('.')[0])
             if release_year < 12:
                 continue

@@ -300,7 +300,11 @@ def get_release_from_distro_info(string):
     # We can only look at release names for 12.04+ as previous versions
     # have overlapping first letters(e.g Warty and Wily) which break looking
     # up old style kernels(e.g hwe-w).
-    for row in ubuntu._rows:
+    try:
+        ubuntu_rows = ubuntu._rows
+    except AttributeError:
+        ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
+    for row in ubuntu_rows:
         if (
                 int(row['version'].split('.')[0]) >= 12 and
                 row['series'].startswith(string) or

@@ -440,8 +440,12 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
         # We can't test with releases older than Precise as they have duplicate
         # names(e.g Wily and Warty) which will break the old style kernel
         # tests.
+        try:
+            ubuntu_rows = ubuntu._rows
+        except AttributeError:
+            ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
         valid_releases = [
-            row for row in ubuntu._rows
+            row for row in ubuntu_rows
             if int(row['version'].split('.')[0]) >= 12
         ]
         release = random.choice(valid_releases)
@@ -709,8 +713,12 @@ class TestGetReleaseFromDistroInfo(MAASServerTestCase):
 
     def pick_release(self):
         ubuntu = UbuntuDistroInfo()
+        try:
+            ubuntu_rows = ubuntu._rows
+        except AttributeError:
+            ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
         supported_releases = [
-            release for release in ubuntu._rows
+            release for release in ubuntu_rows
             if int(release['version'].split('.')[0]) >= 12
         ]
         return random.choice(supported_releases)
@@ -742,8 +750,12 @@ class TestGetReleaseFromDB(MAASServerTestCase):
         # post-commit tasks at the end of the test.
         self.useFixture(SignalsDisabled("bootsources"))
         ubuntu = UbuntuDistroInfo()
+        try:
+            ubuntu_rows = ubuntu._rows
+        except AttributeError:
+            ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
         supported_releases = [
-            release for release in ubuntu._rows
+            release for release in ubuntu_rows
             if int(release['version'].split('.')[0]) >= 12
         ]
         release = random.choice(supported_releases)
@@ -756,7 +768,7 @@ class TestGetReleaseFromDB(MAASServerTestCase):
             release=release['series'],
             release_codename=release['codename'],
             release_title=release['version'],
-            support_eol=release['eol-server'],
+            support_eol=release.get('eol_server', release.get('eol-server')),
         )
         return release
 

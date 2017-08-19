@@ -672,8 +672,12 @@ class Factory:
         ubuntu = UbuntuDistroInfo()
         # Only select from MAAS supported releases so we don't have to deal
         # with versions name overlap(e.g Warty and Wily).
+        try:
+            ubuntu_rows = ubuntu._rows
+        except AttributeError:
+            ubuntu_rows = [row.__dict__ for row in ubuntu._releases]
         supported_releases = [
-            release for release in ubuntu._rows
+            release for release in ubuntu_rows
             if int(release['version'].split('.')[0]) >= 12
         ]
         release = random.choice(supported_releases)

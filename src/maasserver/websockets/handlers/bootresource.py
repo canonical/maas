@@ -76,6 +76,11 @@ def get_distro_series_info_row(series):
     """
     info = UbuntuDistroInfo()
     for row in info._avail(info._date):
+        # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries or
+        # lists, and it now returns objects instead. As such, we need to
+        # handle both cases for backwards compatibility.
+        if not isinstance(row, dict):
+            row = row.__dict__
         if row['series'] == series:
             return row
     return None
