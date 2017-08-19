@@ -147,12 +147,12 @@ class TestSendBeaconsProtocolInteraction(
 
     def test__sends_unicast_beacon(self):
         self.run_command(
-            '-v', '-s', '1.1.1.1', '-t', '42', '-p', '4242', '2.2.2.2')
+            '-v', '-s', '1.1.1.1', '-t', '42', '-p', '4242', '127.0.0.1')
         self.assertThat(self.protocol_mock, MockCalledOnceWith(
             ANY, debug=True, interface='1.1.1.1', port=4242,
             process_incoming=True, interfaces=TEST_INTERFACES))
         self.assertThat(
             self.fake_protocol.send_multicast_beacons, MockNotCalled())
         self.assertThat(self.fake_protocol.send_beacon, MockCalledOnceWith(
-            ANY, ("::ffff:2.2.2.2", 5240)
+            ANY, ("::ffff:127.0.0.1", 5240)
         ))

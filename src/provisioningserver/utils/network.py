@@ -83,6 +83,14 @@ ENI_PARSED_METHODS = [
     "dhcp",
 ]
 
+# Hard-coded loopback interface information, since the loopback interface isn't
+# included in `get_all_interfaces_definition()`.
+LOOPBACK_INTERFACE_INFO = {
+    "enabled": True,
+    "index": 1,
+    "links": [{"address": "::1/128"}, {"address": "127.0.0.1/8"}]
+}
+
 
 REVERSE_RESOLVE_RETRIES = (1, 2, 4, 8, 16)
 
@@ -1239,6 +1247,27 @@ def enumerate_assigned_ips(ifdata):
     return (link['address'].split('/')[0] for link in links)
 
 
+def get_ifname_ifdata_for_destination(
+        destination_ip: IPAddressOrNetwork, interfaces: dict):
+    """Returns an (ifname, ifdata) tuple for the given destination.
+
+    :param destination_ip: The destination IP address.
+    :param interfaces: The output of `get_all_interfaces_definition()`.
+    :returns: tuple of (ifname, ifdata)
+    :raise: ValueError if not found
+    """
+    source_ip = get_source_address(destination_ip)
+    if source_ip is None:
+        raise ValueError("No route to host: %s" % destination_ip)
+    if source_ip == "::1" or source_ip == "127.0.0.1":
+        return "lo", LOOPBACK_INTERFACE_INFO
+    for ifname, ifdata in interfaces.items():
+        for candidate in enumerate_assigned_ips(ifdata):
+            if candidate == source_ip:
+                return ifname, ifdata
+    raise ValueError("Source IP not found in interface links: %s" % source_ip)
+
+
 def enumerate_ipv4_addresses(ifdata):
     """Yields each IPv4 address assigned to an interface.
 
@@ -1396,6 +1425,8 @@ def get_source_address(destination_ip: IPAddressOrNetwork):
         destination_ip = IPAddress(destination_ip.first + 1)
     else:
         destination_ip = make_ipaddress(destination_ip)
+    if destination_ip.is_ipv4_mapped():
+        destination_ip = destination_ip.ipv4()
     af = AF_INET if destination_ip.version == 4 else AF_INET6
     with socket.socket(af, socket.SOCK_DGRAM) as sock:
         peername = str(destination_ip)

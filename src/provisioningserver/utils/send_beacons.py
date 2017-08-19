@@ -22,8 +22,14 @@ from provisioningserver.utils.beaconing import (
     BEACON_PORT,
     create_beacon_payload,
 )
-from provisioningserver.utils.network import get_all_interfaces_definition
-from provisioningserver.utils.services import BeaconingSocketProtocol
+from provisioningserver.utils.network import (
+    get_all_interfaces_definition,
+    get_ifname_ifdata_for_destination,
+)
+from provisioningserver.utils.services import (
+    BeaconingSocketProtocol,
+    interface_info_to_beacon_remote_payload,
+)
 from twisted.internet import reactor
 
 
@@ -82,7 +88,11 @@ def do_beaconing(args, interfaces=None):
         protocol.send_multicast_beacons(interfaces, verbose=args.verbose)
     else:
         log.msg("Sending unicast beacon to '%s'..." % destination_ip)
-        beacon = create_beacon_payload("solicitation")
+        ifname, ifdata = get_ifname_ifdata_for_destination(
+            destination_ip, interfaces)
+        remote = interface_info_to_beacon_remote_payload(ifname, ifdata)
+        payload = {"remote": remote}
+        beacon = create_beacon_payload("solicitation", payload=payload)
         protocol.send_beacon(beacon, (destination_ip, BEACON_PORT))
     reactor.callLater(args.timeout, lambda: reactor.stop())
     reactor.run()

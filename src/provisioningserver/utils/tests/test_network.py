@@ -59,6 +59,7 @@ from provisioningserver.utils.network import (
     get_all_interfaces_definition,
     get_default_monitored_interfaces,
     get_eui_organization,
+    get_ifname_ifdata_for_destination,
     get_interface_children,
     get_mac_organization,
     get_source_address,
@@ -70,6 +71,7 @@ from provisioningserver.utils.network import (
     ip_range_within_network,
     IPRangeStatistics,
     is_loopback_address,
+    LOOPBACK_INTERFACE_INFO,
     MAASIPRange,
     MAASIPSet,
     make_iprange,
@@ -1647,6 +1649,65 @@ class TestHasIPv4Address(InterfaceLinksTestCase):
             Equals(True))
 
 
+class TestGetIfnameIfdataForDestination(MAASTestCase):
+    """Tests for `get_ifname_ifdata_for_destination()`."""
+
+    def setUp(self):
+        super().setUp()
+        self.interfaces = {
+            "eth0": {
+                "links": [{"address": "192.168.0.1/24"}]
+            },
+            "eth1": {
+                "links": [
+                    {"address": "2001:db8::1/64"},
+                    {"address": "172.16.0.1/24"},
+                ]
+            },
+        }
+        self.get_source_address_mock = self.patch(
+            network_module, 'get_source_address')
+
+    def test__returns_interface_for_expected_source_ip(self):
+        self.get_source_address_mock.return_value = "2001:db8::1"
+        ifname, ifdata = get_ifname_ifdata_for_destination(
+            "2001:db8::2", self.interfaces)
+        self.assertThat(ifname, Equals("eth1"))
+        self.assertThat(ifdata, Equals(self.interfaces['eth1']))
+        self.get_source_address_mock.return_value = "192.168.0.1"
+        ifname, ifdata = get_ifname_ifdata_for_destination(
+            "192.168.0.2", self.interfaces)
+        self.assertThat(ifname, Equals("eth0"))
+        self.assertThat(ifdata, Equals(self.interfaces['eth0']))
+        self.get_source_address_mock.return_value = "172.16.0.1"
+        ifname, ifdata = get_ifname_ifdata_for_destination(
+            "172.16.0.2", self.interfaces)
+        self.assertThat(ifname, Equals("eth1"))
+        self.assertThat(ifdata, Equals(self.interfaces['eth1']))
+
+    def test__handles_loopback_addresses(self):
+        self.get_source_address_mock.return_value = "127.0.0.1"
+        ifname, ifdata = get_ifname_ifdata_for_destination(
+            "127.0.0.1", self.interfaces)
+        self.assertThat(ifname, Equals("lo"))
+        self.assertThat(ifdata, Equals(LOOPBACK_INTERFACE_INFO))
+        self.get_source_address_mock.return_value = "::1"
+        ifname, ifdata = get_ifname_ifdata_for_destination(
+            "::1", self.interfaces)
+        self.assertThat(ifname, Equals("lo"))
+        self.assertThat(ifdata, Equals(LOOPBACK_INTERFACE_INFO))
+
+    def test__raises_valueerror_if_no_route_to_host(self):
+        self.get_source_address_mock.return_value = None
+        with ExpectedException(ValueError):
+            get_ifname_ifdata_for_destination("2001:db8::2", self.interfaces)
+
+    def test__raises_valueerror_if_source_ip_not_found(self):
+        self.get_source_address_mock.return_value = "192.168.0.2"
+        with ExpectedException(ValueError):
+            get_ifname_ifdata_for_destination("192.168.0.3", self.interfaces)
+
+
 class TestEnumerateAddresses(InterfaceLinksTestCase):
     """Tests for `enumerate_assigned_ips` and `enumerate_ipv4_addresses()`."""
 
@@ -2235,6 +2296,10 @@ class TestGetSourceAddress(MAASTestCase):
     def test__accepts_string(self):
         self.assertThat(
             get_source_address("127.0.0.1"), Equals("127.0.0.1"))
+
+    def test__converts_ipv4_mapped_ipv6_to_ipv4(self):
+        self.assertThat(
+            get_source_address("::ffff:127.0.0.1"), Equals("127.0.0.1"))
 
     def test__supports_ipv6(self):
         self.assertThat(

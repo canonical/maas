@@ -35,6 +35,7 @@ VLAN_HEADER_LEN = 4
 class ETHERTYPE:
     """Enumeration to represent ethertypes that MAAS needs to understand."""
     IPV4 = hex_str_to_bytes('0800')
+    IPV6 = hex_str_to_bytes('86dd')
     ARP = hex_str_to_bytes('0806')
     VLAN = hex_str_to_bytes('8100')
 

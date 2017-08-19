@@ -364,6 +364,8 @@ def interface_info_to_beacon_remote_payload(ifname, ifdata, rx_vid=None):
     # It will be obvious to the receiver that the source interface
     # was enabled. ;-)
     remote.pop('enabled', None)
+    # Remote doesn't need to know which interfaces are monitored.
+    remote.pop('monitored', None)
     # Don't need all the links, just the one that originated this
     # packet.
     remote.pop('links', None)
@@ -501,6 +503,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # Loopback interface always has ifindex == 1.
             join_ipv6_beacon_group(sock, 1)
         for _, ifdata in self.interfaces.items():
+            # Always try to join the IPv6 group on each interface.
+            join_ipv6_beacon_group(sock, ifdata['index'])
             # Merely joining the group with the default parameters is not
             # enough, since we want to join the group on *all* interfaces.
             # So we need to join each group using an assigned IPv4 address
@@ -513,7 +517,6 @@ class BeaconingSocketProtocol(DatagramProtocol):
                 # secondary IP address on the same interface will produce
                 # an "Address already in use" error.
                 break
-            join_ipv6_beacon_group(sock, ifdata['index'])
 
     def updateInterfaces(self, interfaces):
         self.interfaces = interfaces
@@ -567,7 +570,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # If the packet cannot be sent for whatever reason, OSError will
             # be raised, and we won't record sending a beacon we didn't
             # actually send.
-            self.tx_queue[beacon.payload['uuid']] = beacon
+            uuid = beacon.payload['uuid']
+            self.tx_queue[uuid] = beacon
             age_out_uuid_queue(self.tx_queue)
             return True
         except OSError as e:
