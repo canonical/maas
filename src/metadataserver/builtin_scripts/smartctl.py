@@ -28,7 +28,7 @@
 # hardware_type: storage
 # parallel: instance
 # parameters:
-#   disk: {type: storage}
+#   storage: {type: storage}
 # packages:
 #   apt: smartctl
 # timeout: {{timeout}}

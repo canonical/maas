@@ -24,6 +24,8 @@
 # title: Memory integrity
 # description: Run memtester against all available userspace memory.
 # script_type: test
+# packages:
+#   apt: memtester
 # --- End MAAS 1.0 script metadata ---
 
 sudo -n apt-get install -q -y memtester

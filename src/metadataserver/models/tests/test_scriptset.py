@@ -197,7 +197,9 @@ class TestScriptSetManager(MAASServerTestCase):
 
         script_set = ScriptSet.objects.create_commissioning_script_set(
             node, scripts=[
-                random.choice(script_selected_by_tag.tags),
+                random.choice([
+                    tag for tag in script_selected_by_tag.tags
+                    if 'tag' in tag]),
                 script_selected_by_name.name,
                 script_selected_by_id.id,
             ])
@@ -274,7 +276,9 @@ class TestScriptSetManager(MAASServerTestCase):
 
         script_set = ScriptSet.objects.create_testing_script_set(
             node, scripts=[
-                random.choice(script_selected_by_tag.tags),
+                random.choice([
+                    tag for tag in script_selected_by_tag.tags
+                    if 'tag' in tag]),
                 script_selected_by_name.name,
                 script_selected_by_id.id,
             ])

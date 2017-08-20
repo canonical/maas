@@ -31,7 +31,7 @@
 #     title: Bad blocks
 #     description: The number of bad blocks found on the storage device.
 # parameters:
-#   disk: {type: storage}
+#   storage: {type: storage}
 # destructive: {{if 'destructive' in name}}True{{else}}False{{endif}}
 # --- End MAAS 1.0 script metadata ---
 

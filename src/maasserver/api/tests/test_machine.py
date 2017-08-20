@@ -1019,10 +1019,14 @@ class TestMachineAPI(APITestCase.ForUser):
             'enable_ssh': "true",
             'skip_networking': 1,
             'commissioning_scripts': ','.join([
-                choice(commissioning_script_selected_by_tag.tags),
+                choice([
+                    tag for tag in commissioning_script_selected_by_tag.tags
+                    if 'tag' in tag]),
                 commissioning_script_selected_by_name.name]),
             'testing_scripts': ','.join([
-                choice(testing_script_selected_by_tag.tags),
+                choice([
+                    tag for tag in testing_script_selected_by_tag.tags
+                    if 'tag' in tag]),
                 testing_script_selected_by_name.name]),
             })
         self.assertEqual(http.client.OK, response.status_code)

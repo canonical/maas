@@ -47,16 +47,13 @@ function stats()
 
     echo "Tests run: $(ls $OUTPUT_DIR | wc -l)"
     for i in $OUTPUT_DIR/*; do
-	 cat $i | awk '/FAIL$/ {
-            for(i=1;i<=NF-2;i++) {
-                printf("%s ", $i);
-            }
-            printf("\n");
+	cat $i | awk '/^(FAIL): .*$/ {
+            print($2);
             count++;
         }
         END {
             if(count == 0) print("No failures");
-        }'
+        }' | sort -u
     done | sort | uniq -c | sort -r -n -k 1
 }
 

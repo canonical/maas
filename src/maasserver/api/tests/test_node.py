@@ -591,8 +591,10 @@ class TestPowerMixin(APITestCase.ForUser):
             'op': 'test',
             'enable_ssh': "true",
             'testing_scripts': ','.join([
-                random.choice(testing_script_selected_by_tag.tags),
-                testing_script_selected_by_name.name]),
+                random.choice([
+                    tag for tag in testing_script_selected_by_tag.tags
+                    if 'tag' in tag
+                ]), testing_script_selected_by_name.name]),
             })
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
