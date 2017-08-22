@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from unittest.mock import call
+from unittest.mock import (
+    call,
+    Mock,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -202,3 +205,24 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         self.assertThat(
             protocol.GetDiscoveryState, MockCalledOnceWith(
                 protocol, system_id=rpc_service.getClient().localIdent))
+
+    @inlineCallbacks
+    def test_requests_beaconing_when_timer_fires(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateInterfaces, region.GetDiscoveryState)
+        self.addCleanup((yield connecting))
+        rpc_service = services.getServiceNamed('rpc')
+        reactor = Clock()
+        service = RackNetworksMonitoringService(
+            rpc_service, reactor, enable_monitoring=False,
+            enable_beaconing=True)
+        service.beaconing_protocol = Mock()
+        service.beaconing_protocol.queueMulticastBeaconing = Mock()
+        service.getInterfaces = lambda: succeed({})
+        service._recorded = {}
+        service.startService()
+        yield service.stopService()
+        self.assertThat(
+            service.beaconing_protocol.queueMulticastBeaconing,
+            MockCallsMatch(call()))

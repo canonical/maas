@@ -1115,6 +1115,9 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # _configureNetworkDiscovery() here.
             self._interfacesRecorded(interfaces)
         else:
+            # Send out beacons unsolicited once every 30 seconds.
+            if self.enable_beaconing:
+                self.beaconing_protocol.queueMulticastBeaconing()
             # If the interfaces didn't change, we still need to poll for
             # monitoring state changes.
             yield maybeDeferred(self._configureNetworkDiscovery, interfaces)
