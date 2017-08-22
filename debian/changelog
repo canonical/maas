@@ -1,8 +1,12 @@
 maas (2.3.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release, 2.3.0 alpha2:
+    - Support for CentOS & Windows netwok configuration
+    - Add Switch model
+    - Add better Network Discovery & Beaconing
+    - Minor UI improvements
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Sat, 29 Jul 2017 11:10:14 +0100
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 22 Aug 2017 13:47:16 -0400
 
 maas (2.3.0~alpha1-6165-geae082b-0ubuntu1) artful; urgency=medium
 
