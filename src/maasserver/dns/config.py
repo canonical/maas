@@ -88,6 +88,12 @@ def dns_update_all_zones(reload_retry=False):
     else:
         bind_reload()
 
+    # Return the current serial and list of domain names.
+    return serial, [
+        domain.name
+        for domain in domains
+    ]
+
 
 def get_upstream_dns():
     """Return the IP addresses of configured upstream DNS servers.

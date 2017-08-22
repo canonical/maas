@@ -53,6 +53,7 @@ from testtools.matchers import (
     Contains,
     Equals,
     FileContains,
+    MatchesSetwise,
     MatchesStructure,
 )
 
@@ -301,6 +302,24 @@ class TestDNSConfigModifications(TestDNSServer):
         ip_of_ns_record = dig_call(
             port=self.bind.config.port, commands=[ns_record, '+short'])
         self.assertEqual(ip, ip_of_ns_record)
+
+    def test_dns_update_all_zones_returns_serial_and_domains(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        domain = factory.make_Domain()
+        # These domains should not show up. Just to test we create them.
+        for _ in range(3):
+            factory.make_Domain(authoritative=False)
+        node, static = self.create_node_with_static_ip(domain=domain)
+        fake_serial = random.randint(1, 1000)
+        self.patch(
+            dns_config_module,
+            "current_zone_serial").return_value = fake_serial
+        serial, domains = dns_update_all_zones()
+        self.assertThat(serial, Equals(fake_serial))
+        self.assertThat(domains, MatchesSetwise(*[
+            Equals(domain.name)
+            for domain in Domain.objects.filter(authoritative=True)
+        ]))
 
 
 class TestDNSDynamicIPAddresses(TestDNSServer):

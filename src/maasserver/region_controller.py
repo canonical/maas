@@ -31,14 +31,23 @@ from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
+    pause,
 )
 from twisted.application.service import Service
 from twisted.internet import reactor
-from twisted.internet.defer import DeferredList
+from twisted.internet.defer import (
+    DeferredList,
+    inlineCallbacks,
+)
 from twisted.internet.task import LoopingCall
+from twisted.names.client import Resolver
 
 
 log = LegacyLogger()
+
+
+class DNSReloadError(Exception):
+    """Error raised when the bind never fully reloads the zone."""
 
 
 class RegionControllerService(Service):
@@ -64,6 +73,9 @@ class RegionControllerService(Service):
         self.needsDNSUpdate = False
         self.needsProxyUpdate = False
         self.postgresListener = postgresListener
+        self.dnsResolver = Resolver(
+            resolv=None, servers=[('127.0.0.1', 53)],
+            timeout=(1,), reactor=clock)
 
     @asynchronous(timeout=FOREVER)
     def startService(self):
@@ -108,9 +120,12 @@ class RegionControllerService(Service):
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
             d = deferToDatabase(transactional(dns_update_all_zones))
+            d.addCallback(self._check_serial)
             d.addCallback(
-                lambda _: log.msg(
-                    "Successfully configured DNS."))
+                lambda domains: log.msg(
+                    "Successfully configured DNS "
+                    "authoritative zones: %s." % (
+                        ', '.join(domains))))
             d.addErrback(
                 log.err,
                 "Failed configuring DNS.")
@@ -131,3 +146,31 @@ class RegionControllerService(Service):
             self.processingDefer = None
         else:
             return DeferredList(defers)
+
+    @inlineCallbacks
+    def _check_serial(self, result):
+        """Check that the serial of the domain is updated."""
+        serial, domain_names = result
+        not_matching_domains = set(domain_names)
+        loop = 0
+        while len(not_matching_domains) > 0 and loop != 30:
+            for domain in list(not_matching_domains):
+                try:
+                    answers, _, _ = yield self.dnsResolver.lookupAuthority(
+                        domain)
+                except (ValueError, TimeoutError):
+                    answers = []
+                if len(answers) > 0:
+                    if int(answers[0].payload.serial) == int(serial):
+                        not_matching_domains.remove(domain)
+            loop += 1
+            yield pause(2)
+        # 30 retries with 2 second pauses (aka. 60 seconds) has passed and
+        # there still is a domain that has the wrong serial. For now just
+        # raise the error, in the future we should take action and force
+        # restart bind.
+        if len(not_matching_domains) > 0:
+            raise DNSReloadError(
+                "Failed to reload DNS; serial mismatch "
+                "on domains %s" % ', '.join(not_matching_domains))
+        return domain_names
