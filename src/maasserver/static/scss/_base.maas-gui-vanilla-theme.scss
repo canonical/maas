@@ -40,7 +40,7 @@
 @import '../../../../include/nodejs/node_modules/maas-gui-vanilla-theme/scss/helpers.display';
 @import '../../../../include/nodejs/node_modules/maas-gui-vanilla-theme/scss/helpers.spacing';
 @import '../../../../include/nodejs/node_modules/maas-gui-vanilla-theme/scss/helpers.state';
-@import '../../../../include/nodejs/node_modules/maas-gui-vanilla-theme/scss/helpers.vertical-alignment';
+@import '../../../../include/nodejs/node_modules/maas-gui-vanilla-theme/scss/helpers.alignment';
 @import '../../../../include/nodejs/node_modules/maas-gui-vanilla-theme/scss/helpers.mixins';
 
 // MAAS theme
@@ -76,5 +76,5 @@
   @include maas-display;
   @include maas-spacing;
   @include maas-state;
-  @include maas-vertical-alignment;
+  @include maas-alignment;
 }
