@@ -291,3 +291,35 @@ class TestGetMAASVersionTuple(MAASTestCase):
         self.assertEquals(
             '.'.join([str(i) for i in version.get_maas_version_tuple()]),
             version.get_maas_version_subversion()[0])
+
+
+class TestGetMAASVersionTrackChannel(MAASTestCase):
+
+    scenarios = [
+        ("alpha", {
+            "version": "2.3.0~alpha1-6192-g10a4565-0ubuntu1",
+            "output": ("latest/edge"),
+            }),
+        ("beta", {
+            "version": "2.3.0~beta1-6192-g10a4565-snap",
+            "output": ("latest/edge"),
+            }),
+        ("rc4", {
+            "version": "2.3.0~rc1-6192-g10a4565",
+            "output": ("latest/edge"),
+            }),
+        ("stable", {
+            "version": "2.3.0-6192-g10a4565-0ubuntu1",
+            "output": ("2.3/stable"),
+            }),
+        ("stable", {
+            "version": "",
+            "output": ("%s/stable" % '.'.join(old_version.split('.')[0:2])),
+            }),
+    ]
+
+    def test_get_maas_version_track_channel(self):
+        mock = self.patch(version, "get_maas_version")
+        mock.return_value = self.version
+        result = version.get_maas_version_track_channel()
+        self.assertEqual(result, self.output)

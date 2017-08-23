@@ -6,14 +6,17 @@
 __all__ = []
 
 from maasserver.models.config import Config
+from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.vendor_data import (
     generate_ntp_configuration,
+    generate_rack_controller_configuration,
     generate_system_info,
     get_vendor_data,
 )
 from netaddr import IPAddress
+from provisioningserver.utils import version
 from testtools.matchers import (
     Contains,
     ContainsDict,
@@ -157,3 +160,39 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
                 "pools": [],
             },
         }))
+
+
+class TestGenerateRackControllerConfiguration(MAASServerTestCase):
+    """Tests for `generate_ntp_rack_controller_configuration`."""
+
+    def test_yields_nothing_when_node_is_not_netboot_disabled(self):
+        configuration = generate_rack_controller_configuration(
+            node=factory.make_Node(osystem='ubuntu'))
+        self.assertThat(dict(configuration), Equals({}))
+
+    def test_yields_nothing_when_node_is_not_ubuntu(self):
+        tag = factory.make_Tag(name='switch')
+        node = factory.make_Node(osystem='centos', netboot=False)
+        node.tags.add(tag)
+        configuration = generate_rack_controller_configuration(node)
+        self.assertThat(dict(configuration), Equals({}))
+
+    def test_yields_configuration_with_ubuntu(self):
+        tag = factory.make_Tag(name='wedge100')
+        node = factory.make_Node(osystem='ubuntu', netboot=False)
+        node.tags.add(tag)
+        configuration = generate_rack_controller_configuration(node)
+
+        secret = '1234'
+        Config.objects.set_config("rpc_shared_secret", secret)
+        channel = version.get_maas_version_track_channel()
+        maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
+            node.get_boot_rack_controller())
+        cmd = "/bin/snap/maas init --mode rack"
+
+        self.assertThat(dict(configuration), KeysEqual({
+            "runcmd": [
+                "snap install maas --devmode --channel=%s" % channel,
+                "%s --maas-url %s --secret %s" % (cmd, maas_url, secret),
+                ]
+            }))

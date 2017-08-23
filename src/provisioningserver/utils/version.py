@@ -87,6 +87,24 @@ def get_maas_branch_version():
             return None
 
 
+def get_maas_version_track_channel():
+    """Returns the track/channel where a snap of this version can be found"""
+    version = get_maas_version()
+    if version:
+        # If running from the snap or the package.
+        series, _ = extract_version_subversion(version)
+    else:
+        # If running from source, we simply get the default version.
+        series = DEFAULT_VERSION
+    # If the version is a devel version, then we always assume we can
+    # get the snap from the latest edge channel; else, we return
+    # the stable channel for such series.
+    if 'alpha' in series or 'beta' in series or 'rc' in series:
+        return "latest/edge"
+    else:
+        return "%s/stable" % '.'.join(series.split('.')[0:2])
+
+
 @lru_cache(maxsize=1)
 def get_maas_version():
     """Return the apt or snap version for the main MAAS package."""
