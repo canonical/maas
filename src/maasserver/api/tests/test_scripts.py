@@ -53,7 +53,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
-        script_content = factory.make_string()
+        script_content = factory.make_script_content()
         comment = factory.make_name('comment')
 
         response = self.client.post(
@@ -102,7 +102,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
-        script_content = factory.make_string()
+        script_content = factory.make_script_content()
         comment = factory.make_name('comment')
 
         response = self.client.post(
@@ -363,7 +363,7 @@ class TestScriptAPI(APITestCase.ForUser):
         packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
-        script_content = factory.make_string()
+        script_content = factory.make_script_content()
         comment = factory.make_name('comment')
 
         response = self.client.put(
@@ -413,7 +413,7 @@ class TestScriptAPI(APITestCase.ForUser):
         packages = {'apt': [factory.make_name('apt_pkg')]}
         timeout = random.randint(0, 1000)
         destructive = factory.pick_bool()
-        script_content = factory.make_string()
+        script_content = factory.make_script_content()
         comment = factory.make_name('comment')
 
         response = self.client.put(

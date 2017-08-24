@@ -51,7 +51,7 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
         # This uses Piston's built-in POST code, so there are no tests for
         # corner cases (like "script already exists") here.
         name = factory.make_name('script')
-        content = factory.make_string()
+        content = factory.make_script_content()
 
         # Every uploaded file also has a name.  But this is completely
         # unrelated to the name we give to the commissioning script.
@@ -102,10 +102,10 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
         self.assertEqual(script.script.data, response.content.decode('utf-8'))
 
     def test_PUT_updates_contents(self):
-        old_content = b'old:%s' % factory.make_string().encode('ascii')
+        old_content = factory.make_script_content().encode('ascii')
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING, script=old_content)
-        new_content = b'new:%s' % factory.make_string().encode('ascii')
+        new_content = factory.make_script_content().encode('ascii')
 
         response = self.client.put(
             self.get_url(script.name),

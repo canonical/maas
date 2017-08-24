@@ -168,7 +168,13 @@ class ScriptForm(ModelForm):
                 script = self.data['script']['data']
         else:
             script = self.data['script']
-        for line in script.splitlines():
+
+        script_splitlines = script.splitlines()
+        if (len(script_splitlines) >= 1 and
+                not script_splitlines[0].startswith('#!/')):
+            set_form_error(self, 'script', 'Must start with shebang.')
+
+        for line in script_splitlines[1:]:
             m = yaml_delim.search(line)
             if m is not None:
                 if found_version is None and m.group('version') == '1.0':
@@ -378,7 +384,8 @@ class ScriptForm(ModelForm):
                 valid = False
 
         if (not valid and self.instance.script_id is not None and
-                self.initial.get('script') != self.instance.script_id):
+                self.initial.get('script') != self.instance.script_id and
+                self.instance.script.id is not None):
             # If form validation failed cleanup any new VersionedTextFile
             # created by the VersionedTextFileField.
             self.instance.script.delete()
@@ -399,6 +406,7 @@ class CommissioningScriptForm(Form):
 
     def __init__(self, instance=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._form = None
 
     def clean_content(self):
         content = self.cleaned_data['content']
@@ -422,8 +430,14 @@ class CommissioningScriptForm(Form):
     def is_valid(self):
         valid = super().is_valid()
 
-        if not self._form.is_valid():
-            self.errors.update(self._form.errors)
+        # If content is empty self.clean_content isn't run.
+        if self._form is not None and not self._form.is_valid():
+            # This form only has content so all errors must be on that field.
+            if 'content' not in self.errors:
+                self.errors['content'] = []
+            for key, errors in self._form.errors.items():
+                for error in errors:
+                    self.errors['content'].append('%s: %s' % (key, error))
             return False
         else:
             return valid

@@ -150,6 +150,7 @@ from netaddr import (
 )
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
+import yaml
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -285,6 +286,24 @@ class Factory(maastesting.factory.Factory):
         return random.choice(
             [choice for choice in supported_releases if choice not in but_not],
         )
+
+    def make_script_content(
+            self, yaml_content=None, shebang='/bin/bash', version='1.0',
+            content=None):
+        script = '#!%s\n\n' % shebang
+        if yaml_content is not None:
+            script += '# --- Start MAAS %s script metadata ---\n' % version
+            if isinstance(yaml_content, dict):
+                script += '# %s' % yaml.safe_dump(yaml_content).replace(
+                    '\n', '\n# ')
+            else:
+                script += yaml_content
+            script += '\n# --- End MAAS %s script metadata ---\n' % version
+        if content is None:
+            script += factory.make_string()
+        else:
+            script += content
+        return script
 
     def _save_node_unchecked(self, node):
         """Save a :class:`Node`, but circumvent status transition checks."""
@@ -703,7 +722,8 @@ class Factory(maastesting.factory.Factory):
         if timeout is None:
             timeout = timedelta(seconds=random.randint(0, 600))
         if script is None:
-            script = VersionedTextFile.objects.create(data=self.make_string())
+            script = VersionedTextFile.objects.create(
+                data=self.make_script_content())
         return Script.objects.create(
             name=name, title=title, description=description, tags=tags,
             script_type=script_type, hardware_type=hardware_type,
