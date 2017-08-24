@@ -4,11 +4,6 @@ debian/tmp/usr/bin/uec2roottar
 # Install maas-dhcp-helper
 debian/tmp/usr/sbin/maas-dhcp-helper
 
-# Install network monitoring scripts
-debian/tmp/usr/lib/maas/maas-network-monitor
-debian/tmp/usr/lib/maas/maas-beacon-monitor
-debian/tmp/usr/lib/maas/maas-dhcp-monitor
-
 # Install test scripts
 debian/tmp/usr/lib/maas/maas-test-enlistment
 

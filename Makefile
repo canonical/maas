@@ -52,6 +52,7 @@ build: \
   bin/buildout \
   bin/database \
   bin/maas \
+  bin/maas-common \
   bin/maas-rack \
   bin/maas-region \
   bin/twistd.rack \
@@ -118,7 +119,7 @@ bin/maas-region bin/twistd.region: \
 
 bin/test.region: \
   bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) \
-  bin/maas-region bin/maas-rack
+  bin/maas-region bin/maas-rack bin/maas-common
 	$(buildout) install region-test
 	@touch --no-create $@
 
@@ -152,7 +153,7 @@ bin/test.testing: \
 	$(buildout) install testing-test
 	@touch --no-create $@
 
-bin/maas-rack bin/twistd.rack: \
+bin/maas-rack bin/twistd.rack bin/maas-common: \
   bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install rack
 	@touch --no-create $@
@@ -568,13 +569,13 @@ services/dns/@deps: bin/py
 
 services/database/@deps: bin/database
 
-services/rackd/@deps: bin/twistd.rack bin/maas-rack
+services/rackd/@deps: bin/twistd.rack bin/maas-rack bin/maas-common
 
 services/reloader/@deps:
 
-services/regiond/@deps: bin/maas-region bin/maas-rack
+services/regiond/@deps: bin/maas-region bin/maas-rack bin/maas-common
 
-services/regiond2/@deps: bin/maas-region bin/maas-rack
+services/regiond2/@deps: bin/maas-region bin/maas-rack bin/maas-common
 
 #
 # Package building

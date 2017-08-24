@@ -366,7 +366,7 @@ def add_arguments(parser):
     parser.add_argument(
         '-i', '--input-file', type=str, required=False,
         help="File to read PCAP output from. Use - for stdin. Default is to "
-             "call `sudo /usr/lib/maas/maas-network-monitor` to get input.")
+             "call `sudo /usr/lib/maas/network-monitor` to get input.")
 
 
 def run(args, output=sys.stdout, stdin=sys.stdin,
@@ -381,7 +381,7 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
-        cmd = [get_path("/usr/lib/maas/maas-network-monitor"), args.interface]
+        cmd = [get_path("/usr/lib/maas/network-monitor"), args.interface]
         cmd = sudo(cmd)
         network_monitor = subprocess.Popen(
             cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)

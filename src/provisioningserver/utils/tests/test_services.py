@@ -567,7 +567,7 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         service = NeighbourDiscoveryService(ifname, Mock())
         args = service.getProcessParameters()
         self.assertThat(args, HasLength(3))
-        self.assertTrue(args[0].endswith(b'maas-rack'))
+        self.assertTrue(args[0].endswith(b'maas-common'))
         self.assertTrue(args[1], Equals(b"observe-arp"))
         self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
 
@@ -619,7 +619,7 @@ class TestBeaconingService(MAASTestCase):
         service = BeaconingService(ifname, Mock())
         args = service.getProcessParameters()
         self.assertThat(args, HasLength(3))
-        self.assertTrue(args[0].endswith(b'maas-rack'))
+        self.assertTrue(args[0].endswith(b'maas-common'))
         self.assertTrue(args[1], Equals(b"observe-beacons"))
         self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
 
@@ -670,7 +670,7 @@ class TestMDNSResolverService(MAASTestCase):
         service = MDNSResolverService(Mock())
         args = service.getProcessParameters()
         self.assertThat(args, HasLength(2))
-        self.assertTrue(args[0].endswith(b"maas-rack"))
+        self.assertTrue(args[0].endswith(b"maas-common"))
         self.assertTrue(args[1], Equals(b"observe-mdns"))
 
     @inlineCallbacks

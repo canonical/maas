@@ -339,7 +339,7 @@ def add_arguments(parser):
     parser.add_argument(
         '-i', '--input-file', type=str, required=False,
         help="File to read beaconing output from. Use - for stdin. Default is "
-             "to call `sudo /usr/lib/maas/maas-beacon-monitor` to get input.")
+             "to call `sudo /usr/lib/maas/beacon-monitor` to get input.")
 
 
 def run(args, output=sys.stdout, stdin=sys.stdin,
@@ -355,7 +355,7 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
         cmd = sudo(
-            [get_path("/usr/lib/maas/maas-beacon-monitor"), args.interface])
+            [get_path("/usr/lib/maas/beacon-monitor"), args.interface])
         network_monitor = subprocess.Popen(
             cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
         infile = network_monitor.stdout

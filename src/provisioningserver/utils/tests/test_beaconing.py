@@ -234,7 +234,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         self.assertThat(
             popen,
             MockCalledOnceWith(
-                ['sudo', '-n', '/usr/lib/maas/maas-beacon-monitor', 'eth0'],
+                ['sudo', '-n', '/usr/lib/maas/beacon-monitor', 'eth0'],
                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE))
 
     def test__calls_subprocess_for_interface_sudo(self):
@@ -250,7 +250,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         self.assertThat(
             popen,
             MockCalledOnceWith(
-                ['sudo', '-n', '/usr/lib/maas/maas-beacon-monitor', 'eth0'],
+                ['sudo', '-n', '/usr/lib/maas/beacon-monitor', 'eth0'],
                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE))
 
     def test__checks_for_pipe(self):

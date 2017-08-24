@@ -61,7 +61,7 @@ from twisted.python.filepath import FilePath
 from twisted.python.lockfile import FilesystemLock
 
 
-def get_maas_provision_command():
+def get_maas_common_command():
     """Return path to the maas-rack command.
 
     In production mode this will just return 'maas-rack', but in
@@ -72,9 +72,9 @@ def get_maas_provision_command():
     from provisioningserver.config import is_dev_environment
     if is_dev_environment():
         from maastesting import root
-        return os.path.join(root, "bin", "maas-rack")
+        return os.path.join(root, "bin", "maas-common")
     else:
-        return "maas-rack"
+        return os.path.join(get_path("/usr/lib/maas"), "maas-common")
 
 
 def get_library_script_path(name):

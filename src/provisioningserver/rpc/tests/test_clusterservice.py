@@ -110,7 +110,7 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.env import set_maas_id
 from provisioningserver.utils.fs import (
-    get_maas_provision_command,
+    get_maas_common_command,
     NamedLock,
 )
 from provisioningserver.utils.network import get_all_interfaces_definition
@@ -2470,7 +2470,7 @@ class TestClusterProtocol_ScanNetworks(
     def test_get_scan_all_networks_args_returns_expected_binary_args(self):
         args = get_scan_all_networks_args(scan_all=True)
         self.assertThat(args, Equals(
-            [get_maas_provision_command().encode('utf-8'), b'scan-network']
+            [get_maas_common_command().encode('utf-8'), b'scan-network']
         ))
 
     def test_get_scan_all_networks_args_sudo(self):
@@ -2479,7 +2479,7 @@ class TestClusterProtocol_ScanNetworks(
         is_dev_environment_mock.return_value = False
         args = get_scan_all_networks_args(scan_all=True)
         self.assertThat(args, Equals([
-            b'sudo', b'-n', get_maas_provision_command().encode('utf-8'),
+            b'sudo', b'-n', get_maas_common_command().encode('utf-8'),
             b'scan-network']
         ))
 
@@ -2487,7 +2487,7 @@ class TestClusterProtocol_ScanNetworks(
         args = get_scan_all_networks_args(cidrs=[
             IPNetwork('192.168.0.0/24'), IPNetwork('192.168.1.0/24')])
         self.assertThat(args, Equals([
-            get_maas_provision_command().encode('utf-8'),
+            get_maas_common_command().encode('utf-8'),
             b'scan-network',
             b'192.168.0.0/24',
             b'192.168.1.0/24'
@@ -2497,7 +2497,7 @@ class TestClusterProtocol_ScanNetworks(
     def test_get_scan_all_networks_args_returns_supplied_interface(self):
         args = get_scan_all_networks_args(interface='eth0')
         self.assertThat(args, Equals([
-            get_maas_provision_command().encode('utf-8'),
+            get_maas_common_command().encode('utf-8'),
             b'scan-network',
             b'eth0'
         ]
@@ -2510,7 +2510,7 @@ class TestClusterProtocol_ScanNetworks(
             interface='eth0', cidrs=[
                 IPNetwork('192.168.0.0/24'), IPNetwork('192.168.1.0/24')])
         self.assertThat(args, Equals([
-            get_maas_provision_command().encode('utf-8'),
+            get_maas_common_command().encode('utf-8'),
             b'scan-network',
             b'--threads', str(threads).encode('utf-8'),
             b'--ping',

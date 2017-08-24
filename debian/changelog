@@ -1,8 +1,11 @@
 maas (2.3.0~alpha3-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * Move scripts to maas-common that are used by the MAAS
+    region controller in addition to the rack.
+  * Add /usr/lib/maas/maas-common script.
+  * Move to debhelper compat level 9.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 23 Aug 2017 10:13:52 -0400
+ -- Mike Pontillo <mike.pontillo@canonical.com>  Tue, 22 Aug 2017 15:28:42 -0700
 
 maas (2.3.0~alpha2-6194-g7fb23b0-0ubuntu1) artful; urgency=medium
 

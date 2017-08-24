@@ -40,7 +40,7 @@ from provisioningserver.utils.beaconing import (
     TopologyHint,
 )
 from provisioningserver.utils.fs import (
-    get_maas_provision_command,
+    get_maas_common_command,
     NamedLock,
 )
 from provisioningserver.utils.network import (
@@ -289,7 +289,7 @@ class NeighbourDiscoveryService(ProcessProtocolService):
         return "Neighbour observation process for %s" % self.ifname
 
     def getProcessParameters(self):
-        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
+        maas_rack_cmd = get_maas_common_command().encode("utf-8")
         return [
             maas_rack_cmd,
             b"observe-arp",
@@ -313,7 +313,7 @@ class BeaconingService(ProcessProtocolService):
         return "Beaconing process for %s" % self.ifname
 
     def getProcessParameters(self):
-        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
+        maas_rack_cmd = get_maas_common_command().encode("utf-8")
         return [
             maas_rack_cmd,
             b"observe-beacons",
@@ -336,7 +336,7 @@ class MDNSResolverService(ProcessProtocolService):
         return "mDNS observation process"
 
     def getProcessParameters(self):
-        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
+        maas_rack_cmd = get_maas_common_command().encode("utf-8")
         return [
             maas_rack_cmd,
             b"observe-mdns",

@@ -1,1 +1,2 @@
-maas-rack-controller: binary-without-manpage usr/bin/uec2roottar usr/sbin/maas-dhcp-helper usr/lib/maas/maas-network-monitor usr/lib/maas/maas-beacon-monitor usr/lib/maas/maas-dhcp-monitor usr/lib/maas/maas-test-enlistment
+maas-rack-controller: binary-without-manpage usr/bin/uec2roottar usr/sbin/maas-dhcp-helper usr/lib/maas/maas-test-enlistment
+maas-common: binary-without-manpage usr/lib/maas/network-monitor usr/lib/maas/beacon-monitor usr/lib/maas/dhcp-monitor

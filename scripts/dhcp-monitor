@@ -2,7 +2,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# Utility script to wrap `tcpdump`, so that this script can be called with 
+# Utility script to wrap `tcpdump`, so that this script can be called with
 # `sudo` without allowing MAAS access to read arbitrary network traffic.
 # This script is designed to be as minimal as possible, to prevent arbitrary
 # code execution.
@@ -13,7 +13,7 @@ if [ $# -ne 1 ]; then
     echo "Usage:" >&2
     echo "    $0 <interface>" >&2
     exit 32
-fi 
+fi
 
 exec /usr/sbin/tcpdump --interface "$1" --no-promiscuous-mode \
     --packet-buffered --immediate-mode --snapshot-length=1500 -n -w - \

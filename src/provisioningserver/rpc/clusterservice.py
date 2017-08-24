@@ -86,7 +86,7 @@ from provisioningserver.utils.env import (
     set_maas_id,
 )
 from provisioningserver.utils.fs import (
-    get_maas_provision_command,
+    get_maas_common_command,
     NamedLock,
 )
 from provisioningserver.utils.network import (
@@ -162,7 +162,7 @@ def get_scan_all_networks_args(
 
     :param cidrs: an iterable of CIDR strings
     """
-    args = [get_maas_provision_command(), 'scan-network']
+    args = [get_maas_common_command(), 'scan-network']
     if not is_dev_environment():
         args = sudo(args)
     if threads is not None:

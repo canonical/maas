@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 Build-Depends: debhelper (>= 8.1.0~),
                dh-apport,
+               dh-exec,
                dh-python,
                dh-systemd,
                po-debconf,
@@ -57,7 +58,8 @@ Description: "Metal as a Service" is a physical cloud and IPAM
 Package: maas-common
 Architecture: all
 Depends: rsyslog,
-         ${misc:Depends}
+         ${misc:Depends},
+         python3-maas-provisioningserver
 Breaks: maas ( <= 0.1+bzr1048+dfsg-0ubuntu1 )
 Replaces: maas ( <= 0.1+bzr1048+dfsg-0ubuntu1 )
 Description: MAAS server common files
