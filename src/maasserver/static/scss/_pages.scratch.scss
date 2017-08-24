@@ -140,26 +140,9 @@
     display: block;
   }
 
-  .page-navigation {
-    margin: 0;
-    z-index: 1 !important;
-    height: 59px;
-
-    .wrapper--inner {
-      float: left;
-      width: 100%;
-    }
-
-    &__links {
-      box-sizing: unset;
-      position: relative;
-      white-space: nowrap;
-      width: 100%;
-    }
-
-    &__link {
+  .page-navigation__link {
       background-color: transparent;
-      height: 58px;
+      height: initial;
       border-radius: 0;
 
       &:hover {
@@ -180,23 +163,17 @@
 
       &.is-active {
 
-        @media only screen and (max-width : $breakpoint-medium) {
-          box-shadow: inset 0 -3px 0 $tab-active-state;
-        }
-
-        &:hover {
-          @media only screen and (max-width : $breakpoint-medium) {
-            box-shadow: inset 0 -3px 0 $tab-active-state;
-          }
-        }
-
         &:focus,
         &:active {
           outline: none;
           box-shadow: inset 0 -3px #e95420, 0px 0px 0px 1px $color-focus;
         }
       }
-    }
+  }
+
+  .page-navigation {
+    margin: 0;
+    z-index: 1 !important;
   }
 
   .tabs .tabs__tab .tabs__tab-link {
