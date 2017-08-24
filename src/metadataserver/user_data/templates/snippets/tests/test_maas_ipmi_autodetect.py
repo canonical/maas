@@ -7,6 +7,7 @@ __all__ = []
 
 from collections import OrderedDict
 import platform
+import re
 import subprocess
 from unittest.mock import call
 
@@ -28,6 +29,7 @@ from snippets.maas_ipmi_autodetect import (
     commit_ipmi_settings,
     configure_ipmi_user,
     format_user_key,
+    generate_random_password,
     get_ipmi_ip_address,
     IPMIError,
     list_user_numbers,
@@ -38,6 +40,7 @@ from snippets.maas_ipmi_autodetect import (
     set_ipmi_lan_channel_settings,
     verify_ipmi_user_settings,
 )
+from testtools.matchers import Equals
 
 
 class TestRunCommand(MAASTestCase):
@@ -454,8 +457,76 @@ class TestConfigureIPMIUser(MAASTestCase):
         self.patch(maas_ipmi_autodetect,
                    'make_ipmi_user_settings').return_value = expected.copy()
         recorder = self.patch(maas_ipmi_autodetect, 'apply_ipmi_user_settings')
-        configure_ipmi_user('DC', 'DC')
+        configure_ipmi_user('DC')
         self.assertThat(recorder, MockCalledOnceWith(expected))
+
+    def test_configures_user_with_standard_password(self):
+        """Test that it returns the configured password if successful"""
+        password = 'standard123'
+        self.patch(maas_ipmi_autodetect,
+                   'generate_random_password').return_value = password
+        self.patch(maas_ipmi_autodetect, 'apply_ipmi_user_settings')
+        configured_password = configure_ipmi_user('DC')
+        self.assertEqual(configured_password, password)
+
+    def test_raises_ipmi_error_if_cant_configure_user(self):
+        """Test that IPMIError is raised if it cannot set a password"""
+        recorder = self.patch(
+            maas_ipmi_autodetect, 'apply_ipmi_user_settings')
+        recorder.side_effect = subprocess.CalledProcessError(
+            1, 'bmc-set')
+        self.patch(maas_ipmi_autodetect, 'configure_ipmi_user')
+        self.assertRaises(
+            IPMIError, configure_ipmi_user, 'maas')
+
+
+class TestGeneratesAcceptablePasswords(MAASTestCase):
+
+    scenarios = [
+        ("maas", {
+            "special_chars": '!"#$%&\'()*+-./:;<=>?@[\\]^_`{|}~',
+            "min_len": 10,
+            "max_len": 15,
+        }),
+        ("huawei", {
+            "special_chars": '`~!@#$%^&*()-_=+\|[{}];:\'",<.>/?',
+            "min_len": 8,
+            "max_len": 20,
+        }),
+    ]
+
+    def test_generates_acceptable_random_passwords(self):
+        def is_acceptable_password(password):
+            acceptable_length = self.min_len <= len(password) <= self.max_len
+            if not acceptable_length:
+                return False
+            special = set(self.special_chars)
+            has_special = any((c in special) for c in password)
+            if not has_special:
+                return False
+            required_character_sets = 0
+            if re.match(r".*[a-z].*", password) is not None:
+                required_character_sets += 1
+            if re.match(r".*[A-Z].*", password) is not None:
+                required_character_sets += 1
+            if re.match(r".*[0-9].*", password) is not None:
+                required_character_sets += 1
+            if required_character_sets < 2:
+                return False
+            return True
+        max_attempts = 100
+        acceptable = 0
+        unacceptable = []
+        for attempt in range(1, max_attempts + 1):
+            candidate = generate_random_password(with_special_chars=True)
+            if is_acceptable_password(candidate):
+                acceptable += 1
+            else:
+                unacceptable.append(candidate)
+        self.assertThat(
+            acceptable, Equals(max_attempts),
+            "%d unacceptable passwords out of %d attempted: %r" % (
+                max_attempts - acceptable, max_attempts, unacceptable))
 
 
 class TestCommitIPMISettings(MAASTestCase):

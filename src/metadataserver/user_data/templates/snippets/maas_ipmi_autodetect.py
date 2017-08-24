@@ -229,10 +229,17 @@ def make_ipmi_user_settings(username, password):
     return user_settings
 
 
-def configure_ipmi_user(username, password):
+def configure_ipmi_user(username):
     """Create or configure an IPMI user for remote use."""
-    user_settings = make_ipmi_user_settings(username, password)
-    apply_ipmi_user_settings(user_settings)
+    for password in [generate_random_password(),
+                     generate_random_password(with_special_chars=True)]:
+        user_settings = make_ipmi_user_settings(username, password)
+        try:
+            apply_ipmi_user_settings(user_settings)
+            return password
+        except subprocess.CalledProcessError:
+            pass
+    raise IPMIError("Unable to set BMC password.")
 
 
 def set_ipmi_lan_channel_settings():
@@ -270,10 +277,35 @@ def get_maas_power_settings_json(user, password, ipaddress, version):
     return json.dumps(power_params)
 
 
-def generate_random_password(min_length=8, max_length=15):
+def generate_random_password(
+        min_length=10, max_length=15, with_special_chars=False):
     length = random.randint(min_length, max_length)
-    letters = string.ascii_letters + string.digits
-    return ''.join([random.choice(letters) for _ in range(length)])
+    special_chars = '!"#$%&\'()*+-./:;<=>?@[\\]^_`{|}~'
+    letters = ""
+    if with_special_chars:
+        # LP: #1621175 - Password generation for non-compliant IPMI password
+        # policy. Huawei has implemented a different password policy that
+        # does not confirm with the IPMI spec, hence we generate a password
+        # that would be compliant to their use case.
+        # Randomly select 2 Upper Case
+        letters += ''.join([
+            random.choice(string.ascii_uppercase) for _ in range(2)])
+        # Randomly select 2 Lower Case
+        letters += ''.join([
+            random.choice(string.ascii_lowercase) for _ in range(2)])
+        # Randomly select 2 numbers
+        letters += ''.join([
+            random.choice(string.digits) for _ in range(2)])
+        # Randomly select a special character
+        letters += random.choice(special_chars)
+        # Create the extra characters to fullfill max_length
+        letters += ''.join([
+            random.choice(string.ascii_letters) for _ in range(length - 7)])
+        # Randomly mix the password
+        return ''.join(random.sample(letters, len(letters)))
+    else:
+        letters = string.ascii_letters + string.digits
+        ''.join([random.choice(letters) for _ in range(length)])
 
 
 def bmc_supports_lan2_0():
@@ -307,11 +339,12 @@ def main():
         set_ipmi_network_source("Use_DHCP")
         # allow IPMI 120 seconds to obtain an IP address
         time.sleep(120)
+
     # create user/pass
     IPMI_MAAS_USER = "maas"
-    IPMI_MAAS_PASSWORD = generate_random_password()
+    IPMI_MAAS_PASSWORD = None
 
-    configure_ipmi_user(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD)
+    IPMI_MAAS_PASSWORD = configure_ipmi_user(IPMI_MAAS_USER)
 
     # Attempt to enable IPMI Over Lan. If it is disabled, MAAS won't
     # be able to remotely communicate to the BMC.
