@@ -136,6 +136,17 @@ class TransactionalHelpersMixin:
         return factory.make_Node(vlan=vlan, **params)
 
     @transactional
+    def create_node_with_interface(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Node_with_Interface_on_Subnet(**params)
+
+    @transactional
+    def get_node_ip_address(self, node):
+        interface = node.get_boot_interface()
+        return interface.ip_addresses.first()
+
+    @transactional
     def update_node(self, system_id, params):
         node = Node.objects.get(system_id=system_id)
         apply_update(node, params)

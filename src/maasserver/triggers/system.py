@@ -869,36 +869,295 @@ DHCP_CONFIG_NTP_SERVERS_DELETE = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
-# Triggered when a subnet is updated. Increments the zone serial and notifies
-# that DNS needs to be updated. Only watches changes on the cidr and rdns_mode.
-DNS_SUBNET_UPDATE = dedent("""\
-    CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
-    RETURNS trigger as $$
-    DECLARE
-      changes text[];
+
+# Triggered when DNS needs to be published. In essense this means on insert
+# into maasserver_dnspublication.
+DNS_PUBLISH = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_publish()
+    RETURNS trigger AS $$
     BEGIN
-      IF OLD.cidr != NEW.cidr THEN
-        changes := changes || (
-          'CIDR changed from ' || OLD.cidr || ' to ' || NEW.cidr);
-      END IF;
-      IF OLD.rdns_mode != NEW.rdns_mode THEN
-        changes := changes || (
-          'RDNS mode changed from ' || OLD.rdns_mode || ' to ' ||
-          NEW.rdns_mode);
-      END IF;
-      IF array_length(changes, 1) != 0 THEN
-        INSERT INTO maasserver_dnspublication
-          (serial, created, source)
-        VALUES
-          (nextval('maasserver_zone_serial_seq'), now(),
-           substring(
-             ('Subnet ' || NEW.name || ': ' || array_to_string(changes, ', '))
-             FOR 255));
+      PERFORM pg_notify('sys_dns', '');
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure to mark DNS as needing an update.
+DNS_PUBLISH_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_publish_update(reason text)
+    RETURNS void as $$
+    BEGIN
+      INSERT INTO maasserver_dnspublication
+        (serial, created, source)
+      VALUES
+        (nextval('maasserver_zone_serial_seq'), now(),
+         substring(reason FOR 255));
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a new domain is added. Increments the zone serial and
+# notifies that DNS needs to be updated.
+DNS_DOMAIN_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_domain_insert()
+    RETURNS trigger as $$
+    BEGIN
+      IF NEW.authoritative THEN
+          PERFORM sys_dns_publish_update(
+            'added zone ' || NEW.name);
       END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
     """)
+
+
+# Triggered when a domain is updated. Increments the zone serial and
+# notifies that DNS needs to be updated. Only watches authoritative, name,
+# and ttl.
+DNS_DOMAIN_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_domain_update()
+    RETURNS trigger as $$
+    DECLARE
+      changes text[];
+    BEGIN
+      IF OLD.authoritative AND NOT NEW.authoritative THEN
+        PERFORM sys_dns_publish_update(
+            'removed zone ' || NEW.name);
+      ELSIF NOT OLD.authoritative AND NEW.authoritative THEN
+        PERFORM sys_dns_publish_update(
+            'added zone ' || NEW.name);
+      ELSIF OLD.authoritative and NEW.authoritative THEN
+        IF OLD.name != NEW.name THEN
+            changes := changes || ('renamed to ' || NEW.name);
+        END IF;
+        IF ((OLD.ttl IS NULL AND NEW.ttl IS NOT NULL) OR
+            (OLD.ttl IS NOT NULL and NEW.ttl IS NULL) OR
+            (OLD.ttl != NEW.ttl)) THEN
+            changes := changes || (
+              'ttl changed to ' || COALESCE(text(NEW.ttl), 'default'));
+        END IF;
+        IF array_length(changes, 1) != 0 THEN
+          PERFORM sys_dns_publish_update(
+            'zone ' || OLD.name || ' ' || array_to_string(changes, ' and '));
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a domain is deleted. Increments the zone serial and
+# notifies that DNS needs to be updated.
+DNS_DOMAIN_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_domain_delete()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.authoritative THEN
+        PERFORM sys_dns_publish_update(
+            'removed zone ' || OLD.name);
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a static IP address is updated. Increments the zone serial and
+# notifies that DNS needs to be updated. Only watches ip.
+DNS_STATICIPADDRESS_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_staticipaddress_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF ((OLD.ip IS NULL and NEW.ip IS NOT NULL) OR
+          (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+          (OLD.ip != NEW.ip)) OR
+          (OLD.alloc_type != NEW.alloc_type) THEN
+        IF EXISTS (
+            SELECT
+              domain.id
+            FROM maasserver_staticipaddress AS staticipaddress
+            LEFT JOIN (
+              maasserver_interface_ip_addresses AS iia
+              JOIN maasserver_interface AS interface ON
+                iia.interface_id = interface.id
+              JOIN maasserver_node AS node ON
+                node.id = interface.node_id) ON
+              iia.staticipaddress_id = staticipaddress.id
+            LEFT JOIN (
+              maasserver_dnsresource_ip_addresses AS dia
+              JOIN maasserver_dnsresource AS dnsresource ON
+                dia.dnsresource_id = dnsresource.id) ON
+              dia.staticipaddress_id = staticipaddress.id
+            JOIN maasserver_domain AS domain ON
+              domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+            WHERE
+              domain.authoritative = TRUE AND
+              (staticipaddress.id = OLD.id OR
+               staticipaddress.id = NEW.id))
+        THEN
+          IF OLD.ip IS NULL and NEW.ip IS NOT NULL THEN
+            PERFORM sys_dns_publish_update(
+              'ip ' || host(NEW.ip) || ' allocated');
+            RETURN NEW;
+          ELSIF OLD.ip IS NOT NULL and NEW.ip IS NULL THEN
+            PERFORM sys_dns_publish_update(
+              'ip ' || host(OLD.ip) || ' released');
+            RETURN NEW;
+          ELSIF OLD.ip != NEW.ip THEN
+            PERFORM sys_dns_publish_update(
+              'ip ' || host(OLD.ip) || ' changed to ' || host(NEW.ip));
+            RETURN NEW;
+          END IF;
+
+          -- Made it this far then only alloc_type has changed. Only send
+          -- a notification is the IP address is assigned.
+          IF NEW.ip IS NOT NULL THEN
+            PERFORM sys_dns_publish_update(
+              'ip ' || host(OLD.ip) || ' alloc_type changed to ' ||
+              NEW.alloc_type);
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when an interface is linked to an IP address. Increments the zone
+# serial and notifies that DNS needs to be updated.
+DNS_NIC_IP_LINK = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_nic_ip_link()
+    RETURNS trigger as $$
+    DECLARE
+      node maasserver_node;
+      nic maasserver_interface;
+      ip maasserver_staticipaddress;
+    BEGIN
+      SELECT maasserver_interface.* INTO nic
+      FROM maasserver_interface
+      WHERE maasserver_interface.id = NEW.interface_id;
+      SELECT maasserver_node.* INTO node
+      FROM maasserver_node
+      WHERE maasserver_node.id = nic.node_id;
+      SELECT maasserver_staticipaddress.* INTO ip
+      FROM maasserver_staticipaddress
+      WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
+      IF (ip.ip IS NOT NULL AND host(ip.ip) != '' AND EXISTS (
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.id = node.domain_id AND
+              maasserver_domain.authoritative = TRUE))
+      THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(ip.ip) || ' connected to ' || node.hostname ||
+          ' on ' || nic.name);
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when an interface is unlinked to an IP address. Increments the zone
+# serial and notifies that DNS needs to be updated.
+DNS_NIC_IP_UNLINK = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_nic_ip_unlink()
+    RETURNS trigger as $$
+    DECLARE
+      node maasserver_node;
+      nic maasserver_interface;
+      ip maasserver_staticipaddress;
+      changes text[];
+    BEGIN
+      SELECT maasserver_interface.* INTO nic
+      FROM maasserver_interface
+      WHERE maasserver_interface.id = OLD.interface_id;
+      SELECT maasserver_node.* INTO node
+      FROM maasserver_node
+      WHERE maasserver_node.id = nic.node_id;
+      SELECT maasserver_staticipaddress.* INTO ip
+      FROM maasserver_staticipaddress
+      WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
+      IF (ip.ip IS NOT NULL AND EXISTS (
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.id = node.domain_id AND
+              maasserver_domain.authoritative = TRUE))
+      THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(ip.ip) || ' disconnected from ' || node.hostname ||
+          ' on ' || nic.name);
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a subnet is inserted. Increments the zone serial and notifies
+# that DNS needs to be updated. Doesn't notify if the rdns_mode is
+# disabled (0).
+DNS_SUBNET_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_subnet_insert()
+    RETURNS trigger as $$
+    DECLARE
+      changes text[];
+    BEGIN
+      IF NEW.rdns_mode != 0 THEN
+        PERFORM sys_dns_publish_update('added subnet ' || text(NEW.cidr));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a subnet is updated. Increments the zone serial and notifies
+# that DNS needs to be updated. Only watches changes on the cidr and rdns_mode.
+DNS_SUBNET_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.cidr != NEW.cidr THEN
+        PERFORM sys_dns_publish_update(
+            'subnet ' || text(OLD.cidr) || ' changed to ' || text(NEW.CIDR));
+        RETURN NEW;
+      END IF;
+      IF OLD.rdns_mode != NEW.rdns_mode THEN
+        PERFORM sys_dns_publish_update(
+            'subnet ' || text(NEW.cidr) || ' rdns changed to ' ||
+            NEW.rdns_mode);
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a subnet is deleted. Increments the zone serial and notifies
+# that DNS needs to be updated. Doesn't notify if the rdns_mode is
+# disabled (0).
+DNS_SUBNET_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_subnet_delete()
+    RETURNS trigger as $$
+    DECLARE
+      changes text[];
+    BEGIN
+      IF OLD.rdns_mode != 0 THEN
+        PERFORM sys_dns_publish_update('removed subnet ' || text(OLD.cidr));
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
 
 # Triggered when a node is updated. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches changes on the hostname and
@@ -907,24 +1166,60 @@ DNS_NODE_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_node_update()
     RETURNS trigger as $$
     DECLARE
+      domain maasserver_domain;
+      new_domain maasserver_domain;
       changes text[];
     BEGIN
-      IF OLD.hostname != NEW.hostname THEN
-        changes := changes || (
-          'hostname changed from ' || OLD.hostname || ' to ' || NEW.hostname);
+      IF OLD.hostname != NEW.hostname AND OLD.domain_id = NEW.domain_id THEN
+        IF EXISTS(
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.authoritative = TRUE AND
+              maasserver_domain.id = NEW.domain_id) THEN
+          PERFORM sys_dns_publish_update(
+            'node ' || OLD.hostname || ' changed hostname to ' ||
+            NEW.hostname);
+        END IF;
+      ELSIF OLD.domain_id != NEW.domain_id THEN
+        -- Domains have changed. If either one is authoritative then DNS
+        -- needs to be updated.
+        SELECT maasserver_domain.* INTO domain
+        FROM maasserver_domain
+        WHERE maasserver_domain.id = OLD.domain_id;
+        SELECT maasserver_domain.* INTO new_domain
+        FROM maasserver_domain
+        WHERE maasserver_domain.id = NEW.domain_id;
+        IF domain.authoritative = TRUE OR new_domain.authoritative = TRUE THEN
+            PERFORM sys_dns_publish_update(
+              'node ' || NEW.hostname || ' changed zone to ' ||
+              new_domain.name);
+        END IF;
       END IF;
-      IF OLD.domain_id != NEW.domain_id THEN
-        changes := changes || 'domain changed'::text;
-      END IF;
-      IF array_length(changes, 1) != 0 THEN
-        INSERT INTO maasserver_dnspublication
-          (serial, created, source)
-        VALUES
-          (nextval('maasserver_zone_serial_seq'), now(),
-           substring(
-             ('Node ' || NEW.system_id || ': ' ||
-              array_to_string(changes, ', '))
-             FOR 255));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a node is deleted. Increments the zone serial and notifies
+# that DNS needs to be updated.
+DNS_NODE_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_node_DELETE()
+    RETURNS trigger as $$
+    DECLARE
+      domain maasserver_domain;
+      new_domain maasserver_domain;
+      changes text[];
+    BEGIN
+      IF EXISTS(
+          SELECT maasserver_domain.id
+          FROM maasserver_domain
+          WHERE
+            maasserver_domain.authoritative = TRUE AND
+            maasserver_domain.id = OLD.domain_id) THEN
+        PERFORM sys_dns_publish_update(
+          'removed node ' || OLD.hostname);
       END IF;
       RETURN NEW;
     END;
@@ -939,28 +1234,76 @@ DNS_INTERFACE_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_interface_update()
     RETURNS trigger as $$
     DECLARE
+      node maasserver_node;
       changes text[];
     BEGIN
-      IF OLD.name != NEW.name THEN
-        changes := changes || (
-          'renamed from ' || OLD.name || ' to ' || NEW.name);
-      END IF;
-      IF OLD.node_id IS NULL AND NEW.node_id IS NOT NULL THEN
-        changes := changes || 'node set'::text;
-      ELSIF OLD.node_id IS NOT NULL AND NEW.node_id IS NULL THEN
-        changes := changes || 'node unset'::text;
+      IF OLD.name != NEW.name AND OLD.node_id = NEW.node_id THEN
+        IF NEW.node_id IS NOT NULL THEN
+            SELECT maasserver_node.* INTO node
+            FROM maasserver_node
+            WHERE maasserver_node.id = NEW.node_id;
+            IF EXISTS(
+                SELECT maasserver_domain.id
+                FROM maasserver_domain
+                WHERE
+                  maasserver_domain.authoritative = TRUE AND
+                  maasserver_domain.id = node.domain_id) THEN
+              PERFORM sys_dns_publish_update(
+                'node ' || node.hostname || ' renamed interface ' ||
+                OLD.name || ' to ' || NEW.name);
+            END IF;
+        END IF;
+      ELSIF OLD.node_id IS NULL and NEW.node_id IS NOT NULL THEN
+        SELECT maasserver_node.* INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.id = NEW.node_id;
+        IF EXISTS(
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.authoritative = TRUE AND
+              maasserver_domain.id = node.domain_id) THEN
+          PERFORM sys_dns_publish_update(
+            'node ' || node.hostname || ' added interface ' || NEW.name);
+        END IF;
+      ELSIF OLD.node_id IS NOT NULL and NEW.node_id IS NULL THEN
+        SELECT maasserver_node.* INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.id = OLD.node_id;
+        IF EXISTS(
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.authoritative = TRUE AND
+              maasserver_domain.id = node.domain_id) THEN
+          PERFORM sys_dns_publish_update(
+            'node ' || node.hostname || ' removed interface ' || NEW.name);
+        END IF;
       ELSIF OLD.node_id != NEW.node_id THEN
-        changes := changes || 'node changed'::text;
-      END IF;
-      IF array_length(changes, 1) != 0 THEN
-        INSERT INTO maasserver_dnspublication
-          (serial, created, source)
-        VALUES
-          (nextval('maasserver_zone_serial_seq'), now(),
-           substring(
-             ('Interface ' || NEW.name || ': ' ||
-              array_to_string(changes, ', '))
-             FOR 255));
+        SELECT maasserver_node.* INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.id = OLD.node_id;
+        IF EXISTS(
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.authoritative = TRUE AND
+              maasserver_domain.id = node.domain_id) THEN
+          PERFORM sys_dns_publish_update(
+            'node ' || node.hostname || ' removed interface ' || NEW.name);
+        END IF;
+        SELECT maasserver_node.* INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.id = NEW.node_id;
+        IF EXISTS(
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.authoritative = TRUE AND
+              maasserver_domain.id = node.domain_id) THEN
+          PERFORM sys_dns_publish_update(
+            'node ' || node.hostname || ' added interface ' || NEW.name);
+        END IF;
       END IF;
       RETURN NEW;
     END;
@@ -981,13 +1324,9 @@ DNS_CONFIG_INSERT = dedent("""\
           NEW.name = 'default_dns_ttl' OR
           NEW.name = 'windows_kms_host')
       THEN
-        INSERT INTO maasserver_dnspublication
-          (serial, created, source)
-        VALUES
-          (nextval('maasserver_zone_serial_seq'), now(), substring(
-            ('Configuration ' || NEW.name || ' set to ' ||
-             COALESCE(NEW.value, 'NULL'))
-            FOR 255));
+        PERFORM sys_dns_publish_update(
+          'configuration ' || NEW.name || ' set to ' ||
+          COALESCE(NEW.value, 'NULL'));
       END IF;
       RETURN NEW;
     END;
@@ -1009,27 +1348,222 @@ DNS_CONFIG_UPDATE = dedent("""\
           NEW.name = 'default_dns_ttl' OR
           NEW.name = 'windows_kms_host'))
       THEN
-        INSERT INTO maasserver_dnspublication
-          (serial, created, source)
-        VALUES
-          (nextval('maasserver_zone_serial_seq'), now(), substring(
-            ('Configuration ' || NEW.name || ' changed from ' ||
-             OLD.value || ' to ' || NEW.value)
-            FOR 255));
+        PERFORM sys_dns_publish_update(
+          'configuration ' || NEW.name || ' changed to ' || NEW.value);
       END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
     """)
 
-# Triggered when DNS needs to be published. In essense this means on insert
-# into maasserver_dnspublication.
-DNS_PUBLISH = dedent("""\
-    CREATE OR REPLACE FUNCTION sys_dns_publish()
-    RETURNS trigger AS $$
+
+# Triggered when a DNS resource is inserted. Increments the zone serial and
+# notifies that DNS needs to be updated.
+DNS_DNSRESOURCE_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsresource_insert()
+    RETURNS trigger as $$
+    DECLARE
+      domain maasserver_domain;
     BEGIN
-      PERFORM pg_notify('sys_dns', '');
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = NEW.domain_id;
+      PERFORM sys_dns_publish_update(
+        'zone ' || domain.name || ' added resource ' ||
+        COALESCE(NEW.name, 'NULL'));
       RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a DNS resource is updated. Increments the zone serial and
+# notifies that DNS needs to be updated.
+DNS_DNSRESOURCE_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsresource_update()
+    RETURNS trigger as $$
+    DECLARE
+      domain maasserver_domain;
+    BEGIN
+      IF OLD.domain_id != NEW.domain_id THEN
+        SELECT maasserver_domain.* INTO domain
+        FROM maasserver_domain
+        WHERE maasserver_domain.id = OLD.domain_id;
+        PERFORM sys_dns_publish_update(
+          'zone ' || domain.name || ' removed resource ' ||
+          COALESCE(NEW.name, 'NULL'));
+        SELECT maasserver_domain.* INTO domain
+        FROM maasserver_domain
+        WHERE maasserver_domain.id = NEW.domain_id;
+        PERFORM sys_dns_publish_update(
+          'zone ' || domain.name || ' added resource ' ||
+          COALESCE(NEW.name, 'NULL'));
+      ELSIF ((OLD.name IS NULL AND NEW.name IS NOT NULL) OR
+          (OLD.name IS NOT NULL AND NEW.name IS NULL) OR
+          (OLD.name != NEW.name) OR
+          (OLD.address_ttl IS NULL AND NEW.address_ttl IS NOT NULL) OR
+          (OLD.address_ttl IS NOT NULL AND NEW.address_ttl IS NULL) OR
+          (OLD.address_ttl != NEW.address_ttl)) THEN
+        SELECT maasserver_domain.* INTO domain
+        FROM maasserver_domain
+        WHERE maasserver_domain.id = NEW.domain_id;
+        PERFORM sys_dns_publish_update(
+          'zone ' || domain.name || ' updated resource ' ||
+          COALESCE(NEW.name, 'NULL'));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a DNS resource is deleted. Increments the zone serial and
+# notifies that DNS needs to be updated.
+DNS_DNSRESOURCE_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsresource_delete()
+    RETURNS trigger as $$
+    DECLARE
+      domain maasserver_domain;
+    BEGIN
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = OLD.domain_id;
+      PERFORM sys_dns_publish_update(
+        'zone ' || domain.name || ' removed resource ' ||
+        COALESCE(OLD.name, 'NULL'));
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when an IP address is linked to a DNS resource. Increments the zone
+# serial and notifies that DNS needs to be updated.
+DNS_DNSRESOURCE_IP_LINK = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsresource_ip_link()
+    RETURNS trigger as $$
+    DECLARE
+      sip maasserver_staticipaddress;
+      resource maasserver_dnsresource;
+      domain maasserver_domain;
+    BEGIN
+      SELECT maasserver_staticipaddress.* INTO sip
+      FROM maasserver_staticipaddress
+      WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
+      SELECT maasserver_dnsresource.* INTO resource
+      FROM maasserver_dnsresource
+      WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = resource.domain_id;
+      IF sip.ip IS NOT NULL THEN
+          PERFORM sys_dns_publish_update(
+            'ip ' || host(sip.ip) || ' linked to resource ' ||
+            COALESCE(resource.name, 'NULL') || ' on zone ' || domain.name);
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when an IP address is unlinked to a DNS resource. Increments the
+# zone serial and notifies that DNS needs to be updated.
+DNS_DNSRESOURCE_IP_UNLINK = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsresource_ip_unlink()
+    RETURNS trigger as $$
+    DECLARE
+      sip maasserver_staticipaddress;
+      resource maasserver_dnsresource;
+      domain maasserver_domain;
+    BEGIN
+      SELECT maasserver_staticipaddress.* INTO sip
+      FROM maasserver_staticipaddress
+      WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
+      SELECT maasserver_dnsresource.* INTO resource
+      FROM maasserver_dnsresource
+      WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = resource.domain_id;
+      IF sip.ip IS NOT NULL THEN
+          PERFORM sys_dns_publish_update(
+            'ip ' || host(sip.ip) || ' unlinked from resource ' ||
+            COALESCE(resource.name, 'NULL') || ' on zone ' || domain.name);
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when data is added to a DNS resource. Increments the
+# zone serial and notifies that DNS needs to be updated.
+DNS_DNSDATA_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsdata_insert()
+    RETURNS trigger as $$
+    DECLARE
+      resource maasserver_dnsresource;
+      domain maasserver_domain;
+    BEGIN
+      SELECT maasserver_dnsresource.* INTO resource
+      FROM maasserver_dnsresource
+      WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = resource.domain_id;
+      PERFORM sys_dns_publish_update(
+        'added ' || NEW.rrtype || ' to resource ' || resource.name ||
+        ' on zone ' || domain.name);
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when data is update for a DNS resource. Increments the
+# zone serial and notifies that DNS needs to be updated.
+DNS_DNSDATA_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsdata_update()
+    RETURNS trigger as $$
+    DECLARE
+      resource maasserver_dnsresource;
+      domain maasserver_domain;
+    BEGIN
+      SELECT maasserver_dnsresource.* INTO resource
+      FROM maasserver_dnsresource
+      WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = resource.domain_id;
+      PERFORM sys_dns_publish_update(
+        'updated ' || NEW.rrtype || ' in resource ' || resource.name ||
+        ' on zone ' || domain.name);
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when data is removed from a DNS resource. Increments the
+# zone serial and notifies that DNS needs to be updated.
+DNS_DNSDATA_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_dnsdata_delete()
+    RETURNS trigger as $$
+    DECLARE
+      resource maasserver_dnsresource;
+      domain maasserver_domain;
+    BEGIN
+      SELECT maasserver_dnsresource.* INTO resource
+      FROM maasserver_dnsresource
+      WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
+      SELECT maasserver_domain.* INTO domain
+      FROM maasserver_domain
+      WHERE maasserver_domain.id = resource.domain_id;
+      PERFORM sys_dns_publish_update(
+        'removed ' || OLD.rrtype || ' from resource ' || resource.name ||
+        ' on zone ' || domain.name);
+      RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
     """)
@@ -1080,26 +1614,6 @@ PEER_PROXY_CONFIG_UPDATE = dedent("""\
     END;
     $$ LANGUAGE plpgsql;
     """)
-
-
-def render_sys_dns_procedure(proc_name, on_delete=False):
-    """Render a database procedure that creates a new DNS publication.
-
-    :param proc_name: Name of the procedure.
-    :param on_delete: True when procedure will be used as a delete trigger.
-    """
-    return dedent("""\
-        CREATE OR REPLACE FUNCTION {proc}() RETURNS trigger AS $$
-        BEGIN
-          INSERT INTO maasserver_dnspublication
-            (serial, created, source)
-          VALUES
-            (nextval('maasserver_zone_serial_seq'), now(),
-             substring('Call to {proc}' FOR 255));
-          RETURN {rval};
-        END;
-        $$ LANGUAGE plpgsql;
-        """).format(proc=proc_name, rval='OLD' if on_delete else 'NEW')
 
 
 def render_sys_proxy_procedure(proc_name, on_delete=False):
@@ -1225,96 +1739,80 @@ def register_system_triggers():
     # before creating the triggers.
     zone_serial.create_if_not_exists()
 
-    # - Domain
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_domain_insert"))
-    register_trigger(
-        "maasserver_domain", "sys_dns_domain_insert", "insert")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_domain_update"))
-    register_trigger(
-        "maasserver_domain", "sys_dns_domain_update", "update")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_domain_delete", on_delete=True))
-    register_trigger(
-        "maasserver_domain", "sys_dns_domain_delete", "delete")
-
-    # - StaticIPAddress
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_staticipaddress_update"))
-    register_trigger(
-        "maasserver_staticipaddress",
-        "sys_dns_staticipaddress_update", "update")
-
-    # - Interface -> StaticIPAddress
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_nic_ip_link"))
-    register_trigger(
-        "maasserver_interface_ip_addresses",
-        "sys_dns_nic_ip_link", "insert")
-    register_procedure(
-        render_sys_dns_procedure(
-            "sys_dns_nic_ip_unlink", on_delete=True))
-    register_trigger(
-        "maasserver_interface_ip_addresses",
-        "sys_dns_nic_ip_unlink", "delete")
-
-    # - DNSResource
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsresource_insert"))
-    register_trigger(
-        "maasserver_dnsresource",
-        "sys_dns_dnsresource_insert", "insert")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsresource_update"))
-    register_trigger(
-        "maasserver_dnsresource",
-        "sys_dns_dnsresource_update", "update")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsresource_delete", on_delete=True))
-    register_trigger(
-        "maasserver_dnsresource",
-        "sys_dns_dnsresource_delete", "delete")
-
-    # - DNSResource -> StaticIPAddress
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsresource_ip_link"))
-    register_trigger(
-        "maasserver_dnsresource_ip_addresses",
-        "sys_dns_dnsresource_ip_link", "insert")
-    register_procedure(
-        render_sys_dns_procedure(
-            "sys_dns_dnsresource_ip_unlink", on_delete=True))
-    register_trigger(
-        "maasserver_dnsresource_ip_addresses",
-        "sys_dns_dnsresource_ip_unlink", "delete")
-
-    # - DNSData
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsdata_insert"))
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_dnsdata_insert", "insert")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsdata_update"))
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_dnsdata_update", "update")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_dnsdata_delete", on_delete=True))
-    register_trigger(
-        "maasserver_dnsdata",
-        "sys_dns_dnsdata_delete", "delete")
-
     # - DNSPublication
     register_procedure(DNS_PUBLISH)
     register_trigger(
         "maasserver_dnspublication",
         "sys_dns_publish", "insert")
+    register_procedure(DNS_PUBLISH_UPDATE)
+
+    # - Domain
+    register_procedure(DNS_DOMAIN_INSERT)
+    register_trigger(
+        "maasserver_domain", "sys_dns_domain_insert", "insert")
+    register_procedure(DNS_DOMAIN_UPDATE)
+    register_trigger(
+        "maasserver_domain", "sys_dns_domain_update", "update")
+    register_procedure(DNS_DOMAIN_DELETE)
+    register_trigger(
+        "maasserver_domain", "sys_dns_domain_delete", "delete")
+
+    # - StaticIPAddress
+    register_procedure(DNS_STATICIPADDRESS_UPDATE)
+    register_trigger(
+        "maasserver_staticipaddress",
+        "sys_dns_staticipaddress_update", "update")
+
+    # - Interface -> StaticIPAddress
+    register_procedure(DNS_NIC_IP_LINK)
+    register_trigger(
+        "maasserver_interface_ip_addresses",
+        "sys_dns_nic_ip_link", "insert")
+    register_procedure(DNS_NIC_IP_UNLINK)
+    register_trigger(
+        "maasserver_interface_ip_addresses",
+        "sys_dns_nic_ip_unlink", "delete")
+
+    # - DNSResource
+    register_procedure(DNS_DNSRESOURCE_INSERT)
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_dnsresource_insert", "insert")
+    register_procedure(DNS_DNSRESOURCE_UPDATE)
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_dnsresource_update", "update")
+    register_procedure(DNS_DNSRESOURCE_DELETE)
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_dnsresource_delete", "delete")
+
+    # - DNSResource -> StaticIPAddress
+    register_procedure(DNS_DNSRESOURCE_IP_LINK)
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "sys_dns_dnsresource_ip_link", "insert")
+    register_procedure(DNS_DNSRESOURCE_IP_UNLINK)
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "sys_dns_dnsresource_ip_unlink", "delete")
+
+    # - DNSData
+    register_procedure(DNS_DNSDATA_INSERT)
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_dnsdata_insert", "insert")
+    register_procedure(DNS_DNSDATA_UPDATE)
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_dnsdata_update", "update")
+    register_procedure(DNS_DNSDATA_DELETE)
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_dnsdata_delete", "delete")
 
     # - Subnet
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_subnet_insert"))
+    register_procedure(DNS_SUBNET_INSERT)
     register_trigger(
         "maasserver_subnet",
         "sys_dns_subnet_insert", "insert")
@@ -1322,8 +1820,7 @@ def register_system_triggers():
     register_trigger(
         "maasserver_subnet",
         "sys_dns_subnet_update", "update")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_subnet_delete", on_delete=True))
+    register_procedure(DNS_SUBNET_DELETE)
     register_trigger(
         "maasserver_subnet",
         "sys_dns_subnet_delete", "delete")
@@ -1333,8 +1830,7 @@ def register_system_triggers():
     register_trigger(
         "maasserver_node",
         "sys_dns_node_update", "update")
-    register_procedure(
-        render_sys_dns_procedure("sys_dns_node_delete", on_delete=True))
+    register_procedure(DNS_NODE_DELETE)
     register_trigger(
         "maasserver_node",
         "sys_dns_node_delete", "delete")

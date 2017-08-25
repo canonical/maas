@@ -24,6 +24,7 @@ __all__ = [
 ]
 
 from maasserver.dns.config import dns_update_all_zones
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.proxyconfig import proxy_update_config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -76,6 +77,7 @@ class RegionControllerService(Service):
         self.dnsResolver = Resolver(
             resolv=None, servers=[('127.0.0.1', 53)],
             timeout=(1,), reactor=clock)
+        self.previousSerial = None
 
     @asynchronous(timeout=FOREVER)
     def startService(self):
@@ -120,12 +122,8 @@ class RegionControllerService(Service):
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
             d = deferToDatabase(transactional(dns_update_all_zones))
-            d.addCallback(self._check_serial)
-            d.addCallback(
-                lambda domains: log.msg(
-                    "Successfully configured DNS "
-                    "authoritative zones: %s." % (
-                        ', '.join(domains))))
+            d.addCallback(self._checkSerial)
+            d.addCallback(self._logDNSReload)
             d.addErrback(
                 log.err,
                 "Failed configuring DNS.")
@@ -148,8 +146,10 @@ class RegionControllerService(Service):
             return DeferredList(defers)
 
     @inlineCallbacks
-    def _check_serial(self, result):
+    def _checkSerial(self, result):
         """Check that the serial of the domain is updated."""
+        if result is None:
+            return None
         serial, domain_names = result
         not_matching_domains = set(domain_names)
         loop = 0
@@ -173,4 +173,45 @@ class RegionControllerService(Service):
             raise DNSReloadError(
                 "Failed to reload DNS; serial mismatch "
                 "on domains %s" % ', '.join(not_matching_domains))
-        return domain_names
+        return serial, domain_names
+
+    def _logDNSReload(self, result):
+        """Log the reason DNS was reloaded."""
+        if result is None:
+            return None
+        serial, domain_names = result
+        if self.previousSerial is None:
+            # This was the first load for starting the service.
+            self.previousSerial = serial
+            log.msg(
+                "Reloaded DNS configuration; regiond started.")
+        else:
+            # This is a reload since the region has been running. Get the
+            # reason for the reload.
+
+            def _logReason(reasons):
+                if len(reasons) == 1:
+                    msg = "Reloaded DNS configuration; %s" % reasons[0]
+                else:
+                    msg = 'Reloaded DNS configuration: \n' + '\n'.join(
+                        ' * %s' % reason
+                        for reason in reasons
+                    )
+                log.msg(msg)
+
+            d = deferToDatabase(
+                self._getReloadReasons, self.previousSerial, serial)
+            d.addCallback(_logReason)
+            d.addErrback(log.err, "Failed to log reason for DNS reload")
+
+            self.previousSerial = serial
+            return d
+
+    @transactional
+    def _getReloadReasons(self, previousSerial, currentSerial):
+        return [
+            publication.source
+            for publication in DNSPublication.objects.filter(
+                serial__gt=previousSerial,
+                serial__lte=currentSerial).order_by('-id')
+        ]
