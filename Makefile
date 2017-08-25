@@ -586,7 +586,6 @@ services/regiond2/@deps: bin/maas-region bin/maas-rack bin/maas-common
 # but it is not: without investing more time, we manually pre-build the source
 # tree and run debuild.
 
-packaging-tree = $(abspath ../maas-packaging)
 packaging-repo = https://git.launchpad.net/maas/
 packaging-branch = "packaging"
 
@@ -597,17 +596,9 @@ tmp_changelog := $(shell tempfile)
 packaging-dir := maas_$(packaging-version)
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
-$(packaging-build-area):
+-packaging-clean:
+	rm -rf $(packaging-build-area)
 	mkdir -p $(packaging-build-area)
-
--packaging-fetch:
-	git clone $(packaging-repo) -b $(packaging-branch) $(packaging-tree)
-
--packaging-pull:
-	(cd $(packaging-tree) && git checkout packaging && git pull)
-
--packaging-refresh: -packaging-$(shell \
-    test -d $(packaging-tree) && echo "pull" || echo "fetch")
 
 -packaging-export-orig: $(packaging-build-area)
 	git archive --format=tar.gz $(packaging-export-extra) \
@@ -615,22 +606,20 @@ $(packaging-build-area):
 	    -o $(packaging-build-area)/$(packaging-orig-targz) HEAD
 
 -packaging-export-orig-uncommitted: $(packaging-build-area)
-	git ls-files --others --exclude-standard --cached | \
+	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -czf $(packaging-build-area)/$(packaging-orig-targz)
 
 -packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
 
--package-tree: -packaging-refresh -packaging-export
-	rm -rf $(packaging-build-area)/$(packaging-dir)
+-package-tree: -packaging-export
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
-	(cd $(packaging-tree) && git archive --format=tar HEAD debian | \
-	  (cd $(packaging-build-area)/$(packaging-dir) && tar x))
+	(cp -r debian $(packaging-build-area)/$(packaging-dir))
 	echo "maas ($(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
 	    > $(tmp_changelog)
-	tail -n +2 $(packaging-tree)/debian/changelog >> $(tmp_changelog)
+	tail -n +2 debian/changelog >> $(tmp_changelog)
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
 
-package: -package-tree
+package: -packaging-clean -package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
 	@echo Binary packages built, see $(packaging-build-area).
 
