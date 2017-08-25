@@ -113,6 +113,14 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         stdout_path = os.path.join(out_dir, stdout_name)
         stderr_name = '%s.err' % script['name']
         stderr_path = os.path.join(out_dir, stderr_name)
+        result_name = '%s.yaml' % script['name']
+        result_path = os.path.join(out_dir, result_name)
+
+        env = copy.deepcopy(os.environ)
+        env['OUTPUT_COMBINED_PATH'] = combined_path
+        env['OUTPUT_STDOUT_PATH'] = stdout_path
+        env['OUTPUT_STDERR_PATH'] = stderr_path
+        env['RESULT_PATH'] = result_path
 
         try:
             # This script sets its own niceness value to the highest(-20) below
@@ -124,7 +132,7 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
             # to the provided value. Since the runner uses a nice value of -20
             # setting it to 40 gives the actual nice value of 20.
             proc = Popen(
-                script_path, stdout=PIPE, stderr=PIPE,
+                script_path, stdout=PIPE, stderr=PIPE, env=env,
                 preexec_fn=lambda: os.nice(40))
             capture_script_output(
                 proc, combined_path, stdout_path, stderr_path, timeout_seconds)
@@ -154,6 +162,8 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 stdout_name: open(stdout_path, 'rb').read(),
                 stderr_name: open(stderr_path, 'rb').read(),
             }
+            if os.path.exists(result_path):
+                args['files'][result_name] = open(result_path, 'rb').read()
             signal_wrapper(
                 error='Timeout(%s) expired on %s [%d/%d]' % (
                     str(timedelta(seconds=timeout_seconds)), script['name'], i,
@@ -168,6 +178,8 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 stdout_name: open(stdout_path, 'rb').read(),
                 stderr_name: open(stderr_path, 'rb').read(),
             }
+            if os.path.exists(result_path):
+                args['files'][result_name] = open(result_path, 'rb').read()
             signal_wrapper(
                 error='Finished %s [%d/%d]: %d' % (
                     script['name'], i, len(scripts), args['exit_status']),

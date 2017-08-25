@@ -223,17 +223,26 @@ class ScriptSet(CleanSave, Model):
         qs = self.scriptresult_set.all()
         # The status order below represents the order of precedence.
         for status in (
-                SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.PENDING,
-                SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.FAILED,
-                SCRIPT_STATUS.TIMEDOUT):
+                SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.ABORTED,
+                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.FAILED_INSTALLING,
+                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.DEGRADED):
             for script_result in qs:
-                if (script_result.status == status and
-                        status == SCRIPT_STATUS.TIMEDOUT):
-                    # A timeout causes the node to go into a failed status
-                    # so show the scriptset as failed.
-                    return SCRIPT_STATUS.FAILED
-                elif script_result.status == status:
-                    return status
+                if script_result.status == status:
+                    if status == SCRIPT_STATUS.INSTALLING:
+                        # When a script is installing the script set is
+                        # running.
+                        return SCRIPT_STATUS.RUNNING
+                    elif status == SCRIPT_STATUS.TIMEDOUT:
+                        # A timeout causes the node to go into a failed status
+                        # so show the ScriptSet as failed.
+                        return SCRIPT_STATUS.FAILED
+                    elif status == SCRIPT_STATUS.FAILED_INSTALLING:
+                        # Installation failure causes the node to go into a
+                        # failed status so show the ScriptSet as failed.
+                        return SCRIPT_STATUS.FAILED
+                    else:
+                        return status
         return SCRIPT_STATUS.PASSED
 
     @property

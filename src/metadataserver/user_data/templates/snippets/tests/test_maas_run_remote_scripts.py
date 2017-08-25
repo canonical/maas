@@ -47,7 +47,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             })
         return scripts
 
-    def make_script_output(self, scripts, scripts_dir):
+    def make_script_output(self, scripts, scripts_dir, with_result=False):
         for script in scripts:
             output = factory.make_string()
             stdout = factory.make_string()
@@ -61,6 +61,12 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             open(output_path, 'w').write(output)
             open(stdout_path, 'w').write(stdout)
             open(stderr_path, 'w').write(stderr)
+            if with_result:
+                result = factory.make_string()
+                script['result'] = result.encode()
+                result_path = os.path.join(
+                    scripts_dir, '%s.yaml' % script['name'])
+                open(result_path, 'w').write(result)
 
     def make_index_json(
             self, scripts_dir, with_commissioning=True, with_testing=True):
@@ -186,6 +192,67 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         }
         args['error'] = 'Finished %s [1/1]: 1' % scripts[0]['name']
         self.assertThat(mock_signal, MockAnyCall(**args))
+
+    def test_run_scripts_sends_result_when_available(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        mock_capture_script_output = self.patch(
+            maas_run_remote_scripts, 'capture_script_output')
+        scripts = self.make_scripts()
+        self.make_script_output(scripts, scripts_dir, with_result=True)
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        # Returns one due to mock_run.returncode returning a MagicMock which is
+        # detected as a failed script run.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        args = {
+            'url': None, 'creds': None, 'status': 'WORKING',
+            'script_result_id': scripts[0]['script_result_id'],
+            'script_version_id': scripts[0]['script_version_id'],
+            'error': 'Starting %s [1/1]' % scripts[0]['name'],
+        }
+        self.assertThat(mock_signal, MockAnyCall(**args))
+        self.assertThat(mock_popen, MockCalledOnce())
+        self.assertThat(mock_capture_script_output, MockCalledOnce())
+        # This is a MagicMock
+        args['exit_status'] = ANY
+        args['files'] = {
+            scripts[0]['name']: scripts[0]['output'],
+            '%s.out' % scripts[0]['name']: scripts[0]['stdout'],
+            '%s.err' % scripts[0]['name']: scripts[0]['stderr'],
+            '%s.yaml' % scripts[0]['name']: scripts[0]['result'],
+        }
+        args['error'] = 'Finished %s [1/1]: 1' % scripts[0]['name']
+        self.assertThat(mock_signal, MockAnyCall(**args))
+
+    def test_run_scripts_sets_env_vars(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        self.patch(maas_run_remote_scripts, 'signal')
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        self.patch(maas_run_remote_scripts, 'capture_script_output')
+        scripts = self.make_scripts()
+        self.make_script_output(scripts, scripts_dir, with_result=True)
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        # Returns one due to mock_run.returncode returning a MagicMock which is
+        # detected as a failed script run.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        env = mock_popen.call_args[1]['env']
+        base = os.path.join(scripts_dir, scripts[0]['name'])
+        self.assertEquals(base, env['OUTPUT_COMBINED_PATH'])
+        self.assertEquals('%s.out' % base, env['OUTPUT_STDOUT_PATH'])
+        self.assertEquals('%s.err' % base, env['OUTPUT_STDERR_PATH'])
+        self.assertEquals('%s.yaml' % base, env['RESULT_PATH'])
+        self.assertIn('PATH', env)
 
     def test_run_scripts_signals_failure(self):
         scripts_dir = self.useFixture(TempDirectory()).path

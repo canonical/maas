@@ -952,7 +952,10 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {})
         script_result = factory.make_ScriptResult()
         # See ScriptSet.status
-        if script_result.status == SCRIPT_STATUS.TIMEDOUT:
+        if script_result.status == SCRIPT_STATUS.INSTALLING:
+            expected_script_status = SCRIPT_STATUS.RUNNING
+        elif script_result.status in (
+                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED_INSTALLING):
             expected_script_status = SCRIPT_STATUS.FAILED
         else:
             expected_script_status = script_result.status
