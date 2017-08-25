@@ -10,6 +10,7 @@ from datetime import (
     timedelta,
 )
 
+from django.core.exceptions import ValidationError
 from django.db.models import (
     CASCADE,
     CharField,
@@ -40,6 +41,7 @@ from metadataserver.fields import (
 from metadataserver.models.script import Script
 from metadataserver.models.scriptset import ScriptSet
 from provisioningserver.events import EVENT_TYPES
+import yaml
 
 
 class ScriptResult(CleanSave, TimestampedModel):
@@ -79,8 +81,7 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     stderr = BinaryField(max_length=1024 * 1024, blank=True, default=b'')
 
-    # If a result is given in the output convert it to JSON and store it here.
-    result = JSONObjectField(blank=True, default='')
+    result = BinaryField(max_length=1024 * 1024, blank=True, default=b'')
 
     # When the script started to run
     started = DateTimeField(editable=False, null=True, blank=True)
@@ -112,6 +113,48 @@ class ScriptResult(CleanSave, TimestampedModel):
     def __str__(self):
         return "%s/%s" % (self.script_set.node.system_id, self.name)
 
+    def read_results(self):
+        """Read the results YAML file and validate it."""
+        try:
+            parsed_yaml = yaml.safe_load(self.result)
+        except yaml.YAMLError as err:
+            raise ValidationError(err)
+
+        if parsed_yaml is None:
+            # No results were given.
+            return None
+        elif not isinstance(parsed_yaml, dict):
+            raise ValidationError('YAML must be a dictionary.')
+
+        if parsed_yaml.get('status') not in [
+                'passed', 'failed', 'degraded', 'timedout', None]:
+            raise ValidationError(
+                'status must be "passed", "failed", "degraded", or '
+                '"timedout".')
+
+        results = parsed_yaml.get('results')
+        if results is None:
+            # Results are not defined.
+            return parsed_yaml
+        elif isinstance(results, dict):
+            for key, value in results.items():
+                if not isinstance(key, str):
+                    raise ValidationError(
+                        'All keys in the results dictionary must be strings.')
+
+                if not isinstance(value, list):
+                    value = [value]
+                for i in value:
+                    if type(i) not in [str, float, int, bool]:
+                            raise ValidationError(
+                                'All values in the results dictionary must be '
+                                'a string, float, int, or bool.'
+                                )
+        else:
+            raise ValidationError('results must be a dictionary.')
+
+        return parsed_yaml
+
     def store_result(
             self, exit_status=None, output=None, stdout=None, stderr=None,
             result=None, script_version_id=None, timedout=False):
@@ -121,14 +164,16 @@ class ScriptResult(CleanSave, TimestampedModel):
         # This also allows us to avoid creating an RPC call for the rack
         # controller to create a new ScriptSet.
         if not self.script_set.node.is_controller:
-            # Allow both PENDING and RUNNING scripts incase the node didn't
-            # inform MAAS the Script was being run, it just uploaded results.
+            # Allow PENDING, INSTALLING, and RUNNING scripts incase the node
+            # didn't inform MAAS the Script was being run, it just uploaded
+            # results.
             assert self.status in (
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING)
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.RUNNING)
             assert self.output == b''
             assert self.stdout == b''
             assert self.stderr == b''
-            assert self.result == ''
+            assert self.result == b''
             assert self.script_version is None
 
         if timedout:
@@ -137,8 +182,11 @@ class ScriptResult(CleanSave, TimestampedModel):
             self.exit_status = exit_status
             if exit_status == 0:
                 self.status = SCRIPT_STATUS.PASSED
+            elif self.status == SCRIPT_STATUS.INSTALLING:
+                self.status = SCRIPT_STATUS.FAILED_INSTALLING
             else:
                 self.status = SCRIPT_STATUS.FAILED
+
         if output is not None:
             self.output = Bin(output)
         if stdout is not None:
@@ -146,7 +194,31 @@ class ScriptResult(CleanSave, TimestampedModel):
         if stderr is not None:
             self.stderr = Bin(stderr)
         if result is not None:
-            self.result = result
+            self.result = Bin(result)
+            try:
+                parsed_yaml = self.read_results()
+            except ValidationError as err:
+                err_msg = (
+                    "%s(%s) sent a script result with invalid YAML: %s" % (
+                        self.script_set.node.fqdn,
+                        self.script_set.node.system_id,
+                        err.message))
+                logger.error(err_msg)
+                Event.objects.create_node_event(
+                    system_id=self.script_set.node.system_id,
+                    event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
+                    event_description=err_msg)
+            else:
+                status = parsed_yaml.get('status')
+                if status == 'passed':
+                    self.status = SCRIPT_STATUS.PASSED
+                elif status == 'failed':
+                    self.status = SCRIPT_STATUS.FAILED
+                elif status == 'degraded':
+                    self.status = SCRIPT_STATUS.DEGRADED
+                elif status == 'timedout':
+                    self.status = SCRIPT_STATUS.TIMEDOUT
+
         if self.script:
             if script_version_id is not None:
                 for script in self.script.script.previous_versions():

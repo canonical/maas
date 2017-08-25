@@ -83,6 +83,7 @@ from metadataserver.api import (
 )
 from metadataserver.enum import (
     SCRIPT_STATUS,
+    SCRIPT_PARALLEL,
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
@@ -264,6 +265,7 @@ class TestHelpers(MAASServerTestCase):
         output = factory.make_string()
         stdout = factory.make_string()
         stderr = factory.make_string()
+        result = factory.make_string()
         request = {'exit_status': random.randint(0, 255)}
 
         process_file(
@@ -272,6 +274,9 @@ class TestHelpers(MAASServerTestCase):
         process_file(
             results, script_result.script_set, '%s.err' % script_result.name,
             stderr, request)
+        process_file(
+            results, script_result.script_set, '%s.yaml' % script_result.name,
+            result, request)
         process_file(
             results, script_result.script_set, script_result.name, output,
             request)
@@ -282,6 +287,7 @@ class TestHelpers(MAASServerTestCase):
                 'output': output,
                 'stdout': stdout,
                 'stderr': stderr,
+                'result': result,
             },
             results[script_result])
 
@@ -308,6 +314,7 @@ class TestHelpers(MAASServerTestCase):
         output = factory.make_string()
         stdout = factory.make_string()
         stderr = factory.make_string()
+        result = factory.make_string()
         request = {'exit_status': random.randint(0, 255)}
 
         process_file(
@@ -316,6 +323,9 @@ class TestHelpers(MAASServerTestCase):
         process_file(
             results, script_result.script_set, '%s.err' % script_result.name,
             stderr, request)
+        process_file(
+            results, script_result.script_set, '%s.yaml' % script_result.name,
+            result, request)
         process_file(
             results, script_result.script_set, '%s.out' % script_result.name,
             stdout, request)
@@ -326,6 +336,7 @@ class TestHelpers(MAASServerTestCase):
                 'output': output,
                 'stdout': stdout,
                 'stderr': stderr,
+                'result': result,
             },
             results[script_result])
 
@@ -352,6 +363,56 @@ class TestHelpers(MAASServerTestCase):
         output = factory.make_string()
         stdout = factory.make_string()
         stderr = factory.make_string()
+        result = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, script_result.name, output,
+            request)
+        process_file(
+            results, script_result.script_set, '%s.out' % script_result.name,
+            stdout, request)
+        process_file(
+            results, script_result.script_set, '%s.yaml' % script_result.name,
+            result, request)
+        process_file(
+            results, script_result.script_set, '%s.err' % script_result.name,
+            stderr, request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'output': output,
+                'stdout': stdout,
+                'stderr': stderr,
+                'result': result,
+            },
+            results[script_result])
+
+    def test_process_file_creates_new_entry_for_result(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        result = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, '%s.yaml' % script_result.name,
+            result, request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'result': result,
+            },
+            results[script_result])
+
+    def test_process_file_creates_adds_field_for_result(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        output = factory.make_string()
+        stdout = factory.make_string()
+        stderr = factory.make_string()
+        result = factory.make_string()
         request = {'exit_status': random.randint(0, 255)}
 
         process_file(
@@ -363,6 +424,9 @@ class TestHelpers(MAASServerTestCase):
         process_file(
             results, script_result.script_set, '%s.err' % script_result.name,
             stderr, request)
+        process_file(
+            results, script_result.script_set, '%s.yaml' % script_result.name,
+            result, request)
 
         self.assertDictEqual(
             {
@@ -370,6 +434,7 @@ class TestHelpers(MAASServerTestCase):
                 'output': output,
                 'stdout': stdout,
                 'stderr': stderr,
+                'result': result,
             },
             results[script_result])
 
@@ -976,6 +1041,20 @@ class TestInstallingAPI(MAASServerTestCase):
             ceil(script_set.last_ping.timestamp()), start_time)
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
+    def test_signaling_installation_with_install_sets_script_to_install(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.INSTALLING,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.INSTALLING, script_result.status)
+
     def test_signaling_installation_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
@@ -997,7 +1076,8 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = (
             node.current_installation_script_set.scriptresult_set.first())
         script_status = factory.pick_choice(
-            SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PENDING])
+            SCRIPT_STATUS_CHOICES,
+            but_not=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING])
         script_result.status = script_status
         script_result.save()
         client = make_node_client(node=node)
@@ -1051,11 +1131,17 @@ class TestMAASScripts(MAASServerTestCase):
                 script = NODE_INFO_SCRIPTS[script_result.name]
                 content = script['content']
                 md_item['timeout_seconds'] = script['timeout'].seconds
+                md_item['parallel'] = script.get(
+                    'parallel', SCRIPT_PARALLEL.DISABLED)
+                md_item['packages'] = script.get('packages', {})
             else:
                 content = script_result.script.script.data.encode()
                 md_item['script_version_id'] = script_result.script.script.id
                 md_item['timeout_seconds'] = (
                     script_result.script.timeout.seconds)
+                md_item['parallel'] = script_result.script.parallel
+                md_item['parameters'] = script_result.parameters
+                md_item['packages'] = script_result.script.packages
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, content)
             commissioning_meta_data.append(md_item)
@@ -1072,6 +1158,9 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_result_id': script_result.id,
                 'script_version_id': script_result.script.script.id,
                 'timeout_seconds': script_result.script.timeout.seconds,
+                'parallel': script_result.script.parallel,
+                'parameters': script_result.parameters,
+                'packages': script_result.script.packages,
             })
 
         meta_data = json.loads(
@@ -1117,6 +1206,9 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_result_id': script_result.id,
                 'script_version_id': script_result.script.script.id,
                 'timeout_seconds': script_result.script.timeout.seconds,
+                'parallel': script_result.script.parallel,
+                'parameters': script_result.parameters,
+                'packages': script_result.script.packages,
             })
 
         meta_data = json.loads(
@@ -1197,11 +1289,17 @@ class TestMAASScripts(MAASServerTestCase):
                 script = NODE_INFO_SCRIPTS[script_result.name]
                 content = script['content']
                 md_item['timeout_seconds'] = script['timeout'].seconds
+                md_item['parallel'] = script.get(
+                    'parallel', SCRIPT_PARALLEL.DISABLED)
+                md_item['packages'] = script.get('packages', {})
             else:
                 content = script_result.script.script.data.encode()
                 md_item['script_version_id'] = script_result.script.script.id
                 md_item['timeout_seconds'] = (
                     script_result.script.timeout.seconds)
+                md_item['parallel'] = script_result.script.parallel
+                md_item['parameters'] = script_result.parameters
+                md_item['packages'] = script_result.script.packages
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, content)
             commissioning_meta_data.append(md_item)
@@ -1217,6 +1315,9 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_result_id': script_result.id,
                 'script_version_id': script_result.script.script.id,
                 'timeout_seconds': script_result.script.timeout.seconds,
+                'parallel': script_result.script.parallel,
+                'parameters': script_result.parameters,
+                'packages': script_result.script.packages,
             }
             content = script_result.script.script.data.encode()
             self.extract_and_validate_file(
@@ -1912,6 +2013,20 @@ class TestCommissioningAPI(MAASServerTestCase):
             ceil(script_set.last_ping.timestamp()), start_time)
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
+    def test_signaling_commissioning_with_install_sets_script_to_install(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.INSTALLING,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.INSTALLING, script_result.status)
+
     def test_signaling_commissioning_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
@@ -1933,7 +2048,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         script_result = (
             node.current_commissioning_script_set.scriptresult_set.first())
         script_status = factory.pick_choice(
-            SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PENDING])
+            SCRIPT_STATUS_CHOICES,
+            but_not=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING])
         script_result.status = script_status
         script_result.save()
         client = make_node_client(node=node)
@@ -2038,6 +2154,20 @@ class TestTestingAPI(MAASServerTestCase):
             ceil(script_set.last_ping.timestamp()), start_time)
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
+    def test_signaling_testing_with_install_sets_script_to_install(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.INSTALLING,
+            script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.INSTALLING, script_result.status)
+
     def test_signaling_testing_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, owner=factory.make_User(),
@@ -2059,7 +2189,8 @@ class TestTestingAPI(MAASServerTestCase):
         script_result = (
             node.current_testing_script_set.scriptresult_set.first())
         script_status = factory.pick_choice(
-            SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PENDING])
+            SCRIPT_STATUS_CHOICES,
+            but_not=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING])
         script_result.status = script_status
         script_result.save()
         client = make_node_client(node=node)

@@ -218,6 +218,7 @@ class NodeScriptResultHandler(OperationsHandler):
                 result['output'] = b64encode(script_result.output)
                 result['stdout'] = b64encode(script_result.stdout)
                 result['stderr'] = b64encode(script_result.stderr)
+                result['result'] = b64encode(script_result.result)
             results.append(result)
         return results
 
@@ -337,6 +338,10 @@ class NodeScriptResultHandler(OperationsHandler):
                 filename = '%s.err' % script_result.name
                 files[filename] = script_result.stderr
                 times[filename] = mtime
+            elif output == 'result':
+                filename = '%s.yaml' % script_result.name
+                files[filename] = script_result.result
+                times[filename] = mtime
             elif output == 'all':
                 files[script_result.name] = script_result.output
                 times[script_result.name] = mtime
@@ -345,6 +350,9 @@ class NodeScriptResultHandler(OperationsHandler):
                 times[filename] = mtime
                 filename = '%s.err' % script_result.name
                 files[filename] = script_result.stderr
+                times[filename] = mtime
+                filename = '%s.yaml' % script_result.name
+                files[filename] = script_result.result
                 times[filename] = mtime
 
         if filetype == 'txt' and len(files) == 1:

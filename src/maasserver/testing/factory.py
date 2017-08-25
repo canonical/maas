@@ -750,7 +750,9 @@ class Factory(maastesting.factory.Factory):
             script = self.make_Script()
         if status is None:
             status = self.pick_choice(SCRIPT_STATUS_CHOICES)
-        if status in (SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING):
+        if status in (
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.RUNNING):
             # Pending and running script results shouldn't have results stored.
             if output is None:
                 output = b''
@@ -759,7 +761,7 @@ class Factory(maastesting.factory.Factory):
             if stderr is None:
                 stderr = b''
             if result is None:
-                result = ''
+                result = b''
             if status == SCRIPT_STATUS.RUNNING and started is None:
                 started = datetime.now()
         else:
@@ -772,7 +774,7 @@ class Factory(maastesting.factory.Factory):
             if stderr is None:
                 stderr = self.make_string().encode('utf-8')
             if result is None:
-                result = ''
+                result = self.make_string().encode('utf-8')
             if script_version is None and script_name is None:
                 script_version = script.script
             if started is None:
@@ -785,7 +787,7 @@ class Factory(maastesting.factory.Factory):
             script_version=script_version, status=status,
             exit_status=exit_status, script_name=script_name,
             output=Bin(output), stdout=Bin(stdout), stderr=Bin(stderr),
-            result=result, started=started, ended=ended)
+            result=Bin(result), started=started, ended=ended)
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""

@@ -62,9 +62,8 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
             [result['id'] for result in parsed_results])
         for script_set in parsed_results:
             for result in script_set['results']:
-                self.assertNotIn('output', result)
-                self.assertNotIn('stdout', result)
-                self.assertNotIn('stderr', result)
+                for key in ['output', 'stdout', 'stderr', 'result']:
+                    self.assertNotIn(key, result)
 
     def test_GET_filters_by_type(self):
         node = factory.make_Node()
@@ -141,9 +140,8 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
             [result['id'] for result in parsed_results])
         for script_set in parsed_results:
             for result in script_set['results']:
-                self.assertIn('output', result)
-                self.assertIn('stdout', result)
-                self.assertIn('stderr', result)
+                for key in ['output', 'stdout', 'stderr', 'result']:
+                    self.assertIn(key, result)
 
     def test_GET_filters(self):
         node = factory.make_Node()
@@ -180,9 +178,8 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
                 self.assertIn(
                     result['name'],
                     {name_filter_script.name, tag_filter_script.name})
-                self.assertNotIn('output', result)
-                self.assertNotIn('stdout', result)
-                self.assertNotIn('stderr', result)
+                for key in ['output', 'stdout', 'stderr', 'result']:
+                    self.assertNotIn(key, result)
 
 
 class TestNodeScriptResultAPI(APITestCase.ForUser):
@@ -324,6 +321,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 'output': b64encode(script_result.output).decode(),
                 'stdout': b64encode(script_result.stdout).decode(),
                 'stderr': b64encode(script_result.stderr).decode(),
+                'result': b64encode(script_result.result).decode(),
                 }, result)
 
     def test_GET_filters(self):
@@ -561,6 +559,20 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEquals(script_result.stderr, response.content)
 
+    def test_download_output_result(self):
+        script_set = self.make_scriptset()
+        script_result = factory.make_ScriptResult(script_set=script_set)
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set),
+            {
+                'op': 'download',
+                'filter': script_result.id,
+                'output': 'result',
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEquals(script_result.result, response.content)
+
     def test_download_output_all(self):
         script_set = self.make_scriptset()
         script_result = factory.make_ScriptResult(script_set=script_set)
@@ -589,6 +601,11 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
         binary.write(('%s %s %s\n' % (dashes, filename, dashes)).encode())
         binary.write(script_result.stderr)
+        binary.write(b'\n')
+        filename = '%s.yaml' % script_result.name
+        dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
+        binary.write(('%s %s %s\n' % (dashes, filename, dashes)).encode())
+        binary.write(script_result.result)
         binary.write(b'\n')
         self.assertEquals(binary.getvalue(), response.content)
 

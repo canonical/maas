@@ -7,10 +7,10 @@ from datetime import (
     datetime,
     timedelta,
 )
-import json
 import random
 from unittest.mock import MagicMock
 
+from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
     Event,
@@ -27,6 +27,7 @@ from metadataserver.enum import (
 )
 from metadataserver.models import scriptresult as scriptresult_module
 from provisioningserver.events import EVENT_TYPES
+import yaml
 
 
 class TestScriptResult(MAASServerTestCase):
@@ -54,7 +55,11 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=factory.pick_choice(
                 SCRIPT_STATUS_CHOICES,
-                [SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING]))
+                [
+                    SCRIPT_STATUS.PENDING,
+                    SCRIPT_STATUS.INSTALLING,
+                    SCRIPT_STATUS.RUNNING,
+                ]))
         self.assertRaises(
             AssertionError, script_result.store_result, random.randint(0, 255))
 
@@ -78,7 +83,7 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_store_result_only_allows_when_result_is_blank(self):
         script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.RUNNING, result=factory.make_string())
+            status=SCRIPT_STATUS.RUNNING, result=factory.make_bytes())
         self.assertRaises(
             AssertionError, script_result.store_result, random.randint(0, 255))
 
@@ -93,11 +98,11 @@ class TestScriptResult(MAASServerTestCase):
         output = factory.make_bytes()
         stdout = factory.make_bytes()
         stderr = factory.make_bytes()
-        result = factory.make_string()
+        result = factory.make_bytes()
 
         script_result.store_result(
             random.randint(0, 255), factory.make_bytes(), factory.make_bytes(),
-            factory.make_bytes(), factory.make_string())
+            factory.make_bytes(), factory.make_bytes())
         script_result.store_result(exit_status, output, stdout, stderr, result)
 
         self.assertEquals(exit_status, script_result.exit_status)
@@ -120,11 +125,11 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(
             script_result.script.script, script_result.script_version)
 
-    def test_store_result_sets_status_to_failed_with_exit_code_zero(self):
+    def test_store_result_sets_status_to_failed_with_exit_code_non_zero(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
         exit_status = random.randint(1, 255)
         script_result.store_result(exit_status)
@@ -133,7 +138,22 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
+        self.assertEquals(
+            script_result.script.script, script_result.script_version)
+
+    def test_store_result_sets_status_to_install_failed_when_install(self):
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.INSTALLING)
+        exit_status = random.randint(1, 255)
+        script_result.store_result(exit_status)
+        self.assertEquals(
+            SCRIPT_STATUS.FAILED_INSTALLING, script_result.status)
+        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
+        self.assertEquals(b'', script_result.stdout)
+        self.assertEquals(b'', script_result.stderr)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(
             script_result.script.script, script_result.script_version)
 
@@ -148,7 +168,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(output, script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(
             script_result.script.script, script_result.script_version)
 
@@ -163,7 +183,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(b'', script_result.output)
         self.assertEquals(stdout, script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(
             script_result.script.script, script_result.script_version)
 
@@ -178,24 +198,68 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(stderr, script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(
             script_result.script.script, script_result.script_version)
 
     def test_store_result_stores_result(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
         exit_status = random.randint(0, 255)
-        result = {factory.make_name('key'): factory.make_name('value')}
+        result = {'results': {
+            factory.make_name('key'): factory.make_name('value')
+            for _ in range(3)
+            }}
 
-        script_result.store_result(exit_status, result=json.dumps(result))
+        script_result.store_result(
+            exit_status, result=yaml.safe_dump(result).encode())
 
         self.assertEquals(exit_status, script_result.exit_status)
         self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEqual(result, script_result.result)
+        self.assertDictEqual(result, script_result.read_results())
         self.assertEquals(
             script_result.script.script, script_result.script_version)
+
+    def test_store_result_logs_invalid_result_yaml(self):
+        mock_logger = self.patch(scriptresult_module.logger, 'error')
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        result = factory.make_name('invalid').encode()
+
+        script_result.store_result(0, result=result)
+
+        expected_msg = (
+            "%s(%s) sent a script result with invalid YAML: "
+            "YAML must be a dictionary." % (
+                script_result.script_set.node.fqdn,
+                script_result.script_set.node.system_id))
+        event_type = EventType.objects.get(
+            name=EVENT_TYPES.SCRIPT_RESULT_ERROR)
+        event = Event.objects.get(
+            node=script_result.script_set.node, type_id=event_type.id)
+        self.assertEquals(expected_msg, event.description)
+        self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
+        self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
+        self.assertEquals(result, script_result.result)
+
+    def test_store_result_yaml_can_set_script_status(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        status_choices = {
+            'passed': SCRIPT_STATUS.PASSED,
+            'failed': SCRIPT_STATUS.FAILED,
+            'degraded': SCRIPT_STATUS.DEGRADED,
+            'timedout': SCRIPT_STATUS.TIMEDOUT,
+        }
+        status = random.choice(list(status_choices.keys()))
+        status_yaml = {'status': status}
+        exit_status = random.randint(0, 255)
+
+        script_result.store_result(
+            exit_status, result=yaml.safe_dump(status_yaml).encode())
+
+        self.assertEquals(status_choices[status], script_result.status)
+        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertDictEqual(status_yaml, script_result.read_results())
 
     def test_store_result_stores_script_version(self):
         script = factory.make_Script()
@@ -213,7 +277,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(old_version, script_result.script_version)
 
     def test_store_result_sets_script_version_to_latest_when_not_given(self):
@@ -228,7 +292,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertEquals('', script_result.result)
+        self.assertEquals(b'', script_result.result)
         self.assertEquals(script.script, script_result.script_version)
 
     def test_store_result_logs_missing_script_version(self):
@@ -300,3 +364,83 @@ class TestScriptResult(MAASServerTestCase):
     def test_get_runtime_blank_when_missing(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
         self.assertEquals('', script_result.runtime)
+
+    def test_read_results(self):
+        results = {
+            'status': random.choice(
+                ['passed', 'failed', 'degraded', 'timedout']),
+            'results': {
+                factory.make_name('key'): factory.make_name('value'),
+                factory.make_name('key'): [
+                    factory.make_name('value'),
+                    random.uniform(1, 2),
+                    random.randint(0, 1000),
+                    factory.pick_bool(),
+                ]
+            }
+        }
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(results).encode())
+
+        self.assertDictEqual(results, script_result.read_results())
+
+    def test_read_results_ignores_empty(self):
+        script_result = factory.make_ScriptResult(result=b'')
+        self.assertIsNone(script_result.read_results())
+
+    def test_read_results_does_not_require_results(self):
+        result = {'status': random.choice(
+            ['passed', 'failed', 'degraded', 'timedout'])}
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(result).encode())
+        self.assertDictEqual(result, script_result.read_results())
+
+    def test_read_results_errors_when_invalid_yaml(self):
+        script_result = factory.make_ScriptResult(result=b'{')
+
+        self.assertRaises(ValidationError, script_result.read_results)
+
+    def test_read_results_errors_when_not_dict(self):
+        script_result = factory.make_ScriptResult(
+            result=factory.make_name('invalid').encode())
+        with self.assertRaisesRegex(
+                ValidationError, 'YAML must be a dictionary.'):
+            script_result.read_results()
+
+    def test_read_results_errors_with_invalid_status(self):
+        result = {'status': factory.make_name('status')}
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(result).encode())
+        with self.assertRaisesRegex(
+                ValidationError,
+                'status must be "passed", "failed", "degraded", or '
+                '"timedout".'):
+            script_result.read_results()
+
+    def test_read_results_errors_when_dict_keys_not_str(self):
+        result = {'results': {
+            random.randint(0, 1000): factory.make_name('value')}}
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(result).encode())
+        with self.assertRaisesRegex(
+                ValidationError,
+                'All keys in the results dictionary must be strings.'):
+            script_result.read_results()
+
+    def test_read_results_errors_when_dict_values_invalid(self):
+        result = {'results': {factory.make_name('key'): {}}}
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(result).encode())
+        with self.assertRaisesRegex(
+                ValidationError,
+                'All values in the results dictionary must be a string, '
+                'float, int, or bool.'):
+            script_result.read_results()
+
+    def test_read_results_requires_results_to_be_a_dict(self):
+        result = {'results': factory.make_name('invalid')}
+        script_result = factory.make_ScriptResult(
+            result=yaml.safe_dump(result).encode())
+        with self.assertRaisesRegex(
+                ValidationError, 'results must be a dictionary.'):
+            script_result.read_results()

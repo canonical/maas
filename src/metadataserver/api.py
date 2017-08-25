@@ -75,6 +75,7 @@ from maasserver.utils.orm import get_one
 from metadataserver import logger
 from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
+    SCRIPT_PARALLEL,
     SCRIPT_STATUS,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
@@ -207,8 +208,7 @@ def add_event_to_node_event_log(
         event_description="'%s' %s" % (origin, description), created=created)
 
 
-def process_file(
-        results, script_set, script_name, content, request):
+def process_file(results, script_set, script_name, content, request):
     """Process a file sent to MAAS over the metadata service."""
 
     script_result_id = get_optional_param(
@@ -218,12 +218,15 @@ def process_file(
     # column of ScriptResult. If neither are given put it in the combined
     # output column. If given, we look up by script_result_id along with the
     # name to allow .out or .err in the name.
-    if script_name.endswith('.out'):
+    if script_name.lower().endswith('.out'):
         script_name = script_name[0:-4]
         key = 'stdout'
-    elif script_name.endswith('.err'):
+    elif script_name.lower().endswith('.err'):
         script_name = script_name[0:-4]
         key = 'stderr'
+    elif script_name.lower().endswith('.yaml'):
+        script_name = script_name[0:-5]
+        key = 'result'
     else:
         key = 'output'
 
@@ -418,7 +421,7 @@ class VersionIndexHandler(MetadataViewHandler):
         script_set.last_ping = datetime.now()
         script_set.save()
 
-        if status == SIGNAL_STATUS.WORKING:
+        if status == SIGNAL_STATUS.INSTALLING:
             script_result_id = get_optional_param(
                 request.POST, 'script_result_id', None, Int)
             if script_result_id is not None:
@@ -427,8 +430,20 @@ class VersionIndexHandler(MetadataViewHandler):
                 # incase the script result has been uploaded and proceeded
                 # already.
                 if script_result.status == SCRIPT_STATUS.PENDING:
+                    script_result.status = SCRIPT_STATUS.INSTALLING
+                    script_result.save(update_fields=['status'])
+        elif status == SIGNAL_STATUS.WORKING:
+            script_result_id = get_optional_param(
+                request.POST, 'script_result_id', None, Int)
+            if script_result_id is not None:
+                script_result = script_set.find_script_result(script_result_id)
+                # Only update the script status if it was in a pending or
+                # installing state incase the script result has been uploaded
+                # and proceeded already.
+                if script_result.status in [
+                        SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING]:
                     script_result.status = SCRIPT_STATUS.RUNNING
-                    script_result.save()
+                    script_result.save(update_fields=['status'])
 
     def _process_testing(self, node, request, status):
         # node.status_expires is only used to ensure the node boots into
@@ -850,6 +865,9 @@ class MAASScriptsHandler(OperationsHandler):
                         'path': path,
                         'script_result_id': script_result.id,
                         'timeout_seconds': script['timeout'].seconds,
+                        'parallel': script.get(
+                            'parallel', SCRIPT_PARALLEL.DISABLED),
+                        'packages': script.get('packages', {}),
                     })
                 else:
                     # Script was deleted by the user and it is not a builtin
@@ -865,6 +883,9 @@ class MAASScriptsHandler(OperationsHandler):
                     'script_result_id': script_result.id,
                     'script_version_id': script_result.script.script.id,
                     'timeout_seconds': script_result.script.timeout.seconds,
+                    'parallel': script_result.script.parallel,
+                    'parameters': script_result.parameters,
+                    'packages': script_result.script.packages,
                 })
         return meta_data
 
