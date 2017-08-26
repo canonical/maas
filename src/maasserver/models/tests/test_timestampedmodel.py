@@ -17,7 +17,11 @@ from maasserver.testing.testcase import (
     MAASLegacyTransactionServerTestCase,
     MAASServerTestCase,
 )
-from maasserver.tests.models import TimestampedModelTestModel
+from maasserver.tests.models import (
+    GenericTestModel,
+    TimestampedModelTestModel,
+    TimestampedOneToOneTestModel,
+)
 
 
 def make_time_in_the_recent_past():
@@ -119,6 +123,14 @@ class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
         obj.save(_created=last_year)
         self.assertEqual(last_year, obj.created)
         self.assertEqual(created, obj.updated)
+
+    def test_created_works_with_one_to_one_models(self):
+        generic = GenericTestModel()
+        generic.save()
+        ts_1to1 = TimestampedOneToOneTestModel(generic=generic)
+        ts_1to1.save()
+        self.assertIsNotNone(ts_1to1.created)
+        self.assertIsNotNone(ts_1to1.updated)
 
 
 class UtilitiesTest(MAASServerTestCase):

@@ -42,7 +42,7 @@ class Switch(CleanSave, TimestampedModel):
     objects = Manager()
 
     node = OneToOneField(
-        Node, null=False, blank=False, on_delete=CASCADE)
+        Node, null=False, blank=False, on_delete=CASCADE, primary_key=True)
 
     # The possible choices for this field depend on the NOS drivers advertised
     # by the rack controllers.  This needs to be populated on the fly, in

@@ -23,6 +23,7 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Model,
+    OneToOneField,
 )
 from maasserver.fields import (
     CIDRField,
@@ -63,6 +64,14 @@ class TimestampedModelTestModel(TimestampedModel):
     # This model inherits from TimestampedModel so it will have a 'created'
     # field and an 'updated' field.
     pass
+
+
+class TimestampedOneToOneTestModel(TimestampedModel):
+    # This model inherits from TimestampedModel so it will have a 'created'
+    # field and an 'updated' field.
+    generic = OneToOneField(
+        GenericTestModel, null=False, blank=False, on_delete=CASCADE,
+        primary_key=True)
 
 
 class FieldChangeTestModel(Model):

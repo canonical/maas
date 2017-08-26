@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 from crochet import TimeoutError
 from django.contrib.auth.models import User
 from django.core.exceptions import (
+    ObjectDoesNotExist,
     PermissionDenied,
     ValidationError,
 )
@@ -4837,6 +4838,27 @@ class Controller(Node):
             self.update_interfaces(response['interfaces'])
         if len(update_fields) > 0:
             self.save(update_fields=update_fields)
+
+    @property
+    def version(self):
+        try:
+            return self.controllerinfo.version
+        except ObjectDoesNotExist:
+            return None
+
+    @property
+    def interfaces(self):
+        try:
+            return self.controllerinfo.interfaces
+        except ObjectDoesNotExist:
+            return None
+
+    @property
+    def interface_update_hints(self):
+        try:
+            return self.controllerinfo.interface_update_hints
+        except ObjectDoesNotExist:
+            return None
 
     def update_discovery_state(self, discovery_mode):
         """Update network discovery state on this Controller's interfaces.

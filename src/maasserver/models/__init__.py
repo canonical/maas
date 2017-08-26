@@ -19,6 +19,7 @@ __all__ = [
     'CacheSet',
     'Config',
     'Controller',
+    'ControllerInfo',
     'Device',
     'DHCPSnippet',
     'Discovery',
@@ -106,6 +107,7 @@ from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
+from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.discovery import Discovery
 from maasserver.models.dnsdata import DNSData

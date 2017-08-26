@@ -45,7 +45,7 @@ class TimestampedModel(Model, object):
     def save(self, _created=None, _updated=None, *args, **kwargs):
         """Set `created` and `updated` before saving.
 
-        If the record is new (its ``id`` is `None`) then `created` is set to
+        If the record is new (its ``pk`` is `None`) then `created` is set to
         the current time if it has not already been set. Then `updated` is set
         to the same as `created`.
 
@@ -53,7 +53,13 @@ class TimestampedModel(Model, object):
         """
         update_created = False
         update_updated = False
-        if self.id is None:
+        # OneToOneFields set with primary_key=True are created with a primary
+        # key that already exists, so we need to check if the created field
+        # was filled in in addition to the primary key check. In addition,
+        # a OneToOneField that is the primary key will not have an `id` field,
+        # so we use Django's `pk` attribute. This uses indirection to find the
+        # real primary key.
+        if self.pk is None or (_created is None and self.created is None):
             # New record; set created if not set.
             if self.created is None:
                 self.created = now()
