@@ -25,6 +25,7 @@ from datetime import timedelta
 from io import BytesIO
 import json
 import os
+import re
 from subprocess import (
     PIPE,
     Popen,
@@ -37,6 +38,7 @@ from threading import (
     Thread,
 )
 import time
+import zipfile
 
 
 try:
@@ -84,6 +86,130 @@ def download_and_extract_tar(url, creds, scripts_dir):
         tar.extractall(scripts_dir)
 
 
+def run_and_check(
+        cmd, combined_path, stdout_path, stderr_path, script_name, args,
+        ignore_error=False):
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    capture_script_output(proc, combined_path, stdout_path, stderr_path)
+    if proc.returncode != 0 and not ignore_error:
+        args['exit_status'] = proc.returncode
+        args['files'] = {
+            script_name: open(combined_path, 'rb').read(),
+            '%s.out' % script_name: open(stdout_path, 'rb').read(),
+            '%s.err' % script_name: open(stderr_path, 'rb').read(),
+        }
+        signal_wrapper(
+            error='Failed installing package(s) for %s' % (
+                script_name), **args)
+        return False
+    else:
+        return True
+
+
+def install_dependencies(
+        args, script, combined_path, stdout_path, stderr_path, download_path):
+    """Download and install any required packaged for the script to run."""
+    args = copy.deepcopy(args)
+    args['status'] = 'INSTALLING'
+    packages = script.get('packages', {})
+    apt = packages.get('apt')
+    snap = packages.get('snap')
+    url = packages.get('url')
+
+    if apt is not None:
+        signal_wrapper(
+            error='Installing apt packages for %s' % script['name'], **args)
+        if not run_and_check(
+                ['sudo', '-n', 'apt-get', '-qy', 'install'] + apt,
+                combined_path, stdout_path, stderr_path, script['name'], args):
+            return False
+
+    if snap is not None:
+        signal_wrapper(
+            error='Installing snap packages for %s' % script['name'], **args)
+        for pkg in snap:
+            if isinstance(pkg, str):
+                cmd = ['sudo', '-n', 'snap', 'install', pkg]
+            elif isinstance(pkg, dict):
+                cmd = ['sudo', '-n', 'snap', 'install', pkg['name']]
+                if 'channel' in pkg:
+                    cmd.append('--%s' % pkg['channel'])
+                if 'mode' in pkg:
+                    if pkg['mode'] == 'classic':
+                        cmd.append('--classic')
+                    else:
+                        cmd.append('--%smode' % pkg['mode'])
+            else:
+                # The ScriptForm validates that each snap package should be a
+                # string or dictionary. This should never happen but just
+                # incase it does...
+                continue
+            if not run_and_check(
+                    cmd, combined_path, stdout_path, stderr_path,
+                    script['name'], args):
+                return False
+
+    if url is not None:
+        signal_wrapper(
+            error='Downloading and extracting URLs for %s' % script['name'],
+            **args)
+        path_regex = re.compile("^Saving to: ['‘](?P<path>.+)['’]$", re.M)
+        os.makedirs(download_path, exist_ok=True)
+        for i in url:
+            # wget supports multiple protocols, proxying, proper error message,
+            # handling user input without protocol information, and getting the
+            # filename from the request. Shell out and capture its output
+            # instead of implementing all of that here.
+            if not run_and_check(
+                    ['wget', i, '-P', download_path], combined_path,
+                    stdout_path, stderr_path, script['name'], args):
+                return False
+
+            # Get the filename from the captured output incase the URL does not
+            # include a filename. e.g the URL 'ubuntu.com' will create an
+            # index.html file.
+            with open(combined_path, 'r') as combined:
+                m = path_regex.findall(combined.read())
+                if m != []:
+                    filename = m[-1]
+                else:
+                    # Unable to find filename in output.
+                    continue
+
+            if tarfile.is_tarfile(filename):
+                with tarfile.open(filename, 'r|*') as tar:
+                    tar.extractall(download_path)
+            elif zipfile.is_zipfile(filename):
+                with zipfile.ZipFile(filename, 'r') as z:
+                    z.extractall(download_path)
+            elif filename.endswith('.deb'):
+                # Allow dpkg to fail incase it just needs dependencies
+                # installed.
+                run_and_check(
+                    ['sudo', '-n', 'dpkg', '-i', filename],
+                    combined_path, stdout_path, stderr_path, script['name'],
+                    args, True)
+                if not run_and_check(
+                        ['sudo', '-n', 'apt-get', 'install', '-qyf'],
+                        combined_path, stdout_path, stderr_path,
+                        script['name'], args):
+                    return False
+            elif filename.endswith('.snap'):
+                if not run_and_check(
+                        ['sudo', '-n', 'snap', filename],
+                        combined_path, stdout_path, stderr_path,
+                        script['name'], args):
+                    return False
+
+    # All went well, clean up the install logs so only script output is
+    # captured.
+    for path in [combined_path, stdout_path, stderr_path]:
+        if os.path.exists(path):
+            os.remove(path)
+
+    return True
+
+
 def run_scripts(url, creds, scripts_dir, out_dir, scripts):
     """Run and report results for the given scripts."""
     total_scripts = len(scripts)
@@ -102,11 +228,6 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
             args['script_version_id'] = script_version_id
         timeout_seconds = script.get('timeout_seconds')
 
-        signal_wrapper(
-            error='Starting %s [%d/%d]' % (
-                script['name'], i, len(scripts)),
-            **args)
-
         script_path = os.path.join(scripts_dir, script['path'])
         combined_path = os.path.join(out_dir, script['name'])
         stdout_name = '%s.out' % script['name']
@@ -115,12 +236,25 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         stderr_path = os.path.join(out_dir, stderr_name)
         result_name = '%s.yaml' % script['name']
         result_path = os.path.join(out_dir, result_name)
+        download_path = os.path.join(scripts_dir, 'downloads', script['name'])
+
+        if not install_dependencies(
+                args, script, combined_path, stdout_path, stderr_path,
+                download_path):
+            fail_count += 1
+            continue
+
+        signal_wrapper(
+            error='Starting %s [%d/%d]' % (
+                script['name'], i, len(scripts)),
+            **args)
 
         env = copy.deepcopy(os.environ)
         env['OUTPUT_COMBINED_PATH'] = combined_path
         env['OUTPUT_STDOUT_PATH'] = stdout_path
         env['OUTPUT_STDERR_PATH'] = stderr_path
         env['RESULT_PATH'] = result_path
+        env['DOWNLOAD_PATH'] = download_path
 
         try:
             # This script sets its own niceness value to the highest(-20) below

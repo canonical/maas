@@ -3255,7 +3255,8 @@ class TestNode(MAASServerTestCase):
                 node.current_installation_script_set):
             script_result = factory.make_ScriptResult(script_set)
             if script_result.status in {
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING}:
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                    SCRIPT_STATUS.RUNNING}:
                 updated_script_results.append(script_result)
             else:
                 untouched_script_results.append(script_result)

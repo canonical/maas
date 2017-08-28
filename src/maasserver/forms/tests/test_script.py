@@ -606,7 +606,6 @@ class TestScriptForm(MAASServerTestCase):
             'name': factory.make_name('snap_pkg'),
             'channel': random.choice(['stable', 'edge', 'beta', 'candidate']),
             'mode': random.choice(['classic', 'dev', 'jail']),
-            'revision': random.randint(0, 1000),
         }
         url = factory.make_url()
         form = ScriptForm(data={'script': factory.make_script_content({
@@ -692,20 +691,6 @@ class TestScriptForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
             {'packages': ['Snap mode must be classic, dev, or jail.']},
-            form.errors)
-        self.assertItemsEqual([], VersionedTextFile.objects.all())
-
-    def test__snap_package_revision_must_be_int(self):
-        form = ScriptForm(data={'script': factory.make_script_content({
-            'name': factory.make_name('name'),
-            'packages': {'snap': {
-                'name': factory.make_name('script_name'),
-                'revision': factory.make_name('revision'),
-                }},
-            })})
-        self.assertFalse(form.is_valid())
-        self.assertDictEqual(
-            {'packages': ['Snap revision must be a positive integer.']},
             form.errors)
         self.assertItemsEqual([], VersionedTextFile.objects.all())
 

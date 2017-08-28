@@ -135,7 +135,6 @@ class TestLLDPScripts(MAASTestCase):
         self.assertEqual(
             check_call.call_args_list,
             [
-                call(("apt-get", "install", "--yes", "lldpd")),
                 call(("initctl", "reload-configuration")),
                 call(("service", "lldpd", "restart"))
             ])
@@ -161,7 +160,6 @@ class TestLLDPScripts(MAASTestCase):
         self.assertEqual(
             check_call.call_args_list,
             [
-                call(("apt-get", "install", "--yes", "lldpd")),
                 call(("systemctl", "restart", "lldpd")),
             ])
         # lldpd's config was updated to include an updated DAEMON_ARGS

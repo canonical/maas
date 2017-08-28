@@ -357,7 +357,6 @@ def lldpd_install(config_file):
     """
     import os
     from subprocess import check_call
-    check_call(("apt-get", "install", "--yes", "lldpd"))
     from codecs import open
     with open(config_file, "a", "ascii") as fd:
         fd.write('\n')  # Ensure there's a newline.
@@ -612,6 +611,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
+        'packages': {'apt': ['lldpd']},
         'timeout': timedelta(minutes=10),
         'run_on_controller': False,
     }),

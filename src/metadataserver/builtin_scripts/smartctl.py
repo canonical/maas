@@ -29,8 +29,7 @@
 # parallel: instance
 # parameters:
 #   storage: {type: storage}
-# packages:
-#   apt: smartctl
+# packages: {apt: smartmontools}
 # timeout: {{timeout}}
 # --- End MAAS 1.0 script metadata ---
 
@@ -242,11 +241,6 @@ def run_smartctl(test=None):
 
 
 if __name__ == '__main__':
-    # The MAAS ephemeral environment runs apt-get update for us.
-    # Don't use timeout here incase the mirror is running really slow.
-    check_call(
-        ['sudo', '-n', 'apt-get', '-q', '-y', 'install', 'smartmontools'])
-
     # Determine which test should be run based from the first argument or
     # script name.
     if len(sys.argv) > 1:

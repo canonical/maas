@@ -850,7 +850,8 @@ class MAASScriptsHandler(OperationsHandler):
         for script_result in script_set:
             # Don't rerun Scripts which have already run.
             if script_result.status not in (
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING):
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING):
                 continue
 
             path = os.path.join(prefix, script_result.name)

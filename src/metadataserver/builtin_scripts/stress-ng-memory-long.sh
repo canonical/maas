@@ -25,8 +25,7 @@
 # description: Run stress-ng memory tests for 12 hours.
 # script_type: test
 # hardware_type: memory
-# packages:
-#   apt: stress-ng
+# packages: {apt: stress-ng}
 # timeout: 12:00:00
 # --- End MAAS 1.0 script metadata ---
 
@@ -38,9 +37,6 @@ if [ $VERSION_ID == '14.04' ]; then
 	 'please use 16.04 or above.' 1>&2
     exit 1
 fi
-
-sudo -n apt-get install -q -y stress-ng
-echo
 
 # Reserve 64M so the test doesn't fail due to the OOM killer.
 total_memory=$(awk '/MemAvailable/ { print ($2 - 65536) }' /proc/meminfo)

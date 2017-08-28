@@ -1746,7 +1746,9 @@ class Node(CleanSave, TimestampedModel):
             return
 
         for script in script_set.scriptresult_set.filter(
-                status__in={SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING}):
+                status__in={
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                    SCRIPT_STATUS.RUNNING}):
             script.status = SCRIPT_STATUS.ABORTED
             script.save(update_fields=['status'])
 
@@ -2882,7 +2884,9 @@ class Node(CleanSave, TimestampedModel):
                 self.current_testing_script_set,
                 self.current_installation_script_set,
             ],
-            status__in=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING])
+            status__in=[
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.RUNNING])
         for script_result in qs:
             script_result.status = script_result_status
             script_result.save(update_fields=['status'])

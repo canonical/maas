@@ -289,12 +289,6 @@ class ScriptForm(ModelForm):
                             set_form_error(
                                 self, 'packages',
                                 'Snap mode must be classic, dev, or jail.')
-                        if ('revision' in package and
-                                (not isinstance(package['revision'], int) or
-                                 package['revision'] < 0)):
-                            set_form_error(
-                                self, 'packages',
-                                'Snap revision must be a positive integer.')
                     elif not isinstance(package, str):
                         set_form_error(
                             self, 'packages', 'Snap package must be a string.')

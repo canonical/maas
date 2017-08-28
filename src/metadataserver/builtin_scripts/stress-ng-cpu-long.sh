@@ -24,8 +24,7 @@
 # title: CPU validation
 # description: Run stress-ng memory tests for 12 hours.
 # script_type: test
-# packages:
-#   apt: stress-ng
+# packages: {apt: stress-ng}
 # timeout: 12:00:00
 # --- End MAAS 1.0 script metadata ---
 
@@ -37,9 +36,6 @@ if [ $VERSION_ID == '14.04' ]; then
 	 'please use 16.04 or above.' 1>&2
     exit 1
 fi
-
-sudo -n apt-get install -q -y stress-ng
-echo
 
 sudo -n stress-ng --aggressive -a 0 --class cpu,cpu-cache --ignite-cpu \
     --log-brief --metrics-brief --times --tz --verify --timeout 12h
