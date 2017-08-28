@@ -4,8 +4,10 @@ maas (2.3.0~alpha3-0ubuntu1) UNRELEASED; urgency=medium
     region controller in addition to the rack.
   * Add /usr/lib/maas/maas-common script.
   * Move to debhelper compat level 9.
+  * debian/maas-common.links: Drop as it created a link for a binary that was
+    already deprecated.
 
- -- Mike Pontillo <mike.pontillo@canonical.com>  Tue, 22 Aug 2017 15:28:42 -0700
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 25 Aug 2017 12:18:37 -0400
 
 maas (2.3.0~alpha2-6194-g7fb23b0-0ubuntu1) artful; urgency=medium
 

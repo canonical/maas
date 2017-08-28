@@ -1,1 +1,2 @@
-maas-common: binary-without-manpage usr/lib/maas/maas-delete-file usr/lib/maas/maas-write-file
+maas-common: binary-without-manpage
+maas-common: maintainer-script-calls-systemctl
