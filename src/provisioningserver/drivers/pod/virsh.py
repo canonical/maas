@@ -92,6 +92,13 @@ DOM_TEMPLATE = dedent("""\
         <console type='pty'>
           <target type='serial' port='0'/>
         </console>
+        <channel type='spicevmc'>
+          <target type='virtio' name='com.redhat.spice.0'/>
+          <address type='virtio-serial' controller='0' bus='0' port='1'/>
+        </channel>
+        <graphics type='spice' autoport='yes'>
+          <image compression='off'/>
+        </graphics>
         <input type='mouse' bus='ps2'/>
         <input type='keyboard' bus='ps2'/>
       </devices>
