@@ -415,6 +415,15 @@ class TestScriptForm(MAASServerTestCase):
         self.assertDictEqual(
             {'script': ['Must start with shebang.']}, form.errors)
 
+    def test__errors_on_invalid_parameters(self):
+        form = ScriptForm(data={
+            'name': factory.make_name('name'),
+            'script': factory.make_string(),
+            'parameters': {'storage': {'type': 'error'}},
+        })
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual([], VersionedTextFile.objects.all())
+
     def test__errors_on_reserved_name(self):
         form = ScriptForm(data={
             'name': 'none',
@@ -476,7 +485,7 @@ class TestScriptForm(MAASServerTestCase):
             'hardware_type': factory.pick_choice(HARDWARE_TYPE_CHOICES),
             'parallel': factory.pick_choice(SCRIPT_PARALLEL_CHOICES),
             'results': ['write_speed'],
-            'parameters': [{'type': 'disk'}, {'type': 'runtime'}],
+            'parameters': [{'type': 'storage'}, {'type': 'runtime'}],
             'packages': {'apt': [factory.make_name('package')]},
             'timeout': random.randint(0, 1000),
             'destructive': factory.pick_bool(),

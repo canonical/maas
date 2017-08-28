@@ -21,6 +21,7 @@ from django.forms import (
     ModelForm,
 )
 from maasserver.fields import VersionedTextFileField
+from maasserver.forms.parameters import ParametersForm
 from maasserver.utils.forms import set_form_error
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -60,7 +61,7 @@ class ScriptForm(ModelForm):
         label='Timeout', required=False,
         help_text='Timeout', initial=timedelta(0))
 
-    script = VersionedTextFileField(label="Script", help_text="Script content")
+    script = VersionedTextFileField(label='Script', help_text='Script content')
 
     comment = CharField(
         label='Comment', required=False, help_text='Description of change',
@@ -381,6 +382,11 @@ class ScriptForm(ModelForm):
 
         if 'script' in self.data:
             if not self._validate_results(self.instance.results):
+                valid = False
+
+        if 'parameters' in self.data:
+            params_form = ParametersForm(data=self.data.get('parameters'))
+            if not params_form.is_valid():
                 valid = False
 
         if (not valid and self.instance.script_id is not None and
