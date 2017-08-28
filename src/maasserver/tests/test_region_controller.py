@@ -15,12 +15,17 @@ from unittest.mock import (
 
 from crochet import wait_for
 from maasserver import region_controller
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.region_controller import (
     DNSReloadError,
     RegionControllerService,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -185,8 +190,8 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_dns_update_all_zones = self.patch(
             region_controller, "dns_update_all_zones")
         mock_dns_update_all_zones.return_value = dns_result
-        mock_check_serial = self.patch(service, "_check_serial")
-        mock_check_serial.return_value = succeed(dns_result[1])
+        mock_check_serial = self.patch(service, "_checkSerial")
+        mock_check_serial.return_value = succeed(dns_result)
         mock_msg = self.patch(
             region_controller.log, "msg")
         service.startProcessing()
@@ -196,9 +201,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertThat(
             mock_msg,
             MockCalledOnceWith(
-                "Successfully configured DNS "
-                "authoritative zones: %s." % (
-                    ', '.join(dns_result[1]))))
+                "Reloaded DNS configuration; regiond started."))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -267,8 +270,8 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_dns_update_all_zones = self.patch(
             region_controller, "dns_update_all_zones")
         mock_dns_update_all_zones.return_value = dns_result
-        mock_check_serial = self.patch(service, "_check_serial")
-        mock_check_serial.return_value = succeed(dns_result[1])
+        mock_check_serial = self.patch(service, "_checkSerial")
+        mock_check_serial.return_value = succeed(dns_result)
         mock_proxy_update_config = self.patch(
             region_controller, "proxy_update_config")
         mock_proxy_update_config.return_value = succeed(None)
@@ -315,7 +318,7 @@ class TestRegionControllerService(MAASServerTestCase):
             succeed(([self.make_soa_result(result_serial)], [], [])),
         ]
         # Error should not be raised.
-        return service._check_serial((formatted_serial, dns_names))
+        return service._checkSerial((formatted_serial, dns_names))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -333,7 +336,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup.side_effect = lambda *args: succeed(([], [], []))
         # Error should not be raised.
         with ExpectedException(DNSReloadError):
-            yield service._check_serial((formatted_serial, dns_names))
+            yield service._checkSerial((formatted_serial, dns_names))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -351,7 +354,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup.side_effect = ValueError()
         # Error should not be raised.
         with ExpectedException(DNSReloadError):
-            yield service._check_serial((formatted_serial, dns_names))
+            yield service._checkSerial((formatted_serial, dns_names))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -369,4 +372,84 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup.side_effect = TimeoutError()
         # Error should not be raised.
         with ExpectedException(DNSReloadError):
-            yield service._check_serial((formatted_serial, dns_names))
+            yield service._checkSerial((formatted_serial, dns_names))
+
+
+class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_process_updates_zones_logs_reason_for_single_update(self):
+        # Create some fake serial updates with sources for the update.
+        def _create_publications():
+            return [
+                DNSPublication.objects.create(
+                    source=factory.make_name('reason'))
+                for _ in range(2)
+            ]
+
+        publications = yield deferToDatabase(_create_publications)
+        service = RegionControllerService(sentinel.listener)
+        service.needsDNSUpdate = True
+        service.previousSerial = publications[0].serial
+        dns_result = (
+            publications[-1].serial, [
+                factory.make_name('domain')
+                for _ in range(3)
+            ])
+        mock_dns_update_all_zones = self.patch(
+            region_controller, "dns_update_all_zones")
+        mock_dns_update_all_zones.return_value = dns_result
+        mock_check_serial = self.patch(service, "_checkSerial")
+        mock_check_serial.return_value = succeed(dns_result)
+        mock_msg = self.patch(
+            region_controller.log, "msg")
+        service.startProcessing()
+        yield service.processingDefer
+        self.assertThat(mock_dns_update_all_zones, MockCalledOnceWith())
+        self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
+        self.assertThat(
+            mock_msg,
+            MockCalledOnceWith(
+                "Reloaded DNS configuration; %s" % (
+                    publications[-1].source)))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_process_updates_zones_logs_reason_for_multiple_updates(self):
+        # Create some fake serial updates with sources for the update.
+        def _create_publications():
+            return [
+                DNSPublication.objects.create(
+                    source=factory.make_name('reason'))
+                for _ in range(3)
+            ]
+
+        publications = yield deferToDatabase(_create_publications)
+        service = RegionControllerService(sentinel.listener)
+        service.needsDNSUpdate = True
+        service.previousSerial = publications[0].serial
+        dns_result = (
+            publications[-1].serial, [
+                factory.make_name('domain')
+                for _ in range(3)
+            ])
+        mock_dns_update_all_zones = self.patch(
+            region_controller, "dns_update_all_zones")
+        mock_dns_update_all_zones.return_value = dns_result
+        mock_check_serial = self.patch(service, "_checkSerial")
+        mock_check_serial.return_value = succeed(dns_result)
+        mock_msg = self.patch(
+            region_controller.log, "msg")
+        service.startProcessing()
+        yield service.processingDefer
+        expected_msg = "Reloaded DNS configuration: \n"
+        expected_msg += '\n'.join(
+            ' * %s' % publication.source
+            for publication in reversed(publications[1:])
+        )
+        self.assertThat(mock_dns_update_all_zones, MockCalledOnceWith())
+        self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
+        self.assertThat(
+            mock_msg,
+            MockCalledOnceWith(expected_msg))
