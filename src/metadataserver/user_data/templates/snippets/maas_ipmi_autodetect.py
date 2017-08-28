@@ -305,7 +305,7 @@ def generate_random_password(
         return ''.join(random.sample(letters, len(letters)))
     else:
         letters = string.ascii_letters + string.digits
-        ''.join([random.choice(letters) for _ in range(length)])
+        return ''.join([random.choice(letters) for _ in range(length)])
 
 
 def bmc_supports_lan2_0():
