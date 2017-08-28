@@ -22,6 +22,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
 )
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from provisioningserver.refresh.node_info_scripts import (
@@ -418,8 +419,9 @@ def update_node_physical_block_devices(node, output, exit_status):
             id__in=delete_block_device_ids).delete()
 
 
-def set_tags_by_modalias(node, output: bytes, exit_status):
+def create_metadata_by_modalias(node, output: bytes, exit_status):
     """Tags the node based on discovered hardware, determined by modaliases.
+    If nodes are detected as supported switches, they also get Switch objects.
 
     :param node: The node whose tags to set.
     :param output: Output from the LIST_MODALIASES_SCRIPT
@@ -438,6 +440,7 @@ def set_tags_by_modalias(node, output: bytes, exit_status):
         dmi_data = get_dmi_data(modaliases)
         vendor, model = detect_switch_vendor_model(dmi_data)
         add_switch_vendor_model_tags(node, vendor, model)
+        add_switch(node, vendor, model)
 
 
 def add_switch_vendor_model_tags(node, vendor, model):
@@ -461,6 +464,13 @@ def add_switch_vendor_model_tags(node, vendor, model):
         logger.info(
             "%s: Added model tag '%s' for detected switch hardware." % (
                 node.hostname, model))
+
+
+def add_switch(node, vendor, model):
+    """Add Switch object representing the switch hardware."""
+    switch, created = Switch.objects.get_or_create(node=node)
+    logger.info("%s: detected as a switch." % node.hostname)
+    return switch
 
 
 def detect_switch_vendor_model(dmi_data):
@@ -656,4 +666,5 @@ NODE_INFO_SCRIPTS[IPADDR_OUTPUT_NAME]['hook'] = (
     update_node_network_information)
 NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
     update_node_network_interface_tags)
-NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = set_tags_by_modalias
+NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (
+    create_metadata_by_modalias)

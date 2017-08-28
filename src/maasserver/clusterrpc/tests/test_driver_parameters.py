@@ -11,9 +11,11 @@ from django import forms
 import jsonschema
 from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
-    add_driver_parameters,
+    add_nos_driver_parameters,
+    add_power_driver_parameters,
     get_driver_parameters_from_json,
     get_driver_types,
+    JSON_NOS_DRIVERS_SCHEMA,
     JSON_POWER_DRIVERS_SCHEMA,
     make_form_field,
     SETTING_PARAMETER_FIELD_SCHEMA,
@@ -259,7 +261,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             'description': 'baz',
             'fields': {},
         }]
-        add_driver_parameters(
+        add_power_driver_parameters(
             driver_type='power', name='blah', description='baz',
             fields=[self.make_field()],
             missing_packages=[],
@@ -277,7 +279,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
         existing_parameters = []
         fields = [self.make_field()]
         missing_packages = ['package1', 'package2']
-        add_driver_parameters(
+        add_power_driver_parameters(
             driver_type='power', name='blah', description='baz', fields=fields,
             missing_packages=missing_packages,
             parameters_set=existing_parameters)
@@ -288,19 +290,78 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
 
     def test_validates_new_parameters(self):
         self.assertRaises(
-            jsonschema.ValidationError, add_driver_parameters,
+            jsonschema.ValidationError, add_power_driver_parameters,
             driver_type='power', name='blah', description='baz', fields=[{}],
             missing_packages=[], parameters_set=[])
 
     def test_subsequent_parameters_set_is_valid(self):
         parameters_set = []
         fields = [self.make_field()]
-        add_driver_parameters(
+        add_power_driver_parameters(
             driver_type='power', name='blah', description='baz', fields=fields,
             missing_packages=[],
             parameters_set=parameters_set)
         jsonschema.validate(
             parameters_set, JSON_POWER_DRIVERS_SCHEMA)
+
+
+class TestAddNOSTypeParameters(MAASServerTestCase):
+
+    def make_field(self):
+        return make_setting_field(
+            self.getUniqueString(), self.getUniqueString())
+
+    def test_adding_existing_types_is_a_no_op(self):
+        existing_parameters = [{
+            'driver_type': 'nos',
+            'name': 'blah',
+            'description': 'baz',
+            'fields': {},
+        }]
+        add_nos_driver_parameters(
+            driver_type='nos', name='blah', description='baz',
+            fields=[self.make_field()],
+            parameters_set=existing_parameters)
+        self.assertEqual(
+            [{
+                'driver_type': 'nos',
+                'name': 'blah',
+                'description': 'baz',
+                'fields': {},
+            }],
+            existing_parameters)
+
+    def test_adds_new_nos_type_parameters(self):
+        existing_parameters = []
+        fields = [self.make_field()]
+        add_nos_driver_parameters(
+            driver_type='nos', name='blah', description='baz', fields=fields,
+            parameters_set=existing_parameters)
+        self.assertEqual(
+            [{'driver_type': 'nos', 'name': 'blah', 'description': 'baz',
+              'fields': fields}],
+            existing_parameters)
+
+    def test_validates_new_parameters(self):
+        self.assertRaises(
+            jsonschema.ValidationError, add_nos_driver_parameters,
+            driver_type='nos', name='blah', description='baz', fields=[{}],
+            parameters_set=[])
+
+    def test_validates_driver_type(self):
+        self.assertRaises(
+            AssertionError, add_nos_driver_parameters,
+            driver_type='power', name='blah', description='baz', fields=[],
+            parameters_set=[])
+
+    def test_subsequent_parameters_set_is_valid(self):
+        parameters_set = []
+        fields = [self.make_field()]
+        add_nos_driver_parameters(
+            driver_type='nos', name='blah', description='baz', fields=fields,
+            parameters_set=parameters_set)
+        jsonschema.validate(
+            parameters_set, JSON_NOS_DRIVERS_SCHEMA)
 
 
 class TestPowerTypes(MAASTestCase):

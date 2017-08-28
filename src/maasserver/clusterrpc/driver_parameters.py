@@ -38,6 +38,7 @@ from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
+from provisioningserver.drivers.nos import JSON_NOS_DRIVERS_SCHEMA
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.rpc import cluster
 
@@ -83,7 +84,7 @@ def make_form_field(json_field):
     return form_field
 
 
-def add_driver_parameters(
+def add_power_driver_parameters(
         driver_type, name, description, fields, missing_packages,
         parameters_set, queryable=None):
     """Add new power type parameters to the given parameters_set if it
@@ -233,7 +234,74 @@ def get_all_power_types_from_racks(controllers=None, ignore_errors=True):
             description = power_type['description']
             missing_packages = power_type['missing_packages']
             queryable = power_type.get('queryable')
-            add_driver_parameters(
+            add_power_driver_parameters(
                 driver_type, name, description, fields, missing_packages,
                 merged_types, queryable=queryable)
+    return sorted(merged_types, key=itemgetter("description"))
+
+
+def add_nos_driver_parameters(
+        driver_type, name, description, fields, parameters_set,
+        deployable=None):
+    """
+    Add new NOS type parameters to the given parameters_set if it
+    does not already exist.
+
+    :param driver_type: Type of driver. Must be 'nos'.
+    :type driver_type: string
+    :param name: The name of the NOS type for which to add parameters.
+    :type name: string
+    :param description: A longer description of the NOS type. This
+        will be displayed in the UI.
+    :type description: string
+    :param fields: The fields that make up the parameters for the NOS type.
+        Will be validated against SETTING_PARAMETER_FIELD_SCHEMA.
+    :type fields: list of `make_setting_field` results.
+    :param parameters_set: An existing list of NOS type parameters to
+        mutate.
+    :type parameters_set: list
+    """
+    for power_type in parameters_set:
+        if name == power_type['name']:
+            return
+    field_set_schema = {
+        'title': "NOS type parameters field set schema",
+        'type': 'array',
+        'items': SETTING_PARAMETER_FIELD_SCHEMA,
+    }
+    validate(fields, field_set_schema)
+    assert driver_type == 'nos', "NOS driver type must be 'nos'."
+    params = {
+        'driver_type': driver_type,
+        'name': name,
+        'description': description,
+        'fields': fields,
+    }
+    if deployable is not None:
+        params['deployable'] = deployable
+    parameters_set.append(params)
+
+
+def get_all_nos_types_from_racks(controllers=None, ignore_errors=True):
+    """Query every rack controller and obtain all known NOS driver types.
+
+    :return: a list of power types matching the schema
+        provisioningserver.drivers.nos.JSON_NOS_DRIVERS_SCHEMA.
+    """
+    merged_types = []
+    responses = call_clusters(
+        cluster.DescribeNOSTypes, controllers=controllers,
+        ignore_errors=ignore_errors)
+    for response in responses:
+        nos_types = response['nos_types']
+        for nos_type in nos_types:
+            driver_type = nos_type.get('driver_type', 'nos')
+            name = nos_type['name']
+            fields = nos_type.get('fields', [])
+            description = nos_type['description']
+            deployable = nos_type.get('deployable')
+            add_nos_driver_parameters(
+                driver_type, name, description, fields, merged_types,
+                deployable=deployable)
+    validate(merged_types, JSON_NOS_DRIVERS_SCHEMA)
     return sorted(merged_types, key=itemgetter("description"))

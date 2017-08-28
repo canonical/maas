@@ -82,7 +82,7 @@ JSON_POWER_DRIVER_SCHEMA = {
     'required': ['driver_type', 'name', 'description', 'fields'],
 }
 
-# JSON schema for multple power drivers.
+# JSON schema for multiple power drivers.
 JSON_POWER_DRIVERS_SCHEMA = {
     'title': "Power drivers parameters set",
     'type': 'array',

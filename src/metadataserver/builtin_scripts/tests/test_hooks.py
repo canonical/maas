@@ -20,13 +20,16 @@ from maasserver.fields import MAC
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import Interface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from metadataserver.builtin_scripts.hooks import (
+    add_switch,
     add_switch_vendor_model_tags,
+    create_metadata_by_modalias,
     detect_switch_vendor_model,
     determine_hardware_matches,
     extract_router_mac_addresses,
@@ -34,7 +37,6 @@ from metadataserver.builtin_scripts.hooks import (
     get_dmi_data,
     parse_cpuinfo,
     retag_node_for_hardware_by_modalias,
-    set_tags_by_modalias,
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
@@ -425,7 +427,7 @@ class TestAddSwitchVendorModelTags(MAASServerTestCase):
             "console=tty0 console=ttyS4,57600n8"))
 
 
-class TestSetTagsByModalias(MAASServerTestCase):
+class TestCreateMetadataByModalias(MAASServerTestCase):
 
     scenarios = (
         ('switch_trident2', {
@@ -440,6 +442,7 @@ class TestSetTagsByModalias(MAASServerTestCase):
                 'bcm-trident2-asic',
                 'wedge40',
             },
+            'expected_driver': '',
         }),
         ('switch_tomahawk', {
             'modaliases':
@@ -454,20 +457,33 @@ class TestSetTagsByModalias(MAASServerTestCase):
                 'bcm-tomahawk-asic',
                 'wedge100',
             },
+            'expected_driver': '',
         }),
         ('no_matcj', {
             'modaliases':
                 b'pci:xxx\n'
                 b'pci:yyy\n',
             'expected_tags': set(),
+            'expected_driver': None,
         }),
     )
 
     def test__tags_node_appropriately(self):
         node = factory.make_Node()
-        set_tags_by_modalias(node, self.modaliases, 0)
+        create_metadata_by_modalias(node, self.modaliases, 0)
         tags = set(node.tags.all().values_list('name', flat=True))
         self.assertThat(tags, Equals(self.expected_tags))
+        if self.expected_driver is not None:
+            switch = Switch.objects.get(node=node)
+            self.assertThat(switch.nos_driver, Equals(self.expected_driver))
+
+
+class TestAddSwitchModels(MAASServerTestCase):
+
+    def test_sets_switch_driver_to_empty_string(self):
+        node = factory.make_Node()
+        switch = add_switch(node, 'vendor', 'switch')
+        self.assertEqual("", switch.nos_driver)
 
 
 class TestUpdateHardwareDetails(MAASServerTestCase):
