@@ -556,7 +556,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     def set_storage_layout(self, request, system_id):
         """Changes the storage layout on the machine.
 
-        This can only be preformed on an allocated machine.
+        This operation can only be performed on a machine with a status
+        of 'Ready'.
 
         Note: This will clear the current storage layout and any extra
         configuration and replace it will the new layout.
