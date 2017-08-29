@@ -715,6 +715,20 @@ class TestScriptForm(MAASServerTestCase):
         script = form.save()
         self.assertItemsEqual(results, script.results)
 
+    def test__allows_dictionary_of_results(self):
+        results = {
+            factory.make_name('result_key'): {
+                'title': factory.make_name('result_title')
+                for _ in range(3)}
+            for _ in range(3)}
+        form = ScriptForm(data={'script': factory.make_script_content({
+            'name': factory.make_name('name'),
+            'results': results,
+            })})
+        self.assertTrue(form.is_valid(), form.errors)
+        script = form.save()
+        self.assertDictEqual(results, script.results)
+
     def test__results_list_must_be_strings(self):
         form = ScriptForm(data={'script': factory.make_script_content({
             'name': factory.make_name('name'),

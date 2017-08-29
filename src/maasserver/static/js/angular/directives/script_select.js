@@ -8,7 +8,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the script-select.html into the template cache.
     $templateCache.put('directive/templates/script-select.html', [
         '<tags-input data-ng-model="ngModel" placeholder="Select scripts" ',
-                'key-property="id" display-property="name" ',
+                'key-property="id" display-property="name" min-length=1',
                 'on-tag-adding="onTagAdding($tag)" spellcheck="false"',
                 'add-from-autocomplete-only="true" on-tag-removed="refocus()"',
                 'on-tag-adding="onTagAdding($tag)" on-tag-added="refocus()">',

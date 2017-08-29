@@ -127,6 +127,10 @@ BUILTIN_SCRIPTS = [
                 'Run badblocks on a disk in read/write destructive mode.'),
             },
         ),
+    BuiltinScript(
+        name='7z',
+        filename='seven_z.py',
+        ),
     ]
 
 

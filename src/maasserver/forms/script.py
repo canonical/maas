@@ -131,16 +131,22 @@ class ScriptForm(ModelForm):
                     valid = False
         elif isinstance(results, dict):
             for result in results.values():
-                if 'title' not in result:
+                if not isinstance(result, dict):
+                    set_form_error(
+                        self, 'results',
+                        'Each result in a result dictionary must be a '
+                        'dictionary.')
+                elif 'title' not in result:
                     set_form_error(
                         self, 'results',
                         'title must be included in a result dictionary.')
                     valid = False
-                for key in ['title', 'description']:
-                    if key in result and not isinstance(result[key], str):
-                        set_form_error(
-                            self, 'results', '%s must be a string.' % key)
-                        valid = False
+                else:
+                    for key in ['title', 'description']:
+                        if key in result and not isinstance(result[key], str):
+                            set_form_error(
+                                self, 'results', '%s must be a string.' % key)
+                            valid = False
         else:
             set_form_error(
                 self, 'results',
