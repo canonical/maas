@@ -25,6 +25,7 @@ from provisioningserver.refresh.maas_api_helper import (
     MD_VERSION,
     SignalException,
 )
+from provisioningserver.utils.version import get_maas_version
 from testtools.matchers import (
     Contains,
     DirExists,
@@ -82,6 +83,7 @@ class TestHelpers(MAASTestCase):
             'architecture': architecture,
             'osystem': osystem,
             'distro_series': distro_series,
+            'maas_version': get_maas_version(),
             'interfaces': {},
             }, Equals(refresh.get_sys_info()))
 
@@ -105,6 +107,7 @@ class TestHelpers(MAASTestCase):
             'architecture': architecture,
             'osystem': osystem,
             'distro_series': distro_series,
+            'maas_version': get_maas_version(),
             'interfaces': {},
             }, Equals(refresh.get_sys_info()))
 
@@ -120,6 +123,7 @@ class TestHelpers(MAASTestCase):
             'architecture': architecture,
             'osystem': '',
             'distro_series': '',
+            'maas_version': get_maas_version(),
             'interfaces': {},
             }, Equals(refresh.get_sys_info()))
 

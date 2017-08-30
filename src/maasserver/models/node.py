@@ -4822,23 +4822,33 @@ class Controller(Node):
     @transactional
     def _process_sys_info(self, response):
         update_fields = []
-        if response['hostname'] != '':
-            self.hostname = response['hostname']
+        hostname = response.get('hostname')
+        if hostname and self.hostname != hostname:
+            self.hostname = hostname
             update_fields.append('hostname')
-        if response['architecture'] != '':
-            self.architecture = response['architecture']
+        architecture = response.get('architecture')
+        if architecture and self.architecture != architecture:
+            self.architecture = architecture
             update_fields.append('architecture')
-        if response['osystem'] != '':
-            self.osystem = response['osystem']
+        osystem = response.get('osystem')
+        if osystem and self.osystem != osystem:
+            self.osystem = osystem
             update_fields.append('osystem')
-        if response['distro_series'] != '':
+        distro_series = response.get('distro_series')
+        if distro_series and self.distro_series != distro_series:
             self.distro_series = response['distro_series']
             update_fields.append('distro_series')
+        maas_version = response.get('maas_version')
+        if maas_version and self.version != maas_version:
+            # Circular imports.
+            from maasserver.models import ControllerInfo
+            ControllerInfo.objects.set_version(self, maas_version)
         # MAAS 2.3+ will send an empty dictionary on purpose, but older
         # versions of the MAAS rack will send real data (and it might arrive
         # in a more timely manner than the UpdateInterfaces call from the
         # NetworksMonitoringService).
-        if response['interfaces'] != {}:
+        interfaces = response.get('interfaces', {})
+        if len(interfaces) > 0:
             self.update_interfaces(response['interfaces'])
         if len(update_fields) > 0:
             self.save(update_fields=update_fields)

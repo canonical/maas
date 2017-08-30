@@ -23,7 +23,9 @@ class ControllerHandler(MachineHandler):
     class Meta(MachineHandler.Meta):
         abstract = False
         queryset = node_prefetch(
-            Controller.controllers.all().prefetch_related("interface_set"))
+            Controller.controllers.all().prefetch_related("interface_set"),
+            'controllerinfo'
+        )
         allowed_methods = [
             'list',
             'get',
@@ -89,6 +91,7 @@ class ControllerHandler(MachineHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         data = super().dehydrate(obj, data, for_list=for_list)
+        data["version"] = obj.version
         data["vlan_ids"] = [
             interface.vlan_id
             for interface in obj.interface_set.all()

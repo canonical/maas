@@ -18,6 +18,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.listener import PostgresListenerService
+from maasserver.models import ControllerInfo
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.config import Config
 from maasserver.models.node import Node
@@ -36,7 +37,9 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     synchronous,
 )
+from testtools import ExpectedException
 from twisted.internet.defer import (
+    CancelledError,
     DeferredList,
     DeferredQueue,
     inlineCallbacks,
@@ -215,6 +218,108 @@ class TestNodeListener(
                 ('update', '%s' % node.system_id)
                 for node in nodes},
                 {res for (suc, res) in results})
+        finally:
+            yield listener.stopService()
+
+
+class TestControllerListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers code."""
+
+    scenarios = (
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+        }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+        }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+        }),
+    )
+
+    def set_version(self, controller, version):
+        ControllerInfo.objects.set_version(controller, version)
+
+    def set_interface_update_info(self, controller, interfaces, hints):
+        ControllerInfo.objects.set_interface_update_info(
+            controller, interfaces, hints)
+
+    def delete_controllerinfo(self, controller):
+        ControllerInfo.objects.filter(node=controller).delete()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_controllerinfo_insert(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        params = self.params.copy()
+        controller = yield deferToDatabase(self.create_node, params)
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.set_version, controller, factory.make_string())
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_controllerinfo_version_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        params = self.params.copy()
+        controller = yield deferToDatabase(self.create_node, params)
+        yield deferToDatabase(self.set_version, controller, '')
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.set_version, controller, factory.make_string())
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__skips_notify_on_controllerinfo_interface_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        params = self.params.copy()
+        controller = yield deferToDatabase(self.create_node, params)
+        yield deferToDatabase(self.set_version, controller, '')
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.set_interface_update_info, controller, '{]', '{}')
+            with ExpectedException(CancelledError):
+                yield dv.get(timeout=0.2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_controllerinfo_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        params = self.params.copy()
+        controller = yield deferToDatabase(self.create_node, params)
+        yield deferToDatabase(self.set_version, controller, '')
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.delete_controllerinfo, controller)
+            yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
 

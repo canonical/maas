@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Functionality to refresh rack controller hardware and networking details."""
+
 import os
 import socket
 import stat
@@ -25,6 +26,7 @@ from provisioningserver.utils.shell import (
     ExternalProcessError,
 )
 from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.version import get_maas_version
 
 
 maaslog = get_maas_logger("refresh")
@@ -77,6 +79,7 @@ def get_sys_info():
         'architecture': get_architecture(),
         'osystem': osystem,
         'distro_series': distro_series,
+        'maas_version': get_maas_version(),
         # In MAAS 2.3+, the NetworksMonitoringService is solely responsible for
         # interface update, because interface updates need to include beaconing
         # data. The key and empty dictionary are necessary for backward

@@ -45,10 +45,10 @@ from metadataserver.enum import RESULT_TYPE
 from provisioningserver.tags import merge_details_cleanly
 
 
-def node_prefetch(queryset):
+def node_prefetch(queryset, *args):
     return (
         queryset
-        .select_related('boot_interface', 'owner', 'zone', 'domain')
+        .select_related('boot_interface', 'owner', 'zone', 'domain', *args)
         .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
         .prefetch_related('blockdevice_set__virtualblockdevice')

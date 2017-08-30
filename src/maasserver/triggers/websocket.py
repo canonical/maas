@@ -22,8 +22,11 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.triggers import (
+    EVENTS_IUD,
+    EVENTS_LUU,
     register_procedure,
     register_trigger,
+    register_triggers,
 )
 from maasserver.utils.orm import transactional
 
@@ -1175,21 +1178,27 @@ def register_websocket_triggers():
                 '%s_delete_notify' % proc_name_prefix,
                 '%s_delete' % event_name_prefix,
                 'OLD.system_id'))
-        register_trigger(
-            "maasserver_node",
-            "%s_create_notify" % proc_name_prefix,
-            "insert",
-            {'NEW.node_type': node_type})
-        register_trigger(
-            "maasserver_node",
-            "%s_update_notify" % proc_name_prefix,
-            "update",
-            {'NEW.node_type': node_type})
-        register_trigger(
-            "maasserver_node",
-            "%s_delete_notify" % proc_name_prefix,
-            "delete",
-            {'OLD.node_type': node_type})
+        register_triggers(
+            "maasserver_node", proc_name_prefix, {'node_type': node_type})
+
+    # ControllerInfo notifications
+    register_procedure(
+        render_node_related_notification_procedure(
+            'controllerinfo_link_notify', 'NEW.node_id'))
+    register_procedure(
+        render_node_related_notification_procedure(
+            'controllerinfo_update_notify', 'NEW.node_id'))
+    register_procedure(
+        render_node_related_notification_procedure(
+            'controllerinfo_unlink_notify', 'OLD.node_id'))
+    register_triggers(
+        "maasserver_controllerinfo",
+        "controllerinfo",
+        # Trigger only fires for version information on update; it doesn't
+        # care when the other metadata is updated.
+        fields=('version',),
+        events=EVENTS_LUU
+    )
 
     # Config table
     register_procedure(
@@ -1201,12 +1210,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'config_delete_notify', 'config_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_config", "config_create_notify", "insert")
-    register_trigger(
-        "maasserver_config", "config_update_notify", "update")
-    register_trigger(
-        "maasserver_config", "config_delete_notify", "delete")
+    register_triggers("maasserver_config", "config")
 
     # Device Node types
     register_procedure(
@@ -1218,15 +1222,8 @@ def register_websocket_triggers():
     register_procedure(
         render_device_notification_procedure(
             'device_delete_notify', 'device_delete', 'OLD'))
-    register_trigger(
-        "maasserver_node", "device_create_notify", "insert",
-        {'NEW.node_type': NODE_TYPE.DEVICE})
-    register_trigger(
-        "maasserver_node", "device_update_notify", "update",
-        {'NEW.node_type': NODE_TYPE.DEVICE})
-    register_trigger(
-        "maasserver_node", "device_delete_notify", "delete",
-        {'OLD.node_type': NODE_TYPE.DEVICE})
+    register_triggers(
+        "maasserver_node", "device", {'node_type': NODE_TYPE.DEVICE})
 
     # VLAN table
     register_procedure(
@@ -1238,12 +1235,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'vlan_delete_notify', 'vlan_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_vlan", "vlan_create_notify", "insert")
-    register_trigger(
-        "maasserver_vlan", "vlan_update_notify", "update")
-    register_trigger(
-        "maasserver_vlan", "vlan_delete_notify", "delete")
+    register_triggers("maasserver_vlan", "vlan")
 
     # IPRange table
     register_procedure(
@@ -1255,12 +1247,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'iprange_delete_notify', 'iprange_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_iprange", "iprange_create_notify", "insert")
-    register_trigger(
-        "maasserver_iprange", "iprange_update_notify", "update")
-    register_trigger(
-        "maasserver_iprange", "iprange_delete_notify", "delete")
+    register_triggers("maasserver_iprange", "iprange")
 
     # Neighbour table
     register_procedure(
@@ -1272,12 +1259,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'neighbour_delete_notify', 'neighbour_delete', 'OLD.ip'))
-    register_trigger(
-        "maasserver_neighbour", "neighbour_create_notify", "insert")
-    register_trigger(
-        "maasserver_neighbour", "neighbour_update_notify", "update")
-    register_trigger(
-        "maasserver_neighbour", "neighbour_delete_notify", "delete")
+    register_triggers("maasserver_neighbour", "neighbour")
 
     # StaticRoute table
     register_procedure(
@@ -1289,12 +1271,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'staticroute_delete_notify', 'staticroute_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_staticroute", "staticroute_create_notify", "insert")
-    register_trigger(
-        "maasserver_staticroute", "staticroute_update_notify", "update")
-    register_trigger(
-        "maasserver_staticroute", "staticroute_delete_notify", "delete")
+    register_triggers("maasserver_staticroute", "staticroute")
 
     # Fabric table
     register_procedure(
@@ -1306,12 +1283,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'fabric_delete_notify', 'fabric_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_fabric", "fabric_create_notify", "insert")
-    register_trigger(
-        "maasserver_fabric", "fabric_update_notify", "update")
-    register_trigger(
-        "maasserver_fabric", "fabric_delete_notify", "delete")
+    register_triggers("maasserver_fabric", "fabric")
 
     # Space table
     register_procedure(
@@ -1323,12 +1295,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'space_delete_notify', 'space_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_space", "space_create_notify", "insert")
-    register_trigger(
-        "maasserver_space", "space_update_notify", "update")
-    register_trigger(
-        "maasserver_space", "space_delete_notify", "delete")
+    register_triggers("maasserver_space", "space")
 
     # Subnet table
     register_procedure(
@@ -1340,12 +1307,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'subnet_delete_notify', 'subnet_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_subnet", "subnet_create_notify", "insert")
-    register_trigger(
-        "maasserver_subnet", "subnet_update_notify", "update")
-    register_trigger(
-        "maasserver_subnet", "subnet_delete_notify", "delete")
+    register_triggers("maasserver_subnet", "subnet")
 
     # Subnet node notifications
     register_procedure(
@@ -1421,15 +1383,8 @@ def register_websocket_triggers():
     register_procedure(
         STATIC_IP_ADDRESS_DOMAIN_NOTIFY % (
             'ipaddress_domain_delete_notify', 'OLD.id'))
-    register_trigger(
-        "maasserver_staticipaddress",
-        "ipaddress_domain_insert_notify", "insert")
-    register_trigger(
-        "maasserver_staticipaddress",
-        "ipaddress_domain_update_notify", "update")
-    register_trigger(
-        "maasserver_staticipaddress",
-        "ipaddress_domain_delete_notify", "delete")
+    register_triggers(
+        "maasserver_staticipaddress", "ipaddress_domain", events=EVENTS_IUD)
 
     # IP range subnet notifications
     register_procedure(
@@ -1438,15 +1393,8 @@ def register_websocket_triggers():
         IP_RANGE_SUBNET_UPDATE_NOTIFY % 'iprange_subnet_update_notify')
     register_procedure(
         IP_RANGE_SUBNET_DELETE_NOTIFY % 'iprange_subnet_delete_notify')
-    register_trigger(
-        "maasserver_iprange",
-        "iprange_subnet_insert_notify", "insert")
-    register_trigger(
-        "maasserver_iprange",
-        "iprange_subnet_update_notify", "update")
-    register_trigger(
-        "maasserver_iprange",
-        "iprange_subnet_delete_notify", "delete")
+    register_triggers(
+        "maasserver_iprange", "iprange_subnet", events=EVENTS_IUD)
 
     # Pod notifications
     register_procedure(
@@ -1457,15 +1405,7 @@ def register_websocket_triggers():
             BMC_TYPE.POD, BMC_TYPE.POD, BMC_TYPE.BMC))
     register_procedure(
         POD_DELETE_NOTIFY % ('pod_delete_notify', BMC_TYPE.POD))
-    register_trigger(
-        "maasserver_bmc",
-        "pod_insert_notify", "insert")
-    register_trigger(
-        "maasserver_bmc",
-        "pod_update_notify", "update")
-    register_trigger(
-        "maasserver_bmc",
-        "pod_delete_notify", "delete")
+    register_triggers("maasserver_bmc", "pod", events=EVENTS_IUD)
 
     # Node pod notifications
     register_procedure(
@@ -1475,15 +1415,7 @@ def register_websocket_triggers():
             'node_pod_update_notify', BMC_TYPE.POD, BMC_TYPE.POD))
     register_procedure(
         NODE_POD_DELETE_NOTIFY % ('node_pod_delete_notify', BMC_TYPE.POD))
-    register_trigger(
-        "maasserver_node",
-        "node_pod_insert_notify", "insert")
-    register_trigger(
-        "maasserver_node",
-        "node_pod_update_notify", "update")
-    register_trigger(
-        "maasserver_node",
-        "node_pod_delete_notify", "delete")
+    register_triggers("maasserver_node", "node_pod", events=EVENTS_IUD)
 
     # DNSData table
     register_procedure(
@@ -1496,15 +1428,8 @@ def register_websocket_triggers():
     register_procedure(
         DNSDATA_DOMAIN_NOTIFY % (
             'dnsdata_domain_delete_notify', 'OLD.dnsresource_id'))
-    register_trigger(
-        "maasserver_dnsdata",
-        "dnsdata_domain_insert_notify", "insert")
-    register_trigger(
-        "maasserver_dnsdata",
-        "dnsdata_domain_update_notify", "update")
-    register_trigger(
-        "maasserver_dnsdata",
-        "dnsdata_domain_delete_notify", "delete")
+    register_triggers(
+        "maasserver_dnsdata", "dnsdata_domain", events=EVENTS_IUD)
 
     # DNSResource table
     register_procedure(
@@ -1515,15 +1440,8 @@ def register_websocket_triggers():
     register_procedure(
         DNSRESOURCE_DOMAIN_NOTIFY % (
             'dnsresource_domain_delete_notify', 'OLD'))
-    register_trigger(
-        "maasserver_dnsresource",
-        "dnsresource_domain_insert_notify", "insert")
-    register_trigger(
-        "maasserver_dnsresource",
-        "dnsresource_domain_update_notify", "update")
-    register_trigger(
-        "maasserver_dnsresource",
-        "dnsresource_domain_delete_notify", "delete")
+    register_triggers(
+        "maasserver_dnsresource", "dnsresource_domain", events=EVENTS_IUD)
 
     # Domain table
     register_procedure(
@@ -1542,12 +1460,7 @@ def register_websocket_triggers():
             'domain_delete_notify', 'domain_delete', 'OLD.id'))
     register_trigger(
         "maasserver_domain", "domain_node_update_notify", "update")
-    register_trigger(
-        "maasserver_domain", "domain_create_notify", "insert")
-    register_trigger(
-        "maasserver_domain", "domain_update_notify", "update")
-    register_trigger(
-        "maasserver_domain", "domain_delete_notify", "delete")
+    register_triggers("maasserver_domain", "domain")
 
     # MAC static ip address table, update to linked domain via dnsresource
     register_procedure(
@@ -1573,12 +1486,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'zone_delete_notify', 'zone_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_zone", "zone_create_notify", "insert")
-    register_trigger(
-        "maasserver_zone", "zone_update_notify", "update")
-    register_trigger(
-        "maasserver_zone", "zone_delete_notify", "delete")
+    register_triggers("maasserver_zone", "zone")
 
     # Service table
     register_procedure(
@@ -1590,12 +1498,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'service_delete_notify', 'service_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_service", "service_create_notify", "insert")
-    register_trigger(
-        "maasserver_service", "service_update_notify", "update")
-    register_trigger(
-        "maasserver_service", "service_delete_notify", "delete")
+    register_triggers("maasserver_service", "service")
 
     # Tag table
     register_procedure(
@@ -1607,12 +1510,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'tag_delete_notify', 'tag_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_tag", "tag_create_notify", "insert")
-    register_trigger(
-        "maasserver_tag", "tag_update_notify", "update")
-    register_trigger(
-        "maasserver_tag", "tag_delete_notify", "delete")
+    register_triggers("maasserver_tag", "tag")
 
     # Node tag link table
     register_procedure(
@@ -1647,12 +1545,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'user_delete_notify', 'user_delete', 'OLD.id'))
-    register_trigger(
-        "auth_user", "user_create_notify", "insert")
-    register_trigger(
-        "auth_user", "user_update_notify", "update")
-    register_trigger(
-        "auth_user", "user_delete_notify", "delete")
+    register_triggers("auth_user", "user")
 
     # Events table
     register_procedure(
@@ -1928,12 +1821,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'sshkey_delete_notify', 'sshkey_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_sshkey", "sshkey_create_notify", "insert")
-    register_trigger(
-        "maasserver_sshkey", "sshkey_update_notify", "update")
-    register_trigger(
-        "maasserver_sshkey", "sshkey_delete_notify", "delete")
+    register_triggers("maasserver_sshkey", "sshkey")
 
     # SSL key table, update to linked user.
     register_procedure(
@@ -1957,12 +1845,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'dhcpsnippet_delete_notify', 'dhcpsnippet_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_dhcpsnippet", "dhcpsnippet_create_notify", "insert")
-    register_trigger(
-        "maasserver_dhcpsnippet", "dhcpsnippet_update_notify", "update")
-    register_trigger(
-        "maasserver_dhcpsnippet", "dhcpsnippet_delete_notify", "delete")
+    register_triggers("maasserver_dhcpsnippet", "dhcpsnippet")
 
     # PackageRepository table
     register_procedure(
@@ -1977,15 +1860,7 @@ def register_websocket_triggers():
         render_notification_procedure(
             'packagerepository_delete_notify', 'packagerepository_delete',
             'OLD.id'))
-    register_trigger(
-        "maasserver_packagerepository", "packagerepository_create_notify",
-        "insert")
-    register_trigger(
-        "maasserver_packagerepository", "packagerepository_update_notify",
-        "update")
-    register_trigger(
-        "maasserver_packagerepository", "packagerepository_delete_notify",
-        "delete")
+    register_triggers("maasserver_packagerepository", "packagerepository")
 
     # Node type change.
     register_procedure(node_type_change())
@@ -2002,12 +1877,7 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'notification_delete_notify', 'notification_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_notification", "notification_create_notify", "insert")
-    register_trigger(
-        "maasserver_notification", "notification_update_notify", "update")
-    register_trigger(
-        "maasserver_notification", "notification_delete_notify", "delete")
+    register_triggers("maasserver_notification", "notification")
 
     # NotificationDismissal table.
     register_procedure(
@@ -2028,6 +1898,4 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'script_delete_notify', 'script_delete', 'OLD.id'))
-    register_trigger('metadataserver_script', 'script_create_notify', 'insert')
-    register_trigger('metadataserver_script', 'script_update_notify', 'update')
-    register_trigger('metadataserver_script', 'script_delete_notify', 'delete')
+    register_triggers('metadataserver_script', 'script')

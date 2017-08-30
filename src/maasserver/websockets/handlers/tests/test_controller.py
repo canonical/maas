@@ -7,6 +7,7 @@ __all__ = []
 
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
+from maasserver.models import ControllerInfo
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
@@ -95,6 +96,15 @@ class TestControllerHandler(MAASServerTestCase):
         rack = factory.make_RackController()
         handler = ControllerHandler(owner, {})
         self.assertTrue(handler.dehydrate_show_os_info(rack))
+
+    def test_dehydrate_includes_version(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {})
+        rack = factory.make_RackController()
+        version = factory.make_string()
+        ControllerInfo.objects.set_version(rack, version)
+        result = handler.list({})
+        self.assertEqual(version, result[0].get('version'))
 
 
 class TestControllerHandlerScenarios(MAASServerTestCase):
