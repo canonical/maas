@@ -737,6 +737,7 @@ ALL_HANDLERS = (
     "sshkey",
     "staticroute",
     "subnet",
+    "switch",
     "tag",
     "user",
     "vlan",

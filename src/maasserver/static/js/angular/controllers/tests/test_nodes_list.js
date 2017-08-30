@@ -38,7 +38,8 @@ describe("NodesListController", function() {
     }));
 
     // Load the required managers.
-    var MachinesManager, DevicesManager, ControllersManager, GeneralManager;
+    var MachinesManager, DevicesManager, ControllersManager, GeneralManager,
+        SwitchesManager;
     var ZonesManager, UsersManager, ServicesManager;
     var ManagerHelperService, SearchService;
     var ScriptsManager;
@@ -53,6 +54,7 @@ describe("NodesListController", function() {
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
         ScriptsManager = $injector.get("ScriptsManager");
+        SwitchesManager = $injector.get("SwitchesManager");
     }));
 
     // Mock the websocket connection to the region
@@ -99,7 +101,8 @@ describe("NodesListController", function() {
             ServicesManager: ServicesManager,
             ManagerHelperService: ManagerHelperService,
             SearchService: SearchService,
-            ScriptsManager: ScriptsManager
+            ScriptsManager: ScriptsManager,
+            SwitchesManager: SwitchesManager
         });
 
         // Since the osSelection directive is not used in this test the
@@ -135,6 +138,14 @@ describe("NodesListController", function() {
             };
             ControllersManager._items.push(controller);
             return controller;
+        }
+        else if (tab === 'switches') {
+            var network_switch = {
+                system_id: makeName("system_id"),
+                $selected: false
+            };
+            SwitchesManager._items.push(network_switch);
+            return network_switch;
         }
         return null;
     }
@@ -204,15 +215,19 @@ describe("NodesListController", function() {
             var nodesFilters = {};
             var devicesFilters = {};
             var controllersFilters = {};
+            var switchesFilters = {};
             $scope.tabs.nodes.filters = nodesFilters;
             $scope.tabs.devices.filters = devicesFilters;
             $scope.tabs.controllers.filters = controllersFilters;
+            $scope.tabs.switches.filters = switchesFilters;
             $scope.$destroy();
             expect(SearchService.retrieveFilters("nodes")).toBe(nodesFilters);
             expect(SearchService.retrieveFilters("devices")).toBe(
                 devicesFilters);
             expect(SearchService.retrieveFilters("controllers")).toBe(
                 controllersFilters);
+            expect(SearchService.retrieveFilters("switches")).toBe(
+                switchesFilters);
         });
 
     it("calls loadManagers with MachinesManager, DevicesManager," +
@@ -222,7 +237,7 @@ describe("NodesListController", function() {
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [MachinesManager, DevicesManager, ControllersManager,
                 GeneralManager, ZonesManager, UsersManager, ServicesManager,
-                ScriptsManager]);
+                ScriptsManager, SwitchesManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -260,6 +275,15 @@ describe("NodesListController", function() {
             expect($scope.tabs.controllers.search).toBe(query);
         });
 
+    it("sets switches search from SearchService",
+        function() {
+            var query = makeName("query");
+            SearchService.storeFilters(
+                "switches", SearchService.getCurrentFilters(query));
+            makeController();
+            expect($scope.tabs.switches.search).toBe(query);
+        });
+
     it("sets nodes search from $routeParams.query",
         function() {
             var query = makeName("query");
@@ -284,6 +308,8 @@ describe("NodesListController", function() {
             expect($rootScope.title).toBe($scope.tabs.devices.pagetitle);
             $scope.toggleTab('nodes');
             expect($rootScope.title).toBe($scope.tabs.nodes.pagetitle);
+            $scope.toggleTab('switches');
+            expect($rootScope.title).toBe($scope.tabs.switches.pagetitle);
         });
 
         it("sets currentpage", function() {
@@ -292,6 +318,8 @@ describe("NodesListController", function() {
             expect($scope.currentpage).toBe('devices');
             $scope.toggleTab('nodes');
             expect($scope.currentpage).toBe('nodes');
+            $scope.toggleTab('switches');
+            expect($scope.currentpage).toBe('switches');
         });
 
         it("calls $location search", function() {
@@ -302,7 +330,8 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers", "switches"],
+                    function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -372,7 +401,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["devices", "controllers"], function(tab) {
+    angular.forEach(["devices", "controllers", "switches"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -452,7 +481,8 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers", "switches"],
+                     function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -571,7 +601,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["devices", "controllers"], function(tab) {
+    angular.forEach(["devices", "controllers", "switches"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -584,6 +614,7 @@ describe("NodesListController", function() {
                     tabObj = $scope.tabs[tab];
                     $scope.tabs.devices.filtered_items = $scope.devices;
                     $scope.tabs.controllers.filtered_items = $scope.controllers;
+                    $scope.tabs.switches.filtered_items = $scope.switches;
                 });
 
                 it("selects object", function() {
@@ -664,6 +695,7 @@ describe("NodesListController", function() {
                     tabObj = $scope.tabs[tab];
                     $scope.tabs.devices.filtered_items = $scope.devices;
                     $scope.tabs.controllers.filtered_items = $scope.controllers;
+                    $scope.tabs.switches.filtered_items = $scope.switches;
                 });
 
                 it("selects all objects", function() {
@@ -752,7 +784,8 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers", "switches"],
+                    function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -894,7 +927,8 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers", "switches"],
+                    function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -1641,6 +1675,23 @@ describe("NodesListController", function() {
         it("returns false without custom commissioning scripts", function() {
             var controller = makeController();
             expect($scope.hasCustomCommissioningScripts()).toBe(false);
+        });
+    });
+
+    describe("showswitches", function() {
+        it("is true if switches=on", function() {
+            $routeParams.switches = "on";
+            var controller = makeController();
+            expect($scope.showswitches).toBe(true);
+        });
+        it("is false if switches=off", function() {
+            $routeParams.switches = "off";
+            var controller = makeController();
+            expect($scope.showswitches).toBe(false);
+        });
+        it("is false if switches is not specified", function() {
+            var controller = makeController();
+            expect($scope.showswitches).toBe(false);
         });
     });
 });

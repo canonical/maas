@@ -9,10 +9,11 @@ angular.module('MAAS').controller('NodesListController', [
     'MachinesManager', 'DevicesManager', 'ControllersManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService',
     'ZonesManager', 'UsersManager', 'ServicesManager', 'ScriptsManager',
+    'SwitchesManager',
     function($scope, $interval, $rootScope, $routeParams, $location,
         MachinesManager, DevicesManager, ControllersManager, GeneralManager,
         ManagerHelperService, SearchService, ZonesManager, UsersManager,
-        ServicesManager, ScriptsManager) {
+        ServicesManager, ScriptsManager, SwitchesManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -30,6 +31,8 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.zones = ZonesManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.controllers = ControllersManager.getItems();
+        $scope.switches = SwitchesManager.getItems();
+        $scope.showswitches = $routeParams.switches === 'on';
         $scope.currentpage = "nodes";
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.scripts = ScriptsManager.getItems();
@@ -128,6 +131,34 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.controllers.addController = false;
         $scope.tabs.controllers.registerUrl = MAAS_config.register_url;
         $scope.tabs.controllers.registerSecret = MAAS_config.register_secret;
+
+        // Switch tab.
+        $scope.tabs.switches = {};
+        $scope.tabs.switches.pagetitle = "Switches";
+        $scope.tabs.switches.currentpage = "switches";
+        $scope.tabs.switches.manager = SwitchesManager;
+        $scope.tabs.switches.previous_search = "";
+        $scope.tabs.switches.search = "";
+        $scope.tabs.switches.searchValid = true;
+        $scope.tabs.switches.selectedItems = SwitchesManager.getSelectedItems();
+        $scope.tabs.switches.filtered_items = [];
+        $scope.tabs.switches.predicate = 'fqdn';
+        $scope.tabs.switches.allViewableChecked = false;
+        $scope.tabs.switches.metadata = SwitchesManager.getMetadata();
+        $scope.tabs.switches.filters = SearchService.getEmptyFilter();
+        $scope.tabs.switches.column = 'fqdn';
+        $scope.tabs.switches.actionOption = null;
+        // XXX: Which actions should there be?
+        $scope.tabs.switches.takeActionOptions = GeneralManager.getData(
+            "device_actions");
+        $scope.tabs.switches.actionErrorCount = 0;
+        $scope.tabs.switches.actionProgress = {
+            total: 0,
+            completed: 0,
+            errors: {}
+        };
+        $scope.tabs.switches.zoneSelection = null;
+
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = null;
@@ -361,6 +392,10 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.$watchCollection("tabs.controllers.filtered_items", function() {
             updateAllViewableChecked("controllers");
             removeEmptyFilter("controllers");
+        });
+        $scope.$watchCollection("tabs.switches.filtered_items", function() {
+            updateAllViewableChecked("switches");
+            removeEmptyFilter("switches");
         });
 
         // Shows the current selection.
@@ -644,7 +679,7 @@ angular.module('MAAS').controller('NodesListController', [
         ManagerHelperService.loadManagers($scope, [
             MachinesManager, DevicesManager, ControllersManager,
             GeneralManager, ZonesManager, UsersManager, ServicesManager,
-            ScriptsManager]).then(function() {
+            ScriptsManager, SwitchesManager]).then(function() {
                 $scope.loading = false;
             });
 
@@ -659,6 +694,8 @@ angular.module('MAAS').controller('NodesListController', [
             SearchService.storeFilters("devices", $scope.tabs.devices.filters);
             SearchService.storeFilters(
                 "controllers", $scope.tabs.controllers.filters);
+            SearchService.storeFilters(
+                "switches", $scope.tabs.switches.filters);
         });
 
         // Restore the filters if any saved.
@@ -680,10 +717,18 @@ angular.module('MAAS').controller('NodesListController', [
                 controllersFilter);
             $scope.updateFilters("controllers");
         }
+        var switchesFilter = SearchService.retrieveFilters("switches");
+        if(angular.isObject(switchesFilter)) {
+            $scope.tabs.switches.search = SearchService.filtersToString(
+                switchesFilter);
+            $scope.updateFilters("switches");
+        }
+
 
         // Switch to the specified tab, if specified.
         if($routeParams.tab === "nodes" || $routeParams.tab === "devices" ||
-                $routeParams.tab === "controllers") {
+                $routeParams.tab === "controllers" ||
+                $routeParams.tab === "switches") {
             $scope.toggleTab($routeParams.tab);
         }
 

@@ -648,6 +648,11 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 aria-label="A node that provides MAAS services."
                 data-ng-class="{ 'is-active': currentpage === 'controllers'}"
                 data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize></button>
+            <button class="page-navigation__link tooltip"
+                data-ng-if="showswitches"
+                aria-label="A node that is a network switch."
+                data-ng-class="{ 'is-active': currentpage === 'switches'}"
+                data-ng-click="toggleTab('switches')">{$ switches.length $} <ng-pluralize count="switches.length" when="{'one': 'Switch', 'other': 'Switches'}"></ng-pluralize></button>
         </nav>
     </div>
 </div>
@@ -936,6 +941,52 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <td class="table-col--15" aria-label="Image status">
                         <maas-controller-image-status system-id="controller.system_id"></maas-controller-image-status>
                     </td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+        <div class="nine-col last-col" class="ng-hide" data-ng-show="currentpage === 'switches'">
+            <div class="search nine-col">
+                <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                <input
+                    type="search" placeholder="Search switches" class="search__input"
+                    data-ng-model="tabs.switches.search" data-ng-change="updateFilters('switches')"
+                    data-ng-class="{ error: !tabs.switches.searchValid }"
+                    data-ng-disabled="tabs.switches.actionOption" />
+                <input type="submit" class="search__submit"
+                    data-ng-class="{ 'search__submit--close': tabs.switches.search.length > 0 }"
+                    data-ng-click="clearSearch('switches')" />
+            </div>
+            <table>
+            <thead>
+                <tr>
+                    <th class="table-col--3">
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('switches')" data-ng-checked="tabs.switches.allViewableChecked" id="check-all-switches" data-ng-disabled="hasActionsInProgress('switches')" />
+                        <label for="check-all-switches" class="checkbox-label"></label>
+                    </th>
+                    <th class="table-col--24">
+                        <a href="" data-ng-click="sortTable('fqdn', 'switches')" data-ng-class="{'is-sorted': tabs.switches.predicate === 'fqdn', 'sort-asc': tabs.switches.reverse === false, 'sort-desc': tabs.switches.reverse === true}">
+                            <span title="Fully Qualified Domain Name">FQDN</span>
+                        </a>
+                    </th>
+                    <th class="table-col--12">
+                        <a href="" data-ng-click="sortTable('owner', 'switches')" data-ng-class="{'is-sorted': tabs.switches.predicate === 'owner', 'sort-asc': tabs.switches.reverse === false, 'sort-desc': tabs.switches.reverse === true}">Owner</a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody vs-repeat vs-scroll-parent="window">
+                <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
+                <tr
+                    data-ng-repeat="switch in tabs.switches.filtered_items = (switches | nodesFilter:tabs.switches.search | orderBy:tabs.switches.predicate:tabs.switches.reverse) track by switch.system_id"
+                    data-ng-class="{ 'table--error': !supportsAction(switch, 'switches'), selected: switch.$selected }">
+                    <td class="table-col--3" aria-label="Select switch">
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(switch, 'switches')" data-ng-checked="switch.$selected" id="{$ switch.fqdn $}" data-ng-disabled="hasActionsInProgress('switches')"/>
+                        <label for="{$ switch.fqdn $}" class="checkbox-label"></label>
+                    </td>
+                    <td class="table-col--24" aria-label="FQDN">
+                        <a href="#/node/switch/{$ switch.system_id $}">{$ switch.fqdn $}</a>
+                    </td>
+                    <td class="table-col--12" aria-label="Owner">{$ switch.owner $}</td>
                 </tr>
             </tbody>
         </table>
