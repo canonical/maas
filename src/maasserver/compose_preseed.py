@@ -147,6 +147,23 @@ def get_archive_config(node, preserve_sources=False):
     return archives
 
 
+def get_cloud_init_reporting(node, token, base_url):
+    """Return the cloud-init metadata to enable reporting"""
+    return {
+        'reporting': {
+            'maas': {
+                'type': 'webhook',
+                'endpoint': absolute_reverse(
+                    'metadata-status', args=[node.system_id],
+                    base_url=base_url),
+                'consumer_key': token.consumer.key,
+                'token_key': token.key,
+                'token_secret': token.secret,
+            }
+        }
+    }
+
+
 def get_rsyslog_host_port(node):
     """Return the rsyslog host and port to use."""
     # TODO: In the future, we can make this configurable
@@ -191,7 +208,12 @@ def get_system_info():
 
 
 def compose_cloud_init_preseed(node, token, base_url=''):
-    """Compose the preseed value for a node in any state but Commissioning."""
+    """Compose the preseed value for a node in any state but Commissioning.
+
+    Returns cloud-config that's preseeded to cloud-init via debconf (It only
+    configures cloud-init in Ubuntu Classic systems. Ubuntu Core does not
+    have debconf as it is not Debian based.
+    """
     credentials = urlencode({
         'oauth_consumer_key': token.consumer.key,
         'oauth_token_key': token.key,
@@ -209,21 +231,12 @@ def compose_cloud_init_preseed(node, token, base_url=''):
         # This is done so a machine does not need to contact MAAS every time
         # it reboots.
         "manual_cache_clean": True,
-        # This is used as preseed for a node that's been installed.
-        # This will allow cloud-init to be configured with reporting for
-        # a node that has already been installed.
-        'reporting': {
-            'maas': {
-                'type': 'webhook',
-                'endpoint': absolute_reverse(
-                    'metadata-status', args=[node.system_id],
-                    base_url=base_url),
-                'consumer_key': token.consumer.key,
-                'token_key': token.key,
-                'token_secret': token.secret,
-            }
-        }
     }
+    # This is used as preseed for a node that's been installed.
+    # This will allow cloud-init to be configured with reporting for
+    # a node that has already been installed.
+    config.update(
+        get_cloud_init_reporting(node=node, token=token, base_url=base_url))
     # Add the system configuration information.
     config.update(get_system_info())
     apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
@@ -286,18 +299,6 @@ def _compose_cloud_init_preseed(
                 'token_secret': token.secret,
             }
         },
-        # This configures reporting for the ephemeral environment
-        'reporting': {
-            'maas': {
-                'type': 'webhook',
-                'endpoint': absolute_reverse(
-                    'metadata-status', args=[node.system_id],
-                    base_url=base_url),
-                'consumer_key': token.consumer.key,
-                'token_key': token.key,
-                'token_secret': token.secret,
-            },
-        },
         # This configure rsyslog for the ephemeral environment
         'rsyslog': {
             'remotes': {
@@ -312,6 +313,9 @@ def _compose_cloud_init_preseed(
         # deploy in an ephemeral environment.
         'manage_etc_hosts': True,
     }
+    # This configures reporting for the ephemeral environment
+    cloud_config.update(
+        get_cloud_init_reporting(node=node, token=token, base_url=base_url))
     # Add the system configuration information.
     cloud_config.update(get_system_info())
     apt_proxy = get_apt_proxy(node.get_boot_rack_controller())

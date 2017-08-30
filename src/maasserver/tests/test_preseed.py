@@ -700,7 +700,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
         self.assertItemsEqual(
             ['cloudconfig'], list(config.keys()))
         self.assertItemsEqual(
-            ['maas-datasource', 'maas-cloud-config'],
+            ['maas-datasource', 'maas-cloud-config', 'maas-reporting'],
             list(config['cloudconfig'].keys()))
         self.assertThat(
             config['cloudconfig']['maas-datasource']['content'],
@@ -715,7 +715,8 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
         self.assertItemsEqual(
             ['cloudconfig'], list(config.keys()))
         self.assertItemsEqual(
-            ['maas-datasource', 'maas-cloud-config', 'maas-ubuntu-sso'],
+            ['maas-datasource', 'maas-cloud-config', 'maas-ubuntu-sso',
+             'maas-reporting'],
             list(config['cloudconfig'].keys()))
         ds_config = {
             'datasource': {
@@ -733,6 +734,19 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
                 'email': node.owner.email
             }
         }
+        reporting_config = {
+            'reporting': {
+                'maas': {
+                    'type': 'webhook',
+                    'endpoint': absolute_reverse(
+                        'metadata-status', args=[node.system_id],
+                        base_url=base_url),
+                    'consumer_key': token.consumer.key,
+                    'token_key': token.key,
+                    'token_secret': token.secret,
+                }
+            }
+        }
         self.assertThat(
             config['cloudconfig']['maas-cloud-config']['content'],
             Contains('#cloud-config'))
@@ -747,6 +761,13 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             yaml.safe_load(
                 config['cloudconfig']['maas-ubuntu-sso']['content']),
             Equals(snappy_config))
+        self.assertThat(
+            config['cloudconfig']['maas-reporting']['content'],
+            Contains('#cloud-config'))
+        self.assertThat(
+            yaml.safe_load(
+                config['cloudconfig']['maas-reporting']['content']),
+            Equals(reporting_config))
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):

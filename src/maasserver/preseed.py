@@ -35,6 +35,7 @@ from maasserver.compose_preseed import (
     compose_preseed,
     get_apt_proxy,
     get_archive_config,
+    get_cloud_init_reporting,
     get_system_info,
     RSYSLOG_PORT,
 )
@@ -217,7 +218,8 @@ def compose_curtin_maas_reporter(node):
 
 
 def get_curtin_cloud_config(node):
-    """Compose the curtin cloud-config."""
+    """Compose the curtin cloud-config, which is only applied to
+       Ubuntu core (by curtin)."""
     token = NodeKey.objects.get_token_for_node(node)
     rack_controller = node.get_boot_rack_controller()
     base_url = rack_controller.url
@@ -252,6 +254,12 @@ def get_curtin_cloud_config(node):
                 }
             })
         }
+    config['maas-reporting'] = {
+        'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_init_reporting.cfg',
+        'content': '#cloud-config\n%s' % yaml.safe_dump(
+            get_cloud_init_reporting(
+                node=node, token=token, base_url=base_url))
+    }
     return {
         'cloudconfig': config
     }
