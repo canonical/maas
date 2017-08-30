@@ -33,7 +33,7 @@ DISPLAYED_DNSDATA_FIELDS = (
 
 
 class DNSResourceRecordsHandler(OperationsHandler):
-    """Manage dnsresourcerecords."""
+    """Manage DNS resource records (e.g. CNAME, MX, NS, SRV, TXT)"""
     api_doc_section_name = "DNSResourceRecords"
     update = delete = None
 
@@ -82,16 +82,19 @@ class DNSResourceRecordsHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a dnsresourcerecord.
+        """Create a DNS resource record.
 
         :param fqdn: Hostname (with domain) for the dnsresource.  Either fqdn
             or (name, domain) must be specified.  Fqdn is ignored if either
-            name or domain is given.
-        :param name: Hostname (without domain)
-        :param domain: Domain (name or id)
-        :param rrtype: resource type to create
-        :param rrdata: resource data (everything to the right of
-            resource type.)
+            name or domain is given (e.g. www.your-maas.maas).
+        :param name: The name (or hostname without a domain) of the DNS
+            resource record (e.g. www.your-maas)
+        :param domain: The domain (name or id) where to create the DNS
+            resource record (Domain (e.g. 'maas')
+        :param rrtype: The resource record type (e.g 'cname', 'mx', 'ns',
+            'srv', 'sshfp', 'txt')
+        :param rrdata: The resource record data (e.g. 'your-maas',
+            '10 mail.your-maas.maas')
         """
         data = request.data.copy()
         domain = None
