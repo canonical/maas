@@ -349,6 +349,32 @@ class TestScriptResult(MAASServerTestCase):
         script_result.save(update_fields=['status'])
         self.assertIsNotNone(reload_object(script_result).ended)
 
+    def test_save_sets_physical_blockdevice_from_parameters(self):
+        node = factory.make_Machine()
+        script_set = factory.make_ScriptSet(node=node)
+        physical_blockdevice = node.physicalblockdevice_set.first()
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, parameters={'storage': {
+                'type': 'storage',
+                'value': {
+                    'name': physical_blockdevice.name,
+                    'id_path': physical_blockdevice.id_path,
+                    'model': physical_blockdevice.model,
+                    'serial': physical_blockdevice.serial,
+                    'physical_blockdevice': physical_blockdevice,
+                }}})
+        self.assertEquals(
+            physical_blockdevice, script_result.physical_blockdevice)
+        self.assertDictEqual({'storage': {
+            'type': 'storage',
+            'value': {
+                'name': physical_blockdevice.name,
+                'id_path': physical_blockdevice.id_path,
+                'model': physical_blockdevice.model,
+                'serial': physical_blockdevice.serial,
+                'physical_blockdevice_id': physical_blockdevice.id,
+            }}}, script_result.parameters)
+
     def test_get_runtime(self):
         runtime_seconds = random.randint(1, 59)
         now = datetime.now()

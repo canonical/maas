@@ -22,6 +22,7 @@ from django.db.models import (
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.event import Event
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
 from metadataserver import (
@@ -55,11 +56,16 @@ class ScriptResult(CleanSave, TimestampedModel):
     # All ScriptResults except commissioning scripts will be linked to a Script
     # as commissioning scripts are still embedded in the MAAS source.
     script = ForeignKey(
-        Script, editable=False, blank=True, null=True, on_delete=SET_NULL)
+        Script, editable=False, blank=True, null=True, on_delete=CASCADE)
 
     # Any parameters set by MAAS or the user which should be passed to the
     # running script.
     parameters = JSONObjectField(blank=True, default={})
+
+    # If the result is in reference to a particular block device link it.
+    physical_blockdevice = ForeignKey(
+        PhysicalBlockDevice, editable=False, blank=True, null=True,
+        on_delete=CASCADE)
 
     script_version = ForeignKey(
         VersionedTextFile, blank=True, null=True, editable=False,
@@ -265,5 +271,15 @@ class ScriptResult(CleanSave, TimestampedModel):
             self.ended = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('ended')
+
+        if self.id is None and self.physical_blockdevice is None:
+            for param in self.parameters.values():
+                if ('value' in param and isinstance(param['value'], dict) and
+                        'physical_blockdevice' in param['value']):
+                    physical_blockdevice = param['value'].pop(
+                        'physical_blockdevice')
+                    self.physical_blockdevice = physical_blockdevice
+                    param['value'][
+                        'physical_blockdevice_id'] = physical_blockdevice.id
 
         return super().save(*args, **kwargs)

@@ -743,7 +743,8 @@ class Factory(maastesting.factory.Factory):
     def make_ScriptResult(
             self, script_set=None, script=None, script_version=None,
             status=None, exit_status=None, script_name=None, output=None,
-            stdout=None, stderr=None, result=None, started=None, ended=None):
+            stdout=None, stderr=None, result=None, started=None, ended=None,
+            **kwargs):
         if script_set is None:
             script_set = self.make_ScriptSet()
         if script is None and script_name is None:
@@ -787,7 +788,7 @@ class Factory(maastesting.factory.Factory):
             script_version=script_version, status=status,
             exit_status=exit_status, script_name=script_name,
             output=Bin(output), stdout=Bin(stdout), stderr=Bin(stderr),
-            result=Bin(result), started=started, ended=ended)
+            result=Bin(result), started=started, ended=ended, **kwargs)
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""

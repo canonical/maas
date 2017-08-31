@@ -228,6 +228,41 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
             self.assertEquals(
                 SCRIPT_STATUS.ABORTED, reload_object(script_result).status)
 
+    def test_uses_param_runtime(self):
+        node, script_set = self.make_node()
+        now = datetime.now()
+        script_set.last_ping = now
+        script_set.save()
+        passed_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED)
+        failed_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.FAILED)
+        pending_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING)
+        script = factory.make_Script(timeout=timedelta(minutes=2))
+        running_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING, script=script,
+            started=now - timedelta(minutes=50), parameters={'runtime': {
+                'type': 'runtime',
+                'value': 60 * 60,
+                }})
+
+        mark_nodes_failed_after_missing_script_timeout()
+        node = reload_object(node)
+
+        self.assertEquals(self.status, node.status)
+        self.assertThat(self.mock_stop, MockNotCalled())
+        self.assertEquals(
+            SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status)
+        self.assertEquals(
+            SCRIPT_STATUS.FAILED, reload_object(failed_script_result).status)
+        self.assertEquals(
+            SCRIPT_STATUS.PENDING,
+            reload_object(pending_script_result).status)
+        self.assertEquals(
+            SCRIPT_STATUS.RUNNING,
+            reload_object(running_script_result).status)
+
     def test_mark_nodes_failed_after_missing_timeout_prefetches(self):
         self.patch(Node, 'mark_failed')
         now = datetime.now()

@@ -90,9 +90,15 @@ def mark_nodes_failed_after_missing_script_timeout():
         script_qs = script_set.scriptresult_set.filter(
             status=SCRIPT_STATUS.RUNNING).prefetch_related('script')
         for script_result in script_qs:
-            if script_result.name in NODE_INFO_SCRIPTS:
+            timeout = None
+            for param in script_result.parameters.values():
+                if param.get('type') == 'runtime':
+                    timeout = param.get('value')
+                    break
+            if (timeout is None and script_result.name in NODE_INFO_SCRIPTS and
+                    'timeout' in NODE_INFO_SCRIPTS[script_result.name]):
                 timeout = NODE_INFO_SCRIPTS[script_result.name]['timeout']
-            elif (script_result.script is not None and
+            elif (timeout is None and script_result.script is not None and
                     script_result.script.timeout.seconds > 0):
                 timeout = script_result.script.timeout
             else:

@@ -7,18 +7,46 @@ __all__ = [
     "ParametersForm",
     ]
 
-from django.forms import Form
+import copy
+import os
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
+from django.forms import (
+    Field,
+    Form,
+)
 from maasserver.utils.forms import set_form_error
 
 
 class ParametersForm(Form):
     """Parameters forms."""
 
-    def __init__(self, data=None, script=None, node=None):
-        super().__init__(data=data)
+    parameters = Field(label='Paramaters', required=False, initial={})
+    input = Field(label='Input', required=False, initial={})
 
-    def clean(self):
-        for param, fields in self.data.items():
+    def __init__(self, data=None, script=None, node=None):
+        if script is not None:
+            assert node is not None, "node must be passed with script!"
+            data = {
+                'parameters': script.parameters,
+                'input': data,
+            }
+        else:
+            data = {'parameters': data}
+        super().__init__(data=data)
+        self._node = node
+        self._script = script
+
+    def clean_parameters(self):
+        """Validate the parameters set in the embedded YAML within the script.
+        """
+        parameters = self.data.get('parameters')
+        if not isinstance(parameters, dict):
+            set_form_error(self, "parameters", "Must be a dictionary")
+            return
+
+        for param, fields in parameters.items():
             # All parameter values should have a type defined.
             # Only currently supported parameter types are storage and runtime.
             param_type = fields.get('type')
@@ -109,3 +137,204 @@ class ParametersForm(Form):
                             self, "parameters",
                             "%s: argument_format must contain {input}"
                             % param_type)
+
+        return parameters
+
+    def _setup_input(self):
+        """Split input result and multi_result categories and set defaults.
+
+        The users may specify multiple storage devices for the storage
+        parameter. This results in one ScriptResult per storage device to allow
+        each storage device to have its own logs and results. Each ScriptResult
+        needs to include values for all parameters. The two lists will be
+        combined later so each ScriptResult has a complete set of parameters.
+
+        Any parameter which was not defined will have its default value set,
+        if available.
+        """
+        parameters = self.data.get('parameters', {})
+        input = self.data.get('input', {})
+
+        if not isinstance(input, dict):
+            set_form_error(self, 'input', 'Input must be a dictionary')
+            return {}, {}
+
+        # Paramaters which map to a single ScriptResult
+        result_params = {}
+        # Paramaters which may require multiple ScriptResults(storage)
+        multi_result_params = {}
+
+        # Split user input into params which need one ScriptResult per
+        # param and one which may need multiple ScriptResults per param.
+        for param_name, value in input.items():
+            if param_name not in parameters:
+                set_form_error(
+                    self, 'input', "Unknown parameter '%s' for %s" % (
+                        param_name, self._script.name))
+                continue
+            if parameters[param_name]['type'] == 'storage':
+                multi_result_params[param_name] = copy.deepcopy(
+                    parameters[param_name])
+                multi_result_params[param_name]['value'] = value
+            else:
+                result_params[param_name] = copy.deepcopy(
+                    parameters[param_name])
+                result_params[param_name]['value'] = value
+
+        # Check for any paramaters not given which have defaults.
+        for param_name, param in parameters.items():
+            if (param['type'] == 'storage' and
+                    param_name not in multi_result_params):
+                default = param.get('default', 'all')
+                if not default and param.get('required', True):
+                    set_form_error(self, param_name, 'Field is required')
+                elif default:
+                    multi_result_params[param_name] = copy.deepcopy(param)
+                    multi_result_params[param_name]['value'] = default
+            elif (param['type'] == 'runtime' and
+                  param_name not in result_params):
+                default = param.get('default', self._script.timeout.seconds)
+                if (not isinstance(default, int) and
+                        param.get('required', True)):
+                    set_form_error(self, param_name, 'Field is required')
+                elif isinstance(default, int):
+                    result_params[param_name] = copy.deepcopy(param)
+                    result_params[param_name]['value'] = default
+
+        return result_params, multi_result_params
+
+    def _validate_and_clean_runtime(self, param_name, param):
+        """Validate and clean runtime input."""
+        value = param['value']
+        min_value = param.get('min', 0)
+        max_value = param.get('max')
+        if isinstance(value, str) and value.isdigit():
+            value = int(value)
+        if not isinstance(value, int):
+            set_form_error(self, param_name, 'Must be an int')
+            return
+        if value < min_value:
+            set_form_error(
+                self, param_name, "Must be greater than %s" % min_value)
+        if max_value is not None and value > max_value:
+            set_form_error(
+                self, param_name, "Must be less than %s" % max_value)
+
+    def _blockdevice_to_dict(self, block_device):
+        """Convert a block device to a dictionary with limited fields."""
+        return {
+            'name': block_device.name,
+            'id_path': block_device.id_path,
+            'model': block_device.model,
+            'serial': block_device.serial,
+            'physical_blockdevice': block_device,
+        }
+
+    def _validate_and_clean_storage_all(
+            self, param_name, param, result_params, ret):
+        """Validate and clean storage input when set to all."""
+        if not self._node.physicalblockdevice_set.exists():
+            # Use 'all' as a place holder until the disks get added during
+            # commissioning.
+            clean_param = copy.deepcopy(result_params)
+            clean_param[param_name] = param
+            ret.append(clean_param)
+        else:
+            for bd in self._node.physicalblockdevice_set:
+                clean_param = copy.deepcopy(result_params)
+                clean_param[param_name] = copy.deepcopy(param)
+                clean_param[param_name]['value'] = self._blockdevice_to_dict(
+                    bd)
+                ret.append(clean_param)
+
+    def _validate_and_clean_storage_id(
+            self, param_name, param, result_params, ret):
+        """Validate and clean storage input when id."""
+        try:
+            bd = self._node.physicalblockdevice_set.get(id=int(param['value']))
+        except ObjectDoesNotExist:
+            set_form_error(
+                self, param_name, 'Physical block id does not exist')
+        else:
+            clean_param = copy.deepcopy(result_params)
+            clean_param[param_name] = copy.deepcopy(param)
+            clean_param[param_name]['value'] = self._blockdevice_to_dict(bd)
+            ret.append(clean_param)
+
+    def _validate_and_clean_storage(
+            self, param_name, param, result_params, ret):
+        """Validate and clean storage input."""
+        value = param['value']
+        for i in value.split(','):
+            if ':' in i:
+                # Allow users to specify a disk using the model and serial.
+                model, serial = i.split(':')
+                try:
+                    bd = self._node.physicalblockdevice_set.get(
+                        model=model, serial=serial)
+                except ObjectDoesNotExist:
+                    pass
+                else:
+                    clean_param = copy.deepcopy(result_params)
+                    clean_param[param_name] = copy.deepcopy(param)
+                    clean_param[param_name][
+                        'value'] = self._blockdevice_to_dict(bd)
+                    ret.append(clean_param)
+                    continue
+
+            qs = self._node.physicalblockdevice_set.filter(
+                Q(name=i) | Q(name=os.path.basename(i)) |
+                Q(model=i) | Q(serial=i) | Q(tags__overlap=[i]))
+            if not qs.exists():
+                set_form_error(
+                    self, param_name, "Unknown storage device for %s(%s)" % (
+                        self._node.fqdn, self._node.system_id))
+                continue
+            for bd in qs:
+                clean_param = copy.deepcopy(result_params)
+                clean_param[param_name] = copy.deepcopy(param)
+                clean_param[param_name]['value'] = self._blockdevice_to_dict(
+                    bd)
+                ret.append(clean_param)
+
+    def clean_input(self):
+        """Validate and clean parameter input.
+
+        Validate that input is correct per the parameter description. Storage
+        input will be transformed into a dictionary representing the selected
+        storage device from the PhysicalBlockDevice type.
+
+        input will be cleaned to be a list of parameter dicts. Each item in the
+        list represents one set of parameters for the script. This allows each
+        storage device to be run seperately.
+        """
+        ret = []
+        # Only validating the parameter description, not input. Do nothing.
+        if None in (self._script, self._node):
+            return ret
+
+        result_params, multi_result_params = self._setup_input()
+
+        # Validate input for single ScriptResult params
+        for param_name, param in result_params.items():
+            if param['type'] == 'runtime':
+                self._validate_and_clean_runtime(param_name, param)
+
+        # Validate input for multi ScriptResult params
+        for param_name, param in multi_result_params.items():
+            value = param['value']
+            if param['type'] == 'storage':
+                if value == 'all':
+                    self._validate_and_clean_storage_all(
+                        param_name, param, result_params, ret)
+                elif isinstance(value, int) or value.isdigit():
+                    self._validate_and_clean_storage_id(
+                        param_name, param, result_params, ret)
+                else:
+                    self._validate_and_clean_storage(
+                        param_name, param, result_params, ret)
+
+        if ret == []:
+            return [result_params]
+        else:
+            return ret

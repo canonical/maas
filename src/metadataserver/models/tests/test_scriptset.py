@@ -242,6 +242,37 @@ class TestScriptSetManager(MAASServerTestCase):
                 node=node,
                 result_type=RESULT_TYPE.COMMISSIONING).count())
 
+    def test_create_commissioning_script_set_accepts_params(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'storage': {'type': 'storage'}})
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_PhysicalBlockDevice(node=node)
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, [script.name], {script.name: {'storage': 'all'}})
+
+        self.assertItemsEqual(
+            [bd.name for bd in node.physicalblockdevice_set],
+            [
+                script_result.parameters['storage']['value']['name']
+                for script_result in script_set
+                if script_result.script == script
+            ])
+
+    def test_create_commissioning_script_set_errors_params(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
+                'storage': {'type': 'storage'}})
+        node = factory.make_Node()
+
+        self.assertRaises(
+            ValidationError,
+            ScriptSet.objects.create_commissioning_script_set,
+            node, [script.name], {script.name: factory.make_name('unknown')})
+        self.assertFalse(ScriptSet.objects.all().exists())
+
     def test_create_testing_script_set(self):
         node = factory.make_Node()
         expected_scripts = [
@@ -331,6 +362,37 @@ class TestScriptSetManager(MAASServerTestCase):
             ScriptSet.objects.filter(
                 node=node,
                 result_type=RESULT_TYPE.TESTING).count())
+
+    def test_create_testing_script_set_accepts_params(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'}})
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_PhysicalBlockDevice(node=node)
+
+        script_set = ScriptSet.objects.create_testing_script_set(
+            node, [script.name], {script.name: {'storage': 'all'}})
+
+        self.assertItemsEqual(
+            [bd.name for bd in node.physicalblockdevice_set],
+            [
+                script_result.parameters['storage']['value']['name']
+                for script_result in script_set
+                if script_result.script == script
+            ])
+
+    def test_create_testing_script_set_errors_params(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'}})
+        node = factory.make_Node()
+
+        self.assertRaises(
+            ValidationError,
+            ScriptSet.objects.create_testing_script_set,
+            node, [script.name], {script.name: factory.make_name('unknown')})
+        self.assertFalse(ScriptSet.objects.all().exists())
 
     def test_create_installation_script_set(self):
         node = factory.make_Node()

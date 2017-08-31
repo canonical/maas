@@ -26,6 +26,7 @@ from maasserver.enum import (
     POWER_STATE_CHOICES,
 )
 from maasserver.exceptions import NoScriptsFound
+from maasserver.forms.parameters import ParametersForm
 from maasserver.models import Config
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
@@ -83,12 +84,13 @@ class ScriptSetManager(Manager):
             for script_set in script_sets[script_set_limit:]:
                 script_set.delete(force=True)
 
-    def create_commissioning_script_set(self, node, scripts=[]):
+    def create_commissioning_script_set(self, node, scripts=[], input={}):
         """Create a new commissioning ScriptSet with ScriptResults
 
         ScriptResults will be created for all builtin commissioning scripts.
         Optionally a list of user scripts and tags can be given to create
-        ScriptResults for. If None all user scripts will be assumed.
+        ScriptResults for. If None all user scripts will be assumed. Scripts
+        may also have paramaters passed to them.
         """
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
@@ -123,18 +125,24 @@ class ScriptSetManager(Manager):
                 Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
                 script_type=SCRIPT_TYPE.COMMISSIONING)
         for script in qs:
-            ScriptResult.objects.create(
-                script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                script=script, script_name=script.name)
+            form = ParametersForm(
+                data=input.get(script.name, {}), script=script, node=node)
+            if not form.is_valid():
+                script_set.delete()
+                raise ValidationError(form.errors)
+            for param in form.cleaned_data['input']:
+                ScriptResult.objects.create(
+                    script_set=script_set, status=SCRIPT_STATUS.PENDING,
+                    script=script, script_name=script.name, parameters=param)
 
         return script_set
 
-    def create_testing_script_set(self, node, scripts=[]):
+    def create_testing_script_set(self, node, scripts=[], input={}):
         """Create a new testing ScriptSet with ScriptResults.
 
         Optionally a list of user scripts and tags can be given to create
         ScriptResults for. If None all Scripts tagged 'commissioning' will be
-        assumed."""
+        assumed. Script may also have parameters passed to them."""
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
 
@@ -161,9 +169,15 @@ class ScriptSetManager(Manager):
             power_state_before_transition=node.power_state)
 
         for script in qs:
-            ScriptResult.objects.create(
-                script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                script=script, script_name=script.name)
+            form = ParametersForm(
+                data=input.get(script.name, {}), script=script, node=node)
+            if not form.is_valid():
+                script_set.delete()
+                raise ValidationError(form.errors)
+            for param in form.cleaned_data['input']:
+                ScriptResult.objects.create(
+                    script_set=script_set, status=SCRIPT_STATUS.PENDING,
+                    script=script, script_name=script.name, parameters=param)
 
         self._clean_old(node, RESULT_TYPE.TESTING, script_set)
         return script_set
