@@ -62,9 +62,11 @@
                     <dt class="two-col">Gateway IP</dt>
                         <dd class="four-col last-col">{$ subnet.gateway_ip $}</dd>
                     <dt class="two-col">DNS</dt>
-                        <dd class="four-col last-col">{$ subnet.dns_servers $}</dd>
+                        <dd class="four-col last-col" data-ng-if="subnet.dns_servers">{$ subnet.dns_servers $}</dd>
+                        <dd class="four-col last-col" data-ng-if="!subnet.dns_servers">(undefined)</dd>
                     <dt class="two-col">Description</dt>
-                        <dd class="four-col last-col">{$ subnet.description $}</dd>
+                        <dd class="four-col last-col" data-ng-if="subnet.description">{$ subnet.description $}</dd>
+                        <dd class="four-col last-col" data-ng-if="!subnet.description">(undefined)</dd>
                 </dl>
                 <dl class="six-col last-col">
                     <dt class="two-col">Managed allocation
