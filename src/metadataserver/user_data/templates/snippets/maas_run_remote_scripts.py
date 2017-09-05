@@ -26,9 +26,7 @@ from io import BytesIO
 import json
 import os
 import re
-import shlex
 from subprocess import (
-    check_output,
     PIPE,
     Popen,
     TimeoutExpired,
@@ -212,58 +210,6 @@ def install_dependencies(
     return True
 
 
-# Cache the block devices so we only have to query once.
-_block_devices = None
-
-
-def get_block_devices():
-    """If needed, query lsblk for all known block devices and store."""
-    global _block_devices
-    if _block_devices is None:
-        _block_devices = []
-        block_list = check_output([
-            'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
-            'NAME,MODEL,SERIAL']).decode('utf-8')
-        for blockdev in block_list.splitlines():
-            tokens = shlex.split(blockdev)
-            current_block = {}
-            for token in tokens:
-                k, v = token.split("=", 1)
-                current_block[k] = v.strip()
-            _block_devices.append(current_block)
-
-    return _block_devices
-
-
-def parse_parameters(script, scripts_dir):
-    """Return a list containg script path and parameters to be passed to it."""
-    ret = [os.path.join(scripts_dir, script['path'])]
-    for param in script.get('parameters', {}).values():
-        param_type = param.get('type')
-        if param_type == 'runtime':
-            argument_format = param.get('argument_format', '--runtime={input}')
-            ret += argument_format.format(input=param['value']).split()
-        elif param_type == 'storage':
-            value = param['value']
-            if not (value.get('model') and value.get('serial')):
-                # If no model or serial were included trust that id_path
-                # is correct. This is needed for VirtIO devices.
-                value['path'] = value['input'] = value['id_path']
-            else:
-                # Map the current path of the device to what it currently is
-                # for the device model and serial. This is needed as the
-                # the device name may have changed since commissioning.
-                for blockdev in get_block_devices():
-                    if (value['model'] == blockdev['MODEL'] and
-                            value['serial'] == blockdev['SERIAL']):
-                        value['path'] = value['input'] = "/dev/%s" % blockdev[
-                            'NAME']
-            argument_format = param.get(
-                'argument_format', '--storage={path}')
-            ret += argument_format.format(**value).split()
-    return ret
-
-
 def run_scripts(url, creds, scripts_dir, out_dir, scripts):
     """Run and report results for the given scripts."""
     total_scripts = len(scripts)
@@ -281,23 +227,15 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         if script_version_id is not None:
             args['script_version_id'] = script_version_id
         timeout_seconds = script.get('timeout_seconds')
-        for param in script.get('parameters', {}).values():
-            if param.get('type') == 'runtime':
-                timeout_seconds = param['value']
-                break
 
-        # Create a seperate output directory for each script being run as
-        # multiple scripts with the same name may be run.
-        script_out_dir = os.path.join(out_dir, '%s.%s' % (
-            script['name'], script['script_result_id']))
-        os.makedirs(script_out_dir, exist_ok=True)
-        combined_path = os.path.join(script_out_dir, script['name'])
+        script_path = os.path.join(scripts_dir, script['path'])
+        combined_path = os.path.join(out_dir, script['name'])
         stdout_name = '%s.out' % script['name']
-        stdout_path = os.path.join(script_out_dir, stdout_name)
+        stdout_path = os.path.join(out_dir, stdout_name)
         stderr_name = '%s.err' % script['name']
-        stderr_path = os.path.join(script_out_dir, stderr_name)
+        stderr_path = os.path.join(out_dir, stderr_name)
         result_name = '%s.yaml' % script['name']
-        result_path = os.path.join(script_out_dir, result_name)
+        result_path = os.path.join(out_dir, result_name)
         download_path = os.path.join(scripts_dir, 'downloads', script['name'])
 
         if not install_dependencies(
@@ -319,21 +257,6 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         env['DOWNLOAD_PATH'] = download_path
 
         try:
-            script_arguments = parse_parameters(script, scripts_dir)
-        except KeyError:
-            # 2 is the return code bash gives when it can't execute.
-            args['exit_status'] = 2
-            args['files'] = {
-                script['name']: b'Unable to map parameters',
-                stderr_name: b'Unable to map parameters',
-            }
-            signal_wrapper(
-                error='Failed to execute %s [%d/%d]: %d' % (
-                    script['name'], i, total_scripts, args['exit_status']),
-                **args)
-            continue
-
-        try:
             # This script sets its own niceness value to the highest(-20) below
             # to help ensure the heartbeat keeps running. When launching the
             # script we need to lower the nice value as a child process
@@ -343,7 +266,7 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
             # to the provided value. Since the runner uses a nice value of -20
             # setting it to 40 gives the actual nice value of 20.
             proc = Popen(
-                script_arguments, stdout=PIPE, stderr=PIPE, env=env,
+                script_path, stdout=PIPE, stderr=PIPE, env=env,
                 preexec_fn=lambda: os.nice(40))
             capture_script_output(
                 proc, combined_path, stdout_path, stderr_path, timeout_seconds)
