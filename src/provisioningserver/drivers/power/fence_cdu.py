@@ -47,12 +47,12 @@ class FenceCDUPowerDriver(PowerDriver):
         return []
 
     def _issue_fence_cdu_command(
-            self, command, fence_cdu=None, power_address=None, power_id=None,
+            self, command, power_address=None, power_id=None,
             power_user=None, power_pass=None, **extra):
         """Issue fence_cdu command for the given power change."""
         try:
             stdout = call_and_check([
-                fence_cdu, '-a', power_address, '-n', power_id, '-l',
+                'fence_cdu', '-a', power_address, '-n', power_id, '-l',
                 power_user, '-p', power_pass, '-o', command],
                 env=select_c_utf8_locale())
         except ExternalProcessError as e:

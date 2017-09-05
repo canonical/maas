@@ -2406,15 +2406,6 @@ class Node(CleanSave, TimestampedModel):
         power_params = self.power_parameters.copy()
 
         power_params.setdefault('system_id', self.system_id)
-        # TODO: We should not be sending these paths to the templates;
-        # the templates ought to know which tool to use themselves.
-        power_params.setdefault('fence_cdu', '/usr/sbin/fence_cdu')
-        power_params.setdefault('ipmipower', '/usr/sbin/ipmipower')
-        power_params.setdefault('ipmitool', '/usr/bin/ipmitool')
-        power_params.setdefault(
-            'ipmi_chassis_config', '/usr/sbin/ipmi-chassis-config')
-        power_params.setdefault('ipmi_config', 'ipmi.conf')
-        # TODO: /end of paths that templates should know.
         # TODO: This default ought to be in the virsh template.
         if self.bmc is not None and self.bmc.power_type == "virsh":
             power_params.setdefault(

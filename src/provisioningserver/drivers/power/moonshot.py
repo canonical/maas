@@ -46,11 +46,11 @@ class MoonshotIPMIPowerDriver(PowerDriver):
         return []
 
     def _issue_ipmitool_command(
-            self, power_change, ipmitool=None, power_address=None,
-            power_user=None, power_pass=None, power_hwaddress=None, **extra):
+            self, power_change, power_address=None, power_user=None,
+            power_pass=None, power_hwaddress=None, **extra):
         """Issue ipmitool command for HP Moonshot cartridge."""
         command = (
-            ipmitool, '-I', 'lanplus', '-H', power_address,
+            'ipmitool', '-I', 'lanplus', '-H', power_address,
             '-U', power_user, '-P', power_pass
         ) + tuple(power_hwaddress.split())
         if power_change == 'pxe':

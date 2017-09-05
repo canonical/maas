@@ -47,8 +47,8 @@ def make_context():
         'power_pass': factory.make_name('power_pass'),
         'power_driver': factory.make_name('power_driver'),
         'power_off_mode': factory.make_name('power_off_mode'),
-        'ipmipower': factory.make_name('ipmipower'),
-        'ipmi_chassis_config': factory.make_name('ipmi_chassis_config'),
+        'ipmipower': 'ipmipower',
+        'ipmi_chassis_config': 'ipmi-chassis-config',
     }
 
 

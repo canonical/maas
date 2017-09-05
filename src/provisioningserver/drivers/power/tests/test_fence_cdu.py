@@ -51,11 +51,11 @@ class TestFenceCDUPowerDriver(MAASTestCase):
         mock = self.patch(fence_cdu_module, 'call_and_check')
         mock.return_value = b'test'
         stdout = driver._issue_fence_cdu_command(
-            sentinel.command, sentinel.fence_cdu, sentinel.power_address,
+            sentinel.command, sentinel.power_address,
             sentinel.power_id, sentinel.power_user, sentinel.power_pass)
         self.expectThat(
             mock, MockCalledOnceWith([
-                sentinel.fence_cdu, '-a', sentinel.power_address, '-n',
+                'fence_cdu', '-a', sentinel.power_address, '-n',
                 sentinel.power_id, '-l', sentinel.power_user, '-p',
                 sentinel.power_pass, '-o', sentinel.command],
                 env=select_c_utf8_locale()))
@@ -66,7 +66,7 @@ class TestFenceCDUPowerDriver(MAASTestCase):
         mock = self.patch(fence_cdu_module, 'call_and_check')
         mock.side_effect = ExternalProcessError(2, "Fence CDU error")
         stdout = driver._issue_fence_cdu_command(
-            'status', sentinel.fence_cdu, sentinel.power_address,
+            'status', sentinel.power_address,
             sentinel.power_id, sentinel.power_user, sentinel.power_pass)
         self.assertThat(stdout, Equals("Status: OFF\n"))
 
@@ -76,12 +76,12 @@ class TestFenceCDUPowerDriver(MAASTestCase):
         mock.side_effect = ExternalProcessError(1, "Fence CDU error")
         self.assertRaises(
             PowerError, driver._issue_fence_cdu_command, sentinel.command,
-            sentinel.fence_cdu, sentinel.power_address, sentinel.power_id,
+            sentinel.power_address, sentinel.power_id,
             sentinel.power_user, sentinel.power_pass)
 
     def make_context(self):
         return {
-            'fence_cdu': sentinel.fence_cdu,
+            'fence_cdu': 'fence_cdu',
             'power_address': sentinel.power_address,
             'power_id': sentinel.power_id,
             'power_user': sentinel.power_user,
@@ -101,16 +101,16 @@ class TestFenceCDUPowerDriver(MAASTestCase):
 
         self.assertThat(
             mock, MockCallsMatch(
-                call([sentinel.fence_cdu, '-a', sentinel.power_address, '-n',
+                call(['fence_cdu', '-a', sentinel.power_address, '-n',
                       sentinel.power_id, '-l', sentinel.power_user, '-p',
                       sentinel.power_pass, '-o', 'status'], env=environ),
-                call([sentinel.fence_cdu, '-a', sentinel.power_address, '-n',
+                call(['fence_cdu', '-a', sentinel.power_address, '-n',
                       sentinel.power_id, '-l', sentinel.power_user, '-p',
                       sentinel.power_pass, '-o', 'off'], env=environ),
-                call([sentinel.fence_cdu, '-a', sentinel.power_address, '-n',
+                call(['fence_cdu', '-a', sentinel.power_address, '-n',
                       sentinel.power_id, '-l', sentinel.power_user, '-p',
                       sentinel.power_pass, '-o', 'status'], env=environ),
-                call([sentinel.fence_cdu, '-a', sentinel.power_address, '-n',
+                call(['fence_cdu', '-a', sentinel.power_address, '-n',
                       sentinel.power_id, '-l', sentinel.power_user, '-p',
                       sentinel.power_pass, '-o', 'on'], env=environ)))
 

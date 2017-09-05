@@ -234,8 +234,7 @@ class IPMIPowerDriver(PowerDriver):
     def _issue_ipmi_command(
             self, power_change, power_address=None, power_user=None,
             power_pass=None, power_driver=None, power_off_mode=None,
-            ipmipower=None, ipmi_chassis_config=None, mac_address=None,
-            **extra):
+            mac_address=None, **extra):
         """Issue command to ipmipower, for the given system."""
         # This script deliberately does not check the current power state
         # before issuing the requested power command. See bug 1171418 for an
@@ -249,9 +248,9 @@ class IPMIPowerDriver(PowerDriver):
         # should have no impact on BMCs that don't require it.
         # See https://bugs.launchpad.net/maas/+bug/1287964
         ipmi_chassis_config_command = [
-            ipmi_chassis_config, '-W', 'opensesspriv']
+            'ipmi-chassis-config', '-W', 'opensesspriv']
         ipmipower_command = [
-            ipmipower, '-W', 'opensesspriv']
+            'ipmipower', '-W', 'opensesspriv']
 
         # Arguments in common between chassis config and power control. See
         # https://launchpad.net/bugs/1053391 for details of modifying the

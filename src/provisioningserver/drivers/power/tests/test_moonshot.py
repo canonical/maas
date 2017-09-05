@@ -28,7 +28,7 @@ from testtools.matchers import Equals
 
 def make_context():
     return {
-        'ipmitool': factory.make_name('ipmitool'),
+        'ipmitool': 'ipmitool',
         'power_address': factory.make_name('power_address'),
         'power_user': factory.make_name('power_user'),
         'power_pass': factory.make_name('power_pass'),
