@@ -188,6 +188,8 @@ def add_event_to_node_event_log(
             type_name = EVENT_TYPES.NODE_INSTALL_EVENT
         else:
             type_name = EVENT_TYPES.NODE_INSTALL_EVENT_FAILED
+    elif node.status == NODE_STATUS.DEPLOYED and result in ['FAIL']:
+        type_name = EVENT_TYPES.NODE_POST_INSTALL_EVENT_FAILED
     elif node.status == NODE_STATUS.ENTERING_RESCUE_MODE:
         if result in ['SUCCESS', None]:
             type_name = EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT
