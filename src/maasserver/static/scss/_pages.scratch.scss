@@ -654,3 +654,11 @@
     white-space: pre-wrap !important;
   }
 }
+
+button.button--inline,
+.button--inline.button--base {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
