@@ -15,6 +15,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
+from maasserver.api.nodes import NODES_PREFETCH
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -38,7 +39,10 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.user import get_auth_tokens
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    prefetch_queryset,
+)
 from piston3.utils import rc
 
 
@@ -135,11 +139,20 @@ class TagHandler(OperationsHandler):
         # and not a list of tags as this handler is defined to return.
         self.fields = None
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
+        nodes = model.objects.get_nodes(
+            request.user, NODE_PERMISSION.VIEW,
+            from_nodes=tag.node_set.all())
+        nodes = nodes.select_related('bmc', 'owner', 'zone')
+        nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by('id')
+        # Set related node parents so no extra queries are needed.
+        for node in nodes:
+            for interface in node.interface_set.all():
+                interface.node = node
+            for block_device in node.blockdevice_set.all():
+                block_device.node = node
         return [
             node.as_self()
-            for node in model.objects.get_nodes(
-                request.user, NODE_PERMISSION.VIEW,
-                from_nodes=tag.node_set.all())
+            for node in nodes
         ]
 
     @operation(idempotent=True)
