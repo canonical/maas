@@ -141,7 +141,6 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.switches.search = "";
         $scope.tabs.switches.searchValid = true;
         $scope.tabs.switches.selectedItems = SwitchesManager.getSelectedItems();
-        $scope.tabs.switches.filtered_items = [];
         $scope.tabs.switches.predicate = 'fqdn';
         $scope.tabs.switches.allViewableChecked = false;
         $scope.tabs.switches.metadata = SwitchesManager.getMetadata();
@@ -150,14 +149,25 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.switches.actionOption = null;
         // XXX: Which actions should there be?
         $scope.tabs.switches.takeActionOptions = GeneralManager.getData(
-            "device_actions");
+            "machine_actions");
         $scope.tabs.switches.actionErrorCount = 0;
         $scope.tabs.switches.actionProgress = {
             total: 0,
             completed: 0,
             errors: {}
         };
+        $scope.tabs.switches.osSelection = {
+            osystem: null,
+            release: null,
+            hwe_kernel: null
+        };
         $scope.tabs.switches.zoneSelection = null;
+        $scope.tabs.switches.commissionOptions = {
+            enableSSH: false,
+            skipNetworking: false,
+            skipStorage: false
+        };
+        $scope.tabs.switches.releaseOptions = {};
 
 
         // Options for add hardware dropdown.
@@ -233,7 +243,7 @@ angular.module('MAAS').controller('NodesListController', [
             leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
             $scope.tabs[tab].zoneSelection = null;
-            if(tab === "nodes") {
+            if(tab === "nodes" || tab === "switches") {
                 // Possible for this to be called before the osSelect
                 // direction is initialized. In that case it has not
                 // created the $reset function on the model object.
@@ -340,7 +350,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node, tab) {
-            if(tab !== 'nodes') {
+            if(tab !== 'nodes' && tab !== 'switches') {
                 if($scope.tabs[tab].manager.isSelected(node.system_id)) {
                     $scope.tabs[tab].manager.unselectItem(node.system_id);
                 } else {
@@ -354,7 +364,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Select all viewable nodes or deselect all viewable nodes.
         $scope.toggleCheckAll = function(tab) {
-            if(tab !== 'nodes') {
+            if(tab !== 'nodes' && tab !== 'switches') {
                 if($scope.tabs[tab].allViewableChecked) {
                     angular.forEach(
                         $scope.tabs[tab].filtered_items, function(node) {
@@ -374,13 +384,13 @@ angular.module('MAAS').controller('NodesListController', [
             shouldClearAction(tab);
         };
 
-        $scope.onMachineListingChanged = function(machines) {
-          if(machines.length === 0 &&
-              $scope.tabs.nodes.search !== "" &&
-              $scope.tabs.nodes.search === $scope.tabs.nodes.previous_search) {
-              $scope.tabs.nodes.search = "";
-              $scope.updateFilters('nodes');
-          }
+        $scope.onNodeListingChanged = function(nodes, tab) {
+            if(nodes.length === 0 &&
+                $scope.tabs[tab].search !== "" &&
+                $scope.tabs[tab].search === $scope.tabs[tab].previous_search) {
+                $scope.tabs[tab].search = "";
+                $scope.updateFilters(tab);
+            }
         };
 
         // When the filtered nodes change update if all check buttons
@@ -392,10 +402,6 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.$watchCollection("tabs.controllers.filtered_items", function() {
             updateAllViewableChecked("controllers");
             removeEmptyFilter("controllers");
-        });
-        $scope.$watchCollection("tabs.switches.filtered_items", function() {
-            updateAllViewableChecked("switches");
-            removeEmptyFilter("switches");
         });
 
         // Shows the current selection.

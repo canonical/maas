@@ -363,7 +363,7 @@ describe("NodesListController", function() {
 
                 // Only devices and controllers use the sorting and column
                 // as the nodes tab uses the maas-machines-table directive.
-                if(tab !== "nodes") {
+                if(tab !== "nodes" && tab !== "switches") {
                     expect(tabScope.filtered_items).toEqual([]);
                     expect(tabScope.predicate).toBe("fqdn");
                     expect(tabScope.allViewableChecked).toBe(false);
@@ -380,7 +380,7 @@ describe("NodesListController", function() {
 
                 // Only the nodes tab uses the osSelection and
                 // commissionOptions fields.
-                if(tab === "nodes") {
+                if(tab === "nodes" || tab === "switches") {
                     expect(tabScope.osSelection.osystem).toBeNull();
                     expect(tabScope.osSelection.release).toBeNull();
                     expect(tabScope.commissionOptions).toEqual({
@@ -401,7 +401,8 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["devices", "controllers", "switches"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers", "switches"],
+                    function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -411,16 +412,16 @@ describe("NodesListController", function() {
                     var tabScope = $scope.tabs[tab];
                     var search = makeName("search");
 
-                    if(tab === 'nodes') {
+                    if(tab === 'nodes' || tab === 'switches') {
                         // Nodes uses the maas-machines-table directive, so
                         // the interaction is a little different.
                         tabScope.search = "in:(Selected)";
                         tabScope.previous_search = search;
-                        $scope.onMachineListingChanged([makeObject(tab)]);
+                        $scope.onNodeListingChanged([makeObject(tab)], tab);
 
                         // Empty the listing search should be reset.
                         tabScope.search = search;
-                        $scope.onMachineListingChanged([]);
+                        $scope.onNodeListingChanged([], tab);
                         expect(tabScope.search).toBe("");
                     } else {
                         // Add item to filtered_items.
@@ -443,17 +444,25 @@ describe("NodesListController", function() {
                     var controller = makeController();
                     var tabScope = $scope.tabs[tab];
                     var search = makeName("search");
+                    var nodes = [makeObject(tab), makeObject(tab)];
 
-                    // Add item to filtered_items.
-                    tabScope.filtered_items.push(
-                        makeObject(tab), makeObject(tab));
+                    if(tab === 'nodes' || tab === 'switches') {
+                        $scope.onNodeListingChanged(nodes, tab);
+                    } else {
+                        // Add item to filtered_items.
+                        tabScope.filtered_items.push(nodes[0], nodes[1]);
+                    }
                     tabScope.search = "in:(Selected)";
                     tabScope.previous_search = search;
                     $scope.$digest();
 
                     // Remove one item from filtered_items, which should not
                     // clear the search.
-                    tabScope.filtered_items.splice(0, 1);
+                    if(tab === 'nodes' || tab === 'switches') {
+                        $scope.onNodeListingChanged([nodes[1]], tab);
+                    } else {
+                        tabScope.filtered_items.splice(0, 1);
+                    }
                     tabScope.search = search;
                     $scope.$digest();
                     expect(tabScope.search).toBe(search);
@@ -463,16 +472,26 @@ describe("NodesListController", function() {
                 function() {
                     var controller = makeController();
                     var tabScope = $scope.tabs[tab];
+                    var nodes = [makeObject(tab), makeObject(tab)];
 
-                    // Add item to filtered_items.
-                    tabScope.filtered_items.push(makeObject(tab));
+                    if(tab === 'nodes' || tab === 'switches') {
+                        $scope.onNodeListingChanged(nodes, tab);
+                    } else {
+                        // Add item to filtered_items.
+                        tabScope.filtered_items.push(nodes[0]);
+                    }
+
                     tabScope.search = "in:(Selected)";
                     tabScope.previous_search = makeName("search");
                     $scope.$digest();
 
                     // Empty the filtered_items, but change the search which
                     // should stop the search from being reset.
-                    tabScope.filtered_items.splice(0, 1);
+                    if(tab === 'nodes' || tab === 'switches') {
+                        $scope.onNodeListingChanged([nodes[1]], tab);
+                    } else {
+                        tabScope.filtered_items.splice(0, 1);
+                    }
                     var search = makeName("search");
                     tabScope.search = search;
                     $scope.$digest();
@@ -505,7 +524,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes"], function(tab) {
+    angular.forEach(["nodes", "switches"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -601,7 +620,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["devices", "controllers", "switches"], function(tab) {
+    angular.forEach(["devices", "controllers"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 

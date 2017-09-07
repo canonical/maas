@@ -13,7 +13,7 @@ from maasserver.models.node import Node
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerDoesNotExistError
-from maasserver.websockets.handlers.device import DeviceHandler
+from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
@@ -37,17 +37,8 @@ class SwitchHandler(NodeHandler):
             'get',
             'update',
             'action']
-        exclude = DeviceHandler.Meta.exclude
-        list_fields = [
-            "id",
-            "system_id",
-            "hostname",
-            "owner",
-            "domain",
-            "zone",
-            "parent",
-            "pxe_mac",
-            ]
+        exclude = MachineHandler.Meta.exclude
+        list_fields = MachineHandler.Meta.list_fields
         # XXX: Which channel should we listen for?
         listen_channels = []
 

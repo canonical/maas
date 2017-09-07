@@ -126,6 +126,7 @@ MERGE_VIEWS = {
             "js/angular/directives/script_select.js",
             "js/angular/directives/ssh_keys.js",
             "js/angular/directives/sticky_header.js",
+            "js/angular/directives/switches_table.js",
             "js/angular/directives/type.js",
             "js/angular/directives/version_reloader.js",
             "js/angular/directives/ipranges.js",
