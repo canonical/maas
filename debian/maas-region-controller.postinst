@@ -16,7 +16,7 @@ maas_sync_migrate_db(){
 }
 
 restart_postgresql(){
-    deb-systemd-invoke restart postgresql || true
+    invoke-rc.d --force postgresql restart || true
 }
 
 configure_maas_default_url() {
