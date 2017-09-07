@@ -45,6 +45,7 @@ __all__ = [
     'MDNS',
     'Neighbour',
     'Node',
+    'NodeMetadata',
     'NodeGroupToRackController',
     'Notification',
     'OwnerData',
@@ -150,6 +151,7 @@ from maasserver.models.node import (
     RackController,
     RegionController,
 )
+from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.notification import Notification
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.packagerepository import PackageRepository

@@ -443,6 +443,8 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
                 'wedge40',
             },
             'expected_driver': '',
+            'expected_vendor': 'accton',
+            'expected_model': 'wedge40',
         }),
         ('switch_tomahawk', {
             'modaliases':
@@ -458,6 +460,8 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
                 'wedge100',
             },
             'expected_driver': '',
+            'expected_vendor': 'accton',
+            'expected_model': 'wedge100',
         }),
         ('no_matcj', {
             'modaliases':
@@ -465,6 +469,8 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
                 b'pci:yyy\n',
             'expected_tags': set(),
             'expected_driver': None,
+            'expected_vendor': None,
+            'expected_model': None,
         }),
     )
 
@@ -476,6 +482,11 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
         if self.expected_driver is not None:
             switch = Switch.objects.get(node=node)
             self.assertThat(switch.nos_driver, Equals(self.expected_driver))
+        metadata = node.get_metadata()
+        self.assertThat(metadata.get("vendor-name"),
+                        Equals(self.expected_vendor))
+        self.assertThat(metadata.get("physical-model-name"),
+                        Equals(self.expected_model))
 
 
 class TestAddSwitchModels(MAASServerTestCase):
@@ -484,6 +495,9 @@ class TestAddSwitchModels(MAASServerTestCase):
         node = factory.make_Node()
         switch = add_switch(node, 'vendor', 'switch')
         self.assertEqual("", switch.nos_driver)
+        metadata = node.get_metadata()
+        self.assertEqual("vendor", metadata["vendor-name"])
+        self.assertEqual("switch", metadata["physical-model-name"])
 
 
 class TestUpdateHardwareDetails(MAASServerTestCase):

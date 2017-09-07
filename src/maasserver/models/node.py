@@ -1687,6 +1687,20 @@ class Node(CleanSave, TimestampedModel):
                     mac_address, iface.node.hostname))
         return iface
 
+    def add_metadata(self, key, value):
+        """Add Node metadata with `key` and `value`."""
+        # Avoid circular imports.
+        from maasserver.models.nodemetadata import NodeMetadata
+        return NodeMetadata.objects.create(node=self, key=key, value=value)
+
+    def get_metadata(self):
+        """Return all Node metadata key, value pairs as a dict."""
+        # Avoid circular imports.
+        from maasserver.models.nodemetadata import NodeMetadata
+        metadata_entries = NodeMetadata.objects.filter(node=self).values(
+            'key', 'value')
+        return {item['key']: item['value'] for item in metadata_entries}
+
     def accept_enlistment(self, user):
         """Accept this node's (anonymous) enlistment.
 

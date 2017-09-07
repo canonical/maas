@@ -82,6 +82,7 @@ from maasserver.models import (
     MDNS,
     Neighbour,
     Node,
+    NodeMetadata,
     Notification,
     OwnerData,
     PackageRepository,
@@ -579,6 +580,22 @@ class Factory(maastesting.factory.Factory):
             ip_address=ip_address, **kwargs)
         bmc.save()
         return bmc
+
+    def make_NodeMetadata(
+            self, node=None, key=None, value=None, **kwargs):
+        if node is None:
+            owner = get_worker_user()
+            node = self.make_Node(
+                owner=owner, node_type=NODE_TYPE.MACHINE, **kwargs)
+            node.save()
+
+        if key is None:
+            key = self.make_name('key')
+        if value is None:
+            value = self.make_string(prefix='value', spaces=True)
+        metadata = NodeMetadata(node=node, key=key, value=value)
+        metadata.save()
+        return metadata
 
     def make_Pod(
             self, pod_type=None, parameters=None, ip_address=None,

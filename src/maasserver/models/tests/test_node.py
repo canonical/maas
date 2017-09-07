@@ -80,6 +80,7 @@ from maasserver.models import (
     Machine,
     Node,
     node as node_module,
+    NodeMetadata,
     OwnerData,
     PhysicalInterface,
     RackController,
@@ -1074,6 +1075,21 @@ class TestNode(MAASServerTestCase):
         interfaces = UnknownInterface.objects.filter(
             mac_address=mac).count()
         self.assertEqual(0, interfaces)
+
+    def test_add_metadata(self):
+        node = factory.make_Node()
+        node.add_metadata("foo", "bar")
+        self.assertEqual(
+            "bar", NodeMetadata.objects.get(node=node, key="foo").value)
+
+    def test_get_metadata_empty(self):
+        node = factory.make_Node()
+        self.assertEqual({}, node.get_metadata())
+
+    def test_get_metadata(self):
+        node = factory.make_Node()
+        node.add_metadata("foo", "bar")
+        self.assertEqual({"foo": "bar"}, node.get_metadata())
 
     def test_get_osystem_returns_default_osystem(self):
         node = factory.make_Node(osystem='')
