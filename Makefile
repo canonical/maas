@@ -470,6 +470,7 @@ define phony_targets
   styles
   sudoers
   syncdb
+  sync-dev-snap
   test
   test+lxd
   test-failed
@@ -700,6 +701,25 @@ define phony_snap_targets
 	snap-clean
 	snap-cleanbuild
 endef
+
+
+#
+# Helpers for using the snap for development testing.
+#
+
+
+build/dev-snap: ## Check out a clean version of the working tree.
+	git checkout-index -a --prefix build/dev-snap/
+
+build/dev-snap/prime: build/dev-snap
+	cd build/dev-snap && snapcraft prime
+
+sync-dev-snap: build/dev-snap/prime
+	rsync -v --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
+		--exclude '*.pyc' --exclude '__pycache__' -r -u -l -t -W -L \
+		src/ build/dev-snap/prime/lib/python3.5/site-packages/
+	rsync -v -r -u -l -t -W -L \
+		src/maasserver/static/ build/dev-snap/prime/usr/share/maas/web/static/
 
 #
 # Phony stuff.

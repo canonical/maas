@@ -270,48 +270,56 @@ database with the sample data::
 You can login as a simple user using the test account (username: 'test',
 password: 'test') or the admin account (username: 'admin', password: 'test').
 
-If you want to interact with real machines or VMs, there some more setup
-needed, though. If you want to test out change casually, the easiest
-solution is to build a snap with ``make snap`` and install it. Building
-a snap takes a while, though, and is not a good fit for debugging and
-testing man incremental changes.
+If you want to interact with real machines or VMs, it's better to use
+the snap. Instead of building a real snap, though, you can use
+'snapcraft prime' to create the prime directory. That has all the
+contents of the snap, but it's in a plain directory insted of in a
+squashfs image. Using a directory is better for testing, since you can
+change the files in there and not rebuild the snap.
 
-In order to have machines boot off the development server, we need to
-make some changes to the system. It's recommended that you do this in a
-container, so that you can easily revert and start from scratch if
-needed.
+There's a dev-snap-sync make target to automate this:
 
-As a one-time setup, run the setup-devel-environment script::
+    $ make dev-snap-sync
 
-    $ ./utilities/setup-devel-environment
-    ...
-    Done. Don't forget to ensure that sudo doesn't require a password.
+The dev-snap-sync target creates a clean copy of your working tree (so
+that you don't have to run 'make clean' before building the snap) in
+build/dev-snap and creates the snap directory in build/dev-snap/prime.
 
-Now you need to use `visudo` to configure sudo not to require a
-password. Adding a line like this would work:
+You can now install the snap:
 
-    your-username   ALL=(ALL) NOPASSWD: ALL
+    $ sudo snap try --devmode build/dev-snap/prime
 
-This is needed, since MAAS calls out to installed services like dhcpd.
+Note that 'snap try' is used instead of 'snap install'. The maas snap
+should now be installed:
 
-Now, each time you start a new terminal session to do development in a
-branch, you should source the `activate-devel-environment` script::
+    $ snap list
+    Name  Version                          Rev   Developer  Notes
+    core  16-2.27.5                        2774  canonical  core
+    maas  2.3.0~alpha3-6225-gaa05ba6-snap  x1               devmode,try
 
-    $ source ./utilities/activate-devel-environment
+Next you need to initialize the snap, just like you would normally do:
 
-The script will link the system services to this branch. If you want to
-run the script in a different branch, you have to re-run the script. The
-script also exports some MAAS_ environment variables that configures the
-development server to talke to the dhcpd service and listen to
-privileged ports. If you loose your bash session, you have to re-run the
-script.
+    $ sudo maas init
 
-And now you're almost done. VMs or even real machines can now PXE boot
-off your development server. But of course, you need to set up the
-networking first. If you want to do some simple testing, the easiest is
-to create a networking in virt-manager that has NAT, but doesn't provide
-DHCP. If the name of the bridge that got created is `virbr1`, you can
-expose it to your container as eth1 using the following config:
+And now you're ready to make changes to the code. After you've change
+some source files and want to test them out, run the dev-snap-sync
+target again:
+
+    $ make dev-snap-sync
+
+You should now see that you files were synced to the prime directory. If
+you changed JS and HTML files only, you should see that changes straight
+away by just reloading the browser. If you changed Python files, you
+need to restart MAAS:
+
+    $ sudo service snap.maas.supervisor restart
+
+VMs or even real machines can now PXE boot off your development snap.
+But of course, you need to set up the networking first. If you want to
+do some simple testing, the easiest is to create a networking in
+virt-manager that has NAT, but doesn't provide DHCP. If the name of
+the bridge that got created is `virbr1`, you can expose it to your
+container as eth1 using the following config:
 
     eth1:
       name: eth1
@@ -330,26 +338,6 @@ network you created. For example::
 
 Note that your LXD host will have the .1 address and will act as a
 gateway for your VMs.
-
-You also have to tell the rack controller about your API, so that the
-VMs will know how to talk back to your MAAS server::
-
-    $ bin/maas-rack config --region-url http://192.168.100.2:5240/MAAS
-
-Now you're ready to start your development server.
-
-Run the development webserver and watch all the logs go by::
-
-    $ make run
-
-Create the admin user::
-
-    $ ./bin/maas-region createadmin
-
-Point your browser to http://localhost:5240/MAAS/
-
-Now you can go through the initial user story, configure your network to
-provide DHCP and start booting your VMS.
 
 To shut down the database cluster and clean up all other generated files in
 your branch::
