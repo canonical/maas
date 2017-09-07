@@ -22,11 +22,11 @@
             <div class="table" >
                 <header class="table__head" data-ng-if="windowWidth >= 769" sticky sticky-class="table__head--sticky" offset="88" media-query="min-width: 768px">
                     <div class="table__row">
-                        <div class="table__header table-col--37">Name</div>
-                        <div class="table__header table-col--15">MAC address</div>
-                        <div class="table__header table-col--13">IP</div>
-                        <div class="table__header table-col--15">Rack</div>
-                        <div class="table__header table-col--20">Last seen</div>
+                        <div class="table__header table-col--37"><a href="" class="table__header-link" data-ng-click="sortTable('hostname')" data-ng-class="{'is-sorted': predicate === 'hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</a></div>
+                        <div class="table__header table-col--15"><a href="" class="table__header-link" data-ng-click="sortTable('mac_address')" data-ng-class="{'is-sorted': predicate === 'mac_address', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">MAC address</a></div>
+                        <div class="table__header table-col--13"><a href="" class="table__header-link" data-ng-click="sortTable('ip')" data-ng-class="{'is-sorted': predicate === 'ip', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP</a></div>
+                        <div class="table__header table-col--15"><a href="" class="table__header-link" data-ng-click="sortTable('observer_hostname')" data-ng-class="{'is-sorted': predicate === 'observer_hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Rack</a></div>
+                        <div class="table__header table-col--20"><a href="" class="table__header-link" data-ng-click="sortTable('last_seen')" data-ng-class="{'is-sorted': predicate === 'last_seen', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</a></div>
                     </div>
                 </header>
                 <div class="table__body">
@@ -48,7 +48,7 @@
                     </div>
                     <div vs-repeat vs-scroll-parent="window">
                         <div class="table__row"
-                        data-ng-repeat="discovery in discoveredDevices | orderBy:'-last_seen' track by discovery.first_seen"
+                        data-ng-repeat="discovery in discoveredDevices | orderBy:predicate:reverse track by discovery.first_seen"
                         data-ng-class="{'is-active' : discovery.first_seen === selectedDevice}">
                         <div data-ng-if="discovery.first_seen !== selectedDevice"
                             data-ng-dblclick="toggleSelected(discovery.first_seen)">

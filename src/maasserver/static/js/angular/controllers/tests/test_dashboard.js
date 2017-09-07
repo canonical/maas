@@ -274,6 +274,23 @@ describe("DashboardController", function() {
         });
     });
 
+    describe("sortTable", function() {
+
+        it("sets predicate", function() {
+            var controller = makeController();
+            var predicate = makeName('predicate');
+            $scope.sortTable(predicate);
+            expect($scope.predicate).toBe(predicate);
+        });
+
+        it("reverses reverse", function() {
+            var controller = makeController();
+            $scope.reverse = true;
+            $scope.sortTable(makeName('predicate'));
+            expect($scope.reverse).toBe(false);
+        });
+    });
+
     describe("preProcess", function() {
 
         it("adjust device to include the needed fields", function() {

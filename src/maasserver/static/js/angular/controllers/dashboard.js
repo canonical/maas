@@ -37,6 +37,15 @@ angular.module('MAAS').controller('DashboardController', [
         $scope.selectedDevice = null;
         $scope.convertTo = null;
 
+        // Set default predicate to last_seen.
+        $scope.predicate = $scope.last_seen;
+
+        // Sorts the table by predicate.
+        $scope.sortTable = function(predicate) {
+            $scope.predicate = predicate;
+            $scope.reverse = !$scope.reverse;
+        };
+
         // Proxy manager that the maas-obj-form directive uses to call the
         // correct method based on current type.
         $scope.proxyManager = {
