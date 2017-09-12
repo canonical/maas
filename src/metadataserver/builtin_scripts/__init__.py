@@ -131,6 +131,10 @@ BUILTIN_SCRIPTS = [
         name='7z',
         filename='seven_z.py',
         ),
+    BuiltinScript(
+        name='fio',
+        filename='fio.py',
+        ),
     ]
 
 
