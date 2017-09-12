@@ -423,6 +423,19 @@ def run_scripts_from_metadata(url, creds, scripts_dir, out_dir):
         # If the node status was COMMISSIONING transition the node into TESTING
         # status. If the node is already in TESTING status this is ignored.
         signal_wrapper(url, creds, 'TESTING')
+
+        # If commissioning previously ran and a test script uses a storage
+        # parameter redownload the script tar as the storage devices may have
+        # changed causing different ScriptResults.
+        if commissioning_scripts is not None:
+            for test_script in testing_scripts:
+                for param in test_script.get('parameters', {}).values():
+                    if param['type'] == 'storage':
+                        download_and_extract_tar(
+                            "%s/maas-scripts/" % url, creds, scripts_dir)
+                        return run_scripts_from_metadata(
+                            url, creds, scripts_dir, out_dir)
+
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, testing_scripts)
 

@@ -241,14 +241,10 @@ def run_smartctl(test=None):
 
 
 if __name__ == '__main__':
-    # Determine which test should be run based from the first argument or
-    # script name.
-    if len(sys.argv) > 1:
-        test = sys.argv[1]
-    else:
-        test = None
-        for test_name in {'short', 'long', 'conveyance'}:
-            if test_name in sys.argv[0]:
-                test = test_name
-                break
+    # Determine which test should be run based from the script name.
+    test = None
+    for test_name in {'short', 'long', 'conveyance'}:
+        if test_name in sys.argv[0]:
+            test = test_name
+            break
     sys.exit(run_smartctl(test))

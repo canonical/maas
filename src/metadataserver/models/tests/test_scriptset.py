@@ -12,18 +12,27 @@ import random
 from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import NoScriptsFound
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    Event,
+    EventType,
+)
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_TYPE,
 )
-from metadataserver.models import ScriptSet
+from metadataserver.models import (
+    ScriptSet,
+    scriptset as scriptset_module,
+)
 from metadataserver.models.scriptset import translate_result_type
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
@@ -546,6 +555,109 @@ class TestScriptSet(MAASServerTestCase):
         factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PENDING)
         self.assertEquals('', script_set.runtime)
+
+    def test_regenerate(self):
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+
+        passed_storage_script = factory.make_Script(parameters={'storage': {
+            'type': 'storage'}})
+        passed_storage_parameters = {'storage': {
+            'type': 'storage',
+            'value': {
+                'name': factory.make_name('name'),
+                'model': factory.make_name('model'),
+                'serial': factory.make_name('serial'),
+                'id_path': '/dev/%s' % factory.make_name('id_path'),
+            },
+        }}
+        passed_storage_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED,
+            script=passed_storage_script, parameters=passed_storage_parameters)
+
+        pending_storage_script = factory.make_Script(parameters={'storage': {
+            'type': 'storage'}})
+        pending_storage_parameters = {'storage': {
+            'type': 'storage',
+            'value': {
+                'name': factory.make_name('name'),
+                'model': factory.make_name('model'),
+                'serial': factory.make_name('serial'),
+                'id_path': '/dev/%s' % factory.make_name('id_path'),
+            },
+        }}
+        pending_storage_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING,
+            script=pending_storage_script,
+            parameters=pending_storage_parameters)
+
+        pending_other_script = factory.make_ScriptResult(script_set=script_set)
+
+        script_set.regenerate()
+
+        passed_storage_script_result = reload_object(
+            passed_storage_script_result)
+        self.assertIsNotNone(passed_storage_script_result)
+        self.assertDictEqual(
+            passed_storage_parameters, passed_storage_script_result.parameters)
+        self.assertIsNone(reload_object(pending_storage_script_result))
+        self.assertIsNotNone(reload_object(pending_other_script))
+
+        new_storage_script_result = script_set.scriptresult_set.get(
+            script=pending_storage_script)
+        bd = node.physicalblockdevice_set.first()
+        self.assertDictEqual({'storage': {
+            'type': 'storage',
+            'value': {
+                'name': bd.name,
+                'model': bd.model,
+                'serial': bd.serial,
+                'id_path': bd.id_path,
+                'physical_blockdevice_id': bd.id,
+            }}}, new_storage_script_result.parameters)
+
+    def test_regenerate_logs_failure(self):
+        mock_logger = self.patch(scriptset_module.logger, 'error')
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+
+        pending_storage_script = factory.make_Script(parameters={
+            'storage': {'type': 'storage'},
+            'runtime': {'type': 'runtime'},
+            })
+        pending_storage_parameters = {
+            'storage': {
+                'type': 'storage',
+                'value': {
+                    'name': factory.make_name('name'),
+                    'model': factory.make_name('model'),
+                    'serial': factory.make_name('serial'),
+                    'id_path': '/dev/%s' % factory.make_name('id_path'),
+                },
+            },
+            'runtime': {
+                'type': 'runtime',
+                'value': factory.make_name('invalid_value'),
+            },
+        }
+        pending_storage_script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING,
+            script=pending_storage_script,
+            parameters=pending_storage_parameters)
+
+        script_set.regenerate()
+
+        self.assertIsNone(reload_object(pending_storage_script_result))
+        self.assertItemsEqual([], list(script_set))
+        expected_msg = (
+            "Removing Script %s from ScriptSet due to regeneration "
+            "error - {'runtime': ['Must be an int']}" %
+            pending_storage_script.name)
+        event_type = EventType.objects.get(
+            name=EVENT_TYPES.SCRIPT_RESULT_ERROR)
+        event = Event.objects.get(node=node, type_id=event_type.id)
+        self.assertEquals(expected_msg, event.description)
+        self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
 
     def test_delete(self):
         node = factory.make_Node(with_empty_script_sets=True)

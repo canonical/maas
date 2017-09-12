@@ -83,12 +83,19 @@ class TestMaasRunRemoteScripts(MAASTestCase):
                 open(script['result_path'], 'w').write(result)
 
     def make_index_json(
-            self, scripts_dir, with_commissioning=True, with_testing=True):
+            self, scripts_dir, with_commissioning=True, with_testing=True,
+            commissioning_scripts=None, testing_scripts=None):
         index_json = {}
         if with_commissioning:
-            index_json['commissioning_scripts'] = self.make_scripts()
+            if commissioning_scripts is None:
+                index_json['commissioning_scripts'] = self.make_scripts()
+            else:
+                index_json['commissioning_scripts'] = commissioning_scripts
         if with_testing:
-            index_json['testing_scripts'] = self.make_scripts()
+            if testing_scripts is None:
+                index_json['testing_scripts'] = self.make_scripts()
+            else:
+                index_json['testing_scripts'] = testing_scripts
         with open(os.path.join(scripts_dir, 'index.json'), 'w') as f:
             f.write(json.dumps({'1.0': index_json}))
         return index_json
@@ -155,6 +162,73 @@ class TestMaasRunRemoteScripts(MAASTestCase):
                 None, None, scripts_dir, None,
                 index_json['commissioning_scripts']))
         self.assertThat(mock_signal, MockNotCalled())
+
+    def test_run_scripts_from_metadata_redownloads_after_commiss(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
+        mock_run_scripts.return_value = 0
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        testing_scripts = self.make_scripts()
+        testing_scripts[0]['parameters'] = {'storage': {'type': 'storage'}}
+        mock_download_and_extract_tar = self.patch(
+            maas_run_remote_scripts, 'download_and_extract_tar')
+        simple_dl_and_extract = lambda *args, **kwargs: self.make_index_json(
+            scripts_dir, with_commissioning=False,
+            testing_scripts=testing_scripts)
+        mock_download_and_extract_tar.side_effect = simple_dl_and_extract
+        index_json = self.make_index_json(
+            scripts_dir, testing_scripts=testing_scripts)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(
+            mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts']))
+        self.assertThat(mock_signal, MockAnyCall(None, None, 'TESTING'))
+        self.assertThat(
+            mock_download_and_extract_tar,
+            MockCalledOnceWith('None/maas-scripts/', None, scripts_dir))
+        self.assertThat(
+            mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['testing_scripts']))
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(None, None, 'OK', 'All scripts successfully ran'))
+
+    def test_run_scripts_from_metadata_only_redownloads_when_needed(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
+        mock_run_scripts.return_value = 0
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        mock_download_and_extract_tar = self.patch(
+            maas_run_remote_scripts, 'download_and_extract_tar')
+        index_json = self.make_index_json(scripts_dir)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(
+            mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts']))
+        self.assertThat(mock_signal, MockAnyCall(None, None, 'TESTING'))
+        self.assertThat(mock_download_and_extract_tar, MockNotCalled())
+        self.assertThat(
+            mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['testing_scripts']))
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(None, None, 'OK', 'All scripts successfully ran'))
 
     def test_run_scripts_from_metadata_does_nothing_on_empty(self):
         scripts_dir = self.useFixture(TempDirectory()).path

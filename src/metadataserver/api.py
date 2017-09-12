@@ -512,6 +512,9 @@ class VersionIndexHandler(MetadataViewHandler):
         }
         target_status = signaling_statuses.get(status)
 
+        if target_status == NODE_STATUS.TESTING:
+            node.current_testing_script_set.regenerate()
+
         if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
             # Recalculate tags when commissioning ends.
             populate_tags_for_single_node(Tag.objects.all(), node)

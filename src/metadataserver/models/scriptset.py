@@ -27,10 +27,16 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NoScriptsFound
 from maasserver.forms.parameters import ParametersForm
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    Event,
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
-from metadataserver import DefaultMeta
+from metadataserver import (
+    DefaultMeta,
+    logger,
+)
 from metadataserver.enum import (
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
@@ -39,6 +45,7 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from metadataserver.models.script import Script
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
@@ -301,6 +308,59 @@ class ScriptSet(CleanSave, Model):
                 if script_result.name == script_name:
                     return script_result
         return None
+
+    def regenerate(self):
+        """Regenerate any ScriptResult which has a storage parameter.
+
+        Deletes and recreates ScriptResults for any ScriptResult which has a
+        storage parameter. Used after commissioning has completed when there
+        are tests to be run.
+        """
+        # Avoid circular dependencies.
+        from metadataserver.models import ScriptResult
+
+        regenerate_scripts = {}
+        for script_result in self.scriptresult_set.filter(
+                status=SCRIPT_STATUS.PENDING).exclude(parameters={}):
+            # If there are multiple storage devices on the system for every
+            # script which contains a storage type parameter there will be
+            # one ScriptResult per device. If we already know a script must
+            # be regenearted it can be deleted as the device the ScriptResult
+            # is for may no longer exist. Regeneratation below will generate
+            # ScriptResults for each existing storage device.
+            if script_result.script in regenerate_scripts:
+                script_result.delete()
+                continue
+            # Check if the ScriptResult contains any storage type parameter. If
+            # so remove the value of the storage parameter only and add it to
+            # the list of Scripts which must be regenearted.
+            for param_name, param in script_result.parameters.items():
+                if param['type'] == 'storage':
+                    # Remove the storage parameter as the storage device may no
+                    # longer exist. The ParametersForm will set the default
+                    # value(all).
+                    script_result.parameters.pop(param_name)
+                    regenerate_scripts[
+                        script_result.script] = script_result.parameters
+                    script_result.delete()
+                    break
+
+        for script, params in regenerate_scripts.items():
+            form = ParametersForm(data=params, script=script, node=self.node)
+            if not form.is_valid():
+                err_msg = (
+                    "Removing Script %s from ScriptSet due to regeneration "
+                    "error - %s" % (script.name, dict(form.errors)))
+                logger.error(err_msg)
+                Event.objects.create_node_event(
+                    system_id=self.node.system_id,
+                    event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
+                    event_description=err_msg)
+                continue
+            for i in form.cleaned_data['input']:
+                ScriptResult.objects.create(
+                    script_set=self, status=SCRIPT_STATUS.PENDING,
+                    script=script, script_name=script.name, parameters=i)
 
     def delete(self, force=False, *args, **kwargs):
         if not force and self in {

@@ -1422,6 +1422,35 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(other_node).status)
 
+    def test_signaling_commissioning_testing_regenerates_script_set(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script = factory.make_Script(parameters={'storage': {
+            'type': 'storage'}})
+        script_result = factory.make_ScriptResult(
+            script_set=node.current_testing_script_set, script=script,
+            status=SCRIPT_STATUS.PENDING,
+            parameters={'storage': {'type': 'storage', 'value': 'all'}})
+        client = make_node_client(node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.TESTING, script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
+        self.assertIsNone(reload_object(script_result))
+        new_script_result = (
+            node.current_testing_script_set.scriptresult_set.get(
+                script=script))
+        bd = node.physicalblockdevice_set.first()
+        self.assertDictEqual({'storage': {
+            'type': 'storage',
+            'value': {
+                'name': bd.name,
+                'model': bd.model,
+                'serial': bd.serial,
+                'id_path': bd.id_path,
+                'physical_blockdevice_id': bd.id,
+            }}}, new_script_result.parameters)
+
     def test_signaling_commissioning_OK_repopulates_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
