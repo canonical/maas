@@ -3,6 +3,7 @@
 # {{name}} - {{description}}
 #
 # Author: Lee Trager <lee.trager@canonical.com>
+#         Newell Jensen <newell.jensen@canonical.com>
 #
 # Copyright (C) 2017 Canonical
 #
@@ -33,6 +34,7 @@
 # timeout: {{timeout}}
 # --- End MAAS 1.0 script metadata ---
 
+import argparse
 import re
 from subprocess import (
     CalledProcessError,
@@ -45,7 +47,6 @@ from subprocess import (
     TimeoutExpired,
 )
 import sys
-from threading import Thread
 from time import sleep
 
 # We're just reading the SMART data or asking the drive to run a self test.
@@ -53,192 +54,90 @@ from time import sleep
 TIMEOUT = 60
 
 
-class RunSmartCtl(Thread):
+def check_SMART_support(storage):
+    """Check if SMART support is available for storage device.
 
-    def __init__(self, smartctl_args, test=None):
-        super().__init__(name=smartctl_args[0])
-        self.smartctl_args = smartctl_args
-        self.test = test
-        self.running_test_failed = False
-        self.output = b''
-        self.timedout = False
-
-    def _run_smartctl_selftest(self):
-        try:
-            # Start testing.
-            check_call(
-                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', self.test] +
-                self.smartctl_args, timeout=TIMEOUT, stdout=DEVNULL,
-                stderr=DEVNULL)
-        except (TimeoutExpired, CalledProcessError):
-            self.running_test_failed = True
-        else:
-            # Wait for testing to complete.
-            status_regex = re.compile(
-                'Self-test execution status:\s+\(\s*(?P<status>\d+)\s*\)')
-            while True:
-                try:
-                    stdout = check_output(
-                        ['sudo', '-n', 'smartctl', '-c'] + self.smartctl_args,
-                        timeout=TIMEOUT)
-                except (TimeoutExpired, CalledProcessError):
-                    self.running_test_failed = True
-                    break
-                else:
-                    m = status_regex.search(stdout.decode('utf-8'))
-                    if m is not None and int(m.group('status')) == 0:
-                        break
-                    else:
-                        sleep(1)
-
-    def run(self):
-        if self.test not in ('validate', None):
-            self._run_smartctl_selftest()
-
-        # Run smartctl and capture its output. Once all threads have completed
-        # we'll output the results serially so output is properly grouped.
-        with Popen(
-                ['sudo', '-n', 'smartctl', '--xall'] + self.smartctl_args,
-                stdout=PIPE, stderr=STDOUT) as proc:
-            try:
-                self.output, _ = proc.communicate(timeout=TIMEOUT)
-            except TimeoutExpired:
-                proc.kill()
-                self.timedout = True
-            self.returncode = proc.returncode
-
-    @property
-    def was_successful(self):
-        # smartctl returns 0 when there are no errors. It returns 4 if a SMART
-        # or ATA command to the disk failed. This is surprisingly common so
-        # ignore it.
-        return self.returncode in {0, 4}
-
-
-def list_supported_drives():
-    """Ask smartctl to give us a list of drives which have SMART data.
-
-    :return: A list of drives that have SMART data.
+    If SMART support is not available, exit the script.
     """
-    # Gather a list of connected ISCSI drives. ISCSI has SMART data but we
-    # only want to scan local disks during testing.
+    supported = True
+    smart_support_regex = re.compile('SMART support is:\s+Available')
     try:
         output = check_output(
-            ['sudo', '-n', 'iscsiadm', '-m', 'session', '-P', '3'],
-            timeout=TIMEOUT, stderr=DEVNULL)
+            ['sudo', '-n', 'smartctl', '--all', storage], timeout=TIMEOUT)
     except (TimeoutExpired, CalledProcessError):
-        # If this command failed ISCSI is most likely not running/installed.
-        # Ignore the error and move on, worst case scenario we run smartctl
-        # on ISCSI drives.
-        iscsi_drives = []
+        supported = False
     else:
-        iscsi_drives = re.findall(
-            'Attached scsi disk (?P<disk>\w+)', output.decode('utf-8'))
+        match = smart_support_regex.search(output.decode('utf-8'))
+        if match is None:
+            supported = False
 
-    drives = []
-    smart_support_regex = re.compile('SMART support is:\s+Available')
-    output = check_output(
-        ['sudo', '-n', 'smartctl', '--scan-open'], timeout=TIMEOUT)
-    for line in output.decode('utf-8').splitlines():
-        try:
-            # Each line contains the drive and the device type along with any
-            # options needed to run smartctl against the drive.
-            drive_with_device_type = line.split('#')[0].split()
-            drive = drive_with_device_type[0]
-        except IndexError:
-            continue
-        if drive != '' and drive.split('/')[-1] not in iscsi_drives:
-            # Check that SMART is actually supported on the drive.
-            with Popen(
-                    ['sudo', '-n', 'smartctl', '-i'] + drive_with_device_type,
-                    stdout=PIPE, stderr=DEVNULL) as proc:
-                try:
-                    output, _ = proc.communicate(timeout=TIMEOUT)
-                except TimeoutExpired:
-                    sys.stderr.write(
-                        "Unable to determine if %s supports SMART" % drive)
-                else:
-                    m = smart_support_regex.search(output.decode('utf-8'))
-                    if m is not None:
-                        drives.append(drive_with_device_type)
+    if not supported:
+        print('The following drive does not support SMART: %s\n' % storage)
+        sys.exit()
 
+
+def run_smartctl_selftest(storage, test):
+    """Run smartctl self test."""
     try:
-        all_drives = check_output(
-            [
-                'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
-                'NAME,MODEL,SERIAL', '-x', 'NAME',
-            ], timeout=TIMEOUT, stderr=DEVNULL).decode('utf-8').splitlines()
-    except CalledProcessError:
-        # The SERIAL column and sorting(-x) are unsupported in the Trusty
-        # version of lsblk. Try again without them.
-        all_drives = check_output(
-            [
-                'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
-                'NAME,MODEL',
-            ], timeout=TIMEOUT, stderr=DEVNULL).decode('utf-8').splitlines()
-    supported_drives = iscsi_drives + [
-        drive[0].split('/')[-1] for drive in drives]
-    unsupported_drives = [
-        line for line in all_drives[1:]
-        if line.split()[0] not in supported_drives
-    ]
-    if len(unsupported_drives) != 0:
-        print()
-        print('The following drives do not support SMART:')
-        print(all_drives[0])
-        print('\n'.join(unsupported_drives))
-        print()
+        # Start testing.
+        cmd = ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, storage]
+        print('Running command: %s\n' % ' '.join(cmd))
+        check_call(cmd, timeout=TIMEOUT, stdout=DEVNULL, stderr=DEVNULL)
+    except (TimeoutExpired, CalledProcessError):
+        print('Failed to start and wait for smartctl self-test: %s' % test)
+        return False
+    else:
+        # Wait for testing to complete.
+        status_regex = re.compile(
+            'Self-test execution status:\s+\(\s*(?P<status>\d+)\s*\)')
+        while True:
+            try:
+                stdout = check_output(
+                    ['sudo', '-n', 'smartctl', '-c', storage],
+                    timeout=TIMEOUT)
+            except (TimeoutExpired, CalledProcessError):
+                print('Failed to start and wait for smartctl self-test:'
+                      ' %s' % test)
+                return False
+            else:
+                m = status_regex.search(stdout.decode('utf-8'))
+                if m is not None and int(m.group('status')) == 0:
+                    break
+                else:
+                    sleep(1)
 
-    return drives
+    return True
 
 
-def run_smartctl(test=None):
-    """Run smartctl against all drives on the system with SMART data.
+def run_smartctl(storage, test=None):
+    """Run smartctl against storage drive on the system with SMART data."""
+    # Check to see if SMART is supported before trying to run tests.
+    smartctl_passed = True
+    check_SMART_support(storage)
+    if test not in ('validate', None):
+        smartctl_passed = run_smartctl_selftest(storage, test)
 
-    Runs smartctl against all drives on the system each in their own thread.
-    Once SMART data has been read from all drives output the result and if
-    smartctl timedout or detected an error.
+    cmd = ['sudo', '-n', 'smartctl', '--xall', storage]
+    print('Running command: %s\n' % ' '.join(cmd))
+    # Run smartctl and capture its output.
+    with Popen(cmd, stdout=PIPE, stderr=STDOUT) as proc:
+        try:
+            output, _ = proc.communicate(timeout=TIMEOUT)
+        except TimeoutExpired:
+            proc.kill()
+            print('Running `smartctl --xall %s` timed out!' % storage)
+            smartctl_passed = False
+        else:
+            if output is not None:
+                print(output.decode('utf-8'))
+            if proc.returncode != 0 and proc.returncode != 4:
+                print('Error, `smartctl --xall %s` returned %d!' % (
+                    storage, proc.returncode))
+                print('See the smartctl man page for return code meaning')
+                smartctl_passed = False
+            return 0 if proc.returncode == 4 else proc.returncode
 
-    :return: The number of drives which SMART indicates are failing.
-    """
-    threads = []
-    for smartctl_args in list_supported_drives():
-        thread = RunSmartCtl(smartctl_args, test)
-        thread.start()
-        threads.append(thread)
-
-    smartctl_failures = 0
-    for thread in threads:
-        thread.join()
-        drive = thread.smartctl_args[0]
-        dashes = '-' * int((80.0 - (2 + len(drive))) / 2)
-        print('%s %s %s' % (dashes, drive, dashes))
-        print()
-
-        if thread.running_test_failed:
-            smartctl_failures += 1
-            print('Failed to start and wait for smartctl self-test: %s' % test)
-            print()
-        if thread.timedout:
-            smartctl_failures += 1
-            print(
-                'Running `smartctl --xall %s` timed out!' %
-                ' '.join(thread.smartctl_args))
-            continue
-        elif not thread.was_successful:
-            # smartctl returns 0 when there are no errors. It returns 4 if
-            # a SMART or ATA command to the disk failed. This is surprisingly
-            # common so ignore it.
-            smartctl_failures += 1
-            print(
-                'Error, `smartctl --xall %s` returned %d!' % (
-                    ' '.join(smartctl_args), thread.returncode))
-            print('See the smartctl man page for return code meaning')
-            print()
-        print(thread.output.decode('utf-8'))
-
-    return smartctl_failures
-
+    return 0 if smartctl_passed else 1
 
 if __name__ == '__main__':
     # Determine which test should be run based from the script name.
@@ -247,4 +146,10 @@ if __name__ == '__main__':
         if test_name in sys.argv[0]:
             test = test_name
             break
-    sys.exit(run_smartctl(test))
+
+    parser = argparse.ArgumentParser(description='SMARTCTL Hardware Testing.')
+    parser.add_argument(
+        '--storage', dest='storage',
+        help='path to storage device you want to test. e.g. /dev/sda')
+    args = parser.parse_args()
+    sys.exit(run_smartctl(args.storage, test))
