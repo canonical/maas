@@ -7,8 +7,10 @@ __all__ = [
     "get_maas_doc_version",
     "get_maas_version_subversion",
     "get_maas_version_ui",
+    "MAASVersion",
     ]
 
+from collections import namedtuple
 from functools import lru_cache
 import re
 
@@ -103,6 +105,83 @@ def get_maas_version_track_channel():
         return "latest/edge"
     else:
         return "%s/stable" % '.'.join(series.split('.')[0:2])
+
+
+MAASVersion = namedtuple('MAASVersion', (
+    'major',
+    'minor',
+    'point',
+    'qualifier_type_version',
+    'qualifier_version',
+    'revno',
+    'git_rev',
+    'short_version',
+    'extended_info',
+    'qualifier_type',
+    'is_snap',
+))
+
+
+def _coerce_to_int(string: str) -> int:
+    """Strips all non-numeric characters out of the string and returns an int.
+
+    Returns 0 for an empty string.
+    """
+    numbers = re.sub(r'[^\d]+', '', string)
+    if len(numbers) > 0:
+        return int(numbers)
+    else:
+        return 0
+
+
+def get_version_tuple(maas_version: str) -> MAASVersion:
+    version_parts = maas_version.split('-', 1)
+    short_version = version_parts[0]
+    major_minor_point = re.sub(r'~.*', '', short_version).split('.')
+    for i in range(3):
+        try:
+            major_minor_point[i] = _coerce_to_int(major_minor_point[i])
+        except ValueError:
+            major_minor_point[i] = 0
+        except IndexError:
+            major_minor_point.append(0)
+    major, minor, point = major_minor_point
+    extended_info = ''
+    if len(version_parts) > 1:
+        extended_info = version_parts[1]
+    qualifier_type = None
+    qualifier_type_version = 0
+    qualifier_version = 0
+    if '~' in short_version:
+        # Parse the alpha/beta/rc version.
+        base_version, qualifier = short_version.split('~', 2)
+        qualifier_types = {
+            "rc": -1,
+            "beta": -2,
+            "alpha": -3
+        }
+        # A release build won't have a qualifier, so its version should be
+        # greater than releases qualified with alpha/beta/rc revisions.
+        qualifier_type = re.sub(r'[\d]+', '', qualifier)
+        qualifier_version = _coerce_to_int(qualifier)
+        qualifier_type_version = qualifier_types.get(qualifier_type, 0)
+    revno = 0
+    git_rev = ''
+    # If we find a '-g', that means the extended info indicates a git revision.
+    if '-g' in extended_info:
+        revno, git_rev = extended_info.split('-')[0:2]
+        # Strip any non-numeric characters from the revno, just in case.
+        revno = _coerce_to_int(revno)
+        # Remove anything that doesn't look like a hexadecimal character.
+        git_rev = re.sub(r'[^0-9a-f]+', '', git_rev)
+    is_snap = maas_version.endswith('-snap')
+    extended_info = re.sub(r'-*snap$', '', extended_info)
+    # Remove unnecessary garbage from the extended info string.
+    if '-' in extended_info:
+        extended_info = '-'.join(extended_info.split('-')[0:2])
+    return MAASVersion(
+        major, minor, point, qualifier_type_version, qualifier_version,
+        revno, git_rev, short_version, extended_info, qualifier_type, is_snap)
 
 
 @lru_cache(maxsize=1)

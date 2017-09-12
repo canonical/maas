@@ -910,9 +910,14 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <th class="table-col--4 u-align--center">
                         <span title="Status">Status</span>
                     </th>
-                    <th class="table-col--25">
+                    <th class="table-col--15">
                         <a href="" data-ng-click="sortTable('node_type_display', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'node_type_display', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
                             <span title="Controller Type">Type</span>
+                        </a>
+                    </th>
+                    <th class="table-col--10">
+                        <a href="" data-ng-click="sortTable('node_type_display', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'version', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
+                            <span title="Version">Version</span>
                         </a>
                     </th>
                     <th class="table-col--15">
@@ -936,7 +941,17 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <a href="#/node/controller/{$ controller.system_id $}">{$ controller.fqdn $}</a>
                     </td>
                     <td class="table-col--4 u-align--center" data-maas-controller-status="controller" data-maas-services="services" aria-label="Status"></td>
-                    <td class="table-col--25" aria-label="Type">{$ controller.node_type_display $}</td>
+                    <td class="table-col--15" aria-label="Type">{$ controller.node_type_display $}</td>
+                    <td class="table-col--10" aria-label="Version">
+                        <div data-ng-show="controller.version">
+                            {$ controller.version__short $}
+                        </div>
+                        <div data-ng-show="!controller.version">
+                            Unknown
+                            <i class="icon icon--info u-margin--left-tiny tooltip"
+                               aria-label="Less than 2.3.0"></i>
+                        </div>
+                    </td>
                     <td class="table-col--15" aria-label="Last image sync">{$ controller.last_image_sync || 'Never' $}</td>
                     <td class="table-col--15" aria-label="Image status">
                         <maas-controller-image-status system-id="controller.system_id"></maas-controller-image-status>

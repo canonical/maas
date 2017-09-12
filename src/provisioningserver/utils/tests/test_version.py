@@ -22,8 +22,12 @@ from provisioningserver.utils import (
     snappy,
     version,
 )
-from provisioningserver.utils.version import DEFAULT_VERSION as old_version
+from provisioningserver.utils.version import (
+    DEFAULT_VERSION as old_version,
+    get_version_tuple,
+)
 from testtools.matchers import (
+    Equals,
     GreaterThan,
     Is,
     IsInstance,
@@ -126,6 +130,69 @@ class TestExtractVersionSubversion(MAASTestCase):
     def test__returns_version_subversion(self):
         self.assertEqual(
             self.output, version.extract_version_subversion(self.version))
+
+
+class TestGetVersionTuple(MAASTestCase):
+
+    scenarios = (
+        ('empty string', {
+            'version': '',
+            'expected_tuple': (0, 0, 0, 0, 0, 0, '', '', '', None, False)
+        }),
+        ('single digit', {
+            'version': '2',
+            'expected_tuple': (2, 0, 0, 0, 0, 0, '', '2', '', None, False)
+        }),
+        ('double digit', {
+            'version': '2.2',
+            'expected_tuple': (2, 2, 0, 0, 0, 0, '', '2.2', '', None, False)
+        }),
+        ('triple digits', {
+            'version': '11.22.33',
+            'expected_tuple': (
+                11, 22, 33, 0, 0, 0, '', '11.22.33', '', None, False)
+        }),
+        ('single digit with qualifier', {
+            'version': '2~alpha4',
+            'expected_tuple': (
+                2, 0, 0, -3, 4, 0, '', '2~alpha4', '', 'alpha', False)
+        }),
+        ('triple digit with qualifier', {
+            'version': '11.22.33~rc3',
+            'expected_tuple': (
+                11, 22, 33, -1, 3, 0, '', '11.22.33~rc3', '', 'rc', False)
+        }),
+        ('full version', {
+            'version': '2.3.0~alpha3-6202-g54f83de-0ubuntu1~16.04.1',
+            'expected_tuple': (
+                2, 3, 0, -3, 3, 6202, '54f83de', '2.3.0~alpha3',
+                '6202-g54f83de', 'alpha', False)
+        }),
+        ('full version with garbage revisions', {
+            'version': '2.3.0~experimental3-xxxxxxx-xxxxxx',
+            'expected_tuple': (
+                2, 3, 0, 0, 3, 0, '', '2.3.0~experimental3', 'xxxxxxx-xxxxxx',
+                'experimental', False)
+        }),
+        ('garbage integers', {
+            'version': '2x.x3.x5x~alpha5Y-xxx-g1',
+            'expected_tuple': (
+                2, 3, 5, 0, 5, 0, '1', '2x.x3.x5x~alpha5Y', 'xxx-g1',
+                'alphaY', False)
+        }),
+    )
+
+    def test__returns_expected_tuple(self):
+        version = self.version
+        actual_tuple = get_version_tuple(version)
+        self.assertThat(actual_tuple, Equals(self.expected_tuple), version)
+        expected_tuple__snap = list(self.expected_tuple)
+        expected_tuple__snap[-1] = True
+        expected_tuple__snap = tuple(expected_tuple__snap)
+        version += "-snap"
+        actual_tuple__snap = get_version_tuple(version)
+        self.assertThat(
+            actual_tuple__snap, Equals(expected_tuple__snap), version)
 
 
 class TestVersionTestCase(MAASTestCase):

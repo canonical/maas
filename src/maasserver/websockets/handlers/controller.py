@@ -16,6 +16,7 @@ from maasserver.models.node import (
 from maasserver.websockets.base import HandlerError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
+from provisioningserver.utils.version import get_version_tuple
 
 
 class ControllerHandler(MachineHandler):
@@ -92,6 +93,15 @@ class ControllerHandler(MachineHandler):
     def dehydrate(self, obj, data, for_list=False):
         data = super().dehydrate(obj, data, for_list=for_list)
         data["version"] = obj.version
+        if obj.version is not None and len(obj.version) > 0:
+            version = get_version_tuple(obj.version)
+            data["version__short"] = version.short_version
+            long_version = version.short_version
+            if len(version.extended_info) > 0:
+                long_version += " (%s)" % version.extended_info
+            if version.is_snap:
+                long_version += " (snap)"
+            data["version__long"] = long_version
         data["vlan_ids"] = [
             interface.vlan_id
             for interface in obj.interface_set.all()

@@ -101,10 +101,14 @@ class TestControllerHandler(MAASServerTestCase):
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {})
         rack = factory.make_RackController()
-        version = factory.make_string()
+        version = "2.3.0~alpha1-6000-gabc123-snap"
         ControllerInfo.objects.set_version(rack, version)
         result = handler.list({})
         self.assertEqual(version, result[0].get('version'))
+        self.assertEqual("2.3.0~alpha1", result[0].get('version__short'))
+        self.assertEqual(
+            "2.3.0~alpha1 (6000-gabc123) (snap)",
+            result[0].get('version__long'))
 
 
 class TestControllerHandlerScenarios(MAASServerTestCase):
