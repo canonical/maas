@@ -28,7 +28,9 @@ from maastesting.testcase import MAASTestCase
 from snippets import maas_run_remote_scripts
 from snippets.maas_run_remote_scripts import (
     download_and_extract_tar,
+    get_block_devices,
     install_dependencies,
+    parse_parameters,
     run_and_check,
     run_scripts,
     run_scripts_from_metadata,
@@ -52,19 +54,23 @@ class TestMaasRunRemoteScripts(MAASTestCase):
 
     def make_script_output(self, scripts, scripts_dir, with_result=False):
         for script in scripts:
+            script_out_dir = os.path.join(scripts_dir, '%s.%s' % (
+                script['name'], script['script_result_id']))
+            os.makedirs(script_out_dir)
             output = factory.make_string()
             stdout = factory.make_string()
             stderr = factory.make_string()
             script['output'] = output.encode()
             script['stdout'] = stdout.encode()
             script['stderr'] = stderr.encode()
-            script['output_path'] = os.path.join(scripts_dir, script['name'])
+            script['output_path'] = os.path.join(
+                script_out_dir, script['name'])
             script['stdout_path'] = os.path.join(
-                scripts_dir, '%s.out' % script['name'])
+                script_out_dir, '%s.out' % script['name'])
             script['stderr_path'] = os.path.join(
-                scripts_dir, '%s.err' % script['name'])
+                script_out_dir, '%s.err' % script['name'])
             script['download_path'] = os.path.join(
-                scripts_dir, 'downloads', script['name'])
+                script_out_dir, 'downloads', script['name'])
             os.makedirs(script['download_path'], exist_ok=True)
             open(script['output_path'], 'w').write(output)
             open(script['stdout_path'], 'w').write(stdout)
@@ -73,7 +79,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
                 result = factory.make_string()
                 script['result'] = result.encode()
                 script['result_path'] = os.path.join(
-                    scripts_dir, '%s.yaml' % script['name'])
+                    script_out_dir, '%s.yaml' % script['name'])
                 open(script['result_path'], 'w').write(result)
 
     def make_index_json(
@@ -732,6 +738,152 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         args['error'] = 'Finished %s [2/2]: 1' % scripts[1]['name']
         self.assertThat(mock_signal, MockAnyCall(**args))
 
+    def test_get_block_devices(self):
+        expected_blockdevs = [
+            {
+                'NAME': factory.make_name('NAME'),
+                'MODEL': factory.make_name('MODEL'),
+                'SERIAL': factory.make_name('SERIAL'),
+            } for _ in range(3)
+        ]
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        mock_check_output.return_value = ''.join([
+            'NAME="{NAME}" MODEL="{MODEL}" SERIAL="{SERIAL}"\n'.format(
+                **blockdev) for blockdev in expected_blockdevs]).encode()
+        maas_run_remote_scripts._block_devices = None
+
+        self.assertItemsEqual(expected_blockdevs, get_block_devices())
+
+    def test_get_block_devices_cached(self):
+        block_devices = factory.make_name('block_devices')
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        maas_run_remote_scripts._block_devices = block_devices
+
+        self.assertItemsEqual(block_devices, get_block_devices())
+        self.assertThat(mock_check_output, MockNotCalled())
+
+    def test_parse_parameters(self):
+        scripts_dir = factory.make_name('scripts_dir')
+        script = {
+            'path': os.path.join('path_to', factory.make_name('script_name')),
+            'parameters': {
+                'runtime': {
+                    'type': 'runtime',
+                    'value': random.randint(0, 1000),
+                },
+                'storage_virtio': {
+                    'type': 'storage',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'model': '',
+                        'serial': '',
+                        'id_path': '/dev/%s' % factory.make_name('id_path'),
+                    },
+                },
+                'storage': {
+                    'type': 'storage',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'model': factory.make_name('model'),
+                        'serial': factory.make_name('serial'),
+                        'id_path': '/dev/%s' % factory.make_name('id_path'),
+                    },
+                },
+            },
+        }
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        mock_check_output.return_value = ''.join([
+            'NAME="{name}" MODEL="{model}" SERIAL="{serial}"\n'.format(
+                **param['value'])
+            for param_name, param in script['parameters'].items()
+            if 'storage' in param_name]).encode()
+        maas_run_remote_scripts._block_devices = None
+
+        self.assertItemsEqual(
+            [
+                os.path.join(scripts_dir, script['path']),
+                '--runtime=%s' % script['parameters']['runtime']['value'],
+                '--storage=%s' % script['parameters']['storage_virtio'][
+                    'value']['id_path'],
+                '--storage=/dev/%s' % script['parameters']['storage']['value'][
+                    'name'],
+            ], parse_parameters(script, scripts_dir))
+
+    def test_parse_parameters_argument_format(self):
+        scripts_dir = factory.make_name('scripts_dir')
+        script = {
+            'path': os.path.join('path_to', factory.make_name('script_name')),
+            'parameters': {
+                'runtime': {
+                    'type': 'runtime',
+                    'value': random.randint(0, 1000),
+                    'argument_format': '--foo --timeout {input}',
+                },
+                'storage': {
+                    'type': 'storage',
+                    'value': {
+                        'name': factory.make_name('name'),
+                        'model': factory.make_name('model'),
+                        'serial': factory.make_name('serial'),
+                        'id_path': '/dev/%s' % factory.make_name('id_path'),
+                    },
+                    'argument_format': (
+                        '--bar {name} {model} {serial} {path} {input}'),
+                },
+            },
+        }
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        mock_check_output.return_value = ''.join([
+            'NAME="{name}" MODEL="{model}" SERIAL="{serial}"\n'.format(
+                **param['value'])
+            for param_name, param in script['parameters'].items()
+            if 'storage' in param_name]).encode()
+        maas_run_remote_scripts._block_devices = None
+
+        self.assertItemsEqual(
+            [
+                os.path.join(scripts_dir, script['path']),
+                '--foo', '--timeout',
+                str(script['parameters']['runtime']['value']),
+                '--bar', script['parameters']['storage']['value']['name'],
+                script['parameters']['storage']['value']['model'],
+                script['parameters']['storage']['value']['serial'],
+                '/dev/%s' % script['parameters']['storage']['value']['name'],
+                '/dev/%s' % script['parameters']['storage']['value']['name'],
+            ], parse_parameters(script, scripts_dir))
+
+    def test_run_scripts_errors_with_bad_param(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        self.patch(maas_run_remote_scripts, 'install_dependencies')
+        scripts = self.make_scripts()
+        scripts[0]['parameters'] = {'storage': {
+            'type': 'storage',
+            'argument_format': '{bad}',
+        }}
+        self.make_script_output(scripts, scripts_dir, with_result=True)
+
+        self.assertEquals(
+            0, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        args = {
+            'url': None, 'creds': None, 'status': 'WORKING',
+            'script_result_id': scripts[0]['script_result_id'],
+            'script_version_id': scripts[0]['script_version_id'],
+            'error': 'Starting %s [1/1]' % scripts[0]['name'],
+        }
+        self.assertThat(mock_signal, MockAnyCall(**args))
+        self.assertThat(mock_popen, MockNotCalled())
+        # This is a MagicMock
+        args['exit_status'] = 2
+        args['files'] = {
+            scripts[0]['name']: b'Unable to map parameters',
+            '%s.err' % scripts[0]['name']: b'Unable to map parameters',
+        }
+        args['error'] = 'Failed to execute %s [1/1]: 2' % scripts[0]['name']
+        self.assertThat(mock_signal, MockAnyCall(**args))
+
     def test_run_scripts_sends_result_when_available(self):
         scripts_dir = self.useFixture(TempDirectory()).path
         mock_signal = self.patch(maas_run_remote_scripts, 'signal')
@@ -788,7 +940,10 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
 
         env = mock_popen.call_args[1]['env']
-        base = os.path.join(scripts_dir, scripts[0]['name'])
+        base = os.path.join(
+            scripts_dir, '%s.%s' % (
+                scripts[0]['name'], scripts[0]['script_result_id']),
+            scripts[0]['name'])
         self.assertEquals(base, env['OUTPUT_COMBINED_PATH'])
         self.assertEquals('%s.out' % base, env['OUTPUT_STDOUT_PATH'])
         self.assertEquals('%s.err' % base, env['OUTPUT_STDERR_PATH'])
