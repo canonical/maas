@@ -260,6 +260,15 @@ class ScriptResult(CleanSave, TimestampedModel):
 
         self.save()
 
+    @property
+    def history(self):
+        if self.script is not None:
+            qs = ScriptResult.objects.filter(script=self.script)
+        else:
+            qs = ScriptResult.objects.filter(script_name=self.script_name)
+        qs = qs.order_by('-id')
+        return qs
+
     def save(self, *args, **kwargs):
         if self.started is None and self.status == SCRIPT_STATUS.RUNNING:
             self.started = datetime.now()

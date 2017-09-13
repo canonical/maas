@@ -47,6 +47,7 @@ class TestScriptResult(MAASServerTestCase):
     def test__name_returns_unknown_when_no_script_or_model_script_name(self):
         script_result = factory.make_ScriptResult()
         script_result.script = None
+        script_result.script_name = None
         self.assertEquals('Unknown', script_result.name)
 
     def test_store_result_only_allows_status_running(self):
@@ -470,3 +471,21 @@ class TestScriptResult(MAASServerTestCase):
         with self.assertRaisesRegex(
                 ValidationError, 'results must be a dictionary.'):
             script_result.read_results()
+
+    def test_history_with_script(self):
+        script = factory.make_Script()
+        script_results = [
+            factory.make_ScriptResult(script=script)
+            for _ in range(10)
+        ]
+        script_result = script_results[-1]
+        self.assertItemsEqual(script_results, script_result.history)
+
+    def test_history_without_script(self):
+        script_name = factory.make_name('script_name')
+        script_results = [
+            factory.make_ScriptResult(script_name=script_name)
+            for _ in range(10)
+        ]
+        script_result = script_results[-1]
+        self.assertItemsEqual(script_results, script_result.history)

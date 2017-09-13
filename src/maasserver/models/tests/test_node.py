@@ -157,6 +157,7 @@ from maastesting.matchers import (
 )
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import (
+    RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_TYPE,
 )
@@ -316,6 +317,89 @@ class TestTypeCastToNodeType(MAASServerTestCase):
         self.assertThat(machine, HasType(Machine))
         self.assertThat(node, HasType(Node))
         self.assertThat(node, SharesStorageWith(machine))
+
+
+class TestNodeGetLatestScriptResults(MAASServerTestCase):
+    def test_get_latest_script_results(self):
+        node = factory.make_Node()
+        latest_script_results = []
+        for _ in range(5):
+            script = factory.make_Script()
+            for run in range(10):
+                script_set = factory.make_ScriptSet(
+                    result_type=script.script_type, node=node)
+                factory.make_ScriptResult(
+                    script=script, script_set=script_set)
+
+            script_set = factory.make_ScriptSet(
+                result_type=script.script_type, node=node)
+            latest_script_results.append(
+                factory.make_ScriptResult(
+                    script=script, script_set=script_set))
+
+        self.assertItemsEqual(
+            sorted(latest_script_results, key=lambda x: x.name),
+            node.get_latest_script_results)
+
+    def test_get_latest_commissioning_script_results(self):
+        node = factory.make_Node()
+        latest_script_results = []
+        for _ in range(5):
+            script = factory.make_Script()
+            for run in range(10):
+                script_set = factory.make_ScriptSet(
+                    result_type=script.script_type, node=node)
+                factory.make_ScriptResult(
+                    script=script, script_set=script_set)
+
+            script_set = factory.make_ScriptSet(
+                result_type=script.script_type, node=node)
+            script_result = factory.make_ScriptResult(
+                script=script, script_set=script_set)
+            if script.script_type == SCRIPT_TYPE.COMMISSIONING:
+                latest_script_results.append(script_result)
+
+        self.assertItemsEqual(
+            sorted(latest_script_results, key=lambda x: x.name),
+            node.get_latest_commissioning_script_results)
+
+    def test_get_latest_testing_script_results(self):
+        node = factory.make_Node()
+        latest_script_results = []
+        for _ in range(5):
+            script = factory.make_Script()
+            for run in range(10):
+                script_set = factory.make_ScriptSet(
+                    result_type=script.script_type, node=node)
+                factory.make_ScriptResult(
+                    script=script, script_set=script_set)
+
+            script_set = factory.make_ScriptSet(
+                result_type=script.script_type, node=node)
+            script_result = factory.make_ScriptResult(
+                script=script, script_set=script_set)
+            if script.script_type == SCRIPT_TYPE.TESTING:
+                latest_script_results.append(script_result)
+
+        self.assertItemsEqual(
+            sorted(latest_script_results, key=lambda x: x.name),
+            node.get_latest_testing_script_results)
+
+    def test_get_latest_installation_script_results(self):
+        node = factory.make_Node()
+        for _ in range(10):
+            script_set = factory.make_ScriptSet(
+                result_type=RESULT_TYPE.INSTALLATION, node=node)
+            factory.make_ScriptResult(
+                script_name=CURTIN_INSTALL_LOG, script_set=script_set)
+
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.INSTALLATION, node=node)
+        latest_script_results = ([factory.make_ScriptResult(
+            script_name=CURTIN_INSTALL_LOG, script_set=script_set)])
+
+        self.assertItemsEqual(
+            latest_script_results, node.get_latest_installation_script_results)
 
 
 class TestNodeManager(MAASServerTestCase):

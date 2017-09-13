@@ -766,6 +766,8 @@ class Factory(maastesting.factory.Factory):
             script_set = self.make_ScriptSet()
         if script is None and script_name is None:
             script = self.make_Script()
+        if script is not None:
+            script_name = script.name
         if status is None:
             status = self.pick_choice(SCRIPT_STATUS_CHOICES)
         if status in (

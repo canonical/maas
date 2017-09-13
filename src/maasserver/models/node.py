@@ -163,7 +163,10 @@ from maasserver.utils.threads import (
     deferToDatabase,
 )
 from maasserver.worker_user import get_worker_user
-from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from metadataserver.user_data import generate_user_data_for_status
 from netaddr import (
     IPAddress,
@@ -4096,6 +4099,35 @@ class Node(CleanSave, TimestampedModel):
     def as_self(self):
         """Return a reference to self that behaves as its own type."""
         return self._as_self[self.node_type](self)
+
+    @property
+    def get_latest_script_results(self):
+        """Returns a QuerySet of the latest results from all runs."""
+        # Avoid circular dependencies
+        from metadataserver.models import ScriptResult
+
+        qs = ScriptResult.objects.filter(script_set__node=self)
+        qs = qs.order_by('script_name', 'physical_blockdevice__id', '-id')
+        qs = qs.distinct('script_name', 'physical_blockdevice__id')
+        return qs
+
+    @property
+    def get_latest_commissioning_script_results(self):
+        """Returns a QuerySet of the latest commissioning results."""
+        return self.get_latest_script_results.filter(
+            script_set__result_type=RESULT_TYPE.COMMISSIONING)
+
+    @property
+    def get_latest_testing_script_results(self):
+        """Returns a QuerySet of the latest testing results."""
+        return self.get_latest_script_results.filter(
+            script_set__result_type=RESULT_TYPE.TESTING)
+
+    @property
+    def get_latest_installation_script_results(self):
+        """Returns a QuerySet of the latest installation results."""
+        return self.get_latest_script_results.filter(
+            script_set__result_type=RESULT_TYPE.INSTALLATION)
 
 
 # Piston serializes objects based on the object class.
