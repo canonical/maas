@@ -524,6 +524,13 @@ def get_curtin_config(node):
     # must have this statement.
     if node.distro_series == "precise":
         config['power_state'] = {'mode': 'reboot'}
+    # Ensure we always set debconf_selections for grub to ensure it doesn't
+    # overwrite the config sent by MAAS. See LP: #1642298
+    grub2_debconf = {'grub2': 'grub2   grub2/update_nvram  boolean false'}
+    if 'debconf_selections' in config:
+        config['debconf_selections'].update(grub2_debconf)
+    else:
+        config['debconf_selections'] = grub2_debconf
     return yaml.safe_dump(config)
 
 

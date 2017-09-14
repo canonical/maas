@@ -1149,6 +1149,16 @@ class TestCurtinUtilities(
             yaml_conf['late_commands']['maas'][2])
         self.assertTrue('debconf_selections' in yaml_conf)
 
+    def test_get_curtin_config_has_grub2_debconf_selections(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        node.save()
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(node)
+        self.assertThat(
+            config,
+            Contains('grub2: grub2   grub2/update_nvram  boolean false'))
+
     def make_fastpath_node(self, main_arch=None):
         """Return a `Node`, with FPI enabled, and the given main architecture.
 
