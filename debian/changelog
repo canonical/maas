@@ -1,6 +1,12 @@
-maas (2.3.0~alpha3-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
 
-  * New upstream release, 2.3.0 alpha3:
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 15 Sep 2017 11:26:05 -0500
+
+maas (2.3.0~alpha3-6250-g58f83f3-0ubuntu1) artful; urgency=medium
+
+  * New upstream release, 2.3.0 alpha3 (LP: #1717543):
     - Hardware Testing:
       + Ability to test and gather results per individual component
         (e.g. per disks).
@@ -19,7 +25,7 @@ maas (2.3.0~alpha3-0ubuntu1) UNRELEASED; urgency=medium
   * debian/maas-common.links: Drop as it created a link for a binary that
     was already deprecated.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 25 Aug 2017 12:18:37 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 15 Sep 2017 10:37:57 -0500
 
 maas (2.3.0~alpha2-6194-g7fb23b0-0ubuntu1) artful; urgency=medium
 
