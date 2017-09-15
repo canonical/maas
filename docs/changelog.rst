@@ -2,6 +2,136 @@
 Changelog
 =========
 
+MAAS 2.3.0 (alpha3)
+===================
+
+New Features & Improvements
+---------------------------
+
+**Hardware Testing (backend only)**
+ MAAS has now introduced an improved hardware testing framework. This new
+ framework allows for MAAS to test individual components of a single machine,
+ as well as providing better feedback to the user for each of those tests.
+ This feature has introduced:
+
+  * Ability to define a custom testing script with a YAML definition - Each
+    custom test can be defined with a YAML that will provide information
+    about the test. This information includes the script name, description,
+    required packages, and other metadata about what information the script
+    will gather. This information can then be displayed in the UI.
+
+  * Ability to pass parameters - Adds the ability to pass specific parameters
+    to the scripts. For example, in upcoming beta releases, users would be
+    able to select which disks they want to test if they don't want to test
+    all disks.
+
+  * Running test individually - Improves the way how hardware tests are run
+    per component. This allows MAAS to run tests against any individual
+    component (such a single disk).
+
+  * Added additional performance tests:
+    * Added a CPU performance test with 7z.
+    * Added a storage performance test with fio.
+
+ Please note that individual results for each of the components is currently
+ only available over the API. Upcoming beta release will include various UI
+ allow the user to better surface and interface with these new features.
+
+**Rack Controller Deployment in Whitebox Switches (with the MAAS snap)**
+
+ MAAS has now the ability to install and configure a MAAS rack controller
+ once a machine has been deployed. As of today, this feature is only available
+ when MAAS detects the machine is a whitebox switch. As such, all MAAS
+ certified whitebox switches will be deployed with a MAAS rack controller.
+ Currently certified switches include the Wedge 100 and the Wedge 40.
+
+ Please note that this features makes use of the MAAS snap to configure the
+ rack controller on the deployed machine. Since snap store mirrors are not
+ yet available, this will require the machine to have access to the internet
+ to be able to install the MAAS snap.
+
+**Improved DNS Reloading**
+
+ This new release introduces various improvements to the DNS reload mechanism.
+ This allows MAAS to be smarter about when to reload DNS after changes have
+ been automatically detected or made.
+
+**UI - Controller Versions & Notifications**
+
+ MAAS now surfaces the version of each running controller, and notifies the
+ users of any version mismatch between the region and rack controllers. This
+ helps administrators identify mismatches when upgrading their MAAS on a
+ multi-node MAAS cluster, such as a HA setup.
+
+**UI - Zones tab has been migrated to AngularJS**
+
+ The Zones tab and related pages have now been transferred to AngularJS,
+ moving away from using YUI. As of today, the only remaining section still
+ requiring the use of YUI is some sections inside the settings page. Thanks
+ to the Ubuntu Web Team for their contribution!
+
+Issues fixed in this release
+----------------------------
+
+Issues fixed in this release are detailed at:
+
+ https://launchpad.net/maas/+milestone/2.3.0alpha3
+
+
+MAAS 2.3.0 (alpha2)
+===================
+
+Important announcements
+-----------------------
+
+**Advanced Network for CentOS & Windows**
+ The MAAS team is happy to announce that MAAS 2.3 now supports the ability to
+ perform network configuration for CentOS and Windows. The network
+ configuration is performed via cloud-init. MAAS CentOS images now use the
+ latest available version of cloud-init that includes these features.
+
+New Features & Improvements
+---------------------------
+
+**CentOS Networking support**
+ MAAS can now perform machine network configuration for CentOS, giving CentOS
+ networking feature parity with Ubuntu. The following can now be configured for
+ MAAS deployed CentOS images:
+
+  * Static network configuration.
+  * Bonds, VLAN and bridge interfaces.
+
+ Thanks for the cloud-init team for improving the network configuration support
+ for CentOS.
+
+**Support for Windows Network configuration**
+ MAAS can now configure NIC teaming (bonding) and VLAN interfaces for Windows
+ deployments. This uses the native NetLBFO in Windows 2008+. Contact us for
+ more information (https://maas.io/contact-us).
+
+**Network Discovery & Beaconing**
+ MAAS now sends out encrypted beacons to facilitate network discovery and
+ monitoring. Beacons are sent using IPv4 and IPv6 multicast (and unicast) to
+ UDP port 5240. When registering a new controller, MAAS uses the information
+ gathered from the beaconing protocol to ensure that newly registered
+ interfaces on each controller are associated with existing known networks in
+ MAAS.
+
+**UI improvements**
+ Minor UI improvements have been made:
+
+  * Renamed “Device Discovery” to “Network Discovery”.
+  * Discovered devices where MAAS cannot determine the hostname now show the
+    hostname as “unknown” and greyed out instead of using the MAC address
+    manufacturer as the hostname.
+
+Issues fixed in this release
+----------------------------
+Issues fixed in this release are detailed at:
+
+ https://launchpad.net/maas/+milestone/2.3.0alpha1
+
+
 2.3.0 (alpha1)
 ==============
 
@@ -31,7 +161,7 @@ New Features & Improvements
  allows MAAS to work with the newer Django version in Ubuntu Artful, which
  serves as a preparation for the next Ubuntu LTS release.
 
-  * Users running MAAS from the snap in any Ubuntu release will use Django 1.11.
+  * Users running MAAS from the snap in any Ubuntu release will use Django 1.11
   * Users running MAAS in Ubuntu Artful will use Django 1.11.
   * Users running MAAS in Ubuntu Xenial will continue to use Django 1.9.
 
