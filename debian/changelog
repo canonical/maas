@@ -1,11 +1,23 @@
 maas (2.3.0~alpha3-0ubuntu1) UNRELEASED; urgency=medium
 
-  * Move scripts to maas-common that are used by the MAAS
-    region controller in addition to the rack.
-  * Add /usr/lib/maas/maas-common script.
-  * Move to debhelper compat level 9.
-  * debian/maas-common.links: Drop as it created a link for a binary that was
-    already deprecated.
+  * New upstream release, 2.3.0 alpha3:
+    - Hardware Testing:
+      + Ability to test and gather results per individual component
+        (e.g. per disks).
+      + Add 7z CPU performance test.
+      + Add fio storage performance test.
+      + Add ability to define YAML metadata for custom testing scripts,
+        allowing MAAS to parse and utilize such metadata.
+    - Rack Controller deployment for Whitebox Switches.
+    - Improved DNS reloading.
+    - UI - Controller Versions & Notifications.
+    - UI - Refactor Zones page in Angular away from YUI.
+  * Move scripts to maas-common that are used by the MAAS region controller
+    in addition to the rack.
+    - Add /usr/lib/maas/maas-common script.
+  * Bump debhelper compat level 9.
+  * debian/maas-common.links: Drop as it created a link for a binary that
+    was already deprecated.
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 25 Aug 2017 12:18:37 -0400
 
