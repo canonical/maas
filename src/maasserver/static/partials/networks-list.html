@@ -140,8 +140,9 @@
                             <input class="checkbox" type="checkbox" id="spaces-all" />
                             <label class="checkbox-label" for="spaces-all"></label>
                         </th> -->
-                        <th class="table__column--20">Space</th>
-                        <th class="table__column--20">VLAN</th>
+                        <th class="table__column--10">Space</th>
+                        <th class="table__column--10">VLAN</th>
+                        <th class="table__column--10">DHCP</th>
                         <th class="table__column--20">Fabric</th>
                         <th class="table__column--30">Subnet</th>
                         <th class="table__column--13 align-right">Available IPs</th>
@@ -161,6 +162,10 @@
                         <td class="table-listing__cell table__column--20" aria-label="VLAN">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
+                        <td class="table-listing__cell table__column--20" aria-label="DHCP">
+                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null">Enabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
+                        </td>
                         <td class="table-listing__cell table__column--20" aria-label="Fabric">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
@@ -179,6 +184,10 @@
                         </td>
                         <td class="table-listing__cell table__column--20">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--10" aria-label="DHCP">
+                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true">Enabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
                         </td>
                         <td class="table-listing__cell table__column--20">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
@@ -200,8 +209,9 @@
                             <input class="checkbox" type="checkbox" id="fabrics-all" />
                             <label class="checkbox-label" for="fabrics-all"></label>
                         </th> -->
-                        <th class="table__column--15">Fabric</th>
-                        <th class="table__column--15">VLAN</th>
+                        <th class="table__column--10">Fabric</th>
+                        <th class="table__column--10">VLAN</th>
+                        <th class="table__column--10">DHCP</th>
                         <th class="table__column--27">Subnet</th>
                         <th class="table__column--15 align-right">Available IPs</th>
                         <th class="table__column--25">Space</th>
@@ -215,11 +225,15 @@
                                 <label class="checkbox-label" for="fabric-{$ row.fabric.id $}"></label>
                             </div>
                         </td> -->
-                        <td class="table-listing__cell table__column--15" aria-label="Fabric">
+                        <td class="table-listing__cell table__column--10" aria-label="Fabric">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--15" aria-label="VLAN">
+                        <td class="table-listing__cell table__column--10" aria-label="VLAN">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--10" aria-label="DHCP">
+                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true">Enabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
                         </td>
                         <td class="table-listing__cell table__column--27" aria-label="Subnet">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>

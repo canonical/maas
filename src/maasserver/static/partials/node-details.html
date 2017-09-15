@@ -15,7 +15,7 @@
                     data-ng-model="header.hostname.value"
                     data-ng-disabled="!canEdit()"
                     data-maas-editing="editHeader()"></span>
-                <span ng-click="editHeaderDomain()" data-ng-show="!canEdit()">{$ header.hostname.value $}</span> 
+                <span ng-click="editHeaderDomain()" data-ng-show="!canEdit()">{$ header.hostname.value $}</span>
                 <span class="page-header__title-dot ng-hide" data-ng-show="header.editing || header.editing_domain">.</span>
                 <select class="page-header__title-domain ng-hide"
                     data-ng-show="header.editing || header.editing_domain"
@@ -594,8 +594,9 @@
                         <div class="table">
                             <header class="table__head">
                                 <div class="table__row">
-                                    <div class="table__header table-col--15">Fabric</div>
-                                    <div class="table__header table-col--15">VLAN</div>
+                                    <div class="table__header table-col--10">Fabric</div>
+                                    <div class="table__header table-col--10">VLAN</div>
+                                    <div class="table__header table-col--10">DHCP</div>
                                     <div class="table__header table-col--30">Subnets</div>
                                     <div class="table__header table-col--20">Primary rack</div>
                                     <div class="table__header table-col--20">Secondary rack</div>
@@ -603,11 +604,15 @@
                             </header>
                             <div class="table__body">
                                 <div class="table__row" data-ng-repeat="vlanRow in vlanTable">
-                                    <div class="table__data table-col--15">
+                                    <div class="table__data table-col--10">
                                         <a href="#/fabric/{$ vlanRow['fabric'].id $}">{$ vlanRow['fabric'].name $}</a>
                                     </div>
-                                    <div class="table__data table-col--15">
+                                    <div class="table__data table-col--10">
                                         <a href="#/vlan/{$ vlanRow['vlan'].id $}">{$ getVLANText(vlanRow['vlan']) $}</a>
+                                    </div>
+                                    <div class="table__data table-col--10">
+                                      <p data-ng-if="vlanRow.vlan.dhcp_on === true || vlanRow.vlan.relay_vlan !== null || vlanRow.vlan.external_dhcp === true">Enabled</p>
+                                      <p data-ng-if="vlanRow.vlan.dhcp_on !== true && vlanRow.vlan.relay_vlan === null">Disabled</p>
                                     </div>
                                     <div class="table__data table-col--30">
                                         <span data-ng-repeat="subnet in vlanRow['subnets']">
