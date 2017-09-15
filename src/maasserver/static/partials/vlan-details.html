@@ -244,7 +244,23 @@
                         <dd class="four-col last-col">
                             <a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a>
                         </dd>
-                        <dt class="two-col">DHCP</dt><dd class="four-col last-col">{$ vlanDetails.getDHCPStatus() $}</dd>
+                    </dl>
+                </div>
+            </maas-obj-form>
+        </div>
+    </section>
+
+    <section class="row">
+        <div class="wrapper--inner">
+            <div class="twelve-col">
+                <h2 class="u-display--inline-block">DHCP</h2>
+                <h4 data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack" class="u-display--inline-block u-margin--left u-text--off"> High availability</h4>
+            </div>
+            <div class="twelve-col">
+                <div class="six-col">
+                    <dl>
+                        <dt class="two-col">Status</dt>
+                        <dd class="four-col last-col">{$ vlanDetails.getDHCPStatus() $}</dd>
                         <div data-ng-if="vlanDetails.vlan.external_dhcp">
                             <dt class="two-col">External DHCP</dt>
                             <dd class="four-col last-col">{$ vlanDetails.vlan.external_dhcp $}
@@ -257,15 +273,17 @@
                         <div data-ng-if="vlanDetails.secondaryRack">
                             <dt class="two-col">Secondary controller <span class="icon icon--help tooltip" aria-label="The rack controller that will take over DHCP services if the primary fails."></span></dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
                         </div>
-                        <dt class="two-col">Rack controllers <span class="icon icon--help tooltip" aria-label="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
-                        <dd class="four-col last-col">
-                            <span data-ng-repeat="rack in vlanDetails.relatedControllers">
-                                <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>
-                            </span>&nbsp;
-                        </dd>
+                        <div data-ng-if="vlanDetails.relatedControllers">
+                            <dt class="two-col">Rack controllers <span class="icon icon--help tooltip" aria-label="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
+                            <dd class="four-col last-col">
+                                <span data-ng-repeat="rack in vlanDetails.relatedControllers">
+                                    <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>
+                                </span>&nbsp;
+                            </dd>
+                        </div>
                     </dl>
                 </div>
-            </maas-obj-form>
+            </div>
         </div>
     </section>
     <section class="row">
