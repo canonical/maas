@@ -49,6 +49,10 @@ from maasserver.views.settings_license_keys import (
     LicenseKeyDelete,
     LicenseKeyEdit,
 )
+from maasserver.views.settings_test_scripts import (
+    TestScriptCreate,
+    TestScriptDelete,
+)
 from maasserver.views.zones import (
     ZoneAdd,
     ZoneDelete,
@@ -133,6 +137,14 @@ urlpatterns += [
         r'^commissioning-scripts/add/$',
         CommissioningScriptCreate.as_view(),
         name='commissioning-script-add'),
+    adminurl(
+        r'^test-scripts/(?P<id>[\w\-]+)/delete/$',
+        TestScriptDelete.as_view(),
+        name='test-script-delete'),
+    adminurl(
+        r'^test-scripts/add/$',
+        TestScriptCreate.as_view(),
+        name='test-script-add'),
     adminurl(
         r'^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)/delete/$',
         LicenseKeyDelete.as_view(),

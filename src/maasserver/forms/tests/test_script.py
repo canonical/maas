@@ -13,6 +13,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from maasserver.forms.script import (
     CommissioningScriptForm,
     ScriptForm,
+    TestingScriptForm,
 )
 from maasserver.models import VersionedTextFile
 from maasserver.testing.factory import factory
@@ -850,4 +851,58 @@ class TestCommissioningScriptForm(MAASServerTestCase):
     def test_not_valid_when_empty(self):
         # Regression test for LP:1712423
         form = CommissioningScriptForm()
+        self.assertFalse(form.is_valid())
+
+
+class TestTestingScriptForm(MAASServerTestCase):
+
+    def test_creates_test_script_from_embedded_yaml_name(self):
+        name = factory.make_name('name')
+        content = factory.make_script_content({'name': name})
+        uploaded_file = SimpleUploadedFile(
+            content=content.encode('ascii'),
+            name=factory.make_name('filename'))
+        form = TestingScriptForm(files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        new_script = Script.objects.get(name=name)
+        self.assertEquals(SCRIPT_TYPE.TESTING, new_script.script_type)
+        self.assertEquals(content, new_script.script.data)
+
+    def test_creates_test_script_from_filename(self):
+        content = factory.make_script_content()
+        name = factory.make_name('filename')
+        uploaded_file = SimpleUploadedFile(
+            content=content.encode('ascii'), name=name)
+        form = TestingScriptForm(files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        new_script = Script.objects.get(name=name)
+        self.assertEquals(SCRIPT_TYPE.TESTING, new_script.script_type)
+        self.assertEquals(content, new_script.script.data)
+
+    def test_updates_test_script(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        content = factory.make_script_content()
+        uploaded_file = SimpleUploadedFile(
+            content=content.encode('ascii'), name=script.name)
+        form = TestingScriptForm(files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        new_script = Script.objects.get(name=script.name)
+        self.assertEquals(SCRIPT_TYPE.TESTING, new_script.script_type)
+        self.assertEquals(content, new_script.script.data)
+
+    def test_propagates_script_form_errors(self):
+        # Regression test for LP:1712422
+        uploaded_file = SimpleUploadedFile(
+            content=factory.make_script_content().encode('ascii'), name='none')
+        form = TestingScriptForm(files={'content': uploaded_file})
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {'content': ['name: "none" is a reserved name.']}, form.errors)
+
+    def test_not_valid_when_empty(self):
+        # Regression test for LP:1712423
+        form = TestingScriptForm()
         self.assertFalse(form.is_valid())

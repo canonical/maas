@@ -1,0 +1,18 @@
+{% extends "maasserver/base.html" %}
+
+{% block title %}Delete test script{% endblock %}
+{% block page-title %}Delete test script{% endblock %}
+
+{% block content %}
+<div class="eight-col">
+    <h2>Are you sure you want to delete the test script '{{ script_to_delete.name }}'?<br /></h2>
+    <p>This action is permanent and can not be undone.</p>
+    <form method="post">{% csrf_token %}
+        <input type="hidden" name="post" value="yes" />
+        <div class="u-float--right">
+            <a class="button--secondary button--inline" href="{% url 'settings' %}#test_scripts">Cancel</a>
+            <button type="submit" class="button--destructive button--inline" />Delete test script</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

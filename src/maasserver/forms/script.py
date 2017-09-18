@@ -4,6 +4,7 @@
 """Script form."""
 
 __all__ = [
+    "TestingScriptForm",
     "CommissioningScriptForm",
     "ScriptForm",
 ]
@@ -454,4 +455,63 @@ class CommissioningScriptForm(Form):
         # commissioning.
         if 'script_type' not in self._form.data:
             script.script_type = SCRIPT_TYPE.COMMISSIONING
+        script.save()
+
+
+class TestingScriptForm(Form):
+    """TestingScriptForm for the UI
+
+    The TestingScriptForm accepts a test script from the
+    settings page in the UI. This form handles accepting the file upload
+    and setting the script_type to test if no script_script is
+    set in the embedded YAML. The ScriptForm above validates the script
+    itself.
+    """
+
+    content = FileField(label="Test script", allow_empty_file=False)
+
+    def __init__(self, instance=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._form = None
+
+    def clean_content(self):
+        content = self.cleaned_data['content']
+        script_name = content.name
+        script_content = content.read().decode()
+        try:
+            script = Script.objects.get(name=script_name)
+        except Script.DoesNotExist:
+            form = ScriptForm(data={'script': script_content})
+            # If the form isn't valid due to the name it may be because the
+            # embedded YAML doesn't define a name. Try again defining it.
+            if not form.is_valid() and 'name' in form.errors:
+                form = ScriptForm(
+                    data={'name': script_name, 'script': script_content})
+        else:
+            form = ScriptForm(data={'script': script_content}, instance=script)
+
+        self._form = form
+        return content
+
+    def is_valid(self):
+        valid = super().is_valid()
+
+        # If content is empty self.clean_content isn't run.
+        if self._form is not None and not self._form.is_valid():
+            # This form only has content so all errors must be on that field.
+            if 'content' not in self.errors:
+                self.errors['content'] = []
+            for key, errors in self._form.errors.items():
+                for error in errors:
+                    self.errors['content'].append('%s: %s' % (key, error))
+            return False
+        else:
+            return valid
+
+    def save(self, *args, **kwargs):
+        script = self._form.save(*args, **kwargs, commit=False)
+        # If the embedded script data did not set a script type set it to
+        # test.
+        if 'script_type' not in self._form.data:
+            script.script_type = SCRIPT_TYPE.TESTING
         script.save()

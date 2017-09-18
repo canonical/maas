@@ -279,6 +279,10 @@ def settings(request):
     commissioning_scripts = Script.objects.filter(
         script_type=SCRIPT_TYPE.COMMISSIONING)
 
+    # Test scripts.
+    test_scripts = Script.objects.filter(
+        script_type=SCRIPT_TYPE.TESTING, default=False)
+
     # License keys w/ titles for osystem and distro_series
     osystems = list(gen_all_known_operating_systems())
     show_license_keys = has_osystems_supporting_license_keys(osystems)
@@ -292,6 +296,7 @@ def settings(request):
         {
             'user_list': user_list,
             'commissioning_scripts': commissioning_scripts,
+            'test_scripts': test_scripts,
             'show_license_keys': show_license_keys,
             'license_keys': license_keys,
             'maas_form': maas_form,
