@@ -9,7 +9,10 @@ import contextlib
 from contextlib import contextmanager
 import os.path
 import sqlite3
-from unittest.mock import call
+from unittest.mock import (
+    call,
+    patch,
+)
 
 from maascli import (
     api,
@@ -58,6 +61,14 @@ class TestProfileConfig(MAASTestCase):
         config["alice"] = {"def": 456}
         self.assertEqual({"alice"}, set(config))
         self.assertEqual({"def": 456}, config["alice"])
+
+    def test_cache(self):
+        database = sqlite3.connect(":memory:")
+        config = api.ProfileConfig(database)
+        config["alice"] = {"abc": 123}
+        with patch.object(config, 'cursor') as cursor:
+            self.assertEqual({"abc": 123}, config["alice"])
+            cursor.assert_not_called()
 
     def test_getting_profile(self):
         database = sqlite3.connect(":memory:")
