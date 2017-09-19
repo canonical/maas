@@ -2,6 +2,35 @@
 Changelog
 =========
 
+2.2.3
+=====
+
+Bugs fixed in this release
+--------------------------
+
+LP: #1707971    MAAS becomes unstable after rack controller restart
+
+LP: #1710278    [2.3a1] named stuck on reload, DNS broken
+
+LP: #1710308    [2.2] MAAS should confirm the success of DNS reloads by checking the zone serial
+
+LP: #1715634    'tags machines' takes 30+ seconds to respond with list of 9 nodes
+
+LP: #1706196    Maas creates a pod machine even when a machine tag is set as a constraint
+
+LP: #1708052    Curtin fails to install on a disk previosly installed with RAID
+
+LP: #1710681    [2.2, 2.3] Cannot delete an Ubuntu image, "Update Selection" is disabled
+
+LP: #1711700    [2.x] MAAS should avoid updating DNS if nothing changed
+
+LP: #1507712    cli: maas logout causes KeyError for other profiles
+
+LP: #1704444    [2.2] MAAS API returns 500 internal server error instead of raising actual error
+
+LP: #1676992    Force Postgresql restart on maas-region-controller installation.
+
+
 2.2.2
 =====
 
