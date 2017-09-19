@@ -51,6 +51,9 @@ def get_version_from_apt(*packages):
         if package in cache:
             apt_package = cache[package]
             version = apt_package.current_ver
+            # If the version is None or an empty string, try the next package.
+            if not version:
+                continue
             break
 
     return version.ver_str if version is not None else ""

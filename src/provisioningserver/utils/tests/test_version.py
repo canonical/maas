@@ -81,6 +81,21 @@ class TestGetVersionFromAPT(MAASTestCase):
             version.get_version_from_apt(
                 version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
 
+    def test__returns_ver_str_from_second_package_if_first_is_empty(self):
+        rack = MagicMock()
+        rack.current_ver = ''
+        region = MagicMock()
+        region.current_ver.ver_str = sentinel.ver_str
+        mock_cache = {
+            version.RACK_PACKAGE_NAME: rack,
+            version.REGION_PACKAGE_NAME: region,
+        }
+        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
+        self.assertIs(
+            sentinel.ver_str,
+            version.get_version_from_apt(
+                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
+
 
 class TestGetMAASBranchVersion(MAASTestCase):
 
