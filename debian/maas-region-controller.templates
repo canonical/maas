@@ -17,9 +17,9 @@ Type: string
 _Description: Ubuntu MAAS PXE/Provisioning network address:
  The Ubuntu MAAS Server automatically detects the IP address
  that is used for PXE and provisioning. However, it needs to be
- in the same network as the clients. If the automatically
- detected address is not in the same network as the clients, it
- must be changed.
+ reacheable by the clients (e.g L2 or L3 network). If the
+ automatically detected address is not reacheable by the clients,
+ it needs to be changed.
 
 Template: maas/username
 Type: string
