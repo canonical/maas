@@ -3,9 +3,9 @@
  *
  * MAAS ScriptsManager Manager
  *
- * Manages all of the DHCPSnippets in the browser. The manager uses the
- * RegionConnection to load the DHCPSnippets, update the DHCPSnippets, and
- * listen for notification events about DHCPSnippets.
+ * Manages all of the Scripts in the browser. The manager uses the
+ * RegionConnection to load the Scripts, and listen for notification
+ * events about Scripts.
  */
 
 angular.module('MAAS').factory(
