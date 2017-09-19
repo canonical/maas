@@ -44,8 +44,8 @@
             data-ng-repeat="node in table.filteredSwitches = (table.switches | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id"
             data-ng-class="{ 'table--error': machineHasError({ $switch_: node }), selected: node.$selected }">
             <td class="table-col--3" aria-label="Select node" data-ng-if="!hideCheckboxes">
-                <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
-                <label class="checkbox-label" for="{$ node.fqdn $}"></label>
+                <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="check-switch-{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
+                <label class="checkbox-label" for="check-switch-{$  node.fqdn $}"></label>
             </td>
             <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'" colspan="2">
                 <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>

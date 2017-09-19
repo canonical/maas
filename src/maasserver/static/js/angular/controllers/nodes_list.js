@@ -162,6 +162,7 @@ angular.module('MAAS').controller('NodesListController', [
             hwe_kernel: null
         };
         $scope.tabs.switches.zoneSelection = null;
+        $scope.tabs.switches.commissioningSelection = [];
         $scope.tabs.switches.commissionOptions = {
             enableSSH: false,
             skipNetworking: false,

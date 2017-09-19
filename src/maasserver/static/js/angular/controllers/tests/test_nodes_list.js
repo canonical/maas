@@ -388,6 +388,7 @@ describe("NodesListController", function() {
                         skipNetworking: false,
                         skipStorage: false
                     });
+                    expect(tabScope.commissioningSelection).toEqual([]);
                     expect(tabScope.releaseOptions).toEqual({});
                 }
 
