@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Handlers for the WebSocket connections."""
@@ -19,6 +19,7 @@ __all__ = [
     "IPRangeHandler",
     "IPRangeHandler",
     "MachineHandler",
+    "NodeResultHandler",
     "NotificationHandler",
     "PackageRepositoryHandler",
     "PodHandler",
@@ -47,6 +48,7 @@ from maasserver.websockets.handlers.fabric import FabricHandler
 from maasserver.websockets.handlers.general import GeneralHandler
 from maasserver.websockets.handlers.iprange import IPRangeHandler
 from maasserver.websockets.handlers.machine import MachineHandler
+from maasserver.websockets.handlers.node_result import NodeResultHandler
 from maasserver.websockets.handlers.notification import NotificationHandler
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
