@@ -1160,11 +1160,18 @@ class TestNode(MAASServerTestCase):
             mac_address=mac).count()
         self.assertEqual(0, interfaces)
 
-    def test_add_metadata(self):
+    def test_set_metadata(self):
         node = factory.make_Node()
-        node.add_metadata("foo", "bar")
+        node.set_metadata("foo", "bar")
         self.assertEqual(
             "bar", NodeMetadata.objects.get(node=node, key="foo").value)
+
+    def test_set_metadata_overwrite(self):
+        node = factory.make_Node()
+        node.set_metadata("foo", "bar")
+        node.set_metadata("foo", "baz")
+        self.assertEqual(
+            "baz", NodeMetadata.objects.get(node=node, key="foo").value)
 
     def test_get_metadata_empty(self):
         node = factory.make_Node()
@@ -1172,7 +1179,7 @@ class TestNode(MAASServerTestCase):
 
     def test_get_metadata(self):
         node = factory.make_Node()
-        node.add_metadata("foo", "bar")
+        node.set_metadata("foo", "bar")
         self.assertEqual({"foo": "bar"}, node.get_metadata())
 
     def test_get_osystem_returns_default_osystem(self):

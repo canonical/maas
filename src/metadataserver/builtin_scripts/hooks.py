@@ -471,11 +471,11 @@ def add_switch(node, vendor, model):
     """Add Switch object representing the switch hardware."""
     switch, created = Switch.objects.get_or_create(node=node)
     logger.info("%s: detected as a switch." % node.hostname)
-    node.add_metadata(key="vendor-name", value=vendor)
+    node.set_metadata(key="vendor-name", value=vendor)
     # Record Switch metadata using a variant of SNMP OID names
     # taken from http://www.ietf.org/rfc/rfc2737.txt (eg. turn
     # entPhysicalModelName into "physical-model-name").
-    node.add_metadata(key="physical-model-name", value=model)
+    node.set_metadata(key="physical-model-name", value=model)
     return switch
 
 
@@ -497,7 +497,7 @@ def update_node_fruid_metadata(node, output: bytes, exit_status):
     info = data.get("Information", {})
     for fruid_key, node_key in key_name_map.items():
         if fruid_key in info:
-            node.add_metadata(key=node_key, value=info[fruid_key])
+            node.set_metadata(key=node_key, value=info[fruid_key])
 
 
 def detect_switch_vendor_model(dmi_data):

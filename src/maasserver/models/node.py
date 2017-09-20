@@ -1690,11 +1690,18 @@ class Node(CleanSave, TimestampedModel):
                     mac_address, iface.node.hostname))
         return iface
 
-    def add_metadata(self, key, value):
-        """Add Node metadata with `key` and `value`."""
+    def set_metadata(self, key, value):
+        """Set (add or overwrite) Node metadata with `key` to `value`."""
         # Avoid circular imports.
         from maasserver.models.nodemetadata import NodeMetadata
-        return NodeMetadata.objects.create(node=self, key=key, value=value)
+        try:
+            metadata_row = NodeMetadata.objects.get(node=self, key=key)
+            metadata_row.value = value
+            metadata_row.save()
+        except NodeMetadata.DoesNotExist:
+            metadata_row = NodeMetadata.objects.create(
+                node=self, key=key, value=value)
+        return metadata_row
 
     def get_metadata(self):
         """Return all Node metadata key, value pairs as a dict."""
