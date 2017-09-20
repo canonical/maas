@@ -209,13 +209,13 @@
                     data-ng-click="section.area = 'storage'">Storage</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.installation_results.length > 0"
                     data-ng-class="{ 'is-active': section.area === 'installation'}"
-                    data-ng-click="section.area = 'installation'"><span class="icon" data-ng-class="{ 'icon--warning': node.installation_script_set_status === -1, 'icon--pending': node.installation_script_set_status === 0, 'icon--running': node.installation_script_set_status === 1 || node.installation_script_set_status === 7, 'icon--pass': node.installation_script_set_status === 2, 'icon--status-failed': node.installation_script_set_status === 3 || node.installation_script_set_status === 5 || node.installation_script_set_status === 6 || node.installation_script_set_status === 8, 'icon--timed-out': node.installation_script_set_status === 4 }"></span> Installation</button>
+                    data-ng-click="section.area = 'installation'"><span data-maas-script-status="script-status" data-script-status="node.installation_script_set_status"></span> Installation</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.commissioning_results.length > 0"
                     data-ng-class="{ 'is-active': section.area === 'commissioning'}"
-                    data-ng-click="section.area = 'commissioning'"><span class="icon" data-ng-class="{ 'icon--warning': node.commissioning_script_set_status === -1, 'icon--pending': node.commissioning_script_set_status === 0, 'icon--running': node.commissioning_script_set_status === 1 || node.commissioning_script_set_status === 7, 'icon--pass': node.commissioning_script_set_status === 2, 'icon--status-failed': node.commissioning_script_set_status === 3 || node.commissioning_script_set_status === 5 || node.commissioning_script_set_status === 6 || node.commissioning_script_set_status === 8, 'icon--timed-out': node.commissioning_script_set_status === 4 }"></span> Commissioning</button>
+                    data-ng-click="section.area = 'commissioning'"><span data-maas-script-status="script-status" data-script-status="node.commissioning_script_set_status"></span> Commissioning</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.testing_results.length > 0"
                     data-ng-class="{ 'is-active': section.area === 'testing'}"
-                    data-ng-click="section.area = 'testing'"><span class="icon" data-ng-class="{ 'icon--warning': node.testing_script_set_status === -1, 'icon--pending': node.testing_script_set_status === 0, 'icon--running': node.testing_script_set_status === 1 || node.testing_script_set_status === 7, 'icon--pass': node.testing_script_set_status === 2, 'icon--status-failed': node.testing_script_set_status === 3 || node.testing_script_set_status === 5 || node.testing_script_set_status === 6 || node.testing_script_set_status === 8, 'icon--timed-out': node.testing_script_set_status === 4 }"></span> Hardware tests</button>
+                    data-ng-click="section.area = 'testing'"><span data-maas-script-status="script-status" data-script-status="node.testing_script_set_status"></span> Hardware tests</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
                     data-ng-class="{ 'is-active': section.area === 'events'}"
                     data-ng-click="section.area = 'events'">Events</button>
@@ -2353,7 +2353,7 @@
                     <tbody>
                         <tr data-ng-repeat="output in node.commissioning_results">
                             <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                                <span class="icon" data-ng-class="{ 'icon--pending': output.status === 0, 'icon--running': output.status === 1 || output.status === 7, 'icon--pass': output.status === 2, 'icon--status-failed': output.status === 3 || output.status === 5 || output.status === 6 || output.status === 8, 'icon--timed-out': output.status === 4 }"></span>
+                                <span data-maas-script-status="script-status" data-script-status="output.status"></span>
                             </td>
                             <!-- Only link to the commissioning result when we've received it, this is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
                             <td class="table-col--35" aria-label="Name" data-ng-if="output.status === 2 || output.status === 3 || output.status === 4 || output.status === 6 || output.status === 8"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
@@ -2381,7 +2381,7 @@
                 <tbody>
                     <tr data-ng-repeat="output in node.testing_results">
                         <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                            <span class="icon" data-ng-class="{ 'icon--pending': output.status === 0, 'icon--running': output.status === 1 || output.status === 7, 'icon--pass': output.status === 2, 'icon--status-failed': output.status === 3 || output.status === 5 || output.status === 6 || output.status === 8, 'icon--timed-out': output.status === 4 }"></span>
+                            <span data-maas-script-status="script-status" data-script-status="output.status"></span>
                         </td>
                         <!-- Only link to the test result when we've received it, this is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
                             <td class="table-col--35" aria-label="Name" data-ng-if="output.status === 2 || output.status === 3 || output.status === 4 || output.status === 6 || output.status === 8"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>

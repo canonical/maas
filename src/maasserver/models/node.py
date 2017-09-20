@@ -4113,9 +4113,10 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular dependencies
         from metadataserver.models import ScriptResult
 
-        qs = ScriptResult.objects.filter(script_set__node=self)
-        qs = qs.order_by('script_name', 'physical_blockdevice__id', '-id')
-        qs = qs.distinct('script_name', 'physical_blockdevice__id')
+        qs = ScriptResult.objects.filter(script_set__node_id=self.id)
+        qs = qs.select_related('script_set', 'script')
+        qs = qs.order_by('script_name', 'physical_blockdevice_id', '-id')
+        qs = qs.distinct('script_name', 'physical_blockdevice_id')
         return qs
 
     @property

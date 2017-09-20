@@ -24,11 +24,12 @@
 # title: Memory integrity
 # description: Run memtester against all available userspace memory.
 # script_type: test
+# hardware_type: memory
 # packages: {apt: memtester}
 # --- End MAAS 1.0 script metadata ---
 
-# Memtester can only test memory available to userspace. Reserve 32M so the
-# test doesn't fail due to the OOM killer. Only run memtester against available
-# RAM once.
+# Memtester can only test memory free to userspace. Reserve 32M so the test
+# doesn't fail due to the OOM killer. Only run memtester against available RAM
+# once.
 sudo -n memtester \
-     $(awk '/MemAvailable/ { print ($2 - 32768) "K"}' /proc/meminfo) 1
+     $(awk '/MemFree/ { print ($2 - 32768) "K"}' /proc/meminfo) 1

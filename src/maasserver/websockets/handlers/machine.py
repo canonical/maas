@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The machine handler for the WebSocket connection."""
@@ -80,6 +80,13 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
+from metadataserver.enum import (
+    HARDWARE_TYPE,
+    SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
+)
+from metadataserver.models import ScriptResult
+from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import asynchronous
@@ -89,6 +96,8 @@ log = LegacyLogger()
 
 
 class MachineHandler(NodeHandler):
+
+    _script_results = {}
 
     class Meta(NodeHandler.Meta):
         abstract = False
@@ -167,20 +176,101 @@ class MachineHandler(NodeHandler):
             "machine",
         ]
 
+    def get_object(self, *args, **kwargs):
+        """Get the object and update update the script_result_cache."""
+        obj = super().get_object(*args, **kwargs)
+        self._refresh_script_result_cache(obj.get_latest_script_results)
+        return obj
+
     def get_queryset(self):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
+
+    def dehydrate_hardware_status_tooltip(self, script_results):
+        script_statuses = {}
+        for script_result in script_results:
+            if script_result.status in script_statuses:
+                script_statuses[script_result.status].add(script_result.name)
+            else:
+                script_statuses[script_result.status] = {script_result.name}
+
+        tooltip = ''
+        for status, scripts in script_statuses.items():
+            len_scripts = len(scripts)
+            if status in {
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING}:
+                verb = 'is' if len_scripts == 1 else 'are'
+            elif status in {
+                    SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
+                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED_INSTALLING}:
+                verb = 'has' if len_scripts == 1 else 'have'
+            else:
+                # Covers SCRIPT_STATUS.ABORTED, an else is used incase new
+                # statuses are ever added.
+                verb = 'was' if len_scripts == 1 else 'were'
+
+            if tooltip != '':
+                tooltip += ' '
+            if len_scripts == 1:
+                tooltip += 'One test '
+            else:
+                tooltip += '%s tests ' % len_scripts
+            tooltip += '%s %s.' % (
+                verb, SCRIPT_STATUS_CHOICES[status][1].lower())
+
+        if tooltip == '':
+            tooltip = 'All tests have passed.'
+        tooltip += (
+            " Go to the machine's hardware test section to see more "
+            "information."
+        )
+        return tooltip
+
+    def _refresh_script_result_cache(self, qs):
+        """Refresh the ScriptResult cache from the given qs.
+
+        If a node_id is given only that node is refreshed.
+        """
+        cleared_node_ids = []
+        for script_result in qs:
+            # Builtin commissioning scripts are not stored in the database.
+            if script_result.script is None:
+                continue
+            node_id = script_result.script_set.node_id
+            hardware_type = script_result.script.hardware_type
+
+            if node_id not in cleared_node_ids:
+                self._script_results[node_id] = {}
+                cleared_node_ids.append(node_id)
+
+            if hardware_type not in self._script_results[node_id]:
+                self._script_results[node_id][hardware_type] = []
+            self._script_results[node_id][hardware_type].append(script_result)
 
     def list(self, params):
         """List objects.
 
         Caches default_osystem and default_distro_series so only 2 queries are
         made for the whole list of nodes.
+
+        Caches the hardware status so only one additional query is needed for
+        all nodes.
         """
         self.default_osystem = Config.objects.get_config('default_osystem')
         self.default_distro_series = Config.objects.get_config(
             'default_distro_series')
+
+        qs = ScriptResult.objects.all()
+        qs = qs.select_related('script_set', 'script')
+        qs = qs.order_by(
+            'script_name', 'physical_blockdevice_id', 'script_set__node_id',
+            '-id')
+        qs = qs.distinct(
+            'script_name', 'physical_blockdevice_id', 'script_set__node_id')
+        self._refresh_script_result_cache(qs)
+
         return super(MachineHandler, self).list(params)
 
     def dehydrate(self, obj, data, for_list=False):
@@ -200,6 +290,40 @@ class MachineHandler(NodeHandler):
             ]
             data["devices"] = sorted(
                 devices, key=itemgetter("fqdn"))
+
+        cpu_script_results = self._script_results.get(obj.id, {}).get(
+            HARDWARE_TYPE.CPU, [])
+        data["cpu_test_status"] = get_status_from_qs(cpu_script_results)
+        cpu_tooltip = self.dehydrate_hardware_status_tooltip(
+            cpu_script_results)
+        data["cpu_test_status_tooltip"] = cpu_tooltip
+
+        memory_script_results = self._script_results.get(obj.id, {}).get(
+            HARDWARE_TYPE.MEMORY, [])
+        data["memory_test_status"] = get_status_from_qs(
+            memory_script_results)
+        memory_tooltip = self.dehydrate_hardware_status_tooltip(
+            memory_script_results)
+        data["memory_test_status_tooltip"] = memory_tooltip
+
+        storage_script_results = self._script_results.get(obj.id, {}).get(
+            HARDWARE_TYPE.STORAGE, [])
+        data["storage_test_status"] = get_status_from_qs(
+            storage_script_results)
+        storage_tooltip = self.dehydrate_hardware_status_tooltip(
+            storage_script_results)
+        data["storage_test_status_tooltip"] = storage_tooltip
+
+        if obj.status in {NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING}:
+            # Create a list of all results from all types.
+            script_results = []
+            for hardware_script_results in self._script_results.get(
+                    obj.id, {}).values():
+                script_results += hardware_script_results
+            data["status_tooltip"] = (
+                self.dehydrate_hardware_status_tooltip(script_results))
+        else:
+            data["status_tooltip"] = ""
 
         return data
 

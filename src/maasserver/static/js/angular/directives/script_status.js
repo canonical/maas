@@ -1,0 +1,67 @@
+/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Script status icon select directive.
+ */
+
+angular.module('MAAS').run(['$templateCache', function ($templateCache) {
+    // Inject the script_status.html into the template cache.
+    $templateCache.put('directive/templates/script_status.html', [
+        '<span class="icon" data-ng-class="icon" ',
+        'ng-attr-title="{{tooltip}}"></span>'
+    ].join(''));
+}]);
+
+angular.module('MAAS').directive('maasScriptStatus', function() {
+    return {
+        restrict: "A",
+        require: "scriptStatus",
+        scope: {
+            scriptStatus: '='
+        },
+        templateUrl: 'directive/templates/script_status.html',
+        controller: function($scope) {
+            function getIcon() {
+                switch($scope.scriptStatus) {
+                    // SCRIPT_STATUS.PENDING
+                    case 0:
+                        $scope.icon = 'icon--pending';
+                        break;
+                    // SCRIPT_STATUS.RUNNING
+                    case 1:
+                    // SCRIPT_STATUS.INSTALLING
+                    case 7:
+                        $scope.icon = 'icon--running';
+                        break;
+                    // SCRIPT_STATUS.PASSED
+                    case 2:
+                        $scope.icon = 'icon--pass';
+                        break;
+                    // SCRIPT_STATUS.FAILED
+                    case 3:
+                    // SCRIPT_STATUS.ABORTED
+                    case 5:
+                    // SCRIPT_STATUS.DEGRADED
+                    case 6:
+                    // SCRIPT_STATUS.FAILED_INSTALLING
+                    case 8:
+                        $scope.icon = 'icon--status-failed';
+                        break;
+                    // SCRIPT_STATUS.TIMEDOUT
+                    case 4:
+                        $scope.icon = 'icon--timed-out';
+                        break;
+                    default:
+                        $scope.icon = 'icon--help';
+                        break;
+                }
+            }
+
+            getIcon();
+
+            $scope.$watch("scriptStatus", function() {
+                getIcon();
+            });
+        }
+    };
+});
