@@ -47,7 +47,8 @@ logger = logging.getLogger(__name__)
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = ("""
 {{if ipv6}}
-           {{behaviour}} client-arch-type = {{arch_octet}} {
+           {{behaviour}} exists dhcp6.client-arch-type and
+             option dhcp6.client-arch-type = {{arch_octet}} {
                option dhcp6.bootfile-url \"{{url}}\";
            }
 {{else}}

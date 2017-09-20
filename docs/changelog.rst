@@ -32,6 +32,8 @@ LP: #1676992    Force Postgresql restart on maas-region-controller installation.
 
 LP: #1717287    maas-enlist not supporting IPv6 addresses in server_url.
 
+LP: #1718209    Fix IPv6 DHCP PXE configuration.
+
 
 2.2.2
 =====
