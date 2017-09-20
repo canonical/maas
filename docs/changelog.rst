@@ -30,6 +30,8 @@ LP: #1704444    [2.2] MAAS API returns 500 internal server error instead of rais
 
 LP: #1676992    Force Postgresql restart on maas-region-controller installation.
 
+LP: #1717287    maas-enlist not supporting IPv6 addresses in server_url.
+
 
 2.2.2
 =====
