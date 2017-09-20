@@ -26,6 +26,7 @@ from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from provisioningserver.refresh.node_info_scripts import (
+    GET_FRUID_DATA_OUTPUT_NAME,
     IPADDR_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
@@ -478,6 +479,27 @@ def add_switch(node, vendor, model):
     return switch
 
 
+def update_node_fruid_metadata(node, output: bytes, exit_status):
+    try:
+        data = json.loads(output.decode("utf-8"))
+    except json.decoder.JSONDecodeError:
+        return
+
+    # Attempt to map metadata provided by Facebook Wedge 100 FRUID API
+    # to SNMP OID-like metadata describing physical nodes (see
+    # http://www.ietf.org/rfc/rfc2737.txt).
+    key_name_map = {
+        "Product Name": "physical-name",
+        "Product Serial Number": "physical-serial-num",
+        "Product Version": "physical-hardware-rev",
+        "System Manufacturer": "physical-mfg-name",
+    }
+    info = data.get("Information", {})
+    for fruid_key, node_key in key_name_map.items():
+        if fruid_key in info:
+            node.add_metadata(key=node_key, value=info[fruid_key])
+
+
 def detect_switch_vendor_model(dmi_data):
     # This is based on:
     #    https://github.com/lool/sonic-snap/blob/master/common/id-switch
@@ -665,6 +687,8 @@ def retag_node_for_hardware_by_modalias(
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
 NODE_INFO_SCRIPTS['00-maas-01-cpuinfo']['hook'] = parse_cpuinfo
 NODE_INFO_SCRIPTS['00-maas-02-virtuality']['hook'] = set_virtual_tag
+NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
+    update_node_fruid_metadata)
 NODE_INFO_SCRIPTS['00-maas-07-block-devices']['hook'] = (
     update_node_physical_block_devices)
 NODE_INFO_SCRIPTS[IPADDR_OUTPUT_NAME]['hook'] = (

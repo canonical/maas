@@ -4,6 +4,7 @@
 """Builtin node info scripts."""
 
 __all__ = [
+    'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
     'NODE_INFO_SCRIPTS',
     'LIST_MODALIASES_OUTPUT_NAME',
@@ -399,6 +400,23 @@ LIST_MODALIASES_SCRIPT = dedent("""\
     """)
 
 
+GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
+GET_FRUID_DATA_SCRIPT = dedent("""\
+    #!/bin/bash
+    # Do not fail commissioning if this fails.
+    set +e
+    # Wait for interfaces to settle and get their IPs after the DHCP job.
+    sleep 5
+    for ifname in $(ls /sys/class/net); do
+        if [ "$ifname" != "lo" ]; then
+            curl --connect-timeout 1 -s -f \
+                "http://fe80::1%$ifname:8080/api/sys/mb/fruid"
+        fi
+    done
+    """)
+GET_FRUID_DATA_PACKAGES = {'apt': ['curl']}
+
+
 def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     """Gathers information about a nodes physical block devices.
 
@@ -621,11 +639,18 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
-    ('00-maas-06-dhcp-unconfigured-ifaces', {
+    ('00-maas-05-dhcp-unconfigured-ifaces', {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
         'timeout': timedelta(minutes=5),
         'run_on_controller': False,
+    }),
+    (GET_FRUID_DATA_OUTPUT_NAME, {
+        'content': GET_FRUID_DATA_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'packages': GET_FRUID_DATA_PACKAGES,
+        'timeout': timedelta(seconds=10),
+        'run_on_controller': True,
     }),
     ('00-maas-07-block-devices', {
         'content': make_function_call_script(gather_physical_block_devices),

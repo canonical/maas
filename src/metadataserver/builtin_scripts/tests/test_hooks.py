@@ -39,6 +39,7 @@ from metadataserver.builtin_scripts.hooks import (
     retag_node_for_hardware_by_modalias,
     set_virtual_tag,
     update_hardware_details,
+    update_node_fruid_metadata,
     update_node_network_information,
     update_node_network_interface_tags,
     update_node_physical_block_devices,
@@ -498,6 +499,61 @@ class TestAddSwitchModels(MAASServerTestCase):
         metadata = node.get_metadata()
         self.assertEqual("vendor", metadata["vendor-name"])
         self.assertEqual("switch", metadata["physical-model-name"])
+
+
+class TestUpdateFruidMetadata(MAASServerTestCase):
+
+    # This is an actual response returned by a Facebook Wedge 100.
+    SAMPLE_RESPONSE = b"""
+{
+  "Actions": [],
+  "Resources": [],
+  "Information": {
+
+    "Assembled At": "Accton",
+    "CRC8": "0x3f",
+    "Extended MAC Address Size": "128",
+    "Extended MAC Base": "A8:2B:B5:2F:FD:32",
+    "Facebook PCB Part Number": "142-000001-38",
+    "Facebook PCBA Part Number": "NP3-ZZ7632-02",
+    "Local MAC": "A8:2B:B5:2F:FD:31",
+    "Location on Fabric": "WEDGE100",
+    "ODM PCBA Part Number": "NP3ZZ7632025",
+    "ODM PCBA Serial Number": "AH19058615",
+    "PCB Manufacturer": "ISU",
+    "Product Asset Tag": "",
+    "Product Name": "Wedge100ACFO",
+    "Product Part Number": "76-32055A",
+    "Product Production State": "4",
+    "Product Serial Number": "AH19058615",
+    "Product Sub-Version": "1",
+    "Product Version": "1",
+    "System Assembly Part Number": "CP3-ZZ7632-05",
+    "System Manufacturer": "Accton",
+    "System Manufacturing Date": "05-16-17",
+    "Version": "1"
+  }
+}
+    """
+
+    def test_no_output_creates_no_metadata(self):
+        node = factory.make_Node()
+        update_node_fruid_metadata(node, b"", 0)
+
+        metadata = node.get_metadata()
+        self.assertEqual({}, metadata)
+
+    def test_parsed_values(self):
+        node = factory.make_Node()
+        update_node_fruid_metadata(node, self.SAMPLE_RESPONSE, 0)
+
+        metadata = node.get_metadata()
+        self.assertEqual({
+            "physical-name": "Wedge100ACFO",
+            "physical-serial-num": "AH19058615",
+            "physical-hardware-rev": "1",
+            "physical-mfg-name": "Accton",
+        }, metadata)
 
 
 class TestUpdateHardwareDetails(MAASServerTestCase):
