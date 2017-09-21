@@ -15,7 +15,10 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
-from maasserver.api.nodes import NODES_PREFETCH
+from maasserver.api.nodes import (
+    NODES_PREFETCH,
+    NODES_SELECT_RELATED,
+)
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -142,7 +145,7 @@ class TagHandler(OperationsHandler):
         nodes = model.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW,
             from_nodes=tag.node_set.all())
-        nodes = nodes.select_related('bmc', 'owner', 'zone')
+        nodes = nodes.select_related(*NODES_SELECT_RELATED)
         nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by('id')
         # Set related node parents so no extra queries are needed.
         for node in nodes:

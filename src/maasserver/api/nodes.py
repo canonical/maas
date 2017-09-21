@@ -55,6 +55,13 @@ from piston3.utils import rc
 from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
 
 
+NODES_SELECT_RELATED = (
+    'bmc',
+    'controllerinfo',
+    'owner',
+    'zone',
+)
+
 NODES_PREFETCH = [
     'domain__dnsresource_set__ip_addresses',
     'domain__dnsresource_set__dnsdata_set',
@@ -417,7 +424,7 @@ class NodesHandler(OperationsHandler):
             return nodes
         else:
             nodes = filtered_nodes_list_from_request(request, self.base_model)
-            nodes = nodes.select_related('bmc', 'owner', 'zone')
+            nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(
                 nodes, NODES_PREFETCH).order_by('id')
             # Set related node parents so no extra queries are needed.

@@ -40,6 +40,7 @@ DISPLAYED_REGION_CONTROLLER_FIELDS = (
     'current_commissioning_result_id',
     'current_testing_result_id',
     'current_installation_result_id',
+    'version',
 )
 
 

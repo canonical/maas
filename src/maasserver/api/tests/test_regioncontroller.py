@@ -82,5 +82,6 @@ class TestRegionControllersAPI(APITestCase.ForUser):
                 'current_commissioning_result_id',
                 'current_testing_result_id',
                 'current_installation_result_id',
+                'version',
             ],
             list(parsed_result[0]))
