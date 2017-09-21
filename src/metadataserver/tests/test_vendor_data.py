@@ -196,3 +196,28 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                 "%s --maas-url %s --secret %s" % (cmd, maas_url, secret),
                 ]
             }))
+
+    def test_yields_nothing_when_machine_install_rackd_false(self):
+        node = factory.make_Node(osystem='ubuntu', netboot=False)
+        node.install_rackd = False
+        configuration = generate_rack_controller_configuration(node)
+        self.assertThat(dict(configuration), Equals({}))
+
+    def test_yields_configuration_when_machine_install_rackd_true(self):
+        node = factory.make_Node(osystem='ubuntu', netboot=False)
+        node.install_rackd = True
+        configuration = generate_rack_controller_configuration(node)
+
+        secret = '1234'
+        Config.objects.set_config("rpc_shared_secret", secret)
+        channel = version.get_maas_version_track_channel()
+        maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
+            node.get_boot_rack_controller())
+        cmd = "/bin/snap/maas init --mode rack"
+
+        self.assertThat(dict(configuration), KeysEqual({
+            "runcmd": [
+                "snap install maas --devmode --channel=%s" % channel,
+                "%s --maas-url %s --secret %s" % (cmd, maas_url, secret),
+                ]
+            }))

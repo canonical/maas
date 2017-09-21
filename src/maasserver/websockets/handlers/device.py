@@ -120,6 +120,7 @@ class DeviceHandler(NodeHandler):
             "url",
             "last_image_sync",
             "default_user",
+            "install_rackd",
             ]
         list_fields = [
             "id",

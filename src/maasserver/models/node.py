@@ -828,6 +828,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar bmc: The BMC / power controller for this node.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`GeneralManager`.
+    :ivar install_rackd: An optional flag to indicate if this node should be
+        deployed with the rack controller.
     :ivar enable_ssh: An optional flag to indicate if this node can have
         ssh enabled during commissioning, allowing the user to ssh into the
         machine's commissioning environment using the user's SSH key.
@@ -1000,6 +1002,9 @@ class Node(CleanSave, TimestampedModel):
     # empty by default, and the default user.
     default_user = CharField(
         max_length=32, blank=True, default='')
+
+    # Used to deploy the rack controller on a installation machine.
+    install_rackd = BooleanField(default=False)
 
     # Used to determine whether to:
     #  1. Import the SSH Key during commissioning and keep power on.
@@ -2818,6 +2823,7 @@ class Node(CleanSave, TimestampedModel):
         self.license_key = ''
         self.hwe_kernel = None
         self.current_installation_script_set = None
+        self.install_rackd = False
         self.save()
 
         # Clear the nodes acquired filesystems.

@@ -160,6 +160,7 @@ class MachineHandler(NodeHandler):
             "dns_process",
             "managing_process",
             "last_image_sync",
+            "install_rackd",
         ]
         list_fields = [
             "id",

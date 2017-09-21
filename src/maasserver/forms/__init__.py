@@ -828,6 +828,11 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data['hwe_kernel'] = hwe_kernel
 
+    def set_install_rackd(self, install_rackd=False):
+        """Sets whether to deploy the rack alongside this machine."""
+        self.is_bound = True
+        self.data['install_rackd'] = install_rackd
+
     class Meta:
         model = Machine
 
@@ -838,6 +843,7 @@ class MachineForm(NodeForm):
             'license_key',
             'min_hwe_kernel',
             'hwe_kernel',
+            'install_rackd',
         )
 
 

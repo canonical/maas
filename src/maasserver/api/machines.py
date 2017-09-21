@@ -392,6 +392,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         :type bridge_fd: integer
         :param comment: Optional comment for the event log.
         :type comment: unicode
+        :param install_rackd: If True, the Rack Controller will be installed on
+            this machine.
+        :type install_rackd: boolean
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
@@ -407,6 +410,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
         hwe_kernel = request.POST.get('hwe_kernel', None)
+        install_rackd = get_optional_param(
+            request.POST, 'install_rackd', default=False, validator=StringBool)
         # Acquiring a node requires VIEW permissions.
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -429,6 +434,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NODE_PERMISSION.EDIT, machine):
             raise PermissionDenied()
+        # Deploying with 'install_rackd' requires ADMIN permissions.
+        if (install_rackd and not
+                request.user.has_perm(NODE_PERMISSION.ADMIN, machine)):
+            raise PermissionDenied()
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
         Form = get_machine_edit_form(request.user)
@@ -439,6 +448,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             form.set_license_key(license_key=license_key)
         if hwe_kernel is not None:
             form.set_hwe_kernel(hwe_kernel=hwe_kernel)
+        if install_rackd:
+            form.set_install_rackd(install_rackd=install_rackd)
         if form.is_valid():
             form.save()
         else:

@@ -81,7 +81,7 @@ def generate_rack_controller_configuration(node):
     if (node.netboot is False and
             node.osystem in ['ubuntu', 'ubuntu-core'] and
             ('switch' in node_tags or 'wedge40' in node_tags or
-             'wedge100' in node_tags)):
+             'wedge100' in node_tags or node.install_rackd is True)):
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller())
         secret = Config.objects.get_config("rpc_shared_secret")

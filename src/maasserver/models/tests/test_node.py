@@ -2082,6 +2082,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
+        self.expectThat(node.install_rackd, Is(False))
 
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters['power_off_mode'] = "hard"
@@ -2120,6 +2121,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
+        self.expectThat(node.install_rackd, Is(False))
         self.expectThat(mock_stop, MockCalledOnceWith(node.owner))
         self.expectThat(mock_finalize_release, MockCalledOnceWith())
 
@@ -2147,6 +2149,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
+        self.expectThat(node.install_rackd, Is(False))
         self.expectThat(OwnerData.objects.filter(node=node), HasLength(0))
 
     def test_dynamic_ip_addresses_from_ip_address_table(self):
@@ -2307,6 +2310,16 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertTrue(node.netboot)
+
+    def test_release_sets_install_rackd_false(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
+        node.install_rackd = True
+        with post_commit_hooks:
+            node.release()
+        self.assertFalse(node.install_rackd)
 
     def test_release_logs_user_request(self):
         owner = factory.make_User()
