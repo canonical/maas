@@ -1690,6 +1690,11 @@ class Node(CleanSave, TimestampedModel):
                     mac_address, iface.node.hostname))
         return iface
 
+    def is_switch(self):
+        # Avoid circular imports.
+        from maasserver.models.switch import Switch
+        return Switch.objects.filter(node=self).exists()
+
     def set_metadata(self, key, value):
         """Set (add or overwrite) Node metadata with `key` to `value`."""
         # Avoid circular imports.

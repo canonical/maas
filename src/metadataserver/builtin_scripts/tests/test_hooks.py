@@ -38,6 +38,7 @@ from metadataserver.builtin_scripts.hooks import (
     parse_cpuinfo,
     retag_node_for_hardware_by_modalias,
     set_virtual_tag,
+    SWITCH_OPENBMC_MAC,
     update_hardware_details,
     update_node_fruid_metadata,
     update_node_network_information,
@@ -1038,6 +1039,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         os.path.dirname(__file__), 'ip_addr_results_xenial.txt')
     with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
         IP_ADDR_OUTPUT_XENIAL = fd.read()
+    IP_ADDR_WEDGE_OUTPUT_FILE = os.path.join(
+        os.path.dirname(__file__), 'ip_addr_results_wedge100.txt')
+    with open(IP_ADDR_WEDGE_OUTPUT_FILE, "rb") as fd:
+        IP_ADDR_WEDGE_OUTPUT = fd.read()
 
     def assert_expected_interfaces_and_macs_exist(
             self, node_interfaces, additional_interfaces={},
@@ -1350,3 +1355,22 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
         ens12 = Interface.objects.get(node=node, name='ens12')
         self.assertThat(ens12.vlan, Is(None))
+
+    def test__ignores_openbmc_interface(self):
+        """Ensure that OpenBMC interface is ignored."""
+        node = factory.make_Node()
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        # Ensure test data is not broken by default.
+        self.assertIn(
+            SWITCH_OPENBMC_MAC.encode("ascii"),
+            self.IP_ADDR_WEDGE_OUTPUT)
+
+        update_node_network_information(node, self.IP_ADDR_WEDGE_OUTPUT, 0)
+
+        # Specifically, there is no OpenBMC interface with a fixed MAC address.
+        node_interfaces = Interface.objects.filter(node=node)
+        all_macs = [interface.mac_address for interface in node_interfaces]
+        self.assertNotIn(SWITCH_OPENBMC_MAC, all_macs)

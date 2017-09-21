@@ -75,6 +75,7 @@ SWITCH_HARDWARE = [
             'Ethernet Switch ASIC'
     },
 ]
+SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
 def _create_default_physical_interface(node, ifname, mac):
@@ -127,6 +128,10 @@ def update_node_network_information(node, output, exit_status):
         link_mac = link.get('mac')
         # Ignore loopback interfaces.
         if link_mac is None:
+            continue
+        elif link_mac == SWITCH_OPENBMC_MAC:
+            # Ignore OpenBMC interfaces on switches which all share the same,
+            # hard-coded OpenBMC MAC address.
             continue
         else:
             ifname = link['name']
