@@ -15,15 +15,13 @@ describe("maasScriptStatus", function() {
         $scope = $rootScope.$new();
         $scope.scriptStatus = null;
         $scope.icon = null;
-        $scope.tooltip = null;
     }));
 
     // Return the compiled directive with the maasScriptStatus from the scope.
-    function compileDirective(scriptStatus, tooltip) {
+    function compileDirective(scriptStatus) {
         var directive;
         var html = '<div><span data-maas-script-status="script-status"' +
-            'data-script_status="' + scriptStatus +
-            '" data-tooltip="' + tooltip + '"></span></div>';
+            'data-script_status="' + scriptStatus + '"></span></div>';
 
         // Compile the directive.
         inject(function($compile) {
@@ -36,71 +34,67 @@ describe("maasScriptStatus", function() {
     }
 
     it("SCRIPT_STATUS.PENDING", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("0", tooltip);
+        var directive = compileDirective("0");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--pending");
     });
 
     it("SCRIPT_STATUS.RUNNING", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("1", tooltip);
+        var directive = compileDirective("1");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--running");
     });
 
     it("SCRIPT_STATUS.INSTALLING", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("7", tooltip);
+        var directive = compileDirective("7");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--running");
     });
 
     it("SCRIPT_STATUS.PASSED", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("2", tooltip);
+        var directive = compileDirective("2");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--pass");
     });
 
     it("SCRIPT_STATUS.FAILED", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("3", tooltip);
+        var directive = compileDirective("3");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--status-failed");
     });
 
     it("SCRIPT_STATUS.ABORTED", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("5", tooltip);
+        var directive = compileDirective("5");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--status-failed");
     });
 
     it("SCRIPT_STATUS.DEGRADED", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("6", tooltip);
+        var directive = compileDirective("6");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--status-failed");
     });
 
     it("SCRIPT_STATUS.FAILED_INSTALLING", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("8", tooltip);
+        var directive = compileDirective("8");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--status-failed");
     });
 
     it("SCRIPT_STATUS.TIMEDOUT", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("4", tooltip);
+        var directive = compileDirective("4");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--timed-out");
     });
 
+    it("NONE", function() {
+        var directive = compileDirective("-1");
+        var select = directive.find("span");
+        expect(select.attr("context")).toBe(undefined);
+    });
+
     it("UNKNOWN", function() {
-        var tooltip = makeName("tooltip");
-        var directive = compileDirective("99", tooltip);
+        var directive = compileDirective("99");
         var select = directive.find("span");
         expect(select.attr("class")).toBe("icon icon--help");
     });

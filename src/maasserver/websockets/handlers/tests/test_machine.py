@@ -617,6 +617,15 @@ class TestMachineHandler(MAASServerTestCase):
             "to see more information." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
+    def test_dehydrate_hardware_status_none_run(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        script_set = factory.make_ScriptSet(node=node)
+        handler = MachineHandler(owner, {})
+        self.assertEquals(
+            "No tests have been run.",
+            handler.dehydrate_hardware_status_tooltip(script_set))
+
     def test_dehydrate_show_os_info_returns_true(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, status=NODE_STATUS.DEPLOYED)

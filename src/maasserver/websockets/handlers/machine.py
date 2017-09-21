@@ -221,11 +221,12 @@ class MachineHandler(NodeHandler):
                 verb, SCRIPT_STATUS_CHOICES[status][1].lower())
 
         if tooltip == '':
-            tooltip = 'All tests have passed.'
-        tooltip += (
-            " Go to the machine's hardware test section to see more "
-            "information."
-        )
+            tooltip = 'No tests have been run.'
+        else:
+            tooltip += (
+                " Go to the machine's hardware test section to see more "
+                "information."
+            )
         return tooltip
 
     def _refresh_script_result_cache(self, qs):

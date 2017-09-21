@@ -7,8 +7,7 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the script_status.html into the template cache.
     $templateCache.put('directive/templates/script_status.html', [
-        '<span class="icon" data-ng-class="icon" ',
-        'ng-attr-title="{{tooltip}}"></span>'
+        '<span class="icon" data-ng-class="icon" data-ng-show="show"></span>'
     ].join(''));
 }]);
 
@@ -22,6 +21,7 @@ angular.module('MAAS').directive('maasScriptStatus', function() {
         templateUrl: 'directive/templates/script_status.html',
         controller: function($scope) {
             function getIcon() {
+                $scope.show = true;
                 switch($scope.scriptStatus) {
                     // SCRIPT_STATUS.PENDING
                     case 0:
@@ -50,6 +50,10 @@ angular.module('MAAS').directive('maasScriptStatus', function() {
                     // SCRIPT_STATUS.TIMEDOUT
                     case 4:
                         $scope.icon = 'icon--timed-out';
+                        break;
+                    case -1:
+                        // No scripts have been run.
+                        $scope.show = false;
                         break;
                     default:
                         $scope.icon = 'icon--help';

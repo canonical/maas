@@ -512,6 +512,10 @@ class TestScriptSet(MAASServerTestCase):
                 status = SCRIPT_STATUS.FAILED
             self.assertEquals(status, script_set.status)
 
+    def test_empty_scriptset_has_no_status(self):
+        script_set = factory.make_ScriptSet()
+        self.assertEquals(-1, script_set.status)
+
     def test_started(self):
         script_set = factory.make_ScriptSet()
         now = datetime.now()

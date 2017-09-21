@@ -22,6 +22,7 @@ from django.db.models import (
     Model,
     Q,
 )
+from django.db.models.query import QuerySet
 from maasserver.enum import (
     POWER_STATE,
     POWER_STATE_CHOICES,
@@ -51,7 +52,14 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
 def get_status_from_qs(qs):
-    """Given a QuerySet of ScriptResults return the set's status."""
+    """Given a QuerySet or list of ScriptResults return the set's status."""
+    # If no tests have been run the QuerySet or list has no status.
+    if isinstance(qs, QuerySet):
+        count = qs.count()
+    else:
+        count = len(qs)
+    if count == 0:
+        return -1
     # The status order below represents the order of precedence.
     for status in (
             SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.INSTALLING,
