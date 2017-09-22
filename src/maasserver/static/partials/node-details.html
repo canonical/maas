@@ -204,7 +204,7 @@
                 <button role="tab" class="page-navigation__link"
                     data-ng-class="{ 'is-active': section.area === 'interfaces'}"
                     data-ng-click="section.area = 'interfaces'">Interfaces</button>
-                <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
+                <button role="tab" class="page-navigation__link" data-ng-if="!isDevice && node.status !== 'New'"
                     data-ng-class="{ 'is-active': section.area === 'storage'}"
                     data-ng-click="section.area = 'storage'">Storage</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.installation_results.length > 0"
@@ -244,6 +244,37 @@
                           <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
                 </div>
             </div>
+	    <div class="four-col last-col">
+	      <div class="p-card--highlighted">
+	        <header class="p-card__header">
+		  <h4>CPU</h4>
+		  <h3 class="p-card__title">{$ node.cpu_count $} cores</h3>
+	        </header>
+	        <p class="p-card__content"><i class="icon icon--info"></i> No data received</p>
+	      </div>
+	    </div>
+	    <div class="four-col last-col">
+	      <div class="p-card--highlighted">
+	        <header class="p-card__header">
+		  <h4>Memory</h4>
+		  <h3 class="p-card__title">{$ node.memory $} GiB</h3>
+	        </header>
+	        <p class="p-card__content"><i class="icon icon--info"></i> No data received</p>
+	      </div>
+	    </div>
+	    <div class="four-col last-col">
+	      <div class="p-card--highlighted">
+	        <header class="p-card__header">
+		  <h4>Storage</h4>
+		  <h3 class="p-card__title">{$ node.storage $} GB over {$ node.physical_disk_count $} disks</h3>
+	        </header>
+                <div data-ng-repeat="disk in node.disks">
+                  <p class="p-card__content">Disk {$ $index+1 $}: {$ (disk.size / 1000 / 1000 / 1000).toFixed(1) $} GB</p>
+                </div>
+                <p class="p-card__content" data-ng-if="!isDevice && node.status !== 'New'"><i class="icon icon--info"></i> To view disk metrics visit the Storage section</p>
+                <p class="p-card__content"><a href="" data-ng-if="!isDevice && node.status !== 'New'" data-ng-click="section.area = 'storage'">See metrics > {$ node.status $}</a></p>
+	      </div>
+	    </div>
             <div data-ng-if="!isController">
                 <div class="twelve-col u-align--right" data-ng-hide="summary.editing">
                     <button class="button--secondary button--inline"
@@ -344,18 +375,6 @@
                 </div>
                 <div class="six-col last-col" data-ng-if="!isDevice">
                     <dl>
-                        <dt class="two-col">CPU</dt>
-                            <dd class="four-col last-col">
-                                {$ node.cpu_count $} cores
-                            </dd>
-                        <dt class="two-col">RAM</dt>
-                            <dd class="four-col last-col">
-                                {$ node.memory $}GiB
-                            </dd>
-                        <dt class="two-col">Storage</dt>
-                            <dd class="four-col last-col">
-                                {$ node.storage $}GB over {$ node.physical_disk_count $} disks
-                            </dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Operating System</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info" data-maas-release-name="node.osystem + '/' + node.distro_series"></dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">Kernel</dt>

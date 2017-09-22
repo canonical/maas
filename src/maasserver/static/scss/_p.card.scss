@@ -1,0 +1,43 @@
+// Colour variables
+$color-x-light: #fff;
+$color-dark: #111;
+$color-mid-light: #cdcdcd;
+
+// Spacing variables
+$sp-small: 1rem;
+$sp-x-large: 1rem;
+
+%p-card {
+  background: $color-x-light;
+  border-radius: 2px;
+  color: $color-dark;
+  padding: 1.25rem;
+
+  .p-card__header {
+    border-bottom: 1px solid $color-mid-light;
+    font-size: $sp-small;
+    margin-bottom: $sp-small;
+    padding-bottom: $sp-small;
+
+    img {
+      max-height: $sp-x-large;
+    }
+  }
+
+  .p-card__title {
+    margin-top: 0;
+  }
+}
+
+%p-card--highlighted {
+  @extend %p-card;
+  box-shadow: 0 1px 5px 1px transparentize($color-dark, .8);
+}
+
+@mixin vf-p-card-highlighted {
+  .p-card--highlighted {
+    @extend %p-card--highlighted;
+  }
+}
+
+@include vf-p-card-highlighted;
