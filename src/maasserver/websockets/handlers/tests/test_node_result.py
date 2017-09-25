@@ -9,7 +9,10 @@ import random
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import HandlerDoesNotExistError
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerDoesNotExistError,
+)
 from maasserver.websockets.handlers.node_result import NodeResultHandler
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -22,35 +25,46 @@ from metadataserver.enum import (
 
 class TestNodeResultHandler(MAASServerTestCase):
 
-    def dehydrate_script_result(self, script_result):
+    def dehydrate_script_result(self, script_result, handler):
+        results = script_result.read_results().get("results", {})
         data = {
             "id": script_result.id,
-            "script_set": script_result.script_set.id,
-            "script": script_result.script.id,
-            "parameters": str(script_result.parameters),
-            "script_version": script_result.script_version,
+            "updated": dehydrate_datetime(script_result.updated),
+            "script": script_result.script_id,
+            "parameters": script_result.parameters,
+            "physical_blockdevice": script_result.physical_blockdevice_id,
+            "script_version": script_result.script_version_id,
             "status": script_result.status,
+            "status_name": script_result.status_name,
             "exit_status": script_result.exit_status,
-            "script_name": script_result.script_name,
-            "started": script_result.started,
-            "ended": script_result.ended,
-            "history_list": sorted([
-                {
-                    "id": history.id,
-                    "date": history.updated,
-                } for history in script_result.history
-            ])}
-        if script_result.physical_blockdevice is not None:
-            data["physical_blockdevice"] = (
-                script_result.physical_blockdevice.id)
-        else:
-            data["physical_blockdevice"] = None
+            "started": dehydrate_datetime(script_result.started),
+            "ended": dehydrate_datetime(script_result.ended),
+            "runtime": script_result.runtime,
+            "name": script_result.name,
+            "result_type": script_result.script_set.result_type,
+            "hardware_type": script_result.script.hardware_type,
+            "tags": ", ".join(script_result.script.tags),
+            "history_list": [{
+                "id": history.id,
+                "updated": dehydrate_datetime(history.updated),
+                "status": history.status,
+                "status_name": history.status_name,
+                "runtime": history.runtime,
+                } for history in script_result.history],
+            "results": [{
+                "name": key,
+                "title": key,
+                "description": "",
+                "value": value,
+                "surfaced": False,
+                } for key, value in results.items()],
+        }
 
         return data
 
-    def dehydrate_script_results(self, script_results):
+    def dehydrate_script_results(self, script_results, handler):
         return [
-            self.dehydrate_script_result(script_result)
+            self.dehydrate_script_result(script_result, handler)
             for script_result in script_results
             ]
 
@@ -76,7 +90,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         for _ in range(3):
             factory.make_ScriptResult()
         self.assertItemsEqual(
-            self.dehydrate_script_results(script_results),
+            self.dehydrate_script_results(script_results, handler),
             handler.list({"system_id": node.system_id}))
 
     def test_list_result_type(self):
@@ -96,7 +110,8 @@ class TestNodeResultHandler(MAASServerTestCase):
                         for result_type_id, _ in RESULT_TYPE_CHOICES
                         if result_type_id != RESULT_TYPE.TESTING
                     ])))
-        expected_output = [self.dehydrate_script_result(script_result)]
+        expected_output = [self.dehydrate_script_result(
+            script_result, handler)]
         self.assertItemsEqual(expected_output, handler.list(
             {
                 "system_id": node.system_id,
@@ -121,7 +136,8 @@ class TestNodeResultHandler(MAASServerTestCase):
                         for hardware_type_id, _ in HARDWARE_TYPE_CHOICES
                         if hardware_type_id != HARDWARE_TYPE.STORAGE])),
                 script_set=factory.make_ScriptSet(node=node))
-        expected_output = [self.dehydrate_script_result(script_result)]
+        expected_output = [self.dehydrate_script_result(
+            script_result, handler)]
         self.assertItemsEqual(expected_output, handler.list(
             {
                 "system_id": node.system_id,
@@ -143,7 +159,8 @@ class TestNodeResultHandler(MAASServerTestCase):
                 physical_blockdevice=factory.make_PhysicalBlockDevice(
                     node=node),
                 script_set=factory.make_ScriptSet(node=node))
-        expected_output = [self.dehydrate_script_result(script_result)]
+        expected_output = [self.dehydrate_script_result(
+            script_result, handler)]
         self.assertItemsEqual(expected_output, handler.list(
             {
                 "system_id": node.system_id,
@@ -161,7 +178,8 @@ class TestNodeResultHandler(MAASServerTestCase):
         for _ in range(3):
             factory.make_ScriptResult(
                 result=b'', script_set=factory.make_ScriptSet(node=node))
-        expected_output = [self.dehydrate_script_result(script_result)]
+        expected_output = [self.dehydrate_script_result(
+            script_result, handler)]
         self.assertItemsEqual(expected_output, handler.list(
             {
                 "system_id": node.system_id,

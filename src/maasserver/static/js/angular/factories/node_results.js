@@ -9,15 +9,16 @@
  */
 
 angular.module('MAAS').factory(
-    'NodeResultsManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager',
-    function($q, $rootScope, RegionConnection, Manager) {
+    'NodeResultsManagerFactory', ['RegionConnection', 'Manager',
+    function(RegionConnection, Manager) {
 
-        function NodeResultsManager() {
+        function NodeResultsManager(node_system_id, factory) {
             Manager.call(this);
 
             this._pk = "id";
             this._handler = "noderesult";
+            this._node_system_id = node_system_id;
+            this._factory = factory;
 
             // Listen for notify events for the ScriptResult object.
             var self = this;
@@ -28,6 +29,14 @@ angular.module('MAAS').factory(
         }
 
         NodeResultsManager.prototype = new Manager();
+
+        // Return the list of ScriptResults for the given node when retrieving
+        // the initial list.
+        NodeResultsManager.prototype._initBatchLoadParameters = function() {
+            return {
+                "system_id": this._node_system_id
+            };
+        };
 
         // Get result data.
         NodeResultsManager.prototype.get_result_data = function(
@@ -40,5 +49,37 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod(method, params);
         };
 
-        return new NodeResultsManager();
+        // Factory that holds all created NodeResultsManagers.
+        function NodeResultsManagerFactory() {
+            // Holds a list of all NodeResultsManagers that have been created.
+            this._managers = [];
+        }
+
+        // Gets the NodeResultsManager for the nodes with node_system_id.
+        NodeResultsManagerFactory.prototype._getManager = function(
+                 node_system_id) {
+            var i;
+            for(i = 0; i < this._managers.length; i++) {
+                if(this._managers[i]._node_system_id === node_system_id) {
+                    return this._managers[i];
+                }
+            }
+            return null;
+        };
+
+        // Gets the NodeResultsManager for the nodes system_id. Creates a new
+        // manager if one does not exist.
+        NodeResultsManagerFactory.prototype.getManager = function(
+                node_system_id) {
+            var manager = this._getManager(node_system_id);
+            if(!angular.isObject(manager)) {
+                // Not created so create it.
+                manager = new NodeResultsManager(node_system_id, this);
+                this._managers.push(manager);
+                return manager;
+            }
+            return manager;
+        };
+
+        return new NodeResultsManagerFactory();
     }]);

@@ -7,11 +7,17 @@ __all__ = [
     "NodeResultHandler",
     ]
 
+
+from django.core.exceptions import ValidationError
 from maasserver.models.node import Node
-from maasserver.websockets.base import HandlerDoesNotExistError
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerDoesNotExistError,
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+from metadataserver.enum import HARDWARE_TYPE
 from metadataserver.models import ScriptResult
 
 
@@ -26,34 +32,90 @@ class NodeResultHandler(TimestampedModelHandler):
         ]
         listen_channels = ['scriptresult']
         exclude = [
+            "script_set",
+            "script_name",
             "output",
             "stdout",
             "stderr",
-            "result",
         ]
         list_fields = [
             "id",
-            "node_id",
-            "script_set",
+            "updated",
             "script",
             "parameters",
             "physical_blockdevice",
             "script_version",
             "status",
             "exit_status",
-            "script_name",
             "started",
             "ended",
         ]
 
+    def dehydrate_parameters(self, parameters):
+        # Parameters is a JSONObjectField to convert it to a dictionary it must
+        # be accessed.
+        return parameters
+
+    def dehydrate_started(self, started):
+        return dehydrate_datetime(started)
+
+    def dehydrate_ended(self, ended):
+        return dehydrate_datetime(ended)
+
     def dehydrate(self, obj, data, for_list=False):
-        """Add extra history list to `data`."""
+        """Add extra fields to `data`."""
+        data["name"] = obj.name
+        data["status_name"] = obj.status_name
+        data["runtime"] = obj.runtime
+        data["result_type"] = obj.script_set.result_type
+        if obj.script is not None:
+            data["hardware_type"] = obj.script.hardware_type
+            data["tags"] = ", ".join(obj.script.tags)
+        else:
+            data["hardware_type"] = HARDWARE_TYPE.NODE
+            data["tags"] = []
         data["history_list"] = [
             {
                 "id": history.id,
-                "date": history.updated,
+                "updated": dehydrate_datetime(history.updated),
+                "status": history.status,
+                "status_name": history.status_name,
+                "runtime": history.runtime,
             } for history in obj.history
         ]
+        try:
+            results = obj.read_results()
+        except ValidationError as e:
+            data["results"] = [{
+                "name": "error",
+                "title": "Error",
+                "description": "An error has occured while processing.",
+                "value": str(e),
+                "surfaced": True,
+            }]
+        else:
+            data["results"] = []
+            if results is None:
+                results = {}
+            for key, value in results.get("results", {}).items():
+                if obj.script is not None:
+                    if isinstance(obj.script.results, dict):
+                        title = obj.script.results.get(key, {}).get(
+                            "title", key)
+                        description = obj.script.results.get(key, {}).get(
+                            "description", "")
+                    surfaced = key in obj.script.results
+                else:
+                    title = key
+                    description = ''
+                    surfaced = False
+                data["results"].append({
+                    "name": key,
+                    "title": title,
+                    "description": description,
+                    "value": value,
+                    "surfaced": surfaced,
+                })
         return data
 
     def list(self, params):

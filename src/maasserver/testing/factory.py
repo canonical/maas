@@ -794,7 +794,9 @@ class Factory(maastesting.factory.Factory):
             if stderr is None:
                 stderr = self.make_string().encode('utf-8')
             if result is None:
-                result = self.make_string().encode('utf-8')
+                result = yaml.safe_dump({'results': {
+                    self.make_name('key'): self.make_name('value')
+                }}).encode('utf-8')
             if script_version is None and script_name is None:
                 script_version = script.script
             if started is None:
