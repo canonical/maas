@@ -413,7 +413,7 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_read_results_ignores_empty(self):
         script_result = factory.make_ScriptResult(result=b'')
-        self.assertIsNone(script_result.read_results())
+        self.assertDictEqual({}, script_result.read_results())
 
     def test_read_results_does_not_require_results(self):
         result = {'status': random.choice(

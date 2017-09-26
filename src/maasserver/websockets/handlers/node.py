@@ -120,6 +120,7 @@ class NodeHandler(TimestampedModelHandler):
             for tag in obj.tags.all()
         ]
         if obj.node_type != NODE_TYPE.DEVICE:
+            data["architecture"] = obj.architecture
             data["memory"] = obj.display_memory()
             data["status"] = obj.display_status()
             data["status_code"] = obj.status

@@ -95,8 +95,6 @@ class NodeResultHandler(TimestampedModelHandler):
             }]
         else:
             data["results"] = []
-            if results is None:
-                results = {}
             for key, value in results.get("results", {}).items():
                 if obj.script is not None:
                     if isinstance(obj.script.results, dict):

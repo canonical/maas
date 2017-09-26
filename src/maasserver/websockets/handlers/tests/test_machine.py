@@ -268,6 +268,7 @@ class TestMachineHandler(MAASServerTestCase):
         if for_list:
             allowed_fields = MachineHandler.Meta.list_fields + [
                 "actions",
+                "architecture",
                 "fqdn",
                 "status",
                 "status_code",

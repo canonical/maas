@@ -128,7 +128,7 @@ class ScriptResult(CleanSave, TimestampedModel):
 
         if parsed_yaml is None:
             # No results were given.
-            return None
+            return {}
         elif not isinstance(parsed_yaml, dict):
             raise ValidationError('YAML must be a dictionary.')
 

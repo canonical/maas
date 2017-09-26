@@ -19,6 +19,7 @@ angular.module('MAAS').factory(
             this._handler = "machine";
 
             this._metadataAttributes = {
+                "architecture": null,
                 "status": null,
                 "owner": null,
                 "tags": null,
