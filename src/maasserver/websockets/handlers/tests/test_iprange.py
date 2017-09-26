@@ -28,6 +28,7 @@ class TestIPRangeHandler(MAASServerTestCase):
             "user": iprange.user.id if iprange.user else None,
             "user_username": iprange.user.username if iprange.user else "",
             "type": iprange.type,
+            "vlan": iprange.subnet.vlan_id if iprange.subnet else None
         }
         return data
 

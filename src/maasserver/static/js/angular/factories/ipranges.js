@@ -29,11 +29,5 @@ angular.module('MAAS').factory(
 
         IPRangesManager.prototype = new Manager();
 
-        // Delete the VLAN.
-        IPRangesManager.prototype.deleteVLAN = function(iprange) {
-            return RegionConnection.callMethod(
-                "iprange.delete", { "id": vlan.id }, true);
-        };
-
         return new IPRangesManager();
     }]);

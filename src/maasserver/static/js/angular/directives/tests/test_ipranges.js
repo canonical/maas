@@ -88,18 +88,18 @@ describe("maasIPRanges", function() {
         });
     });
 
-    describe("addRange", function() {
+    describe("addRange with subnet", function() {
 
         it("reserved", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            scope.obj = {
+            scope.subnet = {
                 id: makeInteger(0, 100)
             };
             scope.addRange('reserved');
             expect(scope.newRange).toEqual({
                 type: 'reserved',
-                subnet: scope.obj.id,
+                subnet: scope.subnet.id,
                 start_ip: "",
                 end_ip: "",
                 comment: ""
@@ -109,19 +109,55 @@ describe("maasIPRanges", function() {
         it("dynamic", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            scope.obj = {
+            scope.subnet = {
                 id: makeInteger(0, 100)
             };
             scope.addRange('dynamic');
             expect(scope.newRange).toEqual({
                 type: 'dynamic',
-                subnet: scope.obj.id,
+                subnet: scope.subnet.id,
                 start_ip: "",
                 end_ip: "",
                 comment: "Dynamic"
             });
         });
     });
+
+    describe("addRange with vlan", function() {
+
+        it("reserved", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.vlan = {
+                id: makeInteger(0, 100)
+            };
+            scope.addRange('reserved');
+            expect(scope.newRange).toEqual({
+                type: 'reserved',
+                vlan: scope.vlan.id,
+                start_ip: "",
+                end_ip: "",
+                comment: ""
+            });
+        });
+
+        it("dynamic", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.vlan = {
+                id: makeInteger(0, 100)
+            };
+            scope.addRange('dynamic');
+            expect(scope.newRange).toEqual({
+                type: 'dynamic',
+                vlan: scope.vlan.id,
+                start_ip: "",
+                end_ip: "",
+                comment: "Dynamic"
+            });
+        });
+    });
+
 
     describe("cancelAddRange", function() {
 

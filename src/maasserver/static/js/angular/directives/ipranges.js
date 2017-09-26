@@ -12,7 +12,8 @@ angular.module('MAAS').directive('maasIpRanges', [
         return {
             restrict: "E",
             scope: {
-                obj: "="
+                subnet: "=",
+                vlan: "="
             },
             templateUrl: (
                 'static/partials/ipranges.html?v=' + (
@@ -34,11 +35,16 @@ angular.module('MAAS').directive('maasIpRanges', [
                 $scope.addRange = function(type) {
                     $scope.newRange = {
                         type: type,
-                        subnet: $scope.obj.id,
                         start_ip: "",
                         end_ip: "",
                         comment: ""
                     };
+                    if(angular.isObject($scope.subnet)) {
+                        $scope.newRange.subnet = $scope.subnet.id;
+                    }
+                    if(angular.isObject($scope.vlan)) {
+                        $scope.newRange.vlan = $scope.vlan.id;
+                    }
                     if(type === "dynamic") {
                         $scope.newRange.comment = "Dynamic";
                     }

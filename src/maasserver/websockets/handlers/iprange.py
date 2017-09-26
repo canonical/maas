@@ -21,7 +21,7 @@ maaslog = get_maas_logger("websockets.iprange")
 class IPRangeHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = IPRange.objects.all().select_related('user')
+        queryset = IPRange.objects.all().select_related('user', 'subnet')
         pk = 'id'
         form = IPRangeForm
         allowed_methods = [
@@ -37,6 +37,10 @@ class IPRangeHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
+        if obj.subnet is not None:
+            data['vlan'] = obj.subnet.vlan_id
+        else:
+            data['vlan'] = None
         if obj.user is None:
             data["user_username"] = ""
         else:

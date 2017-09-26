@@ -1,4 +1,4 @@
-/* Copyright 2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Filter objects with subnet foreign key references by a particular subnet.
@@ -17,6 +17,39 @@ angular.module('MAAS').filter('filterBySubnet', function() {
         }
         if(angular.isUndefined(key)) {
             key = 'subnet';
+        }
+        angular.forEach(foreign_objects, function(obj) {
+            if(obj[key] === id) {
+                filtered.push(obj);
+            }
+        });
+        return filtered;
+    };
+});
+
+// Filters by subnet, unless the subnet is not defined. If the subnet is not
+// defined, filters by VLAN.
+angular.module('MAAS').filter('filterBySubnetOrVlan', function() {
+    return function(foreign_objects, subnet, vlan) {
+        var filtered = [];
+        var id;
+        var key = null;
+        if(angular.isDefined(subnet) && subnet !== null ) {
+            key = 'subnet';
+            if(angular.isObject(subnet)) {
+                id = subnet.id;
+            } else if(angular.isNumber(subnet)) {
+                id = subnet;
+            }
+        } else if(angular.isDefined(vlan) && vlan !== null) {
+            key = 'vlan';
+            if(angular.isObject(vlan)) {
+                id = vlan.id;
+            } else if(angular.isNumber(vlan)) {
+                id = vlan;
+            }
+        } else {
+            return filtered;
         }
         angular.forEach(foreign_objects, function(obj) {
             if(obj[key] === id) {
