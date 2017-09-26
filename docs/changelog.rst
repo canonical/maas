@@ -34,6 +34,8 @@ LP: #1717287    maas-enlist not supporting IPv6 addresses in server_url.
 
 LP: #1718209    Fix IPv6 DHCP PXE configuration.
 
+LP: #1688066    Add Spice graphical console to pod created VM's
+
 
 2.2.2
 =====
