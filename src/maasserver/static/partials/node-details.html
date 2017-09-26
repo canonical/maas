@@ -250,6 +250,19 @@
                   <h3>CPU</h3>
                   <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom"><strong>{$ node.cpu_count $} cores</strong></h2>
                 </header>
+		<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
+		  <div data-ng-repeat="test_result in testing_results">
+		    <div data-ng-if="test_result.hardware_type === 1">
+		      <div data-ng-repeat="result in test_result.results['null']">
+			<div data-ng-if="(result.results | json) != '{}' && result.status_name === 'Passed'">
+			  <div data-ng-repeat="final_result in result.results">
+			    <p>{$ final_result.title $}: {$ final_result.value $}</p>
+			  </div>
+			</div>
+		      </div>
+		    </div>
+		  </div>
+		</div>
                 <div class="action-card__position-bottom">
                   <p data-ng-if="!isDevice && node.status !== 'New'"><i class="icon icon--info"></i> Last test: Date</p>
                   <p><a href="" data-ng-if="!isDevice && node.status !== 'New'" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
@@ -260,6 +273,19 @@
                   <h3 >Memory</h3>
                   <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom"><strong>{$ node.memory $} GiB</strong></h2>
                 </header>
+		<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
+		  <div data-ng-repeat="test_result in testing_results">
+		    <div data-ng-if="test_result.hardware_type === 2">
+		      <div data-ng-repeat="result in test_result.results['null']">
+			<div data-ng-if="(result.results | json) != '{}' && result.status_name === 'Passed'">
+			  <div data-ng-repeat="final_result in result.results">
+			    <p>{$ final_result.title $}: {$ final_result.value $}</p>
+			  </div>
+			</div>
+		      </div>
+		    </div>
+		  </div>
+		</div>
                 <div class="action-card__position-bottom">
                   <p data-ng-if="!isDevice && node.status !== 'New'"><i class="icon icon--info"></i> Last test: Date</p>
                   <p><a href="" data-ng-if="!isDevice && node.status !== 'New'" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
