@@ -2416,31 +2416,61 @@
         </div>
     </section>
     <section class="row" data-ng-if="section.area === 'testing'">
-        <div class="wrapper--inner">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="table-col--1 u-padding--left-none u-padding--right-none"></th>
-                        <th class="table-col--35">Name</th>
-                        <th class="table-col--35">Tags</th>
-                        <th class="table-col--30">Runtime</th>
-                        <th class="table-col--30">Result</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr data-ng-repeat="output in node.testing_results">
-                        <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                            <span data-maas-script-status="script-status" data-script-status="output.status"></span>
-                        </td>
-                        <!-- Only link to the test result when we've received it, this is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
-                            <td class="table-col--35" aria-label="Name" data-ng-if="output.status === 2 || output.status === 3 || output.status === 4 || output.status === 6 || output.status === 8"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
-                            <td class="table-col--35" aria-label="Name" data-ng-if="output.status !== 2 && output.status !== 3 && output.status !== 4 && output.status !== 6 && output.status !== 8">{$ output.name $}</td>
-                        <td class="table-col--30" aria-label="Tags">{$ output.tags $}</td>
-                        <td class="table-col--30" aria-label="Runtime">{$ output.runtime $}</td>
-                        <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="wrapper--inner" data-ng-controller="NodeResultsController">
+            <div class="twelve-col" data-ng-if="!resultsLoaded">
+                <p class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
+            </div>
+            <div data-ng-repeat="hardware_type in testing_results">
+	        <div data-ng-if="resultsLoaded && (hardware_type.results | json) != '{}'">
+                    <h2>{$ hardware_type.title $}</h2>
+                    <div data-ng-repeat="(title, results) in hardware_type.results">
+                        <h3 data-ng-if="title !== 'null'">{$ title $}</h3>
+                        <section class="table u-margin--bottom">
+                            <header class="table__head">
+                                <div class="table__row">
+                                    <div class="table__header table-col--1"></div>
+                                    <div class="table__header table-col--20">Name</div>
+                                    <div class="table__header table-col--1 u-padding--left-none u-padding--right-none"></div>
+                                    <div class="table__header table-col--25">Tags</div>
+                                    <div class="table__header table-col--10">Runtime</div>
+                                    <div class="table__header table-col--20">Date</div>
+                                    <div class="table__header table-col--15">Result</div>
+                                </div>
+                            </header>
+                            <main class="table__body">
+                                <div data-ng-repeat="result in results">
+                                    <div class="table__row" data-ng-click="result.showing_results = !result.showing_results" data-ng-class="{'is-active': result.showing_results}">
+                                        <div class="table__data table-col--1" aria-label="Status">
+                                            <span data-maas-script-status="script-status" data-script-status="result.status"></span>
+                                        </div>
+                                        <div class="table__data table-col--20" aria-label="Name">{$ result.name $}</div>
+                                        <div class="table__data table-col--1" aria-label="Show Results">
+                                            <span class="icon icon--open" data-ng-class="icon" data-ng-if="!result.showing_results"></span>
+                                            <span class="icon icon--close" data-ng-class="icon" data-ng-if="result.showing_results"></span>
+                                        </div>
+                                        <div class="table__data table-col--25" aria-label="Tags">{$ result.tags $}</div>
+                                        <div class="table__data table-col--10" aria-label="Runtime">{$ result.runtime $}</div>
+                                        <div class="table__data table-col--20" aria-label="Date">{$ result.updated $}</div>
+                                        <div class="table__data table-col--15" aria-label="Status">
+                                            <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
+                                            {$ result.status_name $}. <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ result.id $}">View log</a>
+                                        </div>
+                                        <div class="table__dropdown" aria-label="results" data-ng-if="result.showing_results">
+                                            <div class="table__row is-active">
+                                                <div data-ng-if="result.results.length === 0">No results provided</div>
+                                                <div class="table__data table-col--50" data-ng-repeat="item in result.results">
+                                                    <span class="tooltip table-col--50" aria-label="{$ item.description $}">{$ item.title $}</span>
+                                                    <span class="table-col--50 u-text--subtle">{$ item.value $}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </main>
+                        </section>
+                    </div>
+		</div>
+            </div>
         </div>
     </section>
 </div>

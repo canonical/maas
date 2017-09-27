@@ -285,6 +285,7 @@ describe("NodeResultsController", function() {
         var script_result = {
             result_type: 0,
             hardware_type: 1,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -312,6 +313,7 @@ describe("NodeResultsController", function() {
         var script_result = {
             result_type: 0,
             hardware_type: 2,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -350,6 +352,7 @@ describe("NodeResultsController", function() {
             result_type: 0,
             hardware_type: 3,
             physical_blockdevice: physical_blockdevice_id,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -378,6 +381,7 @@ describe("NodeResultsController", function() {
         var script_result = {
             result_type: 0,
             hardware_type: 0,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -405,6 +409,7 @@ describe("NodeResultsController", function() {
         var script_result = {
             result_type: 2,
             hardware_type: 1,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -432,6 +437,7 @@ describe("NodeResultsController", function() {
         var script_result = {
             result_type: 2,
             hardware_type: 2,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -470,6 +476,7 @@ describe("NodeResultsController", function() {
             result_type: 2,
             hardware_type: 3,
             physical_blockdevice: physical_blockdevice_id,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -498,6 +505,7 @@ describe("NodeResultsController", function() {
         var script_result = {
             result_type: 2,
             hardware_type: 0,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));
@@ -524,6 +532,7 @@ describe("NodeResultsController", function() {
         MachinesManager._activeItem = node;
         var script_result = {
             result_type: 1,
+            showing_results: false,
             $selected: false
         };
         webSocket.returnData.push(makeFakeResponse([script_result]));

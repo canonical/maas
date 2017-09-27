@@ -62,14 +62,13 @@ angular.module('MAAS').controller('NodeResultsController', [
         $scope.installation_result = {};
 
         function _getSubtext(result) {
-            var subtext = null;
             if(result.hardware_type === 3 &&
                result.physical_blockdevice !== null) {
                 var i;
                 for(i = 0; i < $scope.node.disks.length; i++) {
                     if($scope.node.disks[i].id === result.physical_blockdevice)
                     {
-                        subtext = '';
+                        var subtext = '';
                         if($scope.node.disks[i].model !== '') {
                             subtext += $scope.node.disks[i].model;
                         }
@@ -83,14 +82,16 @@ angular.module('MAAS').controller('NodeResultsController', [
                             subtext += ' - ';
                         }
                         subtext += '/dev/' + $scope.node.disks[i].name;
+                        return subtext;
                     }
                 }
             }
-            return subtext;
+            return null;
         }
 
         function _storeResult(result) {
             var results;
+            result.showing_results = false;
             if(result.result_type === 0) {
                 results = $scope.commissioning_results;
             }else if(result.result_type === 1) {
