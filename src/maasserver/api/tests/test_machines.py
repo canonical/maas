@@ -315,12 +315,15 @@ class TestMachinesAPI(APITestCase.ForUser):
             '_check_rack_controller_connectivity')
 
         for _ in range(10):
-            factory.make_Node_with_Interface_on_Subnet()
+            node = factory.make_Node_with_Interface_on_Subnet()
+            factory.make_VirtualBlockDevice(node=node)
+
         num_queries1, response1 = count_queries(
             self.client.get, reverse('machines_handler'))
 
         for _ in range(10):
-            factory.make_Node_with_Interface_on_Subnet()
+            node = factory.make_Node_with_Interface_on_Subnet()
+            factory.make_VirtualBlockDevice(node=node)
         num_queries2, response2 = count_queries(
             self.client.get, reverse('machines_handler'))
 
@@ -342,7 +345,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # Because of fields `status_action`, `status_message`, and
         # `default_gateways`. The number of queries is not the same but it is
         # proportional to the number of machines.
-        DEFAULT_NUM = 56
+        DEFAULT_NUM = 57
         self.assertEqual(DEFAULT_NUM + (10 * 3), num_queries1)
         self.assertEqual(DEFAULT_NUM + (20 * 3), num_queries2)
 

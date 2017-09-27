@@ -13,6 +13,7 @@ from itertools import chain
 import json
 
 import bson
+from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
@@ -45,9 +46,13 @@ from maasserver.fields import MAC_RE
 from maasserver.forms import BulkNodeActionForm
 from maasserver.forms.ephemeral import TestForm
 from maasserver.models import (
+    Filesystem,
     Interface,
+    ISCSIBlockDevice,
     Node,
     OwnerData,
+    PhysicalBlockDevice,
+    VirtualBlockDevice,
 )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.utils.orm import prefetch_queryset
@@ -69,20 +74,60 @@ NODES_PREFETCH = [
     'special_filesystems',
     'gateway_link_ipv4__subnet',
     'gateway_link_ipv6__subnet',
-    'blockdevice_set__filesystem_set',
-    'blockdevice_set__partitiontable_set__partitions__filesystem_set',
-    'blockdevice_set__iscsiblockdevice__node',
-    'blockdevice_set__iscsiblockdevice__filesystem_set',
-    ('blockdevice_set__iscsiblockdevice__partitiontable_set__'
-     'partitions__filesystem_set'),
-    'blockdevice_set__physicalblockdevice__node',
-    'blockdevice_set__physicalblockdevice__filesystem_set',
-    ('blockdevice_set__physicalblockdevice__partitiontable_set__'
-     'partitions__filesystem_set'),
-    'blockdevice_set__virtualblockdevice__node',
-    'blockdevice_set__virtualblockdevice__filesystem_set',
-    ('blockdevice_set__virtualblockdevice__partitiontable_set__'
-     'partitions__filesystem_set'),
+    Prefetch(
+        'blockdevice_set__filesystem_set',
+        queryset=Filesystem.objects.select_related(
+            'cache_set', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__partitiontable_set__partitions__filesystem_set',
+        queryset=Filesystem.objects.select_related(
+            'cache_set', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__iscsiblockdevice',
+        queryset=ISCSIBlockDevice.objects.select_related('node'),
+    ),
+    Prefetch(
+        'blockdevice_set__iscsiblockdevice__filesystem_set',
+        queryset=Filesystem.objects.select_related(
+            'cache_set', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__iscsiblockdevice__partitiontable_set__partitions__'
+        'filesystem_set',
+        queryset=Filesystem.objects.select_related(
+            'cache_set', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__physicalblockdevice',
+        queryset=PhysicalBlockDevice.objects.select_related('node'),
+    ),
+    Prefetch(
+        'blockdevice_set__physicalblockdevice__filesystem_set',
+        queryset=Filesystem.objects.select_related(
+            'cache_set', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__physicalblockdevice__partitiontable_set__'
+        'partitions__filesystem_set',
+        queryset=Filesystem.objects.select_related(
+            'cache_set', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__virtualblockdevice',
+        queryset=VirtualBlockDevice.objects.select_related(
+            'node', 'filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__virtualblockdevice__filesystem_set',
+        queryset=Filesystem.objects.select_related('filesystem_group'),
+    ),
+    Prefetch(
+        'blockdevice_set__virtualblockdevice__partitiontable_set__'
+        'partitions__filesystem_set',
+        queryset=Filesystem.objects.select_related('filesystem_group'),
+    ),
     'boot_interface__node',
     'boot_interface__vlan__primary_rack',
     'boot_interface__vlan__secondary_rack',

@@ -103,6 +103,8 @@ DISPLAYED_MACHINE_FIELDS = (
     'fqdn',
     'owner',
     'owner_data',
+    'cache_sets',
+    'bcaches',
     'boot_interface',
     'architecture',
     'min_hwe_kernel',
@@ -129,6 +131,8 @@ DISPLAYED_MACHINE_FIELDS = (
     'iscsiblockdevice_set',
     'physicalblockdevice_set',
     'virtualblockdevice_set',
+    'volume_groups',
+    'raids',
     'status_action',
     'status_message',
     'status_name',
@@ -260,6 +264,86 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             block_device.actual_instance
             for block_device in machine.blockdevice_set.all()
             if isinstance(block_device.actual_instance, VirtualBlockDevice)
+        ]
+
+    @classmethod
+    def _filesystem_groups(handler, machine):
+        """Return the `FilesystemGroup` for `machine`."""
+        fsgroup = {}
+        for block_device in machine.blockdevice_set.all():
+            for filesystem in block_device.filesystem_set.all():
+                if filesystem.filesystem_group is not None:
+                    fsgroup[filesystem.filesystem_group.id] = (
+                        filesystem.filesystem_group)
+            for ptable in block_device.partitiontable_set.all():
+                for partition in ptable.partitions.all():
+                    for filesystem in partition.filesystem_set.all():
+                        if filesystem.filesystem_group is not None:
+                            fsgroup[filesystem.filesystem_group.id] = (
+                                filesystem.filesystem_group)
+        return fsgroup.values()
+
+    @classmethod
+    def volume_groups(handler, machine):
+        """Return the volume groups on this machine."""
+        return [
+            {
+                'system_id': machine.system_id,
+                'id': fsgroup.id,
+                '__incomplete__': True,
+            }
+            for fsgroup in handler._filesystem_groups(machine)
+            if fsgroup.is_lvm()
+        ]
+
+    @classmethod
+    def raids(handler, machine):
+        """Return the raids on this machine."""
+        return [
+            {
+                'system_id': machine.system_id,
+                'id': fsgroup.id,
+                '__incomplete__': True,
+            }
+            for fsgroup in handler._filesystem_groups(machine)
+            if fsgroup.is_raid()
+        ]
+
+    @classmethod
+    def cache_sets(handler, machine):
+        """Return the cache sets on this machine."""
+        sets = {}
+        for block_device in machine.blockdevice_set.all():
+            for filesystem in block_device.filesystem_set.all():
+                if filesystem.cache_set is not None:
+                    sets[filesystem.cache_set.id] = (
+                        filesystem.cache_set)
+            for ptable in block_device.partitiontable_set.all():
+                for partition in ptable.partitions.all():
+                    for filesystem in partition.filesystem_set.all():
+                        if filesystem.cache_set is not None:
+                            sets[filesystem.cache_set.id] = (
+                                filesystem.cache_set)
+        return [
+            {
+                'system_id': machine.system_id,
+                'id': cacheset_id,
+                '__incomplete__': True,
+            }
+            for cacheset_id in sets.keys()
+        ]
+
+    @classmethod
+    def bcaches(handler, machine):
+        """Return the bcaches on this machine."""
+        return [
+            {
+                'system_id': machine.system_id,
+                'id': fsgroup.id,
+                '__incomplete__': True,
+            }
+            for fsgroup in handler._filesystem_groups(machine)
+            if fsgroup.is_bcache()
         ]
 
     @classmethod
