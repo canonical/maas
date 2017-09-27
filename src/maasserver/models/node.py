@@ -25,6 +25,7 @@ import re
 import socket
 from socket import gethostname
 from urllib.parse import urlparse
+import uuid
 
 from crochet import TimeoutError
 from django.contrib.auth.models import User
@@ -776,6 +777,13 @@ class RegionControllerManager(ControllerManager):
                 name=domainname, defaults={'authoritative': False})
         return self.create(
             owner=get_worker_user(), hostname=hostname, domain=domain)
+
+    def get_or_create_uuid(self):
+        maas_uuid = Config.objects.get_config("uuid")
+        if maas_uuid is None:
+            maas_uuid = str(uuid.uuid4())
+            Config.objects.set_config("uuid", maas_uuid)
+        return maas_uuid
 
 
 def get_default_domain():

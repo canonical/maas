@@ -112,6 +112,8 @@ def inner_start_up():
     # on the filesystem; it will be done in a post-commit hook and will thus
     # happen before `locks.startup` is released.
     region = RegionController.objects.get_or_create_running_controller()
+    # Ensure that uuid is created after creating
+    RegionController.objects.get_or_create_uuid()
 
     # Only perform the following if the master process for the
     # region controller.

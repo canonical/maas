@@ -12,6 +12,7 @@ from maasserver import (
     locks,
     start_up,
 )
+from maasserver.models import Config
 from maasserver.models.node import RegionController
 from maasserver.models.signals import bootsources
 from maasserver.testing.eventloop import RegionEventLoopFixture
@@ -163,6 +164,14 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up()
         self.assertThat(get_maas_id(), Not(Is(None)))
+
+    def test__creates_maas_uuid(self):
+        start_up.is_master_process.return_value = False
+        self.assertThat(get_maas_id(), Is(None))
+        with post_commit_hooks:
+            start_up.inner_start_up()
+        uuid = Config.objects.get_config('uuid')
+        self.assertThat(uuid, Not(Is(None)))
 
 
 class TestFunctions(MAASServerTestCase):

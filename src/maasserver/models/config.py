@@ -83,6 +83,7 @@ def get_default_config():
         # RPC configuration.
         'rpc_region_certificate': None,
         'rpc_shared_secret': None,
+        'uuid': None,
         # Images.
         'boot_images_auto_import': True,
         # Third Party
