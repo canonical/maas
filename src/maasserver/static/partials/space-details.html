@@ -45,15 +45,29 @@
     <section class="row">
         <div class="wrapper--inner">
             <div class="twelve-col">
-                <h2>Space summary</h2>
+              <h2 class="u-float--left">Space summary</h2>
+              <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="enterEditSummary()" data-ng-if="!editSummary">Edit</button>
             </div>
-            <maas-obj-form obj="space" table-form="true" manager="spaceManager" data-ng-disabled="!isSuperUser()">
+            <div class="twelve-col" data-ng-if="!editSummary">
+                <dl class="six-col">
+                    <dt class="two-col">Name</dt>
+                    <dd class="four-col last-col">{$ space.name $}</dd>
+                    <dt class="two-col">Description</dt>
+                    <dd class="four-col last-col">{$ space.description $}</dd>
+                </dl>
+            </div>
+            <maas-obj-form obj="space" table-form="true" manager="spaceManager" data-ng-disabled="!isSuperUser()" data-ng-if="editSummary" table-form="true" save-on-blur="false" after-save="exitEditSummary">
                 <fieldset class="form__fieldset six-col">
                     <maas-obj-field type="text" key="name" label="Name" placeholder="Space name"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                     <maas-obj-field type="textarea" key="description" label="Description" placeholder="Space description"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
+                <div class="twelve-col u-align--right">
+                    <button class="button--base button--inline"
+                       data-ng-click="exitEditSummary()">Cancel</button>
+                    <button class="button--positive button--inline" maas-obj-save>Save summary</button>
+                </div>
             </maas-obj-form>
         </div>
     </section>

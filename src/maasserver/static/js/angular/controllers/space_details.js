@@ -25,6 +25,7 @@ angular.module('MAAS').controller('SpaceDetailsController', [
         $scope.spaceManager = SpacesManager;
         $scope.subnets = SubnetsManager.getItems();
         $scope.loaded = false;
+        $scope.editSummary = false;
 
         // Updates the page title.
         function updateTitle() {
@@ -66,6 +67,16 @@ angular.module('MAAS').controller('SpaceDetailsController', [
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
             return UsersManager.isSuperUser();
+        };
+
+        // Called when the "edit" button is cliked in the space summary
+        $scope.enterEditSummary = function() {
+            $scope.editSummary = true;
+        };
+
+        // Called when the "cancel" button is cliked in the space summary
+        $scope.exitEditSummary = function() {
+            $scope.editSummary = false;
         };
 
         // Return true if this is the default Space

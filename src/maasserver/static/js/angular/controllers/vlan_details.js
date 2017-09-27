@@ -74,10 +74,32 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.provideDHCPAction = {};
         vm.primaryRack = null;
         vm.secondaryRack = null;
+        vm.editSummary = false;
+
 
         // Return true if the authenticated user is super user.
         vm.isSuperUser = function() {
             return UsersManager.isSuperUser();
+        };
+
+        // Called when the "edit" button is cliked in the vlan summary
+        vm.enterEditSummary = function() {
+            vm.editSummary = true;
+        };
+
+        // Called when the "cancel" button is cliked in the vlan summary
+        vm.exitEditSummary = function() {
+            vm.editSummary = false;
+        };
+
+        // Get the space name for the VLAN.
+        vm.getSpaceName = function() {
+            var space = SpacesManager.getItemFromList(vm.vlan.space);
+            if(space) {
+              return space.name;
+            } else {
+              return "(undefined)";
+            }
         };
 
         // Get the aciton structure for the action with the specified name.

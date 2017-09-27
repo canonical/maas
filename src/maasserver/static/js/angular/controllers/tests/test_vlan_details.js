@@ -572,6 +572,47 @@ describe("VLANDetailsController", function() {
         });
     });
 
+    describe("enterEditSummary", function() {
+
+      it("sets editSummary", function() {
+        var controller = makeController();
+        controller.enterEditSummary();
+        expect(controller.editSummary).toBe(true);
+      });
+    });
+
+    describe("exitEditSummary", function() {
+
+      it("sets editSummary", function() {
+        var controller = makeController();
+        controller.enterEditSummary();
+        controller.exitEditSummary();
+        expect(controller.editSummary).toBe(false);
+      });
+    });
+
+    describe("getSpaceName", function() {
+
+      it("returns space name", function() {
+        var controller = makeController();
+        var spaceName = makeName("space");
+        SpacesManager._items = [{
+            id: 1,
+            name: spaceName
+        }];
+        controller.vlan = {
+          space: 1
+        };
+        expect(controller.getSpaceName()).toBe(spaceName);
+      });
+
+      it("returns space (undefined)", function() {
+        var controller = makeController();
+        controller.vlan = {};
+        expect(controller.getSpaceName()).toBe("(undefined)");
+      });
+    });
+
     describe("updatePossibleActions", function() {
 
         // Note: updatePossibleActions() is called indirectly by these tests

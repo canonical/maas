@@ -222,9 +222,39 @@
     <section class="row">
         <div class="wrapper--inner">
             <div class="twelve-col">
-                <h2>VLAN Summary</h2>
+                <h2 class="u-float--left">VLAN Summary</h2>
+                <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary">Edit</button>
             </div>
-            <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!vlanDetails.isSuperUser()">
+            <div class="twelve-col" data-ng-if="!vlanDetails.editSummary">
+                <dl class="six-col">
+                    <dt class="two-col">VID</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.vlan.vid $}</dd>
+                    <dt class="two-col">Name</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.vlan.name $}</dd>
+                    <dt class="two-col">MTU</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.vlan.mtu $}</dd>
+                    <dt class="two-col">Space</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.getSpaceName() $}</dd>
+                    <dt class="two-col">Description</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.vlan.description $}</dd>
+                </dl>
+                <dl class="six-col last-col">
+                  <dt class="two-col">Fabric</dt>
+                  <dd class="four-col last-col">
+                      <a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a>
+                  </dd>
+                  <div data-ng-if="vlanDetails.relatedControllers">
+                      <dt class="two-col">Rack controllers <span class="icon icon--help tooltip" aria-label="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
+                      <dd class="four-col last-col">
+                          <span data-ng-repeat="rack in vlanDetails.relatedControllers">
+                              <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>
+                          </span>&nbsp;
+                      </dd>
+                  </div>
+                </dl>
+            </div>
+            <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!vlanDetails.isSuperUser()" data-ng-if="vlanDetails.editSummary"
+              table-form="true" save-on-blur="false" after-save="vlanDetails.exitEditSummary">
                 <fieldset class="form__fieldset six-col">
                     <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
@@ -253,6 +283,11 @@
                             </dd>
                         </div>
                     </dl>
+                </div>
+                <div class="twelve-col u-align--right">
+                    <button class="button--base button--inline"
+                       data-ng-click="vlanDetails.exitEditSummary()">Cancel</button>
+                    <button class="button--positive button--inline" maas-obj-save>Save summary</button>
                 </div>
             </maas-obj-form>
         </div>

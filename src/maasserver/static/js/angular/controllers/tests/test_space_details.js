@@ -175,6 +175,25 @@ describe("SpaceDetailsController", function() {
         expect($rootScope.title).toBe(space.name);
     });
 
+    describe("enterEditSummary", function() {
+
+      it("sets editSummary", function() {
+        var controller = makeController();
+        $scope.enterEditSummary();
+        expect($scope.editSummary).toBe(true);
+      });
+    });
+
+    describe("exitEditSummary", function() {
+
+      it("sets editSummary", function() {
+        var controller = makeController();
+        $scope.enterEditSummary();
+        $scope.exitEditSummary();
+        expect($scope.editSummary).toBe(false);
+      });
+    });
+
     describe("canBeDeleted", function() {
 
         it("returns false if space is null", function() {
