@@ -29,10 +29,9 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         owner = factory.make_User()
         handler = SwitchHandler(owner, {})
         device = factory.make_Device(owner=owner)
-        # XXX: What should happen if we get a node that isn't a switch?
-        result = handler.get({"system_id": device.system_id})
-        self.assertEqual(device.system_id, result["system_id"])
-        self.assertEqual(NODE_TYPE.DEVICE, result["node_type"])
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get, {"system_id": device.system_id})
 
     @transactional
     def test_get_device_switch(self):
@@ -211,3 +210,82 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
             }})
         device = reload_object(device)
         self.assertEqual(device.zone, zone)
+
+    @transactional
+    def test_on_listen_switch_update(self):
+        admin = factory.make_admin()
+        node = factory.make_Node(owner=admin)
+        factory.make_Switch(node=node)
+        handler = SwitchHandler(admin, {})
+        handler.list({})  # Populate the cache with the switch in it.
+        obj_type, action, obj = handler.on_listen(
+            'switch', 'update', node.system_id)
+        self.assertEqual('switch', obj_type)
+        self.assertEqual('update', action)
+        self.assertEqual(node.system_id, obj['system_id'])
+
+    @transactional
+    def test_on_listen_switch_create(self):
+        admin = factory.make_admin()
+        handler = SwitchHandler(admin, {})
+        handler.list({})  # Populate the cache with no switches.
+        node = factory.make_Node(owner=admin)
+        factory.make_Switch(node=node)
+        obj_type, action, obj = handler.on_listen(
+            'switch', 'create', node.system_id)
+        self.assertEqual('switch', obj_type)
+        self.assertEqual('create', action)
+        self.assertEqual(node.system_id, obj['system_id'])
+
+    @transactional
+    def test_on_listen_non_switch_create(self):
+        admin = factory.make_admin()
+        handler = SwitchHandler(admin, {})
+        node = factory.make_Node(owner=admin)
+        handler.list({})  # Populate the cache with no switches.
+        for obj_type in ['device', 'controller', 'machine']:
+            result = handler.on_listen(obj_type, 'create', node.system_id)
+            self.assertIsNone(result)
+            self.assertNotIn(node.system_id, handler.cache['loaded_pks'])
+
+    @transactional
+    def test_on_listen_non_switch_delete(self):
+        admin = factory.make_admin()
+        handler = SwitchHandler(admin, {})
+        node = factory.make_Node(owner=admin)
+        factory.make_Switch(node=node)
+        handler.list({})  # Populate the cache with the switch in it.
+        for obj_type in ['device', 'controller', 'machine']:
+            result = handler.on_listen(obj_type, 'create', node.system_id)
+            self.assertIsNone(result)
+            self.assertIn(node.system_id, handler.cache['loaded_pks'])
+
+    @transactional
+    def test_on_listen_non_switch_update(self):
+        admin = factory.make_admin()
+        handler = SwitchHandler(admin, {})
+        node = factory.make_Node(owner=admin)
+        handler.list({})  # Populate the cache with no switches.
+        for obj_type in ['device', 'controller', 'machine']:
+            result = handler.on_listen(obj_type, 'update', node.system_id)
+            self.assertIsNone(result)
+            self.assertNotIn(node.system_id, handler.cache['loaded_pks'])
+
+    @transactional
+    def test_on_listen_non_switch_event_update(self):
+        admin = factory.make_admin()
+        handler = SwitchHandler(admin, {})
+        node = factory.make_Node(owner=admin)
+        factory.make_Switch(node=node)
+        handler.list({})  # Populate the cache with the switch in it.
+        for obj_type in ['device', 'controller', 'machine']:
+            new_hostname = 'updated-{}'.format(obj_type)
+            node.hostname = new_hostname
+            node.save()
+            listen_obj_type, action, obj = handler.on_listen(
+                obj_type, 'update', node.system_id)
+            self.assertIn(node.system_id, handler.cache['loaded_pks'])
+            self.assertEqual('switch', listen_obj_type)
+            self.assertEqual('update', action)
+            self.assertEqual(node.system_id, obj['system_id'])
+            self.assertEqual(new_hostname, obj['hostname'])

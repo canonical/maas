@@ -18,10 +18,6 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
-from provisioningserver.logger import get_maas_logger
-
-
-maaslog = get_maas_logger("websockets.switch")
 
 
 class SwitchHandler(NodeHandler):
@@ -39,8 +35,12 @@ class SwitchHandler(NodeHandler):
             'action']
         exclude = MachineHandler.Meta.exclude
         list_fields = MachineHandler.Meta.list_fields
-        # XXX: Which channel should we listen for?
-        listen_channels = []
+        listen_channels = [
+            'machine',
+            'device',
+            'controller',
+            'switch',
+        ]
 
     def get_queryset(self):
         """Return `QuerySet` for devices only viewable by `user`."""
@@ -65,3 +65,8 @@ class SwitchHandler(NodeHandler):
                 "%s action is not available for this device." % action_name)
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
+
+    def on_listen(self, channel, action, pk):
+        if (channel != 'switch' and action != 'update'):
+            return None
+        return super().on_listen(channel, action, pk)

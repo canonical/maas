@@ -710,6 +710,7 @@ ALL_NOTIFIERS = (
     "sshkey",
     "staticroute",
     "subnet",
+    "switch",
     "tag",
     "user",
     "vlan",

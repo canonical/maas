@@ -17,7 +17,10 @@ from maasserver.forms import (
     AdminMachineForm,
     AdminMachineWithMACAddressesForm,
 )
-from maasserver.models.node import Node
+from maasserver.models.node import (
+    Device,
+    Node,
+)
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.testing.architecture import make_usable_architecture
@@ -120,11 +123,14 @@ class TestHandlerMeta(MAASTestCase):
 class TestHandler(MAASServerTestCase):
 
     def make_nodes_handler(self, **kwargs):
-        kwargs["queryset"] = Node.objects.all()
-        kwargs["object_class"] = Node
-        kwargs["pk"] = "system_id"
-        kwargs["pk_type"] = str
-        handler = make_handler("TestNodesHandler", **kwargs)
+        meta_args = {
+            "queryset": Node.objects.all(),
+            "object_class": Node,
+            "pk": "system_id",
+            "pk_type": str,
+        }
+        meta_args.update(kwargs)
+        handler = make_handler("TestNodesHandler", **meta_args)
         handler.__init__(factory.make_User(), {})
         return handler
 
@@ -320,6 +326,16 @@ class TestHandler(MAASServerTestCase):
             node.hostname,
             handler.get_object(
                 {"system_id": node.system_id}).hostname)
+
+    def test_get_object_respects_queryset(self):
+        handler = self.make_nodes_handler(queryset=Device.objects.all())
+        machine = factory.make_Machine()
+        device = factory.make_Device()
+        returned_device = handler.get_object({"system_id": device.system_id})
+        self.assertEqual(device.hostname, returned_device.hostname)
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get_object, {"system_id": machine.system_id})
 
     def test_execute_only_allows_meta_allowed_methods(self):
         handler = self.make_nodes_handler(allowed_methods=['list'])

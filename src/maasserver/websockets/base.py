@@ -280,7 +280,7 @@ class Handler(metaclass=HandlerMetaclass):
             })
         pk = params[self._meta.pk]
         try:
-            obj = self._meta.object_class.objects.get(**{
+            obj = self.get_queryset().get(**{
                 self._meta.pk: pk,
                 })
         except self._meta.object_class.DoesNotExist:
