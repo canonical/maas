@@ -135,7 +135,7 @@
             <aside class="three-col u-align--top">
                 <div class="three-col">
                     <div class="action-card u-margin--bottom">
-                        <h3 class="action-card__title">CPU ({$ pod.total.cores $} cores)</h3>
+                        <h3>CPU ({$ pod.total.cores $} cores)</h3>
                         <meter max="{$ pod.total.cores $}" value="{$ pod.used.cores $}"></meter>
                         <p>
                             <span data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
@@ -143,7 +143,7 @@
                         </p>
                     </div>
                     <div class="action-card u-margin--bottom">
-                        <h3 class="action-card__title">RAM ({$ pod.total.memory_gb $} GiB)</h3>
+                        <h3>RAM ({$ pod.total.memory_gb $} GiB)</h3>
                         <meter max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
                         <p>
                             <span data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
@@ -151,7 +151,7 @@
                         </p>
                     </div>
                     <div class="action-card u-margin--bottom">
-                        <h3 class="action-card__title">Local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
+                        <h3>Local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
                         <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}"></meter>
                         <p>
                             <span data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
@@ -159,7 +159,7 @@
                         </p>
                     </div>
                     <div class="action-card u-margin--bottom" data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
-                        <h3 class="action-card__title">iSCSI storage ({$ pod.total.iscsi_storage_gb $} GiB)</h3>
+                        <h3>iSCSI storage ({$ pod.total.iscsi_storage_gb $} GiB)</h3>
                         <meter max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
                         <p>
                             <span data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
@@ -210,7 +210,7 @@
             <div class="six-col last-col">
               <h3>Total local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
               <div class="action-card u-margin--bottom">
-                  <h3 class="action-card__title">0 drives</h3>
+                  <h3>0 drives</h3>
                   <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}">{$ pod.used.local_storage $} Mb</meter>
                   <p>
                       <span>0 GiB used</span>
