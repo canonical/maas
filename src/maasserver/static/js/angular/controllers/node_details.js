@@ -113,9 +113,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.machine_output = {
             viewable: false,
             selectedView: null,
-            views: [],
-            showSummaryToggle: true,
-            summaryType: 'yaml'
+            views: []
         };
 
         // Updates the page title.
@@ -249,8 +247,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.machine_output.viewable = (
                 angular.isString($scope.node.summary_xml) ||
                 angular.isString($scope.node.summary_yaml) ||
-                (angular.isArray($scope.node.commissioning_results) &&
-                    $scope.node.commissioning_results.length > 0) ||
                 (angular.isArray($scope.node.installation_results) &&
                     $scope.node.installation_results.length > 0));
 
@@ -269,25 +265,23 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             // Setup the views that are viewable.
             $scope.machine_output.views = [];
-            if(angular.isString($scope.node.summary_xml) ||
-                angular.isString($scope.node.summary_yaml)) {
+            if(angular.isString($scope.node.summary_yaml)) {
                 $scope.machine_output.views.push({
-                    name: "summary",
-                    title: "Commissioning Summary"
+                    name: "summary_yaml",
+                    title: "Machine output (YAML)"
                 });
             }
-            if(angular.isArray($scope.node.commissioning_results) &&
-                $scope.node.commissioning_results.length > 0) {
+            if(angular.isString($scope.node.summary_xml)) {
                 $scope.machine_output.views.push({
-                    name: "commissioning",
-                    title: "Commissioning Results"
+                    name: "summary_xml",
+                    title: "Machine output (XML)"
                 });
             }
             if(angular.isArray($scope.node.installation_results) &&
                 $scope.node.installation_results.length > 0) {
                 $scope.machine_output.views.push({
                     name: "installation",
-                    title: "Installation Output"
+                    title: "Installation output"
                 });
             }
 
@@ -306,13 +300,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.machine_output.views[0];
             } else {
                 $scope.machine_output.selectedView = null;
-            }
-
-            // Show the summary toggle if in the summary view.
-            $scope.machine_output.showSummaryToggle = false;
-            if(angular.isObject($scope.machine_output.selectedView) &&
-                $scope.machine_output.selectedView.name === "summary") {
-                $scope.machine_output.showSummaryToggle = true;
             }
         }
 
@@ -987,25 +974,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
-        // Called when the machine output view has changed.
-        $scope.machineOutputViewChanged = function() {
-            if(angular.isObject($scope.machine_output.selectedView) &&
-                $scope.machine_output.selectedView.name === "summary") {
-                $scope.machine_output.showSummaryToggle = true;
-            } else {
-                $scope.machine_output.showSummaryToggle = false;
-            }
-        };
-
         // Return the commissioning summary output data.
-        $scope.getSummaryData = function() {
+        $scope.getSummaryData = function(type) {
             // Can be called by angular before the node is set in the scope,
             // in that case return blank string. It will be called once the
             // node is set to get the correct information.
             if(!angular.isObject($scope.node)) {
                 return "";
             }
-            return $scope.node["summary_" + $scope.machine_output.summaryType];
+            return $scope.node["summary_" + type];
         };
 
         // Return the installation log data.

@@ -256,9 +256,7 @@ describe("NodeDetailsController", function() {
         expect($scope.machine_output).toEqual({
             viewable: false,
             selectedView: null,
-            views: [],
-            showSummaryToggle: true,
-            summaryType: 'yaml'
+            views: []
         });
     });
 
@@ -451,19 +449,6 @@ describe("NodeDetailsController", function() {
         expect($scope.machine_output.viewable).toBe(true);
     });
 
-    it("machine output visible if commissioning_results", function() {
-        node.commissioning_results.push({});
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.machine_output.viewable).toBe(true);
-    });
-
-    it("machine output not visible if commissioning_results not an array",
-        function() {
-            node.commissioning_results = undefined;
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.viewable).toBe(false);
-        });
-
     it("machine output visible if installation_results", function() {
         node.installation_results.push({});
         var controller = makeControllerResolveSetActiveItem();
@@ -477,23 +462,23 @@ describe("NodeDetailsController", function() {
             expect($scope.machine_output.viewable).toBe(false);
         });
 
-    it("machine output summary view available if summary_xml and summary_yaml",
+    it("machine output summary view available if summary_xml",
         function() {
-            node.summary_xml = node.summary_yaml = "summary";
+            node.summary_xml = "summary_xml";
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.views).toEqual([{
-                name: "summary",
-                title: "Commissioning Summary"
+                name: "summary_xml",
+                title: "Machine output (XML)"
             }]);
         });
 
-    it("machine output commissioning view available if commissioning_results",
+    it("machine output summary view available if summary_yaml",
         function() {
-            node.commissioning_results.push({});
+            node.summary_yaml = "summary_yaml";
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.views).toEqual([{
-                name: "commissioning",
-                title: "Commissioning Results"
+                name: "summary_yaml",
+                title: "Machine output (YAML)"
             }]);
         });
 
@@ -503,62 +488,19 @@ describe("NodeDetailsController", function() {
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.views).toEqual([{
                 name: "installation",
-                title: "Installation Output"
+                title: "Installation output"
             }]);
-        });
-
-    it("machine output first available view is set as selectedView",
-        function() {
-            node.commissioning_results.push({});
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.selectedView).toEqual({
-                name: "commissioning",
-                title: "Commissioning Results"
-            });
-        });
-
-    it("machine output previous selected view is still selected",
-        function() {
-            node.commissioning_results.push({});
-            var controller = makeControllerResolveSetActiveItem();
-
-            // Add summary output and make updateMachineOutput be called
-            // again, but forcing a digest cycle.
-            node.summary_xml = node.summary_yaml = "summary";
-            $rootScope.$digest();
-
-            // Output view should still be selected as it was initially
-            // selected.
-            expect($scope.machine_output.selectedView).toEqual({
-                name: "commissioning",
-                title: "Commissioning Results"
-            });
         });
 
     it("machine output install view is always selected first if possible",
         function() {
-            node.commissioning_results.push({});
-            node.testing_results.push({});
+            node.summary_xml = node.summary_yaml = "summary";
             node.installation_results.push({});
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.selectedView).toEqual({
                 name: "installation",
-                title: "Installation Output"
+                title: "Installation output"
             });
-        });
-
-    it("machine output summary toggle is viewable when summary view selected",
-        function() {
-            node.summary_xml = node.summary_yaml = "summary";
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.showSummaryToggle).toBe(true);
-        });
-
-    it("machine output summary toggle is not viewable when not summary view",
-        function() {
-            node.commissioning_results.push({});
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.machine_output.showSummaryToggle).toBe(false);
         });
 
     it("starts watching once setActiveItem resolves", function() {
@@ -2176,34 +2118,6 @@ describe("NodeDetailsController", function() {
             });
     });
 
-    describe("machineOutputViewChanged", function() {
-
-        it("sets showSummaryToggle to false if no selectedView", function() {
-            var controller = makeController();
-            $scope.machine_output.selectedView = null;
-            $scope.machineOutputViewChanged();
-            expect($scope.machine_output.showSummaryToggle).toBe(false);
-        });
-
-        it("sets showSummaryToggle to false if not summary view", function() {
-            var controller = makeController();
-            $scope.machine_output.selectedView = {
-                name: "output"
-            };
-            $scope.machineOutputViewChanged();
-            expect($scope.machine_output.showSummaryToggle).toBe(false);
-        });
-
-        it("sets showSummaryToggle to true if summary view", function() {
-            var controller = makeController();
-            $scope.machine_output.selectedView = {
-                name: "summary"
-            };
-            $scope.machineOutputViewChanged();
-            expect($scope.machine_output.showSummaryToggle).toBe(true);
-        });
-    });
-
     describe("getSummaryData", function() {
 
         it("returns blank string if node is null", function() {
@@ -2211,13 +2125,12 @@ describe("NodeDetailsController", function() {
             expect($scope.getSummaryData()).toBe("");
         });
 
-        it("returns summary_xml when summaryType equal xml", function() {
+        it("returns summary_xml", function() {
             var controller = makeController();
             $scope.node = makeNode();
             var summary_xml = {};
             $scope.node.summary_xml = summary_xml;
-            $scope.machine_output.summaryType = "xml";
-            expect($scope.getSummaryData()).toBe(summary_xml);
+            expect($scope.getSummaryData("xml")).toBe(summary_xml);
         });
 
         it("returns summary_yaml when summaryType equal yaml", function() {
@@ -2225,8 +2138,7 @@ describe("NodeDetailsController", function() {
             $scope.node = makeNode();
             var summary_yaml = {};
             $scope.node.summary_yaml = summary_yaml;
-            $scope.machine_output.summaryType = "yaml";
-            expect($scope.getSummaryData()).toBe(summary_yaml);
+            expect($scope.getSummaryData("yaml")).toBe(summary_yaml);
         });
     });
 
