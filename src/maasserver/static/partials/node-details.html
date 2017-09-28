@@ -204,7 +204,7 @@
                 <button role="tab" class="page-navigation__link"
                     data-ng-class="{ 'is-active': section.area === 'interfaces'}"
                     data-ng-click="section.area = 'interfaces'">Interfaces</button>
-                <button role="tab" class="page-navigation__link" data-ng-if="!isDevice && node.status !== 'New'"
+                <button role="tab" class="page-navigation__link" data-ng-if="!isDevice && !(isController && node.status === 'New')"
                     data-ng-class="{ 'is-active': section.area === 'storage'}"
                     data-ng-click="section.area = 'storage'">Storage</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.installation_results.length > 0"
@@ -244,18 +244,24 @@
                           <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
                 </div>
             </div>
+            <div class="p-notification" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0">
+              <p class="p-notification__response">
+                Commission the machine to get CPU, Memory and Storage information.
+              </p>
+            </div>	    
             <div class="twelve-col u-equal-height" data-ng-if="!isDevice">
-              <div class="four-col action-card action-card--positionable u-border--solid">
-                <header>
-                  <h3>CPU</h3>
-                  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom"><strong>{$ node.cpu_count $} cores</strong></h2>
-                </header>
+	      <div class="four-col action-card action-card--positionable u-border--solid">
+		<header>
+		  <h3>CPU</h3>
+		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count > 0"><strong>{$ node.cpu_count $} cores</strong></h2>
+		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong></h2>		  
+		</header>
 		<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
 		  <div data-ng-repeat="test_result in testing_results">
 		    <div data-ng-if="test_result.hardware_type === 1">
 		      <div data-ng-repeat="result in test_result.results['null']">
-			<div data-ng-if="(result.results | json) != '{}' && result.status_name === 'Passed'">
-			  <div data-ng-repeat="final_result in result.results">
+			<div data-ng-if="(result.results | json) != '{}'">
+			  <div data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
 			    <p>{$ final_result.title $}: {$ final_result.value $}</p>
 			  </div>
 			</div>
@@ -263,22 +269,27 @@
 		    </div>
 		  </div>
 		</div>
-                <div class="action-card__position-bottom">
-                  <p data-ng-if="!isDevice && node.status !== 'New'"><i class="icon icon--info"></i> Last test: Date</p>
-                  <p><a href="" data-ng-if="!isDevice && node.status !== 'New'" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
-                </div>
-              </div>
-              <div class="four-col action-card action-card--positionable u-border--solid">
-                <header>
-                  <h3 >Memory</h3>
-                  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom"><strong>{$ node.memory $} GiB</strong></h2>
-                </header>
+		<div class="action-card__position-bottom">
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu > 0">
+		    <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status"></span>
+		    {$ node.cpu_test_status_tooltip $}
+		  </p>
+		  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0"><i class="icon icon--info"></i> No data recieved</p>
+		</div>
+	      </div>
+	      <div class="four-col action-card action-card--positionable u-border--solid">
+		<header>
+		  <h3 >Memory</h3>
+		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory > 0"><strong>{$ node.memory $} GiB</strong></h2>
+		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory == 0"><strong>Unknown</strong></h2>
+		</header>
 		<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
 		  <div data-ng-repeat="test_result in testing_results">
 		    <div data-ng-if="test_result.hardware_type === 2">
 		      <div data-ng-repeat="result in test_result.results['null']">
-			<div data-ng-if="(result.results | json) != '{}' && result.status_name === 'Passed'">
-			  <div data-ng-repeat="final_result in result.results">
+			<div data-ng-if="(result.results | json) != '{}'">
+			  <div data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
 			    <p>{$ final_result.title $}: {$ final_result.value $}</p>
 			  </div>
 			</div>
@@ -286,25 +297,33 @@
 		    </div>
 		  </div>
 		</div>
-                <div class="action-card__position-bottom">
-                  <p data-ng-if="!isDevice && node.status !== 'New'"><i class="icon icon--info"></i> Last test: Date</p>
-                  <p><a href="" data-ng-if="!isDevice && node.status !== 'New'" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
-                </div>
-              </div>
-              <div class="four-col last-col action-card action-card--positionable u-border--solid">
-                <header>
-                  <h3>Storage</h3>
-                  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h2>
-                </header>
-                <div class="u-padding--bottom" data-ng-repeat="disk in node.disks">
-                  <p>Disk {$ $index+1 $}: {$ (disk.size / 1000 / 1000 / 1000).toFixed(1) $} GB</p>
-                </div>
-                <div class="action-card__position-bottom">
-                  <p data-ng-if="!isDevice && node.status !== 'New'"><i class="icon icon--info"></i> To view disk metrics visit the Storage section</p>
-                  <p><a href="" data-ng-if="!isDevice && node.status !== 'New'" data-ng-click="section.area = 'storage'">See metrics &rsaquo;</a></p>
-                </div>
-              </div>
-            </div>
+		<div class="action-card__position-bottom">
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0">
+		    <span data-maas-script-status="script-status" data-script-status="node.memory_test_status"></span>
+		    {$ node.memory_test_status_tooltip $}
+		  </p>
+		  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory == 0"><i class="icon icon--info"></i> No data recieved</p>
+		</div>
+	      </div>
+	      <div class="four-col last-col action-card action-card--positionable u-border--solid">
+		<header>
+		  <h3>Storage</h3>
+		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h2>
+		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage == 0"><strong>Unknown</strong></h2>		  		  
+		</header>
+		<div class="u-padding--bottom">
+		  <div data-ng-repeat="disk in node.disks">
+		  <p>Disk {$ $index+1 $}: {$ (disk.size / 1000 / 1000 / 1000).toFixed(1) $} GB</p>
+		  </div>
+		</div>
+		<div class="action-card__position-bottom">
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0"><i class="icon icon--info"></i> To view disk metrics visit the Storage section</p>
+		  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>		  
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage == 0"><i class="icon icon--info"></i> No data recieved</p>		  
+		</div>
+	      </div>
+	    </div>
             <div data-ng-if="!isController">
                 <div class="twelve-col u-align--right" data-ng-hide="summary.editing">
                     <button class="button--secondary button--inline"

@@ -223,11 +223,7 @@ class MachineHandler(NodeHandler):
 
         if tooltip == '':
             tooltip = 'No tests have been run.'
-        else:
-            tooltip += (
-                " Go to the machine's hardware test section to see more "
-                "information."
-            )
+
         return tooltip
 
     def _refresh_script_result_cache(self, qs):

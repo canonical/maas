@@ -419,12 +419,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test is pending. Go to the machine's hardware test section "
-            "to see more information.",
+            "One test is pending.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests are pending. Go to the machine's hardware test section "
-            "to see more information." % len(script_result_list),
+            "%s tests are pending." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_tooltip_running(self):
@@ -446,12 +444,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test is running. Go to the machine's hardware test section "
-            "to see more information.",
+            "One test is running.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests are running. Go to the machine's hardware test section "
-            "to see more information." % len(script_result_list),
+            "%s tests are running." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_tooltip_installing(self):
@@ -473,13 +469,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test is installing dependencies. Go to the machine's "
-            "hardware test section to see more information.",
+            "One test is installing dependencies.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests are installing dependencies. Go to the machine's "
-            "hardware test section to see more information." % len(
-                script_result_list),
+            "%s tests are installing dependencies." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_tooltip_passed(self):
@@ -501,12 +494,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has passed. Go to the machine's hardware test section "
-            "to see more information.",
+            "One test has passed.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests have passed. Go to the machine's hardware test section "
-            "to see more information." % len(script_result_list),
+            "%s tests have passed." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_tooltip_failed(self):
@@ -528,12 +519,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has failed. Go to the machine's hardware test section "
-            "to see more information.",
+            "One test has failed.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests have failed. Go to the machine's hardware test section "
-            "to see more information." % len(script_result_list),
+            "%s tests have failed." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_tooltip_timedout(self):
@@ -555,12 +544,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has timed out. Go to the machine's hardware test "
-            "section to see more information.",
+            "One test has timed out.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests have timed out. Go to the machine's hardware test "
-            "section to see more information." % len(script_result_list),
+            "%s tests have timed out." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_tooltip_failed_installing(self):
@@ -582,12 +569,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has failed installing dependencies. Go to the machine's "
-            "hardware test section to see more information.",
+            "One test has failed installing dependencies.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests have failed installing dependencies. Go to the "
-            "machine's hardware test section to see more information." % len(
+            "%s tests have failed installing dependencies." % len(
                 script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
@@ -610,12 +595,10 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test was aborted. Go to the machine's hardware test section "
-            "to see more information.",
+            "One test was aborted.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
-            "%s tests were aborted. Go to the machine's hardware test section "
-            "to see more information." % len(script_result_list),
+            "%s tests were aborted." % len(script_result_list),
             handler.dehydrate_hardware_status_tooltip(script_result_list))
 
     def test_dehydrate_hardware_status_none_run(self):

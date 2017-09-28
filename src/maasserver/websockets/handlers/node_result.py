@@ -102,11 +102,17 @@ class NodeResultHandler(TimestampedModelHandler):
                             "title", key)
                         description = obj.script.results.get(key, {}).get(
                             "description", "")
-                    surfaced = key in obj.script.results
+                    # Only show surfaced results for builtin scripts. Result
+                    # data from the user script is only shown in on the storage
+                    # or test tabs.
+                    surfaced = obj.script.default
                 else:
+                    # Only builtin commissioning scripts don't have an
+                    # associated Script object. If MAAS ever includes result
+                    # data in the builtin commissioning scripts show it.
                     title = key
                     description = ''
-                    surfaced = False
+                    surfaced = True
                 data["results"].append({
                     "name": key,
                     "title": title,
