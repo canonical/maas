@@ -31,6 +31,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         self.lock = lock
         assert isinstance(script, str)
         self.script = script
+        self.with_coverage = False
 
     @abc.abstractmethod
     def id(self):
@@ -54,9 +55,12 @@ class TestScriptBase(metaclass=abc.ABCMeta):
     def extendCommand(self, command):
         """Extend the command (a tuple) with additional arguments.
 
-        By default this ensures that coverage data is collected.
+        If with_coverage is True, coverage data is collected.
         """
-        return ("bin/coverage", "run", "--parallel-mode", *command)
+        if self.with_coverage:
+            return ("bin/coverage", "run", "--parallel-mode", *command)
+        else:
+            return command
 
     def run(self, result):
         with tempfile.NamedTemporaryFile() as log:
@@ -300,6 +304,9 @@ def make_argument_parser(scripts):
         description=description, add_help=False)
     parser.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--with-coverage", dest="with_coverage", action="store_true",
+        default=False)
 
     core_count = os.cpu_count()
 
@@ -390,7 +397,9 @@ def main(args=None):
     args = make_argument_parser(scripts).parse_args(args)
     # Narrow scripts down to the given selectors.
     scripts = (script.select(args.selectors) for script in scripts)
-    scripts = (script for script in scripts if script is not None)
+    scripts = [script for script in scripts if script is not None]
+    for script in scripts:
+        script.with_coverage = args.with_coverage
     suite = unittest.TestSuite(scripts)
     result = args.result_factory(sys.stdout)
     if test(suite, result, args.subprocesses):
