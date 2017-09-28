@@ -969,7 +969,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <div data-ng-show="controller.version">
                             {$ controller.version__short $}
                         </div>
-                        <div data-ng-show="!controller.version">
+                        <div data-ng-show="!controller.version" class="u-text--subtle">
                             Unknown
                             <i class="icon icon--info u-margin--left-tiny tooltip"
                                aria-label="Less than 2.3.0"></i>

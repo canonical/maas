@@ -148,6 +148,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
+            "metadata": {},
             "node_type_display": node.get_node_type_display(),
             "id": node.id,
             "primary_mac": (
@@ -185,6 +186,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "actions",
                 "fqdn",
                 "extra_macs",
+                "metadata",
                 "tags",
                 "primary_mac",
                 "ip_address",
@@ -292,7 +294,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 12,
+            query_10_count, 13,
             "Number of queries has changed; make sure this is expected.")
 
     @transactional

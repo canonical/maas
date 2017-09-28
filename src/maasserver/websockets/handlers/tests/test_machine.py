@@ -221,6 +221,7 @@ class TestMachineHandler(MAASServerTestCase):
             "on_network": node.on_network(),
             "license_key": node.license_key,
             "memory": node.display_memory(),
+            "metadata": {},
             "node_type_display": node.get_node_type_display(),
             "min_hwe_kernel": node.min_hwe_kernel,
             "osystem": node.get_osystem(),
@@ -270,6 +271,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "actions",
                 "architecture",
                 "fqdn",
+                "metadata",
                 "status",
                 "status_code",
                 "pxe_mac",
@@ -1467,7 +1469,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 14,
+            query_10_count, 15,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,

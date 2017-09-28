@@ -55,6 +55,7 @@ def node_prefetch(queryset, *args):
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__space')
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__fabric')
         .prefetch_related('interface_set__vlan__fabric')
+        .prefetch_related('nodemetadata_set')
         .prefetch_related('special_filesystems')
         .prefetch_related('tags')
     )
@@ -119,6 +120,10 @@ class NodeHandler(TimestampedModelHandler):
             tag.name
             for tag in obj.tags.all()
         ]
+        data["metadata"] = {
+            metadata.key: metadata.value
+            for metadata in obj.nodemetadata_set.all()
+        }
         if obj.node_type != NODE_TYPE.DEVICE:
             data["architecture"] = obj.architecture
             data["memory"] = obj.display_memory()

@@ -753,3 +753,15 @@ KEYS_PROTOCOL_TYPE_CHOICES = (
     (KEYS_PROTOCOL_TYPE.LP, "launchpad"),
     (KEYS_PROTOCOL_TYPE.GH, "github"),
 )
+
+
+class NODE_METADATA:
+    # Record metadata using a variant of SNMP OID names. See:
+    #     http://www.ietf.org/rfc/rfc2737.txt
+    # (eg. turn entPhysicalModelName into "physical-model-name").
+    PHYSICAL_HARDWARE_REV = "physical-hardware-rev"
+    PHYSICAL_MFG_NAME = "physical-mfg-name"
+    PHYSICAL_MODEL_NAME = "physical-model-name"
+    PHYSICAL_NAME = "physical-name"
+    PHYSICAL_SERIAL_NUM = "physical-serial-num"
+    VENDOR_NAME = "vendor-name"

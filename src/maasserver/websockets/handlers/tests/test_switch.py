@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import (
+    NODE_METADATA,
+    NODE_TYPE,
+)
 from maasserver.exceptions import NodeActionError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -62,6 +65,22 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         self.assertItemsEqual(
             [device.system_id, machine.system_id],
             [result['system_id'] for result in handler.list({})])
+
+    @transactional
+    def test_list_switches_includes_metadata(self):
+        owner = factory.make_User()
+        handler = SwitchHandler(owner, {})
+        machine = factory.make_Machine(owner=owner)
+        metadata = {
+            NODE_METADATA.VENDOR_NAME: "Canonical",
+            NODE_METADATA.PHYSICAL_MODEL_NAME: "Cloud-in-a-box"
+        }
+        for key, value in metadata.items():
+            machine.set_metadata(key, value)
+        factory.make_Switch(node=machine)
+        self.assertItemsEqual(
+            [metadata],
+            [result['metadata'] for result in handler.list({})])
 
     @transactional
     def test_list_ignores_nodes_that_arent_switches(self):

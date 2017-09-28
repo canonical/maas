@@ -15,6 +15,7 @@ import math
 import re
 
 from lxml import etree
+from maasserver.enum import NODE_METADATA
 from maasserver.models import Fabric
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import (
@@ -476,11 +477,8 @@ def add_switch(node, vendor, model):
     """Add Switch object representing the switch hardware."""
     switch, created = Switch.objects.get_or_create(node=node)
     logger.info("%s: detected as a switch." % node.hostname)
-    node.set_metadata(key="vendor-name", value=vendor)
-    # Record Switch metadata using a variant of SNMP OID names
-    # taken from http://www.ietf.org/rfc/rfc2737.txt (eg. turn
-    # entPhysicalModelName into "physical-model-name").
-    node.set_metadata(key="physical-model-name", value=model)
+    node.set_metadata(key=NODE_METADATA.VENDOR_NAME, value=vendor)
+    node.set_metadata(key=NODE_METADATA.PHYSICAL_MODEL_NAME, value=model)
     return switch
 
 
@@ -494,10 +492,10 @@ def update_node_fruid_metadata(node, output: bytes, exit_status):
     # to SNMP OID-like metadata describing physical nodes (see
     # http://www.ietf.org/rfc/rfc2737.txt).
     key_name_map = {
-        "Product Name": "physical-name",
-        "Product Serial Number": "physical-serial-num",
-        "Product Version": "physical-hardware-rev",
-        "System Manufacturer": "physical-mfg-name",
+        "Product Name": NODE_METADATA.PHYSICAL_NAME,
+        "Product Serial Number": NODE_METADATA.PHYSICAL_SERIAL_NUM,
+        "Product Version": NODE_METADATA.PHYSICAL_HARDWARE_REV,
+        "System Manufacturer": NODE_METADATA.PHYSICAL_MFG_NAME,
     }
     info = data.get("Information", {})
     for fruid_key, node_key in key_name_map.items():
