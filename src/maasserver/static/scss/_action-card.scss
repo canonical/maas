@@ -7,3 +7,9 @@
     bottom: 0;
   }
 }
+
+.action-card {
+  &.is-error {
+    border-top: 3px solid $error;
+  }
+}

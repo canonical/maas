@@ -250,7 +250,7 @@
               </p>
             </div>	    
             <div class="twelve-col u-equal-height" data-ng-if="!isDevice">
-	      <div class="four-col action-card action-card--positionable u-border--solid">
+	      <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status }">
 		<header>
 		  <h3>CPU</h3>
 		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count > 0"><strong>{$ node.cpu_count $} cores</strong></h2>
@@ -278,7 +278,7 @@
 		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0"><i class="icon icon--info"></i> No data recieved</p>
 		</div>
 	      </div>
-	      <div class="four-col action-card action-card--positionable u-border--solid">
+	      <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status }">
 		<header>
 		  <h3 >Memory</h3>
 		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory > 0"><strong>{$ node.memory $} GiB</strong></h2>
