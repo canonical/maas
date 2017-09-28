@@ -26,16 +26,10 @@
                 <a href="" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner</a>
             </th>
             <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Cores</a>
+                <a href="" data-ng-click="sortTable('model')" data-ng-class="{'is-sorted': table.predicate=== 'model', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Model</a>
             </th>
             <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">RAM (GiB)</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('disks')" data-ng-class="{'is-sorted': table.predicate === 'disks', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Disks</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Storage (GB)</a>
+                <a href="" data-ng-click="sortTable('serial')" data-ng-class="{'is-sorted': table.predicate === 'serial', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Serial</a>
             </th>
         </tr>
     </thead>
@@ -60,10 +54,8 @@
             <td class="table-col--3 u-display--desktop"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-display--desktop"></i></td>
             <td class="status u-text--truncate" aria-label="Status">{$ getStatusText(node) $} <span class="u-display--mobile"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i></span></td>
             <td class="table-col--10" aria-label="Owner">{$ node.owner $}</td>
-            <td class="u-align--right u-display--desktop" aria-label="CPU">{$ node.cpu_count $}</td>
-            <td class="u-align--right u-display--desktop" aria-label="Memory">{$ node.memory $}</td>
-            <td class="u-align--right u-display--desktop" aria-label="Disks">{$ node.physical_disk_count $}</td>
-            <td class="u-align--right u-display--desktop" aria-label="Storage">{$ node.storage $}</td>
+            <td class="u-align--right u-display--desktop" aria-label="Model">{$ node.metadata['physical-mfg-name'] + ' ' + node.metadata['physical-model-name']$}</td>
+            <td class="u-align--right u-display--desktop" aria-label="Serial">{$ node.metadata['physical-serial-num'] $}</td>
         </tr>
     </tbody>
 </table>

@@ -15,6 +15,7 @@ from fixtures import FakeLogger
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_METADATA,
 )
 from maasserver.fields import MAC
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -550,10 +551,10 @@ class TestUpdateFruidMetadata(MAASServerTestCase):
 
         metadata = node.get_metadata()
         self.assertEqual({
-            "physical-name": "Wedge100ACFO",
-            "physical-serial-num": "AH19058615",
-            "physical-hardware-rev": "1",
-            "physical-mfg-name": "Accton",
+            NODE_METADATA.PHYSICAL_MODEL_NAME: "Wedge100ACFO",
+            NODE_METADATA.PHYSICAL_SERIAL_NUM: "AH19058615",
+            NODE_METADATA.PHYSICAL_HARDWARE_REV: "1",
+            NODE_METADATA.PHYSICAL_MFG_NAME: "Accton",
         }, metadata)
 
 

@@ -492,7 +492,7 @@ def update_node_fruid_metadata(node, output: bytes, exit_status):
     # to SNMP OID-like metadata describing physical nodes (see
     # http://www.ietf.org/rfc/rfc2737.txt).
     key_name_map = {
-        "Product Name": NODE_METADATA.PHYSICAL_NAME,
+        "Product Name": NODE_METADATA.PHYSICAL_MODEL_NAME,
         "Product Serial Number": NODE_METADATA.PHYSICAL_SERIAL_NUM,
         "Product Version": NODE_METADATA.PHYSICAL_HARDWARE_REV,
         "System Manufacturer": NODE_METADATA.PHYSICAL_MFG_NAME,
