@@ -1231,6 +1231,22 @@ def register_websocket_triggers():
             'switch_delete_notify', 'switch_delete', 'OLD.node_id'))
     register_triggers("maasserver_switch", "switch", fields=('nos_driver',))
 
+    # NodeMetadata notifications
+    register_procedure(
+        render_node_related_notification_procedure(
+            'nodemetadata_link_notify', 'NEW.node_id'))
+    register_procedure(
+        render_node_related_notification_procedure(
+            'nodemetadata_update_notify', 'NEW.node_id'))
+    register_procedure(
+        render_node_related_notification_procedure(
+            'nodemetadata_unlink_notify', 'OLD.node_id'))
+    register_triggers(
+        "maasserver_nodemetadata",
+        "nodemetadata",
+        events=EVENTS_LUU
+    )
+
     # Config table
     register_procedure(
         render_notification_procedure(

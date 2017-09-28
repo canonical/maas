@@ -583,6 +583,88 @@ class TestNodeTagListener(
             yield listener.stopService()
 
 
+class TestNodeMetadataTriggers(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_node_tags table."""
+
+    scenarios = (
+        ('machine', {
+            'params': {'node_type': NODE_TYPE.MACHINE},
+            'listener': 'machine',
+        }),
+        ('device', {
+            'params': {'node_type': NODE_TYPE.DEVICE},
+            'listener': 'device',
+        }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+        }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+        }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+        }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.set_node_metadata, node, "foo", "bar")
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield deferToDatabase(self.set_node_metadata, node, "foo", "bar")
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.set_node_metadata, node, "foo", "baz")
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield deferToDatabase(self.set_node_metadata, node, "foo", "bar")
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_node_metadata, node, "foo")
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
 class TestDeviceWithParentTagListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on

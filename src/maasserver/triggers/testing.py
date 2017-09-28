@@ -36,6 +36,7 @@ from maasserver.models.node import (
     RackController,
     RegionController,
 )
+from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
@@ -337,6 +338,14 @@ class TransactionalHelpersMixin:
     def add_node_to_tag(self, node, tag):
         node.tags.add(tag)
         node.save()
+
+    @transactional
+    def set_node_metadata(self, node, key, value):
+        node.set_metadata(key, value)
+
+    @transactional
+    def delete_node_metadata(self, node, key):
+        NodeMetadata.objects.filter(node=node, key=key).delete()
 
     @transactional
     def remove_node_from_tag(self, node, tag):
