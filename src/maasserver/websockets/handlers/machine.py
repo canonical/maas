@@ -215,7 +215,7 @@ class MachineHandler(NodeHandler):
             if tooltip != '':
                 tooltip += ' '
             if len_scripts == 1:
-                tooltip += 'One test '
+                tooltip += '1 test '
             else:
                 tooltip += '%s tests ' % len_scripts
             tooltip += '%s %s.' % (

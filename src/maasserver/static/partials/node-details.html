@@ -270,7 +270,7 @@
 		  </div>
 		</div>
 		<div class="action-card__position-bottom">
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu > 0">
+		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0">
 		    <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status"></span>
 		    {$ node.cpu_test_status_tooltip $}
 		  </p>

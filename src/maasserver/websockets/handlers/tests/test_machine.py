@@ -419,7 +419,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test is pending.",
+            "1 test is pending.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests are pending." % len(script_result_list),
@@ -444,7 +444,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test is running.",
+            "1 test is running.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests are running." % len(script_result_list),
@@ -469,7 +469,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test is installing dependencies.",
+            "1 test is installing dependencies.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests are installing dependencies." % len(script_result_list),
@@ -494,7 +494,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has passed.",
+            "1 test has passed.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests have passed." % len(script_result_list),
@@ -519,7 +519,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has failed.",
+            "1 test has failed.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests have failed." % len(script_result_list),
@@ -544,7 +544,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has timed out.",
+            "1 test has timed out.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests have timed out." % len(script_result_list),
@@ -569,7 +569,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test has failed installing dependencies.",
+            "1 test has failed installing dependencies.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests have failed installing dependencies." % len(
@@ -595,7 +595,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_result_list.append(script_result)
 
         self.assertEquals(
-            "One test was aborted.",
+            "1 test was aborted.",
             handler.dehydrate_hardware_status_tooltip([script_result_list[0]]))
         self.assertEquals(
             "%s tests were aborted." % len(script_result_list),
