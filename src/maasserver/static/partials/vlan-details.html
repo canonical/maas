@@ -294,32 +294,36 @@
     </section>
 
     <section class="row">
-        <div class="wrapper--inner">
-            <div class="twelve-col">
-                <h2 class="u-display--inline-block">DHCP</h2>
-                <h4 data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack" class="u-display--inline-block u-margin--left u-text--off"> High availability</h4>
-            </div>
-            <div class="twelve-col">
-                <div class="six-col">
-                    <dl>
-                        <dt class="two-col">Status</dt>
-                        <dd class="four-col last-col">{$ vlanDetails.getDHCPStatus() $}</dd>
-                        <div data-ng-if="vlanDetails.vlan.external_dhcp">
-                            <dt class="two-col">External DHCP</dt>
-                            <dd class="four-col last-col">{$ vlanDetails.vlan.external_dhcp $}
-                                <i class="icon icon--warning tooltip" aria-label="Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended."></i>
-                            </dd>
-                        </div>
-                        <div data-ng-if="vlanDetails.primaryRack">
-                            <dt class="two-col">Primary controller <span class="icon icon--help tooltip" aria-label="The rack controller where DHCP service runs on."></span></dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
-                        </div>
-                        <div data-ng-if="vlanDetails.secondaryRack">
-                            <dt class="two-col">Secondary controller <span class="icon icon--help tooltip" aria-label="The rack controller that will take over DHCP services if the primary fails."></span></dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
-                        </div>
-                    </dl>
-                </div>
+      <div class="wrapper--inner">
+        <div class="twelve-col">
+            <h2 class="u-display--inline-block">DHCP</h2>
+            <h4 data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack" class="u-display--inline-block u-margin--left u-text--off"> High availability</h4>
+        </div>
+        <div class="twelve-col">
+            <div class="six-col">
+                <dl>
+                    <dt class="two-col">Status</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.getDHCPStatus() $}</dd>
+                    <div data-ng-if="vlanDetails.vlan.external_dhcp">
+                        <dt class="two-col">External DHCP</dt>
+                        <dd class="four-col last-col">{$ vlanDetails.vlan.external_dhcp $}
+                            <i class="icon icon--warning tooltip" aria-label="Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended."></i>
+                        </dd>
+                    </div>
+                    <div data-ng-if="vlanDetails.primaryRack">
+                        <dt class="two-col">Primary controller <span class="icon icon--help tooltip" aria-label="The rack controller where DHCP service runs on."></span></dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
+                    </div>
+                    <div data-ng-if="vlanDetails.secondaryRack">
+                        <dt class="two-col">Secondary controller <span class="icon icon--help tooltip" aria-label="The rack controller that will take over DHCP services if the primary fails."></span></dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
+                    </div>
+                </dl>
             </div>
         </div>
+        <div class="twelve-col">
+          <h2>Reserved ranges</h2>
+        </div>
+        <maas-ip-ranges vlan="vlanDetails.vlan"></maas-ip-ranges>
+      </div>
     </section>
     <section class="row">
         <div class="wrapper--inner">

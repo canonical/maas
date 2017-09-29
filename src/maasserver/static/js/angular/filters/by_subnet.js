@@ -34,7 +34,7 @@ angular.module('MAAS').filter('filterBySubnetOrVlan', function() {
         var filtered = [];
         var id;
         var key = null;
-        if(angular.isDefined(subnet) && subnet !== null ) {
+        if(angular.isDefined(subnet) && subnet !== null) {
             key = 'subnet';
             if(angular.isObject(subnet)) {
                 id = subnet.id;
