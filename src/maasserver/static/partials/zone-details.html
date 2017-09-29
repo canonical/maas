@@ -1,0 +1,84 @@
+<div data-ng-hide="loaded">
+    <header class="page-header" sticky media-query="min-width: 769px">
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">Loading...</h1>
+        </div>
+    </header>
+</div>
+<div class="ng-hide" data-ng-show="loaded">
+    <header class="page-header" sticky media-query="min-width: 769px">
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">Physical zone: {$ zone.name $}</h1>
+            <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultZone() && !loading">
+                <button class="button--destructive button--inline"
+                    data-ng-click="deleteButton()"
+                    data-ng-hide="confirmingDelete">Delete zone</button>
+            </div>
+            <div class="page-header__dropdown" data-ng-class="{ 'is-open': confirmingDelete }">
+                <section class="page-header__section ng-hide" data-ng-hide="canBeDeleted()">
+                    <p class="page-header__message page-header__message--error">
+                        Zone cannot be deleted because it is the default zone.
+                    </p>
+                    <div class="page-header__controls">
+                        <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    </div>
+                </section>
+                <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
+                    <p class="page-header__message page-header__message--error">
+                        Are you sure you want to delete this zone?
+                    </p>
+                    <div class="page-header__controls">
+                        <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete zone</button>
+                    </div>
+                </section>
+                <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && error">
+                    <p class="page-header__message page-header__message--error">{$ error $}</p>
+                    <div class="page-header__controls">
+                        <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </header>
+    <div data-ng-show="!loading">
+        <section class="row">
+            <div class="wrapper--inner">
+                <div class="twelve-col">
+                  <h2 class="u-float--left">Zone summary</h2>
+                  <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
+                </div>
+                <div class="twelve-col" data-ng-if="editSummary != true">
+                    <dl class="six-col">
+                        <dt class="two-col">Name</dt>
+                        <dd class="four-col last-col">{$ zone.name $}</dd>
+                        <dt class="two-col">Description</dt>
+                        <dd class="four-col last-col">{$ zone.description $}&nbsp;</dd>
+                        <dt class="two-col">Machines</dt>
+                        <dd class="four-col last-col"><a href="#/nodes?tab=nodes&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a></dd>
+                    </dl>
+                </div>
+                <maas-obj-form obj="zone" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="zoneManager" data-ng-disabled="!isSuperUser()">
+                    <fieldset class="form__fieldset six-col">
+                        <maas-obj-field type="text" key="name" label="Name" placeholder="Zone name"
+                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                        <maas-obj-field type="textarea" key="description" label="Description" placeholder="Zone description"
+                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                        <dl>
+                            <dt class="two-col">Machines</dt>
+                            <dd class="four-col last-col">
+                                <a href="#/nodes?tab=nodes&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
+                            </dd>
+                        </dl>
+                    </fieldset>
+                    <div class="twelve-col u-align--right">
+                        <button class="button--base button--inline"
+                           data-ng-click="exitEditSummary()">Cancel</button>
+                        <button class="button--positive button--inline" maas-obj-save>Save summary</button>
+                    </div>
+                </maas-obj-form>
+            </div>
+        </section>
+    </div>
+</div>

@@ -135,6 +135,17 @@ angular.module('MAAS',
                     templateUrl: versionedPath(
                         'static/partials/settings.html'),
                     controller: 'SettingsController'
+                }).
+                when('/zone/:zone_id', {
+                    templateUrl: versionedPath(
+                        'static/partials/zone-details.html'),
+                    controller: 'ZoneDetailsController'
+                }).
+                when('/zones', {
+                    templateUrl: versionedPath(
+                        'static/partials/zones-list.html'),
+                    controller: 'ZonesListController',
+                    reloadOnSearch: false
                 });
             if(MAAS_config.superuser) {
                 // Only superuser's can access the dashboard at the moment.

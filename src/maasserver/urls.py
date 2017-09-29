@@ -53,13 +53,6 @@ from maasserver.views.settings_test_scripts import (
     TestScriptCreate,
     TestScriptDelete,
 )
-from maasserver.views.zones import (
-    ZoneAdd,
-    ZoneDelete,
-    ZoneEdit,
-    ZoneListView,
-    ZoneView,
-)
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -157,21 +150,6 @@ urlpatterns += [
         r'^license-key/add/$',
         LicenseKeyCreate.as_view(),
         name='license-key-add'),
-]
-
-# Zone views.
-urlpatterns += [
-    url(r'^zones/$', ZoneListView.as_view(), name='zone-list'),
-    url(
-        r'^zones/(?P<name>[\w\-]+)/view/$', ZoneView.as_view(),
-        name='zone-view'),
-    adminurl(
-        r'^zones/(?P<name>[\w\-]+)/edit/$', ZoneEdit.as_view(),
-        name='zone-edit'),
-    adminurl(
-        r'^zones/(?P<name>[\w\-]+)/delete/$', ZoneDelete.as_view(),
-        name='zone-del'),
-    adminurl(r'^zones/add/$', ZoneAdd.as_view(), name='zone-add'),
 ]
 
 # API URLs. If old API requested, provide error message directing to new API.

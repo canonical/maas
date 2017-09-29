@@ -168,6 +168,8 @@ MERGE_VIEWS = {
             "js/angular/controllers/subnet_details.js",
             "js/angular/controllers/vlan_details.js",
             "js/angular/controllers/space_details.js",
+            "js/angular/controllers/zone_details.js",
+            "js/angular/controllers/zones_list.js",
         ]
     },
     "yui.js": {

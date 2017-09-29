@@ -1,0 +1,70 @@
+<header class="page-header" sticky media-query="min-width: 769px">
+    <div class="wrapper--inner">
+        <h1 class="page-header__title">Zones</h1>
+        <p class="page-header__status" data-ng-show="!loading"><ng-pluralize data-ng-hide="loading" count="zones.length"
+                      when="{'one': '{$ zones.length $} zone available', 'other': '{$ zones.length $} zones available '}"></ng-pluralize></p>
+        <div class="page-header__controls" data-ng-show="isSuperUser()">
+            <button class="button--secondary button--inline"
+                data-ng-click="addZone()"
+                data-ng-hide="action.open">Add zone</button>
+            <button class="button--secondary button--inline"
+                data-ng-click="closeZone()"
+                data-ng-show="action.open">Cancel add zone</button>
+        </div>
+        <div class="page-header__dropdown is-open" data-ng-if="action.open">
+            <div class="page-header__section twelve-col u-margin--bottom-none">
+                <maas-obj-form obj="action.obj" manager="zoneManager" manager-method="createItem"
+                    inline="true" save-on-blur="false" after-save="closeZone">
+                    <fieldset class="form__fieldset">
+                        <maas-obj-field
+                            type="text" key="name" label="Name (required)" subtle="false"
+                            placeholder="Name (required)"></maas-obj-field>
+                    </fieldset>
+                    <div class="page-header__controls">
+                        <button class="button--base button--inline" data-ng-click="closeZone()">Cancel</button>
+                        <button class="button--positive button--inline" maas-obj-save>Add zone</button>
+                    </div>
+                </maas-obj-form>
+            </div>
+        </div>
+    </div>
+</header>
+<section class="row">
+    <div class="wrapper--inner">
+        <div class="twelve-col ng-hide" data-ng-show="!loading">
+        <h2>Physical zones <span class="icon icon--help tooltip tooltip--right"
+              aria-label="A representation of a grouping of nodes, typically by physical location.">
+        </span></h2>
+            <!-- Spaces grouped table -->
+            <table class="table-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th class="table__column--20">Name</th>
+                        <th class="table__column--20">Description</th>
+                        <th class="table__column--20">Machines</th>
+                        <th class="table__column--15">Devices</th>
+                        <th class="table__column--15">Controllers</th>
+                    </tr>
+                </thead>
+                <tbody vs-repeat vs-scroll-parent="window">
+                    <tr class="table-listing__row" data-ng-repeat="zone in zones">
+                        <td class="table-listing__cell table__column--20" aria-label="Name">
+                            <a href="#/zone/{$ zone.id $}">{$ zone.name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--20" aria-label="Description">
+                            {$ zone.description $}
+                        </td>
+                        <td class="table-listing__cell table__column--20" aria-label="Machines">
+                            <a href="#/nodes?tab=nodes&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--30" aria-label="Devices">
+                            <a href="#/nodes?tab=devices&query=zone:({$ zone.name $})">{$ zone.devices_count $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--30" aria-label="Controllers">
+                            <a href="#/nodes?tab=controllers&query=zone:({$ zone.name $})">{$ zone.controllers_count $}</a>
+                        </td>
+                    </tr>
+                </tbody>
+         </table>
+        </div>
+</section>

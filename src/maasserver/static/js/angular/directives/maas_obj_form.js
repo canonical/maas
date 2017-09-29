@@ -255,6 +255,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                 }
             });
 
+
             // Pre-process the updatedObj if one is defined.
             if(angular.isFunction(this.scope.preProcess)) {
                 updatedObj = this.scope.preProcess(updatedObj, keys);
