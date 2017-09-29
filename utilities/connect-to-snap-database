@@ -1,0 +1,19 @@
+#!/bin/bash
+usage="$(basename "$0") [-h] [--help]
+
+Connect psql to the database used by the installed MAAS snap.
+
+If you have MAAS installed as a snap, this script will read the
+configuration file and connect the the snap's postgres database.
+
+It only works if the installed snap is configured to run the database server."
+
+if [ $1 == "-h" -o $1 == "--help" ];
+then
+    echo "$usage"
+    exit 1
+fi
+
+
+export PGPASS=$(sudo cat /var/snap/maas/current/regiond.conf | grep database_pass | sed 's/database_pass: \(.*\)/\1/')
+sudo psql -U maas -h /var/snap/maas/common/db -d maasdb
