@@ -60,26 +60,31 @@
                     <dt class="two-col">CIDR</dt>
                         <dd class="four-col last-col">{$ subnet.cidr $}</dd>
                     <dt class="two-col">Gateway IP</dt>
-                        <dd class="four-col last-col">{$ subnet.gateway_ip $}</dd>
+                        <dd class="four-col last-col" data-ng-if="subnet.gateway_ip">{$ subnet.gateway_ip $}</dd>
+                        <dd class="four-col last-col" data-ng-if="!subnet.gateway_ip">&nbsp;</dd>
                     <dt class="two-col">DNS</dt>
                         <dd class="four-col last-col" data-ng-if="subnet.dns_servers">{$ subnet.dns_servers $}</dd>
-                        <dd class="four-col last-col" data-ng-if="!subnet.dns_servers">(undefined)</dd>
+                        <dd class="four-col last-col" data-ng-if="!subnet.dns_servers">&nbsp;</dd>
                     <dt class="two-col">Description</dt>
                         <dd class="four-col last-col" data-ng-if="subnet.description">{$ subnet.description $}</dd>
-                        <dd class="four-col last-col" data-ng-if="!subnet.description">(undefined)</dd>
+                        <dd class="four-col last-col" data-ng-if="!subnet.description">&nbsp;</dd>
                 </dl>
                 <dl class="six-col last-col">
                     <dt class="two-col">Managed allocation
-                        <i class="icon icon--info tooltip u-margin--left-small" aria-label="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration."></i></dt>
+                        <i data-ng-if="subnet.managed == false" class="icon icon--info tooltip u-margin--left-small"
+                           aria-label="MAAS allocates IP addresses only from&#xa;the reserved ranges on this subnet."></i>
+                        <i data-ng-if="subnet.managed == true" class="icon icon--info tooltip u-margin--left-small"
+                           aria-label="MAAS allocates IP addresses from&#xa;this subnet, excluding the reserved&#xa;and dynamic ranges."></i>
+                    </dt>
                         <dd class="four-col last-col">
-                            <span data-ng-if="subnet.managed == false" class="u-text--sublet">Disabled</span>
-                            <span data-ng-if="subnet.managed == true" class="u-text--success">Active</span>
+                            <span data-ng-if="subnet.managed == false" class="u-text--subtle">Disabled</span>
+                            <span data-ng-if="subnet.managed == true" class="u-text--success">Enabled</span>
                         </dd>
                     <dt class="two-col">Active discovery
                         <i class="icon icon--info tooltip u-margin--left-small" aria-label="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></i></dt>
                         <dd class="four-col last-col">
                             <span data-ng-if="subnet.active_discovery == false" class="u-text--subtle">Disabled</span>
-                            <span data-ng-if="subnet.active_discovery == true" class="u-text--success">Active</span>
+                            <span data-ng-if="subnet.active_discovery == true" class="u-text--success">Enabled</span>
                         </dd>
                     <dt class="two-col">Fabric</dt>
                         <dd class="four-col last-col">{$ subnet.fabric_name $}</dd>
@@ -118,6 +123,19 @@
                                     label-info="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration.">
 
                     </maas-obj-field>
+                    <span data-ng-if="subnet.$maasForm.getValue('managed') != subnet.managed">
+                        <div class="form__group-label two-col">&nbsp;</div>
+                        <div class="form__group-input three-col last-col">
+                            <span data-ng-if="subnet.$maasForm.getValue('managed') == false" class="u-text--subtle">
+                                <i class="icon icon--warning"></i>
+                                <b>Warning:</b> MAAS will now start allocating IP addresses from reserved ranges. If a reserved range has been defined to prevent MAAS from allocating IP addresses, this behavior will change.
+                            </span>
+                            <span data-ng-if="subnet.$maasForm.getValue('managed') == true" class="u-text--subtle">
+                                <i class="icon icon--warning"></i>
+                                <b>Warning:</b> MAAS will now allocate IP addresses from the entire subnet, excluding any reserved ranges.
+                            </span>
+                        </div>
+                    </span>
                     <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
                         label-width="two" input-width="three" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
                     <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
@@ -240,7 +258,7 @@
                             </maas-obj-form>
                         </div>
                         <div class="table__row" data-ng-if="subnetStaticRoutes.length === 0 && !newStaticRoute">
-                            <div class="table__data table-col-100">No static routes have been added to this subnet.</div>
+                            <div class="table__data table-col-100 u-text--subtle">No static routes have been added to this subnet.</div>
                         </div>
                         <div class="table__row is-active" data-ng-if="newStaticRoute">
                             <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
@@ -289,7 +307,7 @@
                     </main>
                 </div>
                 <div data-ng-if="isSuperUser() && !newStaticRoute">
-                    <button class="button--secondary button--inline" data-ng-click="addStaticRoute()">Add static route</a>
+                    <button class="button--secondary button--inline" data-ng-click="addStaticRoute()">Add static route</button>
                 </div>
             </div>
         </div>
