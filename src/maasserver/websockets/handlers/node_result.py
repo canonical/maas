@@ -156,14 +156,21 @@ class NodeResultHandler(TimestampedModelHandler):
             for obj in queryset
         ]
 
-    def get_result_data(self, script_id, data_type):
+    def get_result_data(self, params):
         """Return the raw script result data."""
-        script_result = ScriptResult.objects.get(script__id=script_id)
-        if data_type == 'output':
-            return script_result.output
+        id = params.get('id')
+        try:
+            script_result = ScriptResult.objects.get(id=id)
+        except ScriptResult.DoesNotExist:
+            return "Unknown ScriptResult id %s" % id
+        data_type = params.get('data_type', 'combined')
+        if data_type == 'combined':
+            return script_result.output.decode().strip()
         elif data_type == 'stdout':
-            return script_result.stdout
+            return script_result.stdout.decode().strip()
         elif data_type == 'stderr':
-            return script_result.stderr
+            return script_result.stderr.decode().strip()
         elif data_type == 'result':
-            return script_result.result
+            return script_result.result.decode().strip()
+        else:
+            return "Unknown data_type %s" % data_type

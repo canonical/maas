@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeResultController.
@@ -22,11 +22,13 @@ describe("NodeResultController", function() {
     // Load the required dependencies for the NodeResultController and
     // mock the websocket connection.
     var MachinesManager, ControllersManager, RegionConnection;
-    var ManagerHelperService, ErrorService, webSocket;
+    var NodeResultsManagerFactory, ManagerHelperService;
+    var ErrorService, webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
         ControllersManager = $injector.get("ControllersManager");
         RegionConnection = $injector.get("RegionConnection");
+        NodeResultsManagerFactory = $injector.get("NodeResultsManagerFactory");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
 
@@ -38,8 +40,8 @@ describe("NodeResultController", function() {
     // Make a fake result.
     function makeResult() {
         return {
-            name: makeName("name"),
-            output: makeName("data")
+            id: makeInteger(0, 1000),
+            name: makeName("name")
         };
     }
 
@@ -47,17 +49,7 @@ describe("NodeResultController", function() {
     function makeNode() {
         var node = {
             system_id: makeName("system_id"),
-            fqdn: makeName("fqdn"),
-            commissioning_results: [
-                makeResult(),
-                makeResult(),
-                makeResult()
-            ],
-            testing_results: [
-                makeResult(),
-                makeResult(),
-                makeResult()
-            ]
+            fqdn: makeName("fqdn")
         };
         MachinesManager._items.push(node);
         ControllersManager._items.push(node);
@@ -68,9 +60,10 @@ describe("NodeResultController", function() {
     var node, $routeParams;
     beforeEach(function() {
         node = makeNode();
+        script_result = makeResult();
         $routeParams = {
-            system_id: node.system_id,
-            filename: node.commissioning_results[0].name
+            id: script_result.id,
+            system_id: node.system_id
         };
     });
 
@@ -94,6 +87,7 @@ describe("NodeResultController", function() {
             $location: $location,
             MachinesManager: MachinesManager,
             ControllersManager: ControllersManager,
+            NodeResultsManagerFactory: NodeResultsManagerFactory,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -108,8 +102,10 @@ describe("NodeResultController", function() {
     it("sets the initial $scope values", function() {
         var controller = makeController();
         expect($scope.loaded).toBe(false);
+        expect($scope.resultLoaded).toBe(false);
         expect($scope.node).toBeNull();
-        expect($scope.filename).toBe($routeParams.filename);
+        expect($scope.output).toBe('combined');
+        expect($scope.result).toBeNull();
         expect($scope.nodesManager).toBe(MachinesManager);
         expect($scope.type_name).toBe('machine');
     });
@@ -118,8 +114,10 @@ describe("NodeResultController", function() {
         $routeParams.type = 'controller';
         var controller = makeController();
         expect($scope.loaded).toBe(false);
+        expect($scope.resultLoaded).toBe(false);
         expect($scope.node).toBeNull();
-        expect($scope.filename).toBe($routeParams.filename);
+        expect($scope.output).toBe('combined');
+        expect($scope.result).toBeNull();
         expect($scope.nodesManager).toBe(ControllersManager);
         expect($scope.type_name).toBe('controller');
     });
@@ -185,46 +183,70 @@ describe("NodeResultController", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         MachinesManager._activeItem = node;
+        $scope.result = script_result;
 
         defer.resolve();
         $rootScope.$digest();
 
         node.fqdn = makeName("fqdn");
         $rootScope.$digest();
-        expect($rootScope.title).toBe(
-            node.fqdn + " - " + $routeParams.filename);
+        expect($rootScope.title).toBe(node.fqdn + " - " + script_result.name);
     });
 
-    describe("getResultData", function() {
+    describe("get_result_data", function() {
 
-        it("returns empty string if node not loaded", function() {
-            var controller = makeController();
-            expect($scope.getResultData()).toBe("");
+        it("sets initial variables", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            var output = makeName("output");
+            MachinesManager._activeItem = node;
+            $scope.result = script_result;
+
+            defer.resolve();
+            $rootScope.$digest();
+            $scope.get_result_data(output);
+
+            expect($scope.output).toBe(output);
+            expect($scope.data).toBe("Loading...");
         });
 
-        it("returns data from result as stripped string", function() {
+        it("returns result", function() {
+            var defer = $q.defer();
             var controller = makeController();
+            var output = makeName("output");
+            var data = makeName("data");
             $scope.node = node;
-            node.commissioning_results[0].output = " \n\nMAAS rocks. \n\n ";
-            expect($scope.getResultData()).toBe("MAAS rocks.");
+            $scope.result = script_result;
+            var nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node.system_id);
+            spyOn(nodeResultsManager, "get_result_data").and.returnValue(
+                defer.promise);
+
+            $scope.get_result_data(output);
+            defer.resolve(data);
+            $rootScope.$digest();
+
+            expect($scope.output).toBe(output);
+            expect($scope.data).toBe(data);
         });
 
-        it("returns 'Empty file.` for empty data from result", function() {
+        it("returns empty file when empty", function() {
+            var defer = $q.defer();
             var controller = makeController();
+            var output = makeName("output");
             $scope.node = node;
-            node.commissioning_results[0].output = "";
-            expect($scope.getResultData()).toBe("Empty file.");
-        });
+            $scope.result = script_result;
+            var nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node.system_id);
+            spyOn(nodeResultsManager, "get_result_data").and.returnValue(
+                defer.promise);
 
-        it("calls $location.path back to node details if result missing",
-            function() {
-                $routeParams.filename = makeName("wrong_name");
-                var controller = makeController();
-                $scope.node = node;
-                spyOn($location, "path");
-                expect($scope.getResultData()).toBe("");
-                expect($location.path).toHaveBeenCalledWith(
-                    "/node/" + node.system_id);
-            });
+            $scope.get_result_data(output);
+            defer.resolve("");
+            $rootScope.$digest();
+
+            expect($scope.output).toBe(output);
+            expect($scope.data).toBe("Empty file.");
+        });
     });
 });

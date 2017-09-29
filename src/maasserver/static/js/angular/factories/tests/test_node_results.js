@@ -85,18 +85,16 @@ describe("NodeResultsManagerFactory", function() {
 
         it("calls NodeResultHandler.get_result_data", function(done) {
             var script_result = makescriptresult();
-            var script_id = script_result.script.id;
+            var id = script_result.script.id;
             var data_type = "output";
             webSocket.returnData.push(makeFakeResponse(script_result.output));
             NodeResultsManager = NodeResultsManagerFactory.getManager(
                         makeName("system_id"));
-            NodeResultsManager.get_result_data(
-                script_id, data_type).then(function() {
-                    var sentObject = angular.fromJson(webSocket.sentData[0]);
-                    expect(sentObject.method).toBe(
-                        "noderesult.get_result_data");
-                    expect(sentObject.params.script_id).toEqual(script_id);
-                    expect(sentObject.params.data_type).toEqual(data_type);
+            NodeResultsManager.get_result_data(id, data_type).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("noderesult.get_result_data");
+                expect(sentObject.params.id).toEqual(id);
+                expect(sentObject.params.data_type).toEqual(data_type);
                 done();
             });
         });

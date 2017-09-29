@@ -43,7 +43,7 @@ angular.module('MAAS').factory(
             script_id, data_type) {
             var method = this._handler + ".get_result_data";
             var params = {
-                script_id: script_id,
+                id: script_id,
                 data_type: data_type
             };
             return RegionConnection.callMethod(method, params);

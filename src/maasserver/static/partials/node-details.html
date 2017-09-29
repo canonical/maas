@@ -2468,7 +2468,7 @@
                                         <div class="table__data table-col--20" aria-label="Date">{$ result.updated $}</div>
                                         <div class="table__data table-col--15" aria-label="Status">
                                             <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
-                                            {$ result.status_name $}. <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ result.id $}">View log</a>
+                                            {$ result.status_name $}. <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ result.id $}">View log</a>
                                         </div>
                                         <div class="table__dropdown" aria-label="results" data-ng-if="result.showing_results">
                                             <div class="table__row is-active">

@@ -190,12 +190,13 @@ class TestNodeResultHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = NodeResultHandler(user, {})
         node = factory.make_Node()
-        output = factory.make_string().encode('utf-8')
+        combined = factory.make_string().encode('utf-8')
         script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.PASSED, output=output,
+            status=SCRIPT_STATUS.PASSED, output=combined,
             script_set=factory.make_ScriptSet(node=node))
-        self.assertItemsEqual(script_result.output, handler.get_result_data(
-            script_result.script.id, 'output'))
+        self.assertEquals(
+            combined.decode(), handler.get_result_data(
+                {'id': script_result.id, 'data_type': 'combined'}))
 
     def test_get_result_data_gets_stdout(self):
         user = factory.make_User()
@@ -205,8 +206,9 @@ class TestNodeResultHandler(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, stdout=stdout,
             script_set=factory.make_ScriptSet(node=node))
-        self.assertItemsEqual(script_result.stdout, handler.get_result_data(
-            script_result.script.id, 'stdout'))
+        self.assertEquals(
+            stdout.decode(), handler.get_result_data(
+                {'id': script_result.id, 'data_type': 'stdout'}))
 
     def test_get_result_data_gets_stderr(self):
         user = factory.make_User()
@@ -216,8 +218,9 @@ class TestNodeResultHandler(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, stderr=stderr,
             script_set=factory.make_ScriptSet(node=node))
-        self.assertItemsEqual(script_result.stderr, handler.get_result_data(
-            script_result.script.id, 'stderr'))
+        self.assertEquals(
+            stderr.decode(), handler.get_result_data(
+                {'id': script_result.id, 'data_type': 'stderr'}))
 
     def test_get_result_data_gets_result(self):
         user = factory.make_User()
@@ -227,5 +230,30 @@ class TestNodeResultHandler(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, result=result,
             script_set=factory.make_ScriptSet(node=node))
-        self.assertItemsEqual(script_result.result, handler.get_result_data(
-            script_result.script.id, 'result'))
+        self.assertEquals(
+            result.decode(), handler.get_result_data(
+                {'id': script_result.id, 'data_type': 'result'}))
+
+    def test_get_result_data_unknown_id(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        id = random.randint(0, 100)
+        self.assertEquals(
+            "Unknown ScriptResult id %s" % id,
+            handler.get_result_data({'id': id}))
+
+    def test_get_result_data_gets_unknown_data_type(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node()
+        combined = factory.make_string().encode('utf-8')
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED, output=combined,
+            script_set=factory.make_ScriptSet(node=node))
+        unknown_data_type = factory.make_name('data_type')
+        self.assertEquals(
+            "Unknown data_type %s" % unknown_data_type,
+            handler.get_result_data({
+                'id': script_result.id,
+                'data_type': unknown_data_type,
+                }))

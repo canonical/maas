@@ -6,10 +6,11 @@
 
 angular.module('MAAS').controller('NodeResultController', [
     '$scope', '$rootScope', '$routeParams', '$location',
-    'MachinesManager', 'ControllersManager', 'ManagerHelperService',
-    'ErrorService', function($scope, $rootScope, $routeParams, $location,
-        MachinesManager, ControllersManager, ManagerHelperService,
-        ErrorService) {
+    'MachinesManager', 'ControllersManager', 'NodeResultsManagerFactory',
+    'ManagerHelperService', 'ErrorService',
+    function($scope, $rootScope, $routeParams, $location, MachinesManager,
+             ControllersManager, NodeResultsManagerFactory,
+             ManagerHelperService, ErrorService) {
 
         // Set the title and page.
         $rootScope.title = "Loading...";
@@ -17,47 +18,59 @@ angular.module('MAAS').controller('NodeResultController', [
 
         // Initial values.
         $scope.loaded = false;
+        $scope.resultLoaded = false;
         $scope.node = null;
-        $scope.filename = $routeParams.filename;
+        $scope.output = 'combined';
+        $scope.result = null;
+
+        $scope.get_result_data = function(output) {
+            $scope.output = output;
+            $scope.data = "Loading...";
+            var nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node.system_id);
+            nodeResultsManager.get_result_data(
+                $scope.result.id, $scope.output).then(
+                    function(data) {
+                        if(data === '') {
+                            $scope.data = "Empty file.";
+                        }else{
+                            $scope.data = data;
+                        }
+                    });
+        };
 
         // Called once the node is loaded.
         function nodeLoaded(node) {
             $scope.node = node;
             $scope.loaded = true;
 
-            // Update the title when the fqdn of the node changes.
-            $scope.$watch("node.fqdn", function() {
-                $rootScope.title = $scope.node.fqdn + " - " + $scope.filename;
+            // Get the NodeResultsManager and load it.
+            var nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node.system_id);
+            nodeResultsManager.loadItems().then(function() {
+                var i;
+                items = nodeResultsManager.getItems();
+                for(i = 0; i < items.length; i++) {
+                    if(String(items[i].id) === $routeParams.id) {
+                        $scope.result = items[i];
+                        break;
+                    }
+                }
+                $scope.get_result_data($scope.output);
+                $scope.resultLoaded = true;
+                $rootScope.title = $scope.node.fqdn + " - " +
+                    $scope.result.name;
             });
         }
 
-        // Returns the result data for the requested filename.
-        $scope.getResultData = function() {
-            if(!angular.isObject($scope.node)) {
-                return "";
+        // Update the title when the fqdn of the node changes.
+        $scope.$watch("node.fqdn", function() {
+            if(angular.isObject($scope.node) &&
+               angular.isObject($scope.result)) {
+                $rootScope.title = $scope.node.fqdn + " - " +
+                    $scope.result.name;
             }
-
-            var i, output, result, results;
-            results = $scope.node.commissioning_results;
-            results = results.concat($scope.node.testing_results);
-            for(i = 0; i < results.length; i++) {
-                result = results[i];
-                if (result.name === $scope.filename) {
-                    // <code> tags require the content to start on a newline.
-                    output = result.output.trim();
-                    if (output.length === 0) {
-                        return "Empty file.";
-                    } else {
-                        return output;
-                    }
-                }
-            }
-
-            // If we made it this far then the filename from the routeParams,
-            // was incorrect. Redirect the user back to the node details page.
-            $location.path('/node/' + $scope.node.system_id);
-            return "";
-        };
+        });
 
         if($routeParams.type === 'controller') {
             $scope.nodesManager = ControllersManager;
