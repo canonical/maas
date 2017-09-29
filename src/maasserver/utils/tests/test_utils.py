@@ -15,6 +15,10 @@ from urllib.parse import (
 
 from django.http import HttpRequest
 from django.test.client import RequestFactory
+from maasserver.models import (
+    Config,
+    RegionController,
+)
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -24,12 +28,20 @@ from maasserver.utils import (
     build_absolute_uri,
     find_rack_controller,
     get_local_cluster_UUID,
+    get_maas_user_agent,
     strip_domain,
     synchronised,
 )
 from maasserver.utils.django_urls import reverse
+from maastesting.matchers import IsNonEmptyString
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.testing import MAASIDFixture
+from provisioningserver.utils.version import get_maas_version_user_agent
+from testtools.matchers import (
+    Contains,
+    Not,
+)
 
 
 class TestAbsoluteReverse(MAASServerTestCase):
@@ -252,3 +264,22 @@ class TestSynchronised(MAASTestCase):
         self.assertFalse(lock.locked())
         self.assertEqual(sentinel.called, example_synchronised_function())
         self.assertFalse(lock.locked())
+
+
+class TestGetMAASUserAgent(MAASServerTestCase):
+
+    def test_get_maas_user_agent_without_uuid(self):
+        user_agent = get_maas_user_agent()
+        uuid = Config.objects.get_config('uuid')
+        self.assertEqual(uuid, None)
+        self.assertThat(user_agent, IsNonEmptyString)
+        self.assertThat(user_agent, Not(Contains(uuid)))
+
+    def test_get_maas_user_agent_with_uuid(self):
+        region = factory.make_RegionController()
+        self.useFixture(MAASIDFixture(region.system_id))
+        RegionController.objects.get_or_create_uuid()
+        user_agent = get_maas_user_agent()
+        composed_user_agent = "%s/%s" % (
+            get_maas_version_user_agent(), Config.objects.get_config('uuid'))
+        self.assertEquals(user_agent, composed_user_agent)

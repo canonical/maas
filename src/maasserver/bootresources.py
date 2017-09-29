@@ -67,6 +67,7 @@ from maasserver.rpc import getAllClients
 from maasserver.utils import (
     absolute_reverse,
     absolute_url_reverse,
+    get_maas_user_agent,
     synchronised,
 )
 from maasserver.utils.dblocks import DatabaseLockNotHeld
@@ -107,10 +108,7 @@ from provisioningserver.utils.twisted import (
     pause,
     synchronous,
 )
-from provisioningserver.utils.version import (
-    get_maas_version_tuple,
-    get_maas_version_user_agent,
-)
+from provisioningserver.utils.version import get_maas_version_tuple
 from simplestreams import util as sutil
 from simplestreams.mirrors import (
     BasicMirrorWriter,
@@ -1124,7 +1122,7 @@ def download_boot_resources(path, store, product_mapping,
     try:
         reader = UrlMirrorReader(
             mirror, policy=policy,
-            user_agent=get_maas_version_user_agent())
+            user_agent=get_maas_user_agent())
     except TypeError:
         # UrlMirrorReader doesn't support the user_agent argument.
         # simplestream >=bzr429 is required for this feature.
@@ -1319,7 +1317,7 @@ def _import_resources_with_lock(notify=None):
         maaslog.info(msg)
 
         image_descriptions = download_all_image_descriptions(
-            sources, get_maas_version_user_agent())
+            sources, get_maas_user_agent())
         if image_descriptions.is_empty():
             msg = (
                 "Unable to import boot images, no image "

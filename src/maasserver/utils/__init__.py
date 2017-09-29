@@ -8,6 +8,7 @@ __all__ = [
     'build_absolute_uri',
     'find_rack_controller',
     'get_local_cluster_UUID',
+    'get_maas_user_agent',
     'ignore_unused',
     'strip_domain',
     'synchronised',
@@ -26,6 +27,7 @@ from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
 )
+from provisioningserver.utils.version import get_maas_version_user_agent
 
 
 def ignore_unused(*args):
@@ -122,6 +124,15 @@ def get_local_cluster_UUID():
             return None
         else:
             return config.cluster_uuid
+
+
+def get_maas_user_agent():
+    from maasserver.models import Config
+    user_agent = get_maas_version_user_agent()
+    uuid = Config.objects.get_config('uuid')
+    if uuid:
+        user_agent = "%s/%s" % (user_agent, uuid)
+    return user_agent
 
 
 def find_rack_controller(request):
