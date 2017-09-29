@@ -137,6 +137,40 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
             [result['system_id'] for result in handler.list({})])
 
     @transactional
+    def test_list_switches_includes_link_type_device(self):
+        owner = factory.make_User()
+        handler = SwitchHandler(owner, {})
+        device = factory.make_Device(owner=owner)
+        factory.make_Switch(node=device)
+        self.assertItemsEqual(
+            ['device'],
+            [result['link_type'] for result in handler.list({})])
+
+    @transactional
+    def test_list_switches_includes_link_type_machine(self):
+        owner = factory.make_User()
+        handler = SwitchHandler(owner, {})
+        machine = factory.make_Machine(owner=owner)
+        factory.make_Switch(node=machine)
+        self.assertItemsEqual(
+            ['node'],
+            [result['link_type'] for result in handler.list({})])
+
+    @transactional
+    def test_list_switches_includes_link_type_controller(self):
+        owner = factory.make_admin()
+        handler = SwitchHandler(owner, {})
+        controller1 = factory.make_RackController(owner=owner)
+        controller2 = factory.make_RegionController(owner=owner)
+        controller3 = factory.make_RegionRackController(owner=owner)
+        factory.make_Switch(node=controller1)
+        factory.make_Switch(node=controller2)
+        factory.make_Switch(node=controller3)
+        self.assertItemsEqual(
+            ['controller', 'controller', 'controller'],
+            [result['link_type'] for result in handler.list({})])
+
+    @transactional
     def test_get_object_returns_switch_if_super_user(self):
         admin = factory.make_admin()
         user = factory.make_User()

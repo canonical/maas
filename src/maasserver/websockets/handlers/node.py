@@ -45,6 +45,15 @@ from metadataserver.enum import RESULT_TYPE
 from provisioningserver.tags import merge_details_cleanly
 
 
+NODE_TYPE_TO_LINK_TYPE = {
+    NODE_TYPE.DEVICE: 'device',
+    NODE_TYPE.MACHINE: 'node',
+    NODE_TYPE.RACK_CONTROLLER: 'controller',
+    NODE_TYPE.REGION_CONTROLLER: 'controller',
+    NODE_TYPE.REGION_AND_RACK_CONTROLLER: 'controller',
+}
+
+
 def node_prefetch(queryset, *args):
     return (
         queryset
@@ -106,6 +115,7 @@ class NodeHandler(TimestampedModelHandler):
         data["fqdn"] = obj.fqdn
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["node_type_display"] = obj.get_node_type_display()
+        data["link_type"] = NODE_TYPE_TO_LINK_TYPE[obj.node_type]
 
         data["extra_macs"] = [
             "%s" % mac_address

@@ -42,11 +42,11 @@
                 <label class="checkbox-label" for="check-switch-{$  node.fqdn $}"></label>
             </td>
             <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'" colspan="2">
-                <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
+                <a href="#/node/{$ node.link_type $}/{$ node.system_id $}">{$ node.fqdn $}</a>
             </td>
             <td class="u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'" colspan="2">
-                <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                <a href="#/node/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                <a href="#/node/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
             <td class="powerstate u-upper-case--first" aria-label="Power state">
                 <span title="{$ node.power_state $}" data-ng-if="node.power_state != 'unknown'" class="icon icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}

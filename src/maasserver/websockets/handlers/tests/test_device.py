@@ -38,6 +38,7 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.device import DeviceHandler
+from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -150,6 +151,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "hostname": node.hostname,
             "metadata": {},
             "node_type_display": node.get_node_type_display(),
+            "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "id": node.id,
             "primary_mac": (
                 "" if boot_interface is None else
@@ -192,6 +194,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "ip_address",
                 "ip_assignment",
                 "node_type_display",
+                "link_type",
                 "subnets",
                 "spaces",
                 "fabrics",

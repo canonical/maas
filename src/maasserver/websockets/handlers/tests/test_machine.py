@@ -90,6 +90,7 @@ from maasserver.websockets.handlers.machine import (
     MachineHandler,
     Node as node_model,
 )
+from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -220,6 +221,7 @@ class TestMachineHandler(MAASServerTestCase):
             ],
             "on_network": node.on_network(),
             "license_key": node.license_key,
+            "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "memory": node.display_memory(),
             "metadata": {},
             "node_type_display": node.get_node_type_display(),
@@ -289,6 +291,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "distro_series",
                 "dhcp_on",
                 "pod",
+                "link_type",
             ]
             for key in list(data):
                 if key not in allowed_fields:
