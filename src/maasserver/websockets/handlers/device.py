@@ -425,4 +425,11 @@ class DeviceHandler(NodeHandler):
         if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
-        return super().update(params)
+        data = super().update(params)
+        if 'tags' in params:
+            device_obj = Device.objects.get(system_id=data['system_id'])
+            self.update_tags(device_obj, params['tags'])
+            device_obj.save()
+            return self.full_dehydrate(device_obj)
+        else:
+            return data

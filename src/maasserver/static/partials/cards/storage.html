@@ -1,0 +1,15 @@
+<header>
+  <h3>Storage</h3>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h2>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage == 0"><strong>Unknown</strong></h2>
+</header>
+<div class="u-padding--bottom">
+  <div data-ng-repeat="disk in node.disks">
+  <p>Disk {$ $index+1 $}: {$ (disk.size / 1000 / 1000 / 1000).toFixed(1) $} GB</p>
+  </div>
+</div>
+<div class="action-card__position-bottom">
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0"><i class="icon icon--info"></i> To view disk metrics visit the Storage section</p>
+  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage == 0"><i class="icon icon--info"></i> No data recieved</p>
+</div>

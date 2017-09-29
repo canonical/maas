@@ -724,7 +724,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Return true if the current architecture selection is invalid.
         $scope.invalidArchitecture = function() {
             return (
-                !$scope.isDevice && (
+                !$scope.isDevice && !$scope.isController && (
                     $scope.summary.architecture.selected === "" ||
                     $scope.summary.architecture.options.indexOf(
                         $scope.summary.architecture.selected) === -1));
@@ -741,8 +741,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.canEdit = function() {
             return (
                 $scope.isRackControllerConnected() &&
-                $scope.isSuperUser() &&
-                !$scope.isController);
+                $scope.isSuperUser());
         };
 
         // Called to edit the domain name.
@@ -834,7 +833,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Called to cancel editing in the summary section.
         $scope.cancelEditSummary = function() {
             // Leave edit mode only if node has valid architecture.
-            if(!$scope.hasInvalidArchitecture()) {
+            if($scope.isDevice || $scope.isController) {
+                $scope.summary.editing = false;
+            } else if(!$scope.hasInvalidArchitecture()) {
                 $scope.summary.editing = false;
             }
 
@@ -1079,7 +1080,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 if(service.status === "running") {
                     return "success";
                 } else if(service.status === "dead") {
-                    return "error";
+                    return "power-error";
                 } else if(service.status === "degraded") {
                     return "warning";
                 } else {

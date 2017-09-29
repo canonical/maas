@@ -1,0 +1,26 @@
+<header>
+  <h3 >Memory</h3>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory > 0"><strong>{$ node.memory $} GiB</strong></h2>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory == 0"><strong>Unknown</strong></h2>
+</header>
+<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
+  <div data-ng-repeat="test_result in testing_results">
+    <div data-ng-if="test_result.hardware_type === 2">
+      <div data-ng-repeat="result in test_result.results['null']">
+        <div data-ng-if="(result.results | json) != '{}'">
+          <div data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
+            <p>{$ final_result.title $}: {$ final_result.value $}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="action-card__position-bottom">
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0">
+    <span data-maas-script-status="script-status" data-script-status="node.memory_test_status"></span>
+    {$ node.memory_test_status_tooltip $}
+  </p>
+  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory == 0"><i class="icon icon--info"></i> No data recieved</p>
+</div>

@@ -101,7 +101,7 @@ describe("maasControllerStatus", function() {
         ServicesManager._items.splice(0, 1);
         ServicesManager._items.push(newService);
         $scope.$digest();
-        expect(directive.isolateScope().serviceClass).toBe("error");
+        expect(directive.isolateScope().serviceClass).toBe("power-error");
     });
 
     it("any dead is error", function() {
@@ -116,7 +116,7 @@ describe("maasControllerStatus", function() {
             ServicesManager._items, services);
         $scope.controller = makeController(services);
         var directive = compileDirective();
-        expect(directive.isolateScope().serviceClass).toBe("error");
+        expect(directive.isolateScope().serviceClass).toBe("power-error");
     });
 
     it("any degraded without error is warning", function() {

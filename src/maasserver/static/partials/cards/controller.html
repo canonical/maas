@@ -1,0 +1,19 @@
+<header>
+  <h3>Overview</h3>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">
+    <span data-ng-if="node.node_type == 2">Rackd</span>
+    <span data-ng-if="node.node_type == 3">Regiond</span>
+    <span data-ng-if="node.node_type == 4">Regiond+rackd</span>
+  </h2>
+</header>
+<div class="u-padding--bottom">
+  <p data-ng-if="node.version">Version: {$ node.version__long $}/p>
+  <p data-ng-if="!node.version">Version: <span class="u-text--subtle">Unknown (&lt; 2.3.0)</span></p>
+  <p data-ng-if="node.show_os_info">OS: <span data-maas-release-name="node.osystem + '/' + node.distro_series"></span></p>
+  <p>Domain: {$ header.domain.selected.name $}</p>
+  <p>Zone: {$ summary.zone.selected.name $}</p>
+  <p data-ng-if="node.power_type">Power type: {$ node.power_type $}</p>
+</div>
+<div class="action-card__position-bottom">
+  <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'settings'">Edit &rsaquo;</a></p>
+</div>

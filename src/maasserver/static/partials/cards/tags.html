@@ -1,0 +1,12 @@
+<header>
+  <h3 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">Tags</h3>
+</header>
+<div class="u-padding--bottom">
+  <span data-ng-if="!node.tags.length"><i>No tags</i></span>
+  <span class="tag-link" data-ng-repeat="tag in node.tags">
+      <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
+  </span>
+</div>
+<div class="action-card__position-bottom">
+  <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'settings'">Edit &rsaquo;</a></p>
+</div>

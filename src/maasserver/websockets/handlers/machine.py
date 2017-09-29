@@ -64,7 +64,6 @@ from maasserver.models.node import (
 )
 from maasserver.models.partition import Partition
 from maasserver.models.subnet import Subnet
-from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.orm import (
     reload_object,
@@ -565,28 +564,6 @@ class MachineHandler(NodeHandler):
                     raise HandlerError(form.errors)
                 else:
                     form.save()
-
-    def update_tags(self, node_obj, tags):
-        # Loop through the nodes current tags. If the tag exists in `tags` then
-        # nothing needs to be done so its removed from `tags`. If it does not
-        # exists then the tag was removed from the node and should be removed
-        # from the nodes set of tags.
-        for tag in node_obj.tags.all():
-            if tag.name not in tags:
-                node_obj.tags.remove(tag)
-            else:
-                tags.remove(tag.name)
-
-        # All the tags remaining in `tags` are tags that are not linked to
-        # node. Get or create that tag and add the node to the tags set.
-        for tag_name in tags:
-            tag_obj, _ = Tag.objects.get_or_create(name=tag_name)
-            if tag_obj.is_defined:
-                raise HandlerError(
-                    "Cannot add tag %s to node because it has a "
-                    "definition." % tag_name)
-            tag_obj.node_set.add(node_obj)
-            tag_obj.save()
 
     def _update_obj_tags(self, obj, params):
         if 'tags' in params:

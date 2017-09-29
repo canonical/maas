@@ -105,6 +105,7 @@ MERGE_VIEWS = {
             "js/angular/directives/accordion.js",
             "js/angular/directives/boot_images.js",
             "js/angular/directives/call_to_action.js",
+            "js/angular/directives/card_loader.js",
             "js/angular/directives/code_lines.js",
             "js/angular/directives/contenteditable.js",
             "js/angular/directives/controller_image_status.js",

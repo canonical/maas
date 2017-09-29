@@ -873,13 +873,19 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         node_data = self.dehydrate_device(node, user)
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
+        new_tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         node_data["hostname"] = new_hostname
         node_data["zone"] = {
             "name": new_zone.name,
         }
+        node_data["tags"] = new_tags
         updated_node = handler.update(node_data)
         self.assertEqual(updated_node["hostname"], new_hostname)
         self.assertEqual(updated_node["zone"]["id"], new_zone.id)
+        self.assertItemsEqual(updated_node["tags"], new_tags)
 
     @transactional
     def test_delete_interface(self):

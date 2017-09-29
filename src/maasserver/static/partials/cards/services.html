@@ -1,0 +1,87 @@
+<header>
+  <h3>Services</h3>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom"><span data-maas-controller-status="node" data-maas-services="services" aria-label="Status"></span> <span data-maas-controller-status="node" data-maas-services="services" data-maas-text-only="true"></span></h2>
+</header>
+<div class="u-padding--bottom">
+  <ul class="list__tree no-bullets">
+      <li class="list__item" data-ng-if="node.node_type == 3 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.regiond) $}"></span>
+              &nbsp;regiond
+              <span data-ng-if="services.regiond.status_info"> &mdash; {$ services.regiond.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="node.node_type == 3 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.bind9) $}"></span>
+              &nbsp;bind9
+              <span data-ng-if="services.bind9.status_info"> &mdash; {$ services.bind9.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="node.node_type == 3 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.proxy) $}"></span>
+              &nbsp;proxy
+              <span data-ng-if="services.proxy.status_info"> &mdash; {$ services.proxy.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="(node.node_type == 3 || node.node_type == 4) && services.ntp_region">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.ntp_region) $}"></span>
+              &nbsp;ntp
+              <span data-ng-if="services.ntp_region.status_info"> &mdash; {$ services.ntp_region.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="node.node_type == 2 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.rackd) $}"></span>
+              &nbsp;rackd
+              <span data-ng-if="services.rackd.status_info"> &mdash; {$ services.rackd.status_info $}</span>
+          </span>
+          <ul class="list__tree list__tree--sub-level">
+              <li class="list__item">
+                  <span>
+                      <span class="icon icon--{$ getServiceClass(services.http) $}"></span>
+                      &nbsp;http
+                      <span data-ng-if="services.http.status_info"> &mdash; {$ services.http.status_info $}</span>
+                  </span>
+              </li>
+              <li class="list__item">
+                  <span>
+                      <span class="icon icon--{$ getServiceClass(services.tftp) $}"></span>
+                      &nbsp;tftp
+                      <span data-ng-if="services.tftp.status_info"> &mdash; {$ services.tftp.status_info $}</span>
+                  </span>
+              </li>
+          </ul>
+      </li>
+      <li class="list__item" data-ng-if="node.node_type == 2 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.dhcpd) $}"></span>
+              &nbsp;dhcpd
+              <span data-ng-if="services.dhcpd.status_info"> &mdash; {$ services.dhcpd.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="node.node_type == 2 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.dhcpd6) $}"></span>
+              &nbsp;dhcpd6
+              <span data-ng-if="services.dhcpd6.status_info"> &mdash; {$ services.dhcpd6.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="node.node_type == 2 || node.node_type == 4">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.tgt) $}"></span>
+              &nbsp;tgt
+              <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>
+          </span>
+      </li>
+      <li class="list__item" data-ng-if="(node.node_type == 2 || node.node_type == 4) && services.ntp_rack">
+          <span>
+              <span class="icon icon--{$ getServiceClass(services.ntp_rack) $}"></span>
+              &nbsp;ntp
+              <span data-ng-if="services.ntp_rack.status_info"> &mdash; {$ services.ntp_rack.status_info $}</span>
+          </span>
+      </li>
+  </ul>
+</div>

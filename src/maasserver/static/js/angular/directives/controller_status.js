@@ -7,7 +7,10 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the controller-status.html into the template cache.
     $templateCache.put('directive/templates/controller-status.html', [
-        '<span class="icon icon--{$ serviceClass $}">',
+        '<span>',
+          '<span class="icon icon--{$ serviceClass $}" data-ng-if="!textOnly">',
+          '</span>',
+          '<span data-ng-if="textOnly" data-ng-bind="serviceText"></span>',
         '</span>'
     ].join(''));
 }]);
@@ -18,13 +21,20 @@ angular.module('MAAS').directive('maasControllerStatus', [
         return {
             restrict: "A",
             scope: {
-                controller: '=maasControllerStatus'
+                controller: '=maasControllerStatus',
+                textOnly: '=?maasTextOnly'
             },
             templateUrl: 'directive/templates/controller-status.html',
             controller: function($scope) {
 
                 $scope.serviceClass = "unknown";
                 $scope.services = ServicesManager.getItems();
+                $scope.serviceText = "";
+                if($scope.textOnly) {
+                  $scope.textOnly = true;
+                } else {
+                  $scope.textOnly = false;
+                }
 
                 // Return the status class for the service.
                 function getClass(service) {
@@ -39,6 +49,17 @@ angular.module('MAAS').directive('maasControllerStatus', [
                     }
                 }
 
+                // Return the number of times class is displayed.
+                function countClass(classes, class_name) {
+                  var counter = 0;
+                  angular.forEach(classes, function(name) {
+                    if(name === class_name) {
+                      counter++;
+                    }
+                  });
+                  return counter;
+                }
+
                 // Update the class based on status of the services on the
                 // controller.
                 function updateStatusClass() {
@@ -49,11 +70,17 @@ angular.module('MAAS').directive('maasControllerStatus', [
                         if(services.length > 0) {
                             var classes = services.map(getClass);
                             if(classes.indexOf("error") !== -1) {
-                                $scope.serviceClass = "error";
+                                $scope.serviceClass = "power-error";
+                                $scope.serviceText = countClass(
+                                  classes, "error") + " dead";
                             } else if(classes.indexOf("warning") !== -1) {
                                 $scope.serviceClass = "warning";
+                                $scope.serviceText = countClass(
+                                  classes, "warning") + " degraded";
                             } else {
                                 $scope.serviceClass = "success";
+                                $scope.serviceText = countClass(
+                                  classes, "success") + " running";
                             }
                         }
                     }

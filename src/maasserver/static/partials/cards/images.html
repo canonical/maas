@@ -1,0 +1,12 @@
+<header>
+  <h3>Images</h3>
+  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">
+    <maas-controller-image-status system-id="node.system_id"></maas-controller-image-status>
+  </h2>
+</header>
+<div class="u-padding--bottom">
+  <p>Last image sync: {$ node.last_image_sync || 'never' $}</p>
+</div>
+<div class="action-card__position-bottom">
+  <p><a href="#/images">Go to images &rsaquo;</a></p>
+</div>

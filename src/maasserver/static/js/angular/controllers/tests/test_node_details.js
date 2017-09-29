@@ -1399,13 +1399,13 @@ describe("NodeDetailsController", function() {
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns false if controller", function() {
+        it("returns true if controller", function() {
             var controller = makeController();
             $scope.isController = true;
             spyOn(
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
-            expect($scope.canEdit()).toBe(false);
+            expect($scope.canEdit()).toBe(true);
         });
 
         it("returns false if rack disconnected", function() {
@@ -1698,6 +1698,24 @@ describe("NodeDetailsController", function() {
             $scope.summary.editing = true;
             $scope.cancelEditSummary();
             expect($scope.summary.editing).toBe(true);
+        });
+
+        it("does set editing to true if device", function() {
+            var controller = makeController();
+            $scope.isDevice = true;
+            $scope.node = node;
+            $scope.summary.editing = true;
+            $scope.cancelEditSummary();
+            expect($scope.summary.editing).toBe(false);
+        });
+
+        it("does set editing to true if controller", function() {
+            var controller = makeController();
+            $scope.isController = true;
+            $scope.node = node;
+            $scope.summary.editing = true;
+            $scope.cancelEditSummary();
+            expect($scope.summary.editing).toBe(false);
         });
 
         it("calls updateSummary", function() {
@@ -2198,11 +2216,11 @@ describe("NodeDetailsController", function() {
             })).toBe("success");
         });
 
-        it("returns 'error' when dead", function() {
+        it("returns 'power-error' when dead", function() {
             var controller = makeController();
             expect($scope.getServiceClass({
                 status: "dead"
-            })).toBe("error");
+            })).toBe("power-error");
         });
 
         it("returns 'warning' when degraded", function() {

@@ -91,6 +91,7 @@ class ControllerHandler(MachineHandler):
             self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
 
     def dehydrate(self, obj, data, for_list=False):
+        obj = obj.as_self()
         data = super().dehydrate(obj, data, for_list=for_list)
         data["version"] = obj.version
         if obj.version is not None and len(obj.version) > 0:

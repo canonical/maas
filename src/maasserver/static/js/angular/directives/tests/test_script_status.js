@@ -60,25 +60,25 @@ describe("maasScriptStatus", function() {
     it("SCRIPT_STATUS.FAILED", function() {
         var directive = compileDirective("3");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--status-failed");
+        expect(select.attr("class")).toBe("icon icon--power-error");
     });
 
     it("SCRIPT_STATUS.ABORTED", function() {
         var directive = compileDirective("5");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--status-failed");
+        expect(select.attr("class")).toBe("icon icon--power-error");
     });
 
     it("SCRIPT_STATUS.DEGRADED", function() {
         var directive = compileDirective("6");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--status-failed");
+        expect(select.attr("class")).toBe("icon icon--power-error");
     });
 
     it("SCRIPT_STATUS.FAILED_INSTALLING", function() {
         var directive = compileDirective("8");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--status-failed");
+        expect(select.attr("class")).toBe("icon icon--power-error");
     });
 
     it("SCRIPT_STATUS.TIMEDOUT", function() {

@@ -196,9 +196,6 @@
                     data-ng-class="{ 'is-active': section.area === 'containers'}"
                     data-ng-click="section.area = 'containers'">Containers</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="isController"
-                    data-ng-class="{ 'is-active': section.area === 'services'}"
-                    data-ng-click="section.area = 'services'"><span data-maas-controller-status="node" data-maas-services="services" aria-label="Status"></span> Services</button>
-                <button role="tab" class="page-navigation__link" data-ng-if="isController"
                     data-ng-class="{ 'is-active': section.area === 'vlans'}"
                     data-ng-click="section.area = 'vlans'">VLANs</button>
                 <button role="tab" class="page-navigation__link"
@@ -219,230 +216,144 @@
                 <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
                     data-ng-class="{ 'is-active': section.area === 'events'}"
                     data-ng-click="section.area = 'events'">Events</button>
-                <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice && isSuperUser()"
-                    data-ng-class="{ 'is-active': section.area === 'power'}"
-                    data-ng-click="section.area = 'power'">Power</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="isSuperUser()"
+                    data-ng-class="{ 'is-active': section.area === 'settings'}"
+                    data-ng-click="section.area = 'settings'">Settings</button>
             </nav>
         </div>
     </div>
     <section class="row" data-ng-if="section.area === 'summary'">
-        <div class="wrapper--inner">
-            <div class="twelve-col" data-ng-if="isSuperUser()">
-                <div class="p-notification--error"
-                    data-ng-if="!isController && !isDevice && !isRackControllerConnected()">
+      <div class="wrapper--inner">
+        <div class="twelve-col" data-ng-if="isSuperUser()">
+            <div class="p-notification--error"
+                data-ng-if="!isController && !isDevice && !isRackControllerConnected()">
+                <p class="p-notification__response">
+                  <span class="p-notification__status">Error:</span>Editing is currently disabled because no rack controller is currently connected to the region.</p>
+            </div>
+            <div class="p-notification--error"
+                data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && hasUsableArchitectures()">
                     <p class="p-notification__response">
-                      <span class="p-notification__status">Error:</span>Editing is currently disabled because no rack controller is currently connected to the region.</p>
-                </div>
-                <div class="p-notification--error"
-                    data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && hasUsableArchitectures()">
-                        <p class="p-notification__response">
-                          <span class="p-notification__status">Error:</span>This machine currently has an invalid architecture. Update the architecture of this machine to make it deployable.</p>
-                </div>
-                <div class="p-notification--error"
-                    data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && !hasUsableArchitectures()">
-                        <p class="p-notification__response">
-                          <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
-                </div>
+                      <span class="p-notification__status">Error:</span>This machine currently has an invalid architecture. Update the architecture of this machine to make it deployable.</p>
             </div>
-            <div class="p-notification" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0">
-              <p class="p-notification__response">
-                Commission the machine to get CPU, Memory and Storage information.
-              </p>
+            <div class="p-notification--error"
+                data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && !hasUsableArchitectures()">
+                    <p class="p-notification__response">
+                      <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
             </div>
-            <div class="twelve-col u-equal-height" data-ng-if="!isDevice">
-	      <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status }">
-		<header>
-		  <h3>CPU</h3>
-		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count > 0"><strong>{$ node.cpu_count $} cores</strong></h2>
-		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong></h2>
-		</header>
-		<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
-		  <div data-ng-repeat="test_result in testing_results">
-		    <div data-ng-if="test_result.hardware_type === 1">
-		      <div data-ng-repeat="result in test_result.results['null']">
-			<div data-ng-if="(result.results | json) != '{}'">
-			  <div data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
-			    <p>{$ final_result.title $}: {$ final_result.value $}</p>
-			  </div>
-			</div>
-		      </div>
-		    </div>
-		  </div>
-		</div>
-		<div class="action-card__position-bottom">
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0">
-		    <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status"></span>
-		    {$ node.cpu_test_status_tooltip $}
-		  </p>
-		  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0"><i class="icon icon--info"></i> No data recieved</p>
-		</div>
-	      </div>
-	      <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status }">
-		<header>
-		  <h3 >Memory</h3>
-		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory > 0"><strong>{$ node.memory $} GiB</strong></h2>
-		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.memory == 0"><strong>Unknown</strong></h2>
-		</header>
-		<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
-		  <div data-ng-repeat="test_result in testing_results">
-		    <div data-ng-if="test_result.hardware_type === 2">
-		      <div data-ng-repeat="result in test_result.results['null']">
-			<div data-ng-if="(result.results | json) != '{}'">
-			  <div data-ng-repeat="final_result in result.results" data-ng-if="final_result.surfaced">
-			    <p>{$ final_result.title $}: {$ final_result.value $}</p>
-			  </div>
-			</div>
-		      </div>
-		    </div>
-		  </div>
-		</div>
-		<div class="action-card__position-bottom">
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0">
-		    <span data-maas-script-status="script-status" data-script-status="node.memory_test_status"></span>
-		    {$ node.memory_test_status_tooltip $}
-		  </p>
-		  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory == 0"><i class="icon icon--info"></i> No data recieved</p>
-		</div>
-	      </div>
-	      <div class="four-col last-col action-card action-card--positionable u-border--solid">
-		<header>
-		  <h3>Storage</h3>
-		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h2>
-		  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage == 0"><strong>Unknown</strong></h2>
-		</header>
-		<div class="u-padding--bottom">
-		  <div data-ng-repeat="disk in node.disks">
-		  <p>Disk {$ $index+1 $}: {$ (disk.size / 1000 / 1000 / 1000).toFixed(1) $} GB</p>
-		  </div>
-		</div>
-		<div class="action-card__position-bottom">
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0"><i class="icon icon--info"></i> To view disk metrics visit the Storage section</p>
-		  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
-		  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage == 0"><i class="icon icon--info"></i> No data recieved</p>
-		</div>
-	      </div>
-	    </div>
-            <div data-ng-if="!isController">
-                <div class="twelve-col u-align--right" data-ng-hide="summary.editing">
-                    <button class="button--secondary button--inline"
-                        data-ng-if="canEdit()"
-                        data-ng-click="editSummary()">Edit</button>
-                </div>
-            </div>
-            <form class="form form--stack twelve-col">
-                <fieldset class="form__fieldset six-col ng-hide" data-ng-show="!isController">
-                    <div class="form__group">
-                        <label for="zone" class="form__group-label two-col">Zone</label>
-                        <div class="form__group-input three-col">
-                            <select name="zone" id="zone"
-                                data-ng-disabled="!summary.editing"
-                                data-ng-model="summary.zone.selected"
-                                data-ng-options="zone as zone.name for zone in summary.zone.options">
-                                <option value="" disabled="disabled">Choose a zone</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form__group" data-ng-if="!isDevice">
-                        <label for="architecture" class="form__group-label two-col">Architecture</label>
-                        <div class="form__group-input three-col">
-                            <select name="architecture" id="architecture"
-                                data-ng-disabled="!summary.editing"
-                                data-ng-model="summary.architecture.selected"
-                                data-ng-options="arch for arch in summary.architecture.options"
-                                data-ng-class="{ 'has-error': invalidArchitecture() }">
-                                <option value="" disabled="disabled">{$ getArchitecturePlaceholder() $}</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form__group" data-ng-if="!isDevice">
-                        <label for="min_hwe_kernel" class="form__group-label two-col">Minimum Kernel</label>
-                        <div class="form__group-input three-col">
-                            <select name="min_hwe_kernel" id="min_hwe_kernel"
-                                data-ng-disabled="!summary.editing"
-                                data-ng-model="summary.min_hwe_kernel.selected"
-                                data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in summary.min_hwe_kernel.options">
-                                <option value="">No minimum kernel</option>
-                            </select>
-                        </div>
-                    </div>
-                    <dl class="u-width--full u-float--left u-margin--top-small">
-                        <dt class="two-col">Owner</dt>
-                            <dd class="four-col last-col">
-                                {$ node.owner || "(Unassigned)" $}
-                            </dd>
-                    </dl>
-                    <div class="form__group">
-                        <label class="form__group-label two-col">Tags</label>
-                        <div class="form__group-input three-col">
-                            <span class="tag-link" data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
-                                <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
-                            </span>
-                            <tags-input data-ng-model="summary.tags"
-                                data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
-                                <auto-complete source="tagsAutocomplete($query)"></auto-complete>
-                            </tags-input>
-                        </div>
-                    </div>
-                </fieldset>
-                <div class="six-col" data-ng-if="isController">
-                    <dl>
-                        <dt class="two-col">Type</dt>
-                            <dd class="four-col last-col">
-                                {$ node.node_type_display $}
-                                <i class="icon icon--help u-margin--left-tiny tooltip"
-                                      aria-label="A region controller controls MAAS services like DNS and runs the database."
-                                      data-ng-show="node.node_type == 3"></i>
-                                <i class="icon icon--help u-margin--left-tiny tooltip"
-                                      aria-label="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."
-                                      data-ng-show="node.node_type == 2"></i>
-                                <i class="icon icon--help u-margin--left-tiny tooltip"
-                                      aria-label="A region controller controls MAAS services like DNS and runs the database.&#xa;&#xa;A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."
-                                      data-ng-show="node.node_type == 4"></i>
-                            </dd>
-                            <dt class="two-col">MAAS Version</dt>
-                            <dd class="four-col last-col" data-ng-show="node.version">
-                                {$ node.version__long $}
-                            </dd>
-                            <dd class="four-col last-col u-text--subtle" data-ng-show="!node.version">
-                                Unknown (&lt; 2.3.0)
-                            </dd>
-                        <dt class="two-col" data-ng-show="node.node_type == 2 || node.node_type == 4">Last image sync</dt>
-                            <dd class="four-col last-col" data-ng-show="node.node_type == 2 || node.node_type == 4">
-                                {$ node.last_image_sync || 'never' $}
-                            </dd>
-                        <dt class="two-col" data-ng-show="node.node_type == 2 || node.node_type == 4">Images status</dt>
-                            <dd class="four-col last-col" data-ng-show="node.node_type == 2 || node.node_type == 4">
-                                <maas-controller-image-status system-id="node.system_id"></maas-controller-image-status>
-                            </dd>
-                        <dt class="two-col">Zone</dt>
-                            <dd class="four-col last-col">
-                                {$ node.zone.name $}
-                            </dd>
-                    </dl>
-                </div>
-                <div class="six-col last-col" data-ng-if="!isDevice">
-                    <dl>
-                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Operating System</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info" data-maas-release-name="node.osystem + '/' + node.distro_series"></dd>
-                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">Kernel</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">{$ node.hwe_kernel $}</dd>
-                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">Third Party Driver</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">
-                                {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
-                            </dd>
-                    </dl>
-                </div>
-                <div class="twelve-col u-align--right ng-hide" sticky anchor="bottom" use-placeholder="true" offset="0" data-ng-show="summary.editing">
-                    <button class="button--base button--inline"
-                       data-ng-click="cancelEditSummary()">Cancel</button>
-                    <button class="button--positive button--inline"
-                        data-ng-class="{ secondary: invalidArchitecture() }"
-                        data-ng-click="saveEditSummary()">Save changes</button>
-                </div>
-            </form>
         </div>
+        <div class="p-notification" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0">
+          <p class="p-notification__response">
+            Commission the machine to get CPU, Memory and Storage information.
+          </p>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="isDevice">
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="device"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="tags"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 2">
+          <div class="four-col action-card u-border--solid">
+            <div maas-card-loader="services"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="images"></div>
+          </div>
+          <div class="four-col last-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="controller"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 2">
+          <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+            <div maas-card-loader="cpu"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
+            <div maas-card-loader="memory"></div>
+          </div>
+          <div class="four-col last-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="storage"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 2">
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="tags"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 3">
+          <div class="four-col action-card u-border--solid">
+            <div maas-card-loader="services"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="controller"></div>
+          </div>
+          <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+            <div maas-card-loader="cpu"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 3">
+          <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
+            <div maas-card-loader="memory"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="storage"></div>
+          </div>
+          <div class="four-col last-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="tags"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 4">
+          <div class="four-col action-card u-border--solid">
+            <div maas-card-loader="services"></div>
+          </div>
+          <div class="eight-col last-col">
+            <div class="u-equal-height">
+              <div class="four-col action-card action-card--positionable u-border--solid">
+                <div maas-card-loader="images"></div>
+              </div>
+              <div class="four-col last-col action-card action-card--positionable u-border--solid">
+                <div maas-card-loader="controller"></div>
+              </div>
+            </div>
+            <div class="u-equal-height">
+              <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+                <div maas-card-loader="cpu"></div>
+              </div>
+              <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
+                <div maas-card-loader="memory"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 4">
+          <div class="four-col action-card u-border--solid">
+            <div maas-card-loader="storage"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="tags"></div>
+          </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="!isDevice && !isController">
+            <div class="four-col action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+              <div maas-card-loader="cpu"></div>
+            </div>
+            <div class="four-col action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
+              <div maas-card-loader="memory"></div>
+          	</div>
+            <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-if="node.node_type != 3">
+          		<div maas-card-loader="storage"></div>
+            </div>
+        </div>
+        <div class="twelve-col u-equal-height" data-ng-if="!isDevice && !isController">
+          <div class="four-col action-card action-card--positionable u-border--solid" data-ng-if="!isController">
+            <div maas-card-loader="machine"></div>
+          </div>
+          <div class="four-col action-card action-card--positionable u-border--solid" data-ng-if="!isController">
+            <div maas-card-loader="tags"></div>
+          </div>
+        </div>
+      </div>
     </section>
     <section class="row" data-ng-if="section.area === 'containers'">
         <div class="wrapper--inner">
@@ -466,9 +377,80 @@
             </div>
         </div>
     </section>
-    <section class="row" data-ng-if="section.area === 'power'">
+    <section class="row" data-ng-if="section.area === 'settings'">
         <div class="wrapper--inner">
-            <div class="twelve-col">
+            <div class="twelve-col u-align--right">
+                <h2 class="u-float--left" data-ng-if="!isController">{$ node.node_type_display $} settings</h2>
+                <h2 class="u-float--left" data-ng-if="isController">Controller settings</h2>
+                <button class="button--secondary button--inline"
+                    data-ng-if="canEdit()"
+                    data-ng-click="editSummary()">Edit</button>
+            </div>
+            <form class="form form--stack twelve-col">
+                <fieldset class="form__fieldset six-col">
+                    <div class="form__group" data-ng-if="!isDevice && !isController">
+                        <label for="architecture" class="form__group-label two-col">Architecture</label>
+                        <div class="form__group-input three-col">
+                            <select name="architecture" id="architecture"
+                                data-ng-disabled="!summary.editing"
+                                data-ng-model="summary.architecture.selected"
+                                data-ng-options="arch for arch in summary.architecture.options"
+                                data-ng-class="{ 'has-error': invalidArchitecture() }">
+                                <option value="" disabled="disabled">{$ getArchitecturePlaceholder() $}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form__group" data-ng-if="!isDevice && !isController">
+                        <label for="min_hwe_kernel" class="form__group-label two-col">Minimum Kernel</label>
+                        <div class="form__group-input three-col">
+                            <select name="min_hwe_kernel" id="min_hwe_kernel"
+                                data-ng-disabled="!summary.editing"
+                                data-ng-model="summary.min_hwe_kernel.selected"
+                                data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in summary.min_hwe_kernel.options">
+                                <option value="">No minimum kernel</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form__group">
+                      <label for="zone" class="form__group-label two-col">Zone</label>
+                      <div class="form__group-input three-col">
+                        <select name="zone" id="zone"
+                        data-ng-disabled="!summary.editing"
+                        data-ng-model="summary.zone.selected"
+                        data-ng-options="zone as zone.name for zone in summary.zone.options">
+                          <option value="" disabled="disabled">Choose a zone</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form__group">
+                        <label class="form__group-label two-col">Tags</label>
+                        <div class="form__group-input three-col">
+                            <span class="tag-link" data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
+                                <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
+                            </span>
+                            <tags-input data-ng-model="summary.tags"
+                                data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
+                                <auto-complete source="tagsAutocomplete($query)"></auto-complete>
+                            </tags-input>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="twelve-col u-align--right" data-ng-if="summary.editing">
+                    <button class="button--base button--inline"
+                       data-ng-click="cancelEditSummary()">Cancel</button>
+                    <button class="button--positive button--inline"
+                        data-ng-class="{ secondary: invalidArchitecture() }"
+                        data-ng-click="saveEditSummary()">Save changes</button>
+                </div>
+            </form>
+            <div class="twelve-col u-align--right" data-ng-if="!isDevice">
+                <h2 class="u-float--left">Power settings</h2>
+                <button class="button--secondary button--inline"
+                    data-ng-show="canEdit() && power_types.length"
+                    data-ng-click="editPower()"
+                    data-ng-if="!power.editing">Edit</button>
+            </div>
+            <div class="twelve-col" data-ng-if="!isDevice">
                 <div class="p-notification--error" data-ng-if="!isRackControllerConnected()">
                     <p class="p-notification__response">
                       <span class="p-notification__status">Error:</span>Editing is currently
@@ -503,12 +485,7 @@
                     Changing power parameters will affect these nodes.</p>
                 </div>
             </div>
-            <div class="twelve-col u-align--right" data-ng-hide="power.editing">
-                <button class="button--secondary button--inline"
-                    data-ng-show="canEdit() && power_types.length"
-                    data-ng-click="editPower()">Edit</button>
-            </div>
-            <form class="form form--stack twelve-col" class="disabled">
+            <form class="form form--stack twelve-col" class="disabled" data-ng-if="!isDevice">
                 <fieldset class="form__fieldset six-col ng-hide"
                     data-ng-show="power_types.length"
                     data-ng-disabled="!power.editing"

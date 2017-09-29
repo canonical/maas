@@ -25,6 +25,7 @@ from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
 from maasserver.third_party_drivers import get_third_party_driver
@@ -36,6 +37,7 @@ from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
+    HandlerError,
 )
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -605,3 +607,25 @@ class NodeHandler(TimestampedModelHandler):
                 if interface.vlan.dhcp_on:
                     return True
         return False
+
+    def update_tags(self, node_obj, tags):
+        # Loop through the nodes current tags. If the tag exists in `tags` then
+        # nothing needs to be done so its removed from `tags`. If it does not
+        # exists then the tag was removed from the node and should be removed
+        # from the nodes set of tags.
+        for tag in node_obj.tags.all():
+            if tag.name not in tags:
+                node_obj.tags.remove(tag)
+            else:
+                tags.remove(tag.name)
+
+        # All the tags remaining in `tags` are tags that are not linked to
+        # node. Get or create that tag and add the node to the tags set.
+        for tag_name in tags:
+            tag_obj, _ = Tag.objects.get_or_create(name=tag_name)
+            if tag_obj.is_defined:
+                raise HandlerError(
+                    "Cannot add tag %s to node because it has a "
+                    "definition." % tag_name)
+            tag_obj.node_set.add(node_obj)
+            tag_obj.save()
