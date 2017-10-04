@@ -68,21 +68,24 @@ angular.module('MAAS').controller('NodeResultsController', [
                 for(i = 0; i < $scope.node.disks.length; i++) {
                     if($scope.node.disks[i].id === result.physical_blockdevice)
                     {
-                        var subtext = '';
+                        var deviceinfo = '';
                         if($scope.node.disks[i].model !== '') {
-                            subtext += $scope.node.disks[i].model;
+                            deviceinfo += "Model: " +
+                                $scope.node.disks[i].model;
                         }
                         if($scope.node.disks[i].serial !== '') {
-                            if(subtext !== '') {
-                                subtext += ' ';
+                            if(deviceinfo !== '') {
+                                deviceinfo += ', ';
                             }
-                            subtext += $scope.node.disks[i].serial;
+                            deviceinfo += "Serial: " +
+                                $scope.node.disks[i].serial;
                         }
-                        if(subtext !== '') {
-                            subtext += ' - ';
+                        if(deviceinfo !== '') {
+                            return '/dev/' + $scope.node.disks[i].name + ' (' +
+                                deviceinfo + ')';
+                        }else{
+                            return '/dev/' + $scope.node.disks[i].name;
                         }
-                        subtext += '/dev/' + $scope.node.disks[i].name;
-                        return subtext;
                     }
                 }
             }

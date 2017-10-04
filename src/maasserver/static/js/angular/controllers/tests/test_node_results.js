@@ -370,8 +370,8 @@ describe("NodeResultsController", function() {
         expectFunc = function() {
             if($scope.resultsLoaded) {
                 expect($scope.commissioning_results[2].results[
-                    model + " " + serial + " - /dev/" + name]).toEqual(
-                        [script_result]);
+                    "/dev/" + name + " (Model: " + model + ", Serial: " +
+                        serial + ")"]).toEqual([script_result]);
                 done();
             } else {
                 setTimeout(expectFunc);
@@ -502,8 +502,8 @@ describe("NodeResultsController", function() {
         expectFunc = function() {
             if($scope.resultsLoaded) {
                 expect($scope.testing_results[2].results[
-                    model + " " + serial + " - /dev/" + name]).toEqual(
-                        [script_result]);
+                    "/dev/" + name + " (Model: " + model + ", Serial: " +
+                        serial + ")"]).toEqual([script_result]);
                 done();
             } else {
                 setTimeout(expectFunc);
