@@ -1,8 +1,20 @@
-maas (2.3.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.0~beta2-6301-gca25180-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 15 Sep 2017 11:26:05 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 04 Oct 2017 09:39:16 -0400
+
+maas (2.3.0~beta1-6301-gca25180-0ubuntu1) artful; urgency=medium
+
+  * New upstream release, 2.3.0 beta1 (LP: #1717543):
+    - Update the UI to surface hardware testing.
+    - Rack Controller deployment for all machines via the API.
+    - UI Improvements: Use new design for node details page and address
+      various other UX issues.
+    - API improvements: Introduce API output for volume_groups, raids,
+      cache_sets and baches to the machines output. Used to support libmaas.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 04 Oct 2017 09:38:40 -0400
 
 maas (2.3.0~alpha3-6250-g58f83f3-0ubuntu1) artful; urgency=medium
 
