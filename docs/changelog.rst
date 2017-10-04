@@ -2,6 +2,75 @@
 Changelog
 =========
 
+MAAS 2.3.0 (beta1)
+==================
+
+New Features & Improvements
+---------------------------
+
+**Hardware Testing**
+ MAAS 2.3 beta 1 overhauls and improves the visibility of hardware tests
+ results and information. This includes various changes across MAAS:
+
+ * Machine Listing page
+  * Surface progress and failures of hardware tests, actively showing when
+    a test is pending, running, successful or failed.
+
+ * Machine Details page
+  * Summary tab - Provide hardware testing information about the different
+    components (CPU, Memory, Storage)
+  * Hardware Tests tab - Completely re-design of the Hardware Test tab. It
+    now shows a list of test results per component. Adds the ability to view
+    more details about the test itself.
+
+**UI Improvements**
+ MAAS 2.3 beta 1 introduces a new design for the node summary pages:
+
+ * "Summary tab" now only shows information of the machine, in a complete new
+   design.
+ * "Settings tab" has been introduced. It now includes the ability to edit
+   such node.
+ * "Logs tab" now consolidates the commissioning output and the installation
+   log output.
+ * Add DHCP status column on the ‘Subnet’s tab.
+ * Add architecture filters
+ * Update VLAN and Space details page to no longer allow inline editing.
+ * Update VLAN page to include the IP ranges tables.
+ * Convert the Zones page into AngularJS (away from YUI).
+ * Add warnings when changing a Subnet’s mode (Unmanaged or Managed).
+
+**Rack Controller Deployment**
+ MAAS beta 1 now adds the ability to deploy any machine with the rack
+ controller, which is only available via the API.
+
+**API Improvements**
+ MAAS 2.3 beta 1 introduces API output for volume_groups, raids, cache_sets, and
+ bcaches field to the machines endpoint.
+
+Issues fixed in this release
+----------------------------
+
+For more information, visit: https://launchpad.net/maas/+milestone/2.3.0beta1
+
+LP: #1711320    [2.3, UI] Can't 'Save changes' and 'Cancel' on machine/device details page
+
+LP: #1696270    [2.3] Toggling Subnet from Managed to Unmanaged doesn't warn the user that behavior changes
+
+LP: #1717287    maas-enlist doesn't work when provided with serverurl with IPv6 address
+
+LP: #1718209    PXE configuration for dhcpv6 is wrong
+
+LP: #1718270    [2.3] MAAS improperly determines the version of some installs
+
+LP: #1718686    [2.3, master] Machine lists shows green checks on components even when no tests have been run
+
+LP: #1507712    cli: maas logout causes KeyError for other profiles
+
+LP: #1684085    [2.x, Accessibility] Inconsistent save states for fabric/subnet/vlan/space editing
+
+LP: #1718294    [packaging] dpkg-reconfigure for region controller refers to an incorrect network topology assumption
+
+
 MAAS 2.3.0 (alpha3)
 ===================
 
