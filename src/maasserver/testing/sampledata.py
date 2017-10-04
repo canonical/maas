@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from collections import defaultdict
+from datetime import timedelta
 import random
 from socket import gethostname
 from textwrap import dedent
@@ -34,9 +35,15 @@ from maasserver.utils.orm import (
     transactional,
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
-from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.enum import (
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 from metadataserver.fields import Bin
-from metadataserver.models import ScriptSet
+from metadataserver.models import (
+    Script,
+    ScriptSet,
+)
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.ipaddr import get_mac_addresses
@@ -392,6 +399,9 @@ def populate_main():
             NODE_STATUS.RETIRED]
     ]
     machines = []
+    test_scripts = [
+        script.name
+        for script in Script.objects.filter(script_type=SCRIPT_TYPE.TESTING)]
     for _, status in node_statuses:
         owner = None
         if status in ALLOCATED_NODE_STATUSES:
@@ -435,48 +445,109 @@ def populate_main():
 
         # Add in commissioning and testing results.
         if status != NODE_STATUS.NEW:
-            css = ScriptSet.objects.create_commissioning_script_set(machine)
+            for _ in range(0, random.randint(1, 10)):
+                css = ScriptSet.objects.create_commissioning_script_set(
+                    machine)
+                scripts = set()
+                for __ in range(1, len(test_scripts)):
+                    scripts.add(random.choice(test_scripts))
+                tss = ScriptSet.objects.create_testing_script_set(
+                    machine, list(scripts))
             machine.current_commissioning_script_set = css
-            tss = ScriptSet.objects.create_testing_script_set(machine)
             machine.current_testing_script_set = tss
             machine.save()
+
+        # Fill in historic results
+        for script_set in machine.scriptset_set.all():
+            if script_set in [css, tss]:
+                continue
+            for script_result in script_set:
+                # Can't use script_result.store_result as it will try to
+                # process the result and fail on the fake data.
+                script_result.exit_status = random.randint(0, 255)
+                if script_result.exit_status == 0:
+                    script_result.status = SCRIPT_STATUS.PASSED
+                else:
+                    script_result.status = random.choice([
+                        SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                        SCRIPT_STATUS.FAILED_INSTALLING])
+                script_result.started = factory.make_date()
+                script_result.ended = script_result.started + timedelta(
+                    seconds=random.randint(0, 10000))
+                script_result.stdout = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.stderr = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.output = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.save()
 
         # Only add in results in states where commissiong should be completed.
         if status not in [NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING]:
             if status == NODE_STATUS.FAILED_COMMISSIONING:
                 exit_status = random.randint(1, 255)
-                script_status = SCRIPT_STATUS.FAILED
+                script_status = random.choice([
+                    SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                    SCRIPT_STATUS.FAILED_INSTALLING])
             else:
                 exit_status = 0
                 script_status = SCRIPT_STATUS.PASSED
-            for script_result in machine.current_commissioning_script_set:
+            for script_result in css:
                 # Can't use script_result.store_result as it will try to
                 # process the result and fail on the fake data.
                 script_result.status = script_status
                 script_result.exit_status = exit_status
+                script_result.started = factory.make_date()
+                script_result.ended = script_result.started + timedelta(
+                    seconds=random.randint(0, 10000))
                 script_result.stdout = Bin(
                     factory.make_string().encode('utf-8'))
                 script_result.stderr = Bin(
                     factory.make_string().encode('utf-8'))
+                script_result.output = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.save()
+        elif status == NODE_STATUS.COMMISSIONING:
+            for script_result in css:
+                script_result.status = random.choice([
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING])
+                if script_result.status != SCRIPT_STATUS.PENDING:
+                    script_result.started = factory.make_date()
                 script_result.save()
 
         # Only add in results in states where testing should be completed.
         if status not in [NODE_STATUS.NEW, NODE_STATUS.TESTING]:
             if status == NODE_STATUS.FAILED_TESTING:
                 exit_status = random.randint(1, 255)
-                script_status = SCRIPT_STATUS.FAILED
+                script_status = random.choice([
+                    SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                    SCRIPT_STATUS.FAILED_INSTALLING])
             else:
                 exit_status = 0
                 script_status = SCRIPT_STATUS.PASSED
-            for script_result in machine.current_testing_script_set:
+            for script_result in tss:
                 # Can't use script_result.store_result as it will try to
                 # process the result and fail on the fake data.
                 script_result.status = script_status
                 script_result.exit_status = exit_status
+                script_result.started = factory.make_date()
+                script_result.ended = script_result.started + timedelta(
+                    seconds=random.randint(0, 10000))
                 script_result.stdout = Bin(
                     factory.make_string().encode('utf-8'))
                 script_result.stderr = Bin(
                     factory.make_string().encode('utf-8'))
+                script_result.output = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.save()
+        elif status == NODE_STATUS.TESTING:
+            for script_result in tss:
+                script_result.status = random.choice([
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING])
+                if script_result.status != SCRIPT_STATUS.PENDING:
+                    script_result.started = factory.make_date()
                 script_result.save()
 
         # Add installation results.

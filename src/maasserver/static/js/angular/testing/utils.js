@@ -49,3 +49,7 @@ function makeInteger(min, max) {
 function pickItem(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
+
+function makeBoolean() {
+    return pickItem([true, false]);
+}

@@ -6,25 +6,20 @@
 
 angular.module('MAAS').directive('toggleCtrl',[
     '$document',
-    function($document){
-
+    function($document) {
         return {
             restrict: 'A',
             link: function($scope, $element, $attr){
 
                 $scope.isToggled = false;
-
                 $scope.toggleMenu = function() {
                   $scope.isToggled = !$scope.isToggled;
                 };
 
                 var clickHandler = function(event) {
-                    var isClickedElementChildOfMenu = $element.find(
-                                                      event.target).length > 0;
-                    if (isClickedElementChildOfMenu) {
+                    if ($element.find(event.target).length > 0) {
                         return;
                     }
-
                     $scope.$apply(function() {
                         $scope.isToggled = false;
                     });

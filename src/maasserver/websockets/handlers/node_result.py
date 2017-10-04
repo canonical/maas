@@ -27,8 +27,9 @@ class NodeResultHandler(TimestampedModelHandler):
         queryset = ScriptResult.objects.all()
         pk = 'id'
         allowed_methods = [
-            'list',
+            'get',
             'get_result_data',
+            'list',
         ]
         listen_channels = ['scriptresult']
         exclude = [

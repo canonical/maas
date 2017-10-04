@@ -92,6 +92,8 @@ angular.module('MAAS').controller('NodeResultsController', [
         function _storeResult(result) {
             var results;
             result.showing_results = false;
+            result.showing_history = false;
+            result.showing_menu = false;
             if(result.result_type === 0) {
                 results = $scope.commissioning_results;
             }else if(result.result_type === 1) {
