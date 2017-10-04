@@ -9,7 +9,10 @@
   </div>
 </div>
 <div class="action-card__position-bottom">
-  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0"><i class="icon icon--info"></i> To view disk metrics visit the Storage section</p>
-  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0" data-ng-click="section.area = 'storage'">See results &rsaquo;</a></p>
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0">
+    <span data-maas-script-status="script-status" data-script-status="node.memory_test_status"></span>
+    {$ node.storage_test_status_tooltip $}
+  </p>
+  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0" data-ng-click="section.area = 'storage'">See storage &rsaquo;</a></p>
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage == 0"><i class="icon icon--info"></i> No data recieved</p>
 </div>

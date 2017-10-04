@@ -21,6 +21,6 @@
     <span data-maas-script-status="script-status" data-script-status="node.memory_test_status"></span>
     {$ node.memory_test_status_tooltip $}
   </p>
-  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
+  <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory > 0 && node.memory_test_status !== -1" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.memory == 0"><i class="icon icon--info"></i> No data recieved</p>
 </div>
