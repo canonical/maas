@@ -650,7 +650,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'packages': GET_FRUID_DATA_PACKAGES,
         'timeout': timedelta(seconds=10),
-        'run_on_controller': True,
+        'run_on_controller': False,
     }),
     ('00-maas-07-block-devices', {
         'content': make_function_call_script(gather_physical_block_devices),
