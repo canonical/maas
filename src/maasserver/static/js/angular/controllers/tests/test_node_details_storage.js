@@ -144,7 +144,8 @@ describe("NodeStorageController", function() {
                 partition_table_type: makeName("partition_table_type"),
                 used_for: "Unused",
                 filesystem: null,
-                partitions: null
+                partitions: null,
+                test_status: 0
             },
             {
                 // Disk with filesystem, no mount point
@@ -170,7 +171,8 @@ describe("NodeStorageController", function() {
                     mount_point: null,
                     mount_options: null
                     },
-                partitions: null
+                partitions: null,
+                test_status: 1
             },
             {
                 // Disk with mounted filesystem
@@ -196,7 +198,8 @@ describe("NodeStorageController", function() {
                     mount_point: "/",
                     mount_options: makeName("options")
                     },
-                partitions: null
+                partitions: null,
+                test_status: 2
             },
             {
                 // Partitioned disk, one partition free one used
@@ -238,7 +241,8 @@ describe("NodeStorageController", function() {
                         },
                         used_for: "ext4 formatted filesystem mounted at /mnt."
                     }
-                ]
+                ],
+                test_status: 3
             },
             {
                 // Disk that is a cache set.
@@ -258,7 +262,8 @@ describe("NodeStorageController", function() {
                 partition_table_type: null,
                 used_for: "",
                 filesystem: null,
-                partitions: null
+                partitions: null,
+                test_status: 4
             }
         ];
     }
@@ -359,6 +364,7 @@ describe("NodeStorageController", function() {
                 partition_id: null,
                 has_partitions: false,
                 original: disks[0],
+                test_status: disks[0].test_status,
                 $selected: false,
                 $options: {}
             },
@@ -379,6 +385,7 @@ describe("NodeStorageController", function() {
                 partition_id: null,
                 has_partitions: false,
                 original: disks[1],
+                test_status: disks[1].test_status,
                 $selected: false,
                 $options: {}
             },
@@ -413,7 +420,8 @@ describe("NodeStorageController", function() {
                 serial: disks[2].serial,
                 tags: disks[2].tags,
                 used_for: disks[2].used_for,
-                has_partitions: false
+                has_partitions: false,
+                test_status: disks[2].test_status
             },
             {
                 name: disks[3].name,
@@ -423,7 +431,8 @@ describe("NodeStorageController", function() {
                 serial: disks[3].serial,
                 tags: disks[3].tags,
                 used_for: disks[3].used_for,
-                has_partitions: true
+                has_partitions: true,
+                test_status: disks[3].test_status
             },
             {
                 name: disks[3].partitions[1].name,

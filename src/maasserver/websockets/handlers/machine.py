@@ -96,8 +96,6 @@ log = LegacyLogger()
 
 class MachineHandler(NodeHandler):
 
-    _script_results = {}
-
     class Meta(NodeHandler.Meta):
         abstract = False
         queryset = node_prefetch(Machine.objects.all()).select_related('bmc')
@@ -176,12 +174,6 @@ class MachineHandler(NodeHandler):
             "machine",
         ]
 
-    def get_object(self, *args, **kwargs):
-        """Get the object and update update the script_result_cache."""
-        obj = super().get_object(*args, **kwargs)
-        self._refresh_script_result_cache(obj.get_latest_script_results)
-        return obj
-
     def get_queryset(self):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
@@ -224,27 +216,6 @@ class MachineHandler(NodeHandler):
             tooltip = 'No tests have been run.'
 
         return tooltip
-
-    def _refresh_script_result_cache(self, qs):
-        """Refresh the ScriptResult cache from the given qs.
-
-        If a node_id is given only that node is refreshed.
-        """
-        cleared_node_ids = []
-        for script_result in qs:
-            # Builtin commissioning scripts are not stored in the database.
-            if script_result.script is None:
-                continue
-            node_id = script_result.script_set.node_id
-            hardware_type = script_result.script.hardware_type
-
-            if node_id not in cleared_node_ids:
-                self._script_results[node_id] = {}
-                cleared_node_ids.append(node_id)
-
-            if hardware_type not in self._script_results[node_id]:
-                self._script_results[node_id][hardware_type] = []
-            self._script_results[node_id][hardware_type].append(script_result)
 
     def list(self, params):
         """List objects.

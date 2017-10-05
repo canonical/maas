@@ -44,6 +44,7 @@ from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 from metadataserver.enum import RESULT_TYPE
+from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -76,6 +77,7 @@ class NodeHandler(TimestampedModelHandler):
 
     default_osystem = None
     default_distro_series = None
+    _script_results = {}
 
     class Meta:
         abstract = True
@@ -237,6 +239,27 @@ class NodeHandler(TimestampedModelHandler):
 
         return data
 
+    def _refresh_script_result_cache(self, qs):
+        """Refresh the ScriptResult cache from the given qs.
+
+        If a node_id is given only that node is refreshed.
+        """
+        cleared_node_ids = []
+        for script_result in qs:
+            # Builtin commissioning scripts are not stored in the database.
+            if script_result.script is None:
+                continue
+            node_id = script_result.script_set.node_id
+            hardware_type = script_result.script.hardware_type
+
+            if node_id not in cleared_node_ids:
+                self._script_results[node_id] = {}
+                cleared_node_ids.append(node_id)
+
+            if hardware_type not in self._script_results[node_id]:
+                self._script_results[node_id][hardware_type] = []
+            self._script_results[node_id][hardware_type].append(script_result)
+
     def dehydrate_blockdevice(self, blockdevice, obj):
         """Return `BlockDevice` formatted for JSON encoding."""
         # model and serial are currently only avalible on physical block
@@ -283,6 +306,17 @@ class NodeHandler(TimestampedModelHandler):
                 "uuid": blockdevice.filesystem_group.uuid,
                 "type": blockdevice.filesystem_group.group_type,
             }
+        # Calculate script results status for blockdevice
+        # if a physical block device.
+        blockdevice_script_results = [
+            script_result
+            for results in self._script_results.values()
+            for script_results in results.values()
+            for script_result in script_results
+            if script_result.physical_blockdevice_id == blockdevice.id
+        ]
+        data["test_status"] = get_status_from_qs(blockdevice_script_results)
+
         return data
 
     def dehydrate_volume_group(self, volume_group):
@@ -583,6 +617,9 @@ class NodeHandler(TimestampedModelHandler):
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
         obj = super(NodeHandler, self).get_object(params)
+        # Get the object and update update the script_result_cache.
+        self._refresh_script_result_cache(obj.get_latest_script_results)
+
         if self.user.is_superuser:
             return obj.as_self()
         if obj.owner is None or obj.owner == self.user:

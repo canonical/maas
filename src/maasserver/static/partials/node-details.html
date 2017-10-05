@@ -342,7 +342,7 @@
               <div maas-card-loader="memory"></div>
                 </div>
             <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-if="node.node_type != 3" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
-                        <div maas-card-loader="storage"></div>
+              <div maas-card-loader="storage"></div>
             </div>
         </div>
         <div class="twelve-col u-equal-height" data-ng-if="!isDevice && !isController">
@@ -1590,7 +1590,8 @@
                                 <div class="table__header table-col--15">Size</div>
                                 <div class="table__header table-col--15">Device Type</div>
                                 <div class="table__header table-col--10">Filesystem</div>
-                                <div class="table__header table-col--25">Tags</div>
+                                <div class="table__header table-col--10">Tags</div>
+                                <div class="table__header table-col--15">Health</div>
                                 <div class="table__header table-col--12 u-align--right">Actions</div>
                             </div>
                         </header>
@@ -1642,10 +1643,17 @@
                                     <div class="table__data table-col--10" aria-label="Filesystem">
                                         <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ item.fstype $}</span>
                                     </div>
-                                    <div class="table__data table__tags table-col--25" aria-label="Tags">
+                                    <div class="table__data table__tags table-col--10" aria-label="Tags">
                                         <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </span>
+                                    </div>
+                                    <div class="table__data table-col--15" aria-label="Health">
+                                      <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
+                                      <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7">Ok</span>
+                                      <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8">Error</span>
+                                      <span data-ng-if="item.test_status === 6">Degraded</span>
+                                      <span data-ng-if="item.test_status === -1">Unknown</span>
                                     </div>
                                     <div class="table__data table-col--12 table--mobile-controls">
                                         <div class="table__controls" toggle-ctrl
@@ -2286,7 +2294,8 @@
                                 </div>
                                 <div class="table__header table-col--4">Boot</div>
                                 <div class="table__header table-col--15">Device type</div>
-                                <div class="table__header table-col--52">Used for</div>
+                                <div class="table__header table-col--35">Used for</div>
+                                <div class="table__header table-col--26">Health</div>
                             </div>
                         </header>
                         <div class="table-body">
@@ -2310,7 +2319,14 @@
                                         <label for="{$ item.name $}-boot"></label>
                                     </div>
                                     <div class="table__data table-col--15" aria-label="Device type">{$ getDeviceType(item) $}</div>
-                                    <div class="table__data table-col--52" aria-label="Used for">{$ item.used_for $}</div>
+                                    <div class="table__data table-col--35" aria-label="Used for">{$ item.used_for $}</div>
+                                    <div class="table__data table-col--26" aria-label="Health">
+                                      <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
+                                      <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7">Ok</span>
+                                      <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8">Error</span>
+                                      <span data-ng-if="item.test_status === 6">Degraded</span>
+                                      <span data-ng-if="item.test_status === -1">Unknown</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

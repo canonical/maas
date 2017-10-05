@@ -130,8 +130,22 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 class TestMachineHandler(MAASServerTestCase):
 
+    def get_blockdevice_status(self, handler, blockdevice):
+        blockdevice_script_results = [
+            script_result
+            for results in handler._script_results.values()
+            for script_results in results.values()
+            for script_result in script_results
+            if script_result.physical_blockdevice == blockdevice
+        ]
+        return get_status_from_qs(blockdevice_script_results)
+
     def dehydrate_node(
             self, node, handler, for_list=False, include_summary=False):
+        # Prime handler._script_results
+        handler._script_results = {}
+        handler._refresh_script_result_cache(node.get_latest_script_results)
+
         boot_interface = node.get_boot_interface()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         blockdevices = [
@@ -296,9 +310,6 @@ class TestMachineHandler(MAASServerTestCase):
             for key in list(data):
                 if key not in allowed_fields:
                     del data[key]
-
-        # Prime handler._script_results
-        handler.list({})
 
         cpu_script_results = handler._script_results.get(node.id, {}).get(
             HARDWARE_TYPE.CPU, [])
@@ -646,6 +657,7 @@ class TestMachineHandler(MAASServerTestCase):
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
         is_boot = blockdevice.id == node.get_boot_disk().id
+        test_status = self.get_blockdevice_status(handler, blockdevice)
         self.assertEqual({
             "id": blockdevice.id,
             "is_boot": is_boot,
@@ -669,6 +681,7 @@ class TestMachineHandler(MAASServerTestCase):
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
+            "test_status": test_status,
             }, handler.dehydrate_blockdevice(blockdevice, node))
 
     def test_dehydrate_block_device_with_PhysicalBlockDevice_wo_ptable(self):
@@ -677,6 +690,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {})
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         is_boot = blockdevice.id == node.get_boot_disk().id
+        test_status = self.get_blockdevice_status(handler, blockdevice)
         self.assertEqual({
             "id": blockdevice.id,
             "is_boot": is_boot,
@@ -700,6 +714,7 @@ class TestMachineHandler(MAASServerTestCase):
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
+            "test_status": test_status,
             }, handler.dehydrate_blockdevice(blockdevice, node))
 
     def test_dehydrate_block_device_with_VirtualBlockDevice(self):
@@ -707,6 +722,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {})
         blockdevice = factory.make_VirtualBlockDevice(node=node)
+        test_status = self.get_blockdevice_status(handler, blockdevice)
         self.assertEqual({
             "id": blockdevice.id,
             "is_boot": False,
@@ -735,6 +751,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "type": blockdevice.filesystem_group.group_type,
                 "uuid": blockdevice.filesystem_group.uuid,
                 },
+            "test_status": test_status,
             }, handler.dehydrate_blockdevice(blockdevice, node))
 
     def test_dehydrate_volume_group(self):
@@ -2606,6 +2623,8 @@ class TestMachineHandler(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
         new_vlan = factory.make_VLAN()
+        handler._script_results = {}
+        handler._refresh_script_result_cache(node.get_latest_script_results)
         handler.update_interface({
             "system_id": node.system_id,
             "interface_id": interface.id,
@@ -2622,6 +2641,8 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
+        handler._script_results = {}
+        handler._refresh_script_result_cache(node.get_latest_script_results)
         handler.update_interface({
             "system_id": node.system_id,
             "interface_id": interface.id,
