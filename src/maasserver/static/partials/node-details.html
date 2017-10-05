@@ -272,7 +272,7 @@
           <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
             <div maas-card-loader="memory"></div>
           </div>
-          <div class="four-col last-col action-card action-card--positionable u-border--solid">
+          <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
             <div maas-card-loader="storage"></div>
           </div>
         </div>
@@ -296,7 +296,7 @@
           <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
             <div maas-card-loader="memory"></div>
           </div>
-          <div class="four-col action-card action-card--positionable u-border--solid">
+          <div class="four-col action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
             <div maas-card-loader="storage"></div>
           </div>
           <div class="four-col last-col action-card action-card--positionable u-border--solid">
@@ -327,7 +327,7 @@
           </div>
         </div>
         <div class="twelve-col u-equal-height" data-ng-if="node.node_type == 4">
-          <div class="four-col action-card u-border--solid">
+          <div class="four-col action-card u-border--solid" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
             <div maas-card-loader="storage"></div>
           </div>
           <div class="four-col action-card action-card--positionable u-border--solid">
@@ -340,9 +340,9 @@
             </div>
             <div class="four-col action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
               <div maas-card-loader="memory"></div>
-          	</div>
-            <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-if="node.node_type != 3">
-          		<div maas-card-loader="storage"></div>
+                </div>
+            <div class="four-col last-col action-card action-card--positionable u-border--solid" data-ng-if="node.node_type != 3" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
+                        <div maas-card-loader="storage"></div>
             </div>
         </div>
         <div class="twelve-col u-equal-height" data-ng-if="!isDevice && !isController">
@@ -2413,7 +2413,7 @@
                 <p class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
             </div>
             <div data-ng-repeat="hardware_type in testing_results">
-	             <div data-ng-if="resultsLoaded && (hardware_type.results | json) != '{}'">
+                    <div data-ng-if="resultsLoaded && (hardware_type.results | json) != '{}'">
                     <h2>{$ hardware_type.title $}</h2>
                     <div data-ng-repeat="(title, results) in hardware_type.results">
                         <h3 data-ng-if="title !== 'null'">{$ title $}</h3>
@@ -2501,7 +2501,7 @@
                             </main>
                         </section>
                     </div>
-		</div>
+                </div>
             </div>
         </div>
     </section>
