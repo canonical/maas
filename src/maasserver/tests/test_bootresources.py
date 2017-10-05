@@ -1945,6 +1945,30 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
             bootresources._import_resources_in_thread,
             MockNotCalled())
 
+    def test_maybe_import_resources_makes_maas_user_agent_request(self):
+        mock_call = self.patch(bootresources, "make_maas_user_agent_request")
+
+        with transaction.atomic():
+            Config.objects.set_config('enable_analytics', True)
+
+        service = bootresources.ImportResourcesService()
+        maybe_import_resources = asynchronous(service.maybe_import_resources)
+        maybe_import_resources().wait(5)
+
+        self.assertThat(mock_call, MockCalledOnce())
+
+    def test_maybe_import_resources_doesnt_make_maas_user_agent_request(self):
+        mock_call = self.patch(bootresources, "make_maas_user_agent_request")
+
+        with transaction.atomic():
+            Config.objects.set_config('enable_analytics', False)
+
+        service = bootresources.ImportResourcesService()
+        maybe_import_resources = asynchronous(service.maybe_import_resources)
+        maybe_import_resources().wait(5)
+
+        self.assertThat(mock_call, MockNotCalled())
+
 
 class TestImportResourcesProgressService(MAASServerTestCase):
     """Tests for `ImportResourcesProgressService`."""
