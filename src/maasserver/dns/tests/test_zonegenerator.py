@@ -750,3 +750,21 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         self.assertEqual(expected_forward, zones[0]._other_mapping)
         self.assertEqual({}, zones[0]._mapping)
         self.assertEqual({}, zones[1]._mapping)
+
+    @transactional
+    def test_domain_ttl_overrides_default_ttl(self):
+        # If the domain has a ttl, we use that as the default ttl.
+        Config.objects.set_config('default_dns_ttl', 42)
+        domain = factory.make_Domain(ttl=84)
+        [zone_config] = ZoneGenerator(domains=[domain], subnets=[], serial=123)
+        self.assertEqual(domain.name, zone_config.domain)
+        self.assertEqual(domain.ttl, zone_config.default_ttl)
+
+    @transactional
+    def test_none_domain_ttl_doesnt_override_default_ttl(self):
+        # If the domain doesn't hae a ttl, the global default ttl is used.
+        Config.objects.set_config('default_dns_ttl', 42)
+        domain = factory.make_Domain(ttl=None)
+        [zone_config] = ZoneGenerator(domains=[domain], subnets=[], serial=123)
+        self.assertEqual(domain.name, zone_config.domain)
+        self.assertEqual(42, zone_config.default_ttl)

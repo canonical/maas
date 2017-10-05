@@ -208,6 +208,7 @@ class ZoneGenerator:
         # 3. For the default domain all forward look ups for the managed and
         #    unmanaged dynamic ranges.
         for domain in domains:
+            zone_ttl = default_ttl if domain.ttl is None else domain.ttl
             # 1. node: ip mapping(domain)
             # Map all of the nodes in this domain, including the user-reserved
             # ip addresses.  Separate_fqdn handles top-of-domain names needing
@@ -249,7 +250,7 @@ class ZoneGenerator:
                             (ttl, 'AAAA', dns_ip.format()))
 
             yield DNSForwardZoneConfig(
-                domain.name, serial=serial, default_ttl=default_ttl,
+                domain.name, serial=serial, default_ttl=zone_ttl,
                 ns_ttl=domain.get_base_ttl('NS', default_ttl),
                 ipv4_ttl=domain.get_base_ttl('A', default_ttl),
                 ipv6_ttl=domain.get_base_ttl('AAAA', default_ttl),
