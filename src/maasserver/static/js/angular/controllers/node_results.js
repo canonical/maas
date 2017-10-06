@@ -61,35 +61,22 @@ angular.module('MAAS').controller('NodeResultsController', [
         ];
         $scope.installation_result = {};
 
-        function _getSubtext(result) {
-            if(result.hardware_type === 3 &&
-               result.physical_blockdevice !== null) {
-                var i;
-                for(i = 0; i < $scope.node.disks.length; i++) {
-                    if($scope.node.disks[i].id === result.physical_blockdevice)
-                    {
-                        var deviceinfo = '';
-                        if($scope.node.disks[i].model !== '') {
-                            deviceinfo += "Model: " +
-                                $scope.node.disks[i].model;
-                        }
-                        if($scope.node.disks[i].serial !== '') {
-                            if(deviceinfo !== '') {
-                                deviceinfo += ', ';
-                            }
-                            deviceinfo += "Serial: " +
-                                $scope.node.disks[i].serial;
-                        }
-                        if(deviceinfo !== '') {
-                            return '/dev/' + $scope.node.disks[i].name + ' (' +
-                                deviceinfo + ')';
-                        }else{
-                            return '/dev/' + $scope.node.disks[i].name;
-                        }
-                    }
-                }
+        function _getStorageSubtext(result, disk) {
+            var deviceinfo = '';
+            if(disk.model !== '') {
+                deviceinfo += "Model: " + disk.model;
             }
-            return null;
+            if(disk.serial !== '') {
+                if(deviceinfo !== '') {
+                    deviceinfo += ', ';
+                }
+                deviceinfo += "Serial: " + disk.serial;
+            }
+            if(deviceinfo !== '') {
+                return '/dev/' + disk.name + ' (' + deviceinfo + ')';
+            }else{
+                return '/dev/' + disk.name;
+            }
         }
 
         function _storeResult(result) {
@@ -118,11 +105,58 @@ angular.module('MAAS').controller('NodeResultsController', [
                     break;
                 }
             }
-            var subtext = _getSubtext(result);
-            if(!angular.isArray(hardware_type_results[subtext])) {
-                hardware_type_results[subtext] = [];
+            if(result.hardware_type === 3) {
+                // Storage results are split into individual components.
+                var disk, subtext;
+                if(result.physical_blockdevice !== null) {
+                    // If the storage result is assoicated with a specific
+                    // component generate subtext for that component.
+                    for(i = 0; i < $scope.node.disks.length; i++) {
+                        disk = $scope.node.disks[i];
+                        if(disk.id === result.physical_blockdevice) {
+                            subtext = _getStorageSubtext(result, disk);
+                            if(!angular.isArray(
+                                hardware_type_results[subtext])) {
+                                    hardware_type_results[subtext] = [];
+                            }
+                            hardware_type_results[subtext].push(result);
+                            break;
+                        }
+                    }
+                }else{
+                    // Storage results which do not have an associated physical
+                    // block device are associated with all known storage
+                    // devices.
+                    for(i = 0; i < $scope.node.disks.length; i++) {
+                        disk = $scope.node.disks[i];
+                        subtext = _getStorageSubtext(result, disk);
+                        if(!angular.isArray(hardware_type_results[subtext])) {
+                            hardware_type_results[subtext] = [];
+                        }
+                        // Check that the script wasn't already added.
+                        var j;
+                        var found_existing = false;
+                        for(j = 0; j < hardware_type_results[subtext].length;
+                            j++) {
+                            if(hardware_type_results[subtext][j].script ===
+                               result.script) {
+                                found_existing = true;
+                                break;
+                            }
+                        }
+                        if(!found_existing) {
+                            hardware_type_results[subtext].push(result);
+                        }
+                    }
+                }
+            }else{
+                // Other hardware types are not split into individual
+                // components.
+                if(!angular.isArray(hardware_type_results[null])) {
+                    hardware_type_results[null] = [];
+                }
+                hardware_type_results[null].push(result);
             }
-            hardware_type_results[subtext].push(result);
         }
 
         // Called once the node has loaded.

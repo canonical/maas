@@ -17,6 +17,7 @@ from django.db.models import (
     DateTimeField,
     ForeignKey,
     IntegerField,
+    Q,
     SET_NULL,
 )
 from maasserver.fields import JSONObjectField
@@ -266,6 +267,12 @@ class ScriptResult(CleanSave, TimestampedModel):
             qs = ScriptResult.objects.filter(script=self.script)
         else:
             qs = ScriptResult.objects.filter(script_name=self.script_name)
+        # XXX ltrager 2017-10-05 - Shows script runs from before MAAS supported
+        # the hardware type or physical_blockdevice fields in history.
+        # Solves LP: #1721524
+        qs = qs.filter(
+            Q(physical_blockdevice=self.physical_blockdevice) |
+            Q(physical_blockdevice__isnull=True))
         qs = qs.order_by('-id')
         return qs
 
@@ -276,7 +283,8 @@ class ScriptResult(CleanSave, TimestampedModel):
                 kwargs['update_fields'].append('started')
         elif self.ended is None and self.status in {
                 SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
-                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED}:
+                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED,
+                SCRIPT_STATUS.DEGRADED, SCRIPT_STATUS.FAILED_INSTALLING}:
             self.ended = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('ended')

@@ -19,16 +19,29 @@
         <div class="wrapper--inner">
             <div class="six-col last-col">
                 <dl>
-                   <dt class="two-col">Status</dt><dd class="four-col last-col ng-binding"><span data-maas-script-status="script-status" data-script-status="result.status" class="ng-isolate-scope"></span> {$ result.status_name $}</dd>
-                    <dt class="two-col">Exit Status</dt><dd class="four-col last-col ng-binding">{$ result.exit_status $}</dd>
-                    <dt class="two-col">Tags</dt><dd class="four-col last-col ng-binding">{$ result.tags $}</dd>
+                    <dt class="two-col">Status</dt>
+                        <dd class="four-col last-col ng-binding">
+                            <span data-maas-script-status="script-status" data-script-status="result.status" class="ng-isolate-scope"></span> {$ result.status_name $}
+                        </dd>
+                    <dt class="two-col">Exit Status</dt>
+                        <dd class="four-col last-col ng-binding" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</dd>
+                        <dd class="four-col last-col ng-binding" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</dd>
+                    <dt class="two-col">Tags</dt>
+                        <dd class="four-col last-col ng-binding" data-ng-if="result.tags">{$ result.tags $}</dd>
+                        <dd class="four-col last-col ng-binding" data-ng-if="!result.tags">&nbsp;</dd>
                 </dl>
             </div>
             <div class="six-col">
                 <dl>
-                    <dt class="two-col">Start Time</dt><dd class="four-col last-col ng-binding">{$ result.started $}</dd>
-                    <dt class="two-col">End Time</dt><dd class="four-col last-col ng-binding">{$ result.ended $}</dd>
-                    <dt class="two-col">Runtime</dt><dd class="four-col last-col ng-binding">{$ result.runtime $}</dd>
+                    <dt class="two-col">Start Time</dt>
+                        <dd class="four-col last-col ng-binding" data-ng-if="result.started">{$ result.started $}</dd>
+                        <dd class="four-col last-col ng-binding" data-ng-if="!result.started">&nbsp;</dd>
+                    <dt class="two-col">End Time</dt>
+                        <dd class="four-col last-col ng-binding" data-ng-if="result.ended">{$ result.ended $}</dd>
+                        <dd class="four-col last-col ng-binding" data-ng-if="!result.ended">&nbsp;</dd>
+                    <dt class="two-col">Runtime</dt>
+                        <dd class="four-col last-col ng-binding" data-ng-if="result.runtime">{$ result.runtime $}</dd>
+                        <dd class="four-col last-col ng-binding" data-ng-if="!result.runtime">&nbsp;</dd>
                 </dl>
             </div>
             <div class="twelve-col" data-ng-if="result.results.length !== 0">

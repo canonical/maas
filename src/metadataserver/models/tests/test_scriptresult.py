@@ -346,7 +346,8 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
         script_result.status = random.choice([
             SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
-            SCRIPT_STATUS.ABORTED])
+            SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED,
+            SCRIPT_STATUS.FAILED_INSTALLING])
         script_result.save(update_fields=['status'])
         self.assertIsNotNone(reload_object(script_result).ended)
 
@@ -485,6 +486,24 @@ class TestScriptResult(MAASServerTestCase):
         script_name = factory.make_name('script_name')
         script_results = [
             factory.make_ScriptResult(script_name=script_name)
+            for _ in range(10)
+        ]
+        script_result = script_results[-1]
+        self.assertItemsEqual(script_results, script_result.history)
+
+    def test_history_storage_device(self):
+        # Regression test for LP: #1721524
+        script = factory.make_Script()
+        physical_blockdevice = factory.make_PhysicalBlockDevice()
+        # Scripts without associated block devices
+        script_results = [
+            factory.make_ScriptResult(script=script)
+            for _ in range(10)
+        ]
+        # Scripts with associated block devices
+        script_results += [
+            factory.make_ScriptResult(
+                script=script, physical_blockdevice=physical_blockdevice)
             for _ in range(10)
         ]
         script_result = script_results[-1]

@@ -380,6 +380,52 @@ describe("NodeResultsController", function() {
         setTimeout(expectFunc);
     });
 
+    it("stores commissioning storage result no blockdevice", function(done) {
+        // Regression test for LP: #1721524
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        node.disks = [];
+        var i;
+        for(i = 0; i < 3; i++) {
+            node.disks.push({
+                "id": makeInteger(0, 100),
+                "name": makeName("name"),
+                "serial": makeName("serial")
+            });
+        }
+        MachinesManager._activeItem = node;
+        var script_result = {
+            result_type: 0,
+            hardware_type: 3,
+            physical_blockdevice: null,
+            showing_results: false,
+            showing_menu: false,
+            showing_history: false,
+            $selected: false
+        };
+        webSocket.returnData.push(makeFakeResponse([script_result]));
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        var expectFunc;
+        expectFunc = function() {
+            if($scope.resultsLoaded) {
+                for(i = 0; i < node.disks.length; i++) {
+                    var disk = node.disks[i];
+                    expect($scope.commissioning_results[2].results[
+                        "/dev/" + disk.name + " (Model: " + disk.model +
+                            ", Serial: " + disk.serial + ")"]).toEqual(
+                                [script_result]);
+                }
+                done();
+            } else {
+                setTimeout(expectFunc);
+            }
+        };
+        setTimeout(expectFunc);
+    });
+
     it("stores commissioning other result", function(done) {
         var defer = $q.defer();
         var controller = makeController(defer);
@@ -504,6 +550,52 @@ describe("NodeResultsController", function() {
                 expect($scope.testing_results[2].results[
                     "/dev/" + name + " (Model: " + model + ", Serial: " +
                         serial + ")"]).toEqual([script_result]);
+                done();
+            } else {
+                setTimeout(expectFunc);
+            }
+        };
+        setTimeout(expectFunc);
+    });
+
+    it("stores testing storage result no blockdevice", function(done) {
+        // Regression test for LP: #1721524
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        node.disks = [];
+        var i;
+        for(i = 0; i < 3; i++) {
+            node.disks.push({
+                "id": makeInteger(0, 100),
+                "name": makeName("name"),
+                "serial": makeName("serial")
+            });
+        }
+        MachinesManager._activeItem = node;
+        var script_result = {
+            result_type: 2,
+            hardware_type: 3,
+            physical_blockdevice: null,
+            showing_results: false,
+            showing_menu: false,
+            showing_history: false,
+            $selected: false
+        };
+        webSocket.returnData.push(makeFakeResponse([script_result]));
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        var expectFunc;
+        expectFunc = function() {
+            if($scope.resultsLoaded) {
+                for(i = 0; i < node.disks.length; i++) {
+                    var disk = node.disks[i];
+                    expect($scope.testing_results[2].results[
+                        "/dev/" + disk.name + " (Model: " + disk.model +
+                            ", Serial: " + disk.serial + ")"]).toEqual(
+                                [script_result]);
+                }
                 done();
             } else {
                 setTimeout(expectFunc);

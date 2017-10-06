@@ -161,6 +161,30 @@ describe("NodeResultController", function() {
             node.system_id);
     });
 
+    it("loads result on load", function(done) {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        MachinesManager._activeItem = node;
+        var script_result = makeResult();
+        webSocket.returnData.push(makeFakeResponse(script_result));
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        expect($scope.node).toBe(node);
+        expect($scope.loaded).toBe(true);
+        var expectFunc;
+        expectFunc = function() {
+            if($scope.resultLoaded) {
+                expect($scope.result.id).toBe(script_result.id);
+                done();
+            }else{
+                setTimeout(expectFunc);
+            }
+        };
+        setTimeout(expectFunc);
+    });
+
     it("calls raiseError if setActiveItem is rejected", function() {
         var defer = $q.defer();
         var controller = makeController(defer);

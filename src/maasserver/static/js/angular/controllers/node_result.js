@@ -1,7 +1,7 @@
 /* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * MAAS Commissioning Script Controller
+ * MAAS Script Result Controller
  */
 
 angular.module('MAAS').controller('NodeResultController', [
@@ -47,15 +47,9 @@ angular.module('MAAS').controller('NodeResultController', [
             // Get the NodeResultsManager and load it.
             var nodeResultsManager = NodeResultsManagerFactory.getManager(
                 $scope.node.system_id);
-            nodeResultsManager.loadItems().then(function() {
-                var i;
-                items = nodeResultsManager.getItems();
-                for(i = 0; i < items.length; i++) {
-                    if(String(items[i].id) === $routeParams.id) {
-                        $scope.result = items[i];
-                        break;
-                    }
-                }
+            var requestedResult = parseInt($routeParams.id, 10);
+            nodeResultsManager.getItem(requestedResult).then(function(result) {
+                $scope.result = result;
                 $scope.get_result_data($scope.output);
                 $scope.resultLoaded = true;
                 $rootScope.title = $scope.node.fqdn + " - " +
