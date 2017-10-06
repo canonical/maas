@@ -107,6 +107,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "rpc",
             "rpc-advertise",
             "service-monitor",
+            "stats",
             "status-monitor",
             "status-worker",
             "web",

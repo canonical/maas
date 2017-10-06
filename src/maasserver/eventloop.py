@@ -100,6 +100,11 @@ def make_StatusMonitorService():
     return status_monitor.StatusMonitorService()
 
 
+def make_StatsService():
+    from maasserver import stats
+    return stats.StatsService()
+
+
 def make_ImportResourcesService():
     from maasserver import bootresources
     return bootresources.ImportResourcesService()
@@ -231,6 +236,11 @@ class RegionEventLoop:
         "status-monitor": {
             "only_on_master": True,
             "factory": make_StatusMonitorService,
+            "requires": [],
+        },
+        "stats": {
+            "only_on_master": True,
+            "factory": make_StatsService,
             "requires": [],
         },
         "import-resources": {

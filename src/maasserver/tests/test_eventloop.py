@@ -16,6 +16,7 @@ from maasserver import (
     nonces_cleanup,
     rack_controller,
     region_controller,
+    stats,
     status_monitor,
     webapp,
 )
@@ -244,6 +245,17 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["status-monitor"]["factory"])
         self.assertTrue(
             eventloop.loop.factories["status-monitor"]["only_on_master"])
+
+    def test_make_StatsService(self):
+        service = eventloop.make_StatsService()
+        self.assertThat(service, IsInstance(
+            stats.StatsService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_StatsService,
+            eventloop.loop.factories["stats"]["factory"])
+        self.assertTrue(
+            eventloop.loop.factories["stats"]["only_on_master"])
 
     def test_make_ImportResourcesService(self):
         service = eventloop.make_ImportResourcesService()

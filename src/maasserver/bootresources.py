@@ -77,7 +77,6 @@ from maasserver.utils.orm import (
     transactional,
     with_connection,
 )
-from maasserver.utils.stats import make_maas_user_agent_request
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
@@ -1430,8 +1429,6 @@ class ImportResourcesService(TimerService, object):
 
     def maybe_import_resources(self):
         def determine_auto():
-            if Config.objects.get_config('enable_analytics'):
-                make_maas_user_agent_request()
             auto = Config.objects.get_config('boot_images_auto_import')
             if not auto:
                 return auto
