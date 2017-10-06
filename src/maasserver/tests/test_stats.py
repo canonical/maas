@@ -5,11 +5,22 @@
 
 __all__ = []
 
+import base64
+import json
+
 from django.db import transaction
 from maasserver import stats
 from maasserver.models import Config
+from maasserver.stats import (
+    get_maas_stats,
+    get_request_params,
+    make_maas_user_agent_request,
+)
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maastesting.matchers import (
     MockCalledOnce,
     MockNotCalled,
@@ -17,8 +28,48 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import asynchronous
+import requests as requests_module
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
+
+
+class TestMAASStats(MAASServerTestCase):
+
+    def test_get_maas_stats(self):
+        # Make one component of everything
+        factory.make_RegionRackController()
+        factory.make_RegionController()
+        factory.make_RackController()
+        factory.make_Machine()
+        factory.make_Device()
+
+        stats = get_maas_stats()
+        compare = {
+            "controllers": {
+                "regionracks": 1,
+                "regions": 1,
+                "racks": 1,
+            },
+            "nodes": {
+                "machines": 1,
+                "devices": 1,
+            },
+        }
+        self.assertEquals(stats, json.dumps(compare))
+
+    def test_get_request_params_returns_params(self):
+        factory.make_RegionRackController()
+        params = {
+            "data": base64.b64encode(
+                json.dumps(get_maas_stats()).encode()).decode()
+        }
+        self.assertEquals(params, get_request_params())
+
+    def test_make_user_agent_request(self):
+        factory.make_RegionRackController()
+        mock = self.patch(requests_module, "get")
+        make_maas_user_agent_request()
+        self.assertThat(mock, MockCalledOnce())
 
 
 class TestStatsService(MAASTestCase):

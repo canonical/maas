@@ -12,13 +12,61 @@ from datetime import timedelta
 
 from maasserver.models import Config
 from maasserver.utils.orm import transactional
-from maasserver.utils.stats import make_maas_user_agent_request
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from twisted.application.internet import TimerService
 
 
 log = LegacyLogger()
+
+import base64
+from collections import Counter
+import json
+
+from maasserver.enum import NODE_TYPE
+from maasserver.models import Node
+from maasserver.utils import get_maas_user_agent
+import requests
+
+
+def get_maas_stats():
+    node_types = Node.objects.values_list('node_type', flat=True)
+    node_types = Counter(node_types)
+
+    return json.dumps({
+        "controllers": {
+            "regionracks": node_types.get(
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER, 0),
+            "regions": node_types.get(NODE_TYPE.REGION_CONTROLLER, 0),
+            "racks": node_types.get(NODE_TYPE.RACK_CONTROLLER, 0),
+        },
+        "nodes": {
+            "machines": node_types.get(NODE_TYPE.MACHINE, 0),
+            "devices": node_types.get(NODE_TYPE.DEVICE, 0),
+        }
+    })
+
+
+def get_request_params():
+    return {
+        "data": base64.b64encode(
+            json.dumps(get_maas_stats()).encode()).decode(),
+    }
+
+
+def make_maas_user_agent_request():
+    headers = {
+        'User-Agent': get_maas_user_agent(),
+    }
+    params = get_request_params()
+    try:
+        requests.get(
+            'https://stats.images.maas.io/',
+            params=params, headers=headers)
+    except:
+        # Do not fail if for any reason requests does.
+        pass
+
 
 # How often the import service runs.
 STATS_SERVICE_PERIOD = timedelta(hours=24)
