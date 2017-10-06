@@ -1,6 +1,6 @@
 maas (2.3.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release, 2.3.0 beta2 (LP: #1717543).
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 04 Oct 2017 09:39:16 -0400
 
