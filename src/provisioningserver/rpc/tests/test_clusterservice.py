@@ -2385,12 +2385,14 @@ class TestClusterProtocol_Refresh(
         architecture = factory.make_name('architecture')
         osystem = factory.make_name('osystem')
         distro_series = factory.make_name('distro_series')
+        maas_version = factory.make_name('maas_version')
         self.patch_autospec(clusterservice, 'get_sys_info').return_value = {
             'hostname': hostname,
             'osystem': osystem,
             'distro_series': distro_series,
             'architecture': architecture,
             'interfaces': {},
+            'maas_version': maas_version,
         }
 
         response = yield call_responder(
@@ -2407,6 +2409,7 @@ class TestClusterProtocol_Refresh(
                 'osystem': osystem,
                 'distro_series': distro_series,
                 'architecture': architecture,
+                'maas_version': maas_version,
                 'interfaces': {},
             }, response)
 

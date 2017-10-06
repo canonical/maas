@@ -601,6 +601,7 @@ class RefreshRackControllerInfo(amp.Command):
         (b"osystem", amp.Unicode()),
         (b"distro_series", amp.Unicode()),
         (b"interfaces", StructureAsJSON()),
+        (b"maas_version", amp.Unicode(optional=True)),
     ]
     errors = {
         exceptions.RefreshAlreadyInProgress: (
