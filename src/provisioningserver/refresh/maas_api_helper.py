@@ -284,8 +284,8 @@ def capture_script_output(
     same stdout and stderr, their output will be captured only as long as
     `proc` is running.
 
-    Optionally a timeout can be given in seconds. This time is padded by 60
-    seconds to allow for script cleanup. If the script runs past the timeout
+    Optionally a timeout can be given in seconds. This time is padded by 5
+    minutes to allow for script cleanup. If the script runs past the timeout
     the process is killed and an exception is raised. Forked processes are not
     subject to the timeout.
 
@@ -294,8 +294,9 @@ def capture_script_output(
     if timeout_seconds in (None, 0):
         timeout = None
     else:
-        # Pad the timeout by 60 seconds to allow for cleanup.
-        timeout = datetime.now() + timedelta(seconds=(timeout_seconds + 60))
+        # Pad the timeout by 5 minutes to allow for cleanup.
+        timeout = datetime.now() + timedelta(
+            minutes=5, seconds=timeout_seconds)
 
     # Create the file and then open it in read write mode for terminal
     # emulation.

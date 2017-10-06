@@ -39,7 +39,7 @@ if [ $VERSION_ID == '14.04' ]; then
 fi
 
 # Reserve 64M so the test doesn't fail due to the OOM killer.
-total_memory=$(awk '/MemAvailable/ { print ($2 - 65536) }' /proc/meminfo)
+total_memory=$(awk '/MemFree/ { print ($2 - 65536) }' /proc/meminfo)
 threads=$(lscpu --all --parse | grep -v '#' | wc -l)
 memory_per_thread=$(($total_memory / $threads))
 # stress-ng only allows 4GB of memory per thread.
