@@ -12,6 +12,30 @@ export PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 mkdir -p "$BIN_D"
 
+#### FIXME: Remove work around when the issue is fixed in resolvconf ###
+#
+# LP: #1711760
+# Work around issue where resolv.conf is not set on the  ephemeral environment
+#
+# First check if a nameserver is set in resolv.conf
+if ! echo /etc/resolv.conf | grep -qs "nameserver"; then
+    # If it is not, obtain the MAC address of the PXE boot interface
+    mac_address=$(cat /proc/cmdline | grep -o -E '([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}')
+
+    # Search for the NIC name of the PXE boot interface
+    for nic in /sys/class/net/*; do
+        nic_mac=$(cat $nic/address)
+        if [ "$nic_mac" == "$mac_address" ]; then
+            # Get the interface name and ask dhclient to refresh the lease
+            interface=$(echo $nic | cut -d'/' -f5)
+            dhclient $interface || true
+            break
+        fi
+    done
+fi
+
+######################
+
 # Ensure that invocations of apt-get are not interactive by default,
 # here and in all subprocesses.
 export DEBIAN_FRONTEND=noninteractive
