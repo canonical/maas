@@ -10,29 +10,31 @@ Issues fixed in this release
 
 For more information, visit: https://launchpad.net/maas/+milestone/2.3.0beta2
 
-#1719015    $TTL in zone definition is not updated
+LP: #1719015    $TTL in zone definition is not updated
 
-#1711760    [2.3] Workaround issue in 'resolvconf', where resolv.conf is not set in ephemeral envs (commissioning, testing, etc)
+LP: #1711760    [2.3] Workaround issue in 'resolvconf', where resolv.conf is not set in ephemeral envs (commissioning, testing, etc)
 
-#1721548    [2.3] Failure on controller refresh seem to be causing version to not get updated
+LP: #1721548    [2.3] Failure on controller refresh seem to be causing version to not get updated
 
-#1721108    [2.3, UI, HWTv2] Machine details cards - Don't show "see results" when no tests have been run on a machine
+LP: #1721108    [2.3, UI, HWTv2] Machine details cards - Don't show "see results" when no tests have been run on a machine
 
-#1721111    [2.3, UI, HWTv2] Machine details cards - Storage card doesn't match CPU/Memory one
+LP: #1721111    [2.3, UI, HWTv2] Machine details cards - Storage card doesn't match CPU/Memory one
 
-#1721524    [2.3, UI, HWTv2] When upgrading from older MAAS, Storage HW tests are not mapped to the disks
+LP: #1721524    [2.3, UI, HWTv2] When upgrading from older MAAS, Storage HW tests are not mapped to the disks
 
-#1721276    [2.3, UI, HWTv2] Hardware Test tab - Table alignment for the results doesn't align with titles
+LP: #1721276    [2.3, UI, HWTv2] Hardware Test tab - Table alignment for the results doesn't align with titles
 
-#1721525    [2.3, UI, HWTv2] Storage card on machine details page missing red bar on top if there are failed tests
+LP: #1721525    [2.3, UI, HWTv2] Storage card on machine details page missing red bar on top if there are failed tests
 
-#1719361    [2.3, UI, HWTv2] On machine listing page, remove success icons for components that passed the tests
+LP: #1719361    [2.3, UI, HWTv2] On machine listing page, remove success icons for components that passed the tests
 
-#1721105    [2.3, UI, HWTv2] Remove green success icon from Machine listing page
+LP: #1721105    [2.3, UI, HWTv2] Remove green success icon from Machine listing page
 
-#1721273    [2.3, UI, HWTv2] Storage section on Hardware Test tab does not describe each disk to match the design
+LP: #1721273    [2.3, UI, HWTv2] Storage section on Hardware Test tab does not describe each disk to match the design
 
-#1719353    [2.3a3, Machine listing] Improve the information presentation of the exact tasks MAAS is running when running hardware testing
+LP: #1719353    [2.3a3, Machine listing] Improve the information presentation of the exact tasks MAAS is running when running hardware testing
+
+LP: #1721113    [2.3, UI] Group physical block devices in the storage card off of their size and type
 
 
 MAAS 2.3.0 (beta1)
