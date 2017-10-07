@@ -7,6 +7,7 @@ __all__ = [
     "NodeHandler",
 ]
 
+from collections import Counter
 from itertools import chain
 import logging
 from operator import itemgetter
@@ -162,6 +163,8 @@ class NodeHandler(TimestampedModelHandler):
                     for blockdevice in physical_blockdevices
                     ) / (1000 ** 3))
             data["storage_tags"] = self.get_all_storage_tags(blockdevices)
+            data["grouped_storages"] = self.get_grouped_storages(
+                physical_blockdevices)
 
             data["osystem"] = obj.get_osystem(
                 default=self.default_osystem)
@@ -666,3 +669,25 @@ class NodeHandler(TimestampedModelHandler):
                     "definition." % tag_name)
             tag_obj.node_set.add(node_obj)
             tag_obj.save()
+
+    def get_grouped_storages(self, blockdevices):
+        """Group storage based off of the size and type.
+
+        This is used by the storage card when displaying the grouped disks.
+        """
+        disk_data = [
+            (blockdevice.size, 'hdd' if disk_type == 'rotary' else disk_type)
+            for blockdevice in blockdevices
+            for disk_type in ('ssd', 'hdd', 'rotary', 'iscsi')
+            if disk_type in blockdevice.tags
+        ]
+        grouped_storages = []
+        for disk_type in ('ssd', 'hdd', 'rotary', 'iscsi'):
+            c = Counter(elem[0] for elem in disk_data if elem[1] == disk_type)
+            for size, count in c.items():
+                grouped_storages.append({
+                    "size": size,
+                    "count": count,
+                    "disk_type": disk_type
+                })
+        return grouped_storages

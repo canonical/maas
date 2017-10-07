@@ -349,6 +349,8 @@ class TestMachineHandler(MAASServerTestCase):
         else:
             data["status_tooltip"] = ""
 
+        data["grouped_storages"] = handler.get_grouped_storages(blockdevices)
+
         if include_summary:
             data = handler.dehydrate_summary_output(node, data)
         return data
@@ -2758,6 +2760,35 @@ class TestMachineHandler(MAASServerTestCase):
             "link_id": link_ip.id,
             })
         self.assertIsNone(reload_object(link_ip))
+
+    def test_get_grouped_storages_parses_blockdevices(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        size = random.randint(1000, 1000 ** 3)
+        ssd = factory.make_PhysicalBlockDevice(node, tags=['ssd'])
+        hdd = factory.make_PhysicalBlockDevice(node, tags=['hdd'], size=size)
+        rotary = factory.make_PhysicalBlockDevice(
+            node, tags=['rotary'], size=size)
+        iscsi = factory.make_PhysicalBlockDevice(node, tags=['iscsi'])
+        handler = MachineHandler(user, {})
+        self.assertThat(
+            handler.get_grouped_storages([ssd, hdd, rotary, iscsi]),
+            MatchesListwise([
+                MatchesDict({
+                    "count": Equals(1),
+                    "size": Equals(ssd.size),
+                    "disk_type": Equals('ssd')
+                    }),
+                MatchesDict({
+                    "count": Equals(2),
+                    "size": Equals(hdd.size),
+                    "disk_type": Equals('hdd')
+                    }),
+                MatchesDict({
+                    "count": Equals(1),
+                    "size": Equals(iscsi.size),
+                    "disk_type": Equals('iscsi')
+                    })]))
 
 
 class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
