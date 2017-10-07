@@ -263,10 +263,12 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     @property
     def history(self):
+        qs = ScriptResult.objects.filter(
+            script_set__node_id=self.script_set.node_id)
         if self.script is not None:
-            qs = ScriptResult.objects.filter(script=self.script)
+            qs = qs.filter(script=self.script)
         else:
-            qs = ScriptResult.objects.filter(script_name=self.script_name)
+            qs = qs.filter(script_name=self.script_name)
         # XXX ltrager 2017-10-05 - Shows script runs from before MAAS supported
         # the hardware type or physical_blockdevice fields in history.
         # Solves LP: #1721524

@@ -475,36 +475,47 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_history_with_script(self):
         script = factory.make_Script()
+        script_set = factory.make_ScriptSet()
         script_results = [
-            factory.make_ScriptResult(script=script)
+            factory.make_ScriptResult(script=script, script_set=script_set)
             for _ in range(10)
         ]
+        # Script result from another node
+        factory.make_ScriptResult(script=script)
         script_result = script_results[-1]
         self.assertItemsEqual(script_results, script_result.history)
 
     def test_history_without_script(self):
         script_name = factory.make_name('script_name')
+        script_set = factory.make_ScriptSet()
         script_results = [
-            factory.make_ScriptResult(script_name=script_name)
+            factory.make_ScriptResult(
+                script_name=script_name, script_set=script_set)
             for _ in range(10)
         ]
+        # Script result from another node
+        factory.make_ScriptResult(script_name=script_name)
         script_result = script_results[-1]
         self.assertItemsEqual(script_results, script_result.history)
 
     def test_history_storage_device(self):
         # Regression test for LP: #1721524
         script = factory.make_Script()
+        script_set = factory.make_ScriptSet()
         physical_blockdevice = factory.make_PhysicalBlockDevice()
         # Scripts without associated block devices
         script_results = [
-            factory.make_ScriptResult(script=script)
+            factory.make_ScriptResult(script=script, script_set=script_set)
             for _ in range(10)
         ]
         # Scripts with associated block devices
         script_results += [
             factory.make_ScriptResult(
-                script=script, physical_blockdevice=physical_blockdevice)
+                script=script, script_set=script_set,
+                physical_blockdevice=physical_blockdevice)
             for _ in range(10)
         ]
+        # Script from another node
+        factory.make_ScriptResult(script=script)
         script_result = script_results[-1]
         self.assertItemsEqual(script_results, script_result.history)
