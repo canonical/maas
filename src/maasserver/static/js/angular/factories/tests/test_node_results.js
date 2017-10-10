@@ -47,6 +47,48 @@ describe("NodeResultsManagerFactory", function() {
         return script_result;
     }
 
+    describe("_initBatchLoadParameters", function() {
+        it("returns system_id when unknown result_type", function() {
+            var system_id = makeName("system_id");
+            var result_type = makeName("result_type");
+            var manager = NodeResultsManagerFactory.getManager(
+                system_id, result_type);
+            expect(manager._initBatchLoadParameters()).toEqual({
+                "system_id": system_id
+            });
+        });
+
+        it("returns system_id and testing result_type", function() {
+            var system_id = makeName("system_id");
+            var manager = NodeResultsManagerFactory.getManager(
+                system_id, "testing");
+            expect(manager._initBatchLoadParameters()).toEqual({
+                "system_id": system_id,
+                "result_type": 2
+            });
+        });
+
+        it("returns system_id and commissioning result_type", function() {
+            var system_id = makeName("system_id");
+            var manager = NodeResultsManagerFactory.getManager(
+                system_id, "commissioning");
+            expect(manager._initBatchLoadParameters()).toEqual({
+                "system_id": system_id,
+                "result_type": 0
+            });
+        });
+
+       it("returns system_id and installation result_type", function() {
+            var system_id = makeName("system_id");
+            var manager = NodeResultsManagerFactory.getManager(
+                system_id, "installation");
+            expect(manager._initBatchLoadParameters()).toEqual({
+                "system_id": system_id,
+                "result_type": 1
+            });
+        });
+    });
+
     describe("_getManager", function() {
 
         it("returns null when no manager with system_id exists", function() {
@@ -68,16 +110,22 @@ describe("NodeResultsManagerFactory", function() {
 
         it("returns new manager with system_id doesnt exists", function() {
             var system_id = makeName("system_id");
-            var manager = NodeResultsManagerFactory.getManager(system_id);
+            var result_type = makeName("result_type");
+            var manager = NodeResultsManagerFactory.getManager(
+                system_id, result_type);
             expect(manager._node_system_id).toBe(system_id);
             expect(NodeResultsManagerFactory._managers).toEqual([manager]);
+            expect(manager._result_type).toBe(result_type);
         });
 
         it("returns same manager with system_id exists", function() {
             var system_id = makeName("system_id");
-            var manager = NodeResultsManagerFactory.getManager(system_id);
-            expect(NodeResultsManagerFactory.getManager(system_id)).toBe(
-                manager);
+            var result_type = makeName("result_type");
+            var manager = NodeResultsManagerFactory.getManager(
+                system_id, result_type);
+            expect(NodeResultsManagerFactory.getManager(
+                system_id, result_type)).toBe(manager);
+            expect(manager._result_type).toBe(result_type);
         });
     });
 

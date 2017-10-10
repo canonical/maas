@@ -49,6 +49,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         handler = SwitchHandler(owner, {})
         machine = factory.make_Machine(owner=owner)
         factory.make_Switch(node=machine)
+        handler._script_results = {}
         result = handler.get({"system_id": machine.system_id})
         self.assertEqual(machine.system_id, result["system_id"])
         self.assertEqual(NODE_TYPE.MACHINE, result["node_type"])

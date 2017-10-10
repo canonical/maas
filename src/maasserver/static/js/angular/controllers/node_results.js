@@ -17,6 +17,11 @@ angular.module('MAAS').controller('NodeResultsController', [
         // Store as an array to preserve order.
         $scope.commissioning_results = [
             {
+                title: null,
+                hardware_type: 0,
+                results: {}
+            },
+            {
                 title: "CPU",
                 hardware_type: 1,
                 results: {}
@@ -29,11 +34,6 @@ angular.module('MAAS').controller('NodeResultsController', [
             {
                 title: "Storage",
                 hardware_type: 3,
-                results: {}
-            },
-            {
-                title: "Other Results",
-                hardware_type: 0,
                 results: {}
             }
         ];
@@ -161,13 +161,24 @@ angular.module('MAAS').controller('NodeResultsController', [
 
         // Called once the node has loaded.
         function nodeLoaded(node) {
+            var nodeResultsManager;
             $scope.node = node;
             $scope.loaded = true;
             // Get the NodeResultsManager and load it.
-            nodeResultsManager = NodeResultsManagerFactory.getManager(
-                node.system_id);
+            if($scope.section.area === 'commissioning') {
+                nodeResultsManager = NodeResultsManagerFactory.getManager(
+                    node.system_id, 'commissioning');
+            }else{
+                nodeResultsManager = NodeResultsManagerFactory.getManager(
+                    node.system_id, 'testing');
+            }
             nodeResultsManager.loadItems().then(function() {
                 angular.forEach(nodeResultsManager.getItems(), _storeResult);
+                if($scope.section.area === 'commissioning') {
+                    $scope.results = $scope.commissioning_results;
+                }else{
+                    $scope.results = $scope.testing_results;
+                }
                 $scope.resultsLoaded = true;
             });
         }

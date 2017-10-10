@@ -1,0 +1,95 @@
+<div class="wrapper--inner" data-ng-controller="NodeResultsController">
+    <div class="twelve-col" data-ng-if="!resultsLoaded">
+        <p class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
+    </div>
+    <div data-ng-repeat="hardware_type in results">
+        <div data-ng-if="resultsLoaded && (hardware_type.results | json) != '{}'">
+        <h2 data-ng-if="hardware_type.title !== 'null'">{$ hardware_type.title $}</h2>
+        <div data-ng-repeat="(title, results) in hardware_type.results">
+            <h3 data-ng-if="title !== 'null'">{$ title $}</h3>
+            <section class="table u-margin--bottom">
+                <header class="table__head">
+                    <div class="table__row">
+                        <div class="table__header table-col--2 u-padding--left-none"></div>
+                        <div class="table__header table-col--24">Name</div>
+                        <div class="table__header table-col--24">Tags</div>
+                        <div class="table__header table-col--10">Runtime</div>
+                        <div class="table__header table-col--20">Date</div>
+                        <div class="table__header table-col--15">Result</div>
+                        <div class="table__header table-col--5 u-align--right">Actions</div>
+                    </div>
+                </header>
+                <main class="table__body">
+                    <div data-ng-repeat="result in results">
+                        <div class="table__row" data-ng-class="{'is-active': result.showing_results || result.showing_history}">
+                            <div class="table__data table-col--2 u-padding--left-none" aria-label="Status">
+                                <span data-maas-script-status="script-status" data-script-status="result.status"></span>
+                            </div>
+                            <div class="table__data table-col--24" data-ng-click="result.showing_results = !result.showing_results" aria-label="Name">
+                                {$ result.name $}
+                                <button class="icon u-margin--top-tiny u-float--right" data-ng-class="{'icon--open': !result.showing_results, 'icon--close': result.showing_results}" data-ng-if="!result.showing_history"></button>
+                            </div>
+                            <div class="table__data table-col--24" aria-label="Tags"><span data-ng-hide="result.showing_history">{$ result.tags $}</span></div>
+                            <div class="table__data table-col--10" aria-label="Runtime"><span data-ng-hide="result.showing_history">{$ result.runtime $}</span></div>
+                            <div class="table__data table-col--20" aria-label="Date"><span data-ng-hide="result.showing_history">{$ result.updated $}</span></div>
+                            <div class="table__data table-col--15" aria-label="Status">
+                                <span data-ng-hide="result.showing_history">
+                                    <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
+                                    {$ result.status_name $} <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ result.id $}">View log</a>
+                                </span>
+                            </div>
+                            <div class="table__data table-col--5 table--mobile-controls">
+                                <div class="table__controls u-align--right" toggle-ctrl>
+                                    <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                    <div class="table__controls-menu ng-hide" role="menu" data-ng-show="isToggled">
+                                        <button class="table__controls-action" aria-label="View metrics" data-ng-if="!result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
+                                        <button class="table__controls-action" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
+                                        <button class="table__controls-action" aria-label="View previous tests" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = true">View previous tests</button>
+                                        <button class="table__controls-action" aria-label="Hide previous tests" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous tests</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table__dropdown" aria-label="results" data-ng-if="result.showing_results && !result.showing_history">
+                                <div class="table__row is-active">
+                                    <div class="table__data table-col--100" data-ng-if="result.results.length === 0">No metrics provided</div>
+                                    <div class="table__data table-col--50" data-ng-repeat="item in result.results">
+                                        <span class="tooltip table-col--50" aria-label="{$ item.description $}">{$ item.title $}</span>
+                                        <span class="table-col--50 u-text--subtle">{$ item.value $}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table__dropdown" aria-label="history" data-ng-if="result.showing_history">
+                                <div class="table__row is-active">
+                                    <div class="table__data table-col--100">
+                                        <section class="table u-margin--bottom">
+                                            <main class="table__body">
+                                                <div class="table__row is-active u-border--none" data-ng-repeat="item in result.history_list">
+                                                    <div class="table__data table-col--2 u-padding--left-none" aria-label="Status">
+                                                        <span data-maas-script-status="script-status" data-script-status="item.status"></span>
+                                                    </div>
+                                                    <div class="table__data table-col--20" aria-label="Name">{$ result.name $}</div>
+                                                    <div class="table__data table-col--25" aria-label="Tags">{$ result.tags $}</div>
+                                                    <div class="table__data table-col--10" aria-label="Runtime">{$ item.runtime $}</div>
+                                                    <div class="table__data table-col--20" aria-label="Date">{$ item.updated $}</div>
+                                                    <div class="table__data table-col--23" aria-label="Status">
+                                                        <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
+                                                        {$ item.status_name $} <a data-ng-if="item.status === 2 || item.status === 3 || item.status === 4 || item.status === 6 || item.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ item.id $}">View log</a>
+                                                    </div>
+                                                </div>
+                                            </main>
+                                        </section>
+                                        <p class="u-align--center u-margin--bottom">
+                                            <button class="button--secondary button--inline" data-ng-click="result.showing_history = false">Hide previous tests</button>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </section>
+        </div>
+    </div>
+</div>

@@ -73,8 +73,10 @@ class NodeResultHandler(TimestampedModelHandler):
             data["hardware_type"] = obj.script.hardware_type
             data["tags"] = ", ".join(obj.script.tags)
         else:
+            # Only builtin commissioning scripts don't have an associated
+            # Script object.
             data["hardware_type"] = HARDWARE_TYPE.NODE
-            data["tags"] = []
+            data["tags"] = 'commissioning'
         data["history_list"] = [
             {
                 "id": history.id,

@@ -215,16 +215,14 @@ class NodeHandler(TimestampedModelHandler):
 
                 # Machine output
                 data = self.dehydrate_summary_output(obj, data)
-                data["commissioning_results"] = self.dehydrate_script_set(
-                    obj.current_commissioning_script_set)
-                data["commissioning_script_set_status"] = (
-                    self.dehydrate_script_set_status(
-                        obj.current_commissioning_script_set))
-                data["testing_results"] = self.dehydrate_script_set(
-                    obj.current_testing_script_set)
-                data["testing_script_set_status"] = (
-                    self.dehydrate_script_set_status(
-                        obj.current_testing_script_set))
+                data["commissioning_script_count"] = (
+                    obj.get_latest_commissioning_script_results.count())
+                data["commissioning_script_set_status"] = get_status_from_qs(
+                    obj.get_latest_commissioning_script_results)
+                data["testing_script_count"] = (
+                    obj.get_latest_testing_script_results.count())
+                data["testing_script_set_status"] = get_status_from_qs(
+                    obj.get_latest_testing_script_results)
                 data["installation_results"] = self.dehydrate_script_set(
                     obj.current_installation_script_set)
                 data["installation_script_set_status"] = (

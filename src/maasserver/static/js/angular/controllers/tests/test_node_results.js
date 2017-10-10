@@ -15,6 +15,9 @@ describe("NodeResultsController", function() {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
         $scope = $rootScope.$new();
+        $scope.section = {
+            area: pickItem(["testing", "commissioning", "summary"])
+        };
         $q = $injector.get("$q");
     }));
 
@@ -85,6 +88,11 @@ describe("NodeResultsController", function() {
         expect($scope.node).toBeNull();
         expect($scope.commissioning_results).toEqual([
             {
+                title: null,
+                hardware_type: 0,
+                results: {}
+            },
+            {
                 title: "CPU",
                 hardware_type: 1,
                 results: {}
@@ -97,11 +105,6 @@ describe("NodeResultsController", function() {
             {
                 title: "Storage",
                 hardware_type: 3,
-                results: {}
-            },
-            {
-                title: "Other Results",
-                hardware_type: 0,
                 results: {}
             }
         ]);
@@ -138,6 +141,11 @@ describe("NodeResultsController", function() {
         expect($scope.node).toBeNull();
         expect($scope.commissioning_results).toEqual([
             {
+                title: null,
+                hardware_type: 0,
+                results: {}
+            },
+            {
                 title: "CPU",
                 hardware_type: 1,
                 results: {}
@@ -150,11 +158,6 @@ describe("NodeResultsController", function() {
             {
                 title: "Storage",
                 hardware_type: 3,
-                results: {}
-            },
-            {
-                title: "Other Results",
-                hardware_type: 0,
                 results: {}
             }
         ]);
@@ -239,7 +242,7 @@ describe("NodeResultsController", function() {
         expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
     });
 
-    it("gets the results manager for the node", function() {
+    it("sets the results manager for the node", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         MachinesManager._activeItem = node;
@@ -247,8 +250,13 @@ describe("NodeResultsController", function() {
 
         defer.resolve();
         $rootScope.$digest();
-        expect(NodeResultsManagerFactory.getManager).toHaveBeenCalledWith(
-            node.system_id);
+        if($scope.section.area === 'summary') {
+            expect(NodeResultsManagerFactory.getManager).toHaveBeenCalledWith(
+                node.system_id, 'testing');
+        }else{
+            expect(NodeResultsManagerFactory.getManager).toHaveBeenCalledWith(
+                node.system_id, $scope.section.area);
+        }
     });
 
     it("calls loadItems on the results manager", function() {
@@ -278,6 +286,27 @@ describe("NodeResultsController", function() {
         expect($scope.resultsLoaded).toBe(true);
     });
 
+    it("sets results once events manager loadItems resolves", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        MachinesManager._activeItem = node;
+        var manager = NodeResultsManagerFactory.getManager(
+            node.system_id, $scope.section.area);
+        var loadDefer = $q.defer();
+        spyOn(manager, "loadItems").and.returnValue(loadDefer.promise);
+
+        defer.resolve();
+        $rootScope.$digest();
+        loadDefer.resolve();
+        $rootScope.$digest();
+        expect($scope.resultsLoaded).toBe(true);
+        if($scope.section.area === 'commissioning') {
+            expect($scope.results).toBe($scope.commissioning_results);
+        }else{
+            expect($scope.results).toBe($scope.testing_results);
+        }
+    });
+
     it("stores commissioning CPU result", function(done) {
         var defer = $q.defer();
         var controller = makeController(defer);
@@ -298,7 +327,7 @@ describe("NodeResultsController", function() {
         var expectFunc;
         expectFunc = function() {
             if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[0].results[null]).toEqual(
+                expect($scope.commissioning_results[1].results[null]).toEqual(
                     [script_result]);
                 done();
             } else {
@@ -328,7 +357,7 @@ describe("NodeResultsController", function() {
         var expectFunc;
         expectFunc = function() {
             if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[1].results[null]).toEqual(
+                expect($scope.commissioning_results[2].results[null]).toEqual(
                     [script_result]);
                 done();
             } else {
@@ -369,7 +398,7 @@ describe("NodeResultsController", function() {
         var expectFunc;
         expectFunc = function() {
             if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[2].results[
+                expect($scope.commissioning_results[3].results[
                     "/dev/" + name + " (Model: " + model + ", Serial: " +
                         serial + ")"]).toEqual([script_result]);
                 done();
@@ -413,7 +442,7 @@ describe("NodeResultsController", function() {
             if($scope.resultsLoaded) {
                 for(i = 0; i < node.disks.length; i++) {
                     var disk = node.disks[i];
-                    expect($scope.commissioning_results[2].results[
+                    expect($scope.commissioning_results[3].results[
                         "/dev/" + disk.name + " (Model: " + disk.model +
                             ", Serial: " + disk.serial + ")"]).toEqual(
                                 [script_result]);
@@ -446,7 +475,7 @@ describe("NodeResultsController", function() {
         var expectFunc;
         expectFunc = function() {
             if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[3].results[null]).toEqual(
+                expect($scope.commissioning_results[0].results[null]).toEqual(
                     [script_result]);
                 done();
             } else {

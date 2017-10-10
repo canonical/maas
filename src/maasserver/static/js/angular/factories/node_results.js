@@ -33,9 +33,17 @@ angular.module('MAAS').factory(
         // Return the list of ScriptResults for the given node when retrieving
         // the initial list.
         NodeResultsManager.prototype._initBatchLoadParameters = function() {
-            return {
+            var ret = {
                 "system_id": this._node_system_id
             };
+            if(this._result_type === 'testing') {
+                ret.result_type = 2;
+            }else if(this._result_type === 'commissioning') {
+                ret.result_type = 0;
+            }else if(this._result_type === 'installation') {
+                ret.result_type = 1;
+            }
+            return ret;
         };
 
         // Get result data.
@@ -70,14 +78,14 @@ angular.module('MAAS').factory(
         // Gets the NodeResultsManager for the nodes system_id. Creates a new
         // manager if one does not exist.
         NodeResultsManagerFactory.prototype.getManager = function(
-                node_system_id) {
+                node_system_id, result_type) {
             var manager = this._getManager(node_system_id);
             if(!angular.isObject(manager)) {
                 // Not created so create it.
                 manager = new NodeResultsManager(node_system_id, this);
                 this._managers.push(manager);
-                return manager;
             }
+            manager._result_type = result_type;
             return manager;
         };
 

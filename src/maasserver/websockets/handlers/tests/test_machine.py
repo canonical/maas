@@ -172,23 +172,21 @@ class TestMachineHandler(MAASServerTestCase):
             "bmc": node.bmc_id,
             "boot_disk": node.boot_disk,
             "bios_boot_method": node.bios_boot_method,
+            "commissioning_script_count": (
+                node.get_latest_commissioning_script_results.count()),
+            "commissioning_script_set_status": get_status_from_qs(
+                node.get_latest_commissioning_script_results),
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id),
+            "testing_script_count": (
+                node.get_latest_testing_script_results.count()),
+            "testing_script_set_status": get_status_from_qs(
+                node.get_latest_testing_script_results),
             "current_testing_script_set": node.current_testing_script_set_id,
-            "current_installation_script_set": (
-                node.current_installation_script_set_id),
-            "commissioning_results": handler.dehydrate_script_set(
-                node.current_commissioning_script_set),
-            "testing_results": handler.dehydrate_script_set(
-                node.current_testing_script_set),
             "installation_results": handler.dehydrate_script_set(
                 node.current_installation_script_set),
-            "commissioning_script_set_status": (
-                handler.dehydrate_script_set_status(
-                    node.current_commissioning_script_set)),
-            "testing_script_set_status": (
-                handler.dehydrate_script_set_status(
-                    node.current_testing_script_set)),
+            "current_installation_script_set": (
+                node.current_installation_script_set_id),
             "installation_script_set_status": (
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set)),
