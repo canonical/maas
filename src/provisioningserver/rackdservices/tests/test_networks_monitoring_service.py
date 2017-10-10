@@ -225,4 +225,4 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         yield service.stopService()
         self.assertThat(
             service.beaconing_protocol.queueMulticastBeaconing,
-            MockCallsMatch(call()))
+            MockCallsMatch(call(solicitation=True)))

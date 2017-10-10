@@ -456,7 +456,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
     """Protocol to handle beaconing packets received from the socket layer."""
 
     def __init__(
-            self, reactor, process_incoming=False, debug=True, interface="::",
+            self, reactor, process_incoming=False, debug=False, interface="::",
             loopback=False, port=BEACON_PORT, interfaces=None):
         super().__init__()
         self.interface = interface
@@ -494,7 +494,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             self.listen_port = self.reactor.listenMulticast(
                 self.port, self, interface=self.interface, listenMultiple=True)
         sock = self.transport.getHandle()
-        if self.loopback is True:
+        if self.loopback:
             # This is only necessary for testing.
             self.transport.setLoopbackMode(self.loopback)
             set_ipv6_multicast_loopback(sock, self.loopback)
@@ -575,7 +575,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             age_out_uuid_queue(self.tx_queue)
             return True
         except OSError as e:
-            if self.debug is True:
+            if self.debug:
                 log.msg("Error while sending beacon to %r: %s" % (
                     destination_address, e))
         return False
@@ -614,7 +614,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
         :param verbose: If True, will log the payload of each beacon sent.
         """
         for ifname, ifdata in interfaces.items():
-            log.msg("Sending multicast beacon on '%s'." % ifname)
+            if self.debug:
+                log.msg("Sending multicast beacon on '%s'." % ifname)
             if not ifdata['enabled']:
                 continue
             remote = interface_info_to_beacon_remote_payload(ifname, ifdata)
@@ -679,7 +680,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
         mtime = time.monotonic()
         beacon_type = (
             'solicitation' if self.mcast_solicitation else 'advertisement')
-        log.msg("Sending multicast beacon %ss." % beacon_type)
+        if self.debug:
+            log.msg("Sending multicast beacon %ss." % beacon_type)
         self.send_multicast_beacons(self.interfaces, beacon_type)
         self.last_solicited_mcast = mtime
         self.mcast_requested = False
@@ -696,7 +698,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             advertisements. Solicitations are used to initiate "full beaconing"
             with peers; advertisements do not generate beacon replies.
         """
-        if solicitation is True:
+        if solicitation:
             self.mcast_solicitation = True
         if self.mcast_requested:
             # A multicast advertisement has been requested already.
@@ -738,10 +740,9 @@ class BeaconingSocketProtocol(DatagramProtocol):
             self._add_remote_fabric_hints(hints, remote_ifinfo, rx)
         if len(hints) > 0:
             self.topology_hints[rx.uuid] = hints
-            # XXX mpontillo 2017-08-07: temporary logging
-            log.msg("New topology hints [%s]:\n%s" % (rx.uuid, pformat(hints)))
-            all_hints = self.getAllTopologyHints()
-            log.msg("Topology hint summary:\n%s" % pformat(all_hints))
+            if self.debug:
+                all_hints = self.getAllTopologyHints()
+                log.msg("Topology hint summary:\n%s" % pformat(all_hints))
 
     def _add_remote_fabric_hints(self, hints, remote_ifinfo, rx):
         """Adds hints for remote networks that are either on-link or routable.
@@ -822,7 +823,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         """
         beacon = self.make_ReceivedBeacon(beacon_json)
         if beacon.uuid is None:
-            if self.debug is True:
+            if self.debug:
                 log.msg(
                     "Rejecting incoming beacon: no UUID found: \n%s" % (
                         pformat(beacon_json)))
@@ -833,7 +834,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         beacon_json['own_beacon'] = own_beacon
         is_dup = self.remember_beacon_and_check_duplicate(beacon)
         beacon_json['is_dup'] = is_dup
-        if self.debug is True:
+        if self.debug:
             log.msg("%s %sreceived:\n%s" % (
                 "Own beacon" if own_beacon else "Beacon",
                 "(duplicate) " if is_dup else "",
@@ -923,7 +924,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         beacons. However, at other times, (such as while running the test
         commands), we *will* listen to the socket layer for beacons.
         """
-        if self.process_incoming is True:
+        if self.process_incoming:
             context = {
                 "source_ip": addr[0],
                 "source_port": addr[1]
@@ -1042,7 +1043,6 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     def reportBeacons(self, beacons):
         """Receives a report of an observed beacon packet."""
         for beacon in beacons:
-            log.msg("Received beacon: %r" % beacon)
             self.beaconing_protocol.beaconReceived(beacon)
 
     def stopService(self):
@@ -1115,9 +1115,12 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # _configureNetworkDiscovery() here.
             self._interfacesRecorded(interfaces)
         else:
-            # Send out beacons unsolicited once every 30 seconds.
+            # Send out beacons unsolicited once every 30 seconds. (Use
+            # solicitations so that replies will be received, that way peers
+            # will reply and the hinting will be accurate.)
             if self.enable_beaconing:
-                self.beaconing_protocol.queueMulticastBeaconing()
+                self.beaconing_protocol.queueMulticastBeaconing(
+                    solicitation=True)
             # If the interfaces didn't change, we still need to poll for
             # monitoring state changes.
             yield maybeDeferred(self._configureNetworkDiscovery, interfaces)
@@ -1133,7 +1136,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             return set()
         monitored_interfaces = {
             ifname for ifname, ifdata in interfaces.items()
-            if ifdata['monitored'] is True
+            if ifdata['monitored']
         }
         return monitored_interfaces
 
@@ -1151,7 +1154,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         monitored_interfaces = {
             ifname for ifname in interfaces
             if (ifname in monitoring_state and
-                monitoring_state[ifname].get('neighbour', False) is True)
+                monitoring_state[ifname].get('neighbour', False))
         }
         return monitored_interfaces
 
@@ -1346,5 +1349,5 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     def _interfacesRecorded(self, interfaces):
         """The given `interfaces` were recorded successfully."""
         self._recorded = interfaces
-        if self.enable_monitoring is True:
+        if self.enable_monitoring:
             self._configureNetworkDiscovery(interfaces)
