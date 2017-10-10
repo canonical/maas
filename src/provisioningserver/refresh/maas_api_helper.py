@@ -10,10 +10,6 @@ __all__ = [
     ]
 
 from collections import OrderedDict
-from datetime import (
-    datetime,
-    timedelta,
-)
 from email.utils import parsedate
 import json
 import mimetypes
@@ -295,8 +291,7 @@ def capture_script_output(
         timeout = None
     else:
         # Pad the timeout by 5 minutes to allow for cleanup.
-        timeout = datetime.now() + timedelta(
-            minutes=5, seconds=timeout_seconds)
+        timeout = time.monotonic() + timeout_seconds + (60 * 5)
 
     # Create the file and then open it in read write mode for terminal
     # emulation.
@@ -310,14 +305,14 @@ def capture_script_output(
                 while selector.get_map() and proc.poll() is None:
                     # Select with a short timeout so that we don't tight loop.
                     _select_script_output(selector, combined, 0.1)
-                    if timeout is not None and datetime.now() > timeout:
+                    if timeout is not None and time.monotonic() > timeout:
                         break
                 else:
                     # Process has finished or has closed stdout and stderr.
                     # Process anything still sitting in the latter's buffers.
                     _select_script_output(selector, combined, 0.0)
 
-    now = datetime.now()
+    now = time.monotonic()
     # Wait for the process to finish.
     if timeout is None:
         # No timeout just wait until the process finishes.
@@ -330,7 +325,7 @@ def capture_script_output(
         # stdout and stderr have been closed but the timeout has not been
         # exceeded. Run with the remaining amount of time.
         try:
-            return proc.wait(timeout=(timeout - now).seconds)
+            return proc.wait(timeout=(timeout - now))
         except TimeoutExpired:
             # Make sure the process was killed
             proc.kill()

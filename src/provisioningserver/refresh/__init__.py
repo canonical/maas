@@ -7,6 +7,7 @@ import os
 import socket
 import stat
 from subprocess import (
+    DEVNULL,
     PIPE,
     Popen,
     TimeoutExpired,
@@ -164,7 +165,7 @@ def runscripts(scripts, url, creds, tmpdir):
             timeout_seconds = timeout.seconds
 
         try:
-            proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
+            proc = Popen(script_path, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
             capture_script_output(
                 proc, combined_path, stdout_path, stderr_path, timeout_seconds)
         except OSError as e:

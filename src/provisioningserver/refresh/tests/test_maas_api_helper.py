@@ -6,7 +6,6 @@
 __all__ = []
 
 from collections import OrderedDict
-from datetime import timedelta
 from email.utils import formatdate
 from io import StringIO
 import json
@@ -615,11 +614,9 @@ class TestCaptureScriptOutput(MAASTestCase):
             )))
 
     def test__timeout(self):
-        # The timeout is padded by 60 seconds, override it so the test can
-        # run quickly.
-        self.patch(maas_api_helper, 'timedelta').return_value = timedelta(
-            microseconds=1)
+        self.patch(maas_api_helper.time, 'monotonic').side_effect = (
+            0, 60 * 6, 60 * 6, 60 * 6)
         proc = Popen(
             'echo "test"', stdout=PIPE, stderr=PIPE, shell=True)
         self.assertRaises(
-            TimeoutExpired, self.capture, proc, random.randint(1, 500))
+            TimeoutExpired, self.capture, proc, random.randint(1, 5))

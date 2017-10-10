@@ -29,6 +29,7 @@ import re
 import shlex
 from subprocess import (
     check_output,
+    DEVNULL,
     PIPE,
     Popen,
     TimeoutExpired,
@@ -91,7 +92,7 @@ def download_and_extract_tar(url, creds, scripts_dir):
 def run_and_check(
         cmd, combined_path, stdout_path, stderr_path, script_name, args,
         ignore_error=False):
-    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
     capture_script_output(proc, combined_path, stdout_path, stderr_path)
     if proc.returncode != 0 and not ignore_error:
         args['exit_status'] = proc.returncode

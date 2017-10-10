@@ -341,8 +341,8 @@ class TestRefresh(MAASTestCase):
         script_name = factory.make_name('script_name')
         timeout = timedelta(seconds=random.randint(1, 500))
         self.patch_scripts_failure(script_name, timeout)
-        self.patch(refresh.maas_api_helper, 'timedelta').return_value = (
-            timedelta(microseconds=1))
+        self.patch(refresh.maas_api_helper.time, 'monotonic').side_effect = (
+            0, timeout.seconds + (60 * 6), timeout.seconds + (60 * 6))
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
