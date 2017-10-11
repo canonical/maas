@@ -188,7 +188,11 @@ angular.module('MAAS').run(['$rootScope',
             (window.ga.q = window.ga.q || []).push(arguments);
         };
         window.ga.l = +new Date();
-        window.ga('create', 'UA-1018242-63', 'auto');
+        window.ga('create', 'UA-1018242-63', 'auto', {
+          userId: MAAS_config.analytics_user_id
+        });
+        window.ga('set', 'dimension1', MAAS_config.version);
+        window.ga('set', 'dimension2', MAAS_config.uuid);
         $rootScope.$on('$routeChangeSuccess', function() {
             var path = window.location.pathname + window.location.hash;
             window.ga('send', 'pageview', path);
