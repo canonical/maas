@@ -1,8 +1,8 @@
-maas (2.3.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.0~beta2-6327-gdd05aa2-0ubuntu1) artful; urgency=medium
 
   * New upstream release, 2.3.0 beta2 (LP: #1717543).
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 04 Oct 2017 09:39:16 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 11 Oct 2017 12:22:51 -0400
 
 maas (2.3.0~beta1-6301-gca25180-0ubuntu1) artful; urgency=medium
 
