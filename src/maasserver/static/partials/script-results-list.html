@@ -52,8 +52,8 @@
 
                             <div class="table__dropdown" aria-label="results" data-ng-if="result.showing_results && !result.showing_history">
                                 <div class="table__row is-active">
-                                    <div class="table__data table-col--100" data-ng-if="result.results.length === 0">No metrics provided</div>
-                                    <div class="table__data table-col--50" data-ng-repeat="item in result.results">
+                                    <div class="table__data table-col--100 u-padding--tiny" data-ng-if="result.results.length === 0">No metrics provided</div>
+                                    <div class="table__data table-col--50 u-padding--tiny" data-ng-repeat="item in result.results">
                                         <span class="tooltip table-col--50" aria-label="{$ item.description $}">{$ item.title $}</span>
                                         <span class="table-col--50 u-text--subtle">{$ item.value $}</span>
                                     </div>

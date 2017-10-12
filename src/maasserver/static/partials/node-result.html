@@ -46,9 +46,9 @@
             </div>
             <div class="twelve-col" data-ng-if="result.results.length !== 0">
                 <h2>Metrics</h2>
-                <div class="six-col last-col" data-ng-repeat="item in result.results">
-                    <span class="tooltip three-col" aria-label="{$ item.description $}">{$ item.title $}</span>
-                    <span class="three-col last-col">{$ item.value $}</span>
+                <div class="six-col last-col u-margin--none" data-ng-repeat="item in result.results">
+                    <span class="tooltip two-col" aria-label="{$ item.description $}">{$ item.title $}</span>
+                    <span class="four-col last-col">{$ item.value $}</span>
                 </div>
             </div>
             <div class="six-col">
