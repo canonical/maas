@@ -5,8 +5,7 @@
 </header>
 <div class="u-padding--bottom">
   <div data-ng-repeat="gs in node.grouped_storages">
-    <p data-ng-if="gs.count === 1">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $}) disk</p>
-    <p data-ng-if="gs.count > 1">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $}) disks</p>
+    <p data-ng-if="gs.count > 0">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $})</p>
   </div>
 </div>
 <div class="action-card__position-bottom">

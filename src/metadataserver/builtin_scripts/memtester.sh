@@ -28,8 +28,16 @@
 # packages: {apt: memtester}
 # --- End MAAS 1.0 script metadata ---
 
-# Memtester can only test memory free to userspace. Reserve 32M so the test
-# doesn't fail due to the OOM killer. Only run memtester against available RAM
-# once.
+# Memtester can only test memory free to userspace. As a minimum, reserve
+# the min_free_kbytes or the value of 0.77% of the memory on systems to
+# ensure machine doesn't fail due to the OOM killer. Only run memtester
+# against available RAM once.
+
+min_free_kbytes=$(cat /proc/sys/vm/min_free_kbytes)
+reserve=$(awk '/MemTotal/ { print (($2 * 0.077) / 10) }' /proc/meminfo)
+reserve=${reserve%.*}
+if [ $reserve -le $min_free_kbytes ]; then
+    reserve=$(($min_free_kbytes + 10240))
+fi
 sudo -n memtester \
-     $(awk '/MemFree/ { print ($2 - 32768) "K"}' /proc/meminfo) 1
+     $(awk -v reserve=$reserve '/MemFree/ { print ($2 - reserve) "K"}' /proc/meminfo) 1
