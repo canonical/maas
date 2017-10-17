@@ -18,7 +18,7 @@ mkdir -p "$BIN_D"
 # Work around issue where resolv.conf is not set on the  ephemeral environment
 #
 # First check if a nameserver is set in resolv.conf
-if ! echo /etc/resolv.conf | grep -qs "nameserver"; then
+if ! grep -qs nameserver /etc/resolv.conf; then
     # If it is not, obtain the MAC address of the PXE boot interface
     mac_address=$(cat /proc/cmdline | grep -o -E '([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}')
 

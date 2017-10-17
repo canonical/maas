@@ -560,7 +560,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             Some drives implement secure erasure by overwriting themselves so
             this could still be slow.
         :type secure_erase: boolean
-        :param quick_erase: Wipe 1MiB at the start and at the end of the drive
+        :param quick_erase: Wipe 2MiB at the start and at the end of the drive
             to make data recovery inconvenient and unlikely to happen by
             accident. This is not secure.
         :type quick_erase: boolean
