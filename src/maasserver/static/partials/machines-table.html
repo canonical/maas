@@ -65,11 +65,11 @@
                 {$ node.cpu_count $}
             </td>
             <td class="u-align--right u-display--desktop" aria-label="Memory">
-                <span class="tooltip" data-maas-script-status="script-status" data-script-status="node.memory_test_status" aria-label="{$ node.memory_test_status_tooltip $}" data-ng-if="node.memory_test_status !== 2"></span>
+                <span class="tooltip tooltip--left" data-maas-script-status="script-status" data-script-status="node.memory_test_status" aria-label="{$ node.memory_test_status_tooltip $}" data-ng-if="node.memory_test_status !== 2"></span>
                 {$ node.memory $}
             </td>
             <td class="u-align--right u-display--desktop" aria-label="Disks">
-                <span class="tooltip" data-maas-script-status="script-status" data-script-status="node.storage_test_status" aria-label="{$ node.storage_test_status_tooltip $}" data-ng-if="node.storage_test_status !== 2"></span>
+                <span class="tooltip tooltip--left" data-maas-script-status="script-status" data-script-status="node.storage_test_status" aria-label="{$ node.storage_test_status_tooltip $}" data-ng-if="node.storage_test_status !== 2"></span>
                 {$ node.physical_disk_count $}</td>
             <td class="u-align--right u-display--desktop" aria-label="Storage">
                 {$ node.storage $}

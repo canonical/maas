@@ -583,7 +583,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         var infoElement = angular.element('<i/>');
                         infoElement.addClass('icon');
                         infoElement.addClass('icon--info');
-                        infoElement.addClass('tooltip');
+                        infoElement.addClass('tooltip tooltip--left');
                         infoElement.addClass('u-margin--left-tiny');
                         if(attrs.labelLeft === "true") {
                           infoElement.addClass('icon--left');
@@ -969,7 +969,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             '<i class="obj-saving icon ' +
                             'icon--loading u-animation--spin"></i>');
                         inputWrapper.addClass('tooltip');
-                        inputWrapper.addClass('tooltip--right');
+                        inputWrapper.addClass('tooltip--bottom');
                         inputWrapper.attr('aria-label', 'Saving');
                     } else {
                       inputWrapper.children(

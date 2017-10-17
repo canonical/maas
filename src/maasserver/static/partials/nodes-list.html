@@ -648,7 +648,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
 <div sticky media-query="min-width: 769px" offset="89" class="page-navigation" data-ng-class="{ 'u-visibility--hidden': tabs.nodes.actionOption || addHardwareScope.viewable || tabs.devices.actionOption || addDeviceScope.viewable || tabs.controllers.actionOption || tabs.controllers.addController }">
     <div class="wrapper--inner">
         <nav class="page-navigation__links">
-            <button class="page-navigation__link tooltip"
+            <button class="page-navigation__link tooltip tooltip--right"
                 aria-label="A deployable node managed by MAAS."
                 data-ng-class="{ 'is-active': currentpage === 'nodes'}"
                 data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Machine', 'other': 'Machines'}"></ng-pluralize></button>
