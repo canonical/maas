@@ -26,7 +26,6 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
-    Pod,
 )
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import Interface
@@ -1372,23 +1371,10 @@ class TestPodDelete(MAASTransactionServerTestCase):
             succeed({'hints': sentinel.hints}),
             fail(PodProblem()),
         ]
-        mock_sync_hints = self.patch(Pod, 'sync_hints')
         self.patch(
             bmc_module, "getClientFromIdentifiers").return_value = client
-
-        # Ensure that the exeception is raised.
-        try:
-            yield pod.async_delete()
-        except PodProblem as exc:
-            pass
-        else:
-            self.fail("PodProblem exception was not raised.")
-
-        # Ensure that the pod hints where updated.
-        self.assertThat(mock_sync_hints, MockCalledOnceWith(sentinel.hints))
-
-        # Only the first machine should have been deleted, the others should
-        # all remain.
+        yield pod.async_delete()
+        # All the machines should have been deleted.
         decomposable_machine_one = yield deferToDatabase(
             reload_object, decomposable_machine_one)
         decomposable_machine_two = yield deferToDatabase(
@@ -1396,6 +1382,6 @@ class TestPodDelete(MAASTransactionServerTestCase):
         delete_machine = yield deferToDatabase(reload_object, delete_machine)
         pod = yield deferToDatabase(reload_object, pod)
         self.assertIsNone(decomposable_machine_one)
-        self.assertIsNotNone(decomposable_machine_two)
-        self.assertIsNotNone(delete_machine)
-        self.assertIsNotNone(pod)
+        self.assertIsNone(decomposable_machine_two)
+        self.assertIsNone(delete_machine)
+        self.assertIsNone(pod)

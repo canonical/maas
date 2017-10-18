@@ -968,12 +968,9 @@ class Pod(BMC):
         """Delete a pod asynchronously.
 
         Any machine in the pod that needs to be decomposed will be decomposed
-        before it is removed from the database. If a failure occurs during the
-        decomposition process then only the machines that where successfully
-        decomposed will be deleted in the database and the pod will not
-        be deleted. If all machines are successfully decomposed then the
-        machines that should not be decomposed and the pod will finally be
-        removed from the database.
+        before it is removed from the database.  If there are any errors during
+        decomposition, the deletion of the machine and ultimately the pod are
+        not stopped.
         """
 
         @transactional
@@ -995,66 +992,47 @@ class Pod(BMC):
         def decompose(result):
             (pod_id, pod_name, pod_type, client_idents,
              decompose, pre_existing) = result
-            decomposed, updated_hints, error = [], None, None
+            decomposed = []
             for machine_id, parameters in decompose:
                 # Get a new client for every decompose because we might lose
                 # a connection to a rack during this operation.
                 client = yield getClientFromIdentifiers(client_idents)
                 try:
-                    updated_hints = yield decompose_machine(
+                    yield decompose_machine(
                         client, pod_type, parameters,
                         pod_id=pod_id, name=pod_name)
                 except PodProblem as exc:
-                    error = exc
+                    # Catch all errors and continue.
                     break
-                else:
+                finally:
+                    # Set the machine to decomposed regardless
+                    # if it actually decomposed or not.
                     decomposed.append(machine_id)
-            return pod_id, decomposed, pre_existing, error, updated_hints
+            return pod_id, decomposed, pre_existing
 
         @transactional
         def perform_deletion(result):
-            (pod_id, decomposed_ids, pre_existing_ids,
-             error, updated_hints) = result
-            # No matter the error for decompose, we ensure that the machines
-            # that where decomposed before the error are actually deleted.
+            (pod_id, decomposed_ids, pre_existing_ids) = result
             pod = Pod.objects.get(id=pod_id)
             machines = Machine.objects.filter(id__in=decomposed_ids)
             for machine in machines:
                 # Clear BMC (aka. this pod) so the signal handler does not
-                # try to decompose of it. Its already been decomposed.
+                # try to decompose it. Its already been decomposed.
                 machine.bmc = None
                 machine.delete()
 
-            if error is not None:
-                # Error occurred so we update the pod hints as the pod and
-                # pre-existing machines will not be deleted. The error is
-                # returned not raised so that the transaction is not rolled
-                # back.
-                if updated_hints is not None:
-                    pod.sync_hints(updated_hints)
-                return error
-            else:
-                # Error did not occur. Delete the pre-existing machines
-                # and finally the pod.
-                for machine in Machine.objects.filter(id__in=pre_existing_ids):
-                    # We loop and call delete to ensure the `delete` method
-                    # on the machine object is actually called.
-                    machine.delete()
-                # Call delete by bypassing the override that prevents its call.
-                super(BMC, pod).delete()
-
-        def raise_error(error):
-            # Error gets returned from the previous callback if it should
-            # be raised. This way allows the transaction that was running
-            # in the other callback to be committed.
-            if error is not None:
-                raise error
+            # Delete the pre-existing machines and finally the pod.
+            for machine in Machine.objects.filter(id__in=pre_existing_ids):
+                # We loop and call delete to ensure the `delete` method
+                # on the machine object is actually called.
+                machine.delete()
+            # Call delete by bypassing the override that prevents its call.
+            super(BMC, pod).delete()
 
         # Don't catch any errors here they are raised to the caller.
         d = deferToDatabase(gather_clients_and_machines, self)
         d.addCallback(decompose)
         d.addCallback(partial(deferToDatabase, perform_deletion))
-        d.addCallback(raise_error)
         return d
 
 
