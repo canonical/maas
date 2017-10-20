@@ -1060,6 +1060,15 @@ describe("maasObjForm", function() {
             expect(icon.hasClass("tooltip")).toBe(true);
             expect(icon.attr('aria-label')).toBe("My Info");
         });
+
+        it('should call preventDefault on click', function() {
+           var event = jasmine.createSpyObj('clickEvent', ['preventDefault']);
+           var label = directive.find("label");
+           var icon = label.find("i");
+           event.type = 'click';
+           icon.triggerHandler(event)
+           expect(event.preventDefault).toHaveBeenCalled();
+        });
     });
 
     describe("labelLeft", function() {
@@ -1088,6 +1097,15 @@ describe("maasObjForm", function() {
             expect(icon.hasClass("icon--left")).toBe(true);
             expect(icon.hasClass("tooltip")).toBe(true);
             expect(icon.attr('aria-label')).toBe("My Info");
+        });
+
+        it('should call preventDefault on click', function() {
+           var event = jasmine.createSpyObj('clickEvent', ['preventDefault']);
+           var label = directive.find("label");
+           var icon = label.find("i");
+           event.type = 'click';
+           icon.triggerHandler(event)
+           expect(event.preventDefault).toHaveBeenCalled();
         });
     });
 

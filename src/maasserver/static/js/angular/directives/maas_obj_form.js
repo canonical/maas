@@ -592,6 +592,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         infoElement.attr('aria-label', attrs.labelInfo);
                         labelElement.text(labelElement.text() + ' ');
                         labelElement.append(infoElement);
+
+                        // prevents the icon from being clickable
+                        infoElement.bind('click', function (evt) {
+                            evt.preventDefault();
+                        });
                     }
 
 
