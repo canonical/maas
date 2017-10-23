@@ -1066,7 +1066,7 @@ describe("maasObjForm", function() {
            var label = directive.find("label");
            var icon = label.find("i");
            event.type = 'click';
-           icon.triggerHandler(event)
+           icon.triggerHandler(event);
            expect(event.preventDefault).toHaveBeenCalled();
         });
     });
@@ -1104,7 +1104,7 @@ describe("maasObjForm", function() {
            var label = directive.find("label");
            var icon = label.find("i");
            event.type = 'click';
-           icon.triggerHandler(event)
+           icon.triggerHandler(event);
            expect(event.preventDefault).toHaveBeenCalled();
         });
     });
