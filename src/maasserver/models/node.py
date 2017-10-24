@@ -4789,7 +4789,7 @@ class Controller(Node):
 
     @synchronous
     @with_connection
-    @synchronised(locks.rack_registration)
+    @synchronised(locks.startup)
     @transactional
     def update_interfaces(
             self, interfaces, topology_hints=None, create_fabrics=True):
