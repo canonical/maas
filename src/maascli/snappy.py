@@ -86,7 +86,7 @@ ARGUMENTS = OrderedDict([
 ])
 
 
-def print_msg(msg, newline=True):
+def print_msg(msg='', newline=True):
     """Print a message to stdout.
 
     Flushes the message to ensure its written immediately.

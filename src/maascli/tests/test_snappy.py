@@ -389,3 +389,9 @@ class TestConfigHelpers(MAASTestCase):
         snappy.set_rpc_secret(secret)
         snappy.set_rpc_secret(None)
         self.assertIsNone(snappy.get_rpc_secret())
+
+    def test_print_msg_empty_message(self):
+        mock_print = self.patch(snappy, 'print')
+        snappy.print_msg()
+        self.assertThat(
+            mock_print, MockCalledOnceWith('', end='\n', flush=True))
