@@ -6,6 +6,22 @@ option arch code 93 = unsigned integer 16; # RFC4578
 option path-prefix code 210 = text; #RFC5071
 
 #
+# Shorter lease time for PXE booting
+#
+class "PXE" {
+   match if substring (option vendor-class-identifier, 0, 3) = "PXE";
+   default-lease-time 30;
+   max-lease-time 30;
+}
+
+#
+# Define lease time globally (can be overriden globally or per subnet
+# with a DHCP snippet)
+#
+default-lease-time 600;
+max-lease-time 600;
+
+#
 # Global DHCP snippets
 #
 {{if len(global_dhcp_snippets) == 0}}
@@ -23,15 +39,6 @@ option path-prefix code 210 = text; #RFC5071
 # Bootloaders
 #
 {{bootloader}}
-
-#
-# Shorter lease time for PXE booting
-#
-class "PXE" {
-   match if substring (option vendor-class-identifier, 0, 3) = "PXE";
-   default-lease-time 30;
-   max-lease-time 30;
-}
 
 #
 # Failover Peers
@@ -82,8 +89,6 @@ shared-network {{shared_network["name"]}} {
            option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
            {{endif}}
 
-           default-lease-time 600;
-           max-lease-time 600;
            #
            # Subnet DHCP snippets
            #

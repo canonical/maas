@@ -6,6 +6,13 @@ option dhcp6.client-arch-type code 61 = array of unsigned integer 16; # RFC5970
 option path-prefix code 210 = text; #RFC5071
 
 #
+# Define lease time globally (can be overriden globally or per subnet
+# with a DHCP snippet)
+#
+default-lease-time 1800;
+max-lease-time 1800;
+
+#
 # Global DHCP snippets
 #
 {{if len(global_dhcp_snippets) == 0}}
@@ -54,8 +61,6 @@ shared-network {{shared_network["name"]}} {
            option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
            {{endif}}
 
-           default-lease-time 1800;
-           max-lease-time 1800;
            #
            # Subnet DHCP snippets
            #
