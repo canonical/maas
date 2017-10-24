@@ -44,7 +44,10 @@ from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
-from metadataserver.enum import RESULT_TYPE
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.tags import merge_details_cleanly
 
@@ -218,11 +221,13 @@ class NodeHandler(TimestampedModelHandler):
                 data["commissioning_script_count"] = (
                     obj.get_latest_commissioning_script_results.count())
                 data["commissioning_script_set_status"] = get_status_from_qs(
-                    obj.get_latest_commissioning_script_results)
+                    obj.get_latest_commissioning_script_results.exclude(
+                        status=SCRIPT_STATUS.ABORTED))
                 data["testing_script_count"] = (
                     obj.get_latest_testing_script_results.count())
                 data["testing_script_set_status"] = get_status_from_qs(
-                    obj.get_latest_testing_script_results)
+                    obj.get_latest_testing_script_results.exclude(
+                        status=SCRIPT_STATUS.ABORTED))
                 data["installation_results"] = self.dehydrate_script_set(
                     obj.current_installation_script_set)
                 data["installation_script_set_status"] = (
@@ -245,6 +250,9 @@ class NodeHandler(TimestampedModelHandler):
 
         If a node_id is given only that node is refreshed.
         """
+        # XXX: newell 2017-10-20 bug=1724235
+        # Aborted script results should not be included.
+        qs = qs.exclude(status=SCRIPT_STATUS.ABORTED)
         cleared_node_ids = []
         for script_result in qs:
             # Builtin commissioning scripts are not stored in the database.

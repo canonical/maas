@@ -175,13 +175,15 @@ class TestMachineHandler(MAASServerTestCase):
             "commissioning_script_count": (
                 node.get_latest_commissioning_script_results.count()),
             "commissioning_script_set_status": get_status_from_qs(
-                node.get_latest_commissioning_script_results),
+                node.get_latest_commissioning_script_results.exclude(
+                    status=SCRIPT_STATUS.ABORTED)),
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id),
             "testing_script_count": (
                 node.get_latest_testing_script_results.count()),
             "testing_script_set_status": get_status_from_qs(
-                node.get_latest_testing_script_results),
+                node.get_latest_testing_script_results.exclude(
+                    status=SCRIPT_STATUS.ABORTED)),
             "current_testing_script_set": node.current_testing_script_set_id,
             "installation_results": handler.dehydrate_script_set(
                 node.current_installation_script_set),
@@ -368,18 +370,36 @@ class TestMachineHandler(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED,
+            script_set=factory.make_ScriptSet(node=node))
+        # Create an 'Aborted' script result.
+        # This will not make it into the _script_results.
+        aborted_script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.ABORTED,
             script_set=factory.make_ScriptSet(node=node))
         cached_node = factory.make_Node(owner=owner)
-        factory.make_ScriptResult(script_set=factory.make_ScriptSet(
-            node=cached_node))
-        cached_content = factory.make_name("cached")
+        factory.make_ScriptResult(
+            status=SCRIPT_STATUS.FAILED,
+            script_set=factory.make_ScriptSet(
+                node=cached_node))
+
+        cached_content = {
+            factory.make_name("cached-key"): factory.make_name("cached-value")
+        }
         handler = MachineHandler(owner, {})
         handler._script_results[cached_node.id] = cached_content
         handler.get_object({'system_id': node.system_id})
+
         self.assertEquals(
             script_result.id,
             handler._script_results[node.id][
                 script_result.script.hardware_type][0].id)
+        self.assertNotIn(
+            aborted_script_result, [
+                result
+                for results in handler._script_results.values()
+                for result in results
+            ])
         self.assertEquals(
             cached_content, handler._script_results[cached_node.id])
 
