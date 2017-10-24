@@ -131,11 +131,17 @@
                     <p>
                       <small>MAAS name: <strong>{% include "maasserver/site_title.html" %}</strong></small>
                     </p>
-                    <p>
-                        <small>MAAS version: <strong>{{version}}</strong></small><small class="u-margin--left"><a href="http://docs.ubuntu.com/maas/{{doc_version}}/en/release-notes">View release notes</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://docs.ubuntu.com/maas/{{doc_version}}/">View documentation</a></small>
+                    <p class="eight-col u-clearfix u-margin--none">
+                      <span class="u-display--inline-block u-float--left u-margin--none u-margin--right">
+                        <small>MAAS version: <strong>{{version}}</strong></small>
+                      </span>
+                      <span class="six-col last-col">
+                        <small class="u-display--inline-block"><a href="http://docs.ubuntu.com/maas/{{doc_version}}/en/release-notes">View release notes</a></small>&nbsp;&nbsp;&middot;&nbsp;
+                        <small class="u-display--inline-block"><a href="https://docs.ubuntu.com/maas/{{doc_version}}/">View documentation</a></small>
+                      </span>
                     </p>
                     <p>
-                        <small>&copy; 2017 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.</small>
+                        <small>&copy; {% now "Y" %} Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.</small>
                     </p>
                     {% endblock %}
                 </div>
