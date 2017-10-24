@@ -67,6 +67,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
     returnValue,
+    succeed,
 )
 from twisted.internet.task import deferLater
 from twisted.python.filepath import FilePath
@@ -164,8 +165,47 @@ class TFTPBackend(FilesystemSynchronousBackend):
             base_path = FilePath(base_path)
         super(TFTPBackend, self).__init__(
             base_path, can_read=True, can_write=False)
+        self.client_to_remote = {}
         self.client_service = client_service
         self.fetcher = RPCFetcher()
+
+    def _get_new_client_for_remote(self, remote_ip):
+        """Return a new client for the `remote_ip`.
+
+        Don't use directly called from `get_client_for`.
+        """
+        def store_client(client):
+            self.client_to_remote[remote_ip] = client
+            return client
+
+        d = self.client_service.getClientNow()
+        d.addCallback(store_client)
+        return d
+
+    def get_client_for(self, params):
+        """Always gets the same client based on `params`.
+
+        This is done so that all TFTP requests from the same remote client go
+        to the same regiond process. `RPCFetcher` only duplciate on the client
+        and arguments, so if the client is not the same the duplicate effort
+        is not consolidated.
+        """
+        remote_ip = params.get('remote_ip')
+        if remote_ip:
+            client = self.client_to_remote.get(remote_ip, None)
+            if client is None:
+                # Get a new client for the remote_ip.
+                return self._get_new_client_for_remote(remote_ip)
+            else:
+                # Check that the existing client is still valid.
+                clients = self.client_service.getAllClients()
+                if client in clients:
+                    return succeed(client)
+                else:
+                    del self.client_to_remote[remote_ip]
+                    return self._get_new_client_for_remote(remote_ip)
+        else:
+            return self.client_service.getClientNow()
 
     @inlineCallbacks
     @typed
@@ -259,7 +299,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
             d.addCallback(lambda data: KernelParameters(**data))
             return d
 
-        d = self.client_service.getClientNow()
+        d = self.get_client_for(params)
         d.addCallback(fetch, params)
         return d
 
