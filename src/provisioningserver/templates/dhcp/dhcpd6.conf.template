@@ -35,6 +35,10 @@ shared-network {{shared_network["name"]}} {
            option dhcp6.name-servers {{dhcp_subnet['dns_servers'] | commalist}};
            {{endif}}
            option domain-name "{{dhcp_subnet['domain_name']}}";
+           {{if dhcp_subnet['search_list'] }}
+           option dhcp6.domain-search {{dhcp_subnet['search_list'] | quoted_commalist}};
+           {{endif}}
+
            # DHCPv6 does not have a router option (although there has been a
            # draft proposal for one).  Clients should get their routes from
            # route advertisements, or use custom options configured into both

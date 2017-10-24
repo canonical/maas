@@ -36,6 +36,7 @@ import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
     normalise_whitespace,
+    quote,
 )
 from provisioningserver.utils.twisted import synchronous
 import tempita
@@ -240,6 +241,14 @@ def normalise_any_iterable_to_comma_list(iterable):
         return ", ".join(map(str, iterable))
 
 
+def normalise_any_iterable_to_quoted_comma_list(iterable):
+    """Like `normalise_to_comma_list` but coerces any iterable."""
+    if isinstance(iterable, str):
+        return normalise_to_comma_list(iterable, quoted=True)
+    else:
+        return ", ".join(map(quote, iterable))
+
+
 @typed
 def get_config_v4(
         template_name: str, global_dhcp_snippets: Sequence[dict],
@@ -261,6 +270,7 @@ def get_config_v4(
     helpers = {
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
+        "quoted_commalist": normalise_any_iterable_to_quoted_comma_list,
         "running_in_snap": snappy.running_in_snap(),
     }
 
@@ -314,6 +324,7 @@ def get_config_v6(
     helpers = {
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
+        "quoted_commalist": normalise_any_iterable_to_quoted_comma_list,
         "running_in_snap": snappy.running_in_snap(),
     }
 

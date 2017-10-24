@@ -71,6 +71,49 @@ class TestNormaliseToCommaList(MAASTestCase):
             Equals(word))
 
 
+class TestNormalizeToCommaListScenarios(MAASTestCase):
+    """Tests for `normalize_to_comma_list`."""
+
+    scenarios = (
+        ("empty string", {
+            "test_input": "",
+            "unquoted": "",
+            "quoted": "",
+        }),
+        ("one token", {
+            "test_input": "foo",
+            "unquoted": "foo",
+            "quoted": '"foo"',
+        }),
+        ("two tokens with space", {
+            "test_input": "foo bar",
+            "unquoted": "foo, bar",
+            "quoted": '"foo", "bar"',
+        }),
+        ("two tokens with comma", {
+            "test_input": "foo, bar",
+            "unquoted": "foo, bar",
+            "quoted": '"foo", "bar"',
+        }),
+        ("extra spaces", {
+            "test_input": "  foo   bar  ",
+            "unquoted": "foo, bar",
+            "quoted": '"foo", "bar"',
+        }),
+        ("extra spaces with comma", {
+            "test_input": "  foo ,  bar  ",
+            "unquoted": "foo, bar",
+            "quoted": '"foo", "bar"',
+        }),
+    )
+
+    def test__scenarios(self):
+        unquoted = normalise_to_comma_list(self.test_input)
+        self.expectThat(unquoted, Equals(self.unquoted))
+        quoted = normalise_to_comma_list(self.test_input, quoted=True)
+        self.expectThat(quoted, Equals(self.quoted))
+
+
 class TestSplitStringList(MAASTestCase):
     """Tests for `split_string_list`."""
 

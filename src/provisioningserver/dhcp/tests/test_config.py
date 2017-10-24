@@ -37,6 +37,7 @@ from provisioningserver.dhcp.testing.config import (
 from provisioningserver.utils import flatten
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.text import quote
 from testtools.content import (
     Content,
     text_content,
@@ -258,6 +259,33 @@ class TestGetConfig(MAASTestCase):
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertNotIn("dhcp6.name-servers", rendered)  # IPv6
         self.assertNotIn("domain-name-servers", rendered)  # IPv4
+
+    def test__renders_search_list_as_quoted_comma_separated_list(self):
+        params = make_sample_params(self, ipv6=self.ipv6)
+        for network in params['shared_networks']:
+            for subnet in network['subnets']:
+                subnet['search_list'].append("canonical.com")
+        rendered = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, rendered, self.ipv6)
+        dns_servers_expected = [
+            ", ".join(map(quote, subnet["search_list"]))
+            for network in params['shared_networks']
+            for subnet in network['subnets']
+        ]
+        dns_servers_pattern = r"\b%s\s+(.+);" % re.escape(
+            "dhcp6.domain-search" if self.ipv6 else "domain-search")
+        dns_servers_observed = re.findall(dns_servers_pattern, rendered)
+        self.assertEqual(dns_servers_expected, dns_servers_observed)
+
+    def test__renders_without_search_list_set(self):
+        params = make_sample_params(self, ipv6=self.ipv6)
+        for network in params['shared_networks']:
+            for subnet in network['subnets']:
+                subnet['search_list'] = ""
+        rendered = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, rendered, self.ipv6)
+        self.assertNotIn("dhcp6.domain-search", rendered)  # IPv6
+        self.assertNotIn("domain-search", rendered)  # IPv4
 
     def test__renders_ntp_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)

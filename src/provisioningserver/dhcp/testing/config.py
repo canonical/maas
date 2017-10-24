@@ -110,6 +110,7 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
         pools = [make_subnet_pool(network)]
     if dhcp_snippets is None:
         dhcp_snippets = make_subnet_dhcp_snippets()
+    domain_name = '%s.example.com' % factory.make_name('domain')
     return {
         'subnet': str(IPAddress(network.first)),
         'subnet_mask': str(network.netmask),
@@ -124,7 +125,8 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
             factory.make_ipv6_address(),
             factory.make_name("ntp-server"),
         ],
-        'domain_name': '%s.example.com' % factory.make_name('domain'),
+        'domain_name': domain_name,
+        'search_list': [domain_name],
         'router_ip': factory.pick_ip_in_network(network),
         'pools': pools,
         'dhcp_snippets': dhcp_snippets,

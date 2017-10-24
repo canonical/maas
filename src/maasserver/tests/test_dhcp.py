@@ -812,7 +812,8 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain()
         config = dhcp.make_subnet_config(
             rack_controller, subnet, factory.make_name('dns'),
-            [factory.make_name('ntp')], default_domain)
+            [factory.make_name('ntp')], default_domain,
+            search_list=default_domain.name)
         self.assertIsInstance(config, dict)
         self.assertThat(
             config.keys(),
@@ -825,6 +826,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 'dns_servers',
                 'ntp_servers',
                 'domain_name',
+                'search_list',
                 'pools',
                 'dhcp_snippets',
                 ]))
@@ -982,13 +984,19 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
         default_domain = Domain.objects.get_default_domain()
+        search_list = [default_domain.name, "foo.example.com"]
         config = dhcp.make_subnet_config(
             rack_controller, subnet, factory.make_name('dns'),
-            [factory.make_name('ntp')], default_domain)
+            [factory.make_name('ntp')], default_domain,
+            search_list=search_list)
         self.expectThat(config['subnet'], Equals('10.9.8.0'))
         self.expectThat(config['subnet_mask'], Equals('255.255.255.0'))
         self.expectThat(config['subnet_cidr'], Equals('10.9.8.0/24'))
         self.expectThat(config['broadcast_ip'], Equals('10.9.8.255'))
+        self.expectThat(config['domain_name'], Equals(default_domain.name))
+        self.expectThat(config['search_list'], Equals([
+            default_domain.name, "foo.example.com"
+        ]))
 
     def test__defines_IPv6_subnet(self):
         network = IPNetwork('fd38:c341:27da:c831::/64')
@@ -998,9 +1006,11 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
         default_domain = Domain.objects.get_default_domain()
+        search_list = [default_domain.name, "foo.example.com"]
         config = dhcp.make_subnet_config(
             rack_controller, subnet, factory.make_name('dns'),
-            [factory.make_name('ntp')], default_domain)
+            [factory.make_name('ntp')], default_domain,
+            search_list=search_list)
         # Don't expect a specific literal value, like we do for IPv4; there
         # are different spellings.
         self.expectThat(
@@ -1010,6 +1020,9 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         self.expectThat(
             IPNetwork(config['subnet_cidr']),
             Equals(IPNetwork('fd38:c341:27da:c831::/64')))
+        self.expectThat(config['search_list'], Equals([
+            default_domain.name, "foo.example.com"
+        ]))
 
     def test__returns_multiple_pools(self):
         network = IPNetwork('10.9.8.0/24')
@@ -1034,6 +1047,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 "ip_range_high": "10.9.8.30",
             }
         ], config["pools"])
+        self.expectThat(config['domain_name'], Equals(default_domain.name))
 
     def test__returns_multiple_pools_with_failover_peer(self):
         network = IPNetwork('10.9.8.0/24')
@@ -1048,7 +1062,8 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         failover_peer = factory.make_name("peer")
         config = dhcp.make_subnet_config(
             rack_controller, subnet, factory.make_name('dns'),
-            [factory.make_name('ntp')], default_domain, failover_peer)
+            [factory.make_name('ntp')], default_domain,
+            failover_peer=failover_peer)
         self.assertEquals([
             {
                 "ip_range_low": "10.9.8.11",
@@ -1400,10 +1415,12 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
 
         ntp_servers = [factory.make_name("ntp")]
         default_domain = Domain.objects.get_default_domain()
+        search_list = [default_domain.name, "foo.example.com"]
         (observed_failover, observed_subnets, observed_hosts,
          observed_interface) = dhcp.get_dhcp_configure_for(
             4, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_servers, default_domain, DHCPSnippet.objects.all())
+            ntp_servers, default_domain, search_list=search_list,
+            dhcp_snippets=DHCPSnippet.objects.all())
 
         self.assertEquals({
             "name": "failover-vlan-%d" % ha_vlan.id,
@@ -1421,6 +1438,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "dns_servers": [IPAddress('127.0.0.1')],
                 "ntp_servers": ntp_servers,
                 "domain_name": default_domain.name,
+                "search_list": [default_domain.name, "foo.example.com"],
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
                     "description": dhcp_snippet.description,
@@ -1445,6 +1463,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "dns_servers": [IPAddress('127.0.0.1')],
                 "ntp_servers": ntp_servers,
                 "domain_name": default_domain.name,
+                "search_list": [default_domain.name, "foo.example.com"],
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
                     "description": dhcp_snippet.description,
@@ -1504,7 +1523,8 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         (observed_failover, observed_subnets, observed_hosts,
          observed_interface) = dhcp.get_dhcp_configure_for(
             6, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_servers, default_domain, DHCPSnippet.objects.all())
+            ntp_servers, default_domain,
+            dhcp_snippets=DHCPSnippet.objects.all())
 
         # Because developers running this unit test might not have an IPv6
         # address configured we remove the dns_servers from the generated
@@ -1640,11 +1660,13 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
     scenarios = (
         ("v1", dict(
+            rpc_version=1,
             command_v4=ConfigureDHCPv4,
             command_v6=ConfigureDHCPv6,
             process_expected_shared_networks=downgrade_shared_networks,
         )),
         ("v2", dict(
+            rpc_verson=2,
             command_v4=ConfigureDHCPv4_V2,
             command_v6=ConfigureDHCPv6_V2,
             process_expected_shared_networks=None,
@@ -1901,11 +1923,13 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
 
     scenarios = (
         ("v1", dict(
+            rpc_version=1,
             command_v4=ValidateDHCPv4Config,
             command_v6=ValidateDHCPv6Config,
             process_expected_shared_networks=downgrade_shared_networks,
         )),
         ("v2", dict(
+            rpc_version=2,
             command_v4=ValidateDHCPv4Config_V2,
             command_v6=ValidateDHCPv6Config_V2,
             process_expected_shared_networks=None,

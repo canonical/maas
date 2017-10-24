@@ -7,10 +7,16 @@ __all__ = [
     'make_gecos_field',
     'normalise_to_comma_list',
     'normalise_whitespace',
+    'quote',
     'split_string_list',
 ]
 
 import re
+
+
+def quote(string):
+    """Surrounds the specified string in double-quotes (`"`)."""
+    return '"%s"' % string
 
 
 def normalise_whitespace(text):
@@ -18,13 +24,16 @@ def normalise_whitespace(text):
     return ' '.join(text.split())
 
 
-def normalise_to_comma_list(string):
+def normalise_to_comma_list(string, quoted=False):
     """Take a space- or comma-separated list and return a comma-separated list.
 
     ISC dhcpd is quite picky about comma-separated lists. When in doubt,
     normalise using this function.
     """
-    return ", ".join(split_string_list(string))
+    if not quoted:
+        return ", ".join(split_string_list(string))
+    else:
+        return ", ".join(quote(string) for string in split_string_list(string))
 
 
 def split_string_list(string):

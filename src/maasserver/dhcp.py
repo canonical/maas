@@ -22,7 +22,10 @@ from typing import (
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from maasserver.dns.zonegenerator import get_dns_server_address
+from maasserver.dns.zonegenerator import (
+    get_dns_search_paths,
+    get_dns_server_address,
+)
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -393,7 +396,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 @typed
 def make_subnet_config(
         rack_controller, subnet, maas_dns_server,
-        ntp_servers: Union[list, dict], default_domain,
+        ntp_servers: Union[list, dict], default_domain, search_list=None,
         failover_peer=None, subnets_dhcp_snippets: list=None):
     """Return DHCP subnet configuration dict for a rack interface.
 
@@ -421,7 +424,7 @@ def make_subnet_config(
         else:
             ntp_servers = [ntp_server]
 
-    return {
+    subnet_config = {
         'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
         'subnet_cidr': str(ip_network.cidr),
@@ -439,6 +442,9 @@ def make_subnet_config(
             if dhcp_snippet.subnet == subnet
             ],
         }
+    if search_list is not None:
+        subnet_config['search_list'] = search_list
+    return subnet_config
 
 
 def make_failover_peer_config(vlan, rack_controller):
@@ -464,7 +470,8 @@ def make_failover_peer_config(vlan, rack_controller):
 @typed
 def get_dhcp_configure_for(
         ip_version: int, rack_controller, vlan, subnets: list,
-        ntp_servers: Union[list, dict], domain, dhcp_snippets: Iterable=None):
+        ntp_servers: Union[list, dict], domain, search_list=None,
+        dhcp_snippets: Iterable=None):
     """Get the DHCP configuration for `ip_version`."""
     try:
         maas_dns_server = get_dns_server_address(
@@ -502,7 +509,7 @@ def get_dhcp_configure_for(
         subnet_configs.append(
             make_subnet_config(
                 rack_controller, subnet, maas_dns_server, ntp_servers,
-                domain, peer_name, subnets_dhcp_snippets))
+                domain, search_list, peer_name, subnets_dhcp_snippets))
 
     # Generate the hosts for all subnets.
     hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
@@ -570,12 +577,18 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         ntp_servers = get_ntp_server_addresses_for_rack(rack_controller)
 
     default_domain = Domain.objects.get_default_domain()
+    search_list = [default_domain.name] + [
+        name
+        for name in sorted(get_dns_search_paths())
+        if name != default_domain.name
+    ]
     for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
         # IPv4
         if len(subnets_v4) > 0:
             config = get_dhcp_configure_for(
                 4, rack_controller, vlan, subnets_v4, ntp_servers,
-                default_domain, dhcp_snippets)
+                default_domain, search_list=search_list,
+                dhcp_snippets=dhcp_snippets)
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v4.append(failover_peer)
@@ -590,7 +603,8 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         if len(subnets_v6) > 0:
             config = get_dhcp_configure_for(
                 6, rack_controller, vlan, subnets_v6,
-                ntp_servers, default_domain, dhcp_snippets)
+                ntp_servers, default_domain, search_list=search_list,
+                dhcp_snippets=dhcp_snippets)
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v6.append(failover_peer)

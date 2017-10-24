@@ -342,6 +342,7 @@ class _ConfigureDHCP(amp.Command):
                 # hostnames. In _ConfigureDHCP_V2 is it a list proper.
                 (b"ntp_server", amp.Unicode()),
                 (b"domain_name", amp.Unicode()),
+                (b"search_list", amp.ListOf(amp.Unicode(), optional=True)),
                 (b"pools", AmpList([
                     (b"ip_range_low", amp.Unicode()),
                     (b"ip_range_high", amp.Unicode()),
@@ -401,6 +402,7 @@ class _ConfigureDHCP_V2(amp.Command):
                 (b"dns_servers", amp.ListOf(IPAddress())),
                 (b"ntp_servers", amp.ListOf(amp.Unicode())),
                 (b"domain_name", amp.Unicode()),
+                (b"search_list", amp.ListOf(amp.Unicode(), optional=True)),
                 (b"pools", AmpList([
                     (b"ip_range_low", amp.Unicode()),
                     (b"ip_range_high", amp.Unicode()),

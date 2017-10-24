@@ -68,7 +68,10 @@ shared-network {{shared_network["name"]}} {
            option domain-name-servers {{dhcp_subnet['dns_servers'] | commalist}};
            {{endif}}
            option domain-name "{{dhcp_subnet['domain_name']}}";
-           {{if dhcp_subnet['router_ip'] }}
+           {{if dhcp_subnet['search_list']}}
+           option domain-search {{dhcp_subnet['search_list'] | quoted_commalist}};
+           {{endif}}
+           {{if dhcp_subnet['router_ip']}}
            option routers {{dhcp_subnet['router_ip']}};
            {{endif}}
 

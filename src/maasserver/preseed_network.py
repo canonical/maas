@@ -464,10 +464,12 @@ class NodeNetworkConfiguration:
             self.addr_family_present[4] = True
         default_dns_servers = self.node.get_default_dns_servers(
             ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6])
+        # Ensure the machine's primary domain always comes first in the list.
         search_list = [self.node.domain.name] + [
             name
             for name in sorted(get_dns_search_paths())
-            if name != self.node.domain.name]
+            if name != self.node.domain.name
+        ]
         self._generate_route_operations(version=version)
         self.v1_config.append({
             "type": "nameserver",
