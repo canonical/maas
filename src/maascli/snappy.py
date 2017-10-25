@@ -97,12 +97,19 @@ def print_msg(msg='', newline=True):
 def get_default_gateway_ip():
     """Return the default gateway IP."""
     gateways = netifaces.gateways()
-    if 'default' in gateways:
-        defaults = gateways['default']
-        if netifaces.AF_INET in defaults and defaults[netifaces.AF_INET]:
-            return defaults[netifaces.AF_INET][0]
-        elif netifaces.AF_INET6 in defaults and defaults[netifaces.AF_INET6]:
-            return defaults[netifaces.AF_INET6][0]
+    defaults = gateways.get('default')
+    if not defaults:
+        return
+
+    def default_ip(family):
+        gw_info = defaults.get(family)
+        if not gw_info:
+            return
+        addresses = netifaces.ifaddresses(gw_info[1]).get(family)
+        if addresses:
+            return addresses[0]['addr']
+
+    return default_ip(netifaces.AF_INET) or default_ip(netifaces.AF_INET6)
 
 
 def get_default_url():

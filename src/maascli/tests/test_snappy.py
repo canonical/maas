@@ -42,33 +42,66 @@ class TestHelpers(MAASTestCase):
         self.assertIsNone(snappy.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_ipv4(self):
+        gw_address = factory.make_ipv4_address()
         ipv4_address = factory.make_ipv4_address()
+        iface_name = factory.make_name('eth')
         self.patch(netifaces, 'gateways').return_value = {
             'default': {
-                netifaces.AF_INET: (ipv4_address, factory.make_name('eth')),
+                netifaces.AF_INET: (gw_address, iface_name),
             }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET: [{'addr': ipv4_address}]
         }
         self.assertEqual(ipv4_address, snappy.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_ipv6(self):
+        gw_address = factory.make_ipv6_address()
         ipv6_address = factory.make_ipv6_address()
+        iface_name = factory.make_name('eth')
         self.patch(netifaces, 'gateways').return_value = {
             'default': {
-                netifaces.AF_INET6: (ipv6_address, factory.make_name('eth')),
+                netifaces.AF_INET6: (gw_address, iface_name)
             }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET6: [{'addr': ipv6_address}]
         }
         self.assertEqual(ipv6_address, snappy.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_ipv4_over_ipv6(self):
+        gw4_address = factory.make_ipv4_address()
+        gw6_address = factory.make_ipv6_address()
         ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
+        iface = factory.make_name('eth')
         self.patch(netifaces, 'gateways').return_value = {
             'default': {
-                netifaces.AF_INET: (ipv4_address, factory.make_name('eth')),
-                netifaces.AF_INET6: (ipv6_address, factory.make_name('eth')),
+                netifaces.AF_INET: (gw4_address, iface),
+                netifaces.AF_INET6: (gw6_address, iface),
             }
         }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET: [{'addr': ipv4_address}],
+            netifaces.AF_INET6: [{'addr': ipv6_address}],
+        }
         self.assertEqual(ipv4_address, snappy.get_default_gateway_ip())
+
+    def test_get_default_gateway_ip_returns_first_ip(self):
+        gw_address = factory.make_ipv4_address()
+        ipv4_address1 = factory.make_ipv4_address()
+        ipv4_address2 = factory.make_ipv4_address()
+        iface = factory.make_name('eth')
+        self.patch(netifaces, 'gateways').return_value = {
+            'default': {
+                netifaces.AF_INET: (gw_address, iface),
+            }
+        }
+        self.patch(netifaces, 'ifaddresses').return_value = {
+            netifaces.AF_INET: [
+                {'addr': ipv4_address1}, {'addr': ipv4_address2}]
+        }
+        self.assertEqual(ipv4_address1, snappy.get_default_gateway_ip())
 
     def test_get_default_url_uses_gateway_ip(self):
         ipv4_address = factory.make_ipv4_address()
