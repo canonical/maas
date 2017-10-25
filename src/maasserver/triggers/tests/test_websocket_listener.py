@@ -1102,7 +1102,7 @@ class TestDeviceWithParentScriptSetListener(
             yield listener.stopService()
 
 
-class TestScriptResultListener(
+class TestNDScriptResultListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     metadataserver_scriptresult table that notifies its node."""
@@ -1186,6 +1186,74 @@ class TestScriptResultListener(
             yield deferToDatabase(self.delete_scriptresult, script_result)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestScriptResultListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listers code and the triggers on
+    the metadataserver_Scriptresult table that notifies the node-results
+    websocket."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node)
+        script_set = yield deferToDatabase(self.create_scriptset, node)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register('scriptresult', lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            script_result = yield deferToDatabase(
+                self.create_scriptresult, script_set)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % script_result.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node)
+        script_set = yield deferToDatabase(self.create_scriptset, node)
+        script_result = yield deferToDatabase(
+            self.create_scriptresult, script_set,
+            {"status": SCRIPT_STATUS.PENDING})
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register('scriptresult', lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(script_result.store_result, 0)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % script_result.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node)
+        script_set = yield deferToDatabase(self.create_scriptset, node)
+        script_result = yield deferToDatabase(
+            self.create_scriptresult, script_set)
+        script_result_id = script_result.id
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register('scriptresult', lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_scriptresult, script_result)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % script_result_id), dv.value)
         finally:
             yield listener.stopService()
 

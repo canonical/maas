@@ -1654,6 +1654,7 @@ def register_websocket_triggers():
         "metadataserver_scriptset",
         "nd_scriptset_unlink_notify", "delete")
 
+    # ScriptResult triggers to the node for the nodes-listing page.
     register_procedure(
         render_script_result_notify(
             "nd_scriptresult_link_notify", "NEW.script_set_id"))
@@ -1672,6 +1673,18 @@ def register_websocket_triggers():
     register_trigger(
         "metadataserver_scriptresult",
         "nd_scriptresult_unlink_notify", "delete")
+
+    # ScriptResult triggers for the details page.
+    register_procedure(
+        render_notification_procedure(
+            'scriptresult_create_notify', 'scriptresult_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'scriptresult_update_notify', 'scriptresult_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'scriptresult_delete_notify', 'scriptresult_delete', 'OLD.id'))
+    register_triggers('metadataserver_scriptresult', 'scriptresult')
 
     # Interface address table, update to linked node.
     register_procedure(

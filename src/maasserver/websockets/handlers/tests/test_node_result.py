@@ -6,12 +6,14 @@
 __all__ = []
 
 import random
+from unittest.mock import sentinel
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
+    HandlerPKError,
 )
 from maasserver.websockets.handlers.node_result import NodeResultHandler
 from metadataserver.enum import (
@@ -67,6 +69,37 @@ class TestNodeResultHandler(MAASServerTestCase):
             self.dehydrate_script_result(script_result, handler)
             for script_result in script_results
             ]
+
+    def test_get_node(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node()
+        self.assertEquals(
+            node, handler.get_node({"system_id": node.system_id}))
+        self.assertDictEqual(
+            {node.system_id: node}, handler.cache["system_ids"])
+
+    def test_get_node_from_cache(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        fake_system_id = factory.make_name("system_id")
+        fake_node = factory.make_name("node")
+        handler.cache["system_ids"][fake_system_id] = fake_node
+        self.assertEquals(
+            fake_node, handler.get_node({"system_id": fake_system_id}))
+
+    def test_get_node_errors_no_system_id(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        self.assertRaises(HandlerPKError, handler.get_node, {})
+
+    def test_get_node_errors_invalid_system_id(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get_node,
+            {"system_id": factory.make_name("system_id")})
 
     def test_list_raises_error_if_node_doesnt_exist(self):
         user = factory.make_User()
@@ -186,6 +219,42 @@ class TestNodeResultHandler(MAASServerTestCase):
                 "has_surfaced": True,
             }))
 
+    def test_list_start(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+        for _ in range(6):
+            factory.make_ScriptResult(script_set=script_set)
+        start = random.randint(0, 5)
+        self.assertEquals(
+            6 - start,
+            len(handler.list({"system_id": node.system_id, "start": start})))
+
+    def test_list_limit(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+        for _ in range(6):
+            factory.make_ScriptResult(script_set=script_set)
+        limit = random.randint(0, 6)
+        self.assertEquals(
+            limit,
+            len(handler.list({"system_id": node.system_id, "limit": limit})))
+
+    def test_list_adds_to_loaded_pks(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(node=node)
+        pks = [
+            factory.make_ScriptResult(script_set=script_set).id
+            for _ in range(3)
+        ]
+        handler.list({"system_id": node.system_id})
+        self.assertItemsEqual(pks, handler.cache['loaded_pks'])
+
     def test_get_result_data_gets_output(self):
         user = factory.make_User()
         handler = NodeResultHandler(user, {})
@@ -257,3 +326,52 @@ class TestNodeResultHandler(MAASServerTestCase):
                 'id': script_result.id,
                 'data_type': unknown_data_type,
                 }))
+
+    def test_clear_removes_system_id_from_cache(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node()
+        handler.list({'system_id': node.system_id})
+        handler.clear({'system_id': node.system_id})
+        self.assertDictEqual({}, handler.cache["system_ids"])
+
+    def test_on_listen_returns_None_if_obj_no_longer_exists(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.side_effect = HandlerDoesNotExistError()
+        self.assertIsNone(
+            handler.on_listen(
+                sentinel.channel, sentinel.action, random.randint(1, 1000)))
+
+    def test_on_listen_returns_None_if_listen_returns_None(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.return_value = None
+        self.assertIsNone(
+            handler.on_listen(
+                sentinel.channel, sentinel.action, random.randint(1, 1000)))
+
+    def test_on_listen_returns_None_if_system_id_not_in_cache(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        script_result = factory.make_ScriptResult()
+        self.assertIsNone(
+            handler.on_listen(
+                sentinel.channel, sentinel.action, script_result.id))
+
+    def test_on_listen_returns_handler_name_action_and_event(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        script_result = factory.make_ScriptResult()
+        node = script_result.script_set.node
+        handler.cache["system_ids"][node.system_id] = node
+        self.assertEqual(
+            (
+                handler._meta.handler_name,
+                sentinel.action,
+                self.dehydrate_script_result(script_result, handler)
+            ),
+            handler.on_listen(
+                sentinel.channel, sentinel.action, script_result.id))

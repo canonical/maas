@@ -7,12 +7,14 @@ __all__ = [
     "NodeResultHandler",
     ]
 
+from operator import attrgetter
 
 from django.core.exceptions import ValidationError
 from maasserver.models.node import Node
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
+    HandlerPKError,
 )
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -27,6 +29,7 @@ class NodeResultHandler(TimestampedModelHandler):
         queryset = ScriptResult.objects.all()
         pk = 'id'
         allowed_methods = [
+            'clear',
             'get',
             'get_result_data',
             'list',
@@ -51,6 +54,11 @@ class NodeResultHandler(TimestampedModelHandler):
             "started",
             "ended",
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "system_ids" not in self.cache:
+            self.cache["system_ids"] = {}
 
     def dehydrate_parameters(self, parameters):
         # Parameters is a JSONObjectField to convert it to a dictionary it must
@@ -125,6 +133,23 @@ class NodeResultHandler(TimestampedModelHandler):
                 })
         return data
 
+    def get_node(self, params):
+        """Get node object from params."""
+        if "system_id" not in params:
+            raise HandlerPKError("Missing system_id in params")
+        system_id = params["system_id"]
+
+        if system_id in self.cache["system_ids"]:
+            return self.cache["system_ids"][system_id]
+
+        try:
+            node = Node.objects.get(system_id=params["system_id"])
+        except Node.DoesNotExist:
+            raise HandlerDoesNotExistError(params["system_id"])
+
+        self.cache["system_ids"][system_id] = node
+        return node
+
     def list(self, params):
         """List objects.
 
@@ -135,10 +160,7 @@ class NodeResultHandler(TimestampedModelHandler):
            with the blockdevice_id.
         :param has_surfaced: Only return results if they have surfaced.
         """
-        try:
-            node = Node.objects.get(system_id=params["system_id"])
-        except Node.DoesNotExist:
-            raise HandlerDoesNotExistError(params["system_id"])
+        node = self.get_node(params)
         queryset = node.get_latest_script_results
 
         if "result_type" in params:
@@ -153,10 +175,17 @@ class NodeResultHandler(TimestampedModelHandler):
         if "has_surfaced" in params:
             if params["has_surfaced"]:
                 queryset = queryset.exclude(result='')
+        if "start" in params:
+            queryset = queryset[params["start"]:]
+        if "limit" in params:
+            queryset = queryset[:params["limit"]]
 
+        objs = list(queryset)
+        getpk = attrgetter(self._meta.pk)
+        self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
         return [
             self.full_dehydrate(obj, for_list=True)
-            for obj in queryset
+            for obj in objs
         ]
 
     def get_result_data(self, params):
@@ -177,3 +206,31 @@ class NodeResultHandler(TimestampedModelHandler):
             return script_result.result.decode().strip()
         else:
             return "Unknown data_type %s" % data_type
+
+    def clear(self, params):
+        """Clears the current node for events.
+
+        Called by the client to inform the region it no longer cares
+        about events for this node.
+        """
+        self.cache["system_ids"].pop(params.pop("system_id", None), None)
+        return None
+
+    def on_listen(self, channel, action, pk):
+        """Called by the protocol when a channel notification occurs."""
+        try:
+            obj = self.listen(channel, action, pk)
+        except HandlerDoesNotExistError:
+            return None
+        if obj is None:
+            return None
+        if obj.script_set.node.system_id not in self.cache["system_ids"]:
+            # Notification is not for a node that is being listed,
+            # do nothing with the notification.
+            return None
+        # Client is listening for events for this node, send the new event.
+        return (
+            self._meta.handler_name,
+            action,
+            self.full_dehydrate(obj, for_list=True),
+            )

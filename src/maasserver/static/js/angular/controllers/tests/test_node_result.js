@@ -242,7 +242,7 @@ describe("NodeResultController", function() {
             $scope.node = node;
             $scope.result = script_result;
             var nodeResultsManager = NodeResultsManagerFactory.getManager(
-                $scope.node.system_id);
+                $scope.node);
             spyOn(nodeResultsManager, "get_result_data").and.returnValue(
                 defer.promise);
 
@@ -261,7 +261,7 @@ describe("NodeResultController", function() {
             $scope.node = node;
             $scope.result = script_result;
             var nodeResultsManager = NodeResultsManagerFactory.getManager(
-                $scope.node.system_id);
+                $scope.node);
             spyOn(nodeResultsManager, "get_result_data").and.returnValue(
                 defer.promise);
 

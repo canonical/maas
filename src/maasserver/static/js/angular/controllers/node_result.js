@@ -11,7 +11,6 @@ angular.module('MAAS').controller('NodeResultController', [
     function($scope, $rootScope, $routeParams, $location, MachinesManager,
              ControllersManager, NodeResultsManagerFactory,
              ManagerHelperService, ErrorService) {
-
         // Set the title and page.
         $rootScope.title = "Loading...";
         $rootScope.page = "nodes";
@@ -27,7 +26,7 @@ angular.module('MAAS').controller('NodeResultController', [
             $scope.output = output;
             $scope.data = "Loading...";
             var nodeResultsManager = NodeResultsManagerFactory.getManager(
-                $scope.node.system_id);
+                $scope.node);
             nodeResultsManager.get_result_data(
                 $scope.result.id, $scope.output).then(
                     function(data) {
@@ -46,7 +45,7 @@ angular.module('MAAS').controller('NodeResultController', [
 
             // Get the NodeResultsManager and load it.
             var nodeResultsManager = NodeResultsManagerFactory.getManager(
-                $scope.node.system_id);
+                $scope.node);
             var requestedResult = parseInt($routeParams.id, 10);
             nodeResultsManager.getItem(requestedResult).then(function(result) {
                 $scope.result = result;
@@ -89,6 +88,17 @@ angular.module('MAAS').controller('NodeResultController', [
                     }, function(error) {
                         ErrorService.raiseError(error);
                     });
+            }
+        });
+
+        // Destroy the NodeResultsManager when the scope is destroyed. This is
+        // so the client will not recieve any more notifications about results
+        // from this node.
+        $scope.$on("$destroy", function() {
+            var nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node);
+            if(angular.isObject(nodeResultsManager)) {
+                nodeResultsManager.destroy();
             }
         });
     }]);

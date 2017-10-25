@@ -86,7 +86,7 @@ angular.module('MAAS').controller('NodeEventsController', [
             }
         });
 
-        // Destory the events manager when the scope is destroyed. This is so
+        // Destroy the events manager when the scope is destroyed. This is so
         // the client will not recieve any more notifications about events
         // for this node.
         $scope.$on("$destroy", function() {

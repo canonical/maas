@@ -112,9 +112,22 @@ angular.module('MAAS').service(
         Manager.prototype._replaceItemInArray = function(array, item) {
             var idx = this._getIndexOfItem(array, item[this._pk]);
             if(idx >= 0) {
-                // Keep the current selection on the item.
-                item.$selected = array[idx].$selected;
-                angular.copy(item, array[idx]);
+                // angular.copy deletes all fields on the original object
+                // before adding the new items. This causes a race conidtion
+                // in NodeResultsManager as it uses the node object to
+                // determine the subtext for storage results. Instead replace
+                // items atomically.
+                angular.forEach(item, function(value, key) {
+                    if(!angular.isDefined(array[idx][key]) ||
+                        (array[idx][key] !== value && key !== "$selected")) {
+                        array[idx][key] = value;
+                    }
+                });
+                angular.forEach(array[idx], function(value, key) {
+                    if(!angular.isDefined(item[key])) {
+                        delete item[key];
+                    }
+                });
             }
         };
 
@@ -222,6 +235,7 @@ angular.module('MAAS').service(
             return this._batchLoadItems(this._items, function(item) {
                 item.$selected = false;
                 self._updateMetadata(item, METADATA_ACTIONS.CREATE);
+                self._processItem(item);
             }).then(function() {
                 self._loaded = true;
                 self._isLoading = false;
@@ -278,7 +292,10 @@ angular.module('MAAS').service(
                 }
 
                 // The remain items in items array are the new items.
-                self._items.push.apply(self._items, items);
+                angular.forEach(items, function(item) {
+                    self._items.push(item);
+                    self._processItem(item);
+                });
             }
 
             // The reload action loads all of the items into this list
@@ -338,6 +355,10 @@ angular.module('MAAS').service(
         // True when the item list is currently being loaded or reloaded.
         Manager.prototype.isLoading = function() {
             return this._isLoading;
+        };
+
+        // Allow for extra processing of items as they are added or updated.
+        Manager.prototype._processItem = function(item) {
         };
 
         // Replace item in the items and selectedItems list.
@@ -501,8 +522,10 @@ angular.module('MAAS').service(
                             action.data, METADATA_ACTIONS.CREATE);
                         this._items.push(action.data);
                     }
+                    this._processItem(action.data);
                 } else if(action.action === "update") {
                     this._replaceItem(action.data);
+                    this._processItem(action.data);
                 } else if(action.action === "delete") {
                     this._removeItem(action.data);
                 }

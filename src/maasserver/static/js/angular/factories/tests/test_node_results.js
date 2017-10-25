@@ -29,61 +29,525 @@ describe("NodeResultsManagerFactory", function() {
         RegionConnection.connect("");
     });
 
-    it("set requires attributes", function() {
-        NodeResultsManager = NodeResultsManagerFactory.getManager(
-            makeName("system_id"));
-        expect(NodeResultsManager._pk).toBe("id");
-        expect(NodeResultsManager._handler).toBe("noderesult");
-    });
-
-    // Make a random script result.
-    function makescriptresult() {
-        var script_result = {
-            script: {
-                id: makeInteger(0, 100)
-            },
-            output: makeName("output")
+    // Make a random node.
+    function makenode() {
+        return {
+            system_id: makeName("system_id")
         };
-        return script_result;
     }
 
-    describe("_initBatchLoadParameters", function() {
-        it("returns system_id when unknown result_type", function() {
-            var system_id = makeName("system_id");
-            var result_type = makeName("result_type");
-            var manager = NodeResultsManagerFactory.getManager(
-                system_id, result_type);
-            expect(manager._initBatchLoadParameters()).toEqual({
-                "system_id": system_id
+    it("set requires attributes", function() {
+        var node = makenode();
+        var nodeResultsManager = NodeResultsManagerFactory.getManager(
+            node);
+        expect(nodeResultsManager._pk).toBe("id");
+        expect(nodeResultsManager._handler).toBe("noderesult");
+        expect(nodeResultsManager._node).toEqual(node);
+        expect(nodeResultsManager._factory).toEqual(NodeResultsManagerFactory);
+        expect(nodeResultsManager.commissioning_results).toEqual([
+            {
+                title: null,
+                hardware_type: 0,
+                results: {}
+            },
+            {
+                title: "CPU",
+                hardware_type: 1,
+                results: {}
+            },
+            {
+                title: "Memory",
+                hardware_type: 2,
+                results: {}
+            },
+            {
+                title: "Storage",
+                hardware_type: 3,
+                results: {}
+            }
+        ]);
+        expect(nodeResultsManager.testing_results).toEqual([
+            {
+                title: "CPU",
+                hardware_type: 1,
+                results: {}
+            },
+            {
+                title: "Memory",
+                hardware_type: 2,
+                results: {}
+            },
+            {
+                title: "Storage",
+                hardware_type: 3,
+                results: {}
+            },
+            {
+                title: "Other Results",
+                hardware_type: 0,
+                results: {}
+            }
+        ]);
+        expect(nodeResultsManager.installation_results).toEqual([]);
+    });
+
+    describe("_processItem", function() {
+        angular.forEach({0: "commissioning", 2: "testing"}, function(
+            result_type_name, result_type) {
+            angular.forEach({0: "other", 1: "CPU", 2: "memory"}, function(
+                hardware_type_name, hardware_type) {
+                it("add " + result_type_name + " " + hardware_type_name +
+                    " result", function() {
+                    var node = makenode();
+                    var manager = NodeResultsManagerFactory.getManager(
+                        node, result_type_name);
+                    var result = {
+                        name: makeName("name"),
+                        status: makeInteger(0, 100),
+                        status_name: makeName("status_name"),
+                        result_type: parseInt(result_type, 10),
+                        hardware_type: parseInt(hardware_type, 10),
+                        physical_blockdevice: null,
+                        showing_results: false,
+                        showing_menu: false,
+                        showing_history: false,
+                        $selected: false
+                    };
+                    var results;
+                    var i;
+                    for(i = 0; i < manager.results.length; i++) {
+                        if(manager.results[i].hardware_type === parseInt(
+                            hardware_type, 10)) {
+                            results = manager.results[i].results[null] = [];
+                            break;
+                        }
+                    }
+
+                    manager._processItem(result);
+                    expect(results).toEqual([result]);
+                });
+
+                it("update " + result_type_name + " " + hardware_type_name +
+                    " result", function() {
+                    var node = makenode();
+                    var manager = NodeResultsManagerFactory.getManager(
+                        node, result_type_name);
+                    var old_result = {
+                        name: makeName("name"),
+                        status: makeInteger(0, 100),
+                        status_name: makeName("status_name"),
+                        result_type: parseInt(result_type, 10),
+                        hardware_type: parseInt(hardware_type, 10),
+                        physical_blockdevice: null,
+                        showing_results: makeBoolean(),
+                        showing_menu: makeBoolean(),
+                        showing_history: makeBoolean(),
+                        $selected: makeBoolean()
+                    };
+                    var results;
+                    var i;
+                    for(i = 0; i < manager.results.length; i++) {
+                        if(manager.results[i].hardware_type === parseInt(
+                            hardware_type, 10)) {
+                            results = manager.results[i].results[null] = [];
+                            break;
+                        }
+                    }
+                    results.push(old_result);
+                    var result = {
+                        name: old_result.name,
+                        status: makeInteger(0, 100),
+                        status_name: makeName("status_name"),
+                        result_type: parseInt(result_type, 10),
+                        hardware_type: parseInt(hardware_type, 10),
+                        physical_blockdevice: null,
+                        showing_results: false,
+                        showing_menu: false,
+                        showing_history: false,
+                        $selected: false
+                    };
+                    manager._processItem(result);
+                    expect(results).toEqual([{
+                        name: old_result.name,
+                        status: result.status,
+                        status_name: result.status_name,
+                        result_type: parseInt(result_type, 10),
+                        hardware_type: parseInt(hardware_type, 10),
+                        physical_blockdevice: null,
+                        showing_results: old_result.showing_results,
+                        showing_menu: old_result.showing_menu,
+                        showing_history: old_result.showing_history,
+                        $selected: old_result.$selected
+                    }]);
+                });
+            });
+
+            it("add " + result_type_name + " storage result", function() {
+                var node = makenode();
+                node.disks = [{
+                    id: makeInteger(0, 100),
+                    name: makeName("name"),
+                    model: makeName("model"),
+                    serial: makeName("serial")
+                }];
+                var manager = NodeResultsManagerFactory.getManager(
+                    node, result_type_name);
+                var result = {
+                    name: makeName("name"),
+                    status: makeInteger(0, 100),
+                    status_name: makeName("status_name"),
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: node.disks[0].id,
+                    showing_results: false,
+                    showing_menu: false,
+                    showing_history: false,
+                    $selected: false
+                };
+                var subtext = "/dev/" + node.disks[0].name + " (Model: " +
+                    node.disks[0].model + ", Serial: " +
+                    node.disks[0].serial + ")";
+                var results;
+                var i;
+                for(i = 0; i < manager.results.length; i++) {
+                    if(manager.results[i].hardware_type === 3) {
+                        results = manager.results[i].results[subtext] = [];
+                        break;
+                    }
+                }
+
+                manager._processItem(result);
+                expect(results).toEqual([result]);
+            });
+
+            it("update " + result_type_name + " storage result", function() {
+                var node = makenode();
+                node.disks = [{
+                    id: makeInteger(0, 100),
+                    name: makeName("name"),
+                    model: makeName("model"),
+                    serial: makeName("serial")
+                }];
+                var manager = NodeResultsManagerFactory.getManager(
+                    node, result_type_name);
+                var old_result = {
+                    name: makeName("name"),
+                    status: makeInteger(0, 100),
+                    status_name: makeName("status_name"),
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: node.disks[0].id,
+                    showing_results: makeBoolean(),
+                    showing_menu: makeBoolean(),
+                    showing_history: makeBoolean(),
+                    $selected: makeBoolean()
+                };
+                var subtext = "/dev/" + node.disks[0].name + " (Model: " +
+                    node.disks[0].model + ", Serial: " +
+                    node.disks[0].serial + ")";
+                var results;
+                var i;
+                for(i = 0; i < manager.results.length; i++) {
+                    if(manager.results[i].hardware_type === 3) {
+                        results = manager.results[i].results[subtext] = [];
+                        break;
+                    }
+                }
+                results.push(old_result);
+                var result = {
+                    name: old_result.name,
+                    status: makeInteger(0, 100),
+                    status_name: makeName("status_name"),
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: node.disks[0].id,
+                    showing_results: false,
+                    showing_menu: false,
+                    showing_history: false,
+                    $selected: false
+                };
+                manager._processItem(result);
+                expect(results).toEqual([{
+                    name: old_result.name,
+                    status: result.status,
+                    status_name: result.status_name,
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: node.disks[0].id,
+                    showing_results: old_result.showing_results,
+                    showing_menu: old_result.showing_menu,
+                    showing_history: old_result.showing_history,
+                    $selected: old_result.$selected
+                }]);
+            });
+
+            it("add " + result_type_name + " storage result no blockdevice",
+                function() {
+                // Regression test for LP: #1721524
+                var node = makenode();
+                node.disks = [];
+                var i;
+                for(i = 0; i < 3; i++) {
+                    node.disks.push({
+                        id: makeInteger(0, 100),
+                        name: makeName("name"),
+                        model: makeName("model"),
+                        serial: makeName("serial")
+                    });
+                }
+                var manager = NodeResultsManagerFactory.getManager(
+                    node, result_type_name);
+                var result = {
+                    name: makeName("name"),
+                    status: makeInteger(0, 100),
+                    status_name: makeName("status_name"),
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: null,
+                    showing_results: false,
+                    showing_menu: false,
+                    showing_history: false,
+                    $selected: false
+                };
+                var results_list = [];
+                for(i = 0; i < manager.results.length; i++) {
+                    if(manager.results[i].hardware_type === 3) {
+                        var j;
+                        for(j = 0; j < node.disks.length; j++) {
+                            var subtext = "/dev/" + node.disks[j].name +
+                                " (Model: " + node.disks[j].model +
+                                ", Serial: " + node.disks[j].serial + ")";
+                            var results = manager.results[i].results[
+                                subtext] = [];
+                            results_list.push(results);
+                        }
+                        break;
+                    }
+                }
+
+                manager._processItem(result);
+                for(i = 0; i < results_list.length; i++) {
+                    expect(results_list[i]).toEqual([result]);
+                }
+            });
+
+            it("update " + result_type_name + " storage result no blockdevice",
+                function() {
+                var node = makenode();
+                node.disks = [];
+                var i;
+                for(i = 0; i < 3; i++) {
+                    node.disks.push({
+                        id: makeInteger(0, 100),
+                        name: makeName("name"),
+                        model: makeName("model"),
+                        serial: makeName("serial")
+                    });
+                }
+                var manager = NodeResultsManagerFactory.getManager(
+                    node, result_type_name);
+                var old_result = {
+                    name: makeName("name"),
+                    status: makeInteger(0, 100),
+                    status_name: makeName("status_name"),
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: null,
+                    showing_results: makeBoolean(),
+                    showing_menu: makeBoolean(),
+                    showing_history: makeBoolean(),
+                    $selected: makeBoolean()
+                };
+                var results_list = [];
+                for(i = 0; i < manager.results.length; i++) {
+                    if(manager.results[i].hardware_type === 3) {
+                        var j;
+                        for(j = 0; j < node.disks.length; j++) {
+                            var subtext = "/dev/" + node.disks[j].name +
+                                " (Model: " + node.disks[j].model +
+                                ", Serial: " + node.disks[j].serial + ")";
+                            var results = manager.results[i].results[
+                                subtext] = [old_result];
+                            results_list.push(results);
+                        }
+                        break;
+                    }
+                }
+                var result = {
+                    name: old_result.name,
+                    status: makeInteger(0, 100),
+                    status_name: makeName("status_name"),
+                    result_type: parseInt(result_type, 10),
+                    hardware_type: 3,
+                    physical_blockdevice: null,
+                    showing_results: false,
+                    showing_menu: false,
+                    showing_history: false,
+                    $selected: false
+                };
+                manager._processItem(result);
+                for(i = 0; i < results_list.length; i++) {
+                    expect(results_list[i]).toEqual([{
+                        name: old_result.name,
+                        status: result.status,
+                        status_name: result.status_name,
+                        result_type: parseInt(result_type, 10),
+                        hardware_type: 3,
+                        physical_blockdevice: null,
+                        showing_results: old_result.showing_results,
+                        showing_menu: old_result.showing_menu,
+                        showing_history: old_result.showing_history,
+                        $selected: old_result.$selected
+                    }]);
+                }
             });
         });
 
-        it("returns system_id and testing result_type", function() {
-            var system_id = makeName("system_id");
+        // Installation results are stored in a signal list.
+        it("add installation result", function() {
+            var node = makenode();
             var manager = NodeResultsManagerFactory.getManager(
-                system_id, "testing");
+                node, "installation");
+            var result = {
+                name: makeName("name"),
+                status: makeInteger(0, 100),
+                status_name: makeName("status_name"),
+                result_type: 1,
+                hardware_type: 0,
+                physical_blockdevice: null,
+                showing_results: false,
+                showing_menu: false,
+                showing_history: false,
+                $selected: false
+            };
+            manager._processItem(result);
+            expect(manager.installation_results).toEqual([result]);
+        });
+
+        it("update installation result", function() {
+            var node = makenode();
+            var manager = NodeResultsManagerFactory.getManager(
+                node, "installation");
+            var old_result = {
+                name: makeName("name"),
+                status: makeInteger(0, 100),
+                status_name: makeName("status_name"),
+                result_type: 1,
+                hardware_type: 0,
+                physical_blockdevice: null,
+                showing_results: makeBoolean(),
+                showing_menu: makeBoolean(),
+                showing_history: makeBoolean(),
+                $selected: makeBoolean()
+            };
+            manager.installation_results.push(old_result);
+            var result = {
+                name: old_result.name,
+                status: makeInteger(0, 100),
+                status_name: makeName("status_name"),
+                result_type: 1,
+                hardware_type: 0,
+                physical_blockdevice: null,
+                showing_results: false,
+                showing_menu: false,
+                showing_history: false,
+                $selected: false
+            };
+            manager._processItem(result);
+            expect(manager.installation_results).toEqual([{
+                name: old_result.name,
+                status: result.status,
+                status_name: result.status_name,
+                result_type: 1,
+                hardware_type: 0,
+                physical_blockdevice: null,
+                showing_results: old_result.showing_results,
+                showing_menu: old_result.showing_menu,
+                showing_history: old_result.showing_history,
+                $selected: old_result.$selected
+            }]);
+        });
+    });
+
+    it("_removeItem", function() {
+        var node = makenode();
+        var manager = NodeResultsManagerFactory.getManager(
+            node, makeName("area"));
+        var i;
+        var result = {
+            id: makeInteger(0, 100)
+        };
+        manager._items.push(result);
+        angular.forEach(manager.commissioning_results, function(hw_type) {
+            for(i = 0; i <  3; i++) {
+                hw_type.results[makeName("subtext")] = [result];
+            }
+        });
+        angular.forEach(manager.testing_results, function(hw_type) {
+            for(i = 0; i <  3; i++) {
+                hw_type.results[makeName("subtext")] = [result];
+            }
+        });
+        manager.installation_results = [result];
+        manager._removeItem(result);
+        expect(manager._items).toEqual([]);
+        angular.forEach(manager.commissioning_results, function(hw_type) {
+            expect(hw_type.results).toEqual({});
+        });
+        angular.forEach(manager.testing_results, function(hw_type) {
+            expect(hw_type.results).toEqual({});
+        });
+        expect(manager.installation_results).toEqual([]);
+    });
+
+    describe("_initBatchLoadParameters", function() {
+        it("returns system_id when unknown area", function() {
+            var node = makenode();
+            var area = makeName("area");
+            var manager = NodeResultsManagerFactory.getManager(
+                node, area);
             expect(manager._initBatchLoadParameters()).toEqual({
-                "system_id": system_id,
+                "system_id": node.system_id
+            });
+        });
+
+        it("returns system_id and summary area", function() {
+            var node = makenode();
+            var manager = NodeResultsManagerFactory.getManager(
+                node, "summary");
+            expect(manager._initBatchLoadParameters()).toEqual({
+                "system_id": node.system_id,
+                "has_surfaced": true,
                 "result_type": 2
             });
         });
 
-        it("returns system_id and commissioning result_type", function() {
-            var system_id = makeName("system_id");
+        it("returns system_id and testing area", function() {
+            var node = makenode();
             var manager = NodeResultsManagerFactory.getManager(
-                system_id, "commissioning");
+                node, "testing");
             expect(manager._initBatchLoadParameters()).toEqual({
-                "system_id": system_id,
+                "system_id": node.system_id,
+                "result_type": 2
+            });
+        });
+
+        it("returns system_id and commissioning area", function() {
+            var node = makenode();
+            var manager = NodeResultsManagerFactory.getManager(
+                node, "commissioning");
+            expect(manager._initBatchLoadParameters()).toEqual({
+                "system_id": node.system_id,
                 "result_type": 0
             });
         });
 
-       it("returns system_id and installation result_type", function() {
-            var system_id = makeName("system_id");
+       it("returns system_id and logs area", function() {
+            var node = makenode();
             var manager = NodeResultsManagerFactory.getManager(
-                system_id, "installation");
+                node, "logs");
             expect(manager._initBatchLoadParameters()).toEqual({
-                "system_id": system_id,
+                "system_id": node.system_id,
                 "result_type": 1
             });
         });
@@ -96,48 +560,75 @@ describe("NodeResultsManagerFactory", function() {
         });
 
         it("returns object from _managers with system_id", function() {
-            var system_id = makeName("system_id");
+            var node = makenode();
             var fakeManager = {
-                _node_system_id: system_id
+                _node: node
             };
             NodeResultsManagerFactory._managers.push(fakeManager);
-            expect(NodeResultsManagerFactory._getManager(system_id)).toBe(
+            expect(NodeResultsManagerFactory._getManager(node)).toBe(
                 fakeManager);
         });
+    });
+
+    describe("destroy", function() {
+
+        it("calls _factory.destroyManager", function() {
+            var node = makenode();
+            var manager = NodeResultsManagerFactory.getManager(node);
+            spyOn(NodeResultsManagerFactory, "destroyManager");
+            manager.destroy();
+            expect(
+                NodeResultsManagerFactory.destroyManager).toHaveBeenCalledWith(
+                    manager);
+        });
+
+        it("calls clear on the RegionConnection if loaded",
+           function() {
+               var node = makenode();
+               var manager = NodeResultsManagerFactory.getManager(node);
+                spyOn(manager, "isLoaded").and.returnValue(true);
+                spyOn(RegionConnection, "callMethod");
+                manager.destroy();
+                expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                    manager._handler + ".clear", {"system_id": node.system_id});
+            });
     });
 
     describe("getManager", function() {
 
         it("returns new manager with system_id doesnt exists", function() {
-            var system_id = makeName("system_id");
-            var result_type = makeName("result_type");
+            var node = makenode();
+            var area = pickItem(
+                ["testing", "commissioning", "summary", "logs"]);
             var manager = NodeResultsManagerFactory.getManager(
-                system_id, result_type);
-            expect(manager._node_system_id).toBe(system_id);
+                node, area);
+            expect(manager._node).toBe(node);
             expect(NodeResultsManagerFactory._managers).toEqual([manager]);
-            expect(manager._result_type).toBe(result_type);
+            if(area === "commissioning") {
+                expect(manager.results).toBe(manager.commissioning_results);
+            }else if(area === "logs") {
+                expect(manager.results).toBe(manager.installation_results);
+            }else{
+                expect(manager.results).toBe(manager.testing_results);
+            }
         });
 
         it("returns same manager with system_id exists", function() {
-            var system_id = makeName("system_id");
-            var result_type = makeName("result_type");
-            var manager = NodeResultsManagerFactory.getManager(
-                system_id, result_type);
-            expect(NodeResultsManagerFactory.getManager(
-                system_id, result_type)).toBe(manager);
-            expect(manager._result_type).toBe(result_type);
+            var node = makenode();
+            var manager = NodeResultsManagerFactory.getManager(node);
+            expect(NodeResultsManagerFactory.getManager(node)).toBe(manager);
         });
     });
 
     describe("get_result_data", function() {
 
         it("calls NodeResultHandler.get_result_data", function(done) {
-            var script_result = makescriptresult();
-            var id = script_result.script.id;
+            var node = makenode();
+            var output = makeName("output");
+            var id = makeInteger(0, 100);
             var data_type = "output";
-            webSocket.returnData.push(makeFakeResponse(script_result.output));
-            NodeResultsManager = NodeResultsManagerFactory.getManager(
-                        makeName("system_id"));
+            webSocket.returnData.push(makeFakeResponse(output));
+            NodeResultsManager = NodeResultsManagerFactory.getManager(node);
             NodeResultsManager.get_result_data(id, data_type).then(function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
                 expect(sentObject.method).toBe("noderesult.get_result_data");
@@ -145,6 +636,16 @@ describe("NodeResultsManagerFactory", function() {
                 expect(sentObject.params.data_type).toEqual(data_type);
                 done();
             });
+        });
+    });
+
+    describe("destroyManager", function() {
+
+        it("removes manager from _managers", function() {
+            var node = makenode();
+            var manager = NodeResultsManagerFactory.getManager(node);
+            NodeResultsManagerFactory.destroyManager(manager);
+            expect(NodeResultsManagerFactory._managers).toEqual([]);
         });
     });
 });

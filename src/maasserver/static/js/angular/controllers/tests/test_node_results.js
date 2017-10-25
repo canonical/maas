@@ -84,106 +84,26 @@ describe("NodeResultsController", function() {
 
     it("sets the initial $scope values", function() {
         var controller = makeController();
+        expect($scope.commissioning_results).toBeNull();
+        expect($scope.testing_results).toBeNull();
+        expect($scope.installation_results).toBeNull();
+        expect($scope.results).toBeNull();
+        expect($scope.loaded).toBe(false);
         expect($scope.resultsLoaded).toBe(false);
         expect($scope.node).toBeNull();
-        expect($scope.commissioning_results).toEqual([
-            {
-                title: null,
-                hardware_type: 0,
-                results: {}
-            },
-            {
-                title: "CPU",
-                hardware_type: 1,
-                results: {}
-            },
-            {
-                title: "Memory",
-                hardware_type: 2,
-                results: {}
-            },
-            {
-                title: "Storage",
-                hardware_type: 3,
-                results: {}
-            }
-        ]);
-        expect($scope.testing_results).toEqual([
-            {
-                title: "CPU",
-                hardware_type: 1,
-                results: {}
-            },
-            {
-                title: "Memory",
-                hardware_type: 2,
-                results: {}
-            },
-            {
-                title: "Storage",
-                hardware_type: 3,
-                results: {}
-            },
-            {
-                title: "Other Results",
-                hardware_type: 0,
-                results: {}
-            }
-        ]);
-        expect($scope.installation_result).toEqual({});
         expect($scope.nodesManager).toBe(MachinesManager);
     });
 
     it("sets the initial $scope values when controller", function() {
         $routeParams.type = 'controller';
         var controller = makeController();
+        expect($scope.commissioning_results).toBeNull();
+        expect($scope.testing_results).toBeNull();
+        expect($scope.installation_results).toBeNull();
+        expect($scope.results).toBeNull();
+        expect($scope.loaded).toBe(false);
         expect($scope.resultsLoaded).toBe(false);
         expect($scope.node).toBeNull();
-        expect($scope.commissioning_results).toEqual([
-            {
-                title: null,
-                hardware_type: 0,
-                results: {}
-            },
-            {
-                title: "CPU",
-                hardware_type: 1,
-                results: {}
-            },
-            {
-                title: "Memory",
-                hardware_type: 2,
-                results: {}
-            },
-            {
-                title: "Storage",
-                hardware_type: 3,
-                results: {}
-            }
-        ]);
-        expect($scope.testing_results).toEqual([
-            {
-                title: "CPU",
-                hardware_type: 1,
-                results: {}
-            },
-            {
-                title: "Memory",
-                hardware_type: 2,
-                results: {}
-            },
-            {
-                title: "Storage",
-                hardware_type: 3,
-                results: {}
-            },
-            {
-                title: "Other Results",
-                hardware_type: 0,
-                results: {}
-            }
-        ]);
-        expect($scope.installation_result).toEqual({});
         expect($scope.nodesManager).toBe(ControllersManager);
     });
 
@@ -242,28 +162,11 @@ describe("NodeResultsController", function() {
         expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
     });
 
-    it("sets the results manager for the node", function() {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        spyOn(NodeResultsManagerFactory, "getManager").and.callThrough();
-
-        defer.resolve();
-        $rootScope.$digest();
-        if($scope.section.area === 'summary') {
-            expect(NodeResultsManagerFactory.getManager).toHaveBeenCalledWith(
-                node.system_id, 'testing');
-        }else{
-            expect(NodeResultsManagerFactory.getManager).toHaveBeenCalledWith(
-                node.system_id, $scope.section.area);
-        }
-    });
-
     it("calls loadItems on the results manager", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         MachinesManager._activeItem = node;
-        var manager = NodeResultsManagerFactory.getManager(node.system_id);
+        var manager = NodeResultsManagerFactory.getManager(node);
         spyOn(manager, "loadItems").and.returnValue($q.defer().promise);
 
         defer.resolve();
@@ -275,7 +178,7 @@ describe("NodeResultsController", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         MachinesManager._activeItem = node;
-        var manager = NodeResultsManagerFactory.getManager(node.system_id);
+        var manager = NodeResultsManagerFactory.getManager(node);
         var loadDefer = $q.defer();
         spyOn(manager, "loadItems").and.returnValue(loadDefer.promise);
 
@@ -290,8 +193,7 @@ describe("NodeResultsController", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         MachinesManager._activeItem = node;
-        var manager = NodeResultsManagerFactory.getManager(
-            node.system_id, $scope.section.area);
+        var manager = NodeResultsManagerFactory.getManager(node);
         var loadDefer = $q.defer();
         spyOn(manager, "loadItems").and.returnValue(loadDefer.promise);
 
@@ -300,394 +202,5 @@ describe("NodeResultsController", function() {
         loadDefer.resolve();
         $rootScope.$digest();
         expect($scope.resultsLoaded).toBe(true);
-        if($scope.section.area === 'commissioning') {
-            expect($scope.results).toBe($scope.commissioning_results);
-        }else{
-            expect($scope.results).toBe($scope.testing_results);
-        }
-    });
-
-    it("stores commissioning CPU result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 0,
-            hardware_type: 1,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[1].results[null]).toEqual(
-                    [script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores commissioning memory result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 0,
-            hardware_type: 2,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[2].results[null]).toEqual(
-                    [script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores commissioning storage result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        var physical_blockdevice_id = makeInteger(0, 100);
-        var name = makeName("name");
-        var model = makeName("model");
-        var serial = makeName("serial");
-        node.disks = [{
-            id: physical_blockdevice_id,
-            name: name,
-            model: model,
-            serial: serial
-        }];
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 0,
-            hardware_type: 3,
-            physical_blockdevice: physical_blockdevice_id,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[3].results[
-                    "/dev/" + name + " (Model: " + model + ", Serial: " +
-                        serial + ")"]).toEqual([script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores commissioning storage result no blockdevice", function(done) {
-        // Regression test for LP: #1721524
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        node.disks = [];
-        var i;
-        for(i = 0; i < 3; i++) {
-            node.disks.push({
-                "id": makeInteger(0, 100),
-                "name": makeName("name"),
-                "serial": makeName("serial")
-            });
-        }
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 0,
-            hardware_type: 3,
-            physical_blockdevice: null,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                for(i = 0; i < node.disks.length; i++) {
-                    var disk = node.disks[i];
-                    expect($scope.commissioning_results[3].results[
-                        "/dev/" + disk.name + " (Model: " + disk.model +
-                            ", Serial: " + disk.serial + ")"]).toEqual(
-                                [script_result]);
-                }
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores commissioning other result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 0,
-            hardware_type: 0,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.commissioning_results[0].results[null]).toEqual(
-                    [script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores testing CPU result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 2,
-            hardware_type: 1,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.testing_results[0].results[null]).toEqual(
-                    [script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores testing memory result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 2,
-            hardware_type: 2,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.testing_results[1].results[null]).toEqual(
-                    [script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores testing storage result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        var physical_blockdevice_id = makeInteger(0, 100);
-        var name = makeName("name");
-        var model = makeName("model");
-        var serial = makeName("serial");
-        node.disks = [{
-            id: physical_blockdevice_id,
-            name: name,
-            model: model,
-            serial: serial
-        }];
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 2,
-            hardware_type: 3,
-            physical_blockdevice: physical_blockdevice_id,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.testing_results[2].results[
-                    "/dev/" + name + " (Model: " + model + ", Serial: " +
-                        serial + ")"]).toEqual([script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores testing storage result no blockdevice", function(done) {
-        // Regression test for LP: #1721524
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        node.disks = [];
-        var i;
-        for(i = 0; i < 3; i++) {
-            node.disks.push({
-                "id": makeInteger(0, 100),
-                "name": makeName("name"),
-                "serial": makeName("serial")
-            });
-        }
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 2,
-            hardware_type: 3,
-            physical_blockdevice: null,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                for(i = 0; i < node.disks.length; i++) {
-                    var disk = node.disks[i];
-                    expect($scope.testing_results[2].results[
-                        "/dev/" + disk.name + " (Model: " + disk.model +
-                            ", Serial: " + disk.serial + ")"]).toEqual(
-                                [script_result]);
-                }
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores testing other result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 2,
-            hardware_type: 0,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.testing_results[3].results[null]).toEqual(
-                    [script_result]);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
-    });
-
-    it("stores testing other result", function(done) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        MachinesManager._activeItem = node;
-        var script_result = {
-            result_type: 1,
-            showing_results: false,
-            showing_menu: false,
-            showing_history: false,
-            $selected: false
-        };
-        webSocket.returnData.push(makeFakeResponse([script_result]));
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        var expectFunc;
-        expectFunc = function() {
-            if($scope.resultsLoaded) {
-                expect($scope.installation_result).toEqual(script_result);
-                done();
-            } else {
-                setTimeout(expectFunc);
-            }
-        };
-        setTimeout(expectFunc);
     });
 });
