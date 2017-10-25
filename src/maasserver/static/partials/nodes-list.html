@@ -830,7 +830,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
                         data-ng-class="{ error: !tabs.nodes.searchValid }"
                         data-ng-disabled="tabs.nodes.actionOption" />
-                    <input type="submit" class="search__submit"
+                    <input type="reset" class="search__submit"
                         data-ng-class="{ 'search__submit--close': tabs.nodes.search.length > 0 }"
                         data-ng-click="clearSearch('nodes')" />
                 </div>
@@ -847,7 +847,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
                     data-ng-class="{ error: !tabs.devices.searchValid }"
                     data-ng-disabled="tabs.devices.actionOption" />
-                <input type="submit" class="search__submit"
+                <input type="reset" class="search__submit"
                     data-ng-class="{ 'search__submit--close': tabs.devices.search.length > 0 }"
                     data-ng-click="clearSearch('devices')" />
             </div>
