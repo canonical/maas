@@ -178,7 +178,10 @@ Package: python3-maas-client
 Section: python
 Architecture: all
 Depends: python3-httplib2,
+         python3-netifaces,
          python3-oauth,
+         python3-tempita,
+         python3-yaml,
          ${misc:Depends},
          ${python3:Depends}
 Breaks: python-maas-client, maas-cli ( <= 2.0.0~alpha4+bzr4843-0ubuntu1 )
