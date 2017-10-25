@@ -8,7 +8,7 @@ configuration file and connect the the snap's postgres database.
 
 It only works if the installed snap is configured to run the database server."
 
-if [ $1 == "-h" -o $1 == "--help" ];
+if [ "$1" == "-h" ] || [ "$1" == "--help" ];
 then
     echo "$usage"
     exit 1
