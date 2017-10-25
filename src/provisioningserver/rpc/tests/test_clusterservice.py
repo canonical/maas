@@ -636,7 +636,9 @@ class TestClusterClientService(MAASTestCase):
     @inlineCallbacks
     def test__update_connections_initially(self):
         service = ClusterClientService(Clock())
+        mock_client = Mock()
         _make_connection = self.patch(service, "_make_connection")
+        _make_connection.side_effect = lambda *args: succeed(mock_client)
         _drop_connection = self.patch(service, "_drop_connection")
 
         info = json.loads(self.example_rpc_info_view_response.decode("ascii"))
@@ -650,8 +652,38 @@ class TestClusterClientService(MAASTestCase):
         self.assertItemsEqual(
             _make_connection_expected,
             _make_connection.call_args_list)
+        self.assertEquals({
+            "host1:pid=1001": mock_client,
+            "host1:pid=2002": mock_client,
+            "host2:pid=3003": mock_client,
+        }, service.try_connections)
 
         self.assertEqual([], _drop_connection.mock_calls)
+
+    @inlineCallbacks
+    def test__update_connections_logs_fully_connected(self):
+        service = ClusterClientService(Clock())
+        eventloops = {
+            "region1:123": [("::ffff:127.0.0.1", 1234)],
+            "region1:124": [("::ffff:127.0.0.1", 1235)],
+            "region2:123": [("::ffff:127.0.0.2", 1234)],
+            "region2:124": [("::ffff:127.0.0.2", 1235)],
+        }
+        for eventloop, addresses in eventloops.items():
+            for address in addresses:
+                client = Mock()
+                client.address = address
+                service.connections[eventloop] = client
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        yield service._update_connections(eventloops)
+        # Second call should not add it to the log.
+        yield service._update_connections(eventloops)
+
+        self.assertEqual(
+            "Fully connected to all 4 event-loops on all 2 region "
+            "controllers (region2, region1).", logger.dump())
 
     @inlineCallbacks
     def test__update_connections_connect_error_is_logged_tersely(self):
@@ -669,6 +701,8 @@ class TestClusterClientService(MAASTestCase):
             MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)))
 
         self.assertEqual(
+            "Making connections to event-loops: an-event-loop\n"
+            "---\n"
             "Event-loop an-event-loop (::ffff:127.0.0.1:1234): Connection "
             "was refused by other side.", logger.dump())
 
@@ -689,7 +723,9 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            Failure making new RPC connection.
+            Making connections to event-loops: an-event-loop
+            ---
+            Failure with event-loop an-event-loop (::ffff:127.0.0.1:1234)
             Traceback (most recent call last):
             ...
             builtins.RuntimeError: Something went wrong.
@@ -796,6 +832,15 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(
             connection.transport.loseConnection,
             MockCalledOnceWith())
+
+    def test__remove_connection_removes_from_try_connections(self):
+        service = make_inert_client_service()
+        service.startService()
+        endpoint = Mock()
+        connection = Mock()
+        service.try_connections[endpoint] = connection
+        service.remove_connection(endpoint, connection)
+        self.assertThat(service.try_connections, Equals({}))
 
     def test__remove_connection_removes_from_connections(self):
         service = make_inert_client_service()
@@ -1063,6 +1108,7 @@ class TestClusterClient(MAASTestCase):
 
     def test_connecting(self):
         client = self.make_running_client()
+        client.service.try_connections[client.eventloop] = client
         self.patch_authenticate_for_success(client)
         self.patch_register_for_success(client)
         self.assertEqual(client.service.connections, {})
@@ -1076,6 +1122,7 @@ class TestClusterClient(MAASTestCase):
         self.assertTrue(extract_result(wait_for_authenticated))
         # ready has been set with the name of the event-loop.
         self.assertEqual(client.eventloop, extract_result(wait_for_ready))
+        self.assertEqual(client.service.try_connections, {})
         self.assertEqual(
             client.service.connections,
             {client.eventloop: client})

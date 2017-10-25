@@ -33,6 +33,7 @@ from maasserver.models import (
     RackController,
     RegionController,
     RegionControllerProcess,
+    RegionControllerProcessEndpoint,
     RegionRackRPCConnection,
     Service as ServiceModel,
     timestampedmodel,
@@ -1636,6 +1637,42 @@ class TestRegionAdvertising(MAASServerTestCase):
         expected = [
             ("%s:pid=%d" % (gethostname(), os.getpid()), addr, port)
             for (addr, port) in addresses
+        ]
+        self.assertItemsEqual(expected, advertising.dump())
+
+    def test_dump_doesnt_duplicate_ips_across_region_controllers(self):
+        duplicate_address = factory.make_ipv4_address()
+        addresses = {
+            (factory.make_ipv4_address(), factory.pick_port()),
+            (factory.make_ipv4_address(), factory.pick_port()),
+        }
+        advertising = RegionAdvertising.promote()
+        advertising.update(
+            addresses.union({(duplicate_address, factory.pick_port()), }))
+
+        other_addresses = {
+            (factory.make_ipv4_address(), factory.pick_port()),
+            (factory.make_ipv4_address(), factory.pick_port()),
+        }
+        other_region = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
+        other_process = RegionControllerProcess.objects.create(
+            region=other_region, pid=randint(1, 1000))
+        for address, port in other_addresses:
+            RegionControllerProcessEndpoint.objects.create(
+                process=other_process, address=address, port=port)
+        RegionControllerProcessEndpoint.objects.create(
+            process=other_process,
+            address=duplicate_address,
+            port=factory.pick_port())
+
+        expected = [
+            ("%s:pid=%d" % (gethostname(), os.getpid()), addr, port)
+            for (addr, port) in addresses
+        ] + [
+            ("%s:pid=%d" % (
+                other_region.hostname, other_process.pid),
+             addr, port)
+            for (addr, port) in other_addresses
         ]
         self.assertItemsEqual(expected, advertising.dump())
 

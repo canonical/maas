@@ -5117,7 +5117,7 @@ class RackController(Controller):
                 Service.objects.update_service_for(
                     self, "rackd", SERVICE_STATUS.DEGRADED,
                     "{:.0%} connected to region controllers.".format(
-                        percentage))
+                        1.0 - percentage))
 
     def get_image_sync_status(self, boot_images=None):
         """Return the status of the boot image import process."""
