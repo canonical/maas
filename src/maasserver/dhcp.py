@@ -24,7 +24,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
-    get_dns_server_address,
+    get_dns_server_addresses,
 )
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -395,7 +395,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 @typed
 def make_subnet_config(
-        rack_controller, subnet, maas_dns_server,
+        rack_controller, subnet, default_dns_servers: list,
         ntp_servers: Union[list, dict], default_domain, search_list=None,
         failover_peer=None, subnets_dhcp_snippets: list=None):
     """Return DHCP subnet configuration dict for a rack interface.
@@ -408,8 +408,8 @@ def make_subnet_config(
     if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
         # Replace MAAS DNS with the servers defined on the subnet.
         dns_servers = [IPAddress(server) for server in subnet.dns_servers]
-    elif maas_dns_server is not None and len(maas_dns_server) > 0:
-        dns_servers = [IPAddress(maas_dns_server)]
+    elif default_dns_servers is not None and len(default_dns_servers) > 0:
+        dns_servers = default_dns_servers
     else:
         dns_servers = []
     if subnets_dhcp_snippets is None:
@@ -474,10 +474,11 @@ def get_dhcp_configure_for(
         dhcp_snippets: Iterable=None):
     """Get the DHCP configuration for `ip_version`."""
     try:
-        maas_dns_server = get_dns_server_address(
-            rack_controller, ipv4=(ip_version == 4), ipv6=(ip_version == 6))
+        maas_dns_servers = get_dns_server_addresses(
+            rack_controller, ipv4=(ip_version == 4), ipv6=(ip_version == 6),
+            include_alternates=True)
     except UnresolvableHost:
-        maas_dns_server = None
+        maas_dns_servers = None
 
     # Select the best interface for this VLAN. This is an interface that
     # at least has an IP address.
@@ -504,11 +505,10 @@ def get_dhcp_configure_for(
 
     # Generate the shared network configurations.
     subnet_configs = []
-    hosts = []
     for subnet in subnets:
         subnet_configs.append(
             make_subnet_config(
-                rack_controller, subnet, maas_dns_server, ntp_servers,
+                rack_controller, subnet, maas_dns_servers, ntp_servers,
                 domain, search_list, peer_name, subnets_dhcp_snippets))
 
     # Generate the hosts for all subnets.

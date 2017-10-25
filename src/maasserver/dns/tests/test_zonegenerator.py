@@ -94,7 +94,8 @@ class TestGetDNSServerAddress(MAASServerTestCase):
 
         get_dns_server_address(ipv4=ipv4, ipv6=ipv6)
 
-        self.assertThat(patch, MockCalledOnceWith(ANY, ipv4=ipv4, ipv6=ipv6))
+        self.assertThat(patch, MockCalledOnceWith(
+            ANY, include_alternates=False, ipv4=ipv4, ipv6=ipv6))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
         url = maastesting_factory.make_simple_http_url()

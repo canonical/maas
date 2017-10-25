@@ -18,6 +18,7 @@ from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPAddress
+from testtools.matchers import Equals
 
 
 def make_hostname():
@@ -193,6 +194,116 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         self.assertRaises(
             UnresolvableHost,
             get_maas_facing_server_addresses)
+
+    def test__alternates_include_other_regions_on_same_subnet(self):
+        factory.make_Subnet(cidr='192.168.0.0/24')
+        maas_url = 'http://192.168.0.254/MAAS'
+        rack = factory.make_RackController(url=maas_url)
+        r1 = factory.make_RegionController()
+        factory.make_Interface(node=r1, ip='192.168.0.1')
+        factory.make_Interface(node=r1, ip='192.168.0.254')
+        r2 = factory.make_RegionController()
+        factory.make_Interface(node=r2, ip='192.168.0.2')
+        r3 = factory.make_RegionController()
+        factory.make_Interface(node=r3, ip='192.168.0.4')
+        # Make the "current" region controller r1.
+        self.patch(server_address, 'get_maas_id').return_value = r1.system_id
+        region_ips = get_maas_facing_server_addresses(
+            rack, include_alternates=True)
+        self.assertThat(
+            region_ips,
+            Equals([
+                IPAddress("192.168.0.254"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ])
+        )
+
+    def test__alternates_include_one_ip_address_per_region(self):
+        factory.make_Subnet(cidr='192.168.0.0/24')
+        maas_url = 'http://192.168.0.254/MAAS'
+        rack = factory.make_RackController(url=maas_url)
+        r1 = factory.make_RegionController()
+        factory.make_Interface(node=r1, ip='192.168.0.1')
+        factory.make_Interface(node=r1, ip='192.168.0.254')
+        r2 = factory.make_RegionController()
+        factory.make_Interface(node=r2, ip='192.168.0.2')
+        factory.make_Interface(node=r2, ip='192.168.0.3')
+        r3 = factory.make_RegionController()
+        factory.make_Interface(node=r3, ip='192.168.0.4')
+        factory.make_Interface(node=r3, ip='192.168.0.5')
+        # Make the "current" region controller r1.
+        self.patch(server_address, 'get_maas_id').return_value = r1.system_id
+        region_ips = get_maas_facing_server_addresses(
+            rack, include_alternates=True)
+        self.assertThat(
+            region_ips,
+            Equals([
+                IPAddress("192.168.0.254"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ])
+        )
+
+    def test__alternates_use_consistent_subnet(self):
+        factory.make_Subnet(cidr='192.168.0.0/24')
+        factory.make_Subnet(cidr='192.168.1.0/24')
+        maas_url = 'http://192.168.0.1/MAAS'
+        rack = factory.make_RackController(url=maas_url)
+        r1 = factory.make_RegionController()
+        factory.make_Interface(node=r1, ip='192.168.0.1')
+        factory.make_Interface(node=r1, ip='192.168.1.254')
+        r2 = factory.make_RegionController()
+        factory.make_Interface(node=r2, ip='192.168.0.2')
+        factory.make_Interface(node=r2, ip='192.168.1.3')
+        r3 = factory.make_RegionController()
+        factory.make_Interface(node=r3, ip='192.168.0.4')
+        factory.make_Interface(node=r3, ip='192.168.1.5')
+        # Make the "current" region controller r1.
+        self.patch(server_address, 'get_maas_id').return_value = r1.system_id
+        region_ips = get_maas_facing_server_addresses(
+            rack, include_alternates=True)
+        self.assertThat(
+            region_ips,
+            Equals([
+                IPAddress("192.168.0.1"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ])
+        )
+
+    def test__alternates_support_ipv4_and_ipv6(self):
+        factory.make_Subnet(cidr='192.168.0.0/24')
+        factory.make_Subnet(cidr='192.168.1.0/24')
+        factory.make_Subnet(cidr='2001:db8::/64')
+        maas_url = 'http://maas.io/MAAS'
+        self.patch_resolve_hostname(["192.168.0.1", "2001:db8::1"])
+        rack = factory.make_RackController(url=maas_url)
+        r1 = factory.make_RegionController()
+        factory.make_Interface(node=r1, ip='192.168.0.1')
+        factory.make_Interface(node=r1, ip='2001:db8::1')
+        factory.make_Interface(node=r1, ip='192.168.1.254')
+        r2 = factory.make_RegionController()
+        factory.make_Interface(node=r2, ip='192.168.0.2')
+        factory.make_Interface(node=r2, ip='2001:db8::2')
+        r3 = factory.make_RegionController()
+        factory.make_Interface(node=r3, ip='192.168.0.4')
+        factory.make_Interface(node=r3, ip='2001:db8::4')
+        # Make the "current" region controller r1.
+        self.patch(server_address, 'get_maas_id').return_value = r1.system_id
+        region_ips = get_maas_facing_server_addresses(
+            rack, include_alternates=True)
+        self.assertThat(
+            region_ips,
+            Equals([
+                IPAddress("2001:db8::1"),
+                IPAddress("192.168.0.1"),
+                IPAddress("2001:db8::2"),
+                IPAddress("2001:db8::4"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ])
+        )
 
 
 class TestGetMAASFacingServerAddress(MAASServerTestCase):

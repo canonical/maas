@@ -1306,11 +1306,15 @@ class Factory(maastesting.factory.Factory):
             node=node, mac_address=mac_address, type=iftype,
             name=name, vlan=vlan, enabled=enabled, tags=tags, params=params)
         interface.save()
+        if subnet is None and ip is not None:
+            subnet = Subnet.objects.get_best_subnet_for_ip(ip)
         if subnet is not None:
             sip = StaticIPAddress.objects.create(
                 ip=ip,
-                alloc_type=IPADDRESS_TYPE.DHCP,
-                subnet=subnet)
+                alloc_type=(
+                    IPADDRESS_TYPE.DHCP if ip is None
+                    else IPADDRESS_TYPE.STICKY
+                ), subnet=subnet)
             interface.ip_addresses.add(sip)
         if parents:
             for parent in parents:

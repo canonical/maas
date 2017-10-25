@@ -3338,7 +3338,7 @@ class Node(CleanSave, TimestampedModel):
     def get_default_dns_servers(self, ipv4=True, ipv6=True):
         """Return the default DNS servers for this node."""
         # Circular imports.
-        from maasserver.dns.zonegenerator import get_dns_server_address
+        from maasserver.dns.zonegenerator import get_dns_server_addresses
 
         gateways = self.get_default_gateways()
 
@@ -3361,20 +3361,21 @@ class Node(CleanSave, TimestampedModel):
         if gateways.ipv4 is None and gateways.ipv6 is None:
             # If there are no default gateways, the default is the MAAS
             # region IP address.
-            maas_dns_server = get_dns_server_address(
+            maas_dns_servers = get_dns_server_addresses(
                 rack_controller=self.get_boot_rack_controller(),
-                ipv4=ipv4, ipv6=ipv6)
+                ipv4=ipv4, ipv6=ipv6, include_alternates=True)
         else:
             # Choose an address consistent with the primary address-family
             # in use, as indicated by the presence (or not) of a gateway.
             # Note that this path is only taken if the MAAS URL is set to
             # a hostname, and the hostname resolves to both an IPv4 and an
             # IPv6 address.
-            maas_dns_server = get_dns_server_address(
+            maas_dns_servers = get_dns_server_addresses(
                 rack_controller=self.get_boot_rack_controller(),
                 ipv4=(ipv4 and gateways.ipv4 is not None),
-                ipv6=(ipv6 and gateways.ipv6 is not None))
-        return [maas_dns_server]
+                ipv6=(ipv6 and gateways.ipv6 is not None),
+                include_alternates=True)
+        return [str(ip) for ip in maas_dns_servers]
 
     def get_boot_purpose(self):
         """

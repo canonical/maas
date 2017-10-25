@@ -13,7 +13,9 @@ __all__ = [
 from urllib.parse import urlparse
 
 from maasserver.config import RegionConfiguration
+from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import UnresolvableHost
+from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.network import resolve_hostname
 
 
@@ -67,7 +69,8 @@ def get_maas_facing_server_address(rack_controller=None, ipv4=True, ipv6=True):
 
 
 def get_maas_facing_server_addresses(
-        rack_controller=None, ipv4=True, ipv6=True, link_local=False):
+        rack_controller=None, ipv4=True, ipv6=True, link_local=False,
+        include_alternates=False):
     """Return addresses for the MAAS server.
 
     The address is taken from the configured MAAS URL or `controller.url`.
@@ -84,7 +87,10 @@ def get_maas_facing_server_addresses(
         which the server address should be computed.
     :param ipv4: Include IPv4 addresses?  Defaults to `True`.
     :param ipv6: Include IPv6 addresses?  Defaults to `True`.
-    :return: An IP addresses as a list: [IPAddress, ...]  If the configured URL
+    :param link_local: Include link-local addresses?   Defaults to `False`.
+    :param include_alternates: Include secondary region controllers on the same
+        subnet?  Defaults to `False`.
+    :return: IP addresses as a list: [IPAddress, ...]  If the configured URL
         uses a hostname, this function will resolve that hostname.
     :raise UnresolvableHost: if no IP addresses could be found for
         the hostname.
@@ -100,4 +106,44 @@ def get_maas_facing_server_addresses(
         raise UnresolvableHost("No address found for host %s." % hostname)
     if not link_local:
         addresses = [ip for ip in addresses if not ip.is_link_local()]
+    if include_alternates:
+        maas_id = get_maas_id()
+        if maas_id is not None:
+            # Circular imports
+            from maasserver.models import Subnet
+            from maasserver.models import StaticIPAddress
+            # Keep track of the regions already represented.
+            regions = set()
+            alternate_ips = []
+            for ip in addresses:
+                regions.add(maas_id + str(ip.version))
+                if not ip.is_link_local():
+                    # Since we only know that the IP address given in the MAAS
+                    # URL is reachable, alternates must be pulled from the same
+                    # subnet (until we know the "full mesh" of connectivity.)
+                    subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+                    region_ips = StaticIPAddress.objects.filter(
+                        subnet=subnet,
+                        interface__node__node_type__in=(
+                            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                            NODE_TYPE.REGION_CONTROLLER))
+                    region_ips = region_ips.prefetch_related(
+                        'interface_set__node')
+                    region_ips = region_ips.order_by('ip')
+                    for region_ip in region_ips:
+                        for iface in region_ip.interface_set.all():
+                            ipa = region_ip.get_ipaddress()
+                            if ipa is None:
+                                continue
+                            # Pick at most one alternate IP address for each
+                            # region, per address family.
+                            id_plus_family = (
+                                iface.node.system_id + str(ipa.version)
+                            )
+                            if id_plus_family in regions:
+                                continue
+                            else:
+                                regions.add(id_plus_family)
+                                alternate_ips.append(ipa)
+            addresses.extend(alternate_ips)
     return addresses
