@@ -20,7 +20,8 @@ mkdir -p "$BIN_D"
 # First check if a nameserver is set in resolv.conf
 if ! grep -qs nameserver /etc/resolv.conf; then
     # If it is not, obtain the MAC address of the PXE boot interface
-    mac_address=$(cat /proc/cmdline | grep -o -E '([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}')
+    bootif=$(cat /proc/cmdline | grep -o -E 'BOOTIF=01-([[:xdigit:]]{1,2}-){5}[[:xdigit:]]{1,2}')
+    mac_address=$(echo $bootif | awk -F'=01-' '{print $NF}' | sed -r 's/-/:/g')
 
     # Search for the NIC name of the PXE boot interface
     for nic in /sys/class/net/*; do
