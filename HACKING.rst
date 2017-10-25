@@ -277,11 +277,11 @@ contents of the snap, but it's in a plain directory insted of in a
 squashfs image. Using a directory is better for testing, since you can
 change the files in there and not rebuild the snap.
 
-There's a dev-snap-sync make target to automate this:
+There's a ``sync-dev-snap`` make target to automate this:
 
-    $ make dev-snap-sync
+    $ make sync-dev-snap
 
-The dev-snap-sync target creates a clean copy of your working tree (so
+The ``sync-dev-snap`` target creates a clean copy of your working tree (so
 that you don't have to run 'make clean' before building the snap) in
 build/dev-snap and creates the snap directory in build/dev-snap/prime.
 
@@ -302,10 +302,10 @@ Next you need to initialize the snap, just like you would normally do:
     $ sudo maas init
 
 And now you're ready to make changes to the code. After you've change
-some source files and want to test them out, run the dev-snap-sync
+some source files and want to test them out, run the ``sync-dev-snap``
 target again:
 
-    $ make dev-snap-sync
+    $ make sync-dev-snap
 
 You should now see that you files were synced to the prime directory. If
 you changed JS and HTML files only, you should see that changes straight

@@ -6,7 +6,7 @@ PSQL_ARGS="maasdb"
 SUDO_ARGS="sudo -u postgres"
 
 # Detect a development environment
-if [ -d ../db -a -f ../HACKING.txt ]; then
+if [ -d ../db -a -f ../HACKING.rst ]; then
     echo "Using development database."
     cd ..
     SUDO_ARGS=""

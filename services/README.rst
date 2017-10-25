@@ -2,5 +2,5 @@ The development environment uses *daemontools* to manage the various
 services that are required. These are all defined in subdirectories in
 ``services/``.
 
-See the paragraph 'Development services' in HACKING.txt for more
+See the paragraph 'Development services' in HACKING.rst for more
 information.

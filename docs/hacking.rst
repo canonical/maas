@@ -1,1 +1,1 @@
-../HACKING.txt
+../HACKING.rst

@@ -35,7 +35,7 @@ class MediaRootFixture(Fixture):
         super(MediaRootFixture, self).setUp()
         self.path = settings.MEDIA_ROOT
         if os.path.exists(self.path):
-            raise AssertionError("See media/README")
+            raise AssertionError("See media/README.rst")
         self.addCleanup(shutil.rmtree, self.path, ignore_errors=True)
         os.mkdir(self.path)
 

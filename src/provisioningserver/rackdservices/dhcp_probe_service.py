@@ -137,7 +137,7 @@ class DHCPProbeService(TimerService):
                     "Failed to probe for external DHCP servers on interface "
                     "'%s'." % interface)
                 if is_dev_environment():
-                    error += " (Did you configure authbind per HACKING.txt?)"
+                    error += " (Did you configure authbind per HACKING.rst?)"
                 self.err(e, error)
                 continue
             else:
