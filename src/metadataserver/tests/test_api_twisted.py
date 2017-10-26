@@ -241,6 +241,22 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test__processMessages_doesnt_call_when_node_deleted(self):
+        worker = StatusWorkerService(sentinel.dbtasks)
+        mock_processMessage = self.patch(worker, "_processMessage")
+        mock_processMessage.return_value = False
+        mock_updateLastPing = self.patch(worker, "_updateLastPing")
+        yield deferToDatabase(
+            worker._processMessages, sentinel.node,
+            [sentinel.message1, sentinel.message2])
+        self.assertThat(
+            mock_processMessage,
+            MockCalledOnceWith(sentinel.node, sentinel.message1))
+        self.assertThat(
+            mock_updateLastPing, MockNotCalled())
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__processMessages_calls_processMessage_and_updateLastPing(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
@@ -334,11 +350,24 @@ class TestStatusWorkerService(MAASServerTestCase):
 
     def processMessage(self, node, payload):
         worker = StatusWorkerService(sentinel.dbtasks)
-        worker._processMessage(node, payload)
+        return worker._processMessage(node, payload)
 
     def updateLastPing(self, node, payload):
         worker = StatusWorkerService(sentinel.dbtasks)
         worker._updateLastPing(node, payload)
+
+    def test_process_message_returns_false_when_node_deleted(self):
+        node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node1.delete()
+        payload = {
+            'event_type': 'finish',
+            'result': 'SUCCESS',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+            'timestamp': datetime.utcnow(),
+        }
+        self.assertFalse(self.processMessage(node1, payload))
 
     def test_status_installation_result_does_not_affect_other_node(self):
         node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)

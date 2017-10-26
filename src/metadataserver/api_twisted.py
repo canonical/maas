@@ -15,6 +15,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
+from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.orm import (
@@ -238,7 +239,11 @@ class StatusWorkerService(TimerService, object):
             # required.
             for idx, message in enumerate(messages):
                 try:
-                    self._processMessage(node, message)
+                    exists = self._processMessage(node, message)
+                    if not exists:
+                        # Node has been deleted no reason to continue saving
+                        # the events for this node.
+                        break
                 except:
                     log.err(
                         None,
@@ -288,6 +293,12 @@ class StatusWorkerService(TimerService, object):
 
     @transactional
     def _processMessage(self, node, message):
+        # Validate that the node still exists since this is a new transaction.
+        try:
+            node = Node.objects.get(id=node.id)
+        except Node.DoesNotExist:
+            return False
+
         event_type = message['event_type']
         origin = message['origin']
         activity_name = message['name']
@@ -367,6 +378,7 @@ class StatusWorkerService(TimerService, object):
 
         if save_node:
             node.save()
+        return True
 
     def _retrieve_content(self, compression, encoding, content):
         """Extract the content of the sent file."""

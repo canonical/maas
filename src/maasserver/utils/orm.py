@@ -83,6 +83,7 @@ from provisioningserver.utils.twisted import callOut
 import psycopg2
 from psycopg2.errorcodes import (
     DEADLOCK_DETECTED,
+    FOREIGN_KEY_VIOLATION,
     SERIALIZATION_FAILURE,
     UNIQUE_VIOLATION,
 )
@@ -340,6 +341,61 @@ def make_unique_violation():
     return exception
 
 
+def get_psycopg2_foreign_key_violation_exception(exception):
+    """Return the root-cause if `exception` is a foreign key violation.
+
+    PostgreSQL sets a specific error code, "23503", when a transaction breaks
+    because of a foreign violation.
+
+    :return: The underlying `psycopg2.Error` if it's a foreign key violation,
+    or `None` if there isn't one.
+    """
+    exception = get_psycopg2_exception(exception)
+    if exception is None:
+        return None
+    elif exception.pgcode == FOREIGN_KEY_VIOLATION:
+        return exception
+    else:
+        return None
+
+
+def is_foreign_key_violation(exception):
+    """Does `exception` represent a foreign key violation?
+
+    PostgreSQL sets a specific error code, "23503", when a transaction breaks
+    because of a foreign key violation.
+    """
+    return get_psycopg2_foreign_key_violation_exception(exception) is not None
+
+
+class ForeignKeyViolation(psycopg2.IntegrityError):
+    """Explicit serialization failure.
+
+    A real foreign key violation, arising out of psycopg2 (and thus signalled
+    from the database) would *NOT* be an instance of this class. However, it is
+    not obvious how to create a `psycopg2.IntegrityError` with ``pgcode`` set
+    to `FOREIGN_KEY_VIOLATION` without subclassing. I suspect only the C
+    interface can do that.
+    """
+    pgcode = FOREIGN_KEY_VIOLATION
+
+
+def make_foreign_key_violation():
+    """Make a serialization exception.
+
+    Artificially construct an exception that resembles what Django's ORM would
+    raise when PostgreSQL fails a transaction because of a foreign key
+    violation.
+
+    :returns: an instance of :py:class:`IntegrityError` that will pass the
+        `is_foreign_key_violation` predicate.
+    """
+    exception = IntegrityError()
+    exception.__cause__ = ForeignKeyViolation()
+    assert is_foreign_key_violation(exception)
+    return exception
+
+
 class RetryStack(ExitStack):
     """An exit stack specialised to the retry machinery."""
 
@@ -446,7 +502,8 @@ def is_retryable_failure(exception):
     return (
         is_serialization_failure(exception) or
         is_deadlock_failure(exception) or
-        is_unique_violation(exception)
+        is_unique_violation(exception) or
+        is_foreign_key_violation(exception)
     )
 
 

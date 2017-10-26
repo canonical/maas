@@ -29,6 +29,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db import transaction
+from django.db.models.deletion import Collector
 from fixtures import LoggerFixture
 from maasserver import (
     bootresources,
@@ -6775,6 +6776,49 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         yield deferToDatabase(
             updates_node_and_bmc, node, new_power_state,
             routable_racks, none_routable_racks)
+
+
+class TestNode_Delete_With_Transactional_Events(MAASTransactionServerTestCase):
+    """
+    Test deleting a node where the releated `Event`'s do not get deleted.
+
+    This simulates the failure reported in lp:1726474.
+    """
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_integrity_error_is_retried(self):
+        # This doesn't simulate the actual way the failure is caused, but it
+        # does simulate it to cause the same effect.
+        #
+        # The `calls` below is used to hold the context inside of the retry
+        # loop. The first call will fail as `_clear_events` will be called,
+        # the first retry will not call `_clear_events` which will allow the
+        # transaction to be committed.
+        calls = []
+
+        def _clear_events(collector):
+            for idx, objs in enumerate(collector.fast_deletes):
+                if len(objs) > 0 and isinstance(objs[0], Event):
+                    collector.fast_deletes[idx] = Event.objects.none()
+
+        @transactional
+        def _in_database():
+            node = factory.make_Node()
+            for _ in range(10):
+                factory.make_Event(node=node)
+
+            # Use the collector directly instead of calling `delete`.
+            collector = Collector(using="default")
+            collector.collect([node])
+            if calls == 0:
+                _clear_events(collector)
+            calls.append(None)
+            collector.delete()
+
+        # Test is that no exception is raised. If this doesn't work then a
+        # `django.db.utils.IntegrityError` will be raised.
+        yield deferToDatabase(_in_database)
 
 
 class TestController(MAASServerTestCase):
