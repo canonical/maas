@@ -106,6 +106,7 @@ from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    DeferredList,
     inlineCallbacks,
     maybeDeferred,
     returnValue,
@@ -784,6 +785,8 @@ class ClusterClient(Cluster):
             log.msg("Event-loop '%s' authenticated." % self.ident)
             registered = yield self.registerRackWithRegion()
             if registered:
+                if self.eventloop in self.service.try_connections:
+                    del self.service.try_connections[self.eventloop]
                 self.service.connections[self.eventloop] = self
                 self.ready.set(self.eventloop)
             else:
@@ -935,6 +938,8 @@ class ClusterClientService(TimerService, object):
         super(ClusterClientService, self).__init__(
             self._calculate_interval(None, None), self._tryUpdate)
         self.connections = {}
+        self.try_connections = {}
+        self._previous_work = (None, None)
         self.clock = reactor
 
         # XXX jtv 2014-09-23, bug=1372767: Fix
@@ -1172,6 +1177,48 @@ class ClusterClientService(TimerService, object):
             ]
             for name, addresses in eventloops.items()
         }
+
+        drop, connect = self._calculate_work(eventloops)
+
+        # Log fully connected only once. If that state changes then log
+        # it again. This prevents flooding the log with the same message when
+        # the state of the connections has not changed.
+        prev_work, self._previous_work = self._previous_work, (drop, connect)
+        if len(drop) == 0 and len(connect) == 0:
+            if prev_work != (drop, connect) and len(eventloops) > 0:
+                controllers = {
+                    eventloop.split(':')[0]
+                    for eventloop, _ in eventloops.items()
+                }
+                log.msg(
+                    "Fully connected to all %d event-loops on all %d "
+                    "region controllers (%s)." % (
+                        len(eventloops), len(controllers),
+                        ', '.join(sorted(controllers))))
+
+        # Drop all connections at once, as the are no longer required.
+        if len(drop) > 0:
+            log.msg("Dropping connections to event-loops: %s" % (
+                ', '.join(drop.keys())))
+            yield DeferredList([
+                maybeDeferred(self._drop_connection, connection)
+                for eventloop, connections in drop.items()
+                for connection in connections
+            ], consumeErrors=True)
+
+        # Make all the new connections to each endpoint at the same time.
+        if len(connect) > 0:
+            log.msg("Making connections to event-loops: %s" % (
+                ', '.join(connect.keys())))
+            yield DeferredList([
+                self._make_connections(eventloop, addresses)
+                for eventloop, addresses in connect.items()
+            ], consumeErrors=True)
+
+    def _calculate_work(self, eventloops):
+        """Calculate the work that needs to be performed for reconnection."""
+        drop, connect = {}, {}
+
         # Drop connections to event-loops that no longer include one of
         # this cluster's established connections among its advertised
         # endpoints. This is most likely to have happened because of
@@ -1183,23 +1230,20 @@ class ClusterClientService(TimerService, object):
             if eventloop in self.connections:
                 connection = self.connections[eventloop]
                 if connection.address not in addresses:
-                    yield self._drop_connection(connection)
+                    drop[eventloop] = [connection]
+            if eventloop in self.try_connections:
+                connection = self.try_connections[eventloop]
+                if connection.address not in addresses:
+                    drop[eventloop] = [connection]
+
         # Create new connections to event-loops that the cluster does
-        # not yet have a connection to. Try each advertised endpoint
-        # (address) in turn until one of them bites.
+        # not yet have a connection to.
         for eventloop, addresses in eventloops.items():
-            if eventloop not in self.connections:
-                for address in addresses:
-                    try:
-                        yield self._make_connection(eventloop, address)
-                    except ConnectError as error:
-                        host, port = address
-                        log.msg("Event-loop %s (%s:%d): %s" % (
-                            eventloop, host, port, error))
-                    except:
-                        log.err(None, "Failure making new RPC connection.")
-                    else:
-                        break
+            if ((eventloop not in self.connections and
+                    eventloop not in self.try_connections) or
+                    eventloop in drop):
+                connect[eventloop] = addresses
+
         # Remove connections to event-loops that are no longer
         # advertised by the RPC info view. Most likely this means that
         # the process in which the event-loop is no longer running, but
@@ -1208,7 +1252,32 @@ class ClusterClientService(TimerService, object):
         for eventloop in self.connections:
             if eventloop not in eventloops:
                 connection = self.connections[eventloop]
-                yield self._drop_connection(connection)
+                drop[eventloop] = [connection]
+        for eventloop in self.try_connections:
+            if eventloop not in eventloops:
+                connection = self.try_connections[eventloop]
+                drop[eventloop] = [connection]
+
+        return drop, connect
+
+    @inlineCallbacks
+    def _make_connections(self, eventloop, addresses):
+        """Connect to `eventloop` using all `addresses`."""
+        for address in addresses:
+            try:
+                connection = yield self._make_connection(eventloop, address)
+            except ConnectError as error:
+                host, port = address
+                log.msg("Event-loop %s (%s:%d): %s" % (
+                    eventloop, host, port, error))
+            except:
+                host, port = address
+                log.err(None, (
+                    "Failure with event-loop %s (%s:%d)" % (
+                        eventloop, host, port)))
+            else:
+                self.try_connections[eventloop] = connection
+                break
 
     def _make_connection(self, eventloop, address):
         """Connect to `eventloop` at `address`."""
@@ -1227,6 +1296,9 @@ class ClusterClientService(TimerService, object):
         If this is the last connection that was keeping rackd connected to
         a regiond then dhcpd and dhcpd6 services will be turned off.
         """
+        if eventloop in self.try_connections:
+            if self.try_connections[eventloop] is connection:
+                del self.try_connections[eventloop]
         if eventloop in self.connections:
             if self.connections[eventloop] is connection:
                 del self.connections[eventloop]
@@ -1242,7 +1314,7 @@ class ClusterClientService(TimerService, object):
                 dhcp_v6.off()
                 stopping_services.append("dhcpd6")
             if len(stopping_services) > 0:
-                maaslog.error(
+                log.msg(
                     "Lost all connections to region controllers. "
                     "Stopping service(s) %s." % ",".join(stopping_services))
                 service_monitor.ensureServices()

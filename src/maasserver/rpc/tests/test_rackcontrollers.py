@@ -288,11 +288,11 @@ class TestRegisterRackController(MAASServerTestCase):
                 for name, interface in interfaces.items()
             )))
 
-    def test_registers_with_rack_registration_lock_held(self):
+    def test_registers_with_startup_lock_held(self):
         lock_status = []
 
         def record_lock_status(*args):
-            lock_status.append(locks.rack_registration.is_locked())
+            lock_status.append(locks.startup.is_locked())
             return None  # Simulate that no rack found.
 
         find = self.patch(rackcontrollers, "find")

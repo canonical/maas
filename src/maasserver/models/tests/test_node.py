@@ -9495,7 +9495,7 @@ class TestRackController(MAASTransactionServerTestCase):
             MatchesStructure.byEquality(
                 status=SERVICE_STATUS.DEGRADED, status_info=(
                     "{:.0%} connected to region controllers.".format(
-                        percentage))))
+                        1.0 - percentage))))
 
     fake_images = [
         {

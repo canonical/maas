@@ -72,7 +72,7 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
 
 @synchronous
 @with_connection
-@synchronised(locks.rack_registration)
+@synchronised(locks.startup)
 @transactional
 def register(
         system_id=None, hostname='', interfaces=None,

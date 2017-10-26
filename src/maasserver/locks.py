@@ -9,7 +9,6 @@ __all__ = [
     "eventloop",
     "import_images",
     "node_acquire",
-    "rack_registration",
     "security",
     "startup",
 ]
@@ -19,7 +18,11 @@ from maasserver.utils.dblocks import (
     DatabaseXactLock,
 )
 
-# Lock around starting-up a MAAS region.
+# Lock around starting-up a MAAS region and connection of rack controllers.
+# This can be a problem where a region controller and a rack controller try
+# to create there node objects at the same time. Rack registration also
+# involves populating fabrics, VLANs, and other information that may overlap
+# between rack controller.
 startup = DatabaseLock(1)
 
 # Lock around performing critical security-related operations, like
@@ -41,10 +44,10 @@ node_acquire = DatabaseXactLock(7)
 # Lock to help with concurrent allocation of IP addresses.
 address_allocation = DatabaseLock(8)
 
-# Lock to prevent concurrent registration of rack controllers. This can be a
-# problem because registration involves populating fabrics, VLANs, and other
-# information that may overlap between rack controller.
-rack_registration = DatabaseLock(9)
+# Lock used to be used just for rack registration. Because of lp:1705594 this
+# was consolidated into the startup lock with the region controller.
+# DO NOT USE '9' AGAIN, it is reserved so it doesn't break upgrades.
+# rack_registration = DatabaseLock(9)
 
 # Lock to prevent concurrent network scanning.
 try_active_discovery = DatabaseLock(10).TRY

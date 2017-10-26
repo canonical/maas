@@ -1214,15 +1214,31 @@ class RegionAdvertising:
         Each tuple corresponds to somewhere an event-loop is listening
         within the whole region. The `name` is the event-loop name.
         """
+        # Each regiond might be running a local bridge that duplicates the
+        # same IP address across region controllers. Each region controller
+        # must output a set of unique of IP addresses, to prevent the rack
+        # controller from connecting to a different region controller then
+        # the rack controller was expecting to be connecting to.
+        def _unique_to_region(address, region, regions):
+            for region_obj in regions:
+                if region_obj != region:
+                    for process in region_obj.processes.all():
+                        for endpoint in process.endpoints.all():
+                            if endpoint.address == address:
+                                return False
+            return True
+
         regions = RegionController.objects.all()
         regions = regions.prefetch_related("processes", "processes__endpoints")
         all_endpoints = []
         for region_obj in regions:
             for process in region_obj.processes.all():
                 for endpoint in process.endpoints.all():
-                    all_endpoints.append((
-                        "%s:pid=%d" % (region_obj.hostname, process.pid),
-                        endpoint.address, endpoint.port))
+                    if _unique_to_region(
+                            endpoint.address, region_obj, regions):
+                        all_endpoints.append((
+                            "%s:pid=%d" % (region_obj.hostname, process.pid),
+                            endpoint.address, endpoint.port))
         return all_endpoints
 
     @classmethod

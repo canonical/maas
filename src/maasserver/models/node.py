@@ -54,7 +54,10 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
-from maasserver import DefaultMeta
+from maasserver import (
+    DefaultMeta,
+    locks,
+)
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
     power_cycle,
@@ -143,6 +146,7 @@ from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
 )
+from maasserver.utils import synchronised
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -151,6 +155,7 @@ from maasserver.utils.orm import (
     post_commit,
     post_commit_do,
     transactional,
+    with_connection,
 )
 from maasserver.utils.threads import (
     callOutToDatabase,
@@ -208,6 +213,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     deferWithTimeout,
+    synchronous,
 )
 from twisted.internet.defer import (
     Deferred,
@@ -4595,6 +4601,10 @@ class Controller(Node):
             for interface in interfaces
         }
 
+    @synchronous
+    @with_connection
+    @synchronised(locks.startup)
+    @transactional
     def update_interfaces(self, interfaces):
         """Update the interfaces attached to the controller.
 
@@ -4872,7 +4882,7 @@ class RackController(Controller):
                 Service.objects.update_service_for(
                     self, "rackd", SERVICE_STATUS.DEGRADED,
                     "{:.0%} connected to region controllers.".format(
-                        percentage))
+                        1.0 - percentage))
 
     def get_image_sync_status(self, boot_images=None):
         """Return the status of the boot image import process."""

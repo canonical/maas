@@ -379,6 +379,229 @@ class TestTFTPBackend(MAASTestCase):
         )
 
     @inlineCallbacks
+    def test_get_boot_method_reader_uses_same_client(self):
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = {"mac": factory.make_mac_address("-")}
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters()
+        fake_params = fake_kernel_params._asdict()
+
+        # Stub the output of list_boot_images so the label is set in the
+        # kernel parameters.
+        boot_image = {
+            "osystem": fake_params["osystem"],
+            "release": fake_params["release"],
+            "architecture": fake_params["arch"],
+            "subarchitecture": fake_params["subarch"],
+            "purpose": fake_params["purpose"],
+            "supported_subarches": "",
+            "label": fake_params["label"],
+        }
+        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
+        del fake_params["label"]
+
+        # Stub RPC call to return the fake configuration parameters.
+        clients = []
+        for _ in range(10):
+            client = Mock()
+            client.localIdent = factory.make_name("system_id")
+            client.side_effect = lambda *args, **kwargs: (
+                succeed(dict(fake_params)))
+            clients.append(client)
+        client_service = Mock()
+        client_service.getClientNow.side_effect = [
+            succeed(client)
+            for client in clients
+        ]
+        client_service.getAllClients.return_value = clients
+
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
+        backend = TFTPBackend(
+            self.make_dir(), client_service)
+
+        # Stub get_reader to return the render parameters.
+        method = PXEBootMethod()
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
+
+        # Get the reader once.
+        remote_ip = factory.make_ipv4_address()
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = remote_ip
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+
+        # Get the reader twice.
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = remote_ip
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+
+        # Only one client is saved.
+        self.assertEquals(clients[0], backend.client_to_remote[remote_ip])
+
+        # Only the first client should have been called twice, and all the
+        # other clients should not have been called.
+        self.assertEquals(2, clients[0].call_count)
+        for idx in range(1, 10):
+            self.assertThat(clients[idx], MockNotCalled())
+
+    @inlineCallbacks
+    def test_get_boot_method_reader_uses_different_clients(self):
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = {"mac": factory.make_mac_address("-")}
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters()
+        fake_params = fake_kernel_params._asdict()
+
+        # Stub the output of list_boot_images so the label is set in the
+        # kernel parameters.
+        boot_image = {
+            "osystem": fake_params["osystem"],
+            "release": fake_params["release"],
+            "architecture": fake_params["arch"],
+            "subarchitecture": fake_params["subarch"],
+            "purpose": fake_params["purpose"],
+            "supported_subarches": "",
+            "label": fake_params["label"],
+        }
+        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
+        del fake_params["label"]
+
+        # Stub RPC call to return the fake configuration parameters.
+        clients = []
+        for _ in range(10):
+            client = Mock()
+            client.localIdent = factory.make_name("system_id")
+            client.side_effect = lambda *args, **kwargs: (
+                succeed(dict(fake_params)))
+            clients.append(client)
+        client_service = Mock()
+        client_service.getClientNow.side_effect = [
+            succeed(client)
+            for client in clients
+        ]
+        client_service.getAllClients.return_value = clients
+
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
+        backend = TFTPBackend(
+            self.make_dir(), client_service)
+
+        # Stub get_reader to return the render parameters.
+        method = PXEBootMethod()
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
+
+        # Get the reader once.
+        remote_ip_one = factory.make_ipv4_address()
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = remote_ip_one
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+
+        # Get the reader twice.
+        remote_ip_two = factory.make_ipv4_address()
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = remote_ip_two
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+
+        # The both clients are saved.
+        self.assertEquals(clients[0], backend.client_to_remote[remote_ip_one])
+        self.assertEquals(clients[1], backend.client_to_remote[remote_ip_two])
+
+        # Only the first and second client should have been called once, and
+        # all the other clients should not have been called.
+        self.assertEquals(1, clients[0].call_count)
+        self.assertEquals(1, clients[1].call_count)
+        for idx in range(2, 10):
+            self.assertThat(clients[idx], MockNotCalled())
+
+    @inlineCallbacks
+    def test_get_boot_method_reader_grabs_new_client_on_lost_conn(self):
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = {"mac": factory.make_mac_address("-")}
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters()
+        fake_params = fake_kernel_params._asdict()
+
+        # Stub the output of list_boot_images so the label is set in the
+        # kernel parameters.
+        boot_image = {
+            "osystem": fake_params["osystem"],
+            "release": fake_params["release"],
+            "architecture": fake_params["arch"],
+            "subarchitecture": fake_params["subarch"],
+            "purpose": fake_params["purpose"],
+            "supported_subarches": "",
+            "label": fake_params["label"],
+        }
+        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
+        del fake_params["label"]
+
+        # Stub RPC call to return the fake configuration parameters.
+        clients = []
+        for _ in range(10):
+            client = Mock()
+            client.localIdent = factory.make_name("system_id")
+            client.side_effect = lambda *args, **kwargs: (
+                succeed(dict(fake_params)))
+            clients.append(client)
+        client_service = Mock()
+        client_service.getClientNow.side_effect = [
+            succeed(client)
+            for client in clients
+        ]
+        client_service.getAllClients.side_effect = [
+            clients[1:],
+            clients[2:],
+        ]
+
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
+        backend = TFTPBackend(
+            self.make_dir(), client_service)
+
+        # Stub get_reader to return the render parameters.
+        method = PXEBootMethod()
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
+
+        # Get the reader once.
+        remote_ip = factory.make_ipv4_address()
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = remote_ip
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+
+        # The first client is now saved.
+        self.assertEquals(clients[0], backend.client_to_remote[remote_ip])
+
+        # Get the reader twice.
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = remote_ip
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+
+        # The second client is now saved.
+        self.assertEquals(clients[1], backend.client_to_remote[remote_ip])
+
+        # Only the first and second client should have been called once, and
+        # all the other clients should not have been called.
+        self.assertEquals(1, clients[0].call_count)
+        self.assertEquals(1, clients[1].call_count)
+        for idx in range(2, 10):
+            self.assertThat(clients[idx], MockNotCalled())
+
+    @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params(self):
         # Fake configuration parameters, as discovered from the file path.
         fake_params = {"mac": factory.make_mac_address("-")}

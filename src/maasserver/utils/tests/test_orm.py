@@ -1004,6 +1004,22 @@ class TestConnected(MAASTransactionServerTestCase):
             self.assertThat(connection.connection, Is(preexisting_connection))
         self.assertThat(connection.connection, Is(preexisting_connection))
 
+    def test__disconnects_and_reconnects_if_not_usable(self):
+        connection.ensure_connection()
+        preexisting_connection = connection.connection
+
+        connection.errors_occurred = True
+        self.patch(connection, "is_usable").return_value = False
+
+        self.assertThat(connection.connection, Not(Is(None)))
+        with orm.connected():
+            self.assertThat(
+                connection.connection, Not(Is(preexisting_connection)))
+            self.assertThat(connection.connection, Not(Is(None)))
+
+        self.assertThat(connection.connection, Not(Is(preexisting_connection)))
+        self.assertThat(connection.connection, Not(Is(None)))
+
 
 class TestWithConnection(MAASTransactionServerTestCase):
     """Tests for the `orm.with_connection` decorator."""

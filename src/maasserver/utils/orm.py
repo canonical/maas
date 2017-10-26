@@ -616,14 +616,25 @@ def connected():
 
     If there is not yet a connection to the database, this will connect on
     entry and disconnect on exit. Preexisting connections will be left alone.
+
+    If the preexisting connection is not usable it is closed and a new
+    connection is made.
     """
     if connection.connection is None:
+        connection.close_if_unusable_or_obsolete()
         connection.ensure_connection()
         try:
             yield
         finally:
             connection.close()
+    elif connection.is_usable():
+        yield
     else:
+        # Connection is not usable, so we disconnect and reconnect. Since
+        # the connection was previously connected we do not disconnect this
+        # new connection.
+        connection.close_if_unusable_or_obsolete()
+        connection.ensure_connection()
         yield
 
 
