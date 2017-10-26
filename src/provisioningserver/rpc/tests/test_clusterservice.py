@@ -683,7 +683,7 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertEqual(
             "Fully connected to all 4 event-loops on all 2 region "
-            "controllers (region2, region1).", logger.dump())
+            "controllers (region1, region2).", logger.dump())
 
     @inlineCallbacks
     def test__update_connections_connect_error_is_logged_tersely(self):

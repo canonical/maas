@@ -2340,8 +2340,14 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content)
         self.assertThat(accessible_by_url, MockNotCalled())
 
-    def test_POST_add_chassis_errors_when_no_racks_avalible(self):
+    def test_POST_add_chassis_all_racks_when_no_racks_avalible(self):
         self.become_admin()
+        rack1 = factory.make_RackController(hostname='rack-a')
+        rack2 = factory.make_RackController(hostname='rack-b')
+        add_chassis1 = self.patch(rack1, 'add_chassis')
+        add_chassis2 = self.patch(rack2, 'add_chassis')
+        all_racks = self.patch(machines_module.RackController.objects, 'all')
+        all_racks.return_value = [rack1, rack2]
         accessible_by_url = self.patch(
             machines_module.RackController.objects, 'get_accessible_by_url')
         accessible_by_url.return_value = None
@@ -2354,10 +2360,15 @@ class TestMachinesAPI(APITestCase.ForUser):
                 'hostname': hostname,
             })
         self.assertEqual(
-            http.client.NOT_FOUND, response.status_code, response.content)
-        self.assertEqual(
-            ("Unable to find a rack controller with access to chassis %s" %
-             hostname).encode('utf-8'), response.content)
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            add_chassis1, MockCalledWith(
+                self.user.username, 'virsh', hostname, None, None,
+                False, None, None, None, None, None))
+        self.assertThat(
+            add_chassis2, MockCalledWith(
+                self.user.username, 'virsh', hostname, None, None,
+                False, None, None, None, None, None))
 
 
 class TestPowerState(APITransactionTestCase.ForUser):

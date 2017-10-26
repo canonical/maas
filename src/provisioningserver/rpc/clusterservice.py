@@ -1251,7 +1251,7 @@ class ClusterClientService(TimerService, object):
                     "Fully connected to all %d event-loops on all %d "
                     "region controllers (%s)." % (
                         len(eventloops), len(controllers),
-                        ', '.join(controllers)))
+                        ', '.join(sorted(controllers))))
 
         # Drop all connections at once, as the are no longer required.
         if len(drop) > 0:

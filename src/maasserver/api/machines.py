@@ -1776,29 +1776,36 @@ class MachinesHandler(NodesHandler, PowersMixin):
         rack_controller = get_optional_param(request.POST, 'rack_controller')
         if rack_controller is None:
             rack = RackController.objects.get_accessible_by_url(hostname)
-            if not rack:
-                return HttpResponseNotFound(
-                    "Unable to find a rack controller with access to chassis "
-                    "%s" % hostname, content_type=(
-                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+            if rack:
+                racks = [rack]
+            else:
+                racks = RackController.objects.all()
         else:
             try:
-                rack = RackController.objects.get(
+                racks = [RackController.objects.get(
                     Q(system_id=rack_controller) | Q(hostname=rack_controller))
+                ]
             except RackController.DoesNotExist:
                 return HttpResponseNotFound(
                     "Unable to find specified rack %s" % rack_controller,
                     content_type=(
                         "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
-        rack.add_chassis(
-            request.user.username, chassis_type, hostname, username, password,
-            accept_all, domain_name, prefix_filter, power_control, port,
-            protocol)
+        # Ask all racks to add the chassis. add_chassis() is kind of
+        # idempotent, so nodes won't be added multiple times by
+        # different racks.
+        for rack in racks:
+            # Ideally we should break after the first rack managed to
+            # add the chassis. But currently add_chassis() doesn't
+            # return whether it succeeds.
+            rack.add_chassis(
+                request.user.username, chassis_type, hostname, username,
+                password, accept_all, domain_name, prefix_filter,
+                power_control, port, protocol)
 
         return HttpResponse(
             "Asking %s to add machines from chassis %s" % (
-                rack.hostname, hostname),
+                ", ".join(rack.hostname for rack in racks), hostname),
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
     @classmethod
