@@ -4,12 +4,21 @@
 """Builtin node info scripts."""
 
 __all__ = [
+    'BLOCK_DEVICES_OUTPUT_NAME',
+    'CPUINFO_OUTPUT_NAME',
+    'DHCP_EXPLORE_OUTPUT_NAME',
     'GET_FRUID_DATA_OUTPUT_NAME',
     'IPADDR_OUTPUT_NAME',
-    'NODE_INFO_SCRIPTS',
+    'IPADDR_OUTPUT_NAME',
     'LIST_MODALIASES_OUTPUT_NAME',
+    'LLDP_INSTALL_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
     'LSHW_OUTPUT_NAME',
+    'NODE_INFO_SCRIPTS',
+    'SERIAL_PORTS_OUTPUT_NAME',
+    'SRIOV_OUTPUT_NAME',
+    'SUPPORT_INFO_OUTPUT_NAME',
+    'VIRTUALITY_OUTPUT_NAME',
     ]
 
 from collections import OrderedDict
@@ -19,14 +28,23 @@ import json
 import os
 from textwrap import dedent
 
-# Name of the file where the node info scripts store lshw output.
+# The name of the script, used throughout MAAS for data processing. Any script
+# which is renamed will require a migration otherwise the user will see both
+# the old name and new name as two seperate scripts. See
+# 0014_rename_dhcp_unconfigured_ifaces.py
+SUPPORT_INFO_OUTPUT_NAME = '00-maas-00-support-info'
 LSHW_OUTPUT_NAME = '00-maas-01-lshw'
-
-# Name of the file where the node info scripts store LLDP output.
+CPUINFO_OUTPUT_NAME = '00-maas-01-cpuinfo'
+VIRTUALITY_OUTPUT_NAME = '00-maas-02-virtuality'
+LLDP_INSTALL_OUTPUT_NAME = '00-maas-03-install-lldpd'
+LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
+DHCP_EXPLORE_OUTPUT_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
+GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
+BLOCK_DEVICES_OUTPUT_NAME = '00-maas-07-block-devices'
+SERIAL_PORTS_OUTPUT_NAME = '00-maas-08-serial-ports'
 LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
-
-# Name of the file where the node info scripts store ip addr output.
 IPADDR_OUTPUT_NAME = '99-maas-03-network-interfaces'
+SRIOV_OUTPUT_NAME = '99-maas-04-network-interfaces-with-sriov'
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -393,14 +411,12 @@ def lldpd_capture(reference_file, time_delay):
     check_call(("lldpctl", "-f", "xml"))
 
 
-LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
 LIST_MODALIASES_SCRIPT = dedent("""\
     #!/bin/bash
     find /sys -name modalias -print0 | xargs -0 cat | sort -u
     """)
 
 
-GET_FRUID_DATA_OUTPUT_NAME = '00-maas-06-get-fruid-api-data'
 GET_FRUID_DATA_SCRIPT = dedent("""\
     #!/bin/bash
     # Do not fail commissioning if this fails.
@@ -414,7 +430,6 @@ GET_FRUID_DATA_SCRIPT = dedent("""\
         fi
     done
     """)
-GET_FRUID_DATA_PACKAGES = {'apt': ['curl']}
 
 
 def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
@@ -601,7 +616,7 @@ def null_hook(node, output, exit_status):
 # maasserver/status_monitor.py adds 1 minute to the timeout of all scripts for
 # cleanup and signaling.
 NODE_INFO_SCRIPTS = OrderedDict([
-    ('00-maas-00-support-info', {
+    (SUPPORT_INFO_OUTPUT_NAME, {
         'content': SUPPORT_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(minutes=5),
@@ -613,19 +628,19 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'timeout': timedelta(minutes=5),
         'run_on_controller': True,
     }),
-    ('00-maas-01-cpuinfo', {
+    (CPUINFO_OUTPUT_NAME, {
         'content': CPUINFO_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
-    ('00-maas-02-virtuality', {
+    (VIRTUALITY_OUTPUT_NAME, {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
-    ('00-maas-03-install-lldpd', {
+    (LLDP_INSTALL_OUTPUT_NAME, {
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
@@ -639,7 +654,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
-    ('00-maas-05-dhcp-unconfigured-ifaces', {
+    (DHCP_EXPLORE_OUTPUT_NAME, {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
         'timeout': timedelta(minutes=5),
@@ -648,17 +663,16 @@ NODE_INFO_SCRIPTS = OrderedDict([
     (GET_FRUID_DATA_OUTPUT_NAME, {
         'content': GET_FRUID_DATA_SCRIPT.encode('ascii'),
         'hook': null_hook,
-        'packages': GET_FRUID_DATA_PACKAGES,
         'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
-    ('00-maas-07-block-devices', {
+    (BLOCK_DEVICES_OUTPUT_NAME, {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': null_hook,
         'timeout': timedelta(minutes=5),
         'run_on_controller': True,
     }),
-    ('00-maas-08-serial-ports', {
+    (SERIAL_PORTS_OUTPUT_NAME, {
         'content': SERIAL_PORTS_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(seconds=10),
@@ -677,7 +691,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
-    ('99-maas-04-network-interfaces-with-sriov', {
+    (SRIOV_OUTPUT_NAME, {
         'content': SRIOV_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(seconds=10),

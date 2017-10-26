@@ -27,11 +27,15 @@ from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from provisioningserver.refresh.node_info_scripts import (
+    BLOCK_DEVICES_OUTPUT_NAME,
+    CPUINFO_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     IPADDR_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
+    SRIOV_OUTPUT_NAME,
+    VIRTUALITY_OUTPUT_NAME,
 )
 from provisioningserver.utils.ipaddr import parse_ip_addr
 
@@ -688,15 +692,15 @@ def retag_node_for_hardware_by_modalias(
 
 # Register the post processing hooks.
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
-NODE_INFO_SCRIPTS['00-maas-01-cpuinfo']['hook'] = parse_cpuinfo
-NODE_INFO_SCRIPTS['00-maas-02-virtuality']['hook'] = set_virtual_tag
+NODE_INFO_SCRIPTS[CPUINFO_OUTPUT_NAME]['hook'] = parse_cpuinfo
+NODE_INFO_SCRIPTS[VIRTUALITY_OUTPUT_NAME]['hook'] = set_virtual_tag
 NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME]['hook'] = (
     update_node_fruid_metadata)
-NODE_INFO_SCRIPTS['00-maas-07-block-devices']['hook'] = (
+NODE_INFO_SCRIPTS[BLOCK_DEVICES_OUTPUT_NAME]['hook'] = (
     update_node_physical_block_devices)
 NODE_INFO_SCRIPTS[IPADDR_OUTPUT_NAME]['hook'] = (
     update_node_network_information)
-NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
+NODE_INFO_SCRIPTS[SRIOV_OUTPUT_NAME]['hook'] = (
     update_node_network_interface_tags)
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = (
     create_metadata_by_modalias)
