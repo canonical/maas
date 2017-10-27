@@ -20,6 +20,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesAll,
+    MatchesSetwise,
     MatchesStructure,
     Not,
 )
@@ -118,7 +119,7 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
             Notification.objects.find_for_user(user),
             MatchesAll(
                 IsInstance(QuerySet),  # Not RawQuerySet.
-                AfterPreprocessing(list, Equals(notifications)),
+                MatchesSetwise(*map(Equals, notifications)),
             ))
 
     def test_find_and_dismiss_notifications_for_user(self):
