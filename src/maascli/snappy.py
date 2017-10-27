@@ -45,6 +45,8 @@ available modes:
     none        - not configured\
 """
 
+DEFAULT_OPERATION_MODE = 'all'
+
 ARGUMENTS = OrderedDict([
     ('mode', {
         'choices': ['all', 'region+rack', 'region', 'rack', 'none'],
@@ -633,10 +635,11 @@ class cmd_init(SnappyCommand):
 
         if not mode:
             mode = prompt_for_choices(
-                "Mode (%sall/region+rack/region/rack/none) [default=all]? " % (
-                    '/'.join(ARGUMENTS['mode']['choices'])),
+                "Mode ({choices}) [default={default}]? ".format(
+                    choices='/'.join(ARGUMENTS['mode']['choices']),
+                    default=DEFAULT_OPERATION_MODE),
                 ARGUMENTS['mode']['choices'],
-                default='all', help_text=OPERATION_MODES)
+                default=DEFAULT_OPERATION_MODE, help_text=OPERATION_MODES)
         if current_mode == 'all' and mode != 'all' and not options.force:
             print_msg(
                 'This will disconnect your MAAS from the running database.')
