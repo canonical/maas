@@ -60,7 +60,6 @@ class TestNodePreviousStatus(MAASServerTestCase):
             NODE_STATUS.EXITING_RESCUE_MODE,
             NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
             NODE_STATUS.TESTING,
-            NODE_STATUS.FAILED_TESTING,
         ]
         status = random.choice(black_listed_statuses)
         previous_status = factory.pick_choice(
