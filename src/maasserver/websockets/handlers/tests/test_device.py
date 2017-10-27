@@ -186,18 +186,19 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [
                 "actions",
-                "fqdn",
                 "extra_macs",
-                "metadata",
-                "tags",
-                "primary_mac",
+                "fabrics",
+                "fqdn",
+                "installation_status",
                 "ip_address",
                 "ip_assignment",
-                "node_type_display",
                 "link_type",
-                "subnets",
+                "metadata",
+                "node_type_display",
+                "primary_mac",
                 "spaces",
-                "fabrics",
+                "subnets",
+                "tags",
                 ]
             for key in list(data):
                 if key not in allowed_fields:

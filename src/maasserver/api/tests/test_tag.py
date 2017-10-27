@@ -197,10 +197,10 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ])
 
-        # Because of fields `status_action`, `status_message`, and
-        # `default_gateways`. The number of queries is not the same but it is
-        # proportional to the number of machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 3))
+        # Because of fields `status_action`, `status_message`,
+        # `default_gateways`, and `health_status` the number of queries is not
+        # the same but it is proportional to the number of machines.
+        self.assertEquals(num_queries1, num_queries2 - (3 * 4))
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -257,10 +257,10 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ])
 
-        # Because of fields `status_action`, `status_message`, and
-        # `default_gateways`. The number of queries is not the same but it is
-        # proportional to the number of machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 3))
+        # Because of fields `status_action`, `status_message`,
+        # `default_gateways`, and `health_status` the number of queries is not
+        # the same but it is proportional to the number of machines.
+        self.assertEquals(num_queries1, num_queries2 - (3 * 4))
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()
@@ -375,7 +375,7 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_1)),
                 len(extract_system_ids(parsed_result_2)),
             ])
-        self.assertEquals(num_queries1, num_queries2 - (3 * 2))
+        self.assertEquals(num_queries1, num_queries2 - (3 * 3))
 
     def test_GET_rack_controllers_returns_no_rack_controllers_nonadmin(self):
         tag = factory.make_Tag()
@@ -456,7 +456,7 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_1)),
                 len(extract_system_ids(parsed_result_2)),
             ])
-        self.assertEquals(num_queries1, num_queries2 - 3)
+        self.assertEquals(num_queries1, num_queries2 - 6)
 
     def test_GET_region_controllers_returns_no_controllers_nonadmin(self):
         tag = factory.make_Tag()

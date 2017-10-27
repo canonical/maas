@@ -1000,7 +1000,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             var results = $scope.node.installation_results;
             if(!angular.isArray(results) ||
                     results.length === 0 || results[0].output === "") {
-                switch($scope.node.installation_script_set_status) {
+                switch($scope.node.installation_status) {
                     case 0:
                         return "System is booting...";
                     case 1:

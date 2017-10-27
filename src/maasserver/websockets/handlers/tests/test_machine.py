@@ -166,30 +166,36 @@ class TestMachineHandler(MAASServerTestCase):
         ]
         disks = sorted(disks, key=itemgetter("name"))
         subnets = handler.get_all_subnets(node)
+        commissioning_scripts = node.get_latest_commissioning_script_results
+        commissioning_scripts = commissioning_scripts.exclude(
+            status=SCRIPT_STATUS.ABORTED)
+        testing_scripts = node.get_latest_testing_script_results
+        testing_scripts = testing_scripts.exclude(
+            status=SCRIPT_STATUS.ABORTED)
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
             "bmc": node.bmc_id,
             "boot_disk": node.boot_disk,
             "bios_boot_method": node.bios_boot_method,
-            "commissioning_script_count": (
-                node.get_latest_commissioning_script_results.count()),
-            "commissioning_script_set_status": get_status_from_qs(
-                node.get_latest_commissioning_script_results.exclude(
-                    status=SCRIPT_STATUS.ABORTED)),
+            "commissioning_script_count": commissioning_scripts.count(),
+            "commissioning_status": get_status_from_qs(commissioning_scripts),
+            "commissioning_status_tooltip": (
+                handler.dehydrate_hardware_status_tooltip(
+                    commissioning_scripts).replace(
+                        'test', 'commissioning script')),
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id),
-            "testing_script_count": (
-                node.get_latest_testing_script_results.count()),
-            "testing_script_set_status": get_status_from_qs(
-                node.get_latest_testing_script_results.exclude(
-                    status=SCRIPT_STATUS.ABORTED)),
+            "testing_script_count": testing_scripts.count(),
+            "testing_status": get_status_from_qs(testing_scripts),
+            "testing_status_tooltip": (
+                handler.dehydrate_hardware_status_tooltip(testing_scripts)),
             "current_testing_script_set": node.current_testing_script_set_id,
             "installation_results": handler.dehydrate_script_set(
                 node.current_installation_script_set),
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
-            "installation_script_set_status": (
+            "installation_status": (
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set)),
             "cpu_count": node.cpu_count,
@@ -286,26 +292,32 @@ class TestMachineHandler(MAASServerTestCase):
             allowed_fields = MachineHandler.Meta.list_fields + [
                 "actions",
                 "architecture",
-                "fqdn",
-                "metadata",
-                "status",
-                "status_code",
-                "pxe_mac",
-                "pxe_mac_vendor",
+                "commissioning_script_count",
+                "commissioning_status",
+                "commissioning_status_tooltip",
+                "dhcp_on",
+                "distro_series",
                 "extra_macs",
-                "tags",
-                "subnets",
                 "fabrics",
-                "spaces",
-                "physical_disk_count",
-                "storage",
-                "storage_tags",
+                "fqdn",
+                "link_type",
+                "metadata",
                 "node_type_display",
                 "osystem",
-                "distro_series",
-                "dhcp_on",
+                "physical_disk_count",
                 "pod",
-                "link_type",
+                "pxe_mac",
+                "pxe_mac_vendor",
+                "spaces",
+                "status",
+                "status_code",
+                "storage",
+                "storage_tags",
+                "subnets",
+                "tags",
+                "testing_script_count",
+                "testing_status",
+                "testing_status_tooltip",
             ]
             for key in list(data):
                 if key not in allowed_fields:

@@ -45,8 +45,10 @@ from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 from metadataserver.enum import (
+    HARDWARE_TYPE,
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
 )
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.tags import merge_details_cleanly
@@ -118,6 +120,44 @@ class NodeHandler(TimestampedModelHandler):
         """Return power_parameters None if empty."""
         return None if power_parameters == '' else power_parameters
 
+    def dehydrate_hardware_status_tooltip(self, script_results):
+        script_statuses = {}
+        for script_result in script_results:
+            if script_result.status in script_statuses:
+                script_statuses[script_result.status].add(script_result.name)
+            else:
+                script_statuses[script_result.status] = {script_result.name}
+
+        tooltip = ''
+        for status, scripts in script_statuses.items():
+            len_scripts = len(scripts)
+            if status in {
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING}:
+                verb = 'is' if len_scripts == 1 else 'are'
+            elif status in {
+                    SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
+                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED_INSTALLING}:
+                verb = 'has' if len_scripts == 1 else 'have'
+            else:
+                # Covers SCRIPT_STATUS.ABORTED, an else is used incase new
+                # statuses are ever added.
+                verb = 'was' if len_scripts == 1 else 'were'
+
+            if tooltip != '':
+                tooltip += ' '
+            if len_scripts == 1:
+                tooltip += '1 test '
+            else:
+                tooltip += '%s tests ' % len_scripts
+            tooltip += '%s %s.' % (
+                verb, SCRIPT_STATUS_CHOICES[status][1].lower())
+
+        if tooltip == '':
+            tooltip = 'No tests have been run.'
+
+        return tooltip
+
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
@@ -174,6 +214,40 @@ class NodeHandler(TimestampedModelHandler):
             data["distro_series"] = obj.get_distro_series(
                 default=self.default_distro_series)
             data["dhcp_on"] = self.get_providing_dhcp(obj)
+
+        if obj.node_type != NODE_TYPE.DEVICE:
+            commissioning_script_results = []
+            testing_script_results = []
+            for hw_type in self._script_results.get(obj.id, {}).values():
+                for script_result in hw_type:
+                    if (script_result.script_set.result_type ==
+                            RESULT_TYPE.INSTALLATION):
+                        # Don't include installation results in the health
+                        # status.
+                        continue
+                    elif script_result.status == SCRIPT_STATUS.ABORTED:
+                        # LP: #1724235 - Ignore aborted scripts.
+                        continue
+                    elif (script_result.script_set.result_type ==
+                            RESULT_TYPE.COMMISSIONING):
+                        commissioning_script_results.append(script_result)
+                    elif (script_result.script_set.result_type ==
+                            RESULT_TYPE.TESTING):
+                        testing_script_results.append(script_result)
+
+            data["commissioning_script_count"] = len(
+                commissioning_script_results)
+            data["commissioning_status"] = get_status_from_qs(
+                commissioning_script_results)
+            data["commissioning_status_tooltip"] = (
+                self.dehydrate_hardware_status_tooltip(
+                    commissioning_script_results).replace(
+                        'test', 'commissioning script'))
+            data["testing_script_count"] = len(testing_script_results)
+            data["testing_status"] = get_status_from_qs(testing_script_results)
+            data["testing_status_tooltip"] = (
+                self.dehydrate_hardware_status_tooltip(testing_script_results))
+
         if not for_list:
             data["on_network"] = obj.on_network()
             if obj.node_type != NODE_TYPE.DEVICE:
@@ -216,23 +290,12 @@ class NodeHandler(TimestampedModelHandler):
                 # Events
                 data["events"] = self.dehydrate_events(obj)
 
-                # Machine output
+                # Machine logs
                 data = self.dehydrate_summary_output(obj, data)
-                data["commissioning_script_count"] = (
-                    obj.get_latest_commissioning_script_results.count())
-                data["commissioning_script_set_status"] = get_status_from_qs(
-                    obj.get_latest_commissioning_script_results.exclude(
-                        status=SCRIPT_STATUS.ABORTED))
-                data["testing_script_count"] = (
-                    obj.get_latest_testing_script_results.count())
-                data["testing_script_set_status"] = get_status_from_qs(
-                    obj.get_latest_testing_script_results.exclude(
-                        status=SCRIPT_STATUS.ABORTED))
+                data["installation_status"] = self.dehydrate_script_set_status(
+                    obj.current_installation_script_set)
                 data["installation_results"] = self.dehydrate_script_set(
                     obj.current_installation_script_set)
-                data["installation_script_set_status"] = (
-                    self.dehydrate_script_set_status(
-                        obj.current_installation_script_set))
 
                 # Third party drivers
                 if Config.objects.get_config('enable_third_party_drivers'):
@@ -255,11 +318,11 @@ class NodeHandler(TimestampedModelHandler):
         qs = qs.exclude(status=SCRIPT_STATUS.ABORTED)
         cleared_node_ids = []
         for script_result in qs:
-            # Builtin commissioning scripts are not stored in the database.
-            if script_result.script is None:
-                continue
             node_id = script_result.script_set.node_id
-            hardware_type = script_result.script.hardware_type
+            if script_result.script is not None:
+                hardware_type = script_result.script.hardware_type
+            else:
+                hardware_type = HARDWARE_TYPE.NODE
 
             if node_id not in cleared_node_ids:
                 self._script_results[node_id] = {}

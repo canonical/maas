@@ -342,12 +342,12 @@ class TestMachinesAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ])
 
-        # Because of fields `status_action`, `status_message`, and
-        # `default_gateways`. The number of queries is not the same but it is
-        # proportional to the number of machines.
+        # Because of fields `status_action`, `status_message`,
+        # `default_gateways`, and `health_status` the number of queries is not
+        # the same but it is proportional to the number of machines.
         DEFAULT_NUM = 57
-        self.assertEqual(DEFAULT_NUM + (10 * 3), num_queries1)
-        self.assertEqual(DEFAULT_NUM + (20 * 3), num_queries2)
+        self.assertEqual(DEFAULT_NUM + (10 * 4), num_queries1)
+        self.assertEqual(DEFAULT_NUM + (20 * 4), num_queries2)
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but

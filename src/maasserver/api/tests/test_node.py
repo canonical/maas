@@ -1,10 +1,11 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Node API."""
 
 __all__ = []
 
+from functools import partial
 import http.client
 import random
 from unittest.mock import (
@@ -40,11 +41,14 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from metadataserver.enum import (
+    HARDWARE_TYPE,
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
 )
 from metadataserver.models import NodeKey
+from metadataserver.models.scriptset import get_status_from_qs
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
@@ -183,6 +187,70 @@ class TestNodeAPI(APITestCase.ForUser):
                 'regioncontroller_handler',
                 args=[parsed_result['system_id']]),
             parsed_result['resource_uri'])
+
+    def test_health_status(self):
+        self.become_admin()
+        machine = factory.make_Machine(owner=self.user)
+        commissioning_script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.COMMISSIONING, node=machine)
+        testing_script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.TESTING, node=machine)
+        make_script_result = partial(
+            factory.make_ScriptResult, script_set=testing_script_set,
+            status=factory.pick_choice(
+                SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.ABORTED]))
+        commissioning_script_result = make_script_result(
+            script_set=commissioning_script_set, script=factory.make_Script(
+                script_type=SCRIPT_TYPE.COMMISSIONING))
+        cpu_script_result = make_script_result(
+            script=factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING,
+                hardware_type=HARDWARE_TYPE.CPU))
+        memory_script_result = make_script_result(
+            script=factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING,
+                hardware_type=HARDWARE_TYPE.MEMORY))
+        storage_script_result = make_script_result(
+            script=factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING,
+                hardware_type=HARDWARE_TYPE.STORAGE))
+        testing_script_results = (
+            machine.get_latest_testing_script_results.exclude(
+                status=SCRIPT_STATUS.ABORTED))
+        testing_status = get_status_from_qs(testing_script_results)
+
+        response = self.client.get(self.get_node_uri(machine))
+        parsed_result = json_load_bytes(response.content)
+
+        status = lambda s: get_status_from_qs([s])
+        status_name = lambda s: SCRIPT_STATUS_CHOICES[status(s)][1]
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEquals(
+            status(commissioning_script_result),
+            parsed_result['commissioning_status'])
+        self.assertEquals(
+            status_name(commissioning_script_result),
+            parsed_result['commissioning_status_name'])
+        self.assertEquals(testing_status, parsed_result['testing_status'])
+        self.assertEquals(
+            SCRIPT_STATUS_CHOICES[testing_status][1],
+            parsed_result['testing_status_name'])
+        self.assertEquals(
+            status(cpu_script_result), parsed_result['cpu_test_status'])
+        self.assertEquals(
+            status_name(cpu_script_result),
+            parsed_result['cpu_test_status_name'])
+        self.assertEquals(
+            status(memory_script_result), parsed_result['memory_test_status'])
+        self.assertEquals(
+            status_name(memory_script_result),
+            parsed_result['memory_test_status_name'])
+        self.assertEquals(
+            status(storage_script_result),
+            parsed_result['storage_test_status'])
+        self.assertEquals(
+            status_name(storage_script_result),
+            parsed_result['storage_test_status_name'])
 
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.

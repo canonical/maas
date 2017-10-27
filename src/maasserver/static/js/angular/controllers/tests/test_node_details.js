@@ -2197,7 +2197,7 @@ describe("NodeDetailsController", function() {
         it("returns status message when no output and status", function() {
             var controller = makeController();
             $scope.node = makeNode();
-            $scope.node.installation_script_set_status = makeInteger(0, 5);
+            $scope.node.installation_status = makeInteger(0, 5);
             expect($scope.getInstallationData()).not.toBe("");
         });
     });

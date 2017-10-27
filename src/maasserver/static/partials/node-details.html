@@ -206,13 +206,13 @@
                     data-ng-click="section.area = 'storage'">Storage</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.commissioning_script_count > 0"
                     data-ng-class="{ 'is-active': section.area === 'commissioning'}"
-                    data-ng-click="section.area = 'commissioning'"><span data-maas-script-status="script-status" data-script-status="node.commissioning_script_set_status"></span> Commissioning</button>
+                    data-ng-click="section.area = 'commissioning'"><span data-maas-script-status="script-status" data-script-status="node.commissioning_status"></span> Commissioning</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="node.testing_script_count > 0"
                     data-ng-class="{ 'is-active': section.area === 'testing'}"
-                    data-ng-click="section.area = 'testing'"><span data-maas-script-status="script-status" data-script-status="node.testing_script_set_status"></span> Hardware tests</button>
+                    data-ng-click="section.area = 'testing'"><span data-maas-script-status="script-status" data-script-status="node.testing_status"></span> Hardware tests</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="machine_output.viewable"
                     data-ng-class="{ 'is-active': section.area === 'logs'}"
-                    data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_script_set_status" data-ng-if="node.installation_results.length > 0"></span> Logs</button>
+                    data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_results.length > 0"></span> Logs</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
                     data-ng-class="{ 'is-active': section.area === 'events'}"
                     data-ng-click="section.area = 'events'">Events</button>

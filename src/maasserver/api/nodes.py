@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -56,6 +56,13 @@ from maasserver.models import (
 )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.utils.orm import prefetch_queryset
+from metadataserver.enum import (
+    HARDWARE_TYPE,
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
+)
+from metadataserver.models.scriptset import get_status_from_qs
 from piston3.utils import rc
 from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
 
@@ -246,6 +253,38 @@ def is_registered(request):
     return interfaces.exists()
 
 
+def get_cached_script_results(node):
+    """Load script results into cache and return the cached list."""
+    if not hasattr(node, '_cached_script_results'):
+        node._cached_script_results = list(node.get_latest_script_results)
+        node._cached_commissioning_script_results = []
+        node._cached_testing_script_results = []
+        for script_result in node._cached_script_results:
+            if (script_result.script_set.result_type ==
+                    RESULT_TYPE.INSTALLATION):
+                # Don't include installation results in the health
+                # status.
+                continue
+            elif script_result.status == SCRIPT_STATUS.ABORTED:
+                # LP: #1724235 - Ignore aborted scripts.
+                continue
+            elif (script_result.script_set.result_type ==
+                    RESULT_TYPE.COMMISSIONING):
+                node._cached_commissioning_script_results.append(script_result)
+            elif (script_result.script_set.result_type ==
+                    RESULT_TYPE.TESTING):
+                node._cached_testing_script_results.append(script_result)
+
+    return node._cached_script_results
+
+
+def get_script_status_name(script_status):
+    for id, name in SCRIPT_STATUS_CHOICES:
+        if id == script_status:
+            return name
+    return 'Unknown'
+
+
 class NodeHandler(OperationsHandler):
     """Manage an individual Node.
 
@@ -280,6 +319,60 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def current_installation_result_id(handler, node):
         return node.current_installation_script_set_id
+
+    @classmethod
+    def commissioning_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs(node._cached_commissioning_script_results)
+
+    @classmethod
+    def commissioning_status_name(handler, node):
+        return get_script_status_name(handler.commissioning_status(node))
+
+    @classmethod
+    def testing_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs(node._cached_testing_script_results)
+
+    @classmethod
+    def testing_status_name(handler, node):
+        return get_script_status_name(handler.testing_status(node))
+
+    @classmethod
+    def cpu_test_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs([
+            script_result for script_result
+            in node._cached_testing_script_results
+            if script_result.script.hardware_type == HARDWARE_TYPE.CPU])
+
+    @classmethod
+    def cpu_test_status_name(handler, node):
+        return get_script_status_name(handler.cpu_test_status(node))
+
+    @classmethod
+    def memory_test_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs([
+            script_result for script_result
+            in node._cached_testing_script_results
+            if script_result.script.hardware_type == HARDWARE_TYPE.MEMORY])
+
+    @classmethod
+    def memory_test_status_name(handler, node):
+        return get_script_status_name(handler.memory_test_status(node))
+
+    @classmethod
+    def storage_test_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs([
+            script_result for script_result
+            in node._cached_testing_script_results
+            if script_result.script.hardware_type == HARDWARE_TYPE.STORAGE])
+
+    @classmethod
+    def storage_test_status_name(handler, node):
+        return get_script_status_name(handler.storage_test_status(node))
 
     def read(self, request, system_id):
         """Read a specific Node.

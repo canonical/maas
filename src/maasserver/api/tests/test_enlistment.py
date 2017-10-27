@@ -559,6 +559,16 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 'current_commissioning_result_id',
                 'current_testing_result_id',
                 'current_installation_result_id',
+                'commissioning_status',
+                'commissioning_status_name',
+                'testing_status',
+                'testing_status_name',
+                'cpu_test_status',
+                'cpu_test_status_name',
+                'memory_test_status',
+                'memory_test_status_name',
+                'storage_test_status',
+                'storage_test_status_name',
             ],
             list(parsed_result))
 
@@ -736,6 +746,16 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 'current_commissioning_result_id',
                 'current_testing_result_id',
                 'current_installation_result_id',
+                'commissioning_status',
+                'commissioning_status_name',
+                'testing_status',
+                'testing_status_name',
+                'cpu_test_status',
+                'cpu_test_status_name',
+                'memory_test_status',
+                'memory_test_status_name',
+                'storage_test_status',
+                'storage_test_status_name',
             ],
             list(parsed_result))
 

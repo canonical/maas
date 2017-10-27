@@ -79,11 +79,7 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
-from metadataserver.enum import (
-    HARDWARE_TYPE,
-    SCRIPT_STATUS,
-    SCRIPT_STATUS_CHOICES,
-)
+from metadataserver.enum import HARDWARE_TYPE
 from metadataserver.models import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.logger import LegacyLogger
@@ -178,44 +174,6 @@ class MachineHandler(NodeHandler):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
-
-    def dehydrate_hardware_status_tooltip(self, script_results):
-        script_statuses = {}
-        for script_result in script_results:
-            if script_result.status in script_statuses:
-                script_statuses[script_result.status].add(script_result.name)
-            else:
-                script_statuses[script_result.status] = {script_result.name}
-
-        tooltip = ''
-        for status, scripts in script_statuses.items():
-            len_scripts = len(scripts)
-            if status in {
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
-                    SCRIPT_STATUS.INSTALLING}:
-                verb = 'is' if len_scripts == 1 else 'are'
-            elif status in {
-                    SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
-                    SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED_INSTALLING}:
-                verb = 'has' if len_scripts == 1 else 'have'
-            else:
-                # Covers SCRIPT_STATUS.ABORTED, an else is used incase new
-                # statuses are ever added.
-                verb = 'was' if len_scripts == 1 else 'were'
-
-            if tooltip != '':
-                tooltip += ' '
-            if len_scripts == 1:
-                tooltip += '1 test '
-            else:
-                tooltip += '%s tests ' % len_scripts
-            tooltip += '%s %s.' % (
-                verb, SCRIPT_STATUS_CHOICES[status][1].lower())
-
-        if tooltip == '':
-            tooltip = 'No tests have been run.'
-
-        return tooltip
 
     def list(self, params):
         """List objects.

@@ -146,6 +146,16 @@ DISPLAYED_MACHINE_FIELDS = (
     'current_commissioning_result_id',
     'current_testing_result_id',
     'current_installation_result_id',
+    'commissioning_status',
+    'commissioning_status_name',
+    'testing_status',
+    'testing_status_name',
+    'cpu_test_status',
+    'cpu_test_status_name',
+    'memory_test_status',
+    'memory_test_status_name',
+    'storage_test_status',
+    'storage_test_status_name',
 )
 
 # Limited set of machine fields exposed on the anonymous API.
