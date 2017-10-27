@@ -15,7 +15,7 @@
     <form method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />
         <div class="u-float--right">
-            <a class="button--secondary button--inline" href="{% url 'settings' %}">Cancel</a>
+            <a class="button--secondary button--inline" href="{% url 'settings' %}">Cancel</a>
             <button type="submit" class="button--destructive button--inline">Delete user</button>
         </div>
     </form>

@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models import (
     FileStorage,
+    Node,
+    StaticIPAddress,
     UserProfile,
 )
 from maasserver.models.user import (
@@ -104,6 +106,23 @@ class UserProfileTest(MAASServerTestCase):
         profile = factory.make_User().userprofile
         factory.make_Node(owner=profile.user)
         self.assertRaises(CannotDeleteUserException, profile.delete)
+
+    def test_delete_attached_static_ip_addresses(self):
+        # Cannot delete a user with static IP address attached to it.
+        profile = factory.make_User().userprofile
+        factory.make_StaticIPAddress(user=profile.user)
+        self.assertRaises(CannotDeleteUserException, profile.delete)
+
+    def test_transfer_resources(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        ipaddress = factory.make_StaticIPAddress(user=user)
+        new_user = factory.make_User()
+        user.userprofile.transfer_resources(new_user)
+        node = Node.objects.get(id=node.id)
+        self.assertEqual(node.owner, new_user)
+        ipaddress = StaticIPAddress.objects.get(id=ipaddress.id)
+        self.assertEqual(ipaddress.user, new_user)
 
     def test_manager_all_users(self):
         users = set(factory.make_User() for _ in range(3))

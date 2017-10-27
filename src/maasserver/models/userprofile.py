@@ -65,18 +65,39 @@ class UserProfile(CleanSave, Model):
     completed_intro = BooleanField(default=False)
 
     def delete(self):
-        if self.user.node_set.exists():
-            nb_nodes = self.user.node_set.count()
+        addr_count = self.user.staticipaddress_set.count()
+        if addr_count:
             msg = (
-                "User %s cannot be deleted: %d node(s) are still "
-                "allocated to this user." %
-                (self.user.username, nb_nodes))
+                "User {} cannot be deleted: {} static IP address(es) "
+                "are still allocated to this user.").format(
+                    self.user.username, addr_count)
             raise CannotDeleteUserException(msg)
+        nb_nodes = self.user.node_set.count()
+        if nb_nodes:
+            msg = (
+                "User {} cannot be deleted: {} node(s) are still "
+                "allocated to this user.").format(
+                    self.user.username, nb_nodes)
+            raise CannotDeleteUserException(msg)
+
         if self.user.filestorage_set.exists():
             self.user.filestorage_set.all().delete()
         self.user.consumers.all().delete()
         self.user.delete()
         super(UserProfile, self).delete()
+
+    def transfer_resources(self, new_owner):
+        """Transfer owned resources to another user.
+
+        Nodes and static IP addresses owned by the user are transfered to the
+        new owner.
+
+        :param new_owner: the UserProfile to transfer ownership to.
+        :type new_owner: maasserver.models.UserProfile
+
+        """
+        self.user.node_set.update(owner=new_owner)
+        self.user.staticipaddress_set.update(user=new_owner)
 
     def get_authorisation_tokens(self):
         """Fetches all the user's OAuth tokens.

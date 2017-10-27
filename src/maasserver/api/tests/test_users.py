@@ -15,8 +15,10 @@ from maasserver.enum import (
     NODE_STATUS,
 )
 from maasserver.models import (
+    Node,
     SSHKey,
     SSLKey,
+    StaticIPAddress,
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -262,7 +264,21 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code,
             response.status_code)
-        self.assertIn(b'assigned nodes cannot be deleted', response.content)
+        self.assertIn(b'1 node(s) are still allocated', response.content)
+
+    def test_DELETE_user_with_node_and_transfer(self):
+        self.become_admin()
+        user = factory.make_User()
+        new_owner = factory.make_User()
+        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        response = self.client.delete(
+            reverse(
+                'user_handler', args=[user.username]),
+            query={'transfer_resources_to': new_owner.username})
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.status_code)
+        self.assertItemsEqual([], User.objects.filter(username=user.username))
+        self.assertEqual(Node.objects.get(owner=new_owner), node)
 
     def test_DELETE_user_with_staticaddress_fails(self):
         self.become_admin()
@@ -275,8 +291,35 @@ class TestUser(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code,
             response.status_code)
         self.assertIn(
-            b'with reserved IP addresses cannot be deleted',
-            response.content)
+            b'1 static IP address(es) are still allocated', response.content)
+
+    def test_DELETE_user_with_staticaddress_and_transfer(self):
+        self.become_admin()
+        user = factory.make_User()
+        new_owner = factory.make_User()
+        ip_address = factory.make_StaticIPAddress(
+            user=user, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        response = self.client.delete(
+            reverse(
+                'user_handler', args=[user.username]),
+            query={'transfer_resources_to': new_owner.username})
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.status_code)
+        self.assertItemsEqual([], User.objects.filter(username=user.username))
+        self.assertEqual(
+            StaticIPAddress.objects.get(user=new_owner), ip_address)
+
+    def test_DELETE_user_with_transfer_unknown_user(self):
+        self.become_admin()
+        user = factory.make_User()
+        factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        response = self.client.delete(
+            reverse(
+                'user_handler', args=[user.username]),
+            query={'transfer_resources_to': 'unknown-user'})
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.status_code)
+        self.assertEqual(user, User.objects.get(username=user.username))
 
     def test_DELETE_user_with_sslkey_deletes_key(self):
         self.become_admin()

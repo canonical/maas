@@ -20,6 +20,11 @@ from maasserver.api.utils import (
     extract_bool,
     get_mandatory_param,
 )
+from maasserver.exceptions import (
+    CannotDeleteUserException,
+    MAASAPIValidationError,
+)
+from maasserver.forms import DeleteUserForm
 from maasserver.models import User
 from maasserver.utils.orm import get_one
 from piston3.models import Consumer
@@ -98,18 +103,24 @@ class UserHandler(OperationsHandler):
         if request.user.username == username:
             raise ValidationError("An administrator cannot self-delete.")
 
-        user = get_one(User.objects.filter(username=username))
+        form = DeleteUserForm(data=request.GET)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
 
+        user = get_one(User.objects.filter(username=username))
         if user is not None:
-            if user.node_set.exists():
-                raise ValidationError(
-                    "A user with assigned nodes cannot be deleted.")
-            elif user.staticipaddress_set.exists():
-                raise ValidationError(
-                    "A user with reserved IP addresses cannot be deleted.")
-            else:
-                Consumer.objects.filter(user=user).delete()
-                user.delete()
+            new_owner_username = form.cleaned_data['transfer_resources_to']
+            if new_owner_username:
+                new_owner = get_object_or_404(
+                    User, username=new_owner_username)
+                if new_owner is not None:
+                    user.userprofile.transfer_resources(new_owner)
+
+            Consumer.objects.filter(user=user).delete()
+            try:
+                user.userprofile.delete()
+            except CannotDeleteUserException as e:
+                raise ValidationError(str(e))
 
         return rc.DELETED
 

@@ -24,6 +24,7 @@ __all__ = [
     "CreateLogicalVolumeForm",
     "CreateRaidForm",
     "CreateVolumeGroupForm",
+    "DeleteUserForm",
     "DeployForm",
     "DeviceForm",
     "DeviceWithMACsForm",
@@ -1355,6 +1356,14 @@ class EditUserForm(UserChangeForm):
         # Here we don't want to use this form to edit the password.
         if 'password' in self.fields:
             del self.fields['password']
+
+
+class DeleteUserForm(Form):
+    """A form to remove a user."""
+
+    transfer_resources_to = forms.CharField(
+        label="Transfer resource to", required=False,
+        help_text="Transfer resources owned by the user to this user.")
 
 
 class ConfigForm(Form):
