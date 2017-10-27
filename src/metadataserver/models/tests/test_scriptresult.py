@@ -19,7 +19,10 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+)
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
@@ -335,6 +338,27 @@ class TestScriptResult(MAASServerTestCase):
             mock_hook,
             MockCalledOnceWith(
                 node=script_set.node, output=b'', exit_status=exit_status))
+
+    def test_store_result_logs_event_upon_hook_failure(self):
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.COMMISSIONING)
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING)
+        exit_status = random.randint(0, 255)
+
+        def _raise():
+            raise Exception()
+
+        scriptresult_module.NODE_INFO_SCRIPTS[script_result.name] = {
+            'hook': _raise,
+        }
+        self.addCleanup(
+            scriptresult_module.NODE_INFO_SCRIPTS.pop, script_result.name)
+        script_result.store_result(exit_status)
+        expected_event = Event.objects.last()
+        self.assertThat(
+            expected_event.description,
+            DocTestMatches("...failed during post-processing."))
 
     def test_save_stores_start_time(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)

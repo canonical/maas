@@ -64,6 +64,7 @@ from maasserver.testing.testcase import (
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
+    DocTestMatches,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -990,6 +991,23 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
+    def test_tag_population_failure_logs_event(self):
+        populate_tags_for_single_node = self.patch(
+            api, "populate_tags_for_single_node")
+        populate_tags_for_single_node.side_effect = Exception
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING,
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.READY, reload_object(node).status)
+        expected_event = Event.objects.last()
+        self.assertThat(
+            expected_event.description,
+            DocTestMatches("Failed to update tags."))
+
     def test_signaling_installation_success_is_idempotent(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
@@ -1913,6 +1931,47 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
+
+    def test_signal_fails_commissioning_and_logs_event_if_storage_config_fails(
+            self):
+        mock = self.patch_autospec(Node, "set_default_storage_layout")
+        mock.side_effect = Exception
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        client = make_node_client(node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockCalledOnceWith(node))
+        expected_event = Event.objects.last()
+        self.assertThat(
+            expected_event.description,
+            DocTestMatches("Failed to set default storage layout."))
+
+    def test_signal_fails_commissioning_and_logs_event_if_network_config_fails(
+            self):
+        mock = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        mock.side_effect = Exception
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        client = make_node_client(node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+        self.assertThat(
+            Node.set_initial_networking_configuration,
+            MockCalledOnceWith(node))
+        expected_event = Event.objects.last()
+        self.assertThat(
+            expected_event.description,
+            DocTestMatches("Failed to set default networking configuration."))
 
     def test_signal_sets_default_storage_layout_if_TESTING(self):
         self.patch_autospec(Node, "set_default_storage_layout")

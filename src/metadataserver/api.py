@@ -71,7 +71,10 @@ from maasserver.preseed import (
     get_preseed,
 )
 from maasserver.utils import find_rack_controller
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    is_retryable_failure,
+)
 from metadataserver import logger
 from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
@@ -94,7 +97,11 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
+from provisioningserver.logger import LegacyLogger
 import yaml
+
+
+log = LegacyLogger()
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
@@ -364,6 +371,44 @@ class StatusHandler(MetadataViewHandler):
             'be used instead.')
 
 
+def try_or_log_event(
+        machine, signal_status, error_message, func, *args, **kwargs):
+    """
+    Attempts to run the specified function, related to the specified node and
+    signal status. Will log the specified error, and create a node event,
+    if the function fails.
+
+    If the function raises a retryable failure, will re-raise the exception so
+    that a retry can be attempted.
+
+    :param machine: The machine related to the attempted action. Will be used
+        in order to log an event, if the function raises an exception.
+    :param signal_status: The initial SIGNAL_STATUS, which will be returned
+        as-is if no exception occurs. If an exception occurs,
+        SIGNAL_STATUS.FAILED will be returned.
+    :param error_message: The error message for the log (and node event log) if
+        an exception occurs.
+    :param func: The function which will be attempted
+    :param args: Arguments to pass to the function to be attempted.
+    :param kwargs: Keyword arguments to pass to the function to be attempted.
+    :return:
+    """
+    try:
+        func(*args, **kwargs)
+    except BaseException as e:
+        if is_retryable_failure(e):
+            # Not the fault of the post-processing function, so
+            # re-raise so that the retry mechanism does its job.
+            raise
+        log.err(None, error_message)
+        Event.objects.create_node_event(
+            system_id=machine.system_id,
+            event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
+            event_description=error_message)
+        signal_status = SIGNAL_STATUS.FAILED
+    return signal_status
+
+
 class VersionIndexHandler(MetadataViewHandler):
     """Listing for a given metadata version."""
     create = update = delete = None
@@ -488,10 +533,14 @@ class VersionIndexHandler(MetadataViewHandler):
             # Commissioning was successful, setup the default storage layout
             # and the initial networking configuration for the node.
             if status in (SIGNAL_STATUS.TESTING, SIGNAL_STATUS.OK):
-                # XXX 2016-05-10 ltrager, LP:1580405 - Exceptions raised
-                # here are not logged or shown to the user.
-                node.set_default_storage_layout()
-                node.set_initial_networking_configuration()
+                status = try_or_log_event(
+                    node, status,
+                    "Failed to set default storage layout.",
+                    node.set_default_storage_layout)
+                status = try_or_log_event(
+                    node, status,
+                    "Failed to set default networking configuration.",
+                    node.set_initial_networking_configuration)
 
             # XXX 2014-10-21 newell, bug=1382075
             # Auto detection for IPMI tries to save power parameters
@@ -516,11 +565,22 @@ class VersionIndexHandler(MetadataViewHandler):
             node.current_testing_script_set.regenerate()
 
         if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
-            # Recalculate tags when commissioning ends.
-            populate_tags_for_single_node(Tag.objects.all(), node)
-        elif (target_status == NODE_STATUS.FAILED_COMMISSIONING and
+            # Commissioning has ended. Check if any scripts failed during
+            # post-processing; if so, the commissioning counts as a failure.
+            qs = node.current_commissioning_script_set.scriptresult_set.filter(
+                status=SCRIPT_STATUS.FAILED)
+            if qs.count() > 0:
+                target_status = NODE_STATUS.FAILED_COMMISSIONING
+            else:
+                # Recalculate tags when commissioning ends.
+                try_or_log_event(
+                    node, status, "Failed to update tags.",
+                    populate_tags_for_single_node,
+                    Tag.objects.all(), node)
+
+        if (target_status == NODE_STATUS.FAILED_COMMISSIONING and
                 node.current_testing_script_set is not None):
-            # If commissioning failed testing doesn't run, mark any pending
+            # If commissioning failed, testing doesn't run; mark any pending
             # scripts as aborted.
             qs = node.current_testing_script_set.scriptresult_set.filter(
                 status=SCRIPT_STATUS.PENDING)

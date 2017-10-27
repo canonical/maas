@@ -255,10 +255,17 @@ class ScriptResult(CleanSave, TimestampedModel):
         if (self.script_set.result_type == RESULT_TYPE.COMMISSIONING and
                 self.name in NODE_INFO_SCRIPTS):
             post_process_hook = NODE_INFO_SCRIPTS[self.name]['hook']
-            post_process_hook(
+            err = (
+                "%s(%s): commissioning script '%s' failed during "
+                "post-processing." % (
+                    self.script_set.node.fqdn,
+                    self.script_set.node.system_id, self.name))
+            # Circular imports.
+            from metadataserver.api import try_or_log_event
+            try_or_log_event(
+                self.script_set.node, None, err, post_process_hook,
                 node=self.script_set.node, output=self.stdout,
                 exit_status=self.exit_status)
-
         self.save()
 
     @property
