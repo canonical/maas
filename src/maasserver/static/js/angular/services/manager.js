@@ -112,22 +112,9 @@ angular.module('MAAS').service(
         Manager.prototype._replaceItemInArray = function(array, item) {
             var idx = this._getIndexOfItem(array, item[this._pk]);
             if(idx >= 0) {
-                // angular.copy deletes all fields on the original object
-                // before adding the new items. This causes a race conidtion
-                // in NodeResultsManager as it uses the node object to
-                // determine the subtext for storage results. Instead replace
-                // items atomically.
-                angular.forEach(item, function(value, key) {
-                    if(!angular.isDefined(array[idx][key]) ||
-                        (array[idx][key] !== value && key !== "$selected")) {
-                        array[idx][key] = value;
-                    }
-                });
-                angular.forEach(array[idx], function(value, key) {
-                    if(!angular.isDefined(item[key])) {
-                        delete item[key];
-                    }
-                });
+                // Keep the current selection on the item.
+                item.$selected = array[idx].$selected;
+                angular.copy(item, array[idx]);
             }
         };
 

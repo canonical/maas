@@ -160,37 +160,23 @@ angular.module('MAAS').factory(
                 }
             }
 
-            if(result.hardware_type === 3) {
+            if(result.hardware_type === 3 &&
+               result.physical_blockdevice !== null) {
                 // Storage results are split into individual components.
                 var disk, subtext;
-                if(result.physical_blockdevice !== null) {
-                    // If the storage result is assoicated with a specific
-                    // component generate subtext for that component.
-                    for(i = 0; i < this._node.disks.length; i++) {
-                        disk = this._node.disks[i];
-                        if(disk.id === result.physical_blockdevice) {
-                            subtext = this._getStorageSubtext(disk);
-                            if(!angular.isArray(
-                                hardware_type_results[subtext])) {
-                                    hardware_type_results[subtext] = [];
-                            }
-                            this._addOrReplace(
-                                hardware_type_results[subtext], result);
-                            break;
-                        }
-                    }
-                }else{
-                    // Storage results which do not have an associated physical
-                    // block device are associated with all known storage
-                    // devices.
-                    for(i = 0; i < this._node.disks.length; i++) {
-                        disk = this._node.disks[i];
+                // If the storage result is associated with a specific
+                // component generate subtext for that component.
+                for(i = 0; i < this._node.disks.length; i++) {
+                    disk = this._node.disks[i];
+                    if(disk.id === result.physical_blockdevice) {
                         subtext = this._getStorageSubtext(disk);
-                        if(!angular.isArray(hardware_type_results[subtext])) {
-                            hardware_type_results[subtext] = [];
+                        if(!angular.isArray(
+                            hardware_type_results[subtext])) {
+                                hardware_type_results[subtext] = [];
                         }
                         this._addOrReplace(
                             hardware_type_results[subtext], result);
+                        break;
                     }
                 }
             }else{
