@@ -330,6 +330,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -351,6 +352,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         invalid_distro_series = factory.make_string()
         response = self.client.post(
@@ -372,6 +374,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -395,6 +398,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -421,6 +425,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         osystem = Config.objects.get_config('default_osystem')
         distro_series = Config.objects.get_config('default_distro_series')
@@ -458,6 +463,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         response = self.client.post(
             self.get_machine_uri(machine), {'op': 'deploy'})
@@ -496,6 +502,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=architecture)
         osystem = Config.objects.get_config('default_osystem')
         distro_series = Config.objects.get_config('default_distro_series')
@@ -517,22 +524,29 @@ class TestMachineAPI(APITestCase.ForUser):
             ),
             (response.status_code, json_load_bytes(response.content)))
 
-    def test_POST_deploy_may_be_repeated(self):
-        self.patch(node_module.Node, "_start")
-        self.patch(machines_module, "get_curtin_merged_config")
-        machine = factory.make_Node(
-            owner=self.user, interface=True,
-            power_type='manual',
-            architecture=make_usable_architecture(self))
+    def test_POST_deploy_not_allowed_statuses(self):
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         request = {
             'op': 'deploy',
             'distro_series': distro_series,
             }
-        self.client.post(self.get_machine_uri(machine), request)
-        response = self.client.post(self.get_machine_uri(machine), request)
-        self.assertEqual(http.client.OK, response.status_code)
+        not_allowed_statuses = [
+            status for status in NODE_STATUS_CHOICES_DICT.keys()
+            if status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]]
+        for not_allowed_status in not_allowed_statuses:
+            machine = factory.make_Node(
+                owner=self.user, interface=True,
+                power_type='manual',
+                architecture=make_usable_architecture(self),
+                status=not_allowed_status)
+            response = self.client.post(self.get_machine_uri(machine), request)
+            self.assertEqual(http.client.CONFLICT, response.status_code)
+            error_message = response.content.decode('utf-8')
+            self.assertEqual(
+                "Can't deploy a machine that is in the '{}' state".format(
+                    NODE_STATUS_CHOICES_DICT[not_allowed_status]),
+                error_message)
 
     def test_POST_deploy_stores_user_data(self):
         rack_controller = factory.make_RackController()
@@ -540,10 +554,12 @@ class TestMachineAPI(APITestCase.ForUser):
             node_module.RackControllerManager, "filter_by_url_accessible"
             ).return_value = [rack_controller]
         self.patch(node_module.Node, "_power_control_node")
+        self.patch(node_module.Node, "_start_deployment")
         self.patch(machines_module, "get_curtin_merged_config")
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='virsh', architecture=make_usable_architecture(self),
+            status=NODE_STATUS.ALLOCATED,
             bmc_connected_to=rack_controller)
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -567,6 +583,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='virsh',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
             bmc_connected_to=rack_controller)
         osystem = make_usable_osystem(self)
@@ -588,6 +605,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='manual',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -611,6 +629,7 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             owner=self.user, interface=True,
             power_type='virsh',
+            status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
             bmc_connected_to=rack_controller)
         osystem = make_usable_osystem(self)
@@ -695,8 +714,7 @@ class TestMachineAPI(APITestCase.ForUser):
             'agent_name': factory.make_name(),
             'comment': factory.make_name(),
         }
-        response = self.client.post(self.get_machine_uri(machine), request)
-        self.assertEqual(http.client.OK, response.status_code)
+        self.client.post(self.get_machine_uri(machine), request)
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY,
@@ -720,8 +738,7 @@ class TestMachineAPI(APITestCase.ForUser):
             'bridge_stp': True,
             'bridge_fd': 7,
         }
-        response = self.client.post(self.get_machine_uri(machine), request)
-        self.assertEqual(http.client.OK, response.status_code)
+        self.client.post(self.get_machine_uri(machine), request)
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY,

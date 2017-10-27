@@ -49,6 +49,7 @@ from maasserver.enum import (
     BMC_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -82,6 +83,7 @@ from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     nodes_by_storage,
 )
+from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.preseed import get_curtin_merged_config
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -515,6 +517,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                     agent_name=agent_name, comment=comment,
                     bridge_all=bridge_all, bridge_stp=bridge_stp,
                     bridge_fd=bridge_fd)
+        if NODE_STATUS.DEPLOYING not in NODE_TRANSITIONS[machine.status]:
+            raise NodeStateViolation(
+                "Can't deploy a machine that is in the '{}' state".format(
+                    NODE_STATUS_CHOICES_DICT[machine.status]))
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NODE_PERMISSION.EDIT, machine):
             raise PermissionDenied()
