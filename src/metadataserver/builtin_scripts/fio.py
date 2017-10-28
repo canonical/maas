@@ -79,7 +79,7 @@ CMD = [
     '--iodepth=64', '--size=4G'
 ]
 
-REGEX = b"bw=([0-9]+[a-zA-Z]+/s), iops=([0-9]+)"
+REGEX = b"bw=([0-9\.]+[a-zA-Z]+/s),\siops=([0-9]+)"
 
 
 def run_cmd(cmd):
