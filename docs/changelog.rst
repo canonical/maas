@@ -2,6 +2,63 @@
 Changelog
 =========
 
+MAAS 2.3.0 (beta3)
+==================
+
+Issues fixed in this release
+----------------------------
+
+For more information, visit: https://launchpad.net/maas/+milestone/2.3.0beta3
+
+LP: #1727551    [2.3] Commissioning shows results from script that no longer exists
+
+LP: #1696485    [2.2, HA] MAAS dhcp does not offer up multiple domains to search
+
+LP: #1696661    [2.2, HA] MAAS should offer multiple DNS servers in HA case
+
+LP: #1724235    [2.3, HWTv2] Aborted test should not show as failure
+
+LP: #1721824    [2.3, HWTv2] Overall health status is missing
+
+LP: #1727547    [2.3, HWTv2] Aborting testing goes back into the incorrect state
+
+LP: #1722848    [2.3, HWTv2] Memtester test is not robust
+
+LP: #1727568    [2.3, HWTv2, regression] Hardware Tests tab does not show what tests are running
+
+LP: #1721268    [2.3, UI, HWTv2] Metrics table (e.g. from fio test) is not padded to MAAS' standard
+
+LP: #1721823    [2.3, UI, HWTv2] No way to surface a failed test that's non CPU, Mem, Storage in machine listing page
+
+LP: #1721886    [2.3, UI, HWTv2] Hardware Test tab doesn't auto-update
+
+LP: #1559353    [2.0a3] "Add Hardware > Chassis" cannot find off-subnet chassis BMCs
+
+LP: #1705594    [2.2] rackd errors after fresh install
+
+LP: #1718517    [2.3] Exceptions while processing commissioning output cause timeouts rather than being appropriately surfaced
+
+LP: #1722406    [2.3] API allows "deploying" a machine that's already deployed
+
+LP: #1724677    [2.x] [critical] TFTP back-end failed right after node repeatedly requests same file via tftp
+
+LP: #1726474    [2.x] psycopg2.IntegrityError: update or delete on table "maasserver_node" violates foreign key constraint 
+
+LP: #1727073    [2.3] rackd — 12% connected to region controllers.
+
+LP: #1722671    [2.3, pod] Unable to delete a machine or a pod if the pod no longer exists
+
+LP: #1680819    [2.x, UI] Tooltips go off screen
+
+LP: #1725908    [2.x] deleting user with static ip mappings throws 500
+
+LP: #1726865    [snap,2.3beta3] maas init uses the default gateway in the default region URL
+
+LP: #1724181    maas-cli missing dependencies: netifaces, tempita
+
+LP: #1724904    Changing PXE lease in DHCP snippets global sections does not work
+
+
 MAAS 2.3.0 (beta2)
 ==================
 

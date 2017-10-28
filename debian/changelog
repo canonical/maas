@@ -1,6 +1,6 @@
 maas (2.3.0~beta3-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release, 2.3.0 beta3.
   * debian/control: Add missing deps for python3-maas-client (LP: #1724181)
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 11 Oct 2017 16:42:41 -0400
