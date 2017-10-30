@@ -719,12 +719,13 @@ class RegionService(service.Service, object):
 
     def __init__(self, advertiser):
         super(RegionService, self).__init__()
-        self.advertiser = advertiser
         self.endpoints = [
             [TCP6ServerEndpoint(reactor, port)
              for port in range(5250, 5260)],
         ]
         self.connections = defaultdict(set)
+        self.advertiser = advertiser
+        self.advertiser.connections = self.connections
         self.waiters = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
@@ -1016,6 +1017,10 @@ class RegionAdvertisingService(service.Service):
     # Deferred that fires when it has stopped.
     advertiser = advertiserDone = None
 
+    # Set by `RegionService` during initialization, so the advertising service
+    # can re-create RPC connections in the database if it needs to.
+    connections = None
+
     starting = None
     stopping = None
 
@@ -1109,8 +1114,20 @@ class RegionAdvertisingService(service.Service):
         d = self.advertising.get()
 
         def deferUpdate(advertising):
-            return deferToDatabase(advertising.update, self._getAddresses())
+            d = deferToDatabase(
+                advertising.update, self._getAddresses())
+            d.addCallback(lambda result: (result, advertising))
+            return d
         d.addCallback(deferUpdate)
+
+        def deferUpdateConnctions(result):
+            (interval, process), advertising = result
+            d = deferToDatabase(
+                advertising.updateConnections,
+                process, dict(self.connections))
+            d.addCallback(lambda _: interval)
+            return d
+        d.addCallback(deferUpdateConnctions)
 
         def setInterval(interval):
             self.advertiser.interval = interval
@@ -1291,7 +1308,8 @@ class RegionAdvertising:
         return process
 
     @transactional
-    def registerConnection(self, process, rack_controller, host):
+    def registerConnection(
+            self, process, rack_controller, host, force_save=True):
         """Register a connection into the database."""
         # We need to handle the incoming name being an IPv6-form IPv4 address.
         # Assume that's the case, and ignore the error if it is not.
@@ -1309,10 +1327,11 @@ class RegionAdvertising:
             process=process, address=host.host, port=host.port)
         connection, created = RegionRackRPCConnection.objects.get_or_create(
             endpoint=endpoint, rack_controller=rack_controller)
-        if not created:
+        if not created and force_save:
             # Force the save so that signals connected to the
             # RegionRackRPCConnection are performed.
             connection.save()
+        return connection
 
     @transactional
     def unregisterConnection(self, process, ident, host):
@@ -1426,7 +1445,38 @@ class RegionAdvertising:
                 Service.objects.mark_dead(other_region, dead_region=True)
 
         # The caller is responsible for setting the update interval.
-        return interval
+        return interval, process
+
+    @synchronous
+    @synchronised(lock)
+    @transactional
+    def updateConnections(self, process, connections):
+        """Update the existing RPC connections into this region.
+
+        This is needed because the database could get in an incorrect state
+        because another process removed its references in the database and
+        the existing connections need to be re-created.
+        """
+        if connections is not None:
+            if len(connections) == 0:
+                RegionRackRPCConnection.objects.filter(
+                    endpoint__process=process).delete()
+            else:
+                previous_connection_ids = set(
+                    RegionRackRPCConnection.objects.filter(
+                        endpoint__process=process).values_list(
+                        "id", flat=True))
+                for ident, ident_conns in connections.items():
+                    rack = RackController.objects.filter(
+                        system_id=ident).first()
+                    if rack:
+                        for conn in ident_conns:
+                            if conn.hostIsRemote:
+                                db_conn = self.registerConnection(
+                                    process, rack, conn.host, force_save=False)
+                                previous_connection_ids.discard(db_conn.id)
+                RegionRackRPCConnection.objects.filter(
+                    id__in=previous_connection_ids).delete()
 
     @synchronous
     @synchronised(lock)

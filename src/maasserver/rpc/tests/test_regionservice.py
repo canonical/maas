@@ -51,6 +51,7 @@ from maasserver.rpc.regionservice import (
 )
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -1426,6 +1427,18 @@ class TestRegionAdvertising(MAASServerTestCase):
             for endpoint in process.endpoints.all()
         }
 
+    def make_fake_connection(self, rack, endpoint=None):
+        conn = Mock()
+        conn.ident = rack.system_id
+        if endpoint is None:
+            address = factory.make_ipv4_address()
+            port = factory.pick_port()
+        else:
+            address = endpoint.address
+            port = endpoint.port
+        conn.host = IPv4Address('TCP', address, port)
+        return conn
+
     def test_update_creates_process_when_removed(self):
         advertising = RegionAdvertising.promote()
 
@@ -1580,6 +1593,65 @@ class TestRegionAdvertising(MAASServerTestCase):
         self.assertThat(
             mock_mark_dead,
             MockCalledOnceWith(other_region, dead_region=True))
+
+    def test_updateConnections_removes_all_rpc_connections_when_none(self):
+        advertising = RegionAdvertising.promote()
+
+        region = RegionController.objects.get(system_id=advertising.region_id)
+        [process] = region.processes.all()
+        endpoints = [
+            factory.make_RegionControllerProcessEndpoint(process=process)
+            for _ in range(3)
+        ]
+        rpc_connections = [
+            factory.make_RegionRackRPCConnection(endpoint=endpoint)
+            for endpoint in endpoints
+            for _ in range(3)
+        ]
+
+        advertising.updateConnections(process, [])
+
+        rpc_connections = reload_objects(
+            RegionRackRPCConnection, rpc_connections)
+        self.assertItemsEqual(rpc_connections, [])
+
+    def test_updateConnections_creates_updates_deletes_connections(self):
+        advertising = RegionAdvertising.promote()
+
+        region = RegionController.objects.get(system_id=advertising.region_id)
+        [process] = region.processes.all()
+        endpoints = [
+            factory.make_RegionControllerProcessEndpoint(process=process)
+            for _ in range(3)
+        ]
+        old_rpc_connections = [
+            factory.make_RegionRackRPCConnection(endpoint=endpoint)
+            for endpoint in endpoints
+            for _ in range(3)
+        ]
+        connected_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+        connections = {}
+        for rack, endpoint in zip(connected_racks, endpoints):
+            conn = self.make_fake_connection(rack, endpoint)
+            connections[conn.ident] = {conn, }
+
+        advertising.updateConnections(process, connections)
+
+        old_rpc_connections = reload_objects(
+            RegionRackRPCConnection, old_rpc_connections)
+        self.assertItemsEqual(old_rpc_connections, [])
+        self.assertThat(
+            RegionRackRPCConnection.objects.filter(endpoint__process=process),
+            MatchesSetwise(*[
+                MatchesStructure(
+                    endpoint=Equals(endpoint),
+                    rack_controller=Equals(rack),
+                )
+                for rack, endpoint in zip(connected_racks, endpoints)
+            ]))
 
     def test_demote(self):
         addresses = {
