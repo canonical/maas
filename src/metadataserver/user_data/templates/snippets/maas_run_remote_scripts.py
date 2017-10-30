@@ -38,6 +38,7 @@ import sys
 import tarfile
 from threading import (
     Event,
+    Lock,
     Thread,
 )
 import time
@@ -78,58 +79,77 @@ def signal_wrapper(*args, **kwargs):
         fail(e.error)
 
 
+def output_and_send(error, send_result=True, *args, **kwargs):
+    """Output the error message to stderr and send iff send_result is True."""
+    sys.stdout.write('%s\n' % error)
+    if send_result:
+        signal_wrapper(*args, error=error, **kwargs)
+
+
 def download_and_extract_tar(url, creds, scripts_dir):
     """Download and extract a tar from the given URL.
 
     The URL may contain a compressed or uncompressed tar.
     """
+    sys.stdout.write(
+        "Downloading and extracting %s to %s\n" % (url, scripts_dir))
     binary = BytesIO(geturl(url, creds))
 
     with tarfile.open(mode='r|*', fileobj=binary) as tar:
         tar.extractall(scripts_dir)
 
 
-def run_and_check(
-        cmd, combined_path, stdout_path, stderr_path, script_name, args,
-        ignore_error=False):
+def run_and_check(cmd, scripts, send_result=True):
     proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
-    capture_script_output(proc, combined_path, stdout_path, stderr_path)
-    if proc.returncode != 0 and not ignore_error:
-        args['exit_status'] = proc.returncode
-        args['files'] = {
-            script_name: open(combined_path, 'rb').read(),
-            '%s.out' % script_name: open(stdout_path, 'rb').read(),
-            '%s.err' % script_name: open(stderr_path, 'rb').read(),
-        }
-        signal_wrapper(
-            error='Failed installing package(s) for %s' % (
-                script_name), **args)
+    capture_script_output(
+        proc, scripts[0]['combined_path'], scripts[0]['stdout_path'],
+        scripts[0]['stderr_path'])
+    if proc.returncode != 0 and send_result:
+        for script in scripts:
+            args = copy.deepcopy(script['args'])
+            script['exit_status'] = args['exit_status'] = proc.returncode
+            args['status'] = 'INSTALLING'
+            args['files'] = {
+                scripts[0]['combined_name']: open(
+                    scripts[0]['combined_path'], 'rb').read(),
+                scripts[0]['stdout_name']: open(
+                    scripts[0]['stdout_path'], 'rb').read(),
+                scripts[0]['stderr_name']: open(
+                    scripts[0]['stderr_path'], 'rb').read(),
+            }
+            output_and_send(
+                'Failed installing package(s) for %s' % script['msg_name'],
+                **args)
         return False
     else:
         return True
 
 
-def install_dependencies(
-        args, script, combined_path, stdout_path, stderr_path, download_path):
-    """Download and install any required packaged for the script to run."""
-    args = copy.deepcopy(args)
-    args['status'] = 'INSTALLING'
-    packages = script.get('packages', {})
+def install_dependencies(scripts, send_result=True):
+    """Download and install any required packaged for the script to run.
+
+    If given a list of scripts assumes the package set is the same and signals
+    installation status for all script results."""
+    packages = scripts[0].get('packages', {})
     apt = packages.get('apt')
     snap = packages.get('snap')
     url = packages.get('url')
 
     if apt is not None:
-        signal_wrapper(
-            error='Installing apt packages for %s' % script['name'], **args)
+        for script in scripts:
+            output_and_send(
+                'Installing apt packages for %s' % script['msg_name'],
+                send_result, status='INSTALLING', **script['args'])
         if not run_and_check(
                 ['sudo', '-n', 'apt-get', '-qy', 'install'] + apt,
-                combined_path, stdout_path, stderr_path, script['name'], args):
+                scripts, send_result):
             return False
 
     if snap is not None:
-        signal_wrapper(
-            error='Installing snap packages for %s' % script['name'], **args)
+        for script in scripts:
+            output_and_send(
+                'Installing snap packages for %s' % script['msg_name'],
+                send_result, status='INSTALLING', **script['args'])
         for pkg in snap:
             if isinstance(pkg, str):
                 cmd = ['sudo', '-n', 'snap', 'install', pkg]
@@ -147,31 +167,30 @@ def install_dependencies(
                 # string or dictionary. This should never happen but just
                 # incase it does...
                 continue
-            if not run_and_check(
-                    cmd, combined_path, stdout_path, stderr_path,
-                    script['name'], args):
+            if not run_and_check(cmd, scripts, send_result):
                 return False
 
     if url is not None:
-        signal_wrapper(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args)
+        for script in scripts:
+            output_and_send(
+                'Downloading and extracting URLs for %s' % script['msg_name'],
+                send_result, status='INSTALLING', **script['args'])
         path_regex = re.compile("^Saving to: ['‘](?P<path>.+)['’]$", re.M)
-        os.makedirs(download_path, exist_ok=True)
+        os.makedirs(script['download_path'], exist_ok=True)
         for i in url:
             # wget supports multiple protocols, proxying, proper error message,
             # handling user input without protocol information, and getting the
             # filename from the request. Shell out and capture its output
             # instead of implementing all of that here.
             if not run_and_check(
-                    ['wget', i, '-P', download_path], combined_path,
-                    stdout_path, stderr_path, script['name'], args):
+                    ['wget', i, '-P', scripts[0]['download_path']], scripts,
+                    send_result):
                 return False
 
             # Get the filename from the captured output incase the URL does not
             # include a filename. e.g the URL 'ubuntu.com' will create an
             # index.html file.
-            with open(combined_path, 'r') as combined:
+            with open(scripts[0]['combined_path'], 'r') as combined:
                 m = path_regex.findall(combined.read())
                 if m != []:
                     filename = m[-1]
@@ -181,32 +200,30 @@ def install_dependencies(
 
             if tarfile.is_tarfile(filename):
                 with tarfile.open(filename, 'r|*') as tar:
-                    tar.extractall(download_path)
+                    tar.extractall(script['download_path'])
             elif zipfile.is_zipfile(filename):
                 with zipfile.ZipFile(filename, 'r') as z:
-                    z.extractall(download_path)
+                    z.extractall(script['download_path'])
             elif filename.endswith('.deb'):
                 # Allow dpkg to fail incase it just needs dependencies
                 # installed.
                 run_and_check(
-                    ['sudo', '-n', 'dpkg', '-i', filename],
-                    combined_path, stdout_path, stderr_path, script['name'],
-                    args, True)
+                    ['sudo', '-n', 'dpkg', '-i', filename], scripts, False)
                 if not run_and_check(
-                        ['sudo', '-n', 'apt-get', 'install', '-qyf'],
-                        combined_path, stdout_path, stderr_path,
-                        script['name'], args):
+                        ['sudo', '-n', 'apt-get', 'install', '-qyf'], scripts,
+                        send_result):
                     return False
             elif filename.endswith('.snap'):
                 if not run_and_check(
-                        ['sudo', '-n', 'snap', filename],
-                        combined_path, stdout_path, stderr_path,
-                        script['name'], args):
+                        ['sudo', '-n', 'snap', filename], scripts,
+                        send_result):
                     return False
 
     # All went well, clean up the install logs so only script output is
     # captured.
-    for path in [combined_path, stdout_path, stderr_path]:
+    for path in [
+            scripts[0]['combined_path'], scripts[0]['stdout_path'],
+            scripts[0]['stderr_path']]:
         if os.path.exists(path):
             os.remove(path)
 
@@ -215,11 +232,17 @@ def install_dependencies(
 
 # Cache the block devices so we only have to query once.
 _block_devices = None
+_block_devices_lock = Lock()
 
 
 def get_block_devices():
     """If needed, query lsblk for all known block devices and store."""
     global _block_devices
+    global _block_devices_lock
+    # Grab lock if cache is blank and double check we really need to fill
+    # cache once we get the lock.
+    if _block_devices is None:
+        _block_devices_lock.acquire()
     if _block_devices is None:
         _block_devices = []
         block_list = check_output([
@@ -232,6 +255,9 @@ def get_block_devices():
                 k, v = token.split("=", 1)
                 current_block[k] = v.strip()
             _block_devices.append(current_block)
+
+    if _block_devices_lock.locked():
+        _block_devices_lock.release()
 
     return _block_devices
 
@@ -265,148 +291,214 @@ def parse_parameters(script, scripts_dir):
     return ret
 
 
-def run_scripts(url, creds, scripts_dir, out_dir, scripts):
+def run_script(script, scripts_dir, send_result=True):
+    args = copy.deepcopy(script['args'])
+    args['status'] = 'WORKING'
+    args['send_result'] = send_result
+    timeout_seconds = script.get('timeout_seconds')
+    for param in script.get('parameters', {}).values():
+        if param.get('type') == 'runtime':
+            timeout_seconds = param['value']
+            break
+
+    output_and_send('Starting %s' % script['msg_name'], **args)
+
+    env = copy.deepcopy(os.environ)
+    env['OUTPUT_COMBINED_PATH'] = script['combined_path']
+    env['OUTPUT_STDOUT_PATH'] = script['stdout_path']
+    env['OUTPUT_STDERR_PATH'] = script['stderr_path']
+    env['RESULT_PATH'] = script['result_path']
+    env['DOWNLOAD_PATH'] = script['download_path']
+    env['RUNTIME'] = str(timeout_seconds)
+
+    try:
+        script_arguments = parse_parameters(script, scripts_dir)
+    except KeyError:
+        # 2 is the return code bash gives when it can't execute.
+        script['exit_status'] = args['exit_status'] = 2
+        args['files'] = {
+            script['combined_name']: b'Unable to map parameters',
+            script['stderr_name']: b'Unable to map parameters',
+        }
+        output_and_send(
+            'Failed to execute %s: %d' % (
+                script['msg_name'], args['exit_status']), **args)
+        return False
+
+    try:
+        # This script sets its own niceness value to the highest(-20) below
+        # to help ensure the heartbeat keeps running. When launching the
+        # script we need to lower the nice value as a child process
+        # inherits the parent processes niceness value. preexec_fn is
+        # executed in the child process before the command is run. When
+        # setting the nice value the kernel adds the current nice value
+        # to the provided value. Since the runner uses a nice value of -20
+        # setting it to 40 gives the actual nice value of 20.
+        proc = Popen(
+            script_arguments, stdout=PIPE, stderr=PIPE, env=env,
+            preexec_fn=lambda: os.nice(40))
+        capture_script_output(
+            proc, script['combined_path'], script['stdout_path'],
+            script['stderr_path'], timeout_seconds)
+    except OSError as e:
+        if isinstance(e.errno, int) and e.errno != 0:
+            script['exit_status'] = args['exit_status'] = e.errno
+        else:
+            # 2 is the return code bash gives when it can't execute.
+            script['exit_status'] = args['exit_status'] = 2
+        stderr = str(e).encode()
+        if stderr == b'':
+            stderr = b'Unable to execute script'
+        args['files'] = {
+            script['combined_name']: stderr,
+            script['stderr_name']: stderr,
+        }
+        output_and_send(
+            'Failed to execute %s: %d' % (
+                script['msg_name'], args['exit_status']), **args)
+        sys.stdout.write('%s\n' % stderr)
+        return False
+    except TimeoutExpired:
+        args['status'] = 'TIMEDOUT'
+        args['files'] = {
+            script['combined_name']: open(
+                script['combined_path'], 'rb').read(),
+            script['stdout_name']: open(script['stdout_path'], 'rb').read(),
+            script['stderr_name']: open(script['stderr_path'], 'rb').read(),
+        }
+        if os.path.exists(script['result_path']):
+            args['files'][script['result_name']] = open(
+                script['result_path'], 'rb').read()
+        output_and_send(
+            'Timeout(%s) expired on %s' % (
+                str(timedelta(seconds=timeout_seconds)), script['msg_name']),
+            **args)
+        return False
+    else:
+        script['exit_status'] = args['exit_status'] = proc.returncode
+        args['files'] = {
+            script['combined_name']: open(
+                script['combined_path'], 'rb').read(),
+            script['stdout_name']: open(script['stdout_path'], 'rb').read(),
+            script['stderr_name']: open(script['stderr_path'], 'rb').read(),
+        }
+        if os.path.exists(script['result_path']):
+            args['files'][script['result_name']] = open(
+                script['result_path'], 'rb').read()
+        output_and_send('Finished %s: %s' % (
+            script['msg_name'], args['exit_status']), **args)
+        if proc.returncode != 0:
+            return False
+        else:
+            return True
+
+
+def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
     """Run and report results for the given scripts."""
-    total_scripts = len(scripts)
     fail_count = 0
-    base_args = {
-        'url': url,
-        'creds': creds,
-        'status': 'WORKING',
-    }
-    for i, script in enumerate(scripts):
-        i += 1
-        args = copy.deepcopy(base_args)
-        args['script_result_id'] = script['script_result_id']
-        script_version_id = script.get('script_version_id')
-        if script_version_id is not None:
-            args['script_version_id'] = script_version_id
-        timeout_seconds = script.get('timeout_seconds')
-        for param in script.get('parameters', {}).values():
-            if param.get('type') == 'runtime':
-                timeout_seconds = param['value']
-                break
+    # Scripts sorted into if and how they can be run in parallel
+    single_thread = []
+    instance_thread = []
+    any_thread = []
+    for script in scripts:
+        script['msg_name'] = '%s (id: %s' % (
+            script['name'], script['script_result_id'])
+        script['args'] = {
+            'url': url,
+            'creds': creds,
+            'script_result_id': script['script_result_id'],
+        }
+        if 'script_version_id' in script:
+            script['msg_name'] = '%s, script_version_id: %s)' % (
+                script['msg_name'], script['script_version_id'])
+            script['args']['script_version_id'] = script['script_version_id']
+        else:
+            script['msg_name'] = '%s)' % script['msg_name']
 
         # Create a seperate output directory for each script being run as
         # multiple scripts with the same name may be run.
         script_out_dir = os.path.join(out_dir, '%s.%s' % (
             script['name'], script['script_result_id']))
         os.makedirs(script_out_dir, exist_ok=True)
-        combined_path = os.path.join(script_out_dir, script['name'])
-        stdout_name = '%s.out' % script['name']
-        stdout_path = os.path.join(script_out_dir, stdout_name)
-        stderr_name = '%s.err' % script['name']
-        stderr_path = os.path.join(script_out_dir, stderr_name)
-        result_name = '%s.yaml' % script['name']
-        result_path = os.path.join(script_out_dir, result_name)
-        download_path = os.path.join(scripts_dir, 'downloads', script['name'])
-
-        if not install_dependencies(
-                args, script, combined_path, stdout_path, stderr_path,
-                download_path):
-            fail_count += 1
-            continue
-
-        signal_wrapper(
-            error='Starting %s [%d/%d]' % (
-                script['name'], i, len(scripts)),
-            **args)
-
-        env = copy.deepcopy(os.environ)
-        env['OUTPUT_COMBINED_PATH'] = combined_path
-        env['OUTPUT_STDOUT_PATH'] = stdout_path
-        env['OUTPUT_STDERR_PATH'] = stderr_path
-        env['RESULT_PATH'] = result_path
-        env['DOWNLOAD_PATH'] = download_path
-
-        try:
-            script_arguments = parse_parameters(script, scripts_dir)
-        except KeyError:
-            # 2 is the return code bash gives when it can't execute.
-            args['exit_status'] = 2
-            args['files'] = {
-                script['name']: b'Unable to map parameters',
-                stderr_name: b'Unable to map parameters',
-            }
-            signal_wrapper(
-                error='Failed to execute %s [%d/%d]: %d' % (
-                    script['name'], i, total_scripts, args['exit_status']),
-                **args)
-            continue
-
-        try:
-            # This script sets its own niceness value to the highest(-20) below
-            # to help ensure the heartbeat keeps running. When launching the
-            # script we need to lower the nice value as a child process
-            # inherits the parent processes niceness value. preexec_fn is
-            # executed in the child process before the command is run. When
-            # setting the nice value the kernel adds the current nice value
-            # to the provided value. Since the runner uses a nice value of -20
-            # setting it to 40 gives the actual nice value of 20.
-            proc = Popen(
-                script_arguments, stdout=PIPE, stderr=PIPE, env=env,
-                preexec_fn=lambda: os.nice(40))
-            capture_script_output(
-                proc, combined_path, stdout_path, stderr_path, timeout_seconds)
-        except OSError as e:
-            fail_count += 1
-            if isinstance(e.errno, int) and e.errno != 0:
-                args['exit_status'] = e.errno
-            else:
-                # 2 is the return code bash gives when it can't execute.
-                args['exit_status'] = 2
-            result = str(e).encode()
-            if result == b'':
-                result = b'Unable to execute script'
-            args['files'] = {
-                script['name']: result,
-                stderr_name: result,
-            }
-            signal_wrapper(
-                error='Failed to execute %s [%d/%d]: %d' % (
-                    script['name'], i, total_scripts, args['exit_status']),
-                **args)
-        except TimeoutExpired:
-            fail_count += 1
-            args['status'] = 'TIMEDOUT'
-            args['files'] = {
-                script['name']: open(combined_path, 'rb').read(),
-                stdout_name: open(stdout_path, 'rb').read(),
-                stderr_name: open(stderr_path, 'rb').read(),
-            }
-            if os.path.exists(result_path):
-                args['files'][result_name] = open(result_path, 'rb').read()
-            signal_wrapper(
-                error='Timeout(%s) expired on %s [%d/%d]' % (
-                    str(timedelta(seconds=timeout_seconds)), script['name'], i,
-                    total_scripts),
-                **args)
+        script['combined_name'] = script['name']
+        script['combined_path'] = os.path.join(
+            script_out_dir, script['combined_name'])
+        script['stdout_name'] = '%s.out' % script['name']
+        script['stdout_path'] = os.path.join(
+            script_out_dir, script['stdout_name'])
+        script['stderr_name'] = '%s.err' % script['name']
+        script['stderr_path'] = os.path.join(
+            script_out_dir, script['stderr_name'])
+        script['result_name'] = '%s.yaml' % script['name']
+        script['result_path'] = os.path.join(
+            script_out_dir, script['result_name'])
+        script['download_path'] = os.path.join(
+            scripts_dir, 'downloads', script['name'])
+        if script['parallel'] == 1:
+            instance_thread_group = None
+            for grp in instance_thread:
+                if grp[0]['name'] == script['name']:
+                    instance_thread_group = grp
+                    break
+            if instance_thread_group is None:
+                instance_thread_group = []
+                instance_thread.append(instance_thread_group)
+            instance_thread_group.append(script)
+        elif script['parallel'] == 2:
+            any_thread.append(script)
         else:
-            if proc.returncode != 0:
-                fail_count += 1
-            args['exit_status'] = proc.returncode
-            args['files'] = {
-                script['name']: open(combined_path, 'rb').read(),
-                stdout_name: open(stdout_path, 'rb').read(),
-                stderr_name: open(stderr_path, 'rb').read(),
-            }
-            if os.path.exists(result_path):
-                args['files'][result_name] = open(result_path, 'rb').read()
-            signal_wrapper(
-                error='Finished %s [%d/%d]: %d' % (
-                    script['name'], i, len(scripts), args['exit_status']),
-                **args)
+            single_thread.append(script)
 
-    # Signal failure after running commissioning or testing scripts so MAAS
-    # transisitions the node into FAILED_COMMISSIONING or FAILED_TESTING.
-    if fail_count != 0:
-        signal_wrapper(
-            url, creds, 'FAILED', '%d scripts failed to run' % fail_count)
+    for script in single_thread:
+        if not install_dependencies([script], send_result):
+            fail_count += 1
+            continue
+        if not run_script(
+                script=script, scripts_dir=scripts_dir,
+                send_result=send_result):
+            fail_count += 1
+
+    for scripts in instance_thread:
+        if not install_dependencies(scripts, send_result):
+            fail_count += len(scripts)
+            continue
+        for script in scripts:
+            script['thread'] = Thread(
+                target=run_script, name=script['msg_name'], kwargs={
+                    'script': script,
+                    'scripts_dir': scripts_dir,
+                    'send_result': send_result,
+                    })
+            script['thread'].start()
+        for script in scripts:
+            script['thread'].join()
+            if script.get('exit_status') != 0:
+                fail_count += 1
+
+    # Start scripts which do not have dependencies first.
+    for script in sorted(
+            any_thread, key=lambda script: (
+                len(script.get('packages', {}).keys()), script['name'])):
+        if not install_dependencies([script], send_result):
+            fail_count += 1
+            continue
+        script['thread'] = Thread(
+            target=run_script, name=script['msg_name'], kwargs={
+                'script': script,
+                'scripts_dir': scripts_dir,
+                'send_result': send_result,
+                })
+        script['thread'].start()
+    for script in any_thread:
+        script['thread'].join()
+        if script.get('exit_status') != 0:
+            fail_count += 1
 
     return fail_count
 
 
-def run_scripts_from_metadata(url, creds, scripts_dir, out_dir):
+def run_scripts_from_metadata(
+        url, creds, scripts_dir, out_dir, send_result=True):
     """Run all scripts from a tar given by MAAS."""
     with open(os.path.join(scripts_dir, 'index.json')) as f:
         scripts = json.load(f)['1.0']
@@ -414,16 +506,17 @@ def run_scripts_from_metadata(url, creds, scripts_dir, out_dir):
     fail_count = 0
     commissioning_scripts = scripts.get('commissioning_scripts')
     if commissioning_scripts is not None:
+        sys.stdout.write('Starting commissioning scripts...\n')
         fail_count += run_scripts(
-            url, creds, scripts_dir, out_dir, commissioning_scripts)
-        if fail_count != 0:
-            return
+            url, creds, scripts_dir, out_dir, commissioning_scripts,
+            send_result)
 
     testing_scripts = scripts.get('testing_scripts')
-    if testing_scripts is not None:
+    if fail_count == 0 and testing_scripts is not None:
         # If the node status was COMMISSIONING transition the node into TESTING
         # status. If the node is already in TESTING status this is ignored.
-        signal_wrapper(url, creds, 'TESTING')
+        if send_result:
+            signal_wrapper(url, creds, 'TESTING')
 
         # If commissioning previously ran and a test script uses a storage
         # parameter redownload the script tar as the storage devices may have
@@ -432,17 +525,29 @@ def run_scripts_from_metadata(url, creds, scripts_dir, out_dir):
             for test_script in testing_scripts:
                 for param in test_script.get('parameters', {}).values():
                     if param['type'] == 'storage':
+                        sys.stdout.write(
+                            "Commissioning complete; updating test "
+                            "scripts...\n")
                         download_and_extract_tar(
                             "%s/maas-scripts/" % url, creds, scripts_dir)
                         return run_scripts_from_metadata(
-                            url, creds, scripts_dir, out_dir)
+                            url, creds, scripts_dir, out_dir, send_result)
 
+        sys.stdout.write("Starting testing scripts...\n")
         fail_count += run_scripts(
-            url, creds, scripts_dir, out_dir, testing_scripts)
+            url, creds, scripts_dir, out_dir, testing_scripts, send_result)
 
-    # Only signal OK when we're done with everything and nothing has failed.
+    # Signal success or failure after all scripts have ran. This tells the
+    # region to transistion the status.
     if fail_count == 0:
-        signal_wrapper(url, creds, 'OK', 'All scripts successfully ran')
+        output_and_send(
+            'All scripts successfully ran', send_result, url, creds, 'OK')
+    else:
+        output_and_send(
+            '%d scripts failed to run' % fail_count, send_result, url, creds,
+            'FAILED')
+
+    return fail_count
 
 
 class HeartBeat(Thread):
@@ -496,7 +601,8 @@ def main():
     parser = argparse.ArgumentParser(
         description='Download and run scripts from the MAAS metadata service.')
     parser.add_argument(
-        "--config", metavar="file", help="Specify config file", default=None)
+        "--config", metavar="file", help="Specify config file",
+        default='/etc/cloud/cloud.cfg.d/91_kernel_cmdline_url.cfg')
     parser.add_argument(
         "--ckey", metavar="key", help="The consumer key to auth with",
         default=None)
@@ -514,9 +620,13 @@ def main():
         help="The apiver to use (\"\" can be used)", default=MD_VERSION)
     parser.add_argument(
         "--url", metavar="url", help="The data source to query", default=None)
+    parser.add_argument(
+        "--no-send", action='store_true', default=False,
+        help="Don't send results back to MAAS")
 
     parser.add_argument(
-        "storage_directory",
+        "storage_directory", nargs='?',
+        default=os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
         help="Directory to store the extracted data from the metadata service."
     )
 
@@ -551,12 +661,13 @@ def main():
     heart_beat.start()
 
     scripts_dir = os.path.join(args.storage_directory, 'scripts')
-    os.makedirs(scripts_dir)
+    os.makedirs(scripts_dir, exist_ok=True)
     out_dir = os.path.join(args.storage_directory, 'out')
-    os.makedirs(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
 
     download_and_extract_tar("%s/maas-scripts/" % url, creds, scripts_dir)
-    run_scripts_from_metadata(url, creds, scripts_dir, out_dir)
+    run_scripts_from_metadata(
+        url, creds, scripts_dir, out_dir, not args.no_send)
 
     heart_beat.stop()
 

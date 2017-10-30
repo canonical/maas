@@ -5,23 +5,28 @@
 
 __all__ = []
 
+import copy
 from datetime import timedelta
 from io import BytesIO
 import json
 import os
 import random
+import stat
 from subprocess import TimeoutExpired
 import tarfile
 import time
-from unittest.mock import ANY
+from unittest.mock import (
+    ANY,
+    call,
+)
 from zipfile import ZipFile
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
     MockAnyCall,
-    MockCalledOnce,
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
@@ -32,380 +37,246 @@ from snippets.maas_run_remote_scripts import (
     install_dependencies,
     parse_parameters,
     run_and_check,
+    run_script,
     run_scripts,
     run_scripts_from_metadata,
 )
 
 
-class TestMaasRunRemoteScripts(MAASTestCase):
+def make_script(
+        scripts_dir=None, with_added_attribs=True, name=None,
+        script_result_id=None, script_version_id=None, timeout_seconds=None,
+        parallel=None, with_output=True):
+    if name is None:
+        name = factory.make_name('name')
+    if script_result_id is None:
+        script_result_id = random.randint(1, 1000)
+    if script_version_id is None:
+        script_version_id = random.randint(1, 1000)
+    if timeout_seconds is None:
+        timeout_seconds = random.randint(1, 1000)
+    if parallel is None:
+        parallel = random.randint(0, 2)
+    ret = {
+        'name': name,
+        'path': '%s/%s' % (random.choice(['commissioning', 'testing']), name),
+        'script_result_id': script_result_id,
+        'script_version_id': script_version_id,
+        'timeout_seconds': timeout_seconds,
+        'parallel': parallel,
+        'args': {},
+    }
+    ret['msg_name'] = '%s (id: %s, script_version_id: %s)' % (
+        name, script_result_id, script_version_id)
+    if with_added_attribs:
+        if scripts_dir is None:
+            scripts_dir = factory.make_name('scripts_dir')
+        out_dir = os.path.join(
+            scripts_dir, 'out', '%s.%s' % (name, script_result_id))
 
-    def make_scripts(self, count=1):
-        scripts = []
-        for _ in range(count):
-            name = factory.make_name('name')
-            scripts.append({
-                'name': name,
-                'path': '%s/%s' % (factory.make_name('dir'), name),
-                'script_result_id': random.randint(1, 1000),
-                'script_version_id': random.randint(1, 1000),
-                'timeout_seconds': random.randint(1, 500),
-            })
-        return scripts
+        ret['combined_name'] = name
+        ret['combined_path'] = os.path.join(out_dir, ret['combined_name'])
+        ret['combined'] = factory.make_string()
+        ret['stdout_name'] = '%s.out' % name
+        ret['stdout_path'] = os.path.join(out_dir, ret['stdout_name'])
+        ret['stdout'] = factory.make_string()
+        ret['stderr_name'] = '%s.err' % name
+        ret['stderr_path'] = os.path.join(out_dir, ret['stderr_name'])
+        ret['stderr'] = factory.make_string()
+        ret['result_name'] = '%s.yaml' % name
+        ret['result_path'] = os.path.join(out_dir, ret['result_name'])
+        ret['result'] = factory.make_string()
+        ret['download_path'] = os.path.join(scripts_dir, 'downloads', name)
 
-    def make_script_output(self, scripts, scripts_dir, with_result=False):
-        for script in scripts:
-            script_out_dir = os.path.join(scripts_dir, '%s.%s' % (
-                script['name'], script['script_result_id']))
-            os.makedirs(script_out_dir)
-            output = factory.make_string()
-            stdout = factory.make_string()
-            stderr = factory.make_string()
-            script['output'] = output.encode()
-            script['stdout'] = stdout.encode()
-            script['stderr'] = stderr.encode()
-            script['output_path'] = os.path.join(
-                script_out_dir, script['name'])
-            script['stdout_path'] = os.path.join(
-                script_out_dir, '%s.out' % script['name'])
-            script['stderr_path'] = os.path.join(
-                script_out_dir, '%s.err' % script['name'])
-            script['download_path'] = os.path.join(
-                script_out_dir, 'downloads', script['name'])
-            os.makedirs(script['download_path'], exist_ok=True)
-            open(script['output_path'], 'w').write(output)
-            open(script['stdout_path'], 'w').write(stdout)
-            open(script['stderr_path'], 'w').write(stderr)
-            if with_result:
-                result = factory.make_string()
-                script['result'] = result.encode()
-                script['result_path'] = os.path.join(
-                    script_out_dir, '%s.yaml' % script['name'])
-                open(script['result_path'], 'w').write(result)
+        if os.path.exists(scripts_dir):
+            os.makedirs(out_dir, exist_ok=True)
+            os.makedirs(ret['download_path'], exist_ok=True)
+            script_path = os.path.join(scripts_dir, ret['path'])
+            os.makedirs(os.path.dirname(script_path), exist_ok=True)
+            with open(os.path.join(scripts_dir, ret['path']), 'w') as f:
+                f.write('#!/bin/bash')
+            st = os.stat(script_path)
+            os.chmod(script_path, st.st_mode | stat.S_IEXEC)
 
-    def make_index_json(
-            self, scripts_dir, with_commissioning=True, with_testing=True,
-            commissioning_scripts=None, testing_scripts=None):
-        index_json = {}
-        if with_commissioning:
-            if commissioning_scripts is None:
-                index_json['commissioning_scripts'] = self.make_scripts()
-            else:
-                index_json['commissioning_scripts'] = commissioning_scripts
-        if with_testing:
-            if testing_scripts is None:
-                index_json['testing_scripts'] = self.make_scripts()
-            else:
-                index_json['testing_scripts'] = testing_scripts
-        with open(os.path.join(scripts_dir, 'index.json'), 'w') as f:
-            f.write(json.dumps({'1.0': index_json}))
-        return index_json
+            if with_output:
+                open(ret['combined_path'], 'w').write(ret['combined'])
+                open(ret['stdout_path'], 'w').write(ret['stdout'])
+                open(ret['stderr_path'], 'w').write(ret['stderr'])
+                open(ret['result_path'], 'w').write(ret['result'])
 
-    def test_download_and_extract_tar(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        binary = BytesIO()
-        file_content = factory.make_bytes()
-        with tarfile.open(mode='w', fileobj=binary) as tar:
-            tarinfo = tarfile.TarInfo(name='test-file')
-            tarinfo.size = len(file_content)
-            tarinfo.mode = 0o755
-            tar.addfile(tarinfo, BytesIO(file_content))
-        mock_geturl = self.patch(maas_run_remote_scripts, 'geturl')
-        mock_geturl.return_value = binary.getvalue()
+    return ret
 
-        # geturl is mocked out so we don't need to give a url or creds.
-        download_and_extract_tar(None, None, scripts_dir)
 
-        written_file_content = open(
-            os.path.join(scripts_dir, 'test-file'), 'rb').read()
-        self.assertEquals(file_content, written_file_content)
+def make_scripts(
+        instance=True, count=3, scripts_dir=None, with_added_attribs=True,
+        with_output=True, parallel=None):
+    if instance:
+        script = make_script(
+            scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
+            with_output=with_output, parallel=parallel)
+        return [script] + [
+            make_script(
+                scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
+                with_output=with_output, name=script['name'],
+                script_version_id=script['script_version_id'],
+                timeout_seconds=script['timeout_seconds'],
+                parallel=script['parallel'])
+            for _ in range(count - 1)
+        ]
+    else:
+        return [
+            make_script(
+                scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
+                with_output=with_output, parallel=parallel)
+            for _ in range(count)
+        ]
 
-    def test_run_scripts_from_metadata(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
-        mock_run_scripts.return_value = 0
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        index_json = self.make_index_json(scripts_dir)
 
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
+class TestInstallDependencies(MAASTestCase):
 
-        self.assertThat(
-            mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['commissioning_scripts']))
-        self.assertThat(
-            mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['testing_scripts']))
-        self.assertThat(mock_signal, MockAnyCall(None, None, 'TESTING'))
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(None, None, 'OK', 'All scripts successfully ran'))
-
-    def test_run_scripts_from_metadata_doesnt_run_tests_on_commiss_fail(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
-        mock_run_scripts.return_value = random.randint(1, 100)
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        index_json = self.make_index_json(scripts_dir)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(
-            mock_run_scripts,
-            MockCalledOnceWith(
-                None, None, scripts_dir, None,
-                index_json['commissioning_scripts']))
-        self.assertThat(mock_signal, MockNotCalled())
-
-    def test_run_scripts_from_metadata_redownloads_after_commiss(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
-        mock_run_scripts.return_value = 0
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        testing_scripts = self.make_scripts()
-        testing_scripts[0]['parameters'] = {'storage': {'type': 'storage'}}
-        mock_download_and_extract_tar = self.patch(
-            maas_run_remote_scripts, 'download_and_extract_tar')
-        simple_dl_and_extract = lambda *args, **kwargs: self.make_index_json(
-            scripts_dir, with_commissioning=False,
-            testing_scripts=testing_scripts)
-        mock_download_and_extract_tar.side_effect = simple_dl_and_extract
-        index_json = self.make_index_json(
-            scripts_dir, testing_scripts=testing_scripts)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(
-            mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['commissioning_scripts']))
-        self.assertThat(mock_signal, MockAnyCall(None, None, 'TESTING'))
-        self.assertThat(
-            mock_download_and_extract_tar,
-            MockCalledOnceWith('None/maas-scripts/', None, scripts_dir))
-        self.assertThat(
-            mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['testing_scripts']))
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(None, None, 'OK', 'All scripts successfully ran'))
-
-    def test_run_scripts_from_metadata_only_redownloads_when_needed(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
-        mock_run_scripts.return_value = 0
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_download_and_extract_tar = self.patch(
-            maas_run_remote_scripts, 'download_and_extract_tar')
-        index_json = self.make_index_json(scripts_dir)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(
-            mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['commissioning_scripts']))
-        self.assertThat(mock_signal, MockAnyCall(None, None, 'TESTING'))
-        self.assertThat(mock_download_and_extract_tar, MockNotCalled())
-        self.assertThat(
-            mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['testing_scripts']))
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(None, None, 'OK', 'All scripts successfully ran'))
-
-    def test_run_scripts_from_metadata_does_nothing_on_empty(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        self.patch(maas_run_remote_scripts, 'run_scripts')
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        self.make_index_json(scripts_dir, False, False)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(
-            mock_signal,
-            MockCalledOnceWith(
-                None, None, 'OK', 'All scripts successfully ran'))
+    def setUp(self):
+        super().setUp()
+        self.mock_output_and_send = self.patch(
+            maas_run_remote_scripts, 'output_and_send')
 
     def test_run_and_check(self):
         scripts_dir = self.useFixture(TempDirectory()).path
-        scripts = self.make_scripts()
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        stdout = factory.make_string()
-        stderr = factory.make_string()
+
         self.assertTrue(run_and_check(
-            ['/bin/bash', '-c', 'echo %s;echo %s >&2' % (stdout, stderr)],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], {}))
+            ['/bin/bash', '-c', 'echo %s;echo %s >&2' % (
+                script['stdout'], script['stderr'])],
+            scripts))
         self.assertEquals(
-            '%s\n' % stdout, open(script['stdout_path'], 'r').read())
+            '%s\n' % script['stdout'], open(script['stdout_path'], 'r').read())
         self.assertEquals(
-            '%s\n' % stderr, open(script['stderr_path'], 'r').read())
+            '%s\n' % script['stderr'], open(script['stderr_path'], 'r').read())
         self.assertEquals(
-            '%s\n%s\n' % (stdout, stderr),
-            open(script['output_path'], 'r').read())
+            '%s\n%s\n' % (script['stdout'], script['stderr']),
+            open(script['combined_path'], 'r').read())
 
     def test_run_and_check_errors(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         scripts_dir = self.useFixture(TempDirectory()).path
-        scripts = self.make_scripts()
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        stdout = factory.make_string()
-        stderr = factory.make_string()
+
         self.assertFalse(run_and_check(
             ['/bin/bash', '-c', 'echo %s;echo %s >&2;false' % (
-                stdout, stderr)],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], {}))
+                script['stdout'], script['stderr'])],
+            scripts))
         self.assertEquals(
-            '%s\n' % stdout, open(script['stdout_path'], 'r').read())
+            '%s\n' % script['stdout'], open(script['stdout_path'], 'r').read())
         self.assertEquals(
-            '%s\n' % stderr, open(script['stderr_path'], 'r').read())
+            '%s\n' % script['stderr'], open(script['stderr_path'], 'r').read())
         self.assertEquals(
-            '%s\n%s\n' % (stdout, stderr),
-            open(script['output_path'], 'r').read())
-        self.assertThat(
-            mock_signal, MockCalledOnceWith(
-                error='Failed installing package(s) for %s' % script['name'],
-                exit_status=1, files={
-                    script['name']: ('%s\n%s\n' % (stdout, stderr)).encode(),
-                    '%s.out' % script['name']: ('%s\n' % stdout).encode(),
-                    '%s.err' % script['name']: ('%s\n' % stderr).encode(),
-                }))
+            '%s\n%s\n' % (script['stdout'], script['stderr']),
+            open(script['combined_path'], 'r').read())
+        for script in scripts:
+            self.assertThat(
+                self.mock_output_and_send, MockAnyCall(
+                    'Failed installing package(s) for %s' % script['msg_name'],
+                    exit_status=1, status='INSTALLING', files={
+                        scripts[0]['combined_name']: ('%s\n%s\n' % (
+                            scripts[0]['stdout'],
+                            scripts[0]['stderr'])).encode(),
+                        scripts[0]['stdout_name']: (
+                            '%s\n' % scripts[0]['stdout']).encode(),
+                        scripts[0]['stderr_name']: (
+                            '%s\n' % scripts[0]['stderr']).encode(),
+                    }))
 
     def test_run_and_check_ignores_errors(self):
         scripts_dir = self.useFixture(TempDirectory()).path
-        scripts = self.make_scripts()
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        stdout = factory.make_string()
-        stderr = factory.make_string()
+
         self.assertTrue(run_and_check(
             ['/bin/bash', '-c', 'echo %s;echo %s >&2;false' % (
-                stdout, stderr)],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], {}, True))
+                script['stdout'], script['stderr'])],
+            scripts, False))
         self.assertEquals(
-            '%s\n' % stdout, open(script['stdout_path'], 'r').read())
+            '%s\n' % script['stdout'], open(script['stdout_path'], 'r').read())
         self.assertEquals(
-            '%s\n' % stderr, open(script['stderr_path'], 'r').read())
+            '%s\n' % script['stderr'], open(script['stderr_path'], 'r').read())
         self.assertEquals(
-            '%s\n%s\n' % (stdout, stderr),
-            open(script['output_path'], 'r').read())
+            '%s\n%s\n' % (script['stdout'], script['stderr']),
+            open(script['combined_path'], 'r').read())
 
     def test_install_dependencies_does_nothing_when_empty(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        combined_path = '/%s' % factory.make_name('combined_path')
-        stdout_path = '/%s' % factory.make_name('stdout_path')
-        stderr_path = '/%s' % factory.make_name('stderr_path')
-        download_path = '/%s' % factory.make_name('download_path')
-        self.assertTrue(install_dependencies(
-            {}, {}, combined_path, stdout_path, stderr_path, download_path))
-
-        self.assertThat(mock_signal, MockNotCalled())
+        self.assertTrue(install_dependencies(make_scripts()))
+        self.assertThat(self.mock_output_and_send, MockNotCalled())
 
     def test_install_dependencies_apt(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
-        mock_run_and_check.return_value = True
-        args = {'status': 'INSTALLING'}
-        script_name = factory.make_name('name')
-        packages = [factory.make_name('pkg') for _ in range(3)]
-        combined_path = '/%s' % factory.make_name('combined_path')
-        stdout_path = '/%s' % factory.make_name('stdout_path')
-        stderr_path = '/%s' % factory.make_name('stderr_path')
-        download_path = '/%s' % factory.make_name('download_path')
-        self.assertTrue(install_dependencies(
-            args, {'name': script_name, 'packages': {'apt': packages}},
-            combined_path, stdout_path, stderr_path, download_path))
-        self.assertThat(mock_signal, MockCalledOnceWith(
-            error='Installing apt packages for %s' % script_name,
-            status='INSTALLING'))
-        self.assertThat(mock_run_and_check, MockCalledOnceWith(
-            ['sudo', '-n', 'apt-get', '-qy', 'install'] + packages,
-            combined_path, stdout_path, stderr_path, script_name, args))
-        # Verify cleanup
-        self.assertFalse(os.path.exists(combined_path))
-        self.assertFalse(os.path.exists(stdout_path))
-        self.assertFalse(os.path.exists(stderr_path))
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        packages = [factory.make_name('apt_pkg') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'apt': packages}
+
+        self.assertTrue(install_dependencies(scripts))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Installing apt packages for %s' % script['msg_name'],
+                True, status='INSTALLING'))
+            self.assertThat(mock_run_and_check, MockCalledOnceWith(
+                ['sudo', '-n', 'apt-get', '-qy', 'install'] + packages,
+                scripts, True))
+            # Verify cleanup
+            self.assertFalse(os.path.exists(script['combined_path']))
+            self.assertFalse(os.path.exists(script['stdout_path']))
+            self.assertFalse(os.path.exists(script['stderr_path']))
 
     def test_install_dependencies_apt_errors(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
         mock_run_and_check.return_value = False
-        args = {'status': 'INSTALLING'}
-        script_name = factory.make_name('name')
-        packages = [factory.make_name('pkg') for _ in range(3)]
-        combined_path = '/%s' % factory.make_name('combined_path')
-        stdout_path = '/%s' % factory.make_name('stdout_path')
-        stderr_path = '/%s' % factory.make_name('stderr_path')
-        download_path = '/%s' % factory.make_name('download_path')
-        self.assertFalse(install_dependencies(
-            args, {'name': script_name, 'packages': {'apt': packages}},
-            combined_path, stdout_path, stderr_path, download_path))
-        self.assertThat(mock_signal, MockCalledOnceWith(
-            error='Installing apt packages for %s' % script_name,
-            status='INSTALLING'))
-        self.assertThat(mock_run_and_check, MockCalledOnceWith(
-            ['sudo', '-n', 'apt-get', '-qy', 'install'] + packages,
-            combined_path, stdout_path, stderr_path, script_name, args))
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        packages = [factory.make_name('apt_pkg') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'apt': packages}
+
+        self.assertFalse(install_dependencies(scripts))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Installing apt packages for %s' % script['msg_name'],
+                True, status='INSTALLING'))
+            self.assertThat(mock_run_and_check, MockCalledOnceWith(
+                ['sudo', '-n', 'apt-get', '-qy', 'install'] + packages,
+                scripts, True))
 
     def test_install_dependencies_snap_str_list(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
-        mock_run_and_check.return_value = True
-        args = {'status': 'INSTALLING'}
-        script_name = factory.make_name('name')
-        packages = [factory.make_name('pkg') for _ in range(3)]
-        combined_path = '/%s' % factory.make_name('combined_path')
-        stdout_path = '/%s' % factory.make_name('stdout_path')
-        stderr_path = '/%s' % factory.make_name('stderr_path')
-        download_path = '/%s' % factory.make_name('download_path')
-        self.assertTrue(install_dependencies(
-            args, {'name': script_name, 'packages': {'snap': packages}},
-            combined_path, stdout_path, stderr_path, download_path))
-        self.assertThat(mock_signal, MockCalledOnceWith(
-            error='Installing snap packages for %s' % script_name,
-            status='INSTALLING'))
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        packages = [factory.make_name('snap_pkg') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'snap': packages}
+
+        self.assertTrue(install_dependencies(scripts))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Installing snap packages for %s' % script['msg_name'],
+                True, status='INSTALLING'))
+            # Verify cleanup
+            self.assertFalse(os.path.exists(script['combined_path']))
+            self.assertFalse(os.path.exists(script['stdout_path']))
+            self.assertFalse(os.path.exists(script['stderr_path']))
+
         for package in packages:
             self.assertThat(mock_run_and_check, MockAnyCall(
                 ['sudo', '-n', 'snap', 'install', package],
-                combined_path, stdout_path, stderr_path, script_name, args))
-        # Verify cleanup
-        self.assertFalse(os.path.exists(combined_path))
-        self.assertFalse(os.path.exists(stdout_path))
-        self.assertFalse(os.path.exists(stderr_path))
+                scripts, True))
 
     def test_install_dependencies_snap_str_dict(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
-        mock_run_and_check.return_value = True
-        args = {'status': 'INSTALLING'}
-        script_name = factory.make_name('name')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         packages = [
             {'name': factory.make_name('pkg')},
             {
@@ -426,391 +297,214 @@ class TestMaasRunRemoteScripts(MAASTestCase):
                 'mode': random.choice(['dev', 'jail']),
             },
         ]
-        combined_path = '/%s' % factory.make_name('combined_path')
-        stdout_path = '/%s' % factory.make_name('stdout_path')
-        stderr_path = '/%s' % factory.make_name('stderr_path')
-        download_path = '/%s' % factory.make_name('download_path')
-        self.assertTrue(install_dependencies(
-            args, {'name': script_name, 'packages': {'snap': packages}},
-            combined_path, stdout_path, stderr_path, download_path))
-        self.assertThat(mock_signal, MockCalledOnceWith(
-            error='Installing snap packages for %s' % script_name,
-            status='INSTALLING'))
+        for script in scripts:
+            script['packages'] = {'snap': packages}
+
+        self.assertTrue(install_dependencies(scripts))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Installing snap packages for %s' % script['msg_name'],
+                True, status='INSTALLING'))
+            # Verify cleanup
+            self.assertFalse(os.path.exists(script['combined_path']))
+            self.assertFalse(os.path.exists(script['stdout_path']))
+            self.assertFalse(os.path.exists(script['stderr_path']))
         self.assertThat(mock_run_and_check, MockAnyCall(
             ['sudo', '-n', 'snap', 'install', packages[0]['name']],
-            combined_path, stdout_path, stderr_path, script_name, args))
+            scripts, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
                 'sudo', '-n', 'snap', 'install', packages[1]['name'],
                 '--%s' % packages[1]['channel']
             ],
-            combined_path, stdout_path, stderr_path, script_name, args))
+            scripts, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
                 'sudo', '-n', 'snap', 'install', packages[2]['name'],
                 '--%s' % packages[2]['channel'],
                 '--%smode' % packages[2]['mode'],
             ],
-            combined_path, stdout_path, stderr_path, script_name, args))
+            scripts, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
                 'sudo', '-n', 'snap', 'install', packages[3]['name'],
                 '--%s' % packages[3]['channel'],
                 '--%smode' % packages[3]['mode'],
             ],
-            combined_path, stdout_path, stderr_path, script_name, args))
-        # Verify cleanup
-        self.assertFalse(os.path.exists(combined_path))
-        self.assertFalse(os.path.exists(stdout_path))
-        self.assertFalse(os.path.exists(stderr_path))
+            scripts, True))
 
-    def test_install_dependencies_snap_str_errors(self):
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+    def test_install_dependencies_snap_errors(self):
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
         mock_run_and_check.return_value = False
-        args = {'status': 'INSTALLING'}
-        script_name = factory.make_name('name')
-        packages = [factory.make_name('pkg') for _ in range(3)]
-        combined_path = '/%s' % factory.make_name('combined_path')
-        stdout_path = '/%s' % factory.make_name('stdout_path')
-        stderr_path = '/%s' % factory.make_name('stderr_path')
-        download_path = '/%s' % factory.make_name('download_path')
-        self.assertFalse(install_dependencies(
-            args, {'name': script_name, 'packages': {'snap': packages}},
-            combined_path, stdout_path, stderr_path, download_path))
-        self.assertThat(mock_signal, MockCalledOnceWith(
-            error='Installing snap packages for %s' % script_name,
-            status='INSTALLING'))
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        packages = [factory.make_name('snap_pkg') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'snap': packages}
+
+        self.assertFalse(install_dependencies(scripts))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Installing snap packages for %s' % script['msg_name'],
+                True, status='INSTALLING'))
+
         self.assertThat(mock_run_and_check, MockAnyCall(
             ['sudo', '-n', 'snap', 'install', packages[0]],
-            combined_path, stdout_path, stderr_path, script_name, args))
+            scripts, True))
 
     def test_install_dependencies_url(self):
+        mock_run_and_check = self.patch(
+            maas_run_remote_scripts, 'run_and_check')
         scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        self.patch(maas_run_remote_scripts, 'run_and_check')
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        self.assertTrue(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [factory.make_name('url')]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        scripts = make_scripts(scripts_dir=scripts_dir)
+        packages = [factory.make_name('url') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'url': packages}
+
+        self.assertTrue(install_dependencies(scripts))
+        for package in packages:
+            self.assertThat(mock_run_and_check, MockAnyCall(
+                ['wget', package, '-P', scripts[0]['download_path']],
+                scripts, True))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Downloading and extracting URLs for %s' % script['msg_name'],
+                True, status='INSTALLING'))
         # Verify cleanup
-        self.assertFalse(os.path.exists(script['output_path']))
-        self.assertFalse(os.path.exists(script['stdout_path']))
-        self.assertFalse(os.path.exists(script['stderr_path']))
+        self.assertFalse(os.path.exists(scripts[0]['combined_path']))
+        self.assertFalse(os.path.exists(scripts[0]['stdout_path']))
+        self.assertFalse(os.path.exists(scripts[0]['stderr_path']))
 
     def test_install_dependencies_url_errors(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
         mock_run_and_check.return_value = False
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        self.assertFalse(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [factory.make_name('url')]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir)
+        packages = [factory.make_name('url') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'url': packages}
+
+        self.assertFalse(install_dependencies(scripts))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Downloading and extracting URLs for %s' % script['msg_name'],
+                True, status='INSTALLING'))
 
     def test_install_dependencies_url_tar(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         self.patch(maas_run_remote_scripts, 'run_and_check')
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        tar_file = os.path.join(script['download_path'], 'file.tar.xz')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        tar_file = os.path.join(scripts[0]['download_path'], 'file.tar.xz')
         file_content = factory.make_bytes()
         with tarfile.open(tar_file, 'w:xz') as tar:
             tarinfo = tarfile.TarInfo(name='test-file')
             tarinfo.size = len(file_content)
             tarinfo.mode = 0o755
             tar.addfile(tarinfo, BytesIO(file_content))
-        with open(script['output_path'], 'w') as output:
+        with open(scripts[0]['combined_path'], 'w') as output:
             output.write("Saving to: '%s'" % tar_file)
+        for script in scripts:
+            script['packages'] = {'url': [tar_file]}
 
-        self.assertTrue(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [tar_file]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        self.assertTrue(install_dependencies(scripts))
         with open(
-                os.path.join(script['download_path'], 'test-file'), 'rb') as f:
+                os.path.join(scripts[0]['download_path'], 'test-file'),
+                'rb') as f:
             self.assertEquals(file_content, f.read())
-        # Verify cleanup
-        self.assertFalse(os.path.exists(script['output_path']))
-        self.assertFalse(os.path.exists(script['stdout_path']))
-        self.assertFalse(os.path.exists(script['stderr_path']))
 
     def test_install_dependencies_url_zip(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         self.patch(maas_run_remote_scripts, 'run_and_check')
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        zip_file = os.path.join(script['download_path'], 'file.zip')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        zip_file = os.path.join(scripts[0]['download_path'], 'file.zip')
         file_content = factory.make_bytes()
         with ZipFile(zip_file, 'w') as z:
             z.writestr('test-file', file_content)
-        with open(script['output_path'], 'w') as output:
+        with open(scripts[0]['combined_path'], 'w') as output:
             output.write("Saving to: '%s'" % zip_file)
+        for script in scripts:
+            script['packages'] = {'url': [zip_file]}
 
-        self.assertTrue(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [zip_file]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        self.assertTrue(install_dependencies(scripts))
         with open(
-                os.path.join(script['download_path'], 'test-file'), 'rb') as f:
+                os.path.join(scripts[0]['download_path'], 'test-file'),
+                'rb') as f:
             self.assertEquals(file_content, f.read())
-        # Verify cleanup
-        self.assertFalse(os.path.exists(script['output_path']))
-        self.assertFalse(os.path.exists(script['stdout_path']))
-        self.assertFalse(os.path.exists(script['stderr_path']))
 
     def test_install_dependencies_url_deb(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        deb_file = os.path.join(script['download_path'], 'file.deb')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        deb_file = os.path.join(scripts[0]['download_path'], 'file.deb')
         open(deb_file, 'w').close()
-        with open(script['output_path'], 'w') as output:
+        with open(scripts[0]['combined_path'], 'w') as output:
             output.write("Saving to: '%s'" % deb_file)
+        for script in scripts:
+            script['packages'] = {'url': [deb_file]}
 
-        self.assertTrue(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [deb_file]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['wget', deb_file, '-P', script['download_path']],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
+            ['sudo', '-n', 'dpkg', '-i', deb_file], scripts, False))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'dpkg', '-i', deb_file], script['output_path'],
-            script['stdout_path'], script['stderr_path'], script['name'], args,
-            True))
-        self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'apt-get', 'install', '-qyf'],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
-        # Verify cleanup
-        self.assertFalse(os.path.exists(script['output_path']))
-        self.assertFalse(os.path.exists(script['stdout_path']))
-        self.assertFalse(os.path.exists(script['stderr_path']))
+            ['sudo', '-n', 'apt-get', 'install', '-qyf'], scripts, True))
 
     def test_install_dependencies_url_deb_errors(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
         mock_run_and_check.side_effect = (True, True, False)
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        deb_file = os.path.join(script['download_path'], 'file.deb')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        deb_file = os.path.join(scripts[0]['download_path'], 'file.deb')
         open(deb_file, 'w').close()
-        with open(script['output_path'], 'w') as output:
+        with open(scripts[0]['combined_path'], 'w') as output:
             output.write("Saving to: '%s'" % deb_file)
+        for script in scripts:
+            script['packages'] = {'url': [deb_file]}
 
-        self.assertFalse(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [deb_file]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['wget', deb_file, '-P', script['download_path']],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
+            ['sudo', '-n', 'dpkg', '-i', deb_file], scripts, False))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'dpkg', '-i', deb_file], script['output_path'],
-            script['stdout_path'], script['stderr_path'], script['name'], args,
-            True))
-        self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'apt-get', 'install', '-qyf'],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
+            ['sudo', '-n', 'apt-get', 'install', '-qyf'], scripts, True))
 
     def test_install_dependencies_url_snap(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        snap_file = os.path.join(script['download_path'], 'file.snap')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        snap_file = os.path.join(scripts[0]['download_path'], 'file.snap')
         open(snap_file, 'w').close()
-        with open(script['output_path'], 'w') as output:
+        with open(scripts[0]['combined_path'], 'w') as output:
             output.write("Saving to: '%s'" % snap_file)
+        for script in scripts:
+            script['packages'] = {'url': [snap_file]}
 
-        self.assertTrue(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [snap_file]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['wget', snap_file, '-P', script['download_path']],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
-        self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'snap', snap_file],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
-        # Verify cleanup
-        self.assertFalse(os.path.exists(script['output_path']))
-        self.assertFalse(os.path.exists(script['stdout_path']))
-        self.assertFalse(os.path.exists(script['stderr_path']))
+            ['sudo', '-n', 'snap', snap_file], scripts, True))
 
     def test_install_dependencies_url_snap_errors(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
         mock_run_and_check.side_effect = (True, False)
-        args = {'status': 'INSTALLING'}
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
-        snap_file = os.path.join(script['download_path'], 'file.snap')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        snap_file = os.path.join(scripts[0]['download_path'], 'file.snap')
         open(snap_file, 'w').close()
-        with open(script['output_path'], 'w') as output:
+        with open(scripts[0]['combined_path'], 'w') as output:
             output.write("Saving to: '%s'" % snap_file)
+        for script in scripts:
+            script['packages'] = {'url': [snap_file]}
 
-        self.assertFalse(install_dependencies(
-            args, {'name': script['name'], 'packages': {
-                'url': [snap_file]}},
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['download_path']))
-        self.assertThat(mock_signal, MockAnyCall(
-            error='Downloading and extracting URLs for %s' % script['name'],
-            **args))
+        self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['wget', snap_file, '-P', script['download_path']],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
-        self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'snap', snap_file],
-            script['output_path'], script['stdout_path'],
-            script['stderr_path'], script['name'], args))
+            ['sudo', '-n', 'snap', snap_file], scripts, True))
 
-    def test_run_scripts(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        mock_capture_script_output = self.patch(
-            maas_run_remote_scripts, 'capture_script_output')
-        self.patch(maas_run_remote_scripts, 'install_dependencies')
-        scripts = self.make_scripts()
-        self.make_script_output(scripts, scripts_dir)
 
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
-
-        args = {
-            'url': None, 'creds': None, 'status': 'WORKING',
-            'script_result_id': scripts[0]['script_result_id'],
-            'script_version_id': scripts[0]['script_version_id'],
-            'error': 'Starting %s [1/1]' % scripts[0]['name'],
-        }
-        self.assertThat(mock_signal, MockAnyCall(**args))
-        self.assertThat(mock_popen, MockCalledOnce())
-        self.assertThat(mock_capture_script_output, MockCalledOnce())
-        # This is a MagicMock
-        args['exit_status'] = ANY
-        args['files'] = {
-            scripts[0]['name']: scripts[0]['output'],
-            '%s.out' % scripts[0]['name']: scripts[0]['stdout'],
-            '%s.err' % scripts[0]['name']: scripts[0]['stderr'],
-        }
-        args['error'] = 'Finished %s [1/1]: 1' % scripts[0]['name']
-        self.assertThat(mock_signal, MockAnyCall(**args))
-
-    def test_installs_dependencies(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        mock_capture_script_output = self.patch(
-            maas_run_remote_scripts, 'capture_script_output')
-        mock_install_deps = self.patch(
-            maas_run_remote_scripts, 'install_dependencies')
-        mock_install_deps.side_effect = (False, True)
-        scripts = self.make_scripts(2)
-        self.make_script_output(scripts, scripts_dir, with_result=True)
-
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            2, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
-
-        # Only the second script will signal working since the first failed
-        # to install dependencies.
-        args = {
-            'url': None, 'creds': None, 'status': 'WORKING',
-            'script_result_id': scripts[1]['script_result_id'],
-            'script_version_id': scripts[1]['script_version_id'],
-            'error': 'Starting %s [2/2]' % scripts[1]['name'],
-        }
-        self.assertThat(mock_signal, MockAnyCall(**args))
-        self.assertThat(mock_popen, MockCalledOnce())
-        self.assertThat(mock_capture_script_output, MockCalledOnce())
-        # This is a MagicMock
-        args['exit_status'] = ANY
-        args['files'] = {
-            scripts[1]['name']: scripts[1]['output'],
-            '%s.out' % scripts[1]['name']: scripts[1]['stdout'],
-            '%s.err' % scripts[1]['name']: scripts[1]['stderr'],
-            '%s.yaml' % scripts[1]['name']: scripts[1]['result'],
-        }
-        args['error'] = 'Finished %s [2/2]: 1' % scripts[1]['name']
-        self.assertThat(mock_signal, MockAnyCall(**args))
+class TestParseParameters(MAASTestCase):
 
     def test_get_block_devices(self):
         expected_blockdevs = [
@@ -926,270 +620,440 @@ class TestMaasRunRemoteScripts(MAASTestCase):
                 '/dev/%s' % script['parameters']['storage']['value']['name'],
             ], parse_parameters(script, scripts_dir))
 
-    def test_run_scripts_errors_with_bad_param(self):
+
+class TestRunScript(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_output_and_send = self.patch(
+            maas_run_remote_scripts, 'output_and_send')
+        self.mock_capture_script_output = self.patch(
+            maas_run_remote_scripts, 'capture_script_output')
+        self.args = {
+            'status': 'WORKING',
+            'send_result': True,
+        }
+        self.patch(maas_run_remote_scripts.sys.stdout, 'write')
+
+    def test_run_script(self):
         scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        script = make_script(scripts_dir=scripts_dir)
+
+        run_script(script, scripts_dir)
+
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Finished %s: None' % script['msg_name'], exit_status=None,
+                files={
+                    script['combined_name']: script['combined'].encode(),
+                    script['stdout_name']: script['stdout'].encode(),
+                    script['stderr_name']: script['stderr'].encode(),
+                    script['result_name']: script['result'].encode(),
+                }, **self.args),
+        ))
+        self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
+            ANY, script['combined_path'], script['stdout_path'],
+            script['stderr_path'], script['timeout_seconds']))
+
+    def test_run_script_sets_env(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(scripts_dir=scripts_dir)
         mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        self.patch(maas_run_remote_scripts, 'install_dependencies')
-        scripts = self.make_scripts()
-        scripts[0]['parameters'] = {'storage': {
+
+        run_script(script, scripts_dir)
+
+        env = mock_popen.call_args[1]['env']
+        self.assertEquals(script['combined_path'], env['OUTPUT_COMBINED_PATH'])
+        self.assertEquals(script['stdout_path'], env['OUTPUT_STDOUT_PATH'])
+        self.assertEquals(script['stderr_path'], env['OUTPUT_STDERR_PATH'])
+        self.assertEquals(script['result_path'], env['RESULT_PATH'])
+        self.assertEquals(script['download_path'], env['DOWNLOAD_PATH'])
+        self.assertEquals(str(script['timeout_seconds']), env['RUNTIME'])
+        self.assertIn('PATH', env)
+
+    def test_run_script_only_sends_result_when_avail(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(scripts_dir=scripts_dir)
+        os.remove(script['result_path'])
+
+        run_script(script, scripts_dir)
+
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Finished %s: None' % script['msg_name'], exit_status=None,
+                files={
+                    script['combined_name']: script['combined'].encode(),
+                    script['stdout_name']: script['stdout'].encode(),
+                    script['stderr_name']: script['stderr'].encode(),
+                }, **self.args),
+        ))
+        self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
+            ANY, script['combined_path'], script['stdout_path'],
+            script['stderr_path'], script['timeout_seconds']))
+
+    def test_run_script_uses_timeout_from_parameter(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(scripts_dir=scripts_dir)
+        script['parameters'] = {
+            'runtime': {
+                'type': 'runtime',
+                'value': random.randint(0, 1000),
+            }
+        }
+
+        run_script(script, scripts_dir)
+
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Finished %s: None' % script['msg_name'], exit_status=None,
+                files={
+                    script['combined_name']: script['combined'].encode(),
+                    script['stdout_name']: script['stdout'].encode(),
+                    script['stderr_name']: script['stderr'].encode(),
+                    script['result_name']: script['result'].encode(),
+                }, **self.args),
+        ))
+        self.assertThat(self.mock_capture_script_output, MockCalledOnceWith(
+            ANY, script['combined_path'], script['stdout_path'],
+            script['stderr_path'], script['parameters']['runtime']['value']))
+
+    def test_run_script_errors_with_bad_param(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        script = make_script(scripts_dir=scripts_dir)
+        script['parameters'] = {'storage': {
             'type': 'storage',
             'argument_format': '{bad}',
         }}
-        self.make_script_output(scripts, scripts_dir, with_result=True)
 
-        self.assertEquals(
-            0, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+        self.assertFalse(run_script(script, scripts_dir))
 
-        args = {
-            'url': None, 'creds': None, 'status': 'WORKING',
-            'script_result_id': scripts[0]['script_result_id'],
-            'script_version_id': scripts[0]['script_version_id'],
-            'error': 'Starting %s [1/1]' % scripts[0]['name'],
-        }
-        self.assertThat(mock_signal, MockAnyCall(**args))
-        self.assertThat(mock_popen, MockNotCalled())
-        # This is a MagicMock
-        args['exit_status'] = 2
-        args['files'] = {
-            scripts[0]['name']: b'Unable to map parameters',
-            '%s.err' % scripts[0]['name']: b'Unable to map parameters',
-        }
-        args['error'] = 'Failed to execute %s [1/1]: 2' % scripts[0]['name']
-        self.assertThat(mock_signal, MockAnyCall(**args))
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
+                files={
+                    script['combined_name']: b'Unable to map parameters',
+                    script['stderr_name']: b'Unable to map parameters',
+                }, **self.args),
+        ))
 
-    def test_run_scripts_sends_result_when_available(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        mock_capture_script_output = self.patch(
-            maas_run_remote_scripts, 'capture_script_output')
-        self.patch(maas_run_remote_scripts, 'install_dependencies')
-        scripts = self.make_scripts()
-        self.make_script_output(scripts, scripts_dir, with_result=True)
-
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
-
-        args = {
-            'url': None, 'creds': None, 'status': 'WORKING',
-            'script_result_id': scripts[0]['script_result_id'],
-            'script_version_id': scripts[0]['script_version_id'],
-            'error': 'Starting %s [1/1]' % scripts[0]['name'],
-        }
-        self.assertThat(mock_signal, MockAnyCall(**args))
-        self.assertThat(mock_popen, MockCalledOnce())
-        self.assertThat(mock_capture_script_output, MockCalledOnce())
-        # This is a MagicMock
-        args['exit_status'] = ANY
-        args['files'] = {
-            scripts[0]['name']: scripts[0]['output'],
-            '%s.out' % scripts[0]['name']: scripts[0]['stdout'],
-            '%s.err' % scripts[0]['name']: scripts[0]['stderr'],
-            '%s.yaml' % scripts[0]['name']: scripts[0]['result'],
-        }
-        args['error'] = 'Finished %s [1/1]: 1' % scripts[0]['name']
-        self.assertThat(mock_signal, MockAnyCall(**args))
-
-    def test_run_scripts_sets_env_vars(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        self.patch(maas_run_remote_scripts, 'capture_script_output')
-        self.patch(maas_run_remote_scripts, 'install_dependencies')
-        scripts = self.make_scripts()
-        self.make_script_output(scripts, scripts_dir, with_result=True)
-
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
-
-        env = mock_popen.call_args[1]['env']
-        base = os.path.join(
-            scripts_dir, '%s.%s' % (
-                scripts[0]['name'], scripts[0]['script_result_id']),
-            scripts[0]['name'])
-        self.assertEquals(base, env['OUTPUT_COMBINED_PATH'])
-        self.assertEquals('%s.out' % base, env['OUTPUT_STDOUT_PATH'])
-        self.assertEquals('%s.err' % base, env['OUTPUT_STDERR_PATH'])
-        self.assertEquals('%s.yaml' % base, env['RESULT_PATH'])
-        self.assertEquals(
-            os.path.join(scripts_dir, 'downloads', scripts[0]['name']),
-            env['DOWNLOAD_PATH'])
-        self.assertIn('PATH', env)
-
-    def test_run_scripts_signals_failure(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        self.patch(maas_run_remote_scripts, 'Popen')
-        self.patch(maas_run_remote_scripts, 'capture_script_output')
-        self.patch(maas_run_remote_scripts, 'install_dependencies')
-        scripts = self.make_scripts()
-        self.make_script_output(scripts, scripts_dir)
-
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
-
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                None, None, 'FAILED', '1 scripts failed to run'))
-
-    def test_run_scripts_signals_failure_on_unexecutable_script(self):
+    def test_run_script_errors_bad_params_on_unexecutable_script(self):
         # Regression test for LP:1669246
         scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        mock_popen.side_effect = OSError(8, 'Exec format error')
-        self.patch(maas_run_remote_scripts, 'capture_script_output')
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
+        script = make_script(scripts_dir=scripts_dir)
+        self.mock_capture_script_output.side_effect = OSError(
+            8, 'Exec format error')
 
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+        self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                creds=None, url=None, status='WORKING', exit_status=8,
-                error='Failed to execute %s [1/1]: 8' % script['name'],
-                script_result_id=script['script_result_id'],
-                script_version_id=script['script_version_id'],
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Failed to execute %s: 8' % script['msg_name'], exit_status=8,
                 files={
-                    script['name']: b'[Errno 8] Exec format error',
-                    '%s.err' % script['name']: b'[Errno 8] Exec format error',
-                }))
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                None, None, 'FAILED', '1 scripts failed to run'))
+                    script['combined_name']: b'[Errno 8] Exec format error',
+                    script['stderr_name']: b'[Errno 8] Exec format error',
+                }, **self.args),
+        ))
 
-    def test_run_scripts_signals_failure_on_unexecutable_script_no_errno(self):
+    def test_run_script_errors_bad_params_on_unexecutable_script_no_errno(
+            self):
         # Regression test for LP:1669246
         scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        mock_popen.side_effect = OSError()
-        self.patch(maas_run_remote_scripts, 'capture_script_output')
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
+        script = make_script(scripts_dir=scripts_dir)
+        self.mock_capture_script_output.side_effect = OSError()
 
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+        self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                creds=None, url=None, status='WORKING', exit_status=2,
-                error='Failed to execute %s [1/1]: 2' % script['name'],
-                script_result_id=script['script_result_id'],
-                script_version_id=script['script_version_id'],
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
                 files={
-                    script['name']: b'Unable to execute script',
-                    '%s.err' % script['name']: b'Unable to execute script',
-                }))
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                None, None, 'FAILED', '1 scripts failed to run'))
+                    script['combined_name']: b'Unable to execute script',
+                    script['stderr_name']: b'Unable to execute script',
+                }, **self.args),
+        ))
 
-    def test_run_scripts_signals_failure_on_unexecutable_script_baderrno(self):
+    def test_run_script_errors_bad_params_on_unexecutable_script_baderrno(
+            self):
         # Regression test for LP:1669246
         scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
-        mock_popen.side_effect = OSError(0, 'Exec format error')
-        self.patch(maas_run_remote_scripts, 'capture_script_output')
-        scripts = self.make_scripts()
-        script = scripts[0]
-        self.make_script_output(scripts, scripts_dir)
+        script = make_script(scripts_dir=scripts_dir)
+        self.mock_capture_script_output.side_effect = OSError(
+            0, 'Exec format error')
 
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        # Returns one due to mock_run.returncode returning a MagicMock which is
-        # detected as a failed script run.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+        self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                creds=None, url=None, status='WORKING', exit_status=2,
-                error='Failed to execute %s [1/1]: 2' % script['name'],
-                script_result_id=script['script_result_id'],
-                script_version_id=script['script_version_id'],
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call('Starting %s' % script['msg_name'], **self.args),
+            call(
+                'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
                 files={
-                    script['name']: b'[Errno 0] Exec format error',
-                    '%s.err' % script['name']: b'[Errno 0] Exec format error',
-                }))
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                None, None, 'FAILED', '1 scripts failed to run'))
+                    script['combined_name']: b'[Errno 0] Exec format error',
+                    script['stderr_name']: b'[Errno 0] Exec format error',
+                }, **self.args),
+        ))
 
-    def test_run_scripts_signals_timeout(self):
+    def test_run_script_timed_out_script(self):
         scripts_dir = self.useFixture(TempDirectory()).path
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        self.patch(maas_run_remote_scripts, 'Popen')
-        scripts = self.make_scripts()
-        self.make_script_output(scripts, scripts_dir)
-        mock_cap = self.patch(maas_run_remote_scripts, 'capture_script_output')
-        mock_cap.side_effect = TimeoutExpired(
+        script = make_script(scripts_dir=scripts_dir)
+        self.mock_capture_script_output.side_effect = TimeoutExpired(
             [factory.make_name('arg') for _ in range(3)],
-            scripts[0]['timeout_seconds'])
-        self.patch(maas_run_remote_scripts, 'install_dependencies')
+            script['timeout_seconds'])
+        self.args.pop('status')
 
-        # Don't need to give the url or creds as we're not running the scripts
-        # and sending the result. The scripts_dir and out_dir are the same as
-        # in the test environment there isn't anything in the scripts_dir.
-        self.assertEquals(
-            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+        self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(
-                creds=None, url=None, status='TIMEDOUT',
-                error='Timeout(%s) expired on %s [1/1]' % (
-                    str(timedelta(seconds=scripts[0]['timeout_seconds'])),
-                    scripts[0]['name']),
-                script_result_id=scripts[0]['script_result_id'],
-                script_version_id=scripts[0]['script_version_id'],
+        self.assertThat(self.mock_output_and_send, MockCallsMatch(
+            call(
+                'Starting %s' % script['msg_name'], status='WORKING',
+                **self.args),
+            call(
+                'Timeout(%s) expired on %s' % (
+                    str(timedelta(seconds=script['timeout_seconds'])),
+                    script['msg_name']),
                 files={
-                    scripts[0]['name']: scripts[0]['output'],
-                    '%s.out' % scripts[0]['name']: scripts[0]['stdout'],
-                    '%s.err' % scripts[0]['name']: scripts[0]['stderr'],
-                }))
+                    script['combined_name']: script['combined'].encode(),
+                    script['stdout_name']: script['stdout'].encode(),
+                    script['stderr_name']: script['stderr'].encode(),
+                    script['result_name']: script['result'].encode(),
+                }, status='TIMEDOUT', **self.args),
+        ))
+
+
+class TestRunScripts(MAASTestCase):
+
+    def test_run_scripts(self):
+        mock_install_deps = self.patch(
+            maas_run_remote_scripts, 'install_dependencies')
+        mock_run_script = self.patch(maas_run_remote_scripts, 'run_script')
+        single_thread = make_scripts(instance=False, parallel=0)
+        instance_thread = [
+            make_scripts(parallel=1)
+            for _ in range(3)]
+        any_thread = make_scripts(instance=False, parallel=2)
+        scripts = copy.deepcopy(single_thread)
+        for instance_thread_group in instance_thread:
+            scripts += copy.deepcopy(instance_thread_group)
+        scripts += copy.deepcopy(any_thread)
+        url = factory.make_url()
+        creds = factory.make_name('creds')
+        scripts_dir = factory.make_name('scripts_dir')
+        out_dir = os.path.join(scripts_dir, 'out')
+
+        run_scripts(url, creds, scripts_dir, out_dir, scripts)
+
+        self.assertEquals(
+            len(single_thread) + len(instance_thread) + len(any_thread),
+            mock_install_deps.call_count)
+
+        for script in scripts:
+            self.assertThat(mock_run_script, MockAnyCall(
+                script=script, scripts_dir=scripts_dir,
+                send_result=True))
+        self.assertEquals(len(scripts), mock_run_script.call_count)
+
+    def test_run_scripts_adds_data(self):
+        scripts_dir = factory.make_name('scripts_dir')
+        out_dir = os.path.join(scripts_dir, 'out')
+        self.patch(maas_run_remote_scripts, 'install_dependencies')
+        self.patch(maas_run_remote_scripts, 'run_script')
+        url = factory.make_url()
+        creds = factory.make_name('creds')
+        script = make_script(scripts_dir=scripts_dir)
+        script.pop('result', None)
+        script.pop('combined', None)
+        script.pop('stderr', None)
+        script.pop('stdout', None)
+        script['args'] = {
+            'url': url,
+            'creds': creds,
+            'script_result_id': script['script_result_id'],
+            'script_version_id': script['script_version_id'],
+        }
+        scripts = [{
+            'name': script['name'],
+            'path': script['path'],
+            'script_result_id': script['script_result_id'],
+            'script_version_id': script['script_version_id'],
+            'timeout_seconds': script['timeout_seconds'],
+            'parallel': script['parallel'],
+        }]
+        run_scripts(url, creds, scripts_dir, out_dir, scripts)
+        scripts[0].pop('thread', None)
+        self.assertDictEqual(script, scripts[0])
+
+
+class TestRunScriptsFromMetadata(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_output_and_send = self.patch(
+            maas_run_remote_scripts, 'output_and_send')
+        self.mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        self.mock_run_scripts = self.patch(
+            maas_run_remote_scripts, 'run_scripts')
+        self.patch(maas_run_remote_scripts.sys.stdout, 'write')
+
+    def make_index_json(
+            self, scripts_dir, with_commissioning=True, with_testing=True,
+            commissioning_scripts=None, testing_scripts=None):
+        index_json = {}
+        if with_commissioning:
+            if commissioning_scripts is None:
+                index_json['commissioning_scripts'] = make_scripts()
+            else:
+                index_json['commissioning_scripts'] = commissioning_scripts
+        if with_testing:
+            if testing_scripts is None:
+                index_json['testing_scripts'] = make_scripts()
+            else:
+                index_json['testing_scripts'] = testing_scripts
+        with open(os.path.join(scripts_dir, 'index.json'), 'w') as f:
+            f.write(json.dumps({'1.0': index_json}))
+        return index_json
+
+    def test_run_scripts_from_metadata(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        self.mock_run_scripts.return_value = 0
+        index_json = self.make_index_json(scripts_dir)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
         self.assertThat(
-            mock_signal,
+            self.mock_run_scripts,
             MockAnyCall(
-                None, None, 'FAILED', '1 scripts failed to run'))
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts'], True))
+        self.assertThat(
+            self.mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['testing_scripts'], True))
+        self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
+        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
+            'All scripts successfully ran', True, None, None, 'OK'))
+
+    def test_run_scripts_from_metadata_doesnt_run_tests_on_commiss_fail(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        fail_count = random.randint(1, 100)
+        self.mock_run_scripts.return_value = fail_count
+        index_json = self.make_index_json(scripts_dir)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(
+            self.mock_run_scripts,
+            MockCalledOnceWith(
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts'], True))
+        self.assertThat(self.mock_signal, MockNotCalled())
+        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
+            '%s scripts failed to run' % fail_count, True, None, None,
+            'FAILED'))
+
+    def test_run_scripts_from_metadata_redownloads_after_commiss(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        self.mock_run_scripts.return_value = 0
+        testing_scripts = make_scripts()
+        testing_scripts[0]['parameters'] = {'storage': {'type': 'storage'}}
+        mock_download_and_extract_tar = self.patch(
+            maas_run_remote_scripts, 'download_and_extract_tar')
+        simple_dl_and_extract = lambda *args, **kwargs: self.make_index_json(
+            scripts_dir, with_commissioning=False,
+            testing_scripts=testing_scripts)
+        mock_download_and_extract_tar.side_effect = simple_dl_and_extract
+        index_json = self.make_index_json(
+            scripts_dir, testing_scripts=testing_scripts)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(
+            self.mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts'], True))
+        self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
+        self.assertThat(
+            mock_download_and_extract_tar,
+            MockCalledOnceWith('None/maas-scripts/', None, scripts_dir))
+        self.assertThat(
+            self.mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['testing_scripts'], True))
+        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
+            'All scripts successfully ran', True, None, None, 'OK'))
+
+    def test_run_scripts_from_metadata_only_redownloads_when_needed(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        self.mock_run_scripts.return_value = 0
+        mock_download_and_extract_tar = self.patch(
+            maas_run_remote_scripts, 'download_and_extract_tar')
+        index_json = self.make_index_json(scripts_dir)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(
+            self.mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts'], True))
+        self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
+        self.assertThat(mock_download_and_extract_tar, MockNotCalled())
+        self.assertThat(
+            self.mock_run_scripts,
+            MockAnyCall(
+                None, None, scripts_dir, None,
+                index_json['testing_scripts'], True))
+        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
+            'All scripts successfully ran', True, None, None, 'OK'))
+
+    def test_run_scripts_from_metadata_does_nothing_on_empty(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        self.make_index_json(scripts_dir, False, False)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
+            'All scripts successfully ran', True, None, None, 'OK'))
+
+
+class TestMaasRunRemoteScripts(MAASTestCase):
+
+    def test_download_and_extract_tar(self):
+        self.patch(maas_run_remote_scripts.sys.stdout, 'write')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        binary = BytesIO()
+        file_content = factory.make_bytes()
+        with tarfile.open(mode='w', fileobj=binary) as tar:
+            tarinfo = tarfile.TarInfo(name='test-file')
+            tarinfo.size = len(file_content)
+            tarinfo.mode = 0o755
+            tar.addfile(tarinfo, BytesIO(file_content))
+        mock_geturl = self.patch(maas_run_remote_scripts, 'geturl')
+        mock_geturl.return_value = binary.getvalue()
+
+        # geturl is mocked out so we don't need to give a url or creds.
+        download_and_extract_tar(None, None, scripts_dir)
+
+        written_file_content = open(
+            os.path.join(scripts_dir, 'test-file'), 'rb').read()
+        self.assertEquals(file_content, written_file_content)
 
     def test_heartbeat(self):
         mock_signal = self.patch(maas_run_remote_scripts, 'signal')
