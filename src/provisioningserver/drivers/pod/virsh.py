@@ -389,7 +389,9 @@ class VirshSSH(pexpect.spawn):
         pools = self.get_pod_pool_size_map("Capacity")
         if len(pools) == 0:
             maaslog.error("Failed to get pod local storage")
-            return None
+            raise PodInvalidResources(
+                "Pod does not have a storage pool defined. "
+                "Please add a storage pool.")
         return sum(pools.values())
 
     def get_pod_available_local_storage(self):
@@ -633,10 +635,12 @@ class VirshSSH(pexpect.spawn):
             return 'maas'
         elif 'default' in networks:
             return 'default'
-        elif len(networks) > 0:
-            return networks[0]
-        else:
-            return None
+        elif not networks:
+            raise PodInvalidResources(
+                "Pod does not have a network defined. "
+                "Please add a 'default' or 'maas' network.")
+
+        return networks[0]
 
     def attach_interface(self, domain, network):
         """Attach new network interface on `domain` to `network`."""

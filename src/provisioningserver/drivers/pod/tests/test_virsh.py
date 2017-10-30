@@ -537,6 +537,12 @@ class TestVirshSSH(MAASTestCase):
         expected = conn.get_pod_local_storage()
         self.assertEqual(int(452.96 * 3 * 2**30), expected)
 
+    def test_get_pod_local_storage_no_pool(self):
+        conn = self.configure_virshssh(SAMPLE_POOLINFO)
+        pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
+        pools_mock.return_value = []
+        self.assertRaises(PodInvalidResources, conn.get_pod_local_storage)
+
     def test_get_pod_available_local_storage(self):
         conn = self.configure_virshssh(SAMPLE_POOLINFO)
         pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
@@ -880,10 +886,10 @@ class TestVirshSSH(MAASTestCase):
             'first', 'second']
         self.assertEquals('first', conn.get_best_network())
 
-    def test_get_best_network_returns_None(self):
+    def test_get_best_network_no_network(self):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "get_network_list").return_value = []
-        self.assertIsNone(conn.get_best_network())
+        self.assertRaises(PodInvalidResources, conn.get_best_network)
 
     def test_attach_interface(self):
         conn = self.configure_virshssh('')
