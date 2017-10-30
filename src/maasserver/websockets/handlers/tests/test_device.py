@@ -235,10 +235,11 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 interface=interface, subnet=subnet)
         return device
 
-    def make_devices(self, number, owner=None):
+    def make_devices(self, number, owner=None, ip_assignment=None):
         """Create `number` of new devices."""
         for counter in range(number):
-            self.make_device_with_ip_address(owner=owner)
+            self.make_device_with_ip_address(
+                owner=owner, ip_assignment=ip_assignment)
 
     @transactional
     def test_get(self):
@@ -287,10 +288,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
     def test_list_num_queries_is_the_expected_number(self):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
-        self.make_devices(10, owner=owner)
+        self.make_devices(
+            10, owner=owner, ip_assignment=DEVICE_IP_ASSIGNMENT_TYPE.STATIC)
         query_10_count, _ = count_queries(handler.list, {})
         self.make_devices(10, owner=owner)
-        query_20_count, _ = count_queries(handler.list, {})
 
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.
@@ -305,9 +306,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
     def test_list_num_queries_is_independent_of_num_devices(self):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
-        self.make_devices(10, owner=owner)
+        ip_assignment = factory.pick_enum(DEVICE_IP_ASSIGNMENT_TYPE)
+        self.make_devices(10, owner=owner, ip_assignment=ip_assignment)
         query_10_count, _ = count_queries(handler.list, {})
-        self.make_devices(10, owner=owner)
+        self.make_devices(10, owner=owner, ip_assignment=ip_assignment)
         query_20_count, _ = count_queries(handler.list, {})
 
         # This check is to notify the developer that a change was made that

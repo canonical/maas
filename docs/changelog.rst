@@ -42,7 +42,7 @@ LP: #1722406    [2.3] API allows "deploying" a machine that's already deployed
 
 LP: #1724677    [2.x] [critical] TFTP back-end failed right after node repeatedly requests same file via tftp
 
-LP: #1726474    [2.x] psycopg2.IntegrityError: update or delete on table "maasserver_node" violates foreign key constraint 
+LP: #1726474    [2.x] psycopg2.IntegrityError: update or delete on table "maasserver_node" violates foreign key constraint
 
 LP: #1727073    [2.3] rackd — 12% connected to region controllers.
 
