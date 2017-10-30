@@ -21,6 +21,7 @@ from maasserver.enum import (
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.partition import (
+    get_max_mbr_partition_size,
     Partition,
     PARTITION_ALIGNMENT_SIZE,
 )
@@ -135,8 +136,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         if size is None:
             size = self.get_available_size()
             if self.table_type == PARTITION_TABLE_TYPE.MBR:
-                size = min(size, Partition._get_mbr_max_for_block_device(
-                    self.block_device))
+                size = min(size, get_max_mbr_partition_size())
         size = round_size_to_nearest_block(
             size, PARTITION_ALIGNMENT_SIZE, False)
         return Partition.objects.create(

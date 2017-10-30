@@ -40,7 +40,6 @@ __all__ = [
     "list_all_usable_architectures",
     "MAASForm",
     "MachineForm",
-    "NetworkForm",
     "NetworksListingForm",
     "NewUserCreationForm",
     "NetworkDiscoveryForm",
@@ -2556,13 +2555,13 @@ class AddPartitionForm(Form):
         self.fields['size'] = BytesField(
             min_value=MIN_PARTITION_SIZE,
             max_value=self.block_device.size,
-            required=True)
+            required=False)
 
     def save(self):
         partition_table, _ = PartitionTable.objects.get_or_create(
             block_device=self.block_device)
         return partition_table.add_partition(
-            size=self.cleaned_data['size'],
+            size=self.cleaned_data.get('size'),
             uuid=self.cleaned_data.get('uuid'),
             bootable=self.cleaned_data.get('bootable'))
 

@@ -98,7 +98,8 @@ class PartitionsHandler(OperationsHandler):
     def create(self, request, system_id, device_id):
         """Create a partition on the block device.
 
-        :param size: The size of the partition.
+        :param size: The size of the partition. If not specified, all
+            available space will be used.
         :param uuid: UUID for the partition. Only used if the partition table
             type for the block device is GPT.
         :param bootable: If the partition should be marked bootable.

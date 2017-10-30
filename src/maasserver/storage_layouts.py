@@ -23,8 +23,8 @@ from maasserver.fields_storage import (
 )
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.partition import (
+    get_max_mbr_partition_size,
     MIN_PARTITION_SIZE,
-    Partition,
 )
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -207,27 +207,20 @@ class StorageLayoutBase(Form):
         root_device = self.get_root_device()
         root_size = self.get_root_size()
         if root_device is None or root_device == self.boot_disk:
-            # Fix the maximum root_size for MBR.
-            max_mbr_size = Partition._get_mbr_max_for_block_device(
-                self.boot_disk)
-            if (boot_partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
-                    root_size is not None and root_size > max_mbr_size):
-                root_size = max_mbr_size
-            root_partition = boot_partition_table.add_partition(
-                size=root_size)
-            return root_partition, boot_partition_table
+            partition_table = boot_partition_table
+            root_device = self.boot_disk
         else:
-            root_partition_table = PartitionTable.objects.create(
+            partition_table = PartitionTable.objects.create(
                 block_device=root_device)
-            # Fix the maximum root_size for MBR.
-            max_mbr_size = Partition._get_mbr_max_for_block_device(
-                root_device)
-            if (root_partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
-                    root_size is not None and root_size > max_mbr_size):
-                root_size = max_mbr_size
-            root_partition = root_partition_table.add_partition(
-                size=root_size)
-            return root_partition, root_partition_table
+
+        # Fix the maximum root_size for MBR.
+        max_mbr_size = get_max_mbr_partition_size()
+        if (partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
+                root_size is not None and root_size > max_mbr_size):
+            root_size = max_mbr_size
+        root_partition = partition_table.add_partition(
+            size=root_size)
+        return root_partition, boot_partition_table
 
     def configure(self, allow_fallback=True):
         """Configure the storage for the node."""

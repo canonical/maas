@@ -26,12 +26,6 @@ from maasserver.utils.orm import (
 
 class TestAddPartitionForm(MAASServerTestCase):
 
-    def test_requires_fields(self):
-        form = AddPartitionForm(
-            block_device=factory.make_BlockDevice(), data={})
-        self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(['size'], form.errors.keys())
-
     def test_is_not_valid_if_size_less_than_min_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         data = {
@@ -113,6 +107,19 @@ class TestAddPartitionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         partition = form.save()
         self.assertTrue(partition.bootable, "Partition should be bootable.")
+
+    def test_max_possible_size_if_not_specified(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        first_partition = factory.make_Partition(
+            partition_table=partition_table, size=10 * 1024 * 1024)
+        data = {'uuid': str(uuid.uuid4())}
+        form = AddPartitionForm(block_device, data=data)
+        self.assertTrue(form.is_valid())
+        partition = form.save()
+        self.assertEqual(
+            partition.size, partition_table.get_size() - first_partition.size)
 
 
 class TestFormatPartitionForm(MAASServerTestCase):
