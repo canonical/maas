@@ -104,7 +104,10 @@ def run_smartctl_selftest(storage, test):
                 if m is not None and int(m.group('status')) == 0:
                     break
                 else:
-                    sleep(1)
+                    # This is the time the test waits before checking for
+                    # completion. It needs not be too short otherwise it
+                    # can cause tests to get stuck
+                    sleep(30)
 
     return True
 
