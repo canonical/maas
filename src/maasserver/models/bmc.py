@@ -9,7 +9,6 @@ __all__ = [
 
 from functools import partial
 import re
-import string
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -433,6 +432,8 @@ class Pod(BMC):
 
     objects = PodManager()
 
+    _machine_name_re = re.compile(r'[a-z][a-z0-9-]+$', flags=re.I)
+
     def __init__(self, *args, **kwargs):
         super(Pod, self).__init__(
             bmc_type=BMC_TYPE.POD, *args, **kwargs)
@@ -562,13 +563,11 @@ class Pod(BMC):
 
         # Check to see if discovered machine's hostname is legal and unique.
         if discovered_machine.hostname:
-            for char in discovered_machine.hostname:
-                if char not in (string.ascii_letters + string.digits + '-'):
-                    discovered_machine.hostname = None
-                    break
-        if discovered_machine.hostname:
             if Node.objects.filter(
                     hostname=discovered_machine.hostname).exists():
+                discovered_machine.hostname = None
+            elif not self._machine_name_re.match(
+                    discovered_machine.hostname):
                 discovered_machine.hostname = None
 
         # Create the machine.

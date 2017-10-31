@@ -751,6 +751,19 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 cpu_speed=Equals(300))))
         self.assertThat(mock_commissioning, MockCalledOnce())
 
+    def test__compose_duplicated_hostname(self):
+        factory.make_Node(hostname='test')
+
+        request = MagicMock()
+        pod = make_pod_with_hints()
+
+        form = ComposeMachineForm(
+            data={'hostname': 'test'}, request=request, pod=pod)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {'hostname': ['Node with hostname "test" already exists']},
+            form.errors)
+
     def test__compose_without_commissioning(self):
         request = MagicMock()
         pod = make_pod_with_hints()

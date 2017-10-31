@@ -38,6 +38,7 @@ from maasserver.models import (
     BMCRoutableRackControllerRelationship,
     Domain,
     Machine,
+    Node,
     Pod,
     RackController,
     Zone,
@@ -306,7 +307,14 @@ class ComposeMachineForm(forms.Form):
         else:
             self.fields['cpu_speed'] = IntegerField(
                 min_value=300, required=False)
-        self.fields['hostname'] = CharField(required=False)
+
+        def duplicated_hostname(hostname):
+            if Node.objects.filter(hostname=hostname).exists():
+                raise ValidationError(
+                    'Node with hostname "%s" already exists' % hostname)
+
+        self.fields['hostname'] = CharField(
+            required=False, validators=[duplicated_hostname])
         self.initial['hostname'] = make_unique_hostname()
         self.fields['domain'] = ModelChoiceField(
             required=False, queryset=Domain.objects.all())
