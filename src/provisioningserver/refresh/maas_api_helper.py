@@ -307,10 +307,9 @@ def capture_script_output(
                     _select_script_output(selector, combined, 0.1)
                     if timeout is not None and time.monotonic() > timeout:
                         break
-                else:
-                    # Process has finished or has closed stdout and stderr.
-                    # Process anything still sitting in the latter's buffers.
-                    _select_script_output(selector, combined, 0.0)
+                # Process has finished or has closed stdout and stderr.
+                # Process anything still sitting in the latter's buffers.
+                _select_script_output(selector, combined, 0.0)
 
     now = time.monotonic()
     # Wait for the process to finish.
