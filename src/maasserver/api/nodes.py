@@ -374,6 +374,18 @@ class NodeHandler(OperationsHandler):
     def storage_test_status_name(handler, node):
         return get_script_status_name(handler.storage_test_status(node))
 
+    @classmethod
+    def other_test_status(handler, node):
+        get_cached_script_results(node)
+        return get_status_from_qs([
+            script_result for script_result
+            in node._cached_testing_script_results
+            if script_result.script.hardware_type == HARDWARE_TYPE.NODE])
+
+    @classmethod
+    def other_test_status_name(handler, node):
+        return get_script_status_name(handler.other_test_status(node))
+
     def read(self, request, system_id):
         """Read a specific Node.
 

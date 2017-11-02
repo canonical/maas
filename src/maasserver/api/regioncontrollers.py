@@ -51,6 +51,8 @@ DISPLAYED_REGION_CONTROLLER_FIELDS = (
     'memory_test_status_name',
     'storage_test_status',
     'storage_test_status_name',
+    'other_test_status',
+    'other_test_status_name',
 )
 
 

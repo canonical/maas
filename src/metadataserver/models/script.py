@@ -59,7 +59,7 @@ def translate_hardware_type(hardware_type):
             if ret == hardware_type_id:
                 return ret
         raise ValidationError('Invalid hardware type numeric value.')
-    elif hardware_type in ['node', 'machine', 'controller']:
+    elif hardware_type in ['node', 'machine', 'controller', 'other']:
         return HARDWARE_TYPE.NODE
     elif hardware_type in ['cpu', 'processor']:
         return HARDWARE_TYPE.CPU

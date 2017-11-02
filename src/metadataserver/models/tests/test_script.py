@@ -130,6 +130,10 @@ class TestTranslateHardwareType(MAASServerTestCase):
             'value': 'controller',
             'return_value': HARDWARE_TYPE.NODE,
         }),
+        ('other', {
+            'value': 'other',
+            'return_value': HARDWARE_TYPE.NODE,
+        }),
         ('cpu', {
             'value': 'cpu',
             'return_value': HARDWARE_TYPE.CPU,

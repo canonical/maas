@@ -156,6 +156,8 @@ DISPLAYED_MACHINE_FIELDS = (
     'memory_test_status_name',
     'storage_test_status',
     'storage_test_status_name',
+    'other_test_status',
+    'other_test_status_name',
 )
 
 # Limited set of machine fields exposed on the anonymous API.

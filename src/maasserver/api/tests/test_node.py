@@ -214,6 +214,10 @@ class TestNodeAPI(APITestCase.ForUser):
             script=factory.make_Script(
                 script_type=SCRIPT_TYPE.TESTING,
                 hardware_type=HARDWARE_TYPE.STORAGE))
+        node_script_result = make_script_result(
+            script=factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING,
+                hardware_type=HARDWARE_TYPE.NODE))
         testing_script_results = (
             machine.get_latest_testing_script_results.exclude(
                 status=SCRIPT_STATUS.ABORTED))
@@ -251,6 +255,12 @@ class TestNodeAPI(APITestCase.ForUser):
         self.assertEquals(
             status_name(storage_script_result),
             parsed_result['storage_test_status_name'])
+        self.assertEquals(
+            status(node_script_result),
+            parsed_result['other_test_status'])
+        self.assertEquals(
+            status_name(node_script_result),
+            parsed_result['other_test_status_name'])
 
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.

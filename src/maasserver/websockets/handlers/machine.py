@@ -240,6 +240,13 @@ class MachineHandler(NodeHandler):
             storage_script_results)
         data["storage_test_status_tooltip"] = storage_tooltip
 
+        node_script_results = self._script_results.get(obj.id, {}).get(
+            HARDWARE_TYPE.NODE, [])
+        data["other_test_status"] = get_status_from_qs(node_script_results)
+        other_tooltip = self.dehydrate_hardware_status_tooltip(
+            node_script_results)
+        data["other_test_status_tooltip"] = other_tooltip
+
         if obj.status in {NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING}:
             # Create a list of all results from all types.
             script_results = []

@@ -346,6 +346,14 @@ class TestMachineHandler(MAASServerTestCase):
             storage_script_results)
         data["storage_test_status_tooltip"] = storage_tooltip
 
+        node_script_results = handler._script_results.get(
+            node.id, {}).get(HARDWARE_TYPE.NODE, [])
+        data["other_test_status"] = get_status_from_qs(
+            node_script_results)
+        node_tooltip = handler.dehydrate_hardware_status_tooltip(
+            node_script_results)
+        data["other_test_status_tooltip"] = node_tooltip
+
         # Clear cache
         handler._script_results = {}
 

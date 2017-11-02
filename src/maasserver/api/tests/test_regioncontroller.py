@@ -93,5 +93,7 @@ class TestRegionControllersAPI(APITestCase.ForUser):
                 'memory_test_status_name',
                 'storage_test_status',
                 'storage_test_status_name',
+                'other_test_status',
+                'other_test_status_name',
             ],
             list(parsed_result[0]))
