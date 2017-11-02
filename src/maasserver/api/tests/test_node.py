@@ -687,6 +687,17 @@ class TestPowerMixin(APITestCase.ForUser):
         response = self.client.post(self.get_node_uri(node), {'op': 'test'})
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
+    def test_POST_override_failed_testing(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=factory.make_User(),
+            osystem='')
+        self.become_admin()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'override_failed_testing'})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.READY, node.status)
+
     def test_abort_fails_for_unsupported_operation(self):
         status = factory.pick_choice(
             NODE_STATUS_CHOICES, but_not=[

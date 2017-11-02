@@ -498,6 +498,20 @@ class MarkFixed(NodeAction):
             return not script_failures.exists()
 
 
+class OverrideFailedTesting(NodeAction):
+    """Override failed tests and reset node into a usable state."""
+    name = "override-failed-testing"
+    display = "Override failed testing"
+    display_sentence = "Override failed testing"
+    actionable_statuses = (NODE_STATUS.FAILED_TESTING, )
+    permission = NODE_PERMISSION.VIEW
+    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+
+    def execute(self):
+        """See `NodeAction.execute`."""
+        self.node.override_failed_testing(self.user, "via web interface")
+
+
 class ImportImages(NodeAction):
     """Import images on a rack or region and rack controller."""
     name = "import-images"
@@ -586,6 +600,7 @@ ACTION_CLASSES = (
     ExitRescueMode,
     MarkBroken,
     MarkFixed,
+    OverrideFailedTesting,
     SetZone,
     Delete,
     ImportImages,

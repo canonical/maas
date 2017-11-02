@@ -3526,6 +3526,52 @@ class TestNode(MAASServerTestCase):
         node.mark_fixed(factory.make_User())
         self.assertIsNone(reload_object(node).current_installation_script_set)
 
+    def test_override_failed_testing_logs_user_request(self):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner)
+        register_event = self.patch(node, '_register_request_event')
+        node.override_failed_testing(owner)
+        self.assertThat(register_event, MockCalledOnceWith(
+            owner, EVENT_TYPES.REQUEST_NODE_OVERRIDE_FAILED_TESTING,
+            action='ignore failed tests', comment=None))
+
+    def test_override_failed_testing_updates_error_description(self):
+        owner = factory.make_User()
+        description = factory.make_name('error-description')
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner,
+            error_description=description)
+        node.override_failed_testing(owner)
+        self.assertEqual('', reload_object(node).error_description)
+
+    def test_override_failed_testing_fails_if_node_isnt_broken(self):
+        owner = factory.make_User()
+        status = factory.pick_choice(
+            NODE_STATUS_CHOICES, but_not=[NODE_STATUS.FAILED_TESTING])
+        node = factory.make_Node(status=status, owner=owner)
+        self.assertRaises(
+            NodeStateViolation, node.override_failed_testing, owner)
+
+    def test_override_failed_testing_sets_status_to_ready(self):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner, osystem='')
+        node.override_failed_testing(owner)
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.assertEqual('', node.osystem)
+
+    def test_override_failed_testing_sets_status_to_deployed(self):
+        owner = factory.make_User()
+        osystem = factory.make_name('osystem')
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner, osystem=osystem)
+        node.override_failed_testing(owner)
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEqual(osystem, node.osystem)
+
     def test_update_power_state(self):
         node = factory.make_Node()
         state = factory.pick_enum(POWER_STATE)

@@ -156,6 +156,9 @@
                         <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
                         </span>
+                        <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $}
+                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
                         <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
                         </span>

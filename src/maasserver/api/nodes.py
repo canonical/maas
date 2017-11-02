@@ -782,6 +782,23 @@ class PowerMixin:
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
+    def override_failed_testing(self, request, system_id):
+        """Ignore failed tests and put node back into a usable state.
+
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to ignore tests for
+        the node.
+        """
+        comment = get_optional_param(request.POST, 'comment')
+        node = self.model.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
+        node.override_failed_testing(request.user, comment)
+        return node
+
+    @operation(idempotent=False)
     def abort(self, request, system_id):
         """Abort a node's current operation.
 

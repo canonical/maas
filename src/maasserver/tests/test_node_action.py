@@ -41,6 +41,7 @@ from maasserver.node_action import (
     MarkBroken,
     MarkFixed,
     NodeAction,
+    OverrideFailedTesting,
     PowerOff,
     PowerOn,
     Release,
@@ -987,6 +988,38 @@ class TestMarkFixedAction(MAASServerTestCase):
         actions = compile_node_actions(
             node, factory.make_admin(), classes=[MarkFixed])
         self.assertEqual({}, actions)
+
+
+class TestOverrideFailedTesting(MAASServerTestCase):
+
+    def test_ignore_tests_sets_status_to_ready(self):
+        owner = factory.make_User()
+        description = factory.make_name('error-description')
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner,
+            error_description=description, osystem='')
+        action = OverrideFailedTesting(node, owner)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.assertEqual('', node.osystem)
+        self.assertEqual('', node.error_description)
+
+    def test_ignore_tests_sets_status_to_deployed(self):
+        owner = factory.make_User()
+        osystem = factory.make_name('osystem')
+        description = factory.make_name('error-description')
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_TESTING, owner=owner,
+            error_description=description, osystem=osystem)
+        action = OverrideFailedTesting(node, owner)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEqual(osystem, node.osystem)
+        self.assertEqual('', node.error_description)
 
 
 class TestImportImagesAction(MAASServerTestCase):

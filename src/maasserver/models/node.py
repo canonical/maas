@@ -2979,6 +2979,30 @@ class Node(CleanSave, TimestampedModel):
         self.current_installation_script_set = None
         self.save()
 
+    def override_failed_testing(self, user, comment=None):
+        """Reset a node with failed tests into a working state."""
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_OVERRIDE_FAILED_TESTING,
+            action='ignore failed tests', comment=comment)
+        if self.status != NODE_STATUS.FAILED_TESTING:
+            raise NodeStateViolation(
+                "Unable to override node status. Node is not in "
+                "'Failed testing' status.")
+        if self.osystem == '':
+            self.status = NODE_STATUS.READY
+            maaslog.info(
+                "%s: Machine status 'Failed testing' overridden by user %s. "
+                "Status transition from FAILED_TESTING to READY." % (
+                    self.hostname, user))
+        else:
+            self.status = NODE_STATUS.DEPLOYED
+            maaslog.info(
+                "%s: Machine status 'Failed testing' overridden by user %s. "
+                "Status transition from FAILED_TESTING to DEPLOYED." % (
+                    self.hostname, user))
+        self.error_description = ''
+        self.save()
+
     @transactional
     def update_power_state(self, power_state):
         """Update a node's power state """
