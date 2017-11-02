@@ -333,6 +333,7 @@ def select_c_utf8_locale(environ=os.environ):
     environ.update({
         'LC_ALL': 'C.UTF-8',
         'LANG': 'C.UTF-8',
+        'LANGUAGE': 'C.UTF-8',
     })
     return environ
 
@@ -357,5 +358,6 @@ def select_c_utf8_bytes_locale(environ=os.environb):
     environ.update({
         b'LC_ALL': b'C.UTF-8',
         b'LANG': b'C.UTF-8',
+        b'LANGUAGE': b'C.UTF-8',
     })
     return environ

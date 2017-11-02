@@ -328,6 +328,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
             select_c_utf8_locale({}),
             Equals({
                 "LANG": "C.UTF-8",
+                "LANGUAGE": "C.UTF-8",
                 "LC_ALL": "C.UTF-8",
             }),
         )
@@ -339,6 +340,19 @@ class TestSelectCUTF8Locale(MAASTestCase):
             }),
             Equals({
                 "LANG": "C.UTF-8",
+                "LANGUAGE": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+            }),
+        )
+
+    def test__overwrites_LANGUAGE(self):
+        self.assertThat(
+            select_c_utf8_locale({
+                "LANGUAGE": factory.make_name("LANGUAGE"),
+            }),
+            Equals({
+                "LANG": "C.UTF-8",
+                "LANGUAGE": "C.UTF-8",
                 "LC_ALL": "C.UTF-8",
             }),
         )
@@ -351,6 +365,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
             }),
             Equals({
                 "LANG": "C.UTF-8",
+                "LANGUAGE": "C.UTF-8",
                 "LC_ALL": "C.UTF-8",
             }),
         )
@@ -361,7 +376,8 @@ class TestSelectCUTF8Locale(MAASTestCase):
             for _ in range(5)
         }
         expected = basis.copy()
-        expected["LANG"] = expected["LC_ALL"] = "C.UTF-8"
+        expected["LANG"] = expected["LC_ALL"] = expected["LANGUAGE"] = (
+            "C.UTF-8")
         observed = select_c_utf8_locale(basis)
         self.assertThat(observed, Equals(expected))
 
@@ -383,6 +399,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
             select_c_utf8_bytes_locale({}),
             Equals({
                 b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
                 b"LC_ALL": b"C.UTF-8",
             }),
         )
@@ -394,6 +411,19 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
             }),
             Equals({
                 b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            }),
+        )
+
+    def test__overwrites_LANGUAGE(self):
+        self.assertThat(
+            select_c_utf8_bytes_locale({
+                b"LANGUAGE": factory.make_name("LANGUAGE").encode("ascii"),
+            }),
+            Equals({
+                b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
                 b"LC_ALL": b"C.UTF-8",
             }),
         )
@@ -406,6 +436,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
             }),
             Equals({
                 b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
                 b"LC_ALL": b"C.UTF-8",
             }),
         )
@@ -417,7 +448,8 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
             for _ in range(5)
         }
         expected = basis.copy()
-        expected[b"LANG"] = expected[b"LC_ALL"] = b"C.UTF-8"
+        expected[b"LANG"] = expected[b"LC_ALL"] = expected[b"LANGUAGE"] = (
+            b"C.UTF-8")
         observed = select_c_utf8_bytes_locale(basis)
         self.assertThat(observed, Equals(expected))
 
