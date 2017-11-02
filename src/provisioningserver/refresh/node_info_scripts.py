@@ -129,11 +129,10 @@ CPUINFO_SCRIPT = dedent("""\
 
 SERIAL_PORTS_SCRIPT = dedent("""\
     #!/bin/bash
-    # Do not fail commissioning if this fails.
-    set +e
     find /sys/class/tty/ ! -type d -print0 2> /dev/null \
         | xargs -0 readlink -f \
         | sort -u
+    # Do not fail commissioning if this fails.
     exit 0
     """)
 
@@ -150,8 +149,6 @@ SRIOV_SCRIPT = dedent("""\
 
 SUPPORT_SCRIPT = dedent("""\
     #!/bin/bash
-    # Do not fail commissioning if this fails.
-    set +e
     echo "-----BEGIN KERNEL INFO-----"
     uname -a
     echo "-----END KERNEL INFO-----"
@@ -210,6 +207,7 @@ SUPPORT_SCRIPT = dedent("""\
     fi
     # The remainder of this script only runs as root (during commissioning).
     if [ "$(id -u)" != "0" ]; then
+        # Do not fail commissioning if this fails.
         exit 0
     fi
     if [ -x "$(which lsblk)" ]; then
@@ -418,17 +416,17 @@ LIST_MODALIASES_SCRIPT = dedent("""\
 
 
 GET_FRUID_DATA_SCRIPT = dedent("""\
-    #!/bin/bash
-    # Do not fail commissioning if this fails.
-    set +e
+    #!/bin/bash -x
     # Wait for interfaces to settle and get their IPs after the DHCP job.
     sleep 5
     for ifname in $(ls /sys/class/net); do
         if [ "$ifname" != "lo" ]; then
-            curl --connect-timeout 1 -s -f \
+            curl --max-time 1 -s -f \
                 "http://fe80::1%$ifname:8080/api/sys/mb/fruid"
         fi
     done
+    # Do not fail commissioning if this fails.
+    exit 0
     """)
 
 
@@ -663,7 +661,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
     (GET_FRUID_DATA_OUTPUT_NAME, {
         'content': GET_FRUID_DATA_SCRIPT.encode('ascii'),
         'hook': null_hook,
-        'timeout': timedelta(seconds=10),
+        'timeout': timedelta(minutes=1),
         'run_on_controller': False,
     }),
     (BLOCK_DEVICES_OUTPUT_NAME, {
