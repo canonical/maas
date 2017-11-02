@@ -1,7 +1,7 @@
 <table>
     <thead>
         <tr>
-            <th class="u-display--block-mobile" aria-label="Select all" data-ng-if="!hideCheckboxes">
+            <th class="u-display--block-mobile tooltip tooltip-top" aria-label="Select all" data-ng-if="!hideCheckboxes">
                 <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
                 <label class="checkbox-label" for="check-all"></label>
             </th>
@@ -55,11 +55,11 @@
                 <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
             <td class="powerstate u-upper-case--first" aria-label="Power state">
-                <span title="{$ node.power_state $}" data-ng-if="node.power_state != 'unknown'" class="icon icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}
+                <span data-ng-if="node.power_state != 'unknown'" class="icon icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}
             </td>
             <td class="table-col--3 u-display--desktop">
                 <i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-display--desktop"></i>
-                <i data-ng-if="!showSpinner(node) && node.testing_status !== 2" data-maas-script-status="script-status" data-script-status="node.testing_status" aria-label="{$ node.testing_status_tooltip $}"></i>
+                <i data-ng-if="!showSpinner(node) && node.testing_status !== 2" data-maas-script-status="script-status" data-script-status="node.testing_status" aria-label="{$ node.testing_status_tooltip $}" class="tooltip tooltip--left"></i>
 	    </td>
             <td class="status u-text--truncate" aria-label="{$ node.status_tooltip $}">{$ getStatusText(node) $} <span class="u-display--mobile">
 		<i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i>
@@ -67,7 +67,7 @@
 	    </span></td>
             <td class="table-col--10" aria-label="Owner">{$ node.owner $}</td>
             <td class="u-align--right u-display--desktop" aria-label="CPU">
-                <span class="tooltip" data-maas-script-status="script-status" data-script-status="node.cpu_test_status" aria-label="{$ node.cpu_test_status_tooltip $}" data-ng-if="node.cpu_test_status !== 2"></span>
+                <span class="tooltip tooltip--left" data-maas-script-status="script-status" data-script-status="node.cpu_test_status" aria-label="{$ node.cpu_test_status_tooltip $}" data-ng-if="node.cpu_test_status !== 2"></span>
                 {$ node.cpu_count $}
             </td>
             <td class="u-align--right u-display--desktop" aria-label="Memory">
