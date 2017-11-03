@@ -26,9 +26,13 @@ from maasserver.node_status import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous
 from twisted.application.internet import TimerService
+
+
+maaslog = get_maas_logger("node")
 
 
 def mark_nodes_failed_after_expiring():
@@ -42,12 +46,16 @@ def mark_nodes_failed_after_expiring():
         status_expires__isnull=False,
         status_expires__lte=current_db_time)
     for node in expired_nodes:
-        comment = "Node operation '%s' timed out after %s minutes." % (
+        maaslog.info("%s: Operation '%s' timed out after %s minutes." % (
+            node.hostname,
             NODE_STATUS_CHOICES_DICT[node.status],
             NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
-            )
+            ))
         node.mark_failed(
-            comment=comment, script_result_status=SCRIPT_STATUS.ABORTED)
+            comment="Node operation '%s' timed out after %s minutes." % (
+                NODE_STATUS_CHOICES_DICT[node.status],
+                NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
+            ), script_result_status=SCRIPT_STATUS.ABORTED)
 
 
 def mark_nodes_failed_after_missing_script_timeout():
@@ -60,6 +68,9 @@ def mark_nodes_failed_after_missing_script_timeout():
     now = datetime.now()
     # maas-run-remote-scripts sends a heartbeat every two minutes. We allow
     # for a node to miss up to five heartbeats to account for network blips.
+    # XXX ltrager 2017-11-03 - The timeout should be stored in an enum or a
+    # user configurable variable. If this is changed the log messages below
+    # should also be updated.
     heartbeat_expired = now - timedelta(minutes=(2 * 5))
     # Get the list of nodes currently running testing. status_expires is used
     # while the node is booting. Once MAAS receives the signal that testing
@@ -75,15 +86,16 @@ def mark_nodes_failed_after_missing_script_timeout():
             script_set = node.current_testing_script_set
         if (script_set.last_ping is not None and
                 script_set.last_ping < heartbeat_expired):
+            maaslog.info(
+                '%s: Has not been heard from for the last 10 minutes' %
+                node.hostname)
             node.mark_failed(
-                comment='Node has missed the last 5 heartbeats',
-                script_result_status=SCRIPT_STATUS.TIMEDOUT,
-            )
+                comment='Node has not been heard from for the last 10 minutes',
+                script_result_status=SCRIPT_STATUS.TIMEDOUT)
             if not node.enable_ssh:
-                node.stop(
-                    comment=(
-                        'Node stopped due to missing the last 5 heartbeats'),
-                )
+                maaslog.info(
+                    '%s: Stopped because SSH is disabled' % node.hostname)
+                node.stop(comment='Node stopped because SSH is disabled')
             continue
 
         # Check for scripts which have gone past their timeout.
@@ -112,16 +124,16 @@ def mark_nodes_failed_after_missing_script_timeout():
             if script_expires < now:
                 script_result.status = SCRIPT_STATUS.TIMEDOUT
                 script_result.save(update_fields=['status'])
+                maaslog.info("%s: %s has run past it's timeout(%s)" % (
+                    node.hostname, script_result.name, str(timeout)))
                 node.mark_failed(
                     comment="%s has run past it's timeout(%s)" % (
                         script_result.name, str(timeout)),
                     script_result_status=SCRIPT_STATUS.ABORTED)
                 if not node.enable_ssh:
-                    node.stop(
-                        comment=(
-                            "Node stopped due to %s running past it's "
-                            "timeout(%s)" % (script_result.name, str(timeout)))
-                    )
+                    maaslog.info(
+                        '%s: Stopped because SSH is disabled' % node.hostname)
+                    node.stop(comment='Node stopped because SSH is disabled')
                 break
 
 

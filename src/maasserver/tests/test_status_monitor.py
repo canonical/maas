@@ -42,6 +42,7 @@ from twisted.internet.task import Clock
 class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
 
     def test__marks_all_possible_failed_status_as_failed(self):
+        maaslog = self.patch(status_monitor.maaslog, 'info')
         self.useFixture(SignalsDisabled("power"))
         current_time = datetime.now()
         self.patch(status_monitor, "now").return_value = current_time
@@ -58,8 +59,14 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
         self.assertItemsEqual(
             NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.values(),
             failed_statuses)
+        # MAAS logs in the status_monitor that the timeout was detected. It
+        # then logs the transisition in the node signal handler.
+        self.assertEquals(
+            len(NODE_FAILURE_MONITORED_STATUS_TRANSITIONS),
+            len(maaslog.call_args_list) / 2)
 
     def test__skips_those_that_have_not_expired(self):
+        maaslog = self.patch(status_monitor.maaslog, 'info')
         self.useFixture(SignalsDisabled("power"))
         current_time = datetime.now()
         self.patch(status_monitor, "now").return_value = current_time
@@ -75,6 +82,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
         ]
         self.assertItemsEqual(
             NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys(), failed_statuses)
+        self.assertThat(maaslog, MockNotCalled())
 
 
 class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
@@ -94,6 +102,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         super().setUp()
         self.useFixture(SignalsDisabled("power"))
         self.mock_stop = self.patch(Node, 'stop')
+        self.maaslog = self.patch(status_monitor.maaslog, 'info')
 
     def make_node(self):
         user = factory.make_admin()
@@ -118,6 +127,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         mark_nodes_failed_after_missing_script_timeout()
         node = reload_object(node)
         self.assertEquals(self.status, node.status)
+        self.assertThat(self.maaslog, MockNotCalled())
 
     def test_mark_nodes_failed_after_missing_timeout_heartbeat(self):
         node, script_set = self.make_node()
@@ -134,11 +144,20 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
 
         self.assertEquals(self.failed_status, node.status)
         self.assertEquals(
-            'Node has missed the last 5 heartbeats', node.error_description)
+            "Node has not been heard from for the last 10 minutes",
+            node.error_description)
+        self.assertIn(
+            call(
+                "%s: Has not been heard from for the last 10 minutes" %
+                node.hostname),
+            self.maaslog.call_args_list)
         if node.enable_ssh:
             self.assertThat(self.mock_stop, MockNotCalled())
         else:
             self.assertThat(self.mock_stop, MockCalledOnce())
+            self.assertIn(
+                call("%s: Stopped because SSH is disabled" % node.hostname),
+                self.maaslog.call_args_list)
         for script_result in script_results:
             self.assertEquals(
                 SCRIPT_STATUS.TIMEDOUT, reload_object(script_result).status)
@@ -168,10 +187,18 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
                 running_script_result.name,
                 str(running_script_result.script.timeout)),
             node.error_description)
+        self.assertIn(call(
+            "%s: %s has run past it's timeout(%s)" % (
+                node.hostname, running_script_result.name,
+                str(running_script_result.script.timeout))),
+            self.maaslog.call_args_list)
         if node.enable_ssh:
             self.assertThat(self.mock_stop, MockNotCalled())
         else:
             self.assertThat(self.mock_stop, MockCalledOnce())
+            self.assertIn(
+                call("%s: Stopped because SSH is disabled" % node.hostname),
+                self.maaslog.call_args_list)
         self.assertEquals(
             SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status)
         self.assertEquals(
@@ -213,10 +240,20 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
                 running_script_result.name,
                 str(NODE_INFO_SCRIPTS[running_script_result.name]['timeout'])),
             node.error_description)
+        self.assertIn(
+            call(
+                "%s: %s has run past it's timeout(%s)" % (
+                    node.hostname, running_script_result.name,
+                    str(NODE_INFO_SCRIPTS[running_script_result.name][
+                        'timeout']))),
+            self.maaslog.call_args_list)
         if node.enable_ssh:
             self.assertThat(self.mock_stop, MockNotCalled())
         else:
             self.assertThat(self.mock_stop, MockCalledOnce())
+            self.assertIn(
+                call("%s: Stopped because SSH is disabled" % node.hostname),
+                self.maaslog.call_args_list)
         self.assertEquals(
             SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status)
         self.assertEquals(
