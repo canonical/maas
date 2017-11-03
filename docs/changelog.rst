@@ -19,11 +19,19 @@ LP: #1721887    [2.3, HWTv2] No way to override a machine that Failed Testing
 
 LP: #1728302    [2.3, HWTv2, UI] Overall health status is redundant
 
+LP: #1721827    [2.3, HWTv2] Logging when and why a machine failed testing (due to missing heartbeats/locked/hanged) not available in maas.log
+
 LP: #1718779    [2.3] 00-maas-06-get-fruid-api-data fails to run on controller
+
+LP: #1729857    [2.3, UI] Whitespace after checkbox on node listing page
 
 LP: #1696122    [2.2] Failed to get virsh pod storage: cryptic message if no pools are defined
 
 LP: #1716328    [2.2] VM creation with pod accepts the same hostname and push out the original VM
+
+LP: #1718044    [2.2] Failed to process node status messages - twisted.internet.defer.QueueOverflow
+
+LP: #1723944    [2.x, UI] Node auto-assigned address is not always shown while in rescue mode
 
 LP: #1718776    [UI] Tooltips missing from the machines listing page
 
