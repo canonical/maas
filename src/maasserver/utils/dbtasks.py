@@ -54,16 +54,11 @@ class DatabaseTasksService(Service, object):
 
     sentinel = object()
 
-    def __init__(self, limit=100):
-        """Initialise a new `DatabaseTasksService`.
-
-        :param limit: The maximum number of database tasks to defer before
-            rejecting additional tasks.
-        """
+    def __init__(self):
+        """Initialise a new `DatabaseTasksService`."""
         super(DatabaseTasksService, self).__init__()
         # Start with a queue that rejects puts.
         self.queue = DeferredQueue(size=0, backlog=1)
-        self.limit = limit
 
     @asynchronous
     def deferTask(self, func, *args, **kwargs):
@@ -135,7 +130,7 @@ class DatabaseTasksService(Service, object):
         :return: `None`
         """
         super(DatabaseTasksService, self).startService()
-        self.queue.size = self.limit  # Open queue to puts.
+        self.queue.size = None  # Open queue to puts.
         self.coop = cooperate(self._generateTasks())
 
     @asynchronous(timeout=FOREVER)
@@ -146,7 +141,6 @@ class DatabaseTasksService(Service, object):
         """
         super(DatabaseTasksService, self).stopService()
         # Feed the cooperative task so that it can shutdown.
-        self.queue.size += 1  # Prevent QueueOverflow.
         self.queue.put(self.sentinel)  # See _generateTasks.
         self.queue.size = 0  # Now close queue to puts.
         # This service has stopped when the coop task is done.

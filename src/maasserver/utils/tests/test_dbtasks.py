@@ -48,11 +48,8 @@ class TestDatabaseTaskService(MAASTestCase):
     """Tests for `DatabaseTasksService`."""
 
     def test__init(self):
-        limit = random.randint(1, 1000)
-        service = DatabaseTasksService(limit)
+        service = DatabaseTasksService()
         self.assertThat(service, MatchesStructure(
-            # Our requested limit is saved.
-            limit=Equals(limit),
             # The queue does not permit anything to go in it.
             queue=MatchesAll(
                 IsInstance(DeferredQueue),
@@ -60,10 +57,6 @@ class TestDatabaseTaskService(MAASTestCase):
                 first_only=True,
             ),
         ))
-
-    def test__init_default_limit(self):
-        service = DatabaseTasksService()
-        self.assertThat(service.limit, Equals(100))
 
     def test__cannot_add_task_to_unstarted_service(self):
         service = DatabaseTasksService()
@@ -75,59 +68,14 @@ class TestDatabaseTaskService(MAASTestCase):
         service.stopService()
         self.assertRaises(QueueOverflow, service.addTask, noop)
 
-    def test__cannot_add_task_when_queue_is_full(self):
-        service = DatabaseTasksService(0)
-        service.startService()
-        try:
-            event = threading.Event()
-            service.addTask(event.wait)
-            try:
-                self.assertRaises(
-                    QueueOverflow, service.addTask, noop)
-            finally:
-                event.set()
-        finally:
-            service.stopService()
-
-    def test__cannot_defer_task_when_queue_is_full(self):
-        service = DatabaseTasksService(0)
-        service.startService()
-        try:
-            event = threading.Event()
-            service.addTask(event.wait)
-            try:
-                self.assertRaises(
-                    QueueOverflow, lambda: service.deferTask(noop).wait(30))
-            finally:
-                event.set()
-        finally:
-            service.stopService()
-
-    def test__cannot_sync_task_when_queue_is_full(self):
-        service = DatabaseTasksService(0)
-        service.startService()
-        try:
-            event = threading.Event()
-            service.addTask(event.wait)
-            try:
-                self.assertRaises(
-                    QueueOverflow, lambda: service.syncTask().wait(30))
-            finally:
-                event.set()
-        finally:
-            service.stopService()
-
-    def test__startup_creates_queue_with_previously_defined_limit(self):
-        limit = random.randint(1, 1000)
-        service = DatabaseTasksService(limit)
+    def test__startup_creates_queue_with_previously_defined(self):
+        service = DatabaseTasksService()
         service.startService()
         try:
             self.assertThat(service, MatchesStructure(
-                # The queue has been set to the `limit` size, and only one
-                # thing is allowed to wait on the queue.
                 queue=MatchesAll(
                     IsInstance(DeferredQueue),
-                    MatchesStructure.byEquality(size=limit, backlog=1),
+                    MatchesStructure.byEquality(backlog=1),
                     first_only=True,
                 ),
             ))
