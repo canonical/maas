@@ -2,6 +2,42 @@
 Changelog
 =========
 
+
+MAAS 2.3.0 (rc1)
+================
+
+Issues fixed in this release
+----------------------------
+
+For more information, visit: https://launchpad.net/maas/+milestone/2.3.0rc1
+
+LP: #1727576    [2.3, HWTv2] When specific tests timesout there's no log/output
+
+LP: #1728300    [2.3, HWTv2] smartctl interval time checking is too short
+
+LP: #1721887    [2.3, HWTv2] No way to override a machine that Failed Testing
+
+LP: #1728302    [2.3, HWTv2, UI] Overall health status is redundant
+
+LP: #1718779    [2.3] 00-maas-06-get-fruid-api-data fails to run on controller
+
+LP: #1696122    [2.2] Failed to get virsh pod storage: cryptic message if no pools are defined
+
+LP: #1716328    [2.2] VM creation with pod accepts the same hostname and push out the original VM
+
+LP: #1718776    [UI] Tooltips missing from the machines listing page
+
+LP: #1724402    no output for failing test
+
+LP: #1724627    00-maas-06-get-fruid-api-data fails relentlessly, causes commissioning to fail
+
+LP: #1727962    Intermittent failure: TestDeviceHandler.test_list_num_queries_is_the_expected_number
+
+LP: #1727360    Make partition size field optional in the API (CLI)
+
+LP: #1418044    Avoid picking the wrong IP for MAAS_URL and DEFAULT_MAAS_URL
+
+
 MAAS 2.3.0 (beta3)
 ==================
 
