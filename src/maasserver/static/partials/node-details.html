@@ -186,7 +186,7 @@
             <nav class="page-navigation__links">
                 <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
                     data-ng-class="{ 'is-active': section.area === 'summary'}"
-                    data-ng-click="section.area = 'summary'"><span><i data-ng-if="node.testing_status !== 2 && node.testing_status !== -1 && node.status_code !== 22 && node.status_code !== 21" class="icon icon--warning tooltip tooltip--left" aria-label="This machine has 'Failed testing', but it was overridden by the administrator."></i></span>Machine summary</button>
+                    data-ng-click="section.area = 'summary'">Machine summary</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="isController"
                     data-ng-class="{ 'is-active': section.area === 'summary'}"
                     data-ng-click="section.area = 'summary'">Controller summary</button>

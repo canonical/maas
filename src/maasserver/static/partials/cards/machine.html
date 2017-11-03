@@ -2,7 +2,7 @@
   <h3>Overview</h3>
   <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">{$ node.status $}
     <span ng-if="node.show_os_info" class="u-text--subtle">(<span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>)</span>
-    <p data-ng-if="node.testing_status !== 2 && node.testing_status !== -1 && node.status_code !== 22 && node.status_code !== 21" class="u-text--subtle"><i class="icon icon--warning"></i> Node status 'Failed testing' was overridden.</p>
+    <p data-ng-if="node.testing_status !== 2 && node.testing_status !== -1 && node.status_code !== 1 && node.status_code !== 2 && node.status_code !== 22 && node.status_code !== 21" class="u-text--subtle"><i class="icon icon--warning"></i> Node status 'Failed testing' was overridden.</p>
   </h2>
 </header>
 <div class="u-padding--bottom">
