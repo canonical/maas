@@ -1165,6 +1165,65 @@ class TestMachineHandler(MAASServerTestCase):
             "discovered": expected_discovered,
         }, handler.dehydrate_interface(interface, node))
 
+    def test_dehydrate_interface_discovered_bond_not_primary(self):
+        # If a bond interface doesn't have an observed IP, the
+        # observered addresses for the bond's parent interfaces are
+        # included.
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=NODE_STATUS.RESCUE_MODE,
+            power_state=POWER_STATE.ON)
+        handler = MachineHandler(owner, {})
+        interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[interface1, interface2])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=bond)
+        interface2_subnet = factory.make_Subnet()
+        interface2_ip = factory.pick_ip_in_network(
+            interface2_subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=interface2_ip, subnet=interface2_subnet, interface=interface2)
+        dehydrated_interface = handler.dehydrate_interface(bond, node)
+        self.assertEqual(
+            [{"subnet_id": interface2_subnet.id, "ip_address": interface2_ip}],
+            dehydrated_interface["discovered"])
+
+    def test_dehydrate_interface_discovered_bond_primary(self):
+        # If a bond interface does have an observed IP, the
+        # observered addresses for the bond's parent interfaces are
+        # not included.
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=NODE_STATUS.RESCUE_MODE,
+            power_state=POWER_STATE.ON)
+        handler = MachineHandler(owner, {})
+        interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[interface1, interface2])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=bond)
+        bond_subnet = factory.make_Subnet()
+        bond_ip = factory.pick_ip_in_network(bond_subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=bond_ip, subnet=bond_subnet, interface=bond)
+        interface2_subnet = factory.make_Subnet()
+        interface2_ip = factory.pick_ip_in_network(
+            interface2_subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=interface2_ip, subnet=interface2_subnet, interface=interface2)
+        dehydrated_interface = handler.dehydrate_interface(bond, node)
+        self.assertEqual(
+            [{"subnet_id": bond_subnet.id, "ip_address": bond_ip}],
+            dehydrated_interface["discovered"])
+
     def test_dehydrate_summary_output_returns_None(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)

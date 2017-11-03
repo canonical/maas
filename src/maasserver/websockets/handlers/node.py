@@ -16,6 +16,7 @@ from lxml import etree
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    INTERFACE_TYPE,
     NODE_STATUS,
     NODE_TYPE,
     POWER_STATE,
@@ -522,6 +523,14 @@ class NodeHandler(TimestampedModelHandler):
                     obj.status == NODE_STATUS.FAILED_TESTING and
                     obj.power_state == POWER_STATE.ON):
             discovereds = interface.get_discovered()
+            # Work around bug #1717511. Bond's don't get configured, so
+            # any of the bond's physical interface might have gotten an
+            # IP.
+            if not discovereds and interface.type == INTERFACE_TYPE.BOND:
+                for parent in interface.parents.all():
+                    discovereds = parent.get_discovered()
+                    if discovereds:
+                        break
             if discovereds is not None:
                 for discovered in discovereds:
                     # Replace the subnet object with the subnet_id. The client
