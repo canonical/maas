@@ -19,15 +19,19 @@ from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.network import resolve_hostname
 
 
-def get_maas_facing_server_host(rack_controller=None):
+def get_maas_facing_server_host(rack_controller=None, default_region_ip=None):
     """Return configured MAAS server hostname, for use by nodes or workers.
 
     :param rack_controller: The `RackController` from the point of view of
         which the server host should be computed.
+    :param default_region_ip: The default source IP address to be used, if a
+        specific URL is not defined.
     :return: Hostname or IP address, as configured in the MAAS URL config
         setting or as configured on rack_controller.url.
     """
     if rack_controller is None or not rack_controller.url:
+        if default_region_ip is not None:
+            return default_region_ip
         with RegionConfiguration.open() as config:
             maas_url = config.maas_url
     else:

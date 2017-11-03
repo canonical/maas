@@ -48,37 +48,88 @@ class TestAptProxy(MAASServerTestCase):
 
     scenarios = (
         ("ipv6", dict(
+            default_region_ip=None,
             rack='2001:db8::1',
             result='http://[2001:db8::1]:8000/',
             enable=True,
             use_peer_proxy=False,
             http_proxy='')),
         ("ipv4", dict(
+            default_region_ip=None,
             rack='10.0.1.1',
             result='http://10.0.1.1:8000/',
             enable=True,
             use_peer_proxy=False,
             http_proxy='')),
         ("builtin", dict(
+            default_region_ip=None,
             rack='region.example.com',
             result='http://region.example.com:8000/',
             enable=True,
             use_peer_proxy=False,
             http_proxy='')),
         ("external", dict(
+            default_region_ip=None,
             rack='region.example.com',
             result='http://proxy.example.com:111/',
             enable=True,
             use_peer_proxy=False,
             http_proxy='http://proxy.example.com:111/')),
         ("peer-proxy", dict(
+            default_region_ip=None,
             rack='region.example.com',
             result='http://region.example.com:8000/',
             enable=True,
             use_peer_proxy=True,
             http_proxy='http://proxy.example.com:111/')),
         ("disabled", dict(
+            default_region_ip=None,
             rack='example.com',
+            result=None,
+            enable=False,
+            use_peer_proxy=False,
+            http_proxy='')),
+        # If a default IP address for the region is passed in and the rack's
+        # URL is empty, the default IP address that was provided should be
+        # preferred.
+        ("ipv6_default", dict(
+            default_region_ip='2001:db8::2',
+            rack='',
+            result='http://[2001:db8::2]:8000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='')),
+        ("ipv4_default", dict(
+            default_region_ip='10.0.1.2',
+            rack='',
+            result='http://10.0.1.2:8000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='')),
+        ("builtin_default", dict(
+            default_region_ip='region.example.com',
+            rack='',
+            result='http://region.example.com:8000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='')),
+        ("external_default", dict(
+            default_region_ip='10.0.0.1',
+            rack='',
+            result='http://proxy.example.com:111/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='http://proxy.example.com:111/')),
+        ("peer-proxy_default", dict(
+            default_region_ip='region2.example.com',
+            rack='',
+            result='http://region2.example.com:8000/',
+            enable=True,
+            use_peer_proxy=True,
+            http_proxy='http://proxy.example.com:111/')),
+        ("disabled_default", dict(
+            default_region_ip='10.0.0.1',
+            rack='',
             result=None,
             enable=False,
             use_peer_proxy=False,
@@ -94,14 +145,17 @@ class TestAptProxy(MAASServerTestCase):
         # Force the server host to be our test data.
         self.patch(
             cp_module,
-            'get_maas_facing_server_host').return_value = self.rack
+            'get_maas_facing_server_host').return_value = (
+                self.rack if self.rack else self.default_region_ip)
         # Now setup the configuration and arguments, and see what we get back.
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         Config.objects.set_config("enable_http_proxy", self.enable)
         Config.objects.set_config("http_proxy", self.http_proxy)
         Config.objects.set_config("use_peer_proxy", self.use_peer_proxy)
-        actual = get_apt_proxy(node.get_boot_rack_controller())
+        actual = get_apt_proxy(
+            node.get_boot_rack_controller(),
+            default_region_ip=self.default_region_ip)
         self.assertEqual(self.result, actual)
 
 
@@ -241,7 +295,28 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_for_commissioning_includes_metadata_status_url(
             self):
-        rack_controller = factory.make_RackController()
+        rack_controller = factory.make_RackController(url='')
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        region_ip = factory.make_ip_address()
+        preseed = yaml.safe_load(
+            compose_preseed(
+                PRESEED_TYPE.COMMISSIONING, node, default_region_ip=region_ip))
+        self.assertEqual(
+            absolute_reverse('metadata', default_region_ip=region_ip),
+            preseed['datasource']['MAAS']['metadata_url'])
+        self.assertEqual(
+            absolute_reverse(
+                'metadata-status', default_region_ip=region_ip,
+                args=[node.system_id]),
+            preseed['reporting']['maas']['endpoint'])
+
+    def test_compose_preseed_uses_default_region_ip(self):
+        rack_controller = factory.make_RackController(url='')
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         nic = node.get_boot_interface()
@@ -249,12 +324,16 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(
+                PRESEED_TYPE.COMMISSIONING, node,
+                default_region_ip='10.0.0.1'))
         self.assertEqual(
-            absolute_reverse('metadata'),
+            absolute_reverse('metadata', default_region_ip='10.0.0.1'),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertEqual(
-            absolute_reverse('metadata-status', args=[node.system_id]),
+            absolute_reverse(
+                'metadata-status', default_region_ip='10.0.0.1',
+                args=[node.system_id]),
             preseed['reporting']['maas']['endpoint'])
 
     def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
@@ -369,7 +448,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(token.secret, reporting_dict['token_secret'])
 
     def test_compose_preseed_with_curtin_installer(self):
-        rack_controller = factory.make_RackController()
+        rack_controller = factory.make_RackController(url='')
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYING)
         nic = node.get_boot_interface()
@@ -377,9 +456,12 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
-        apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
+        region_ip = factory.make_ip_address()
+        expected_apt_proxy = get_apt_proxy(
+            node.get_boot_rack_controller(), default_region_ip=region_ip)
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.CURTIN, node))
+            compose_preseed(
+                PRESEED_TYPE.CURTIN, node, default_region_ip=region_ip))
 
         self.assertIn('datasource', preseed)
         self.assertIn('MAAS', preseed['datasource'])
@@ -395,11 +477,11 @@ class TestComposePreseed(MAASServerTestCase):
                 'condition': 'test ! -e /tmp/block-reboot',
             }, preseed['power_state'])
         self.assertEqual(
-            absolute_reverse('curtin-metadata'),
+            absolute_reverse('curtin-metadata', default_region_ip=region_ip),
             preseed['datasource']['MAAS']['metadata_url'])
-        self.assertEqual(apt_proxy, preseed['apt_proxy'])
+        self.assertEqual(expected_apt_proxy, preseed['apt_proxy'])
         self.assertSystemInfo(preseed)
-        self.assertAptConfig(preseed, apt_proxy)
+        self.assertAptConfig(preseed, expected_apt_proxy)
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
         # Disable boot source cache signals.
@@ -428,7 +510,7 @@ class TestComposePreseed(MAASServerTestCase):
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = compose_preseed_orig
 
-        rack_controller = factory.make_RackController()
+        rack_controller = factory.make_RackController(url='')
         node = factory.make_Node(
             interface=True, osystem=os_name, status=NODE_STATUS.READY)
         nic = node.get_boot_interface()
@@ -437,15 +519,18 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         token = NodeKey.objects.get_token_for_node(node)
-        url = absolute_reverse('curtin-metadata')
-        compose_preseed(PRESEED_TYPE.CURTIN, node)
+        region_ip = factory.make_ip_address()
+        expected_url = absolute_reverse(
+            'curtin-metadata', default_region_ip=region_ip)
+        compose_preseed(
+            PRESEED_TYPE.CURTIN, node, default_region_ip=region_ip)
         self.assertThat(
             compose_preseed_mock,
             MockCalledOnceWith(
                 PRESEED_TYPE.CURTIN,
                 (node.system_id, node.hostname),
                 (token.consumer.key, token.key, token.secret),
-                url))
+                expected_url))
 
     def test_compose_preseed_propagates_NoSuchOperatingSystem(self):
         # If the cluster controller replies that the node's OS is not known to

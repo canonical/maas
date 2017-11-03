@@ -27,6 +27,7 @@ from unittest.mock import (
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from provisioningserver.utils.network import get_source_address
 
 
 try:
@@ -2482,6 +2483,22 @@ class TestAnonymousAPI(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET),
             Contains(url))
 
+    def test_anonymous_get_enlist_preseed_uses_detected_region_ip(self):
+        request_ip = get_source_address('8.8.8.8')
+        expected_source_ip = get_source_address(request_ip)
+        rack = factory.make_RackController(url='')
+        find_rack_controller_mock = self.patch(api, "find_rack_controller")
+        find_rack_controller_mock.return_value = rack
+        get_default_region_ip_mock = self.patch(api, "get_default_region_ip")
+        get_default_region_ip_mock.return_value = expected_source_ip
+        anon_enlist_preseed_url = reverse(
+            'metadata-enlist-preseed', args=['latest'])
+        response = self.client.get(
+            anon_enlist_preseed_url, {'op': 'get_enlist_preseed'},
+            REMOTE_ADDR=request_ip)
+        self.assertThat(response.content.decode(
+            settings.DEFAULT_CHARSET), Contains(expected_source_ip))
+
     def test_anonymous_get_preseed(self):
         # The preseed for a node can be obtained anonymously.
         node = factory.make_Node()
@@ -2490,9 +2507,8 @@ class TestAnonymousAPI(MAASServerTestCase):
             args=['latest', node.system_id])
         # Fake the preseed so we're just exercising the view.
         fake_preseed = factory.make_string()
-        self.patch(api, "get_preseed", lambda node: fake_preseed)
-        response = self.client.get(
-            anon_node_url, {'op': 'get_preseed'})
+        self.patch(api, "get_preseed", lambda node, ip: fake_preseed)
+        response = self.client.get(anon_node_url, {'op': 'get_preseed'})
         self.assertEqual(
             (http.client.OK.value,
              "text/plain",

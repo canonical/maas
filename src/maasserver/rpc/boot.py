@@ -43,6 +43,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.osystems import validate_hwe_kernel
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
+from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -184,6 +185,9 @@ def get_config(
     Raises BootConfigNoResponse when booting machine should fail to next file.
     """
     rack_controller = RackController.objects.get(system_id=system_id)
+    region_ip = None
+    if remote_ip is not None:
+        region_ip = get_source_address(remote_ip)
     machine = get_node_from_mac_string(mac)
 
     # Fail with no response early so no extra work is performed.
@@ -232,7 +236,8 @@ def get_config(
                 machine.boot_interface.save()
 
         arch, subarch = machine.split_arch()
-        preseed_url = compose_preseed_url(machine, rack_controller)
+        preseed_url = compose_preseed_url(
+            machine, rack_controller, default_region_ip=region_ip)
         hostname = machine.hostname
         domain = machine.domain.name
         purpose = machine.get_boot_purpose()
@@ -305,7 +310,8 @@ def get_config(
                                                      extra_kernel_opts)
     else:
         purpose = "commissioning"  # enlistment
-        preseed_url = compose_enlistment_preseed_url(rack_controller)
+        preseed_url = compose_enlistment_preseed_url(
+            rack_controller, default_region_ip=region_ip)
         hostname = 'maas-enlist'
         domain = 'local'
         osystem = Config.objects.get_config('commissioning_osystem')
@@ -358,7 +364,7 @@ def get_config(
 
     # Get the service address to the region for that given rack controller.
     server_host = get_maas_facing_server_host(
-        rack_controller=rack_controller)
+        rack_controller=rack_controller, default_region_ip=region_ip)
 
     kernel, initrd, boot_dtb = get_boot_filenames(
         arch, subarch, osystem, series)

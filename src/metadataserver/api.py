@@ -12,7 +12,7 @@ __all__ = [
     'MetaDataHandler',
     'UserDataHandler',
     'VersionIndexHandler',
-    ]
+]
 
 import base64
 from datetime import datetime
@@ -70,7 +70,10 @@ from maasserver.preseed import (
     get_enlist_userdata,
     get_preseed,
 )
-from maasserver.utils import find_rack_controller
+from maasserver.utils import (
+    find_rack_controller,
+    get_remote_ip,
+)
 from maasserver.utils.orm import (
     get_one,
     is_retryable_failure,
@@ -98,6 +101,7 @@ from provisioningserver.events import (
     EVENT_TYPES,
 )
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.network import get_source_address
 import yaml
 
 
@@ -160,6 +164,15 @@ def get_queried_node(request, for_mac=None):
     else:
         # Access keyed by MAC address.
         return get_node_for_mac(for_mac)
+
+
+def get_default_region_ip(request):
+    """Returns the default reply address for the given HTTP request."""
+    remote_ip = get_remote_ip(request)
+    default_region_ip = None
+    if remote_ip is not None:
+        default_region_ip = get_source_address(remote_ip)
+    return default_region_ip
 
 
 def make_text_response(contents):
@@ -841,7 +854,8 @@ class CurtinUserDataHandler(MetadataViewHandler):
     def read(self, request, version, mac=None):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
-        user_data = get_curtin_userdata(node)
+        default_region_ip = get_default_region_ip(request)
+        user_data = get_curtin_userdata(node, default_region_ip)
         return HttpResponse(
             user_data,
             content_type='application/octet-stream')
@@ -1032,12 +1046,15 @@ class EnlistUserDataHandler(OperationsHandler):
     def read(self, request, version):
         check_version(version)
         rack_controller = find_rack_controller(request)
+        default_region_ip = get_default_region_ip(request)
         # XXX: Set a charset for text/plain. Django automatically encodes
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
         return HttpResponse(
-            get_enlist_userdata(rack_controller=rack_controller),
+            get_enlist_userdata(
+                rack_controller=rack_controller,
+                default_region_ip=default_region_ip),
             content_type="text/plain")
 
 
@@ -1060,9 +1077,10 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
-        return HttpResponse(
-            get_enlist_preseed(rack_controller=rack_controller),
-            content_type="text/plain")
+        region_ip = get_default_region_ip(request)
+        preseed = get_enlist_preseed(
+            rack_controller=rack_controller, default_region_ip=region_ip)
+        return HttpResponse(preseed, content_type="text/plain")
 
     @operation(idempotent=True)
     def get_preseed(self, request, version=None, system_id=None):
@@ -1072,7 +1090,9 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
-        return HttpResponse(get_preseed(node), content_type="text/plain")
+        region_ip = get_default_region_ip(request)
+        preseed = get_preseed(node, region_ip)
+        return HttpResponse(preseed, content_type="text/plain")
 
     @operation(idempotent=False)
     def netboot_off(self, request, version=None, system_id=None):

@@ -27,6 +27,7 @@ from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
 )
+from provisioningserver.utils.url import compose_URL
 from provisioningserver.utils.version import get_maas_version_user_agent
 
 
@@ -39,7 +40,9 @@ def ignore_unused(*args):
     """
 
 
-def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
+def absolute_reverse(
+        view_name, default_region_ip=None, query=None, base_url=None,
+        *args, **kwargs):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
     calls Django's 'reverse' method and prefixes the result of that call with
@@ -50,6 +53,8 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
 
     :param view_name: Django's view function name/reference or URL pattern
         name for which to compute the absolute URL.
+    :param default_region_ip: The default source IP address that should be
+        used for the region controller.
     :param query: Optional query argument which will be passed down to
         urllib.urlencode.  The result of that call will be appended to the
         resulting url.
@@ -57,11 +62,12 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
         configured MAAS URL will be used.
     :param args: Positional arguments for Django's 'reverse' method.
     :param kwargs: Named arguments for Django's 'reverse' method.
-
     """
     if not base_url:
         with RegionConfiguration.open() as config:
             base_url = config.maas_url
+        if default_region_ip is not None:
+            base_url = compose_URL(base_url, default_region_ip)
     url = urljoin(base_url, reverse(view_name, *args, **kwargs))
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
@@ -135,6 +141,11 @@ def get_maas_user_agent():
     return user_agent
 
 
+def get_remote_ip(request):
+    """Returns the IP address of the host that initiated the request."""
+    return request.META.get('REMOTE_ADDR')
+
+
 def find_rack_controller(request):
     """Find the rack controller whose managing the subnet that contains the
     requester's address.
@@ -144,10 +155,7 @@ def find_rack_controller(request):
     """
     # Circular imports.
     from maasserver.models.subnet import Subnet
-    ip_address = request.META['REMOTE_ADDR']
-    if ip_address is None:
-        return None
-
+    ip_address = get_remote_ip(request)
     subnet = Subnet.objects.get_best_subnet_for_ip(ip_address)
     if subnet is None:
         return None

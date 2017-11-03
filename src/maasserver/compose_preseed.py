@@ -31,7 +31,7 @@ import yaml
 RSYSLOG_PORT = 514
 
 
-def get_apt_proxy(rack_controller=None):
+def get_apt_proxy(rack_controller=None, default_region_ip=None):
     """Return the APT proxy for the `rack_controller`."""
     if Config.objects.get_config("enable_http_proxy"):
         http_proxy = Config.objects.get_config("http_proxy")
@@ -42,7 +42,8 @@ def get_apt_proxy(rack_controller=None):
             return http_proxy
         else:
             return compose_URL(
-                "http://:8000/", get_maas_facing_server_host(rack_controller))
+                "http://:8000/", get_maas_facing_server_host(
+                    rack_controller, default_region_ip=default_region_ip))
     else:
         return None
 
@@ -55,11 +56,12 @@ def make_clean_repo_name(repo):
     return repo_name.strip().replace(' ', '_').lower()
 
 
-def get_archive_config(node, preserve_sources=False):
+def get_archive_config(node, preserve_sources=False, default_region_ip=None):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
     repositories = PackageRepository.objects.get_additional_repositories(arch)
-    apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
+    apt_proxy = get_apt_proxy(
+        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
 
     # Process the default Ubuntu Archives or Mirror.
     archives = {}
@@ -147,15 +149,15 @@ def get_archive_config(node, preserve_sources=False):
     return archives
 
 
-def get_cloud_init_reporting(node, token, base_url):
+def get_cloud_init_reporting(node, token, base_url, default_region_ip=None):
     """Return the cloud-init metadata to enable reporting"""
     return {
         'reporting': {
             'maas': {
                 'type': 'webhook',
                 'endpoint': absolute_reverse(
-                    'metadata-status', args=[node.system_id],
-                    base_url=base_url),
+                    'metadata-status', default_region_ip=default_region_ip,
+                    args=[node.system_id], base_url=base_url),
                 'consumer_key': token.consumer.key,
                 'token_key': token.key,
                 'token_secret': token.secret,
@@ -164,11 +166,11 @@ def get_cloud_init_reporting(node, token, base_url):
     }
 
 
-def get_rsyslog_host_port(node):
+def get_rsyslog_host_port(node, default_region_ip=None):
     """Return the rsyslog host and port to use."""
-    # TODO: In the future, we can make this configurable
-    return "%s:%d" % (get_maas_facing_server_host(
-        node.get_boot_rack_controller()), RSYSLOG_PORT)
+    host = get_maas_facing_server_host(
+        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
+    return "%s:%d" % (host, RSYSLOG_PORT)
 
 
 def get_system_info():
@@ -207,7 +209,8 @@ def get_system_info():
     }
 
 
-def compose_cloud_init_preseed(node, token, base_url=''):
+def compose_cloud_init_preseed(
+        node, token, base_url='', default_region_ip=None):
     """Compose the preseed value for a node in any state but Commissioning.
 
     Returns cloud-config that's preseeded to cloud-init via debconf (It only
@@ -236,14 +239,20 @@ def compose_cloud_init_preseed(node, token, base_url=''):
     # This will allow cloud-init to be configured with reporting for
     # a node that has already been installed.
     config.update(
-        get_cloud_init_reporting(node=node, token=token, base_url=base_url))
+        get_cloud_init_reporting(
+            node=node, token=token, base_url=base_url,
+            default_region_ip=default_region_ip))
     # Add the system configuration information.
     config.update(get_system_info())
-    apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
+    apt_proxy = get_apt_proxy(
+        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
     if apt_proxy:
         config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
-    config.update(get_archive_config(node=node, preserve_sources=False))
+    config.update(
+        get_archive_config(
+            node=node, preserve_sources=False,
+            default_region_ip=default_region_ip))
 
     local_config_yaml = yaml.safe_dump(config)
     # this is debconf escaping
@@ -254,7 +263,8 @@ def compose_cloud_init_preseed(node, token, base_url=''):
     preseed_items = [
         ('datasources', 'multiselect', 'MAAS'),
         ('maas-metadata-url', 'string', absolute_reverse(
-            'metadata', base_url=base_url)),
+            'metadata', default_region_ip=default_region_ip,
+            base_url=base_url)),
         ('maas-metadata-credentials', 'string', credentials),
         ('local-cloud-config', 'string', local_config)
         ]
@@ -268,28 +278,34 @@ def compose_cloud_init_preseed(node, token, base_url=''):
         for item_name, item_type, item_value in preseed_items)
 
 
-def compose_commissioning_preseed(node, token, base_url=''):
+def compose_commissioning_preseed(
+        node, token, base_url='', default_region_ip=None):
     """Compose the preseed value for a Commissioning node."""
-    metadata_url = absolute_reverse('metadata', base_url=base_url)
+    metadata_url = absolute_reverse(
+        'metadata', default_region_ip=default_region_ip, base_url=base_url)
     if node.status == NODE_STATUS.DISK_ERASING:
         poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
     else:
         poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
     return _compose_cloud_init_preseed(
         node, token, metadata_url, base_url=base_url,
-        poweroff_timeout=int(poweroff_timeout))
+        poweroff_timeout=int(poweroff_timeout),
+        default_region_ip=default_region_ip)
 
 
-def compose_curtin_preseed(node, token, base_url=''):
+def compose_curtin_preseed(node, token, base_url='', default_region_ip=None):
     """Compose the preseed value for a node being installed with curtin."""
-    metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
+    metadata_url = absolute_reverse(
+        'curtin-metadata', default_region_ip=default_region_ip,
+        base_url=base_url)
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url)
+        node, token, metadata_url, base_url=base_url,
+        default_region_ip=default_region_ip)
 
 
 def _compose_cloud_init_preseed(
         node, token, metadata_url, base_url, poweroff_timeout=3600,
-        reboot_timeout=1800):
+        reboot_timeout=1800, default_region_ip=None):
     cloud_config = {
         'datasource': {
             'MAAS': {
@@ -302,7 +318,8 @@ def _compose_cloud_init_preseed(
         # This configure rsyslog for the ephemeral environment
         'rsyslog': {
             'remotes': {
-                'maas': get_rsyslog_host_port(node),
+                'maas': get_rsyslog_host_port(
+                    node, default_region_ip=default_region_ip),
             }
         },
         # The ephemeral environment doesn't have a domain search path set which
@@ -315,14 +332,19 @@ def _compose_cloud_init_preseed(
     }
     # This configures reporting for the ephemeral environment
     cloud_config.update(
-        get_cloud_init_reporting(node=node, token=token, base_url=base_url))
+        get_cloud_init_reporting(
+            node=node, token=token, base_url=base_url,
+            default_region_ip=default_region_ip))
     # Add the system configuration information.
     cloud_config.update(get_system_info())
-    apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
+    apt_proxy = get_apt_proxy(
+        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
     if apt_proxy:
         cloud_config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
-    cloud_config.update(get_archive_config(node=node, preserve_sources=False))
+    cloud_config.update(get_archive_config(
+        node=node, preserve_sources=False,
+        default_region_ip=default_region_ip))
 
     enable_ssh = (node.status in {
         NODE_STATUS.COMMISSIONING,
@@ -352,14 +374,17 @@ def _compose_cloud_init_preseed(
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 
-def _get_metadata_url(preseed_type, base_url):
+def _get_metadata_url(preseed_type, base_url, default_region_ip=None):
     if preseed_type == PRESEED_TYPE.CURTIN:
-        return absolute_reverse('curtin-metadata', base_url=base_url)
+        return absolute_reverse(
+            'curtin-metadata', default_region_ip=default_region_ip,
+            base_url=base_url)
     else:
-        return absolute_reverse('metadata', base_url=base_url)
+        return absolute_reverse(
+            'metadata', default_region_ip=default_region_ip, base_url=base_url)
 
 
-def compose_preseed(preseed_type, node):
+def compose_preseed(preseed_type, node, default_region_ip=None):
     """Put together preseed data for `node`.
 
     This produces preseed data for the node in different formats depending
@@ -369,6 +394,8 @@ def compose_preseed(preseed_type, node):
     :type preseed_type: string
     :param node: The node to compose preseed data for.
     :type node: Node
+    :param default_region_ip: The default IP address to use for the region
+        controller (for example, when constructing URLs).
     :return: Preseed data containing the information the node needs in order
         to access the metadata service: its URL and auth token.
     """
@@ -380,9 +407,11 @@ def compose_preseed(preseed_type, node):
     base_url = rack_controller.url
 
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
-        return compose_commissioning_preseed(node, token, base_url)
+        return compose_commissioning_preseed(
+            node, token, base_url, default_region_ip=default_region_ip)
     else:
-        metadata_url = _get_metadata_url(preseed_type, base_url)
+        metadata_url = _get_metadata_url(
+            preseed_type, base_url, default_region_ip=default_region_ip)
 
         try:
             return get_preseed_data(preseed_type, node, token, metadata_url)
@@ -410,6 +439,8 @@ def compose_preseed(preseed_type, node):
 
         # There is no OS-specific preseed data.
         if preseed_type == PRESEED_TYPE.CURTIN:
-            return compose_curtin_preseed(node, token, base_url)
+            return compose_curtin_preseed(
+                node, token, base_url, default_region_ip=default_region_ip)
         else:
-            return compose_cloud_init_preseed(node, token, base_url)
+            return compose_cloud_init_preseed(
+                node, token, base_url, default_region_ip=default_region_ip)

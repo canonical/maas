@@ -1834,9 +1834,11 @@ class TestPreseedURLs(
     """Tests for functions that return preseed URLs."""
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
-        response = self.client.get(compose_enlistment_preseed_url())
+        response = self.client.get(compose_enlistment_preseed_url(
+            default_region_ip="127.0.0.1"))
         self.assertEqual(
-            (http.client.OK, get_enlist_preseed()),
+            (http.client.OK, get_enlist_preseed(
+                default_region_ip="127.0.0.1")),
             (response.status_code, response.content))
 
     def test_compose_enlistment_preseed_url_returns_absolute_link(self):
@@ -1846,7 +1848,7 @@ class TestPreseedURLs(
         self.assertThat(
             compose_enlistment_preseed_url(), StartsWith(maas_url))
 
-    def test_compose_enlistment_preseed_url_returns_abs_link_wth_nodegrp(self):
+    def test_compose_enlistment_preseed_url_returns_abs_link_wth_rack(self):
         maas_url = factory.make_simple_http_url(path='')
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         rack_controller = factory.make_RackController(url=maas_url)
@@ -1860,9 +1862,10 @@ class TestPreseedURLs(
             primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
         response = self.client.get(
-            compose_preseed_url(node, self.rpc_rack_controller))
+            compose_preseed_url(
+                node, self.rpc_rack_controller, default_region_ip='127.0.0.1'))
         self.assertEqual(
-            (http.client.OK, get_preseed(node)),
+            (http.client.OK, get_preseed(node, default_region_ip='127.0.0.1')),
             (response.status_code, response.content))
 
     def test_compose_preseed_url_returns_absolute_link(self):

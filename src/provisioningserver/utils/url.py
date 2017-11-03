@@ -18,13 +18,14 @@ import urllib.request
 
 
 def compose_URL(base_url, host):
-    """Produce a URL on a given hostname or IP address.
+    """Compose (or recompose) a URL, based on an existing URL and given host.
 
     This is straightforward if the IP address is a hostname or an IPv4
     address; but if it's an IPv6 address, the URL must contain the IP address
     in square brackets as per RFC 3986.
 
-    :param base_url: URL without the host part, e.g. `http:///path'.
+    :param base_url: URL with or without the host part; for example:
+        `http:///path`, `http://foo:5240/path`, or `http://:5240/path`.
     :param host: Host name or IP address to insert in the host part of the URL.
     :return: A URL string with the host part taken from `host`, and all others
         from `base_url`.

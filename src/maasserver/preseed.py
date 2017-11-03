@@ -95,7 +95,7 @@ OS_WITH_IPv6_SUPPORT = ['ubuntu']
 CURTIN_INSTALL_LOG = "/tmp/install.log"
 
 
-def get_enlist_preseed(rack_controller=None):
+def get_enlist_preseed(rack_controller=None, default_region_ip=None):
     """Return the enlistment preseed.
 
     :param rack_controller: The rack controller used to generate the preseed.
@@ -103,17 +103,19 @@ def get_enlist_preseed(rack_controller=None):
     :rtype: unicode.
     """
     return render_enlistment_preseed(
-        PRESEED_TYPE.ENLIST, rack_controller=rack_controller)
+        PRESEED_TYPE.ENLIST, rack_controller=rack_controller,
+        default_region_ip=default_region_ip)
 
 
-def get_enlist_userdata(rack_controller=None):
+def get_enlist_userdata(rack_controller=None, default_region_ip=None):
     """Return the enlistment preseed.
 
     :param rack_controller: The rack controller used to generate the preseed.
     :return: The rendered enlistment user-data string.
     :rtype: unicode.
     """
-    http_proxy = get_apt_proxy(rack_controller=rack_controller)
+    http_proxy = get_apt_proxy(
+        rack_controller=rack_controller, default_region_ip=default_region_ip)
     enlist_userdata = render_enlistment_preseed(
         USERDATA_TYPE.ENLIST, rack_controller=rack_controller)
     config = get_system_info()
@@ -340,7 +342,7 @@ def compose_curtin_verbose_preseed():
         return []
 
 
-def get_curtin_yaml_config(node):
+def get_curtin_yaml_config(node, default_region_ip=None):
     """Return the curtin configration for the node."""
     main_config = get_curtin_config(node)
     cloud_config = compose_curtin_cloud_config(node)
@@ -401,7 +403,7 @@ def get_curtin_merged_config(node):
     return config
 
 
-def get_curtin_userdata(node):
+def get_curtin_userdata(node, default_region_ip=None):
     """Return the curtin user-data.
 
     :param node: The node for which to generate the user-data.
@@ -411,7 +413,7 @@ def get_curtin_userdata(node):
     # Pack the curtin and the configuration into a script to execute on the
     # deploying node.
     return pack_install(
-        configs=get_curtin_yaml_config(node),
+        configs=get_curtin_yaml_config(node, default_region_ip),
         args=[get_curtin_installer_url(node)])
 
 
@@ -473,7 +475,7 @@ def get_curtin_installer_url(node):
     return url_prepend + url
 
 
-def get_curtin_config(node):
+def get_curtin_config(node, default_region_ip=None):
     """Return the curtin configuration to be used by curtin.pack_install.
 
     :param node: The node for which to generate the configuration.
@@ -485,11 +487,16 @@ def get_curtin_config(node):
         node, USERDATA_TYPE.CURTIN, osystem, series)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        osystem, series, rack_controller=rack_controller)
+        osystem, series, rack_controller=rack_controller,
+        default_region_ip=default_region_ip)
     context.update(
         get_node_preseed_context(
-            node, osystem, series, rack_controller=rack_controller))
-    context.update(get_curtin_context(node, rack_controller=rack_controller))
+            node, osystem, series, rack_controller=rack_controller,
+            default_region_ip=default_region_ip))
+    context.update(
+        get_curtin_context(
+            node, rack_controller=rack_controller,
+            default_region_ip=default_region_ip))
     deprecated_context_variables = [
         'main_archive_hostname', 'main_archive_directory',
         'ports_archive_hostname', 'ports_archive_directory',
@@ -534,7 +541,7 @@ def get_curtin_config(node):
     return yaml.safe_dump(config)
 
 
-def get_curtin_context(node, rack_controller=None):
+def get_curtin_context(node, rack_controller=None, default_region_ip=None):
     """Return the curtin-specific context dictionary to be used to render
     user-data templates.
 
@@ -546,7 +553,8 @@ def get_curtin_context(node, rack_controller=None):
         rack_controller = node.get_boot_rack_controller()
     base_url = rack_controller.url
     return {
-        'curtin_preseed': compose_cloud_init_preseed(node, token, base_url)
+        'curtin_preseed': compose_cloud_init_preseed(
+            node, token, base_url, default_region_ip=default_region_ip)
     }
 
 
@@ -567,7 +575,7 @@ def get_preseed_type_for(node):
 
 
 @typed
-def get_preseed(node) -> bytes:
+def get_preseed(node, default_region_ip=None) -> bytes:
     """Return the preseed for a given node. Depending on the node's
     status this will be a commissioning preseed (if the node is
     commissioning or disk erasing) or an install preseed (normal
@@ -582,11 +590,13 @@ def get_preseed(node) -> bytes:
         return render_preseed(
             node, PRESEED_TYPE.COMMISSIONING,
             osystem=Config.objects.get_config('commissioning_osystem'),
-            release=Config.objects.get_config('commissioning_distro_series'))
+            release=Config.objects.get_config('commissioning_distro_series'),
+            default_region_ip=default_region_ip)
     else:
         return render_preseed(
             node, get_preseed_type_for(node),
-            osystem=node.get_osystem(), release=node.get_distro_series())
+            osystem=node.get_osystem(), release=node.get_distro_series(),
+            default_region_ip=default_region_ip)
 
 
 UBUNTU_NAME = UbuntuOS().name
@@ -769,7 +779,8 @@ def get_netloc_and_path(url):
     return parsed_url.netloc, parsed_url.path.lstrip("/")
 
 
-def get_preseed_context(osystem='', release='', rack_controller=None):
+def get_preseed_context(
+        osystem='', release='', rack_controller=None, default_region_ip=None):
     """Return the node-independent context dictionary to be used to render
     preseed templates.
 
@@ -779,7 +790,8 @@ def get_preseed_context(osystem='', release='', rack_controller=None):
     :return: The context dictionary.
     :rtype: dict.
     """
-    server_host = get_maas_facing_server_host(rack_controller=rack_controller)
+    server_host = get_maas_facing_server_host(
+        rack_controller=rack_controller, default_region_ip=default_region_ip)
     if rack_controller is None:
         base_url = None
     else:
@@ -789,14 +801,18 @@ def get_preseed_context(osystem='', release='', rack_controller=None):
         'osystem': osystem,
         'release': release,
         'server_host': server_host,
-        'server_url': absolute_reverse('machines_handler', base_url=base_url),
+        'server_url': absolute_reverse(
+            'machines_handler', default_region_ip=default_region_ip,
+            base_url=base_url),
         'syslog_host_port': '%s:%d' % (server_host, RSYSLOG_PORT),
-        'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
+        'metadata_enlist_url': absolute_reverse(
+            'enlist', default_region_ip=default_region_ip, base_url=base_url),
         }
 
 
 def get_node_preseed_context(
-        node, osystem='', release='', rack_controller=None):
+        node, osystem='', release='', rack_controller=None,
+        default_region_ip=None):
     """Return the node-dependent context dictionary to be used to render
     preseed templates.
 
@@ -811,8 +827,8 @@ def get_node_preseed_context(
     # Create the url and the url-data (POST parameters) used to turn off
     # PXE booting once the install of the node is finished.
     node_disable_pxe_url = absolute_reverse(
-        'metadata-node-by-id', args=['latest', node.system_id],
-        base_url=rack_controller.url)
+        'metadata-node-by-id', default_region_ip=default_region_ip,
+        args=['latest', node.system_id], base_url=rack_controller.url)
     node_disable_pxe_data = urlencode({'op': 'netboot_off'})
     driver = get_third_party_driver(node)
     return {
@@ -821,7 +837,9 @@ def get_node_preseed_context(
         'driver': driver,
         'driver_package': driver.get('package', ''),
         'node': node,
-        'preseed_data': compose_preseed(get_preseed_type_for(node), node),
+        'preseed_data': compose_preseed(
+            get_preseed_type_for(node), node,
+            default_region_ip=default_region_ip),
         'node_disable_pxe_url': node_disable_pxe_url,
         'node_disable_pxe_data': node_disable_pxe_data,
         'license_key': node.get_effective_license_key(),
@@ -853,7 +871,8 @@ def get_node_deprecated_preseed_context():
 
 
 def render_enlistment_preseed(
-        prefix, osystem='', release='', rack_controller=None):
+        prefix, osystem='', release='', rack_controller=None,
+        default_region_ip=None):
     """Return the enlistment preseed.
 
     :param prefix: See `get_preseed_filenames`.
@@ -865,14 +884,16 @@ def render_enlistment_preseed(
     """
     template = load_preseed_template(None, prefix, osystem, release)
     context = get_preseed_context(
-        osystem, release, rack_controller=rack_controller)
+        osystem, release, rack_controller=rack_controller,
+        default_region_ip=default_region_ip)
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
     return template.substitute(**snippets).encode("utf-8")
 
 
-def render_preseed(node, prefix, osystem='', release=''):
+def render_preseed(
+        node, prefix, osystem='', release='', default_region_ip=None):
     """Return the preseed for the given node.
 
     :param node: See `get_preseed_filenames`.
@@ -885,17 +906,22 @@ def render_preseed(node, prefix, osystem='', release=''):
     template = load_preseed_template(node, prefix, osystem, release)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        osystem, release, rack_controller=rack_controller)
+        osystem, release, rack_controller=rack_controller,
+        default_region_ip=default_region_ip)
     context.update(
         get_node_preseed_context(
-            node, osystem, release, rack_controller=rack_controller))
+            node, osystem, release, rack_controller=rack_controller,
+            default_region_ip=default_region_ip))
     return template.substitute(**context).encode("utf-8")
 
 
-def compose_enlistment_preseed_url(rack_controller=None):
+def compose_enlistment_preseed_url(
+        rack_controller=None, default_region_ip=None):
     """Compose enlistment preseed URL.
 
     :param rack_controller: The rack controller used to generate the preseed.
+    :param default_region_ip: The preferred IP address this region should
+        communicate on.
     """
     # Always uses the latest version of the metadata API.
     base_url = (
@@ -904,14 +930,15 @@ def compose_enlistment_preseed_url(rack_controller=None):
         else None)
     version = 'latest'
     return absolute_reverse(
-        'metadata-enlist-preseed', args=[version],
-        query={'op': 'get_enlist_preseed'}, base_url=base_url)
+        'metadata-enlist-preseed', default_region_ip=default_region_ip,
+        args=[version], query={'op': 'get_enlist_preseed'}, base_url=base_url)
 
 
-def compose_preseed_url(node, rack_controller):
+def compose_preseed_url(node, rack_controller, default_region_ip=None):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
     return absolute_reverse(
-        'metadata-node-by-id', args=[version, node.system_id],
-        query={'op': 'get_preseed'}, base_url=rack_controller.url)
+        'metadata-node-by-id', default_region_ip=default_region_ip,
+        args=[version, node.system_id], query={'op': 'get_preseed'},
+        base_url=rack_controller.url)

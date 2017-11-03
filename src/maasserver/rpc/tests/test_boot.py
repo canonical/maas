@@ -43,6 +43,7 @@ from maastesting.matchers import (
 )
 from netaddr import IPNetwork
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
+from provisioningserver.utils.network import get_source_address
 from testtools.matchers import (
     ContainsAll,
     StartsWith,
@@ -276,7 +277,8 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(
-            compose_enlistment_preseed_url(),
+            compose_enlistment_preseed_url(
+                default_region_ip=get_source_address(remote_ip)),
             observed_config["preseed_url"])
 
     def test__enlistment_checks_default_min_hwe_kernel(self):
@@ -306,15 +308,17 @@ class TestGetConfig(MAASServerTestCase):
         self.assertEqual('generic', observed_config['subarch'])
 
     def test__has_preseed_url_for_known_node(self):
-        rack_controller = factory.make_RackController()
+        rack_controller = factory.make_RackController(url='')
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node(status=NODE_STATUS.DEPLOYING)
         mac = node.get_boot_interface().mac_address
+        self.patch(boot_module, 'get_source_address').return_value = local_ip
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual(
-            compose_preseed_url(node, rack_controller),
+            compose_preseed_url(
+                node, rack_controller, default_region_ip=local_ip),
             observed_config["preseed_url"])
 
     def test_preseed_url_for_known_node_uses_rack_url(self):
