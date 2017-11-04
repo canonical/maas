@@ -4,7 +4,7 @@
     <span data-ng-if="node.node_type == 2">Rackd</span>
     <span data-ng-if="node.node_type == 3">Regiond</span>
     <span data-ng-if="node.node_type == 4">Regiond+rackd</span>
-    <p data-ng-if="node.testing_status !== 2 && node.testing_status !== -1 && node.status_code !== 1 && node.status_code !== 2 && node.status_code !== 22 && node.status_code !== 21" class="u-text--subtle"><i class="icon icon--warning"></i> Node status 'Failed testing' was overridden.</p>
+    <p data-ng-if="node.testing_status !== 2 && node.testing_status !== -1 && node.status_code !== 1 && node.status_code !== 2 && node.status_code !== 22 && node.status_code !== 21" class="u-text--subtle"><i class="icon icon--warning"></i> Node has failed tests; use with caution!</p>
   </h2>
 </header>
 <div class="u-padding--bottom">
