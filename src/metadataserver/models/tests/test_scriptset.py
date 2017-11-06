@@ -28,6 +28,7 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from metadataserver.models import (
+    ScriptResult,
     ScriptSet,
     scriptset as scriptset_module,
 )
@@ -109,28 +110,6 @@ class TestTranslateResultType(MAASServerTestCase):
 
 class TestScriptSetManager(MAASServerTestCase):
     """Test the ScriptSet manager."""
-
-    def test_clean_old_ignores_new_script_set(self):
-        # Make sure the created script_set isn't cleaned up. This can happen
-        # when multiple script_sets last_ping are set to None.
-        script_set_limit = Config.objects.get_config(
-            'max_node_installation_results')
-        node = factory.make_Node()
-        for _ in range(script_set_limit * 2):
-            ScriptSet.objects.create(
-                node=node, result_type=RESULT_TYPE.INSTALLATION,
-                last_ping=None)
-
-        script_set = ScriptSet.objects.create_installation_script_set(node)
-        # If the new script_set was cleaned up this will fail.
-        node.current_installation_script_set = script_set
-        node.save()
-
-        self.assertEquals(
-            script_set_limit,
-            ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.INSTALLATION).count())
 
     def test_create_commissioning_script_set(self):
         custom_scripts = [
@@ -220,36 +199,79 @@ class TestScriptSetManager(MAASServerTestCase):
             node.power_state, script_set.power_state_before_transition)
 
     def test_create_commissioning_script_set_cleans_up_past_limit(self):
-        script_set_limit = Config.objects.get_config(
-            'max_node_commissioning_results')
+        limit = Config.objects.get_config('max_node_commissioning_results')
         node = factory.make_Node()
-        for _ in range(script_set_limit * 2):
-            factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        for i in range(limit + 2):
+            ScriptSet.objects.create_commissioning_script_set(node)
 
-        ScriptSet.objects.create_commissioning_script_set(node)
+        for script_name in NODE_INFO_SCRIPTS:
+            self.assertEqual(
+                limit,
+                ScriptResult.objects.filter(script_name=script_name).count())
 
-        self.assertEquals(
-            script_set_limit,
-            ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.COMMISSIONING).count())
+    def test_create_commissioning_script_set_cleans_up_by_node(self):
+        limit = Config.objects.get_config('max_node_commissioning_results')
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        for i in range(limit + 2):
+            ScriptSet.objects.create_commissioning_script_set(node1)
+            ScriptSet.objects.create_commissioning_script_set(node2)
+
+        for script_name in NODE_INFO_SCRIPTS:
+            self.assertEqual(
+                limit,
+                ScriptResult.objects.filter(
+                    script_name=script_name,
+                    script_set__in=ScriptSet.objects.filter(
+                        node=node1)).count())
+            self.assertEqual(
+                limit,
+                ScriptResult.objects.filter(
+                    script_name=script_name,
+                    script_set__in=ScriptSet.objects.filter(
+                        node=node2)).count())
 
     def test_create_commissioning_script_set_cleans_up_current(self):
         Config.objects.set_config('max_node_commissioning_results', 1)
         node = factory.make_Node()
-        script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.COMMISSIONING)
-        node.current_commissioning_script_set = script_set
+
+        node.current_commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(node))
         node.save()
 
         ScriptSet.objects.create_commissioning_script_set(node)
 
-        self.assertEquals(
-            1,
+        for script_name in NODE_INFO_SCRIPTS:
+            self.assertEqual(
+                1,
+                ScriptResult.objects.filter(script_name=script_name).count())
+
+    def test_create_commissioning_script_set_cleans_up_empty_sets(self):
+        Config.objects.set_config('max_node_commissioning_results', 1)
+        node = factory.make_Node()
+        ScriptSet.objects.create_commissioning_script_set(node)
+        script_set = ScriptSet.objects.create_commissioning_script_set(node)
+
+        # the first set is removed since it's empty
+        self.assertCountEqual(
+            [script_set],
             ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.COMMISSIONING).count())
+                result_type=RESULT_TYPE.COMMISSIONING).all())
+
+    def test_create_commissioning_script_set_cleans_up_per_node(self):
+        Config.objects.set_config('max_node_commissioning_results', 1)
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        ScriptSet.objects.create_commissioning_script_set(node1)
+        script_set1 = ScriptSet.objects.create_commissioning_script_set(node1)
+        ScriptSet.objects.create_commissioning_script_set(node2)
+        script_set2 = ScriptSet.objects.create_commissioning_script_set(node2)
+
+        # older sets for each node are removed
+        self.assertCountEqual(
+            [script_set1, script_set2],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.COMMISSIONING).all())
 
     def test_create_commissioning_script_set_accepts_params(self):
         script = factory.make_Script(
@@ -337,40 +359,102 @@ class TestScriptSetManager(MAASServerTestCase):
             ScriptSet.objects.create_testing_script_set, node)
 
     def test_create_testing_script_set_cleans_up_past_limit(self):
-        script_set_limit = Config.objects.get_config(
-            'max_node_testing_results')
+        limit = Config.objects.get_config('max_node_testing_results')
         node = factory.make_Node()
-        for _ in range(script_set_limit * 2):
-            factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.TESTING)
-
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
-        ScriptSet.objects.create_testing_script_set(
-            node, scripts=[script.name])
+        for _ in range(limit + 2):
+            ScriptSet.objects.create_testing_script_set(
+                node, scripts=[script.name])
+        self.assertEqual(
+            limit,
+            ScriptResult.objects.filter(script_name=script.name).count())
 
-        self.assertEquals(
-            script_set_limit,
-            ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.TESTING).count())
+    def test_create_testing_script_set_cleans_up_by_node(self):
+        limit = Config.objects.get_config('max_node_testing_results')
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        for _ in range(limit + 2):
+            ScriptSet.objects.create_testing_script_set(
+                node1, scripts=[script.name])
+            ScriptSet.objects.create_testing_script_set(
+                node2, scripts=[script.name])
+
+        self.assertEqual(
+            limit,
+            ScriptResult.objects.filter(
+                script_set__in=ScriptSet.objects.filter(node=node1)).count())
+        self.assertEqual(
+            limit,
+            ScriptResult.objects.filter(
+                script_set__in=ScriptSet.objects.filter(node=node2)).count())
+
+    def test_create_testing_script_set_cleans_up_by_blockdevice(self):
+        Config.objects.set_config('max_node_testing_results', 1)
+        node = factory.make_Node()
+        for _ in range(2):
+            factory.make_PhysicalBlockDevice(node=node)
+
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, parameters={
+                'storage': {'type': 'storage'}})
+        ScriptSet.objects.create_testing_script_set(
+            node, [script.name], {script.name: {'storage': 'all'}})
+        ScriptSet.objects.create_testing_script_set(
+            node, [script.name], {script.name: {'storage': 'all'}})
+
+        # one result is kept for each block device
+        self.assertEqual(
+            3,
+            ScriptResult.objects.filter(
+                script_set__in=ScriptSet.objects.filter(node=node)).count())
 
     def test_create_testing_script_set_cleans_up_current(self):
         Config.objects.set_config('max_node_testing_results', 1)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node()
-        script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.TESTING)
-        node.current_testing_script_set = script_set
+        node.current_testing_script_set = (
+            ScriptSet.objects.create_testing_script_set(
+                node, scripts=[script.name]))
         node.save()
 
-        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         ScriptSet.objects.create_testing_script_set(
             node, scripts=[script.name])
 
-        self.assertEquals(
+        self.assertEqual(
             1,
-            ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.TESTING).count())
+            ScriptResult.objects.filter(script_name=script.name).count())
+
+    def test_create_testing_script_set_cleans_up_empty_sets(self):
+        Config.objects.set_config('max_node_testing_results', 1)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node()
+        ScriptSet.objects.create_testing_script_set(
+            node, scripts=[script.name])
+        script_set = ScriptSet.objects.create_testing_script_set(
+            node, scripts=[script.name])
+        # the first set is removed since it's empty
+        self.assertCountEqual(
+            [script_set],
+            ScriptSet.objects.filter(result_type=RESULT_TYPE.TESTING).all())
+
+    def test_create_testing_script_set_cleans_up_per_node(self):
+        Config.objects.set_config('max_node_testing_results', 1)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        ScriptSet.objects.create_testing_script_set(
+            node1, scripts=[script.name])
+        script_set1 = ScriptSet.objects.create_testing_script_set(
+            node1, scripts=[script.name])
+        ScriptSet.objects.create_testing_script_set(
+            node2, scripts=[script.name])
+        script_set2 = ScriptSet.objects.create_testing_script_set(
+            node2, scripts=[script.name])
+        # older sets are removed for each node
+        self.assertCountEqual(
+            [script_set1, script_set2],
+            ScriptSet.objects.filter(result_type=RESULT_TYPE.TESTING).all())
 
     def test_create_testing_script_set_accepts_params(self):
         script = factory.make_Script(
@@ -410,41 +494,79 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertItemsEqual(
             [CURTIN_INSTALL_LOG],
             [script_result.name for script_result in script_set])
-        self.assertEquals(RESULT_TYPE.INSTALLATION, script_set.result_type)
+        self.assertEquals(
+            RESULT_TYPE.INSTALLATION, script_set.result_type)
         self.assertEquals(
             node.power_state, script_set.power_state_before_transition)
 
     def test_create_installation_script_set_cleans_up_past_limit(self):
-        script_set_limit = Config.objects.get_config(
-            'max_node_installation_results')
+        limit = Config.objects.get_config('max_node_installation_results')
         node = factory.make_Node()
-        for _ in range(script_set_limit * 2):
-            factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.INSTALLATION)
+        for _ in range(limit + 2):
+            ScriptSet.objects.create_installation_script_set(node)
 
-        ScriptSet.objects.create_installation_script_set(node)
+        self.assertEqual(
+            limit,
+            ScriptResult.objects.filter(
+                script_name=CURTIN_INSTALL_LOG).count())
 
-        self.assertEquals(
-            script_set_limit,
-            ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.INSTALLATION).count())
+    def test_create_installation_script_set_cleans_up_by_node(self):
+        limit = Config.objects.get_config('max_node_installation_results')
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        for _ in range(limit + 2):
+            ScriptSet.objects.create_installation_script_set(node1)
+            ScriptSet.objects.create_installation_script_set(node2)
+
+        self.assertEqual(
+            limit,
+            ScriptResult.objects.filter(
+                script_name=CURTIN_INSTALL_LOG,
+                script_set__in=ScriptSet.objects.filter(node=node1)).count())
+        self.assertEqual(
+            limit,
+            ScriptResult.objects.filter(
+                script_name=CURTIN_INSTALL_LOG,
+                script_set__in=ScriptSet.objects.filter(node=node2)).count())
 
     def test_create_installation_script_set_cleans_up_current(self):
-        Config.objects.get_config('max_node_installation_results', 1)
+        Config.objects.set_config('max_node_installation_results', 1)
         node = factory.make_Node()
-        script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.INSTALLATION)
-        node.current_installation_script_set = script_set
+        node.current_installation_script_set = (
+            ScriptSet.objects.create_installation_script_set(node))
         node.save()
 
         ScriptSet.objects.create_installation_script_set(node)
 
-        self.assertEquals(
+        self.assertEqual(
             1,
+            ScriptResult.objects.filter(
+                script_name=CURTIN_INSTALL_LOG).count())
+
+    def test_create_installation_script_set_cleans_up_empty_sets(self):
+        Config.objects.set_config('max_node_installation_results', 1)
+        node = factory.make_Node()
+        ScriptSet.objects.create_installation_script_set(node)
+        script_set = ScriptSet.objects.create_installation_script_set(node)
+        # the first set is removed since it's empty
+        self.assertCountEqual(
+            [script_set],
             ScriptSet.objects.filter(
-                node=node,
-                result_type=RESULT_TYPE.INSTALLATION).count())
+                result_type=RESULT_TYPE.INSTALLATION).all())
+
+    def test_create_installation_script_set_cleans_up_per_node(self):
+        Config.objects.set_config('max_node_installation_results', 1)
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        ScriptSet.objects.create_installation_script_set(node1)
+        script_set1 = ScriptSet.objects.create_installation_script_set(node1)
+        ScriptSet.objects.create_installation_script_set(node2)
+        script_set2 = ScriptSet.objects.create_installation_script_set(node2)
+        # older results are deleted by node
+        self.assertCountEqual(
+            [script_set1, script_set2],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.INSTALLATION).all())
 
 
 class TestScriptSet(MAASServerTestCase):

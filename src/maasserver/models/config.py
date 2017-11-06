@@ -100,7 +100,7 @@ def get_default_config():
         'completed_intro': False,
         'max_node_commissioning_results': 10,
         'max_node_testing_results': 10,
-        'max_node_installation_results': 1,
+        'max_node_installation_results': 3,
         # Notifications.
         'subnet_ip_exhaustion_threshold_count': 16,
         'http_boot': True,

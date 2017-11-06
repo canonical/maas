@@ -516,7 +516,7 @@ CONFIG_ITEMS = {
         },
     },
     'max_node_installation_results': {
-        'default': 1,
+        'default': 3,
         'form': forms.IntegerField,
         'form_kwargs': {
             'required': False,
