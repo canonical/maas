@@ -1,8 +1,14 @@
-maas (2.3.0~rc1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.0~rc2-0ubuntu1) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 06 Nov 2017 16:46:32 -0500
+
+maas (2.3.0~rc1-6393-g8103f0a-0ubuntu1~17.10.1) artful; urgency=medium
 
   * New upstream release, 2.3.0 rc1.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 30 Oct 2017 14:20:18 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 06 Nov 2017 13:23:31 -0500
 
 maas (2.3.0~beta3-6368-g03ca7f4-0ubuntu1) artful; urgency=medium
 
