@@ -49,8 +49,16 @@ from socket import gethostname
 from maasserver import is_master_process
 from maasserver.utils.orm import disable_all_database_connections
 from provisioningserver.utils.twisted import asynchronous
-from twisted.application.service import MultiService
+from twisted.application.service import (
+    MultiService,
+    Service,
+)
 from twisted.internet import reactor
+from twisted.internet.defer import (
+    DeferredList,
+    inlineCallbacks,
+    maybeDeferred,
+)
 from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 
 # Default port for regiond.
@@ -184,6 +192,23 @@ def make_WebApplicationService(postgresListener, statusWorker):
     return site_service
 
 
+class MAASServices(MultiService):
+
+    def __init__(self, eventloop):
+        self.eventloop = eventloop
+        super().__init__()
+
+    @asynchronous
+    @inlineCallbacks
+    def startService(self):
+        yield maybeDeferred(self.eventloop.prepare)
+        Service.startService(self)
+        yield DeferredList([
+            maybeDeferred(service.startService)
+            for service in self
+        ])
+
+
 class RegionEventLoop:
     """An event loop running in a region controller process.
 
@@ -302,7 +327,7 @@ class RegionEventLoop:
 
     def __init__(self):
         super(RegionEventLoop, self).__init__()
-        self.services = MultiService()
+        self.services = MAASServices(self)
         self.handle = None
 
     @asynchronous

@@ -6,7 +6,11 @@
 __all__ = []
 
 import socket
-from unittest.mock import sentinel
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 
 from crochet import wait_for
 from django.db import connections
@@ -20,7 +24,10 @@ from maasserver import (
     status_monitor,
     webapp,
 )
-from maasserver.eventloop import DEFAULT_PORT
+from maasserver.eventloop import (
+    DEFAULT_PORT,
+    MAASServices,
+)
 from maasserver.regiondservices import service_monitor_service
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
@@ -32,6 +39,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maastesting.factory import factory
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from metadataserver import api_twisted
 from testtools.matchers import (
@@ -43,10 +51,44 @@ from twisted.internet import (
     defer,
     reactor,
 )
+from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
+class TestMAASServices(MAASTestCase):
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_prepare(self):
+        fake_eventloop = Mock()
+        calls = Mock()
+        fake_eventloop.prepare = calls
+        fake_services = [Mock(), Mock()]
+        services = MAASServices(fake_eventloop)
+        for service in fake_services:
+            service.startService = Mock()
+            services.addService(service)
+        yield services.startService()
+        self.assertThat(calls, MockCallsMatch(call()))
+        self.assertThat(services.running, Equals(1))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__starts_each_service(self):
+        fake_eventloop = Mock()
+        fake_eventloop.prepare = Mock()
+        calls = Mock()
+        fake_services = [Mock(), Mock()]
+        services = MAASServices(fake_eventloop)
+        for service in fake_services:
+            service.startService = calls
+            services.addService(service)
+        yield services.startService()
+        self.assertThat(calls, MockCallsMatch(call(), call()))
+        self.assertThat(services.running, Equals(1))
 
 
 class TestRegionEventLoop(MAASTestCase):
