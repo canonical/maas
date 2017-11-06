@@ -331,7 +331,7 @@ class TestParametersForm(MAASServerTestCase):
             'type': 'runtime',
             'max': max_runtime,
         }})
-        value = random.randint(max_runtime + 1, max_runtime * 2)
+        value = random.randint(max_runtime + 1, max_runtime + 10)
         form = ParametersForm(
             data={'runtime': value}, script=script, node=factory.make_Node())
         self.assertFalse(form.is_valid())
