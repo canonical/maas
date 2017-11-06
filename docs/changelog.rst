@@ -21,6 +21,8 @@ LP: #1728302    [2.3, HWTv2, UI] Overall health status is redundant
 
 LP: #1721827    [2.3, HWTv2] Logging when and why a machine failed testing (due to missing heartbeats/locked/hanged) not available in maas.log
 
+LP: #1722665    [2.3, HWTv2] MAAS stores a limited amount of test results
+
 LP: #1718779    [2.3] 00-maas-06-get-fruid-api-data fails to run on controller
 
 LP: #1729857    [2.3, UI] Whitespace after checkbox on node listing page
@@ -44,6 +46,8 @@ LP: #1727962    Intermittent failure: TestDeviceHandler.test_list_num_queries_is
 LP: #1727360    Make partition size field optional in the API (CLI)
 
 LP: #1418044    Avoid picking the wrong IP for MAAS_URL and DEFAULT_MAAS_URL
+
+LP: #1729902    When commissioning don't show message that user has overridden testing
 
 
 MAAS 2.3.0 (beta3)
