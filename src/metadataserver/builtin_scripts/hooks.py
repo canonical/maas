@@ -367,6 +367,17 @@ def update_node_physical_block_devices(node, output, exit_status):
         size = int(block_info["SIZE"])
         block_size = int(block_info["BLOCK_SIZE"])
         tags = get_tags_from_block_info(block_info)
+
+        # First check if there is an existing device with the same name.
+        # If so, we need to rename it. Its name will be changed back later,
+        # when we loop around to it.
+        existing = PhysicalBlockDevice.objects.filter(
+            node=node, name=name).all()
+        for device in existing:
+            # Use the device ID to ensure a unique temporary name.
+            device.name = "%s.%d" % (device.name, device.id)
+            device.save()
+
         block_device = get_matching_block_device(
             previous_block_devices, serial, id_path)
         if block_device is not None:
@@ -389,16 +400,6 @@ def update_node_physical_block_devices(node, output, exit_status):
             # Skip loopback devices as they won't be available on next boot
             if id_path.startswith('/dev/loop'):
                 continue
-
-            # First check if there is an existing device with the same name.
-            # If so, we need to rename it. Its name will be changed back later,
-            # when we loop around to it.
-            existing = PhysicalBlockDevice.objects.filter(
-                node=node, name=name).all()
-            for device in existing:
-                # Use the device ID to ensure a unique temporary name.
-                device.name = "%s.%d" % (device.name, device.id)
-                device.save()
             # New block device. Create it on the node.
             PhysicalBlockDevice.objects.create(
                 node=node,

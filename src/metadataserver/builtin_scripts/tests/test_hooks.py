@@ -769,6 +769,42 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ]
         self.assertItemsEqual(device_names, created_names)
 
+    def test__handles_new_block_device_in_front(self):
+        # First simulate a node being commissioned with two disks. For
+        # this test, there need to be at least two disks in order to
+        # simulate a condition like the one in bug #1662343.
+        node = factory.make_Node()
+        device1 = self.make_block_device(name='sda')
+        device2 = self.make_block_device(name='sdb')
+        update_node_physical_block_devices(
+            node, json.dumps([device1, device2]).encode('utf-8'), 0)
+
+        # Now, we simulate that we insert a new disk in the machine that
+        # becomes sda, thus pushing the other disks to sdb and sdc.
+        recommission_device1 = self.make_block_device(name='sda')
+        recommission_device2 = device1.copy()
+        recommission_device2["NAME"] = 'sdb'
+        recommission_device2["PATH"] = '/dev/sdb'
+        recommission_device3 = device2.copy()
+        recommission_device3["NAME"] = 'sdc'
+        recommission_device3["PATH"] = '/dev/sdc'
+        recommission_devices = [
+            recommission_device1, recommission_device2, recommission_device3]
+
+        # After recommissioning the node, we'll have three devices, as
+        # expected.
+        update_node_physical_block_devices(
+            node, json.dumps(recommission_devices).encode('utf-8'), 0)
+        device_names = [
+            (device.name, device.serial)
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+            ]
+        self.assertItemsEqual(
+            [('sda', recommission_device1["SERIAL"]),
+             ('sdb', recommission_device2["SERIAL"]),
+             ('sdc', recommission_device3["SERIAL"])],
+            device_names)
+
     def test__only_updates_physical_block_devices(self):
         devices = [self.make_block_device() for _ in range(3)]
         node = factory.make_Node()
