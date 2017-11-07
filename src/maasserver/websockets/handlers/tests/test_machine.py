@@ -1277,6 +1277,9 @@ class TestMachineHandler(MAASServerTestCase):
                 'started': dehydrate_datetime(script_result.started),
                 'ended': dehydrate_datetime(script_result.ended),
                 'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
             },
             {
                 'id': script_result.id,
@@ -1292,6 +1295,9 @@ class TestMachineHandler(MAASServerTestCase):
                 'started': dehydrate_datetime(script_result.started),
                 'ended': dehydrate_datetime(script_result.ended),
                 'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
             }], handler.dehydrate_script_set(script_set))
 
     def test_dehydrate_script_set_returns_output_if_stdout_empty(self):
@@ -1318,6 +1324,9 @@ class TestMachineHandler(MAASServerTestCase):
                 'started': dehydrate_datetime(script_result.started),
                 'ended': dehydrate_datetime(script_result.ended),
                 'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
             }, handler.dehydrate_script_set(script_result.script_set)[0])
 
     def test_dehydrate_script_set_returns_combined_for_testing(self):
@@ -1341,6 +1350,9 @@ class TestMachineHandler(MAASServerTestCase):
                 'started': dehydrate_datetime(script_result.started),
                 'ended': dehydrate_datetime(script_result.ended),
                 'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
             }, handler.dehydrate_script_set(script_result.script_set)[0])
 
     def test_dehydrate_script_set_status(self):

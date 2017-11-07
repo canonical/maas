@@ -605,6 +605,9 @@ class NodeHandler(TimestampedModelHandler):
                 'started': dehydrate_datetime(script_result.started),
                 'ended': dehydrate_datetime(script_result.ended),
                 'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
             })
             if (script_result.stderr != b'' and
                     script_set.result_type != RESULT_TYPE.TESTING):
@@ -621,6 +624,9 @@ class NodeHandler(TimestampedModelHandler):
                     'started': dehydrate_datetime(script_result.started),
                     'ended': dehydrate_datetime(script_result.ended),
                     'runtime': script_result.runtime,
+                    'starttime': script_result.starttime,
+                    'endtime': script_result.endtime,
+                    'estimated_runtime': script_result.estimated_runtime,
                 })
         return sorted(ret, key=lambda i: i['name'])
 

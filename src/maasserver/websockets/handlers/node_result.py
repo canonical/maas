@@ -76,6 +76,9 @@ class NodeResultHandler(TimestampedModelHandler):
         data["name"] = obj.name
         data["status_name"] = obj.status_name
         data["runtime"] = obj.runtime
+        data["starttime"] = obj.starttime
+        data["endtime"] = obj.endtime
+        data["estimated_runtime"] = obj.estimated_runtime
         data["result_type"] = obj.script_set.result_type
         if obj.script is not None:
             data["hardware_type"] = obj.script.hardware_type
@@ -92,6 +95,9 @@ class NodeResultHandler(TimestampedModelHandler):
                 "status": history.status,
                 "status_name": history.status_name,
                 "runtime": history.runtime,
+                "starttime": history.starttime,
+                "endtime": history.endtime,
+                "estimated_runtime": history.estimated_runtime,
             } for history in obj.history
         ]
         try:

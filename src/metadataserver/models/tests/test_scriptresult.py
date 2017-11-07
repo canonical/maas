@@ -417,6 +417,80 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
         self.assertEquals('', script_result.runtime)
 
+    def test_get_starttime(self):
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED,
+            started=now, ended=now)
+        self.assertEquals(now.timestamp(), script_result.starttime)
+
+    def test_get_starttime_None(self):
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING)
+        self.assertEquals('', script_result.starttime)
+
+    def test_get_endtime(self):
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED,
+            started=now, ended=now)
+        self.assertEquals(now.timestamp(), script_result.endtime)
+
+    def test_get_endtime_None(self):
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING)
+        self.assertEquals('', script_result.endtime)
+
+    def test_estimated_runtime_returns_set_runtime(self):
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING,
+            started=now, ended=(now + factory.make_timedelta()))
+        self.assertEquals(
+            script_result.runtime, script_result.estimated_runtime)
+
+    def test_estimated_runtime_returns_average_of_previous(self):
+        script = factory.make_Script()
+        script_set = factory.make_ScriptSet()
+        old_results = [
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script=script, script_set=script_set)
+            for _ in range(10)
+        ]
+        factory.make_ScriptResult(
+            status=SCRIPT_STATUS.FAILED,
+            script=script, script_set=script_set)
+        average_runtime = (old_results[9].ended - old_results[9].started)
+        for result in reversed(old_results[:-1]):
+            average_runtime += result.ended - result.started
+            average_runtime = average_runtime / 2
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.RUNNING, started=now,
+            script=script, script_set=script_set)
+        expected = str(
+            average_runtime - timedelta(
+                microseconds=average_runtime.microseconds))
+        self.assertEquals(
+            expected, script_result.estimated_runtime)
+
+    def test_estimated_runtime_uses_timeout(self):
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.RUNNING, started=now)
+        expected = str(script_result.script.timeout - timedelta(
+            microseconds=script_result.script.timeout.microseconds))
+        self.assertEquals(expected, script_result.estimated_runtime)
+
+    def test_estimated_runtime_returns_Unknown(self):
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.RUNNING, started=now)
+        script_result.script.timeout = timedelta(0)
+        script_result.script.save()
+        self.assertEquals("Unknown", script_result.estimated_runtime)
+
     def test_read_results(self):
         results = {
             'status': random.choice(

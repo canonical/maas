@@ -117,6 +117,51 @@ class ScriptResult(CleanSave, TimestampedModel):
         else:
             return ''
 
+    @property
+    def starttime(self):
+        if self.started is not None:
+            return self.started.timestamp()
+        else:
+            return ''
+
+    @property
+    def endtime(self):
+        if self.ended is not None:
+            return self.ended.timestamp()
+        else:
+            return ''
+
+    @property
+    def estimated_runtime(self):
+        # If there is a runtime the script has completed, no need to calculate
+        # an estimate.
+        if self.runtime != '':
+            return self.runtime
+        runtime = None
+        # Get an estimated runtime from previous runs.
+        for script_result in self.history:
+            # Only look at passed results when calculating an estimated
+            # runtime. Failed results may take longer or shorter than
+            # average. Don't use self.history.filter for this as the now
+            # cached history list may be used elsewhere.
+            if script_result.status != SCRIPT_STATUS.PASSED:
+                continue
+            previous_runtime = script_result.ended - script_result.started
+            if runtime is None:
+                runtime = previous_runtime
+            else:
+                runtime += previous_runtime
+                runtime = runtime / 2
+        if runtime is None:
+            if self.script is not None and self.script.timeout != timedelta(0):
+                # If there were no previous runs use the script's timeout.
+                return str(self.script.timeout - timedelta(
+                    microseconds=self.script.timeout.microseconds))
+            else:
+                return 'Unknown'
+        else:
+            return str(runtime - timedelta(microseconds=runtime.microseconds))
+
     def __str__(self):
         return "%s/%s" % (self.script_set.node.system_id, self.name)
 
