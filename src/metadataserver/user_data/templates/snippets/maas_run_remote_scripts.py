@@ -272,7 +272,9 @@ def parse_parameters(script, scripts_dir):
             ret += argument_format.format(input=param['value']).split()
         elif param_type == 'storage':
             value = param['value']
-            if not (value.get('model') and value.get('serial')):
+            model = value.get('model')
+            serial = value.get('serial')
+            if not (model and serial):
                 # If no model or serial were included trust that id_path
                 # is correct. This is needed for VirtIO devices.
                 value['path'] = value['input'] = value['id_path']
@@ -281,13 +283,19 @@ def parse_parameters(script, scripts_dir):
                 # for the device model and serial. This is needed as the
                 # the device name may have changed since commissioning.
                 for blockdev in get_block_devices():
-                    if (value['model'] == blockdev['MODEL'] and
-                            value['serial'] == blockdev['SERIAL']):
+                    if (model == blockdev['MODEL'] and
+                            serial == blockdev['SERIAL']):
                         value['path'] = value['input'] = "/dev/%s" % blockdev[
                             'NAME']
             argument_format = param.get(
                 'argument_format', '--storage={path}')
-            ret += argument_format.format(**value).split()
+            try:
+                ret += argument_format.format(**value).split()
+            except KeyError:
+                raise KeyError(
+                    "Storage device '%s' with serial '%s' not found on system."
+                    " Please try recommissioning."
+                    % (model, serial))
     return ret
 
 
@@ -313,12 +321,23 @@ def run_script(script, scripts_dir, send_result=True):
 
     try:
         script_arguments = parse_parameters(script, scripts_dir)
-    except KeyError:
+    except KeyError as e:
         # 2 is the return code bash gives when it can't execute.
         script['exit_status'] = args['exit_status'] = 2
+        output = (
+            'Unable to run script: %s\n\n'
+            '%s\n\n'
+            'Given parameters:\n%s\n\n'
+            'Discovered storage devices:\n%s\n' % (
+                script['name'], str(e).replace('"', ''),
+                str(script.get('parameters', {})),
+                str(get_block_devices()),
+            )
+        )
+        output = output.encode()
         args['files'] = {
-            script['combined_name']: b'Unable to map parameters',
-            script['stderr_name']: b'Unable to map parameters',
+            script['combined_name']: output,
+            script['stderr_name']: output,
         }
         output_and_send(
             'Failed to execute %s: %d' % (

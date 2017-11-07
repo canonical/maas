@@ -721,22 +721,47 @@ class TestRunScript(MAASTestCase):
             script['stderr_path'], script['parameters']['runtime']['value']))
 
     def test_run_script_errors_with_bad_param(self):
+        fake_block_devices = [{
+            'MODEL': factory.make_name('model'),
+            'SERIAL': factory.make_name('serial'),
+            } for _ in range(3)
+        ]
+        mock_get_block_devices = self.patch(
+            maas_run_remote_scripts, 'get_block_devices')
+        mock_get_block_devices.return_value = fake_block_devices
+        testing_block_device_model = factory.make_name('model')
+        testing_block_device_serial = factory.make_name('serial')
         scripts_dir = self.useFixture(TempDirectory()).path
         script = make_script(scripts_dir=scripts_dir)
         script['parameters'] = {'storage': {
             'type': 'storage',
             'argument_format': '{bad}',
+            'value': {
+                'model': testing_block_device_model,
+                'serial': testing_block_device_serial,
+            },
         }}
 
         self.assertFalse(run_script(script, scripts_dir))
 
+        expected_output = (
+            'Unable to run script: %s\n\n'
+            "Storage device '%s' with serial '%s' not found on system. "
+            "Please try recommissioning.\n\n"
+            'Given parameters:\n%s\n\n'
+            'Discovered storage devices:\n%s\n' % (
+                script['name'],
+                testing_block_device_model, testing_block_device_serial,
+                str(script['parameters']), str(fake_block_devices))
+        )
+        expected_output = expected_output.encode()
         self.assertThat(self.mock_output_and_send, MockCallsMatch(
             call('Starting %s' % script['msg_name'], **self.args),
             call(
                 'Failed to execute %s: 2' % script['msg_name'], exit_status=2,
                 files={
-                    script['combined_name']: b'Unable to map parameters',
-                    script['stderr_name']: b'Unable to map parameters',
+                    script['combined_name']: expected_output,
+                    script['stderr_name']: expected_output,
                 }, **self.args),
         ))
 
