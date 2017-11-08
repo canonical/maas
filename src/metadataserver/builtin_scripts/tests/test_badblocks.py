@@ -44,7 +44,8 @@ class TestRunBadBlocks(MAASTestCase):
         blocksize = str(random.choice([1024, 2048, 4096]))
         mock_check_output.return_value = blocksize.encode('utf-8')
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-n', storage]
+            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-n',
+            storage]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (
@@ -76,7 +77,8 @@ class TestRunBadBlocks(MAASTestCase):
         blocksize = str(random.choice([1024, 2048, 4096]))
         mock_check_output.return_value = blocksize.encode('utf-8')
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-w', storage]
+            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-w',
+            storage]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (
@@ -100,7 +102,8 @@ class TestRunBadBlocks(MAASTestCase):
         blocksize = str(random.choice([1024, 2048, 4096]))
         mock_check_output.return_value = blocksize.encode('utf-8')
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-n', storage]
+            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-n',
+            storage]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (

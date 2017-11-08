@@ -62,11 +62,11 @@ def run_badblocks(storage, destructive=False):
         stderr=DEVNULL).strip().decode()
     if destructive:
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-w',
+            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-w',
             storage]
     else:
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-n',
+            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-n',
             storage]
 
     print('Running command: %s\n' % ' '.join(cmd))
