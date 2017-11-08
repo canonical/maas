@@ -46,7 +46,7 @@ from snippets.maas_run_remote_scripts import (
 def make_script(
         scripts_dir=None, with_added_attribs=True, name=None,
         script_result_id=None, script_version_id=None, timeout_seconds=None,
-        parallel=None, with_output=True):
+        parallel=None, hardware_type=None, with_output=True):
     if name is None:
         name = factory.make_name('name')
     if script_result_id is None:
@@ -57,6 +57,8 @@ def make_script(
         timeout_seconds = random.randint(1, 1000)
     if parallel is None:
         parallel = random.randint(0, 2)
+    if hardware_type is None:
+        hardware_type = random.randint(0, 4)
     ret = {
         'name': name,
         'path': '%s/%s' % (random.choice(['commissioning', 'testing']), name),
@@ -64,6 +66,7 @@ def make_script(
         'script_version_id': script_version_id,
         'timeout_seconds': timeout_seconds,
         'parallel': parallel,
+        'hardware_type': hardware_type,
         'args': {},
     }
     ret['msg_name'] = '%s (id: %s, script_version_id: %s)' % (
@@ -109,18 +112,20 @@ def make_script(
 
 def make_scripts(
         instance=True, count=3, scripts_dir=None, with_added_attribs=True,
-        with_output=True, parallel=None):
+        with_output=True, parallel=None, hardware_type=None):
     if instance:
         script = make_script(
             scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
-            with_output=with_output, parallel=parallel)
+            with_output=with_output, parallel=parallel,
+            hardware_type=hardware_type)
         return [script] + [
             make_script(
                 scripts_dir=scripts_dir, with_added_attribs=with_added_attribs,
                 with_output=with_output, name=script['name'],
                 script_version_id=script['script_version_id'],
                 timeout_seconds=script['timeout_seconds'],
-                parallel=script['parallel'])
+                parallel=script['parallel'],
+                hardware_type=script['hardware_type'])
             for _ in range(count - 1)
         ]
     else:
@@ -876,11 +881,20 @@ class TestRunScripts(MAASTestCase):
             len(single_thread) + len(instance_thread) + len(any_thread),
             mock_install_deps.call_count)
 
-        for script in scripts:
-            self.assertThat(mock_run_script, MockAnyCall(
-                script=script, scripts_dir=scripts_dir,
-                send_result=True))
-        self.assertEquals(len(scripts), mock_run_script.call_count)
+        expected_calls = [
+            call(script=script, scripts_dir=scripts_dir, send_result=True)
+            for script in sorted(scripts, key=lambda i: (
+                99 if i['hardware_type'] == 0 else i['hardware_type'],
+                i['name']))
+            if script['parallel'] != 2
+        ]
+        expected_calls += [
+            call(script=script, scripts_dir=scripts_dir, send_result=True)
+            for script in sorted(scripts, key=lambda i: (
+                len(i.get('packages', {}).keys()), i['name']))
+            if script['parallel'] == 2
+        ]
+        self.assertThat(mock_run_script, MockCallsMatch(*expected_calls))
 
     def test_run_scripts_adds_data(self):
         scripts_dir = factory.make_name('scripts_dir')
@@ -907,6 +921,7 @@ class TestRunScripts(MAASTestCase):
             'script_version_id': script['script_version_id'],
             'timeout_seconds': script['timeout_seconds'],
             'parallel': script['parallel'],
+            'hardware_type': script['hardware_type'],
         }]
         run_scripts(url, creds, scripts_dir, out_dir, scripts)
         scripts[0].pop('thread', None)

@@ -81,6 +81,7 @@ from maasserver.utils.orm import (
 from metadataserver import logger
 from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
+    HARDWARE_TYPE,
     SCRIPT_PARALLEL,
     SCRIPT_STATUS,
     SCRIPT_TYPE,
@@ -947,6 +948,8 @@ class MAASScriptsHandler(OperationsHandler):
                         'timeout_seconds': script['timeout'].seconds,
                         'parallel': script.get(
                             'parallel', SCRIPT_PARALLEL.DISABLED),
+                        'hardware_type': script.get(
+                            'hardware_type', HARDWARE_TYPE.NODE),
                         'packages': script.get('packages', {}),
                     })
                 else:
@@ -964,6 +967,7 @@ class MAASScriptsHandler(OperationsHandler):
                     'script_version_id': script_result.script.script.id,
                     'timeout_seconds': script_result.script.timeout.seconds,
                     'parallel': script_result.script.parallel,
+                    'hardware_type': script_result.script.hardware_type,
                     'parameters': script_result.parameters,
                     'packages': script_result.script.packages,
                 })

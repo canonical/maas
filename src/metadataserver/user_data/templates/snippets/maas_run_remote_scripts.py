@@ -414,19 +414,17 @@ def run_script(script, scripts_dir, send_result=True):
 
 def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
     """Run and report results for the given scripts."""
-    fail_count = 0
-    # Scripts sorted into if and how they can be run in parallel
-    single_thread = []
-    instance_thread = []
-    any_thread = []
+    # Add extra info to the script dictionary used to run the script.
     for script in scripts:
-        script['msg_name'] = '%s (id: %s' % (
-            script['name'], script['script_result_id'])
+        # The arguments used to send MAAS data about the result of the script.
         script['args'] = {
             'url': url,
             'creds': creds,
             'script_result_id': script['script_result_id'],
         }
+        # The pretty name of the script with id used for debug messages.
+        script['msg_name'] = '%s (id: %s' % (
+            script['name'], script['script_result_id'])
         if 'script_version_id' in script:
             script['msg_name'] = '%s, script_version_id: %s)' % (
                 script['msg_name'], script['script_version_id'])
@@ -453,51 +451,66 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
             script_out_dir, script['result_name'])
         script['download_path'] = os.path.join(
             scripts_dir, 'downloads', script['name'])
-        if script['parallel'] == 1:
-            instance_thread_group = None
-            for grp in instance_thread:
-                if grp[0]['name'] == script['name']:
-                    instance_thread_group = grp
-                    break
-            if instance_thread_group is None:
-                instance_thread_group = []
-                instance_thread.append(instance_thread_group)
-            instance_thread_group.append(script)
-        elif script['parallel'] == 2:
-            any_thread.append(script)
-        else:
-            single_thread.append(script)
 
-    for script in single_thread:
-        if not install_dependencies([script], send_result):
-            fail_count += 1
+    # The numeric values for hardware_type and parallel are defined in enums in
+    # src/metadataserver/enum.py. When running on a node enum.py is not
+    # available which is why they are hard coded here.
+    fail_count = 0
+    scripts_ran = []
+    # Run CPU(1), memory(2), storage(3), and finally node(0). Because node is
+    # hardware_type 0 use 99 when ordering so it always runs last.
+    for script in sorted(scripts, key=lambda i: (
+            99 if i['hardware_type'] == 0 else i['hardware_type'], i['name'])):
+        # Don't run scripts which have already run.
+        if script['script_result_id'] in scripts_ran:
             continue
-        if not run_script(
-                script=script, scripts_dir=scripts_dir,
-                send_result=send_result):
-            fail_count += 1
-
-    for scripts in instance_thread:
-        if not install_dependencies(scripts, send_result):
-            fail_count += len(scripts)
-            continue
-        for script in scripts:
-            script['thread'] = Thread(
-                target=run_script, name=script['msg_name'], kwargs={
-                    'script': script,
-                    'scripts_dir': scripts_dir,
-                    'send_result': send_result,
-                    })
-            script['thread'].start()
-        for script in scripts:
-            script['thread'].join()
-            if script.get('exit_status') != 0:
+        if script['parallel'] == 0:
+            # Single threaded script
+            scripts_ran.append(script['script_result_id'])
+            if not install_dependencies([script], send_result):
                 fail_count += 1
+                continue
+            if not run_script(
+                    script=script, scripts_dir=scripts_dir,
+                    send_result=send_result):
+                fail_count += 1
+        elif script['parallel'] == 1:
+            # Instance script, run in parallel with scripts with the same
+            # name. Used by storage scripts.
+            instance_scripts = []
+            for instance_script in scripts:
+                if instance_script['name'] == script['name']:
+                    scripts_ran.append(instance_script['script_result_id'])
+                    instance_scripts.append(instance_script)
+            if not install_dependencies(instance_scripts, send_result):
+                fail_count += len(instance_scripts)
+                continue
+            for instance_script in instance_scripts:
+                instance_script['thread'] = Thread(
+                    target=run_script, name=script['msg_name'], kwargs={
+                        'script': instance_script,
+                        'scripts_dir': scripts_dir,
+                        'send_result': send_result,
+                        })
+                instance_script['thread'].start()
+            for instance_script in instance_scripts:
+                instance_script['thread'].join()
+                if instance_script.get('exit_status') != 0:
+                    fail_count += 1
 
-    # Start scripts which do not have dependencies first.
-    for script in sorted(
-            any_thread, key=lambda script: (
-                len(script.get('packages', {}).keys()), script['name'])):
+    # Start scripts which do not have dependencies first so they can run while
+    # other scripts are installing.
+    for script in sorted(scripts, key=lambda i: (
+            len(i.get('packages', {}).keys()), i['name'])):
+        # Ignore scripts which are not allowed to run in parallel with any
+        # other script. These scripts should have already been run above.
+        if script['parallel'] != 2:
+            continue
+        # Don't run scripts which have already run.
+        if script['script_result_id'] in scripts_ran:
+            continue
+        else:
+            scripts_ran.append(script['script_result_id'])
         if not install_dependencies([script], send_result):
             fail_count += 1
             continue
@@ -508,7 +521,10 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
                 'send_result': send_result,
                 })
         script['thread'].start()
-    for script in any_thread:
+    for script in scripts:
+        # Don't wait for non-parallel scripts
+        if script['parallel'] != 2:
+            continue
         script['thread'].join()
         if script.get('exit_status') != 0:
             fail_count += 1
@@ -517,7 +533,7 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts, send_result=True):
 
 
 def run_scripts_from_metadata(
-        url, creds, scripts_dir, out_dir, send_result=True):
+        url, creds, scripts_dir, out_dir, send_result=True, download=True):
     """Run all scripts from a tar given by MAAS."""
     with open(os.path.join(scripts_dir, 'index.json')) as f:
         scripts = json.load(f)['1.0']
@@ -540,7 +556,7 @@ def run_scripts_from_metadata(
         # If commissioning previously ran and a test script uses a storage
         # parameter redownload the script tar as the storage devices may have
         # changed causing different ScriptResults.
-        if commissioning_scripts is not None:
+        if commissioning_scripts is not None and download:
             for test_script in testing_scripts:
                 for param in test_script.get('parameters', {}).values():
                     if param['type'] == 'storage':
@@ -642,6 +658,9 @@ def main():
     parser.add_argument(
         "--no-send", action='store_true', default=False,
         help="Don't send results back to MAAS")
+    parser.add_argument(
+        "--no-download", action='store_true', default=False,
+        help="Assume scripts have already been downloaded")
 
     parser.add_argument(
         "storage_directory", nargs='?',
@@ -684,9 +703,12 @@ def main():
     out_dir = os.path.join(args.storage_directory, 'out')
     os.makedirs(out_dir, exist_ok=True)
 
-    download_and_extract_tar("%s/maas-scripts/" % url, creds, scripts_dir)
+    if not args.no_download:
+        download_and_extract_tar(
+            "%s/maas-scripts/" % url, creds, scripts_dir)
     run_scripts_from_metadata(
-        url, creds, scripts_dir, out_dir, not args.no_send)
+        url, creds, scripts_dir, out_dir, not args.no_send,
+        not args.no_download)
 
     heart_beat.stop()
 

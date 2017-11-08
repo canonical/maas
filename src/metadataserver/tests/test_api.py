@@ -85,6 +85,7 @@ from metadataserver.api import (
 )
 from metadataserver.enum import (
     SCRIPT_STATUS,
+    HARDWARE_TYPE,
     SCRIPT_PARALLEL,
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
@@ -1154,6 +1155,8 @@ class TestMAASScripts(MAASServerTestCase):
                 md_item['timeout_seconds'] = script['timeout'].seconds
                 md_item['parallel'] = script.get(
                     'parallel', SCRIPT_PARALLEL.DISABLED)
+                md_item['hardware_type'] = script.get(
+                    'hardware_type', HARDWARE_TYPE.NODE)
                 md_item['packages'] = script.get('packages', {})
             else:
                 content = script_result.script.script.data.encode()
@@ -1161,6 +1164,7 @@ class TestMAASScripts(MAASServerTestCase):
                 md_item['timeout_seconds'] = (
                     script_result.script.timeout.seconds)
                 md_item['parallel'] = script_result.script.parallel
+                md_item['hardware_type'] = script_result.script.hardware_type
                 md_item['parameters'] = script_result.parameters
                 md_item['packages'] = script_result.script.packages
             self.extract_and_validate_file(
@@ -1180,6 +1184,7 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_version_id': script_result.script.script.id,
                 'timeout_seconds': script_result.script.timeout.seconds,
                 'parallel': script_result.script.parallel,
+                'hardware_type': script_result.script.hardware_type,
                 'parameters': script_result.parameters,
                 'packages': script_result.script.packages,
             })
@@ -1228,6 +1233,7 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_version_id': script_result.script.script.id,
                 'timeout_seconds': script_result.script.timeout.seconds,
                 'parallel': script_result.script.parallel,
+                'hardware_type': script_result.script.hardware_type,
                 'parameters': script_result.parameters,
                 'packages': script_result.script.packages,
             })
@@ -1312,6 +1318,8 @@ class TestMAASScripts(MAASServerTestCase):
                 md_item['timeout_seconds'] = script['timeout'].seconds
                 md_item['parallel'] = script.get(
                     'parallel', SCRIPT_PARALLEL.DISABLED)
+                md_item['hardware_type'] = script.get(
+                    'hardware_type', HARDWARE_TYPE.NODE)
                 md_item['packages'] = script.get('packages', {})
             else:
                 content = script_result.script.script.data.encode()
@@ -1319,6 +1327,7 @@ class TestMAASScripts(MAASServerTestCase):
                 md_item['timeout_seconds'] = (
                     script_result.script.timeout.seconds)
                 md_item['parallel'] = script_result.script.parallel
+                md_item['hardware_type'] = script_result.script.hardware_type
                 md_item['parameters'] = script_result.parameters
                 md_item['packages'] = script_result.script.packages
             self.extract_and_validate_file(
@@ -1337,6 +1346,7 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_version_id': script_result.script.script.id,
                 'timeout_seconds': script_result.script.timeout.seconds,
                 'parallel': script_result.script.parallel,
+                'hardware_type': script_result.script.hardware_type,
                 'parameters': script_result.parameters,
                 'packages': script_result.script.packages,
             }
