@@ -2062,6 +2062,19 @@ class TestCommissioningAPI(MAASServerTestCase):
             mock_set_initial_networking_configuration,
             MockCalledOnceWith(node))
 
+    def test_signal_doesnt_call_sets_initial_network_config_if_region(self):
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        node = factory.make_Node(
+            node_type=NODE_TYPE.REGION_CONTROLLER, with_empty_script_sets=True)
+        client = make_node_client(node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockNotCalled())
+
     def test_signal_doesnt_call_sets_initial_network_config_if_rack(self):
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")

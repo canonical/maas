@@ -543,6 +543,7 @@ class VersionIndexHandler(MetadataViewHandler):
         # This is skipped when its the rack controller using this endpoint.
         if node.node_type not in (
                 NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER):
             # Commissioning was successful, setup the default storage layout
             # and the initial networking configuration for the node.
