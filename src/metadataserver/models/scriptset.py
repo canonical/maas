@@ -223,6 +223,9 @@ class ScriptSetManager(Manager):
         return script_set
 
     def _clean_old(self, node, result_type, new_script_set):
+        # Avoid circular dependencies.
+        from metadataserver.models import ScriptResult
+
         config_var = {
             RESULT_TYPE.COMMISSIONING: 'max_node_commissioning_results',
             RESULT_TYPE.TESTING: 'max_node_testing_results',
@@ -236,6 +239,27 @@ class ScriptSetManager(Manager):
             if first_to_delete is not None:
                 script_result.history.filter(
                     pk__lte=first_to_delete.pk).delete()
+
+        # LP:1731075 - Before commissioning is run on a node MAAS does not know
+        # what storage devices are available on the system. If storage tests
+        # are to be run after commissioning MAAS needs to store which
+        # storage tests should be run but doesn't know what disks to test.
+        # The ParametersForm sets the storage paramater to 'all' as a place
+        # holder. When commissioning is finished ScriptSet.regenerate is called
+        # which recreates all ScriptResults which accept a storage parameter.
+        # If commissioning fails this is never called and the placeholder
+        # ScriptResult is left over. This allows the user to see which tests
+        # didn't run when commissioning failed but needs to be cleaned up as
+        # it is not associated with any disk. Check for this case and clean it
+        # up when trying commissioning again.
+        for script_result in ScriptResult.objects.filter(
+                script_set__node=node).exclude(parameters={}).exclude(
+                    script_set=new_script_set):
+            for param in script_result.parameters.values():
+                if (param.get('type') == 'storage' and
+                        param.get('value') == 'all'):
+                    script_result.delete()
+                    break
 
         # delete empty ScriptSets
         empty_scriptsets = ScriptSet.objects.annotate(

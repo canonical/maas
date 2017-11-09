@@ -246,6 +246,38 @@ class TestScriptSetManager(MAASServerTestCase):
                 1,
                 ScriptResult.objects.filter(script_name=script_name).count())
 
+    def test_create_commissioning_script_set_removes_previous_placeholder(
+            self):
+        # Regression test for LP:1731075
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            parameters={'storage': {'type': 'storage'}})
+        node = factory.make_Node(with_boot_disk=False)
+        previous_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        previous_script_result = factory.make_ScriptResult(
+            script_set=previous_script_set, status=SCRIPT_STATUS.PENDING)
+        previous_script_result.parameters = {
+            'storage': {
+                'type': 'storage',
+                'value': 'all',
+            },
+        }
+        previous_script_result.save()
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, scripts=[script.name])
+        script_result = script_set.scriptresult_set.get(script=script)
+
+        # Verify the new place holder ScriptResult was created
+        self.assertIsNotNone(reload_object(script_set))
+        self.assertDictEqual(
+            {'storage': {'type': 'storage', 'value': 'all'}},
+            script_result.parameters)
+        # Verify the old place holder ScriptResult was deleted
+        self.assertIsNone(reload_object(previous_script_set))
+        self.assertIsNone(reload_object(previous_script_result))
+
     def test_create_commissioning_script_set_cleans_up_empty_sets(self):
         Config.objects.set_config('max_node_commissioning_results', 1)
         node = factory.make_Node()
@@ -424,6 +456,37 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertEqual(
             1,
             ScriptResult.objects.filter(script_name=script.name).count())
+
+    def test_create_testing_script_set_removes_previous_placeholder(self):
+        # Regression test for LP:1731075
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={'storage': {'type': 'storage'}})
+        node = factory.make_Node(with_boot_disk=False)
+        previous_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        previous_script_result = factory.make_ScriptResult(
+            script_set=previous_script_set, status=SCRIPT_STATUS.PENDING)
+        previous_script_result.parameters = {
+            'storage': {
+                'type': 'storage',
+                'value': 'all',
+            },
+        }
+        previous_script_result.save()
+
+        script_set = ScriptSet.objects.create_testing_script_set(
+            node, scripts=[script.name])
+        script_result = script_set.scriptresult_set.get(script=script)
+
+        # Verify the new place holder ScriptResult was created
+        self.assertIsNotNone(reload_object(script_set))
+        self.assertDictEqual(
+            {'storage': {'type': 'storage', 'value': 'all'}},
+            script_result.parameters)
+        # Verify the old place holder ScriptResult was deleted
+        self.assertIsNone(reload_object(previous_script_set))
+        self.assertIsNone(reload_object(previous_script_result))
 
     def test_create_testing_script_set_cleans_up_empty_sets(self):
         Config.objects.set_config('max_node_testing_results', 1)
