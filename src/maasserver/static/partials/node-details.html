@@ -218,8 +218,8 @@
                     data-ng-class="{ 'is-active': section.area === 'events'}"
                     data-ng-click="section.area = 'events'">Events</button>
                 <button role="tab" class="page-navigation__link" data-ng-if="isSuperUser()"
-                    data-ng-class="{ 'is-active': section.area === 'settings'}"
-                    data-ng-click="section.area = 'settings'">Settings</button>
+                    data-ng-class="{ 'is-active': section.area === 'configuration'}"
+                    data-ng-click="section.area = 'configuration'">Configuration</button>
             </nav>
         </div>
     </div>
@@ -378,11 +378,11 @@
             </div>
         </div>
     </section>
-    <section class="row" data-ng-if="section.area === 'settings'">
+    <section class="row" data-ng-if="section.area === 'configuration'">
         <div class="wrapper--inner">
             <div class="twelve-col u-align--right">
-                <h2 class="u-float--left" data-ng-if="!isController">{$ node.node_type_display $} settings</h2>
-                <h2 class="u-float--left" data-ng-if="isController">Controller settings</h2>
+                <h2 class="u-float--left" data-ng-if="!isController">{$ node.node_type_display $} configuration</h2>
+                <h2 class="u-float--left" data-ng-if="isController">Controller configuration</h2>
                 <button class="button--secondary button--inline"
                     data-ng-if="canEdit()"
                     data-ng-click="editSummary()">Edit</button>
@@ -445,7 +445,7 @@
                 </div>
             </form>
             <div class="twelve-col u-align--right" data-ng-if="!isDevice">
-                <h2 class="u-float--left">Power settings</h2>
+                <h2 class="u-float--left">Power configuration</h2>
                 <button class="button--secondary button--inline"
                     data-ng-show="canEdit() && power_types.length"
                     data-ng-click="editPower()"
