@@ -15,6 +15,7 @@ import re
 from django.conf import settings
 from lxml import html
 from maasserver import concurrency
+from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
 from maasserver.websockets.websockets import (
@@ -29,10 +30,8 @@ from provisioningserver.utils.twisted import (
     ThreadPoolLimiter,
 )
 from twisted.application.internet import StreamServerEndpointService
-from twisted.internet import (
-    defer,
-    reactor,
-)
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
 from twisted.python import failure
 from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import (
@@ -248,15 +247,15 @@ class WebApplicationService(StreamServerEndpointService):
         self.site.resource = StartFailedPage(failure)
         log.err(failure, "MAAS web application failed to start")
 
+    @inlineCallbacks
     def startApplication(self):
         """Start the Django application, and install it."""
         try:
-            application = self.prepareApplication()
+            application = yield deferToDatabase(self.prepareApplication)
             self.startWebsocket()
             self.installApplication(application)
         except:
             self.installFailed(failure.Failure())
-        return defer.succeed(None)
 
     @asynchronous(timeout=30)
     def startService(self):
