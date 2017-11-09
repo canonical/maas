@@ -146,6 +146,10 @@ class ScriptResult(CleanSave, TimestampedModel):
             # cached history list may be used elsewhere.
             if script_result.status != SCRIPT_STATUS.PASSED:
                 continue
+            # LP: #1730799 - Old results may not have started set.
+            if script_result.started is None:
+                script_result.started = script_result.ended
+                script_result.save(update_fields=['started'])
             previous_runtime = script_result.ended - script_result.started
             if runtime is None:
                 runtime = previous_runtime
@@ -342,6 +346,13 @@ class ScriptResult(CleanSave, TimestampedModel):
             self.ended = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('ended')
+            # LP: #1730799 - If a script is run quickly the POST telling MAAS
+            # the script has started comes in after the POST telling MAAS the
+            # result.
+            if self.started is None:
+                self.started = self.ended
+                if 'update_fields' in kwargs:
+                    kwargs['update_fields'].append('started')
 
         if self.id is None and self.physical_blockdevice is None:
             for param in self.parameters.values():

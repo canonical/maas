@@ -375,6 +375,20 @@ class TestScriptResult(MAASServerTestCase):
         script_result.save(update_fields=['status'])
         self.assertIsNotNone(reload_object(script_result).ended)
 
+    def test_save_stores_start_time_with_end_time_when_not_set(self):
+        # Regression test for LP:1730799
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
+        script_result.started = None
+        script_result.status = random.choice([
+            SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+            SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED,
+            SCRIPT_STATUS.FAILED_INSTALLING])
+        script_result.save(update_fields=['status'])
+        script_result = reload_object(script_result)
+        self.assertIsNotNone(script_result.started)
+        self.assertIsNotNone(script_result.ended)
+        self.assertEquals(script_result.started, script_result.ended)
+
     def test_save_sets_physical_blockdevice_from_parameters(self):
         node = factory.make_Machine()
         script_set = factory.make_ScriptSet(node=node)
@@ -474,6 +488,20 @@ class TestScriptResult(MAASServerTestCase):
                 microseconds=average_runtime.microseconds))
         self.assertEquals(
             expected, script_result.estimated_runtime)
+
+    def test_estimated_runtime_sets_start_time_when_unavailable(self):
+        # Regression test for LP:1730799
+        script = factory.make_Script()
+        script_set = factory.make_ScriptSet()
+        no_started_result = factory.make_ScriptResult(
+            script=script, script_set=script_set)
+        no_started_result.status = SCRIPT_STATUS.PASSED
+        no_started_result.started = None
+        no_started_result.save()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.RUNNING, started=datetime.now(),
+            script=script, script_set=script_set)
+        self.assertEquals('0:00:00', script_result.estimated_runtime)
 
     def test_estimated_runtime_uses_timeout(self):
         now = datetime.now()
