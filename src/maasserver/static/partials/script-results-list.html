@@ -12,10 +12,10 @@
                     <div class="table__row">
                         <div class="table__header table-col--2 u-padding--left-none"></div>
                         <div class="table__header table-col--24">Name</div>
-                        <div class="table__header table-col--24">Tags</div>
+                        <div class="table__header table-col--22">Tags</div>
                         <div class="table__header table-col--15">Runtime</div>
                         <div class="table__header table-col--20">Date</div>
-                        <div class="table__header table-col--10">Result</div>
+                        <div class="table__header table-col--12">Result</div>
                         <div class="table__header table-col--5 u-align--right">Actions</div>
                     </div>
                 </header>
@@ -29,10 +29,10 @@
                                 {$ result.name $}
                                 <button class="icon u-margin--top-tiny u-float--right" data-ng-class="{'icon--open': !result.showing_results, 'icon--close': result.showing_results}" data-ng-if="!result.showing_history"></button>
                             </div>
-                            <div class="table__data table-col--24" aria-label="Tags"><span data-ng-hide="result.showing_history">{$ result.tags $}</span></div>
+                            <div class="table__data table-col--22" aria-label="Tags"><span data-ng-hide="result.showing_history">{$ result.tags $}</span></div>
                             <div class="table__data table-col--15" aria-label="Runtime"><span data-ng-hide="result.showing_history" data-maas-script-run-time="script-runtime" data-start-time="result.starttime" data-run-time="{{result.runtime}}" data-estimated-run-time="{{result.estimated_runtime}}" data-script-status="result.status"></span></div>
                             <div class="table__data table-col--20" aria-label="Date"><span data-ng-hide="result.showing_history">{$ result.updated $}</span></div>
-                            <div class="table__data table-col--10" aria-label="Status">
+                            <div class="table__data table-col--12" aria-label="Status">
                                 <span data-ng-hide="result.showing_history">
                                     <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
                                     {$ result.status_name $} <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ result.id $}">View log</a>
