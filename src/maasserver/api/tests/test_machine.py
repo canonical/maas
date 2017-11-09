@@ -822,10 +822,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_POST_release_fails_for_other_machine_states(self):
         releasable_statuses = (
-            RELEASABLE_STATUSES + [
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.READY
-            ])
+            {NODE_STATUS.RELEASING, NODE_STATUS.READY} | RELEASABLE_STATUSES)
         unreleasable_statuses = [
             status
             for status in map_enum(NODE_STATUS).values()

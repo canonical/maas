@@ -1678,8 +1678,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             (response.status_code, response.content))
 
     def test_POST_release_rejects_impossible_state_changes(self):
-        acceptable_states = set(
-            RELEASABLE_STATUSES + [NODE_STATUS.READY])
+        acceptable_states = {NODE_STATUS.READY} | RELEASABLE_STATUSES
         unacceptable_states = (
             set(map_enum(NODE_STATUS).values()) - acceptable_states)
         owner = self.user
@@ -1708,7 +1707,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         owner = self.user
         self.patch(Machine, '_stop')
         self.patch(Machine, '_set_status')
-        acceptable_states = [NODE_STATUS.READY] + RELEASABLE_STATUSES
+        acceptable_states = RELEASABLE_STATUSES | {NODE_STATUS.READY}
         machines = [
             factory.make_Node_with_Interface_on_Subnet(
                 status=status, owner=owner)

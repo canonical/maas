@@ -234,7 +234,7 @@ maaslog = get_maas_logger("node")
 
 # Holds the known `bios_boot_methods`. If `bios_boot_method` is not in this
 # list then it will fallback to `DEFAULT_BIOS_BOOT_METHOD`.
-KNOWN_BIOS_BOOT_METHODS = ["pxe", "uefi", "powernv", "powerkvm"]
+KNOWN_BIOS_BOOT_METHODS = frozenset(["pxe", "uefi", "powernv", "powerkvm"])
 
 # Default `bios_boot_method`. See `KNOWN_BIOS_BOOT_METHOD` above for usage.
 DEFAULT_BIOS_BOOT_METHOD = "pxe"
@@ -796,8 +796,8 @@ def get_default_zone():
     return Zone.objects.get_default_zone().id
 
 
-# List of statuses for which it makes sense to release a node.
-RELEASABLE_STATUSES = [
+# Statuses for which it makes sense to release a node.
+RELEASABLE_STATUSES = frozenset([
     NODE_STATUS.ALLOCATED,
     NODE_STATUS.RESERVED,
     NODE_STATUS.BROKEN,
@@ -806,7 +806,7 @@ RELEASABLE_STATUSES = [
     NODE_STATUS.FAILED_DEPLOYMENT,
     NODE_STATUS.FAILED_DISK_ERASING,
     NODE_STATUS.FAILED_RELEASING,
-    ]
+])
 
 
 class Node(CleanSave, TimestampedModel):
