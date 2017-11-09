@@ -61,13 +61,13 @@
             </td>
             <td class="table-col--3 u-display--desktop">
                 <i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-display--desktop"></i>
-                <i data-ng-if="!showSpinner(node) && node.other_test_status !== 2 && node.other_test_status !== -1 && (node.status_code === 1 || node.status_code === 2 || node.status_code === 22 || node.status_code === 21)" data-maas-script-status="script-status" data-script-status="node.other_test_status" class="tooltip tooltip--left" aria-label="{$ node.other_test_status_tooltip $}"></i>
-		<i data-ng-if="!showSpinner(node) && node.testing_status !== 2 && node.testing_status !== -1 && (node.status_code !== 1 || node.status_code !== 2 || node.status_code !== 22 || node.status_code === 21)" class="icon icon--warning u-display--desktop tooltip tooltip--left" aria-label="Machine has failed tests; use with caution!"></i>
+                <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" class="tooltip tooltip--left" aria-label="{$ node.other_test_status_tooltip $}"></i>
+		<i data-ng-if="showFailedTestWarning(node)" class="icon icon--warning u-display--desktop tooltip tooltip--left" aria-label="Machine has failed tests; use with caution!"></i>
 	    </td>
             <td class="status u-text--truncate" aria-label="{$ node.status_tooltip $}">{$ getStatusText(node) $} <span class="u-display--mobile">
 		<i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i>
-		<i data-ng-if="!showSpinner(node) && node.other_test_status !== 2 && (node.status_code === 1 || node.status_code === 2 || node.status_code === 22 || node.status_code === 21)" data-maas-script-status="script-status" data-script-status="node.other_test_status" class="tooltip tooltip--left" aria-label="{$ node.other_test_status_tooltip $}"></i>
-		<i data-ng-if="!showSpinner(node) && node.testing_status !== 2 && (node.status_code !== 1 || node.status_code !== 2 || node.status_code !== 22 || node.status_code === 21)" class="icon icon--warning u-margin--left-tiny tooltip tooltip--left" aria-label="Machine has failed tests; use with caution!"></i>
+		<i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" class="tooltip tooltip--left" aria-label="{$ node.other_test_status_tooltip $}"></i>
+		<i data-ng-if="showFailedTestWarning(node)" class="icon icon--warning u-margin--left-tiny tooltip tooltip--left" aria-label="Machine has failed tests; use with caution!"></i>
 	    </span></td>
             <td class="table-col--10" aria-label="Owner">{$ node.owner $}</td>
             <td class="u-align--right u-display--desktop" aria-label="CPU">

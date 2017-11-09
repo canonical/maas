@@ -79,7 +79,10 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
-from metadataserver.enum import HARDWARE_TYPE
+from metadataserver.enum import (
+    HARDWARE_TYPE,
+    RESULT_TYPE,
+)
 from metadataserver.models import ScriptResult
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.logger import LegacyLogger
@@ -217,31 +220,43 @@ class MachineHandler(NodeHandler):
             data["devices"] = sorted(
                 devices, key=itemgetter("fqdn"))
 
-        cpu_script_results = self._script_results.get(obj.id, {}).get(
-            HARDWARE_TYPE.CPU, [])
+        cpu_script_results = [
+            script_result for script_result in
+            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.CPU, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["cpu_test_status"] = get_status_from_qs(cpu_script_results)
         cpu_tooltip = self.dehydrate_hardware_status_tooltip(
             cpu_script_results)
         data["cpu_test_status_tooltip"] = cpu_tooltip
 
-        memory_script_results = self._script_results.get(obj.id, {}).get(
-            HARDWARE_TYPE.MEMORY, [])
+        memory_script_results = [
+            script_result for script_result in
+            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.MEMORY, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["memory_test_status"] = get_status_from_qs(
             memory_script_results)
         memory_tooltip = self.dehydrate_hardware_status_tooltip(
             memory_script_results)
         data["memory_test_status_tooltip"] = memory_tooltip
 
-        storage_script_results = self._script_results.get(obj.id, {}).get(
-            HARDWARE_TYPE.STORAGE, [])
+        storage_script_results = [
+            script_result for script_result in
+            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.STORAGE, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["storage_test_status"] = get_status_from_qs(
             storage_script_results)
         storage_tooltip = self.dehydrate_hardware_status_tooltip(
             storage_script_results)
         data["storage_test_status_tooltip"] = storage_tooltip
 
-        node_script_results = self._script_results.get(obj.id, {}).get(
-            HARDWARE_TYPE.NODE, [])
+        node_script_results = [
+            script_result for script_result in
+            self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.NODE, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["other_test_status"] = get_status_from_qs(node_script_results)
         other_tooltip = self.dehydrate_hardware_status_tooltip(
             node_script_results)

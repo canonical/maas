@@ -323,31 +323,46 @@ class TestMachineHandler(MAASServerTestCase):
                 if key not in allowed_fields:
                     del data[key]
 
-        cpu_script_results = handler._script_results.get(node.id, {}).get(
-            HARDWARE_TYPE.CPU, [])
+        cpu_script_results = [
+            script_result for script_result in
+            handler._script_results.get(node.id, {}).get(HARDWARE_TYPE.CPU, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["cpu_test_status"] = get_status_from_qs(cpu_script_results)
         cpu_tooltip = handler.dehydrate_hardware_status_tooltip(
             cpu_script_results)
         data["cpu_test_status_tooltip"] = cpu_tooltip
 
-        memory_script_results = handler._script_results.get(
-            node.id, {}).get(HARDWARE_TYPE.MEMORY, [])
+        memory_script_results = [
+            script_result for script_result in
+            handler._script_results.get(node.id, {}).get(
+                HARDWARE_TYPE.MEMORY, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["memory_test_status"] = get_status_from_qs(
             memory_script_results)
         memory_tooltip = handler.dehydrate_hardware_status_tooltip(
             memory_script_results)
         data["memory_test_status_tooltip"] = memory_tooltip
 
-        storage_script_results = handler._script_results.get(
-            node.id, {}).get(HARDWARE_TYPE.STORAGE, [])
+        storage_script_results = [
+            script_result for script_result in
+            handler._script_results.get(node.id, {}).get(
+                HARDWARE_TYPE.STORAGE, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["storage_test_status"] = get_status_from_qs(
             storage_script_results)
         storage_tooltip = handler.dehydrate_hardware_status_tooltip(
             storage_script_results)
         data["storage_test_status_tooltip"] = storage_tooltip
 
-        node_script_results = handler._script_results.get(
-            node.id, {}).get(HARDWARE_TYPE.NODE, [])
+        node_script_results = [
+            script_result for script_result in
+            handler._script_results.get(node.id, {}).get(
+                HARDWARE_TYPE.NODE, [])
+            if script_result.script_set.result_type == RESULT_TYPE.TESTING
+        ]
         data["other_test_status"] = get_status_from_qs(
             node_script_results)
         node_tooltip = handler.dehydrate_hardware_status_tooltip(

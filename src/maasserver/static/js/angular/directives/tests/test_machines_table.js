@@ -271,6 +271,114 @@ describe("maasMachinesTable", function() {
         });
     });
 
+    describe("showFailedTestWarning", function() {
+
+        var spinner_statuses = [0, 1, 2, 21, 22];
+        var testing_statuses = [-1, 2];
+
+        it("returns false when showing spinner", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(true);
+            expect(scope.showFailedTestWarning({})).toBe(false);
+        });
+
+        it("returns false when testing or commissioning", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(false);
+            angular.forEach(spinner_statuses, function(status) {
+                var machine = {
+                    status_code: status
+                };
+                expect(scope.showFailedTestWarning(machine)).toBe(false);
+            });
+        });
+
+        it("returns false when testing_status is passed/unknown", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(false);
+            angular.forEach(testing_statuses, function(testing_status) {
+                var machine = {
+                    status_code: 4, // READY
+                    testing_status: testing_status
+                };
+                expect(scope.showFailedTestWarning(machine)).toBe(false);
+            });
+        });
+
+        it("returns true otherwise", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(false);
+            var i, j;
+            // Go through all known statuses
+            for(i = 0; i <= 22; i++) {
+                if(spinner_statuses.indexOf(i) === -1) {
+                    // Go through all known script statuses
+                    for(j = -1; j <= 8; j++) {
+                        if(testing_statuses.indexOf(j) === -1 ) {
+                            var machine = {
+                                status_code: i,
+                                testing_status: j
+                            };
+                            expect(scope.showFailedTestWarning(machine)).toBe(
+                                true);
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    describe("showNodeStatus", function() {
+
+        it("returns false when showing spinner", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(true);
+            spyOn(scope, "showFailedTestWarning").and.returnValue(false);
+            var machine = {
+                other_status_status: 3
+            };
+            expect(scope.showNodeStatus(machine)).toBe(false);
+        });
+
+        it("returns false when showing failed test warning", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(false);
+            spyOn(scope, "showFailedTestWarning").and.returnValue(true);
+            var machine = {
+                other_test_status: 3
+            };
+            expect(scope.showNodeStatus(machine)).toBe(false);
+        });
+
+        it("returns false when other_test_status is passed", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(false);
+            spyOn(scope, "showFailedTestWarning").and.returnValue(false);
+            var machine = {
+                other_test_status: 2
+            };
+            expect(scope.showNodeStatus(machine)).toBe(false);
+        });
+
+        it("returns true otherwise", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "showSpinner").and.returnValue(false);
+            spyOn(scope, "showFailedTestWarning").and.returnValue(false);
+            var machine = {
+                other_status_status: 3
+            };
+            expect(scope.showNodeStatus(machine)).toBe(true);
+        });
+    });
+
     describe("getReleaseTitle", function() {
 
         it("returns release title from osinfo", function() {

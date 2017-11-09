@@ -113,7 +113,47 @@ angular.module('MAAS').directive('maasMachinesTable', [
 
         // Return true if spinner should be shown.
         scope.showSpinner = function(machine) {
-          return SPINNER_STATUSES.indexOf(machine.status_code) > -1;
+            return SPINNER_STATUSES.indexOf(machine.status_code) > -1;
+        };
+
+        scope.showFailedTestWarning = function(machine) {
+            if(scope.showSpinner(machine)) {
+                return false;
+            }
+            switch(machine.status_code) {
+                // NEW
+                case 0:
+                // COMMISSIONING
+                case 1:
+                // FAILED_COMMISSIONING
+                case 2:
+                // TESTING
+                case 21:
+                // FAILED_TESTING
+                case 22:
+                    return false;
+            }
+            switch(machine.testing_status) {
+                // Tests havn't been run
+                case -1:
+                // Tests have passed
+                case 2:
+                    return false;
+            }
+            return true;
+        };
+
+        // Return true if the other node status should be shown.
+        scope.showNodeStatus = function(machine) {
+            // -1 means tests havn't been run, 2 means tests have passed.
+            if(!scope.showSpinner(machine) &&
+               !scope.showFailedTestWarning(machine) &&
+               machine.other_test_status !== -1 &&
+               machine.other_test_status !== 2) {
+                return true;
+            } else {
+                return false;
+            }
         };
 
         // Returns the release title from osinfo.
