@@ -19,10 +19,7 @@ parts:
     plugin: nil
     stage-packages:
       - python3-distro-info
-    organize:
-      usr/lib/python3/dist-packages/distro_info.py: lib/python3.5/site-packages/distro_info.py
     stage:
-      - lib/python3.5/site-packages/distro_info.py
       - usr/share/distro-info/debian.csv
       - usr/share/distro-info/ubuntu.csv
   packages:
@@ -57,6 +54,9 @@ parts:
     plugin: nil
     stage-packages:
       - amtterm        # AMT
+      - libsoap-lite-perl # Missing dependencies for AMT
+      - libxml-parser-perl # Missing dependencies for AMT
+      - libxml-parser-lite-perl # Missing dependencies for AMT
       - wsmancli       # AMT
       - snmp           # APC
       - wget           # DLI
@@ -83,6 +83,43 @@ parts:
       - libpq-dev
       - libxml2-dev
       - libxslt1-dev
+    stage-packages:
+      - python3-bson
+      - python3-convoy
+      - python3-crochet
+      - python3-django
+      - python3-django-piston3
+      - python3-djorm-ext-pgarray
+      - python3-distro-info
+      - python3-formencode
+      - python3-httplib2
+      - python3-jsonschema
+      - python3-lxml
+      - python3-netaddr
+      - python3-netifaces
+      - python3-paramiko
+      - python3-petname
+      - python3-pexpect
+      - python3-psycopg2
+      - python3-pyparsing
+      - python3-requests
+      - python3-sphinx
+      - python3-tempita
+      - python3-twisted
+      - python3-zope.interface
+      - python3-seamicroclient
+      - python3-txtftp
+      - python3-yaml
+      - python3-simplestreams
+      - python3-curtin
+      - python3-oauth
+      - python3-oauthlib
+      - python3-attr
+      - python3-simplejson
+      - python3-markupsafe
+    organize:
+        lib/python3.5/site-packages/etc: etc
+        lib/python3.5/site-packages/usr: usr
     filesets:
       remove:
         - -lib/python3.5/site-packages/maastesting
@@ -97,10 +134,6 @@ parts:
         - -usr/share/lintian
         - -usr/share/man
         - -usr/share/perl5
-    organize:
-      lib/python3.5/site-packages/etc: etc
-      lib/python3.5/site-packages/usr: usr
-      usr/lib/curtin/helpers: lib/python3.5/site-packages/helpers
     stage:
       - $remove
     prime:

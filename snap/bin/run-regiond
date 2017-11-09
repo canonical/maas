@@ -22,4 +22,4 @@ export MAAS_IMAGES_KEYRING_FILEPATH="/snap/maas/current/usr/share/keyrings/ubunt
 export MAAS_THIRD_PARTY_DRIVER_SETTINGS="$SNAP/etc/maas/drivers.yaml"
 
 # Run the regiond.
-exec $SNAP/bin/twistd --logger=provisioningserver.logger.EventLogger --nodaemon --pidfile= maas-regiond
+exec $SNAP/usr/bin/twistd3 --logger=provisioningserver.logger.EventLogger --nodaemon --pidfile= maas-regiond
