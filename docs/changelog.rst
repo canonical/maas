@@ -2,6 +2,42 @@
 Changelog
 =========
 
+MAAS 2.3.0 (rc2)
+================
+
+For more information, visit: https://launchpad.net/maas/+milestone/2.3.0rc2
+
+Issues fixed in this release
+----------------------------
+
+LP: #1730481    [2.3, HWTv2] When 'other' test fails, node listing incorrectly shows two icons
+
+LP: #1723425    [2.3, HWTv2] Hardware tests do not provide start, current running or estimated run time
+
+LP: #1728304    [2.3, HWTv2] Tests fail but transition to ready with "Unable to map parameters" when disks are missing
+
+LP: #1731075    [2.3, HWTv2] Rogue test results when machine fails to commission for the first time
+
+LP: #1721825    [2.3, HWTv2] Tests are not run in meaningful order
+
+LP: #1731350    [2.3, HWTv2, UI] Aborting commissioning (+ testing) of a machine never commissioned before, leaves 'pending' icons in the UI
+
+LP: #1721743    [2.3b2] Rack and region controller versions still not updated
+
+LP: #1722646    [2.x] 2 out of 3 rack controller interfaces are missing links
+
+LP: #1730474    [2.x] MAAS region startup sequence leads to race conditions
+
+LP: #1662343    [2.1.3] Commissioning doesn't pick up new storage devices
+
+LP: #1730485    [2.2+, HWT] badblocks fails with LVM
+
+LP: #1730799    [2.3] Traceback when viewing controller commissioning scripts
+
+LP: #1731292    [2.3, UI, regression] Hardware testing / commissioning table doesn't fit in a small screen but there's a lot of whitespace
+
+LP: #1730703    [2.3, UI] Rename the section "Settings" of machine details to Configuration
+
 
 MAAS 2.3.0 (rc1)
 ================
