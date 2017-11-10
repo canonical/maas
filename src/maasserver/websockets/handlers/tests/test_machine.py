@@ -438,6 +438,26 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEquals(
             cached_content, handler._script_results[cached_node.id])
 
+    def test_get_object_refresh_script_result_cache_clears_aborted(self):
+        # Regression test for LP:1731350
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING,
+            script_set=factory.make_ScriptSet(node=node))
+
+        handler = MachineHandler(owner, {})
+        handler._script_results[node.id] = {
+            script_result.script.hardware_type: [script_result],
+        }
+        # Simulate aborting commissioning/testing
+        script_result.status = SCRIPT_STATUS.ABORTED
+        script_result.save()
+        handler.get_object({'system_id': node.system_id})
+
+        self.assertItemsEqual([], handler._script_results[node.id][
+            script_result.script.hardware_type])
+
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})

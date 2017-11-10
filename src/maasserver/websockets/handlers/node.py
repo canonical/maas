@@ -314,9 +314,6 @@ class NodeHandler(TimestampedModelHandler):
 
         If a node_id is given only that node is refreshed.
         """
-        # XXX: newell 2017-10-20 bug=1724235
-        # Aborted script results should not be included.
-        qs = qs.exclude(status=SCRIPT_STATUS.ABORTED)
         cleared_node_ids = []
         for script_result in qs:
             node_id = script_result.script_set.node_id
@@ -331,7 +328,21 @@ class NodeHandler(TimestampedModelHandler):
 
             if hardware_type not in self._script_results[node_id]:
                 self._script_results[node_id][hardware_type] = []
-            self._script_results[node_id][hardware_type].append(script_result)
+
+            if script_result.status == SCRIPT_STATUS.ABORTED:
+                # LP:1724235, LP:1731350 - Ignore aborted results and make
+                # sure results which were previous not aborted have been
+                # cleared from the cache. This allows users to abort
+                # commissioning/testing and have the status transition from
+                # pending to None.
+                for i, cached_script_result in enumerate(
+                        self._script_results[node_id][hardware_type]):
+                    if cached_script_result.id == script_result.id:
+                        self._script_results[node_id].pop(i)
+                        break
+            else:
+                self._script_results[node_id][hardware_type].append(
+                    script_result)
 
     def dehydrate_blockdevice(self, blockdevice, obj):
         """Return `BlockDevice` formatted for JSON encoding."""
