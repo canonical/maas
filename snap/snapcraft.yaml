@@ -134,6 +134,8 @@ parts:
         - -usr/share/lintian
         - -usr/share/man
         - -usr/share/perl5
+        - -var/lib/ieee-data/oui36.txt
+        - -var/lib/ieee-data/mam.txt
     stage:
       - $remove
     prime:
