@@ -602,8 +602,8 @@ ACTION_CLASSES = (
     MarkFixed,
     OverrideFailedTesting,
     SetZone,
-    Delete,
     ImportImages,
+    Delete,
 )
 
 ACTIONS_DICT = OrderedDict((action.name, action) for action in ACTION_CLASSES)

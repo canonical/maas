@@ -32,6 +32,7 @@ from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import (
     Abort,
     Acquire,
+    ACTION_CLASSES,
     Commission,
     compile_node_actions,
     Delete,
@@ -268,6 +269,18 @@ class TestNodeAction(MAASServerTestCase):
 
         node = factory.make_Node()
         self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
+
+    def test_delete_action_last_for_node(self):
+        node = factory.make_Node()
+        actions = compile_node_actions(
+            node, factory.make_admin(), classes=ACTION_CLASSES)
+        self.assertEqual('delete', list(actions)[-1])
+
+    def test_delete_action_last_for_controller(self):
+        controller = factory.make_RackController()
+        actions = compile_node_actions(
+            controller, factory.make_admin(), classes=ACTION_CLASSES)
+        self.assertEqual('delete', list(actions)[-1])
 
 
 class TestDeleteAction(MAASServerTestCase):
