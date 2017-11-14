@@ -576,9 +576,6 @@ class VersionIndexHandler(MetadataViewHandler):
         }
         target_status = signaling_statuses.get(status)
 
-        if target_status == NODE_STATUS.TESTING:
-            node.current_testing_script_set.regenerate()
-
         if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
             # Commissioning has ended. Check if any scripts failed during
             # post-processing; if so, the commissioning counts as a failure.

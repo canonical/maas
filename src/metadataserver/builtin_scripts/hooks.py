@@ -420,6 +420,13 @@ def update_node_physical_block_devices(node, output, exit_status):
         node.boot_disk = boot_disk
         node.save()
 
+    # LP: #1731353 - Regenerate ScriptResults before deleting
+    # PhyscalBlockDevices. This creates a ScriptResult with proper
+    # parameters for each storage device on the system. Storage devices no
+    # long available will be delete which causes a casade delete on their
+    # assoicated ScriptResults.
+    node.current_testing_script_set.regenerate()
+
     # Delete all the previous block devices that are no longer present
     # on the commissioned node.
     delete_block_device_ids = [
