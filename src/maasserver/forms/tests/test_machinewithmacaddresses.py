@@ -159,4 +159,11 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         form = MachineWithMACAddressesForm(
             data=self.make_params(hostname=ip_based_hostname))
         node = form.save()
-        self.assertNotEqual(ip_based_hostname, node.hostname)
+        self.assertNotEqual('192-168-12-10', node.hostname)
+
+    def test_form_with_ip_based_hostname_prefix_valid(self):
+        ip_prefixed_hostname = '192-168-12-10-extra.maas'
+        form = MachineWithMACAddressesForm(
+            data=self.make_params(hostname=ip_prefixed_hostname))
+        node = form.save()
+        self.assertEqual('192-168-12-10-extra', node.hostname)

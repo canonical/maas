@@ -1122,7 +1122,7 @@ class MultipleMACAddressField(forms.MultiValueField):
         return []
 
 
-IP_BASED_HOSTNAME_REGEXP = re.compile('\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}')
+IP_BASED_HOSTNAME_REGEXP = re.compile('\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$')
 
 MAX_MESSAGES = 10
 
