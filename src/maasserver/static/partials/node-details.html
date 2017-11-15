@@ -2326,11 +2326,13 @@
                                     <div class="table__data table-col--15" aria-label="Device type">{$ getDeviceType(item) $}</div>
                                     <div class="table__data table-col--35" aria-label="Used for">{$ item.used_for $}</div>
                                     <div class="table__data table-col--26" aria-label="Health">
-                                      <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
-                                      <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7">Ok</span>
-                                      <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8">Error</span>
-                                      <span data-ng-if="item.test_status === 6">Degraded</span>
-                                      <span data-ng-if="item.test_status === -1">Unknown</span>
+                                        <span data-ng-if="item.type === 'physical'">
+                                            <span data-maas-script-status="script-status" data-script-status="item.test_status"></span>
+                                            <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7">Ok</span>
+                                            <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8">Error</span>
+                                            <span data-ng-if="item.test_status === 6">Degraded</span>
+                                            <span data-ng-if="item.test_status === -1">Unknown</span>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
