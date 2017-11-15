@@ -1107,6 +1107,32 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
+        // Only show a warning that tests have failed if there are failed tests
+        // and the node isn't currently commissioning or testing.
+        $scope.showFailedTestWarning = function() {
+            switch($scope.node.status_code) {
+                // NEW
+                case 0:
+                // COMMISSIONING
+                case 1:
+                // FAILED_COMMISSIONING
+                case 2:
+                // TESTING
+                case 21:
+                // FAILED_TESTING
+                case 22:
+                    return false;
+            }
+            switch($scope.node.testing_status) {
+                // Tests havn't been run
+                case -1:
+                // Tests have passed
+                case 2:
+                    return false;
+            }
+            return true;
+        };
+
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
             MachinesManager,

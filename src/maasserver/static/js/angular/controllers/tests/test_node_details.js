@@ -2250,4 +2250,41 @@ describe("NodeDetailsController", function() {
             expect($scope.hasCustomCommissioningScripts()).toBe(false);
         });
     });
+
+    describe("showFailedTestWarning", function() {
+
+        it("returns false when new, commissioning, or testing", function() {
+            var controller = makeController();
+            $scope.node = node;
+            angular.forEach([0, 1, 2, 21, 22], function(status) {
+                node.status_code = status;
+                expect($scope.showFailedTestWarning()).toBe(false);
+            });
+        });
+
+        it("returns false when tests havn't been run or passed", function() {
+            var controller = makeController();
+            // READY
+            node.status_code = 4;
+            $scope.node = node;
+            angular.forEach([-1, 2], function(status) {
+                node.testing_status = status;
+                expect($scope.showFailedTestWarning()).toBe(false);
+            });
+        });
+
+        it("returns true otherwise", function() {
+            var controller = makeController();
+            var i, j;
+            $scope.node = node;
+            // i < 3 or i > 20 is tested above.
+            for(i = 3; i <= 20; i++) {
+                for(j = 3; j <= 8; j++) {
+                    node.status_code = i;
+                    node.testing_status = j;
+                    expect($scope.showFailedTestWarning()).toBe(true);
+                }
+            }
+        });
+    });
 });

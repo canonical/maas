@@ -247,6 +247,10 @@
             Commission the machine to get CPU, Memory and Storage information.
           </p>
         </div>
+        <div class="p-notification--warning twelve-col" data-ng-if="showFailedTestWarning()">
+            <p class="p-notification__response">
+	        <span class="p-notification__status">Warning:</span>Machine has failed tests; use with caution!</p>
+        </div>
         <div class="twelve-col u-equal-height" data-ng-if="isDevice">
           <div class="four-col action-card action-card--positionable u-border--solid">
             <div maas-card-loader="device"></div>
