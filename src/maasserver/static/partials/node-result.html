@@ -11,7 +11,7 @@
             <h1 class="page-header__title">{$ node.fqdn $}</h1>
             <p class="page-header__status">{$ result.name $}</p>
             <div class="page-header__controls u-float--right">
-                <a href="#/node/{$ type_name $}/{$ node.system_id $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
+                <a href="#/node/{$ type_name $}/{$ node.system_id $}?area={$ result.result_type == 0 ? 'commissioning' : 'testing' $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
             </div>
         </div>
     </header>

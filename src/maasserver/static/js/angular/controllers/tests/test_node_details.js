@@ -260,6 +260,12 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    it("sets initial area to routeParams value", function() {
+        $routeParams.area = makeName("area");
+        var controller = makeController();
+        expect($scope.section.area).toEqual($routeParams.area);
+    });
+
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(

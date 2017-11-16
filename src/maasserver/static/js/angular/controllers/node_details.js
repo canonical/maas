@@ -38,7 +38,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.section = {
-            area: 'summary'
+            area: angular.isString(
+                $routeParams.area) ? $routeParams.area : "summary"
         };
         $scope.osSelection = {
             osystem: null,
