@@ -14,3 +14,6 @@ maas ALL= NOPASSWD: /bin/systemctl status ntp
 # Writing and deleting files as root.
 maas ALL= NOPASSWD: /usr/lib/maas/maas-delete-file
 maas ALL= NOPASSWD: /usr/lib/maas/maas-write-file
+
+# Allow active subnet mapping
+maas ALL= NOPASSWD: /usr/lib/maas/maas-common scan-network *
