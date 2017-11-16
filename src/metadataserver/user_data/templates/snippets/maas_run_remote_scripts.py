@@ -244,7 +244,7 @@ def get_block_devices():
     if _block_devices is None:
         _block_devices_lock.acquire()
     if _block_devices is None:
-        _block_devices = []
+        block_devices = []
         block_list = check_output([
             'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
             'NAME,MODEL,SERIAL']).decode('utf-8')
@@ -254,7 +254,9 @@ def get_block_devices():
             for token in tokens:
                 k, v = token.split("=", 1)
                 current_block[k] = v.strip()
-            _block_devices.append(current_block)
+            block_devices.append(current_block)
+        # LP: #1732539 - Don't fill cache until all results are proceeded.
+        _block_devices = block_devices
 
     if _block_devices_lock.locked():
         _block_devices_lock.release()
@@ -293,8 +295,11 @@ def parse_parameters(script, scripts_dir):
                 ret += argument_format.format(**value).split()
             except KeyError:
                 raise KeyError(
-                    "Storage device '%s' with serial '%s' not found on system."
-                    " Please try recommissioning."
+                    "Storage device '%s' with serial '%s' not found!\n\n"
+                    "This indicates the storage device has been removed or "
+                    "the OS is unable to find it due to a hardware failure. "
+                    "Please re-commission this node to re-discover the "
+                    "storage devices, or delete this device manually."
                     % (model, serial))
     return ret
 
@@ -325,11 +330,10 @@ def run_script(script, scripts_dir, send_result=True):
         # 2 is the return code bash gives when it can't execute.
         script['exit_status'] = args['exit_status'] = 2
         output = (
-            'Unable to run script: %s\n\n'
-            '%s\n\n'
+            "Unable to run '%s': %s\n\n"
             'Given parameters:\n%s\n\n'
             'Discovered storage devices:\n%s\n' % (
-                script['name'], str(e).replace('"', ''),
+                script['name'], str(e).replace('"', '').replace('\\n', '\n'),
                 str(script.get('parameters', {})),
                 str(get_block_devices()),
             )

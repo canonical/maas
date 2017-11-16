@@ -750,9 +750,12 @@ class TestRunScript(MAASTestCase):
         self.assertFalse(run_script(script, scripts_dir))
 
         expected_output = (
-            'Unable to run script: %s\n\n'
-            "Storage device '%s' with serial '%s' not found on system. "
-            "Please try recommissioning.\n\n"
+            "Unable to run '%s': Storage device '%s' with serial '%s' not "
+            'found!\n\n'
+            "This indicates the storage device has been removed or "
+            "the OS is unable to find it due to a hardware failure. "
+            "Please re-commission this node to re-discover the "
+            "storage devices, or delete this device manually.\n\n"
             'Given parameters:\n%s\n\n'
             'Discovered storage devices:\n%s\n' % (
                 script['name'],
