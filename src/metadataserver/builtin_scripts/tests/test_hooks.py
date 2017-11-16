@@ -724,20 +724,19 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             }
 
     def test__does_nothing_when_exit_status_is_not_zero(self):
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, b"garbage", exit_status=1)
         self.assertIsNotNone(reload_object(block_device))
 
     def test__does_nothing_if_skip_storage(self):
-        node = factory.make_Node(
-            skip_storage=True, with_empty_script_sets=True)
+        node = factory.make_Node(skip_storage=True)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, b"garbage", exit_status=0)
         self.assertIsNotNone(reload_object(block_device))
 
     def test__removes_previous_physical_block_devices(self):
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, b"[]", 0)
         self.assertIsNone(reload_object(block_device))
@@ -745,7 +744,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_devices(self):
         devices = [self.make_block_device() for _ in range(3)]
         device_names = [device['NAME'] for device in devices]
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         created_names = [
@@ -756,7 +755,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__handles_renamed_block_device(self):
         devices = [self.make_block_device(name='sda', serial='first')]
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         devices = [
@@ -776,7 +775,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         # First simulate a node being commissioned with two disks. For
         # this test, there need to be at least two disks in order to
         # simulate a condition like the one in bug #1662343.
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         device1 = self.make_block_device(name='sda')
         device2 = self.make_block_device(name='sdb')
         update_node_physical_block_devices(
@@ -810,7 +809,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__only_updates_physical_block_devices(self):
         devices = [self.make_block_device() for _ in range(3)]
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         created_ids_one = [
@@ -826,7 +825,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__doesnt_reset_boot_disk(self):
         devices = [self.make_block_device() for _ in range(3)]
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         boot_disk = PhysicalBlockDevice.objects.filter(node=node).first()
@@ -837,7 +836,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__clears_boot_disk(self):
         devices = [self.make_block_device() for _ in range(3)]
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         update_node_physical_block_devices(
@@ -847,7 +846,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_devices_in_order(self):
         devices = [self.make_block_device() for _ in range(3)]
         device_names = [device['NAME'] for device in devices]
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps(devices).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         created_names = [
@@ -867,7 +866,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         device = self.make_block_device(
             name=name, size=size, block_size=block_size,
             model=model, serial=serial)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -885,7 +884,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         device = self.make_block_device(
             name=name, size=size, block_size=block_size,
             model=model, serial=serial, id_path='')
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -903,7 +902,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         device = self.make_block_device(
             name=name, size=size, block_size=block_size,
             model=model, serial=serial, id_path='bogus')
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -914,8 +913,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_only_for_node(self):
         device = self.make_block_device()
-        node = factory.make_Node(
-            with_boot_disk=False, with_empty_script_sets=True)
+        node = factory.make_Node(with_boot_disk=False)
         other_node = factory.make_Node(with_boot_disk=False)
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
@@ -925,7 +923,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_rotary_tag(self):
         device = self.make_block_device(rotary=True)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.expectThat(
@@ -937,7 +935,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_rotary_and_rpm_tags(self):
         device = self.make_block_device(rotary=True, rpm=5400)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.expectThat(
@@ -949,7 +947,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_ssd_tag(self):
         device = self.make_block_device(rotary=False)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.expectThat(
@@ -961,7 +959,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_without_removable_tag(self):
         device = self.make_block_device(removable=False)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -970,7 +968,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_removable_tag(self):
         device = self.make_block_device(removable=True)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -979,7 +977,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_without_sata_tag(self):
         device = self.make_block_device(sata=False)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -988,7 +986,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_sata_tag(self):
         device = self.make_block_device(sata=True)
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertThat(
@@ -998,7 +996,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__ignores_min_block_device_size_devices(self):
         device = self.make_block_device(
             size=random.randint(1, MIN_BLOCK_DEVICE_SIZE))
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertEquals(
@@ -1006,7 +1004,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__ignores_loop_devices(self):
         device = self.make_block_device(id_path='/dev/loop0')
-        node = factory.make_Node(with_empty_script_sets=True)
+        node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertEquals(
