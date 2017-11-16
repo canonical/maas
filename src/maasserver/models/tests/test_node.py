@@ -6231,8 +6231,9 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Adds errback to reset status and release auto ips.
         self.assertThat(
             post_commit_defer.addErrback, MockCallsMatch(
-                call(callOutToDatabase, node._set_status,
-                     node.system_id, status=old_status),
+                call(
+                    callOutToDatabase, node._start_bmc_unavailable, user,
+                    old_status),
                 call(callOutToDatabase, node.release_interface_config)))
 
     def test__calls_power_cycle_when_cycling_allowed(self):
@@ -6252,6 +6253,29 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Calls _power_control_node when power_cycle.
         self.assertThat(
             mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY))
+
+    def test__aborts_all_scripts_and_logs(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user, status=NODE_STATUS.NEW)
+        script_set = factory.make_ScriptSet(node=node)
+        script_results = [
+            factory.make_ScriptResult(
+                script_set=script_set, status=SCRIPT_STATUS.PENDING)
+            for _ in range(10)
+        ]
+        node._start_bmc_unavailable(user, NODE_STATUS.NEW)
+
+        event_type = EventType.objects.get(
+            name=EVENT_TYPES.NODE_POWER_QUERY_FAILED)
+        event = node.event_set.get(type=event_type)
+        self.assertEquals(
+            '(%s) - Aborting NEW and reverting to NEW. Unable to power '
+            'control the node. Please check power credentials.' % user,
+            event.description)
+
+        for script_result in script_results:
+            self.assertEquals(
+                SCRIPT_STATUS.ABORTED, reload_object(script_result).status)
 
     def test_storage_layout_issues_returns_invalid_no_boot_arm64_non_efi(self):
         node = factory.make_Node(

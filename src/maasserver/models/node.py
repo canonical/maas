@@ -3653,8 +3653,44 @@ class Node(CleanSave, TimestampedModel):
             self._register_request_event(
                 self.owner, EVENT_TYPES.NODE_POWER_QUERY_FAILED,
                 "Failed to query node's BMC", err_msg)
+            maaslog.warning(
+                "%s: Could not change the power state. No rack controllers "
+                "can access the BMC." % self.hostname)
             raise PowerProblem(err_msg)
         return client_idents, fallback_idents
+
+    @transactional
+    def _start_bmc_unavailable(self, user, old_status):
+        # Avoid circular imports.
+        from maasserver.models.event import Event
+
+        stat = map_enum_reverse(NODE_STATUS, ignore=['DEFAULT'])
+        maaslog.info(
+            '%s: Aborting %s and reverted to %s. Unable to power '
+            'control the node. Please check power credentials.' % (
+                self.hostname, stat[self.status], stat[old_status]))
+
+        event_details = EVENT_DETAILS[
+            EVENT_TYPES.NODE_POWER_QUERY_FAILED]
+        Event.objects.register_event_and_event_type(
+            self.system_id, EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+            type_level=event_details.level, event_action='',
+            type_description=event_details.description,
+            event_description=(
+                '(%s) - Aborting %s and reverting to %s. Unable to '
+                'power control the node. Please check power '
+                'credentials.' % (
+                    user, stat[self.status], stat[old_status])))
+
+        self.status = old_status
+        self.save()
+
+        for script_result in self.get_latest_script_results.filter(
+                status__in={
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                    SCRIPT_STATUS.RUNNING}):
+            script_result.status = SCRIPT_STATUS.ABORTED
+            script_result.save(update_fields=['status'])
 
     @transactional
     def _start(
@@ -3754,10 +3790,9 @@ class Node(CleanSave, TimestampedModel):
                 self.system_id, deployment_timeout)
 
         if old_status is not None:
-            # If there's an error, reset the node's status.
             d.addErrback(
-                callOutToDatabase, Node._set_status, self.system_id,
-                status=old_status)
+                callOutToDatabase, self._start_bmc_unavailable, user,
+                old_status)
 
         # If any part of this processes fails be sure to release the grabbed
         # auto IP addresses.
