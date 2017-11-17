@@ -59,21 +59,33 @@ def check_SMART_support(storage):
 
     If SMART support is not available, exit the script.
     """
-    supported = True
     smart_support_regex = re.compile('SMART support is:\s+Available')
+    print(
+        'INFO: Veriying SMART support for the following drive: %s' % storage)
     try:
-        output = check_output(
-            ['sudo', '-n', 'smartctl', '--all', storage], timeout=TIMEOUT)
-    except (TimeoutExpired, CalledProcessError):
-        supported = False
-    else:
-        match = smart_support_regex.search(output.decode('utf-8'))
-        if match is None:
-            supported = False
+        cmd = ['sudo', '-n', 'smartctl', '--all', storage]
+        print('INFO: Running command: %s\n' % ' '.join(cmd))
+        output = check_output(cmd, timeout=TIMEOUT, stderr=STDOUT)
+    except TimeoutExpired:
+        print(
+            "ERROR: Unable to determine if the drive supports SMART. "
+            "Command timed out after %s seconds." % (storage, TIMEOUT))
+        sys.exit(1)
+    except CalledProcessError as e:
+        output = e.output
+        if output is None:
+            print(
+                "INFO: Unable to determine if the drive supports SMART. "
+                "Command failed to run and did not return any output. ")
+            sys.exit(1)
 
-    if not supported:
-        print('The following drive does not support SMART: %s\n' % storage)
+    match = smart_support_regex.search(output.decode('utf-8'))
+    if match is None:
+        print(
+            'INFO: Unable to run test. The following drive '
+            'does not support SMART: %s\n' % storage)
         sys.exit()
+    print('INFO: SMART support is available; continuing...')
 
 
 def run_smartctl_selftest(storage, test):
@@ -81,27 +93,32 @@ def run_smartctl_selftest(storage, test):
     try:
         # Start testing.
         cmd = ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, storage]
-        print('Running command: %s\n' % ' '.join(cmd))
+        print('INFO: Running command: %s\n' % ' '.join(cmd))
         check_call(cmd, timeout=TIMEOUT, stdout=DEVNULL, stderr=DEVNULL)
     except (TimeoutExpired, CalledProcessError):
-        print('Failed to start and wait for smartctl self-test: %s' % test)
+        print(
+            'ERROR: Failed to start and wait for smartctl '
+            'self-test: %s' % test)
         return False
     else:
         # Wait for testing to complete.
         status_regex = re.compile(
-            'Self-test execution status:\s+\(\s*(?P<status>\d+)\s*\)')
+            'Self-test execution status:\s+\(\s*(?P<status>\d+)\s*\)'
+            '\s+Self-test routine in progress')
         while True:
             try:
                 stdout = check_output(
                     ['sudo', '-n', 'smartctl', '-c', storage],
                     timeout=TIMEOUT)
             except (TimeoutExpired, CalledProcessError):
-                print('Failed to start and wait for smartctl self-test:'
+                print('ERROR: Failed to start and wait for smartctl self-test:'
                       ' %s' % test)
                 return False
             else:
                 m = status_regex.search(stdout.decode('utf-8'))
-                if m is not None and int(m.group('status')) == 0:
+                if m is None:
+                    # The test has finished running because we cannot find
+                    # regex match saying that's in-progress.
                     break
                 else:
                     # This is the time the test waits before checking for
@@ -120,24 +137,31 @@ def run_smartctl(storage, test=None):
     if test not in ('validate', None):
         smartctl_passed = run_smartctl_selftest(storage, test)
 
+    print('INFO: Verifying and/or validating SMART tests...')
     cmd = ['sudo', '-n', 'smartctl', '--xall', storage]
-    print('Running command: %s\n' % ' '.join(cmd))
+    print('INFO: Running command: %s\n' % ' '.join(cmd))
     # Run smartctl and capture its output.
     with Popen(cmd, stdout=PIPE, stderr=STDOUT) as proc:
         try:
             output, _ = proc.communicate(timeout=TIMEOUT)
         except TimeoutExpired:
             proc.kill()
-            print('Running `smartctl --xall %s` timed out!' % storage)
+            print('INFO: Running `smartctl --xall %s` timed out!' % storage)
             smartctl_passed = False
         else:
-            if output is not None:
-                print(output.decode('utf-8'))
             if proc.returncode != 0 and proc.returncode != 4:
-                print('Error, `smartctl --xall %s` returned %d!' % (
-                    storage, proc.returncode))
-                print('See the smartctl man page for return code meaning')
+                print('FAILURE: SMART tests have FAILED for: %s' % storage)
+                print('The test exited with return code %s! See the smarctl '
+                      'manpage for information on the return code meaning. '
+                      'For more information on the test failures, review the '
+                      'test output provided below.' % proc.returncode)
                 smartctl_passed = False
+            else:
+                print('SUCCESS: SMART tests have PASSED for: %s\n' % storage)
+
+            if output is not None:
+                print('---------------------------------------------------\n')
+                print(output.decode('utf-8'))
             return 0 if proc.returncode == 4 else proc.returncode
 
     return 0 if smartctl_passed else 1

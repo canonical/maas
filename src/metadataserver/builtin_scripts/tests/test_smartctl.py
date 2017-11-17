@@ -10,6 +10,7 @@ from subprocess import (
     DEVNULL,
     PIPE,
     Popen,
+    STDOUT,
     TimeoutExpired,
 )
 from textwrap import dedent
@@ -52,6 +53,7 @@ class TestSmartCTL(MAASTestCase):
 
         self.assertThat(mock_check_output, MockCalledOnceWith(
             ['sudo', '-n', 'smartctl', '--all', storage],
+            stderr=STDOUT,
             timeout=smartctl.TIMEOUT))
 
     def test_SMART_support_is_not_available(self):
@@ -63,10 +65,16 @@ class TestSmartCTL(MAASTestCase):
         self.assertRaises(SystemExit, smartctl.check_SMART_support, storage)
         self.assertThat(mock_check_output, MockCalledOnceWith(
             ['sudo', '-n', 'smartctl', '--all', storage],
+            stderr=STDOUT,
             timeout=smartctl.TIMEOUT))
         self.assertThat(
-            mock_print, MockCalledOnceWith(
-                'The following drive does not support SMART: %s\n' % storage))
+            mock_print, MockCallsMatch(
+                call('INFO: Veriying SMART support for the following drive: '
+                     '%s' % storage),
+                call('INFO: Running command: sudo -n smartctl --all '
+                     '%s\n' % storage),
+                call('INFO: Unable to determine if the drive supports SMART. '
+                     'Command failed to run and did not return any output. ')))
 
     def test_SMART_support_no_match_found(self):
         storage = factory.make_name('storage')
@@ -77,10 +85,16 @@ class TestSmartCTL(MAASTestCase):
         self.assertRaises(SystemExit, smartctl.check_SMART_support, storage)
         self.assertThat(mock_check_output, MockCalledOnceWith(
             ['sudo', '-n', 'smartctl', '--all', storage],
+            stderr=STDOUT,
             timeout=smartctl.TIMEOUT))
         self.assertThat(
-            mock_print, MockCalledOnceWith(
-                'The following drive does not support SMART: %s\n' % storage))
+            mock_print, MockCallsMatch(
+                call('INFO: Veriying SMART support for the following '
+                     'drive: %s' % storage),
+                call('INFO: Running command: '
+                     'sudo -n smartctl --all %s\n' % storage),
+                call('INFO: Unable to run test. The following drive does '
+                     'not support SMART: %s\n' % storage)))
 
     def test_run_smartctl_selftest(self):
         storage = factory.make_name('storage')
@@ -107,10 +121,14 @@ class TestSmartCTL(MAASTestCase):
         mock_check_call = self.patch(smartctl, "check_call")
         mock_check_output = self.patch(smartctl, "check_output")
         mock_check_output.side_effect = [
-            b'Self-test execution status:      ( 249)',
-            b'Self-test execution status:      ( 249)',
-            b'Self-test execution status:      ( 249)',
-            b'Self-test execution status:      (   0)',
+            b'Self-test execution status:      ( 249) ' +
+            b'Self-test routine in progress...',
+            b'Self-test execution status:      ( 249) ' +
+            b'Self-test routine in progress...',
+            b'Self-test execution status:      ( 249) ' +
+            b'Self-test routine in progress...',
+            b'Self-test execution status:      (  73) ' +
+            b'The previous self-test completed having',
         ]
 
         self.assertTrue(smartctl.run_smartctl_selftest(storage, test))
@@ -207,7 +225,10 @@ class TestSmartCTL(MAASTestCase):
 
         self.assertEquals(0, smartctl.run_smartctl(storage))
         self.assertThat(mock_print, MockCallsMatch(
-            call('Running command: %s\n' % ' '.join(cmd)),
+            call('INFO: Verifying and/or validating SMART tests...'),
+            call('INFO: Running command: %s\n' % ' '.join(cmd)),
+            call('SUCCESS: SMART tests have PASSED for: %s\n' % storage),
+            call('---------------------------------------------------\n'),
             call(output.decode('utf-8'))))
 
     def test_run_smartctl_with_failure(self):
@@ -224,11 +245,15 @@ class TestSmartCTL(MAASTestCase):
 
         self.assertEquals(1, smartctl.run_smartctl(storage))
         self.assertThat(mock_print, MockCallsMatch(
-            call('Running command: %s\n' % ' '.join(cmd)),
-            call(output.decode('utf-8')),
-            call('Error, `smartctl --xall %s` returned %d!' % (
-                storage, 1)),
-            call('See the smartctl man page for return code meaning')))
+            call('INFO: Verifying and/or validating SMART tests...'),
+            call('INFO: Running command: %s\n' % ' '.join(cmd)),
+            call('FAILURE: SMART tests have FAILED for: %s' % storage),
+            call('The test exited with return code %d! See the smarctl '
+                 'manpage for information on the return code meaning. For '
+                 'more information on the test failures, review the test '
+                 'output provided below.' % 1),
+            call('---------------------------------------------------\n'),
+            call(output.decode('utf-8'))))
 
     def test_run_smartctl_timedout(self):
         smartctl.TIMEOUT = 1
@@ -242,5 +267,6 @@ class TestSmartCTL(MAASTestCase):
 
         self.assertEquals(1, smartctl.run_smartctl(storage))
         self.assertThat(mock_print, MockCallsMatch(
-            call('Running command: %s\n' % ' '.join(cmd)),
-            call('Running `smartctl --xall %s` timed out!' % storage)))
+            call('INFO: Verifying and/or validating SMART tests...'),
+            call('INFO: Running command: %s\n' % ' '.join(cmd)),
+            call('INFO: Running `smartctl --xall %s` timed out!' % storage)))
