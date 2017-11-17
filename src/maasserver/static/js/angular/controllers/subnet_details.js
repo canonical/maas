@@ -215,7 +215,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             } else if($scope.actionOption.name === "delete") {
                 SubnetsManager.deleteSubnet(
                     $scope.subnet).then(function(result) {
-                        console.log(result);
                         $scope.actionOption = null;
                         $scope.actionError = null;
                         $location.path("/networks");
