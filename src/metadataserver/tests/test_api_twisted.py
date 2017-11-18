@@ -422,9 +422,12 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
         # Check last node event.
-        self.assertEqual(
-            "'curtin' Commissioning",
-            Event.objects.filter(node=node).last().description)
+        self.assertItemsEqual(
+            [
+                "'curtin' Commissioning",
+                "Commissioning failed, cloud-init reported a failure (refer "
+                "to the event log for more information)",
+            ], [e.description for e in Event.objects.filter(node=node)])
 
     def test_status_commissioning_failure_clears_owner(self):
         user = factory.make_User()
@@ -443,6 +446,27 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
         self.assertIsNone(reload_object(node).owner)
+
+    def test_status_commissioning_failure_aborts_scripts(self):
+        # Regression test for LP:1732948
+        user = factory.make_User()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING, owner=user,
+            with_empty_script_sets=True)
+        payload = {
+            'event_type': 'finish',
+            'result': 'FAILURE',
+            'origin': 'curtin',
+            'name': 'commissioning',
+            'description': 'Commissioning',
+            'timestamp': datetime.utcnow(),
+        }
+        self.assertEqual(user, node.owner)  # Node has an owner
+        self.processMessage(node, payload)
+        self.assertEqual(
+            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+        for script_result in node.get_latest_script_results:
+            self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
 
     def test_status_installation_failure_leaves_node_failed(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)

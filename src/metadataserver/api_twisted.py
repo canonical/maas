@@ -346,17 +346,23 @@ class StatusWorkerService(TimerService, object):
         if self._is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:
                 if result in ['FAIL', 'FAILURE']:
-                    node.status = NODE_STATUS.FAILED_COMMISSIONING
+                    node.mark_failed(
+                        comment="Commissioning failed, cloud-init reported "
+                        "a failure (refer to the event log for more "
+                        "information)", commit=False,
+                        script_result_status=SCRIPT_STATUS.ABORTED)
                     save_node = True
             elif node.status == NODE_STATUS.DEPLOYING:
                 if result in ['FAIL', 'FAILURE']:
                     node.mark_failed(
                         comment="Installation failed (refer to the "
-                                "installation log for more information).")
+                                "installation log for more information).",
+                        commit=False)
                     save_node = True
             elif node.status == NODE_STATUS.DISK_ERASING:
                 if result in ['FAIL', 'FAILURE']:
-                    node.mark_failed(comment="Failed to erase disks.")
+                    node.mark_failed(
+                        comment="Failed to erase disks.", commit=False)
                     save_node = True
 
             # Deallocate the node if we enter any terminal state.
