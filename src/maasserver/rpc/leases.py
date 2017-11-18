@@ -23,12 +23,25 @@ from maasserver.models import (
 )
 from maasserver.utils.orm import transactional
 from netaddr import IPAddress
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import synchronous
 
 
+log = LegacyLogger()
+
+
 class LeaseUpdateError(Exception):
     """Raise when `update_lease` fails to update lease information."""
+
+
+def _is_valid_hostname(hostname):
+    return (
+        hostname is not None and
+        len(hostname) > 0 and
+        not hostname.isspace() and
+        hostname != "(none)"
+    )
 
 
 @synchronous
@@ -85,6 +98,13 @@ def update_lease(
         raise LeaseUpdateError(
             "Family for the subnet does not match. Expected: %s" % ip_family)
 
+    created = datetime.fromtimestamp(timestamp)
+    log.msg("Lease update: %s for %s on %s at %s%s%s" % (
+        action, ip, mac, created,
+        ' (lease time: %ss)' % lease_time if lease_time is not None else '',
+        ' (hostname: %s)' % hostname if _is_valid_hostname(hostname) else ''
+    ))
+
     # We will recieve actions on all addresses in the subnet. We only want
     # to update the addresses in the dynamic range.
     dynamic_range = subnet.get_dynamic_range_for_ip(IPAddress(ip))
@@ -130,16 +150,12 @@ def update_lease(
         # Hostname sent from the cluster is either blank or can be "(none)". In
         # either of those cases we do not set the hostname.
         sip_hostname = None
-        if (hostname is not None and
-                len(hostname) > 0 and
-                not hostname.isspace() and
-                hostname != "(none)"):
+        if _is_valid_hostname(hostname):
             sip_hostname = hostname
 
         # Use the timestamp from the lease to create the StaticIPAddress
         # object. That will make sure that the lease_time is correct from
         # the created time.
-        created = datetime.fromtimestamp(timestamp)
         sip, _ = StaticIPAddress.objects.update_or_create(
             defaults=dict(
                 subnet=subnet, lease_time=lease_time,
