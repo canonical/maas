@@ -86,4 +86,19 @@ describe("maasScriptRunTime", function() {
         expect(spanElement).toBeDefined();
         expect(spanElement.text()).toEqual('0:00:05 of ~' + estimatedRunTime);
     });
+
+    it('shows day when over 24 hours', function() {
+        // Regression test for LP:1733015
+        var startTime = (Date.now() / 1000) - (2 * 24 * 60 * 60); // 2 days ago
+        var estimatedRunTime = '1 day, 0:00:35';
+        var scriptStatus = 1;
+        var directive = compileDirective(
+            startTime, null, estimatedRunTime, scriptStatus);
+        // Flush should not cause the passed time to change.
+        $interval.flush(1000);
+        var spanElement = directive.find('span');
+        expect(spanElement).toBeDefined();
+        expect(spanElement.text()).toEqual(
+            '2 days, 0:00:00 of ~' + estimatedRunTime);
+    });
 });

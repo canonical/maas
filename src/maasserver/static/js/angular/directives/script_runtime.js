@@ -36,12 +36,38 @@ angular.module('MAAS').directive('maasScriptRunTime', function() {
             function incrementCounter() {
                 if(($scope.scriptStatus === 1 || $scope.scriptStatus === 7) &&
                     $scope.startTime) {
-                    var date = new Date(null);
-                    date.setSeconds((Date.now()/1000) - $scope.startTime);
-                    $scope.counter = date.toISOString().substr(11, 8);
-                    if($scope.counter.indexOf('00:') === 0) {
-                      $scope.counter = $scope.counter.substr(1);
+                    var start_date = new Date(null);
+                    start_date.setSeconds($scope.startTime);
+                    var seconds = Math.floor((Date.now() - start_date) / 1000);
+                    var minutes = Math.floor(seconds / 60);
+                    var hours = Math.floor(minutes / 60);
+                    var days = Math.floor(hours / 24);
+                    hours = hours - (days * 24);
+                    minutes = minutes - (days * 24 * 60) - (hours * 60);
+                    seconds = seconds - (days * 24 * 60 * 60) -
+                        (hours * 60 * 60) - (minutes * 60);
+                    var new_counter = "";
+                    // This outputs the same format used by Python. It is
+                    // import to use the same format as when scripts are not
+                    // running runtime is taken from the region using Python's
+                    // format.
+                    if(days === 1) {
+                        new_counter = days + " day, ";
+                    }else if(days > 1) {
+                        new_counter = days + " days, ";
                     }
+                    new_counter += hours + ":";
+                    if(minutes < 10) {
+                        new_counter += "0" + minutes + ":";
+                    } else {
+                        new_counter += minutes + ":";
+                    }
+                    if(seconds < 10) {
+                        new_counter += "0" + seconds;
+                    } else {
+                        new_counter += seconds;
+                    }
+                    $scope.counter = new_counter;
                 }
             }
 
