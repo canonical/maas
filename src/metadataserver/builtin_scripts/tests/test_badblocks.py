@@ -11,7 +11,6 @@ import os
 import random
 import re
 from subprocess import (
-    DEVNULL,
     PIPE,
     STDOUT,
 )
@@ -19,52 +18,80 @@ from textwrap import dedent
 from unittest.mock import ANY
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnce,
+    MockCalledOnceWith,
+)
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import badblocks
 import yaml
 
 
+BADBLOCKS = random.randint(0, 1000)
 BADBLOCKS_OUTPUT = dedent("""
     Checking for bad blocks in non-destructive read-write mode
     From block 0 to 5242879
     Testing with random pattern:
-    Pass completed, 19 bad blocks found. (0/0/19 errors)
-    """)
+    Pass completed, %s bad blocks found. (0/0/%s errors)
+    """ % (BADBLOCKS, BADBLOCKS))
 
 
 class TestRunBadBlocks(MAASTestCase):
 
+    def setUp(self):
+        super().setUp()
+        self.mock_check_output = self.patch(badblocks, 'check_output')
+        self.mock_print = self.patch(badblocks, 'print')
+
+    def test_get_block_size(self):
+        block_size = random.randint(512, 4096)
+        self.mock_check_output.return_value = ('%s\n' % block_size).encode()
+        self.assertEqual(
+            block_size, badblocks.get_block_size(factory.make_name('storage')))
+
+    def test_get_parallel_blocks(self):
+        # Most systems will have more then enough more to test 5000
+        # blocks at a time. Simulate that by reading test system memory
+        # values and giving a block size of 1.
+        self.mock_check_output.return_value = b'1\n'
+        self.assertEquals(50000, badblocks.get_parallel_blocks(1))
+
+    def test_get_parallel_blocks_limited(self):
+        # Systems with a large amount of disks and not that much RAM will need
+        # to throttle the amount of blocks tested at once. Simulate that by
+        # reading test system memory values and giving a large block size.
+        self.mock_check_output.return_value = b'1\n' * 1000
+        self.assertGreater(50000, badblocks.get_parallel_blocks(1000))
+
     def test_run_badblocks_nondestructive_and_writes_results_file(self):
         storage = factory.make_name('storage')
+        blocksize = random.randint(512, 4096)
+        self.patch(badblocks, 'get_block_size').return_value = blocksize
+        parallel_blocks = random.randint(1, 50000)
+        self.patch(badblocks, 'get_parallel_blocks').return_value = (
+            parallel_blocks)
         self.patch(os, "environ", {
             "RESULT_PATH": factory.make_name()
         })
-        mock_check_output = self.patch(badblocks, "check_output")
-        blocksize = str(random.choice([1024, 2048, 4096]))
-        mock_check_output.return_value = blocksize.encode('utf-8')
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-n',
-            storage]
+            'sudo', '-n', 'badblocks', '-b', str(blocksize),
+            '-c', str(parallel_blocks), '-v', '-f', '-n', storage
+        ]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (
             BADBLOCKS_OUTPUT.encode('utf-8'), None)
         proc.returncode = 0
-        match = re.search(badblocks.REGEX, BADBLOCKS_OUTPUT.encode('utf-8'))
         mock_open = self.patch(badblocks, "open")
         mock_open.return_value = io.StringIO()
         mock_yaml_safe_dump = self.patch(yaml, "safe_dump")
         results = {
             'results': {
-                'badblocks': int(match.group(1).decode()),
+                'badblocks': BADBLOCKS,
             }
         }
 
         self.assertEquals(0, badblocks.run_badblocks(storage))
-        self.assertThat(mock_check_output, MockCalledOnceWith(
-            ['sudo', '-n', 'blockdev', '--getbsz', storage],
-            stderr=DEVNULL))
         self.assertThat(mock_popen, MockCalledOnceWith(
             cmd, stdout=PIPE, stderr=STDOUT))
         self.assertThat(mock_open, MockCalledOnceWith(ANY, "w"))
@@ -73,12 +100,15 @@ class TestRunBadBlocks(MAASTestCase):
 
     def test_run_badblocks_destructive(self):
         storage = factory.make_name('storage')
-        mock_check_output = self.patch(badblocks, "check_output")
-        blocksize = str(random.choice([1024, 2048, 4096]))
-        mock_check_output.return_value = blocksize.encode('utf-8')
+        blocksize = random.randint(512, 4096)
+        self.patch(badblocks, 'get_block_size').return_value = blocksize
+        parallel_blocks = random.randint(1, 50000)
+        self.patch(badblocks, 'get_parallel_blocks').return_value = (
+            parallel_blocks)
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-w',
-            storage]
+            'sudo', '-n', 'badblocks', '-b', str(blocksize),
+            '-c', str(parallel_blocks), '-v', '-f', '-w', storage,
+        ]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (
@@ -87,23 +117,19 @@ class TestRunBadBlocks(MAASTestCase):
 
         self.assertEquals(
             0, badblocks.run_badblocks(storage, destructive=True))
-        self.assertThat(mock_check_output, MockCalledOnceWith(
-            ['sudo', '-n', 'blockdev', '--getbsz', storage],
-            stderr=DEVNULL))
         self.assertThat(mock_popen, MockCalledOnceWith(
             cmd, stdout=PIPE, stderr=STDOUT))
 
     def test_run_badblocks_exits_if_no_regex_match_found(self):
+        storage = factory.make_name('storage')
+        blocksize = random.randint(512, 4096)
+        self.patch(badblocks, 'get_block_size').return_value = blocksize
+        parallel_blocks = random.randint(1, 50000)
+        self.patch(badblocks, 'get_parallel_blocks').return_value = (
+            parallel_blocks)
         self.patch(os, "environ", {
             "RESULT_PATH": factory.make_name()
         })
-        storage = factory.make_name('storage')
-        mock_check_output = self.patch(badblocks, "check_output")
-        blocksize = str(random.choice([1024, 2048, 4096]))
-        mock_check_output.return_value = blocksize.encode('utf-8')
-        cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-n',
-            storage]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
         proc.communicate.return_value = (
@@ -113,7 +139,4 @@ class TestRunBadBlocks(MAASTestCase):
         mock_re_search.return_value = None
 
         self.assertEquals(0, badblocks.run_badblocks(storage))
-        self.assertThat(mock_popen, MockCalledOnceWith(
-            cmd, stdout=PIPE, stderr=STDOUT))
-        self.assertThat(mock_re_search, MockCalledOnceWith(
-            badblocks.REGEX, BADBLOCKS_OUTPUT.encode('utf-8')))
+        self.assertThat(mock_re_search, MockCalledOnce())

@@ -41,7 +41,6 @@ import os
 import re
 from subprocess import (
     check_output,
-    DEVNULL,
     PIPE,
     Popen,
     STDOUT,
@@ -50,26 +49,79 @@ import sys
 
 import yaml
 
+# Give commands querying the system for info before running the test a
+# short time out. These commands should finish nearly instantly, if they
+# don't something is very wrong with the system.
+TIMEOUT = 60
 
-REGEX = b", ([0-9]+) bad blocks found"
+
+def get_block_size(storage):
+    """Return the block size for the storage device."""
+    cmd = ['sudo', '-n', 'blockdev', '--getbsz', storage]
+    print(
+        'INFO: Determining %s block size by running `%s`' %
+        (storage, ' '.join(cmd)))
+    return int(check_output(cmd, timeout=TIMEOUT))
+
+
+def get_meminfo_key(meminfo, key):
+    """Get key values from /proc/meminfo."""
+    m = re.search('%s:\s+(?P<%s>\d+)\s+kB' % (key, key), meminfo)
+    if m is None or key not in m.groupdict():
+        print('ERROR: Unable to find %s in /proc/meminfo' % key)
+        sys.exit(1)
+    try:
+        return int(m.group(key))
+    except:
+        print('ERROR: Unable to convert %s into an int' % key)
+        sys.exit(1)
+
+
+def get_parallel_blocks(block_size):
+    """Return the number of blocks to be tested in parallel."""
+    print('INFO: Determining the amount of blocks to be tested in parallel')
+    with open('/proc/sys/vm/min_free_kbytes', 'r') as f:
+        min_free_kbytes = int(f.read())
+    with open('/proc/meminfo', 'r') as f:
+        meminfo = f.read()
+    memtotal = get_meminfo_key(meminfo, 'MemTotal')
+    memfree = get_meminfo_key(meminfo, 'MemFree')
+    # Make sure badblocks doesn't consume all memory. As a minimum reserve
+    # the min_Free_kbytes or the value of 0.77% of memory to ensure not to
+    # trigger the OOM killer.
+    reserve = int(memtotal * 0.0077)
+    if reserve < min_free_kbytes:
+        reserve = min_free_kbytes + 10240
+    # Get available memory in bytes
+    memavailable = (memfree - reserve) * 1024
+    # badblocks is launched in parallel by maas-run-remote-scripts so account
+    # for other storage devices being tested in parallel
+    output = check_output(
+        ['lsblk', '--exclude', '1,2,7', '-d', '-P', '-o', 'NAME,MODEL,SERIAL'])
+    output = output.decode('utf-8')
+    storage_devices = len(output.splitlines())
+    parallel_blocks = int(memavailable / block_size / storage_devices)
+    # Most systems will be able to test hundreds of thousands of blocks at once
+    # using the algorithm above. Don't get too carried away, limit to 50000.
+    return min(parallel_blocks, 50000)
 
 
 def run_badblocks(storage, destructive=False):
     """Run badblocks against storage drive."""
-    result_path = os.environ.get("RESULT_PATH")
-    blocksize = check_output(
-        ['sudo', '-n', 'blockdev', '--getbsz', storage],
-        stderr=DEVNULL).strip().decode()
+    blocksize = get_block_size(storage)
+    parallel_blocks = get_parallel_blocks(blocksize)
     if destructive:
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-w',
-            storage]
+            'sudo', '-n', 'badblocks', '-b', str(blocksize),
+            '-c', str(parallel_blocks), '-v', '-f', '-w', storage
+        ]
     else:
         cmd = [
-            'sudo', '-n', 'badblocks', '-b', blocksize, '-v', '-f', '-n',
-            storage]
+            'sudo', '-n', 'badblocks', '-b', str(blocksize),
+            '-c', str(parallel_blocks), '-v', '-f', '-n', storage
+        ]
 
-    print('Running command: %s\n' % ' '.join(cmd))
+    print('INFO: Running command: %s\n' % ' '.join(cmd))
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
     stdout, _ = proc.communicate()
 
@@ -77,10 +129,11 @@ def run_badblocks(storage, destructive=False):
     if stdout is not None:
         print(stdout.decode())
 
+    result_path = os.environ.get("RESULT_PATH")
     if result_path is not None:
         # Parse the results for the desired information and
         # then wrtie this to the results file.
-        match = re.search(REGEX, stdout)
+        match = re.search(b', ([0-9]+) bad blocks found', stdout)
         if match is not None:
             results = {
                 'results': {
