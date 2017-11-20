@@ -197,10 +197,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.power.parameters = {};
             }
 
-            // Force editing mode on, if the power_type is missing. This is
-            // placed at the bottom because we wanted the selected items to
-            // be filled in at least once.
-            if($scope.canEdit() && $scope.node.power_type === "") {
+            // Force editing mode on, if the power_type is missing for a
+            // machine. This is placed at the bottom because we wanted the
+            // selected items to be filled in at least once.
+            if($scope.canEdit() && $scope.node.power_type === "" &&
+               $scope.node.node_type === 0) {
                 $scope.power.editing = true;
             }
         }
@@ -885,8 +886,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Called to cancel editing in the power section.
         $scope.cancelEditPower = function() {
-            // Only leave edit mode if node has valid power type.
-            if($scope.node.power_type !== "") {
+            // If the node is not a machine, only leave edit mode if node has
+            // valid power type.
+            if ($scope.node.node_type !== 0 || $scope.node.power_type !== "") {
                 $scope.power.editing = false;
             }
             updatePower();

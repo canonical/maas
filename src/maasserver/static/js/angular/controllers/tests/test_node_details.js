@@ -81,6 +81,7 @@ describe("NodeDetailsController", function() {
             actions: [],
             architecture: "amd64/generic",
             zone: angular.copy(zone),
+            node_type: 0,
             power_type: "",
             power_parameters: null,
             summary_xml: null,
@@ -424,9 +425,15 @@ describe("NodeDetailsController", function() {
         expect($scope.summary.tags).toEqual(node.tags);
     });
 
-    it("power section placed in edit mode if power_type blank", function() {
+    it("power section no edit if power_type blank for controller", function() {
         GeneralManager._data.power_types.data = [{}];
+        node.node_type = 4;
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.power.editing).toBe(false);
+    });
 
+    it("power section edit mode if power_type blank for a machine", function() {
+        GeneralManager._data.power_types.data = [{}];
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(true);
     });
@@ -1883,6 +1890,15 @@ describe("NodeDetailsController", function() {
             $scope.power.editing = true;
             $scope.cancelEditPower();
             expect($scope.power.editing).toBe(true);
+        });
+
+        it("sets editing false with no power_type for controller", function() {
+            var controller = makeController();
+            node.node_type = 4;
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.cancelEditPower();
+            expect($scope.power.editing).toBe(false);
         });
     });
 
