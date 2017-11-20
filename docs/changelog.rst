@@ -2,6 +2,238 @@
 Changelog
 =========
 
+MAAS 2.3.0
+==========
+
+Important announcements
+-----------------------
+
+**Machine network configuration now deferred to cloud-init.**
+ Starting from MAAS 2.3, machine network configuration is now handled by
+ cloud-init. In previous MAAS (and curtin) releases, the network configuration
+ was performed by curtin during the installation process. In an effort to
+ improve robustness, network configuration has now been consolidated in
+ cloud-init. MAAS will continue to pass network configuration to curtin, which
+ in turn, will delegate the configuration to cloud-init.
+
+**Ephemeral images over HTTP**
+ As part of the effort to reduce dependencies and improve reliability, MAAS
+ ephemeral (network boot) images are no longer loaded using iSCSI (tgt). By
+ default, the ephemeral images are now obtained using HTTP requests to the
+ rack controller.
+
+ After upgrading to MAAS 2.3, please ensure you have the latest available
+ images. For more information please refer to the section below (New features
+ & improvements).
+
+**Advanced network configuration for CentOS & Windows**
+ MAAS 2.3 now supports the ability to perform network configuration for CentOS
+ and Windows. The network configuration is performed via cloud-init. MAAS
+ CentOS images now use the latest available version of cloud-init that
+ includes these features.
+
+New features & improvements
+---------------------------
+
+**CentOS network configuration**
+ MAAS can now perform machine network configuration for CentOS 6 and 7,
+ providing networking feature parity with Ubuntu for those operating systems.
+ The following can now be configured for MAAS deployed CentOS images:
+
+ * Bonds, VLAN and bridge interfaces.
+ * Static network configuration.
+
+ Our thanks to the cloud-init team for improving the network configuration
+ support for CentOS.
+
+**Windows network configuration**
+ MAAS can now configure NIC teaming (bonding) and VLAN interfaces for Windows
+ deployments. This uses the native NetLBFO in Windows 2008+. Contact us for
+ more information (https://maas.io/contact-us).
+
+**Improved Hardware Testing**
+ MAAS 2.3 introduces a new and improved hardware testing framework that
+ significantly improves the granularity and provision of hardware testing
+ feedback. These improvements include:
+
+ * An improved testing framework that allows MAAS to run each component
+   individually. This allows MAAS to run tests against storage devices for
+   example, and capture results individually.
+ * The ability to describe custom hardware tests with a YAML definition:
+    * This provides MAAS with information about the tests themselves, such
+      as script name, description, required packages, and other metadata about
+      what information the script will gather. All of which will be used by
+      MAAS to render in the UI.
+    * Determines whether the test supports a parameter, such as storage,
+      allowing the test to be run against individual storage devices.
+    * Provides the ability to run tests in parallel by setting this in the
+      YAML definition.
+ * Capture performance metrics for tests that can provide it.
+    * CPU performance tests now offer a new ‘7z’ test, providing metrics.
+    * Storage performance tests now include a new ‘fio’ test providing metrics.
+    * Storage test ‘badblocks’ has been improved to provide the number of
+      badblocks found as a metric.
+ * The ability to override a machine that has been marked ‘Failed testing’.
+   This allows administrators to acknowledge that a machine is usable despite
+   it having failed testing.
+
+ Hardware testing improvements include the following UI changes:
+
+ * Machine Listing page
+    * Displays whether a test is pending, running or failed for the machine
+      components (CPU, Memory or Storage.)
+    * Displays whether a test not related to CPU, Memory or Storage has failed.
+    * Displays a warning when the machine has been overridden and has failed
+      tests, but is in a ‘Ready’ or ‘Deployed’ state.
+ * Machine Details page
+    * Summary tab - Provides hardware testing information about the different
+      components (CPU, Memory, Storage).
+    * Hardware Tests /Commission tab - Provides an improved view of the latest
+      test run, its runtime as well as an improved view of previous results. It
+      also adds more detailed information about specific tests, such as status,
+      exit code, tags, runtime and logs/output (such as stdout and stderr).
+    * Storage tab - Displays the status of specific disks, including whether a
+      test is OK or failed after running hardware tests.
+
+ For more information please refer to https://docs.ubuntu.com/maas/2.3/en/nodes-hw-testing.
+
+**Network discovery & beaconing**
+ In order to confirm network connectivity and aide with the discovery of VLANs,
+ fabrics and subnets, MAAS 2.3 introduces network beaconing.
+
+ MAAS now sends out encrypted beacons, facilitating network discovery and
+ monitoring. Beacons are sent using IPv4 and IPv6 multicast (and unicast) to
+ UDP port 5240. When registering a new controller, MAAS uses the information
+ gathered from the beaconing protocol to ensure that newly registered
+ interfaces on each controller are associated with existing known networks
+ in MAAS. This aids MAAS by providing better information on determining the
+ network topology.
+
+ Using network beaconing, MAAS can better correlate which networks are
+ connected to its controllers, even if interfaces on those controller are
+ not configured with IP addresses. Future uses for beaconing could include
+ validation of networks from commissioning nodes, MTU verification, and a
+ better user experience for registering new controllers.
+
+**Ephemeral Images over HTTP**
+ Historically, MAAS has used ‘tgt’ to provide images over iSCSI for the
+ ephemeral environments (e.g commissioning, deployment environment, rescue
+ mode, etc). MAAS 2.3 changes the default behaviour by now providing images
+ over HTTP.
+
+ These images are now downloaded directly by the initrd. The change means
+ that the initrd loaded on PXE will contact the rack controller to download
+ the image to load in the ephemeral environment. Support for using 'tgt' is
+ being phased out in MAAS 2.3, and will no longer be supported from MAAS 2.4
+ onwards.
+
+ For users who would like to continue to use & load their ephemeral images
+ via ‘tgt’, they can disable http boot with the following command.
+
+   maas <user> maas set-config name=http_boot value=False
+
+**Upstream Proxy**
+ MAAS 2.3 now enables an upstream HTTP proxy to be used while allowing MAAS
+ deployed machines to continue to use the caching proxy for the repositories.
+ Doing so provides greater flexibility for closed environments, including:
+
+ * Enabling MAAS itself to use a corporate proxy while allowing machines to
+   continue to use the MAAS proxy.
+ * Allowing machines that don’t have access to a corporate proxy to gain
+   network access using the MAAS proxy.
+
+ Adding upstream proxy support also includes an improved configuration on
+ the settings page. Please refer to Settings > Proxy for more details.
+
+**UI Improvements**
+ * Machines, Devices, Controllers
+   MAAS 2.3 introduces an improved design for the machines, devices and
+   controllers detail pages that include the following changes.
+
+    * "Summary" tab now only provides information about the specific node
+      (machine, device or controller), organised across cards.
+    * "Configuration" has been introduced, which includes all editable
+      settings for the specific node (machine, device or controllers).
+    * "Logs" consolidates the commissioning output and the installation
+      log output.
+
+ * Other UI improvements
+   Other UI improvements that have been made for MAAS 2.3 include:
+
+    * Added DHCP status column on the ‘Subnet’s tab.
+    * Added architecture filters
+    * Updated VLAN and Space details page to no longer allow inline editing.
+    * Updated VLAN page to include the IP ranges tables.
+    * Zones page converted to AngularJS (away from YUI).
+    * Added warnings when changing a Subnet’s mode (Unmanaged or Managed).
+    * Renamed “Device Discovery” to “Network Discovery”.
+    * Discovered devices where MAAS cannot determine the hostname now show
+      the hostname as “unknown” and greyed out instead of using the MAC
+      address manufacturer as the hostname.
+
+**Rack Controller Deployment**
+ MAAS 2.3 can now automatically deploy rack controllers when deploying a
+ machine. This is done by providing cloud-init user data, and once a machine
+ is deployed, cloud-init will install and configure the rack controller.
+ Upon rack controller registration, MAAS will automatically detect the
+ machine is now a rack controller and it will be transitioned automatically.
+ To deploy a rack controller, users can do so via the API (or CLI), e.g:
+
+   maas <user> machine deploy <system_id> install_rackd=True
+
+ Please note that this features makes use of the MAAS snap to configure the
+ rack controller on the deployed machine. Since snap store mirrors are not
+ yet available, this will require the machine to have access to the internet
+ to be able to install the MAAS snap.
+
+**Controller Versions & Notifications**
+ MAAS now surfaces the version of each running controller and notifies the
+ users of any version mismatch between the region and rack controllers. This
+ helps administrators identify mismatches when upgrading their MAAS on a
+ multi-node MAAS cluster, such as within a HA setup.
+
+**Improved DNS Reloading**
+ This new release introduces various improvements to the DNS reload
+ mechanism. This allows MAAS to be smarter about when to reload DNS after
+ changes have been automatically detected or made.
+
+**API Improvements**
+ The machines API endpoint now provides more information on the configured
+ storage and provides additional output that includes volume_groups, raids,
+ cache_sets, and bcaches fields.
+
+**Django 1.11 support**
+ MAAS 2.3 now supports the latest Django LTS version, Django 1.11. This
+ allows MAAS to work with the newer Django version in Ubuntu Artful, which
+ serves as a preparation for the next Ubuntu LTS release.
+
+  * Users running MAAS in Ubuntu Artful will use Django 1.11.
+  * Users running MAAS in Ubuntu Xenial will continue to use Django 1.9.
+
+Issues fixed in this release
+----------------------------
+
+ For issues fixed in MAAS 2.3, please refer to the following milestones:
+
+ https://launchpad.net/maas/+milestone/2.3.0
+
+ https://launchpad.net/maas/+milestone/2.3.0rc2
+
+ https://launchpad.net/maas/+milestone/2.3.0rc1
+
+ https://launchpad.net/maas/+milestone/2.3.0beta3
+
+ https://launchpad.net/maas/+milestone/2.3.0beta2
+
+ https://launchpad.net/maas/+milestone/2.3.0beta1
+
+ https://launchpad.net/maas/+milestone/2.3.0alpha3
+
+ https://launchpad.net/maas/+milestone/2.3.0alpha2
+
+ https://launchpad.net/maas/+milestone/2.3.0alpha1
+
+
 MAAS 2.3.0 (rc2)
 ================
 

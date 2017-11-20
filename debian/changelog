@@ -1,6 +1,15 @@
-maas (2.3.0~rc3-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.0-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release, MAAS 2.3.0:
+    - Introduces CentOS & Windows networking.
+    - Adds support for Upstream Proxy.
+    - Improves hardware testing.
+    - Introduces beaconing and better network discovery.
+    - Uses HTTP for ephemeral images, not forcing the use of 'tgt'.
+    - Adds the ability to deploy rack controllers.
+    - Adds the ability to report controller versions.
+    - Improves performance by improving DNS reloading performance.
+    - Adds django 1.11 support.
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 09 Nov 2017 20:38:45 -0500
 
