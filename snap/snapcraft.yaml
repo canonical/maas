@@ -5,7 +5,7 @@ summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
 grade: devel
-confinement: devmode
+confinement: strict
 
 apps:
   supervisor:
