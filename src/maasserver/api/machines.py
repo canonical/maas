@@ -105,6 +105,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'fqdn',
     'owner',
     'owner_data',
+    'locked',
     'cache_sets',
     'bcaches',
     'boot_interface',

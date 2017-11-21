@@ -70,7 +70,6 @@ __all__ = [
     'SSLKey',
     'StaticIPAddress',
     'StaticRoute',
-    'Storage',
     'Subnet',
     'Switch',
     'Tag',
@@ -297,6 +296,8 @@ class MAASAuthorizationBackend(ModelBackend):
                 # Any registered user can view a node regardless of its state.
                 return True
             elif perm == NODE_PERMISSION.EDIT:
+                return obj.owner == user and not obj.locked
+            elif perm == NODE_PERMISSION.LOCK:
                 return obj.owner == user
             elif perm == NODE_PERMISSION.ADMIN:
                 # 'admin_node' permission is solely granted to superusers.

@@ -490,6 +490,8 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
             # Make sure even if given a query set of multiple node types
             # get_nodes only returns nodes applicable to this manager.
             from_nodes = from_nodes.filter(**self.extra_filters)
+        if perm == NODE_PERMISSION.EDIT:
+            from_nodes = from_nodes.filter(locked=False)
         nodes = self._filter_visible_nodes(from_nodes, user, perm)
         return self.filter_by_ids(nodes, ids)
 
@@ -514,7 +516,9 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         kwargs.update(self.extra_filters)
         node = get_object_or_404(
             self.model, system_id=system_id, **kwargs)
-        if user.has_perm(perm, node):
+        if node.locked and perm == NODE_PERMISSION.EDIT:
+            raise PermissionDenied()
+        elif user.has_perm(perm, node):
             return node.as_self()
         else:
             raise PermissionDenied()
@@ -1055,6 +1059,8 @@ class Node(CleanSave, TimestampedModel):
         "metadataserver.ScriptSet", blank=True, null=True, on_delete=SET_NULL,
         related_name="+")
 
+    locked = BooleanField(default=False)
+
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -1070,6 +1076,33 @@ class Node(CleanSave, TimestampedModel):
             return "%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
+
+    def lock(self, user, comment=None):
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_LOCK, action='lock',
+            comment=comment)
+
+        if self.locked:
+            return
+
+        if self.status != NODE_STATUS.DEPLOYED:
+            raise NodeStateViolation("Can't lock, node is not deployed")
+
+        maaslog.info('%s: Node locked by %s', self.hostname, user)
+        self.locked = True
+        self.save()
+
+    def unlock(self, user, comment=None):
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_UNLOCK, action='unlock',
+            comment=comment)
+
+        if not self.locked:
+            return
+
+        maaslog.info('%s: Node unlocked by %s', self.hostname, user)
+        self.locked = False
+        self.save()
 
     @property
     def disable_ipv4(self):

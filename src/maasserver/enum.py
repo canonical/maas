@@ -204,6 +204,7 @@ class NODE_PERMISSION:
     """Permissions relating to nodes."""
     VIEW = 'view_node'
     EDIT = 'edit_node'
+    LOCK = 'lock_node'
     ADMIN = 'admin_node'
 
 

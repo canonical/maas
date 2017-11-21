@@ -1677,6 +1677,25 @@ class TestMachinesAPI(APITestCase.ForUser):
             (http.client.FORBIDDEN.value, expected_response),
             (response.status_code, response.content))
 
+    def test_POST_release_forbidden_if_locked_machines(self):
+        machine1 = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        machine2 = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=self.user, locked=True)
+        # And one with no owner
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'release',
+                'machines': [machine1.system_id, machine2.system_id],
+            })
+        expected_response = (
+            "You don't have the required permission to release the following "
+            "machine(s): {}.".format(machine2.system_id)).encode(
+            settings.DEFAULT_CHARSET)
+        self.assertEqual(
+            (http.client.FORBIDDEN.value, expected_response),
+            (response.status_code, response.content))
+
     def test_POST_release_rejects_impossible_state_changes(self):
         acceptable_states = {NODE_STATUS.READY} | RELEASABLE_STATUSES
         unacceptable_states = (

@@ -284,6 +284,7 @@ class TestMachineHandler(MAASServerTestCase):
             "zone": handler.dehydrate_zone(node.zone),
             "default_user": node.default_user,
             "dhcp_on": node.interface_set.filter(vlan__dhcp_on=True).exists(),
+            "locked": False,
         }
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:

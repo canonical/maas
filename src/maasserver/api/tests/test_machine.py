@@ -767,6 +767,14 @@ class TestMachineAPI(APITestCase.ForUser):
             [machine.status
              for machine in reload_objects(Node, owned_machines)])
 
+    def test_POST_release_fails_with_locked(self):
+        machine = factory.make_Node(
+            owner=self.user, status=NODE_STATUS.ALLOCATED, locked=True,
+            power_type='virsh', power_state=POWER_STATE.ON)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'release'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
     def test_POST_release_starts_disk_erasing(self):
         self.patch(
             node_module.Node, '_start').return_value = defer.succeed(None)
@@ -1072,6 +1080,16 @@ class TestMachineAPI(APITestCase.ForUser):
             'francis.%s' % domain_name, parsed_result['fqdn'])
         self.assertEqual(0, Machine.objects.filter(hostname='diane').count())
         self.assertEqual(1, Machine.objects.filter(hostname='francis').count())
+
+    def test_PUT_denied_if_locked(self):
+        self.become_admin()
+        machine = factory.make_Node(
+            hostname='foo', owner=self.user, status=NODE_STATUS.DEPLOYED,
+            locked=True, architecture=make_usable_architecture(self),
+            power_type='manual')
+        response = self.client.put(
+            self.get_machine_uri(machine), {'hostname': 'bar'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_omitted_hostname(self):
         self.become_admin()
@@ -1536,6 +1554,13 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Node()
         response = self.client.delete(self.get_machine_uri(machine))
 
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_DELETE_deletes_machine_fails_if_locked(self):
+        # Only superusers can delete machines.
+        machine = factory.make_Node(
+            owner=self.user, status=NODE_STATUS.DEPLOYED, locked=True)
+        response = self.client.delete(self.get_machine_uri(machine))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_refuses_to_delete_invisible_machine(self):

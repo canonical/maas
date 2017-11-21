@@ -103,6 +103,13 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         self.assertTrue(backend.has_perm(
             factory.make_User(), NODE_PERMISSION.VIEW, make_allocated_node()))
 
+    def test_user_can_view_locked_node(self):
+        backend = MAASAuthorizationBackend()
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=NODE_STATUS.DEPLOYED, locked=True)
+        self.assertTrue(backend.has_perm(owner, NODE_PERMISSION.VIEW, node))
+
     def test_owned_status(self):
         # A non-admin user can access nodes he owns.
         backend = MAASAuthorizationBackend()
@@ -127,6 +134,20 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         user = factory.make_User()
         self.assertTrue(backend.has_perm(
             user, NODE_PERMISSION.EDIT, make_allocated_node(owner=user)))
+
+    def test_user_cannot_edit_locked_node(self):
+        backend = MAASAuthorizationBackend()
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=NODE_STATUS.DEPLOYED, locked=True)
+        self.assertFalse(backend.has_perm(owner, NODE_PERMISSION.EDIT, node))
+
+    def test_user_can_lock_locked_node(self):
+        backend = MAASAuthorizationBackend()
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=NODE_STATUS.DEPLOYED, locked=True)
+        self.assertTrue(backend.has_perm(owner, NODE_PERMISSION.LOCK, node))
 
     def test_user_has_no_admin_permission_on_node(self):
         # NODE_PERMISSION.ADMIN permission on nodes is granted to super users

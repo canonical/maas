@@ -170,6 +170,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "spaces": list(space_names),
             "on_network": node.on_network(),
             "owner": "" if node.owner is None else node.owner.username,
+            "locked": node.locked,
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [

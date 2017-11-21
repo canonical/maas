@@ -1026,6 +1026,54 @@ class TestNode(MAASServerTestCase):
             ValidationError,
             factory.make_Node, hostname=bad_hostname)
 
+    def test_lock(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node.lock(user)
+        self.assertTrue(node.locked)
+
+    def test_lock_locked(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, locked=True)
+        node.lock(user)
+        self.assertTrue(node.locked)
+
+    def test_lock_logs_request(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        register_event = self.patch(node, '_register_request_event')
+        node.lock(user, comment='lock my node')
+        self.assertThat(register_event, MockCalledOnceWith(
+            user, EVENT_TYPES.REQUEST_NODE_LOCK, action='lock',
+            comment='lock my node'))
+
+    def test_lock_not_allocated_fails(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        self.assertRaises(NodeStateViolation, node.lock, user)
+        self.assertFalse(node.locked)
+
+    def test_unlock(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, locked=True)
+        node.unlock(user)
+        self.assertFalse(node.locked)
+
+    def test_unlock_not_locked(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        node.unlock(user)
+        self.assertFalse(node.locked)
+
+    def test_unlock_logs_request(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, locked=True)
+        register_event = self.patch(node, '_register_request_event')
+        node.unlock(user, comment='unlock my node')
+        self.assertThat(register_event, MockCalledOnceWith(
+            user, EVENT_TYPES.REQUEST_NODE_UNLOCK, action='unlock',
+            comment='unlock my node'))
+
     def test_display_status_shows_default_status(self):
         node = factory.make_Node()
         self.assertEqual(
@@ -4859,6 +4907,14 @@ class NodeManagerTest(MAASServerTestCase):
             Node.objects.get_nodes(
                 factory.make_admin(), NODE_PERMISSION.ADMIN))
 
+    def test_get_nodes_with_edit_perm_filters_locked(self):
+        user = factory.make_User()
+        factory.make_Node(owner=user)
+        node = factory.make_Node(
+            owner=user, status=NODE_STATUS.DEPLOYED, locked=True)
+        self.assertNotIn(
+            node, Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
     def test_get_nodes_with_null_user(self):
         # Recreate conditions of bug 1376023. It is not valid to have a
         # node in this state with no user, however the code should not
@@ -5053,6 +5109,14 @@ class NodeManagerTest(MAASServerTestCase):
             node,
             Node.objects.get_node_or_404(
                 node.system_id, user, NODE_PERMISSION.VIEW))
+
+    def test_get_node_or_404_edit_locked(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, locked=True)
+        self.assertRaises(
+            PermissionDenied,
+            Node.objects.get_node_or_404, node.system_id, user,
+            NODE_PERMISSION.EDIT)
 
     def test_get_node_or_404_returns_proper_node_object(self):
         user = factory.make_User()
