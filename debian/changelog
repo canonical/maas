@@ -1,4 +1,10 @@
-maas (2.3.0-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.4.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 21 Nov 2017 10:30:54 -0500
+
+maas (2.3.0-6434-gd354690-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.3.0:
     - Add support for CentOS & Windows networking.
@@ -12,7 +18,7 @@ maas (2.3.0-0ubuntu1) UNRELEASED; urgency=medium
     - Improves performance by improving DNS reloading performance.
     - Machine, devices & controller page re-design.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 09 Nov 2017 20:38:45 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 20 Nov 2017 14:08:22 -0500
 
 maas (2.3.0~rc2-6412-g410b453-0ubuntu1) artful; urgency=medium
 
