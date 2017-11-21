@@ -4,7 +4,7 @@ version-script: utilities/calc-snap-version
 summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
-grade: devel
+grade: stable
 confinement: strict
 
 apps:
