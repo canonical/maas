@@ -136,18 +136,20 @@ angular.module('MAAS').factory(
             result.showing_results = false;
             result.showing_history = false;
             result.showing_menu = false;
+            result.result_section = "scripts";
 
             if(result.result_type === 0) {
                 results = this.commissioning_results;
-            }else if(result.result_type === 1) {
+            } else if(result.result_type === 1) {
                 // Installation results are not split into hardware types or
                 // have subtext labels.
                 this._addOrReplace(this.installation_results, result);
                 return;
-            }else{
-                // Store all remaining result types as test results incase
+            } else {
+                // Store all remaining result types as test results in case
                 // another result type is ever added.
                 results = this.testing_results;
+                result.result_section = "tests";
             }
             var i;
             // Fallback to storing results in other results incase a new type
@@ -179,7 +181,7 @@ angular.module('MAAS').factory(
                         break;
                     }
                 }
-            }else{
+            } else {
                 // Other hardware types are not split into individual
                 // components.
                 if(!angular.isArray(hardware_type_results[null])) {

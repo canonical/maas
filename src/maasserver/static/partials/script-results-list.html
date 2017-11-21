@@ -44,8 +44,8 @@
                                     <div class="table__controls-menu ng-hide" role="menu" data-ng-show="isToggled">
                                         <button class="table__controls-action" aria-label="View metrics" data-ng-if="!result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
                                         <button class="table__controls-action" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
-                                        <button class="table__controls-action" aria-label="View previous tests" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = true">View previous tests</button>
-                                        <button class="table__controls-action" aria-label="Hide previous tests" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous tests</button>
+                                        <button class="table__controls-action" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = true">View previous {$ result.result_section $}</button>
+                                        <button class="table__controls-action" aria-label="Hide previous {$ result.result_section $}" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous {$ result.result_section $}</button>
                                     </div>
                                 </div>
                             </div>
@@ -81,7 +81,7 @@
                                             </main>
                                         </section>
                                         <p class="u-align--center u-margin--bottom">
-                                            <button class="button--secondary button--inline" data-ng-click="result.showing_history = false">Hide previous tests</button>
+                                            <button class="button--secondary button--inline" data-ng-click="result.showing_history = false">Hide previous {$ result.result_section $}</button>
                                         </p>
                                     </div>
                                 </div>
