@@ -1064,6 +1064,68 @@ class TestMachineAPI(APITestCase.ForUser):
             set(expected_testing_scripts),
             [script_result.name for script_result in testing_script_set])
 
+    def test_POST_lock_deployed(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=self.user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'lock'})
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertTrue(machine.locked)
+
+    def test_POST_lock_with_comment(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=self.user)
+        node_lock = self.patch(node_module.Node, 'lock')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_machine_uri(machine), {'op': 'lock', 'comment': comment})
+        self.assertThat(
+            node_lock, MockCalledOnceWith(self.user, comment=comment))
+
+    def test_POST_lock_not_deployed(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, owner=self.user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'lock'})
+        self.assertEqual(
+            http.client.CONFLICT, response.status_code)
+        machine = reload_object(machine)
+        self.assertFalse(machine.locked)
+
+    def test_POST_lock_locked(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, locked=True, owner=self.user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'lock'})
+        self.assertEqual(
+            http.client.CONFLICT, response.status_code)
+
+    def test_POST_unlock(self):
+        machine = factory.make_Node(locked=True, owner=self.user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'unlock'})
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertFalse(machine.locked)
+
+    def test_POST_unlock_with_comment(self):
+        machine = factory.make_Node(locked=True, owner=self.user)
+        node_unlock = self.patch(node_module.Node, 'unlock')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_machine_uri(machine),
+            {'op': 'unlock', 'comment': comment})
+        self.assertThat(
+            node_unlock, MockCalledOnceWith(self.user, comment=comment))
+
+    def test_POST_unlock_unlocked(self):
+        machine = factory.make_Node(owner=self.user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'unlock'})
+        self.assertEqual(
+            http.client.CONFLICT, response.status_code)
+
     def test_PUT_updates_machine(self):
         self.become_admin()
         # The api allows the updating of a Machine.

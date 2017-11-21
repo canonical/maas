@@ -973,6 +973,44 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             request.user.username)
         return machine
 
+    @operation(idempotent=False)
+    def lock(self, request, system_id):
+        """Mark a deployed machine as locked, to prevent changes.
+
+        A locked machine cannot be released or modified.
+
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission lock the machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.LOCK)
+        if machine.locked:
+            raise NodeStateViolation('Machine is already locked')
+        comment = get_optional_param(request.POST, 'comment')
+        machine.lock(request.user, comment=comment)
+        return machine
+
+    @operation(idempotent=False)
+    def unlock(self, request, system_id):
+        """Mark a machine as unlocked, allowing changes.
+
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission unlock the machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.LOCK)
+        if not machine.locked:
+            raise NodeStateViolation('Machine is not locked')
+        comment = get_optional_param(request.POST, 'comment')
+        machine.unlock(request.user, comment=comment)
+        return machine
+
 
 def create_machine(request):
     """Service an http request to create a machine.
