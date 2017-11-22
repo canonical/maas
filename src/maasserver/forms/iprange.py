@@ -7,6 +7,8 @@ __all__ = [
     "IPRangeForm",
 ]
 
+from django import forms
+from django.contrib.auth.models import User
 from maasserver.forms import MAASModelForm
 from maasserver.models import Subnet
 from maasserver.models.iprange import IPRange
@@ -14,6 +16,9 @@ from maasserver.models.iprange import IPRange
 
 class IPRangeForm(MAASModelForm):
     """IPRange creation/edition form."""
+
+    user = forms.ModelChoiceField(
+        required=False, queryset=User.objects, to_field_name='username')
 
     class Meta:
         model = IPRange
@@ -42,6 +47,8 @@ class IPRangeForm(MAASModelForm):
                 if subnet is not None:
                     data['subnet'] = subnet.id
             if request is not None:
-                data['user'] = request.user.id
+                data['user'] = request.user.username
+        elif instance.user and 'user' not in data:
+            data['user'] = instance.user.username
         super().__init__(
             data=data, instance=instance, *args, **kwargs)

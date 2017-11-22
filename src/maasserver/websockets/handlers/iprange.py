@@ -37,12 +37,6 @@ class IPRangeHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        if obj.subnet is not None:
-            data['vlan'] = obj.subnet.vlan_id
-        else:
-            data['vlan'] = None
-        if obj.user is None:
-            data["user_username"] = ""
-        else:
-            data["user_username"] = obj.user.username
+        data['vlan'] = None if obj.subnet is None else obj.subnet.vlan_id
+        data['user'] = '' if obj.user is None else obj.user.username
         return data

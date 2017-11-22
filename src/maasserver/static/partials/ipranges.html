@@ -14,7 +14,7 @@
                 data-ng-class="{ 'is-active': isIPRangeInEditMode(iprange) || isIPRangeInDeleteMode(iprange)}">
                 <div class="table__data table-col--20" aria-label="Start IP Address">{$ iprange.start_ip $}</div>
                 <div class="table__data table-col--20" aria-label="End IP Address">{$ iprange.end_ip $}</div>
-                <div class="table__data table-col--10" aria-label="Owner">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user_username $}</div>
+                <div class="table__data table-col--10" aria-label="Owner">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user $}</div>
                 <div class="table__data table-col--10" aria-label="Type">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved" $}</div>
                 <div class="table__data table-col--31" aria-label="Comment">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</div>
                 <div class="table__data table-col--9 table--mobile-controls">
