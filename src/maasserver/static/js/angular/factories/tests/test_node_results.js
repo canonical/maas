@@ -154,11 +154,16 @@ describe("NodeResultsManagerFactory", function() {
                         }
                     }
                     results.push(old_result);
+                    var result_section = "tests";
+                    if (result_type_name === "commissioning") {
+                        result_section = "scripts";
+                    }
                     var result = {
                         name: old_result.name,
                         status: makeInteger(0, 100),
                         status_name: makeName("status_name"),
                         result_type: parseInt(result_type, 10),
+                        result_section: result_section,
                         hardware_type: parseInt(hardware_type, 10),
                         physical_blockdevice: null,
                         showing_results: false,
@@ -172,6 +177,7 @@ describe("NodeResultsManagerFactory", function() {
                         status: result.status,
                         status_name: result.status_name,
                         result_type: parseInt(result_type, 10),
+                        result_section: result_section,
                         hardware_type: parseInt(hardware_type, 10),
                         physical_blockdevice: null,
                         showing_results: old_result.showing_results,
@@ -192,11 +198,14 @@ describe("NodeResultsManagerFactory", function() {
                 }];
                 var manager = NodeResultsManagerFactory.getManager(
                     node, result_type_name);
+                var result_section = (
+                    result_type_name === "commissioning") ? "scripts" : "tests";
                 var result = {
                     name: makeName("name"),
                     status: makeInteger(0, 100),
                     status_name: makeName("status_name"),
                     result_type: parseInt(result_type, 10),
+                    result_section: result_section,
                     hardware_type: 3,
                     physical_blockdevice: node.disks[0].id,
                     showing_results: false,
@@ -254,6 +263,8 @@ describe("NodeResultsManagerFactory", function() {
                     }
                 }
                 results.push(old_result);
+                var result_section = (
+                    result_type_name === "commissioning") ? "scripts" : "tests";
                 var result = {
                     name: old_result.name,
                     status: makeInteger(0, 100),
@@ -272,6 +283,7 @@ describe("NodeResultsManagerFactory", function() {
                     status: result.status,
                     status_name: result.status_name,
                     result_type: parseInt(result_type, 10),
+                    result_section: result_section,
                     hardware_type: 3,
                     physical_blockdevice: node.disks[0].id,
                     showing_results: old_result.showing_results,
@@ -325,6 +337,7 @@ describe("NodeResultsManagerFactory", function() {
                 status: makeInteger(0, 100),
                 status_name: makeName("status_name"),
                 result_type: 1,
+                result_section: "scripts",
                 hardware_type: 0,
                 physical_blockdevice: null,
                 showing_results: false,
@@ -338,6 +351,7 @@ describe("NodeResultsManagerFactory", function() {
                 status: result.status,
                 status_name: result.status_name,
                 result_type: 1,
+                result_section: "scripts",
                 hardware_type: 0,
                 physical_blockdevice: null,
                 showing_results: old_result.showing_results,
