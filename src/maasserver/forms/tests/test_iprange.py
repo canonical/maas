@@ -149,3 +149,13 @@ class TestIPRangeForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         self.assertEqual(new_comment, reload_object(iprange).comment)
+
+    def test_update_iprange_user(self):
+        user = factory.make_User()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        iprange = subnet.get_dynamic_ranges().first()
+        form = IPRangeForm(
+            instance=iprange, data={"user": user.username})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        form.save()
+        self.assertEqual(user, reload_object(iprange).user)

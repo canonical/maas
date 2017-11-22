@@ -149,7 +149,7 @@ class VLANHandler(TimestampedModelHandler):
                     "end_ip": str(end_ipaddr),
                     "type": IPRANGE_TYPE.DYNAMIC,
                     "subnet": subnet.id,
-                    "user": self.user.id,
+                    "user": self.user.username,
                     "comment": "Added via 'Provide DHCP...' in Web UI."
                 })
                 iprange_form.save()
