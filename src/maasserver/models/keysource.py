@@ -54,6 +54,8 @@ class KeySource(CleanSave, TimestampedModel):
 
     auth_id = CharField(max_length=255, null=False, editable=True)
 
+    # Whether keys from this source should be automatically updated
+    # XXX auto-update not implemented yet
     auto_update = BooleanField(default=False)
 
     class Meta(DefaultMeta):
@@ -69,5 +71,5 @@ class KeySource(CleanSave, TimestampedModel):
 
         keys = get_protocol_keys(self.protocol, self.auth_id)
         return [
-            SSHKey.objects.create(key=key, user=user, keysource=self)
+            SSHKey.objects.get_or_create(key=key, user=user, keysource=self)[0]
             for key in keys]
