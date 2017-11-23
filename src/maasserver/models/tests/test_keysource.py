@@ -52,6 +52,45 @@ class TestKeySource(MAASServerTestCase):
         self.assertItemsEqual(
             returned_sshkeys, SSHKey.objects.filter(keysource=keysource))
 
+    def test_import_keys_source_exists_adds_new_keys(self):
+        user = factory.make_User()
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        keysource = factory.make_KeySource(protocol, auth_id)
+        keys = get_data('data/test_rsa0.pub') + get_data('data/test_rsa1.pub')
+        mock_get_protocol_keys = self.patch(
+            keysource_module, 'get_protocol_keys')
+        mock_get_protocol_keys.return_value = keys.strip().split('\n')
+        keysource.import_keys(user)
+        # Add a new key
+        keys += get_data('data/test_rsa2.pub')
+        mock_get_protocol_keys.return_value = keys.strip().split('\n')
+        returned_sshkeys = keysource.import_keys(user)
+        self.assertEqual(3, SSHKey.objects.count())
+        self.assertCountEqual(
+            returned_sshkeys, SSHKey.objects.filter(keysource=keysource))
+
+    def test_import_keys_source_exists_doesnt_remove_keys(self):
+        user = factory.make_User()
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        keysource = factory.make_KeySource(protocol, auth_id)
+        keys = get_data('data/test_rsa0.pub') + get_data('data/test_rsa1.pub')
+        mock_get_protocol_keys = self.patch(
+            keysource_module, 'get_protocol_keys')
+        mock_get_protocol_keys.return_value = keys.strip().split('\n')
+        returned_sshkeys = keysource.import_keys(user)
+        # only return one key
+        keys = get_data('data/test_rsa0.pub')
+        mock_get_protocol_keys.return_value = keys.strip().split('\n')
+        keysource.import_keys(user)
+        # no key is removed
+        self.assertEqual(2, SSHKey.objects.count())
+        self.assertCountEqual(
+            returned_sshkeys, SSHKey.objects.filter(keysource=keysource))
+
 
 class TestKeySourceManager(MAASServerTestCase):
     """Testing for the:class:`KeySourceManager` model manager."""
