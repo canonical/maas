@@ -28,6 +28,7 @@ from maastesting.matchers import (
     LessThanOrEqual,
     MockAnyCall,
     MockCalledOnce,
+    MockCalledOnceWith,
     MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
@@ -501,6 +502,12 @@ class TestCaptureScriptOutput(MAASTestCase):
         for iteration in range(1, 21)
     ]
 
+    def setUp(self):
+        super().setUp()
+        # Make sure output isn't shown when running tests through a console
+        self.isatty = self.patch(maas_api_helper.sys.stdout, 'isatty')
+        self.isatty.return_value = False
+
     def capture(self, proc, timeout=None):
         scripts_dir = Path(self.useFixture(TempDirectory()).path)
         combined_path = scripts_dir.joinpath("combined")
@@ -532,6 +539,21 @@ class TestCaptureScriptOutput(MAASTestCase):
                     Equals("stderr\nstdout\n"),
                 ),
             )))
+
+    def test__forwards_to_console(self):
+        stdout = self.patch(maas_api_helper.sys.stdout, 'write')
+        stderr = self.patch(maas_api_helper.sys.stderr, 'write')
+        stdout_flush = self.patch(maas_api_helper.sys.stdout, 'flush')
+        stderr_flush = self.patch(maas_api_helper.sys.stderr, 'flush')
+        self.isatty.return_value = True
+        proc = Popen(
+            'echo "stdout"; echo "stderr" 1>&2', stdout=PIPE, stderr=PIPE,
+            shell=True)
+        self.capture(proc)
+        self.assertThat(stdout, MockCalledOnceWith("stdout\n"))
+        self.assertThat(stderr, MockCalledOnceWith("stderr\n"))
+        self.assertThat(stdout_flush, MockCalledOnce())
+        self.assertThat(stderr_flush, MockCalledOnce())
 
     def test__does_not_wait_for_forked_process(self):
         start_time = time.time()

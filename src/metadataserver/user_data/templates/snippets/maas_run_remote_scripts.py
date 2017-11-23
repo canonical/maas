@@ -82,6 +82,7 @@ def signal_wrapper(*args, **kwargs):
 def output_and_send(error, send_result=True, *args, **kwargs):
     """Output the error message to stderr and send iff send_result is True."""
     sys.stdout.write('%s\n' % error)
+    sys.stdout.flush()
     if send_result:
         signal_wrapper(*args, error=error, **kwargs)
 
@@ -700,7 +701,8 @@ def main():
     os.nice(-20)
 
     heart_beat = HeartBeat(url, creds)
-    heart_beat.start()
+    if not args.no_send:
+        heart_beat.start()
 
     scripts_dir = os.path.join(args.storage_directory, 'scripts')
     os.makedirs(scripts_dir, exist_ok=True)

@@ -304,12 +304,12 @@ def capture_script_output(
                 selector.register(proc.stderr, selectors.EVENT_READ, err)
                 while selector.get_map() and proc.poll() is None:
                     # Select with a short timeout so that we don't tight loop.
-                    _select_script_output(selector, combined, 0.1)
+                    _select_script_output(selector, combined, 0.1, proc)
                     if timeout is not None and time.monotonic() > timeout:
                         break
                 # Process has finished or has closed stdout and stderr.
                 # Process anything still sitting in the latter's buffers.
-                _select_script_output(selector, combined, 0.0)
+                _select_script_output(selector, combined, 0.0, proc)
 
     now = time.monotonic()
     # Wait for the process to finish.
@@ -331,7 +331,7 @@ def capture_script_output(
             raise
 
 
-def _select_script_output(selector, combined, timeout):
+def _select_script_output(selector, combined, timeout, proc):
     """Helper for `capture_script_output`."""
     for key, event in selector.select(timeout):
         if event & selectors.EVENT_READ:
@@ -342,6 +342,13 @@ def _select_script_output(selector, combined, timeout):
             if len(chunk) == 0:  # EOF
                 selector.unregister(key.fileobj)
             else:
+                # Output to console if running in a shell.
+                if chunk != b'' and sys.stdout.isatty():
+                    fd = (sys.stdout if key.fileobj == proc.stdout
+                          else sys.stderr)
+                    fd.write(chunk.decode())
+                    fd.flush()
+
                 # The list comprehension is needed to get byte objects instead
                 # of their numeric value.
                 for i in [chunk[i:i + 1] for i in range(len(chunk))]:
@@ -374,5 +381,7 @@ def _select_script_output(selector, combined, timeout):
                             # should be saved, not overwritten.
                             f.seek(0, os.SEEK_END)
                             f.write(i)
+                            f.flush()
                         else:
                             f.write(i)
+                            f.flush()
