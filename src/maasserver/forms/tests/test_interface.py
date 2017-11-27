@@ -789,7 +789,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_miimon": 100,
             "bond_downdelay": 0,
             "bond_updelay": 0,
-            "bond_lacp_rate": "slow",
+            "bond_lacp_rate": "fast",
             "bond_xmit_hash_policy": "layer2",
             }, interface.params)
 
