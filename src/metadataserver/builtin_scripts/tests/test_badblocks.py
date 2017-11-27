@@ -9,7 +9,6 @@ __all__ = []
 import io
 import os
 import random
-import re
 from subprocess import (
     PIPE,
     STDOUT,
@@ -18,22 +17,22 @@ from textwrap import dedent
 from unittest.mock import ANY
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-)
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import badblocks
 import yaml
 
 
 BADBLOCKS = random.randint(0, 1000)
+READ_ERRORS = random.randint(0, 1000)
+WRITE_ERRORS = random.randint(0, 1000)
+COMPARISON_ERRORS = random.randint(0, 1000)
 BADBLOCKS_OUTPUT = dedent("""
     Checking for bad blocks in non-destructive read-write mode
     From block 0 to 5242879
     Testing with random pattern:
-    Pass completed, %s bad blocks found. (0/0/%s errors)
-    """ % (BADBLOCKS, BADBLOCKS))
+    Pass completed, %s bad blocks found. (%s/%s/%s errors)
+    """ % (BADBLOCKS, READ_ERRORS, WRITE_ERRORS, COMPARISON_ERRORS))
 
 
 class TestRunBadBlocks(MAASTestCase):
@@ -75,7 +74,7 @@ class TestRunBadBlocks(MAASTestCase):
         })
         cmd = [
             'sudo', '-n', 'badblocks', '-b', str(blocksize),
-            '-c', str(parallel_blocks), '-v', '-f', '-n', storage
+            '-c', str(parallel_blocks), '-v', '-f', '-s', '-n', storage
         ]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
@@ -88,10 +87,13 @@ class TestRunBadBlocks(MAASTestCase):
         results = {
             'results': {
                 'badblocks': BADBLOCKS,
+                'read_errors': READ_ERRORS,
+                'write_errors': WRITE_ERRORS,
+                'comparison_errors': COMPARISON_ERRORS,
             }
         }
 
-        self.assertEquals(0, badblocks.run_badblocks(storage))
+        self.assertEquals(1, badblocks.run_badblocks(storage))
         self.assertThat(mock_popen, MockCalledOnceWith(
             cmd, stdout=PIPE, stderr=STDOUT))
         self.assertThat(mock_open, MockCalledOnceWith(ANY, "w"))
@@ -107,7 +109,7 @@ class TestRunBadBlocks(MAASTestCase):
             parallel_blocks)
         cmd = [
             'sudo', '-n', 'badblocks', '-b', str(blocksize),
-            '-c', str(parallel_blocks), '-v', '-f', '-w', storage,
+            '-c', str(parallel_blocks), '-v', '-f', '-s', '-w', storage,
         ]
         mock_popen = self.patch(badblocks, "Popen")
         proc = mock_popen.return_value
@@ -116,27 +118,6 @@ class TestRunBadBlocks(MAASTestCase):
         proc.returncode = 0
 
         self.assertEquals(
-            0, badblocks.run_badblocks(storage, destructive=True))
+            1, badblocks.run_badblocks(storage, destructive=True))
         self.assertThat(mock_popen, MockCalledOnceWith(
             cmd, stdout=PIPE, stderr=STDOUT))
-
-    def test_run_badblocks_exits_if_no_regex_match_found(self):
-        storage = factory.make_name('storage')
-        blocksize = random.randint(512, 4096)
-        self.patch(badblocks, 'get_block_size').return_value = blocksize
-        parallel_blocks = random.randint(1, 50000)
-        self.patch(badblocks, 'get_parallel_blocks').return_value = (
-            parallel_blocks)
-        self.patch(os, "environ", {
-            "RESULT_PATH": factory.make_name()
-        })
-        mock_popen = self.patch(badblocks, "Popen")
-        proc = mock_popen.return_value
-        proc.communicate.return_value = (
-            BADBLOCKS_OUTPUT.encode('utf-8'), None)
-        proc.returncode = 0
-        mock_re_search = self.patch(re, "search")
-        mock_re_search.return_value = None
-
-        self.assertEquals(0, badblocks.run_badblocks(storage))
-        self.assertThat(mock_re_search, MockCalledOnce())
