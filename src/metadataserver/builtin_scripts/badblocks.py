@@ -31,6 +31,18 @@
 #   badblocks:
 #     title: Bad blocks
 #     description: The number of bad blocks found on the storage device.
+#   read_errors:
+#     title: Bad blocks read errors
+#     description: >
+#       The number of bad blocks read errors found on the storage device.
+#   write_errors:
+#     title: Bad blocks write errors
+#     description: >
+#       The number of bad blocks write errors found on the storage device.
+#   comparison_errors:
+#     title: Bad blocks comparison errors
+#     description: >
+#       The number of bad blocks comparison errors found on the storage device.
 # parameters:
 #   storage: {type: storage}
 # destructive: {{if 'destructive' in name}}True{{else}}False{{endif}}
@@ -113,37 +125,56 @@ def run_badblocks(storage, destructive=False):
     if destructive:
         cmd = [
             'sudo', '-n', 'badblocks', '-b', str(blocksize),
-            '-c', str(parallel_blocks), '-v', '-f', '-w', storage
+            '-c', str(parallel_blocks), '-v', '-f', '-s', '-w', storage
         ]
     else:
         cmd = [
             'sudo', '-n', 'badblocks', '-b', str(blocksize),
-            '-c', str(parallel_blocks), '-v', '-f', '-n', storage
+            '-c', str(parallel_blocks), '-v', '-f', '-s', '-n', storage
         ]
 
     print('INFO: Running command: %s\n' % ' '.join(cmd))
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
     stdout, _ = proc.communicate()
+    stdout = stdout.decode()
 
     # Print stdout to the console.
-    if stdout is not None:
-        print(stdout.decode())
+    print(stdout)
 
-    result_path = os.environ.get("RESULT_PATH")
+    m = re.search(
+        '^Pass completed, (?P<badblocks>\d+) bad blocks found. '
+        '\((?P<read>\d+)\/(?P<write>\d+)\/(?P<comparison>\d+) errors\)$',
+        stdout, re.M)
+    badblocks = int(m.group('badblocks'))
+    read_errors = int(m.group('read'))
+    write_errors = int(m.group('write'))
+    comparison_errors = int(m.group('comparison'))
+    result_path = os.environ.get('RESULT_PATH')
     if result_path is not None:
-        # Parse the results for the desired information and
-        # then wrtie this to the results file.
-        match = re.search(b', ([0-9]+) bad blocks found', stdout)
-        if match is not None:
-            results = {
-                'results': {
-                    'badblocks': int(match.group(1).decode()),
-                }
+        results = {
+            'results': {
+                'badblocks': badblocks,
+                'read_errors': read_errors,
+                'write_errors': write_errors,
+                'comparison_errors': comparison_errors,
             }
-            with open(result_path, 'w') as results_file:
-                yaml.safe_dump(results, results_file)
+        }
+        with open(result_path, 'w') as results_file:
+            yaml.safe_dump(results, results_file)
 
-    return proc.returncode
+    # LP: #1733923 - Badblocks normally returns 0 no matter the result. If any
+    # errors are found fail the test.
+    if (proc.returncode + badblocks + read_errors + write_errors +
+            comparison_errors) != 0:
+        print('FAILURE: Test FAILED!')
+        print('INFO: %s badblocks found' % badblocks)
+        print('INFO: %s read errors found' % read_errors)
+        print('INFO: %s write errors found' % write_errors)
+        print('INFO: %s comparison errors found' % comparison_errors)
+        return 1
+    else:
+        print('SUCCESS: Test PASSED!')
+        return 0
 
 
 if __name__ == '__main__':
