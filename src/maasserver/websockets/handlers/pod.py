@@ -11,6 +11,7 @@ from functools import partial
 
 from django.http import HttpRequest
 from maasserver.enum import NODE_TYPE
+from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import (
     ComposeMachineForm,
     PodForm,
@@ -251,11 +252,17 @@ class PodHandler(TimestampedModelHandler):
                 raise HandlerValidationError(form.errors)
             return form, obj
 
+        def wrap_errors(failure):
+            raise PodProblem(
+                "Pod unable to compose machine: %s" % str(failure.value))
+
         def compose(result, params):
             form, obj = result
-            machine = form.compose(
+            d = form.compose(
                 skip_commissioning=params.get('skip_commissioning', False))
-            return machine, obj
+            d.addCallback(lambda machine: (machine, obj))
+            d.addErrback(wrap_errors)
+            return d
 
         @transactional
         def render_obj(result):
