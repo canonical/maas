@@ -120,6 +120,7 @@ parts:
     organize:
         lib/python3.5/site-packages/etc: etc
         lib/python3.5/site-packages/usr: usr
+        usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers
     filesets:
       remove:
         - -lib/python3.5/site-packages/maastesting
