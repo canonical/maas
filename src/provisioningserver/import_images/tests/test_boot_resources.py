@@ -54,6 +54,7 @@ from provisioningserver.utils.fs import (
     tempdir,
     write_text_file,
 )
+from provisioningserver.utils.service_monitor import ServiceActionError
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
@@ -595,6 +596,18 @@ class TestMain(MAASTestCase):
         self.patch(boot_resources, "call_and_check")
         boot_resources.update_targets_conf(factory.make_name("snapshot"))
         self.assertThat(mock_ensureService, MockCalledOnceWith("tgt"))
+
+    def test_update_targets_conf_logs_tgt_service_check_error(self):
+        # Regression test for LP:1735025
+        mock_ensureService = self.patch(
+            boot_resources.service_monitor, "ensureService")
+        mock_ensureService.side_effect = ServiceActionError()
+        mock_try_send_rack_event = self.patch(
+            boot_resources, 'try_send_rack_event')
+        mock_maaslog = self.patch(boot_resources.maaslog, 'warning')
+        boot_resources.update_targets_conf(factory.make_name("snapshot"))
+        self.assertThat(mock_try_send_rack_event, MockCalledOnce())
+        self.assertThat(mock_maaslog, MockCalledOnce())
 
     def test_update_targets_conf_logs_error(self):
         self.patch(boot_resources.service_monitor, "ensureService")
