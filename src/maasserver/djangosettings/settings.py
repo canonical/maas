@@ -75,8 +75,8 @@ PROXY_CONNECT = True
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas'
 
-API_URL_REGEXP = '^/api/2[.]0/'
-METADATA_URL_REGEXP = '^/metadata/'
+API_URL_PREFIX = '/api/2.0/'
+METADATA_URL_PREFIX = '/metadata/'
 
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
@@ -158,11 +158,11 @@ MEDIA_URL = ''
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-STATIC_URL_PATTERN = '/static/'
+STATIC_URL_PREFIX = '/static/'
 # Serving of static files doesn't seem to grok how to compose a URL when a
 # application is being served from a non-empty prefix (i.e. when request.path
 # is not empty), so we have to hack this.
-STATIC_URL = "/MAAS" + STATIC_URL_PATTERN
+STATIC_URL = "/MAAS" + STATIC_URL_PREFIX
 
 # Path to the root of the static files.
 STATIC_ROOT = "/usr/share/maas/web/static"

@@ -25,4 +25,4 @@ if settings.STATIC_LOCAL_SERVE:
             {'document_root': settings.MEDIA_ROOT}),
     ]
 
-    urlpatterns += staticfiles_urlpatterns(settings.STATIC_URL_PATTERN)
+    urlpatterns += staticfiles_urlpatterns(settings.STATIC_URL_PREFIX)

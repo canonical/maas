@@ -17,7 +17,6 @@ import http.client
 import json
 import logging
 from pprint import pformat
-import re
 import sys
 import traceback
 
@@ -38,7 +37,6 @@ from django.utils import six
 from django.utils.encoding import force_str
 from django.utils.http import urlquote_plus
 from maasserver import logger
-from maasserver.bootresources import SIMPLESTREAMS_URL_REGEXP
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     discard_persistent_error,
@@ -62,6 +60,37 @@ from provisioningserver.utils.shell import ExternalProcessError
 # responses.
 RETRY_AFTER_SERVICE_UNAVAILABLE = 10
 
+SIMPLESTREAMS_URL_PREFIX = '/images-stream/'
+
+PUBLIC_URL_PREFIXES = [
+    # Login page: must be visible to anonymous users.
+    reverse('login'),
+    # Authentication: must be visible to anonymous users.
+    reverse('authenticate'),
+    # The combo loaders are publicly accessible.
+    reverse('combo-yui'),
+    reverse('robots'),
+    reverse('api-doc'),
+    # Metadata service is for use by nodes; no login.
+    reverse('metadata'),
+    # RPC information is for use by rack controllers; no login.
+    reverse('rpc-info'),
+    # API meta-information is publicly visible.
+    reverse('api_version'),
+    reverse('api_v1_error'),
+    # API calls are protected by piston.
+    settings.API_URL_PREFIX,
+    # Static resources are publicly visible.
+    settings.STATIC_URL_PREFIX,
+    # Boot resources simple streams endpoint; no login.
+    SIMPLESTREAMS_URL_PREFIX,
+] + [reverse('merge', args=[filename]) for filename in MERGE_VIEWS]
+
+
+def is_public_path(path_info):
+    """Whether a request.path_info is publicly accessible."""
+    return any(path_info.startswith(prefix) for prefix in PUBLIC_URL_PREFIXES)
+
 
 class AccessMiddleware:
     """Protect access to views.
@@ -72,53 +101,20 @@ class AccessMiddleware:
     piston).
     """
 
-    def __init__(self):
-        # URL prefixes that do not require authentication by Django.
-        public_url_roots = [
-            # Login page: must be visible to anonymous users.
-            reverse('login'),
-            # Authentication: must be visible to anonymous users.
-            reverse('authenticate'),
-            # The combo loaders are publicly accessible.
-            reverse('combo-yui'),
-            # Static resources are publicly visible.
-            settings.STATIC_URL_PATTERN,
-            reverse('robots'),
-            reverse('api-doc'),
-            # Metadata service is for use by nodes; no login.
-            reverse('metadata'),
-            # RPC information is for use by rack controllers; no login.
-            reverse('rpc-info'),
-            # Boot resources simple streams endpoint; no login.
-            SIMPLESTREAMS_URL_REGEXP,
-            # API calls are protected by piston.
-            settings.API_URL_REGEXP,
-            # API meta-information is publicly visible.
-            reverse('api_version'),
-            reverse('api_v1_error'),
-        ]
-        # Add the defined combo loaders.
-        for filename in MERGE_VIEWS.keys():
-            public_url_roots.append(reverse('merge', args=[filename]))
-        self.public_urls = re.compile("|".join(public_url_roots))
-        self.login_url = reverse('login')
-
     def process_request(self, request):
-        # Public urls.
-        if self.public_urls.match(request.path_info):
+        if is_public_path(request.path_info):
             return None
-        else:
-            if request.user.is_anonymous():
-                return HttpResponseRedirect("%s?next=%s" % (
-                    reverse('login'), urlquote_plus(request.path)))
-            else:
-                if (not Config.objects.get_config('completed_intro') or
-                        not request.user.userprofile.completed_intro):
-                    index_path = reverse('index')
-                    if (request.path != index_path and
-                            request.path != reverse('logout')):
-                        return HttpResponseRedirect(index_path)
-                return None
+
+        if request.user.is_anonymous():
+            return HttpResponseRedirect("%s?next=%s" % (
+                reverse('login'), urlquote_plus(request.path)))
+
+        if (not Config.objects.get_config('completed_intro') or
+                not request.user.userprofile.completed_intro):
+            index_path = reverse('index')
+            if (request.path != index_path and
+                    request.path != reverse('logout')):
+                return HttpResponseRedirect(index_path)
 
 
 class ExternalComponentsMiddleware:
@@ -170,7 +166,7 @@ class ExceptionMiddleware(metaclass=ABCMeta):
 
     Use this as a base class for middleware_ classes that apply to
     sub-trees of the http path tree.  Subclass this class, provide a
-    `path_regex`, and register your concrete class in
+    `path_prefix`, and register your concrete class in
     settings.MIDDLEWARE_CLASSES.  Exceptions in that sub-tree will then
     come out as HttpResponses, insofar as they map neatly.
 
@@ -178,15 +174,12 @@ class ExceptionMiddleware(metaclass=ABCMeta):
        /en/dev/topics/http/middleware/
     """
 
-    path_regex = abstractproperty(
-        "Regular expression for the paths that this should apply to.")
-
-    def __init__(self):
-        self.path_matcher = re.compile(self.path_regex)
+    path_prefix = abstractproperty(
+        "Prefix for the paths that this should apply to.")
 
     def process_exception(self, request, exception):
         """Django middleware callback."""
-        if not self.path_matcher.match(request.path_info):
+        if not request.path_info.startswith(self.path_prefix):
             # Not a path we're handling exceptions for.
             return None
 
@@ -258,7 +251,7 @@ class ExceptionMiddleware(metaclass=ABCMeta):
 class APIErrorsMiddleware(ExceptionMiddleware):
     """Report exceptions from API requests as HTTP error responses."""
 
-    path_regex = settings.API_URL_REGEXP
+    path_prefix = settings.API_URL_PREFIX
 
 
 class DebuggingLoggerMiddleware:
@@ -355,8 +348,7 @@ class RPCErrorsMiddleware:
             "Error: %s" % get_error_message_for_exception(exception))
 
     def process_exception(self, request, exception):
-        path_matcher = re.compile(settings.API_URL_REGEXP)
-        if path_matcher.match(request.path_info):
+        if request.path_info.startswith(settings.API_URL_PREFIX):
             # Not a path we're handling exceptions for.
             # APIRPCErrorsMiddleware handles all the API request RPC
             # errors.
@@ -381,8 +373,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
         }
 
     def process_exception(self, request, exception):
-        path_matcher = re.compile(settings.API_URL_REGEXP)
-        if not path_matcher.match(request.path_info):
+        if not request.path_info.startswith(settings.API_URL_PREFIX):
             # Not a path we're handling exceptions for.
             # RPCErrorsMiddleware handles non-API requests.
             return None

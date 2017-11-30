@@ -12,7 +12,6 @@ __all__ = [
     "is_import_resources_running",
     "simplestreams_file_handler",
     "simplestreams_stream_handler",
-    "SIMPLESTREAMS_URL_REGEXP",
 ]
 
 from datetime import timedelta
@@ -128,10 +127,6 @@ from twisted.python.failure import Failure
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()
-
-# Used by maasserver.middleware.AccessMiddleware to allow
-# anonymous access to the simplestreams endpoint.
-SIMPLESTREAMS_URL_REGEXP = '^/images-stream/'
 
 
 def get_simplestream_endpoint():

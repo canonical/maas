@@ -14,4 +14,4 @@ from maasserver.middleware import ExceptionMiddleware
 class MetadataErrorsMiddleware(ExceptionMiddleware):
     """Report exceptions from the metadata app as HTTP responses."""
 
-    path_regex = settings.METADATA_URL_REGEXP
+    path_prefix = settings.METADATA_URL_PREFIX

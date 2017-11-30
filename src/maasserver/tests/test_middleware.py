@@ -37,6 +37,7 @@ from maasserver.middleware import (
     DebuggingLoggerMiddleware,
     ExceptionMiddleware,
     ExternalComponentsMiddleware,
+    is_public_path,
     RPCErrorsMiddleware,
 )
 from maasserver.testing import extract_redirect
@@ -61,6 +62,20 @@ from testtools.matchers import (
 )
 
 
+class IsPublicPathTest(MAASServerTestCase):
+
+    def test_public_path(self):
+        self.assertTrue(is_public_path('/accounts/login/'))
+        self.assertTrue(is_public_path('/rpc/someurl'))
+
+    def test_public_path_static_files(self):
+        self.assertTrue(is_public_path('/combo/angular.js'))
+        self.assertTrue(is_public_path('/combo/maas-yui.js'))
+
+    def test_path_not_public(self):
+        self.assertFalse(is_public_path('/'))
+
+
 class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def make_base_path(self):
@@ -70,7 +85,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
     def make_middleware(self, base_path):
         """Create an ExceptionMiddleware for base_path."""
         class TestingExceptionMiddleware(ExceptionMiddleware):
-            path_regex = base_path
+            path_prefix = base_path
 
         return TestingExceptionMiddleware()
 
@@ -87,7 +102,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request(base_path)
         return middleware.process_exception(request, exception)
 
-    def test_ignores_paths_outside_path_regex(self):
+    def test_ignores_paths_outside_path_prefix(self):
         middleware = self.make_middleware(self.make_base_path())
         request = factory.make_fake_request(self.make_base_path())
         exception = MAASAPINotFound("Huh?")
