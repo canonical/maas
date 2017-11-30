@@ -46,6 +46,7 @@ from provisioningserver.utils.fs import (
     read_text_file,
     tempdir,
 )
+from provisioningserver.utils.service_monitor import ServiceActionError
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -205,7 +206,13 @@ def write_targets_conf(snapshot):
 def update_targets_conf(snapshot):
     """Runs tgt-admin to update the new targets from "maas.tgt"."""
     # Ensure that tgt is running before tgt-admin is used.
-    service_monitor.ensureService("tgt").wait(30)
+    try:
+        service_monitor.ensureService("tgt").wait(30)
+    except ServiceActionError:
+        msg = "Unable to start tgt"
+        try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
+        maaslog.warning(msg)
+        return
 
     # Update the tgt config.
     targets_conf = os.path.join(snapshot, 'maas.tgt')
