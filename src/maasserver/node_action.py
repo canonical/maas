@@ -108,6 +108,9 @@ class NodeAction(metaclass=ABCMeta):
     # is being applied to a node_type which is node
     node_permission = None
 
+    # Whether the action is allowed when the node is locked
+    allowed_when_locked = False
+
     def __init__(self, node, user, request=None):
         """Initialize a node action.
 
@@ -129,8 +132,11 @@ class NodeAction(metaclass=ABCMeta):
         elif (self.node_permission == NODE_PERMISSION.ADMIN and
                 not self.user.is_superuser):
             return False
+        elif self.node.locked and not self.allowed_when_locked:
+            return False
         elif self.node.node_type == NODE_TYPE.MACHINE:
             return self.node.status in self.actionable_statuses
+
         return True
 
     def inhibit(self):
@@ -498,6 +504,41 @@ class MarkFixed(NodeAction):
             return not script_failures.exists()
 
 
+class Lock(NodeAction):
+    """Lock a node."""
+
+    name = "lock"
+    display = "Lock"
+    display_sentence = "Lock"
+    actionable_statuses = (NODE_STATUS.DEPLOYED,)
+    permission = NODE_PERMISSION.LOCK
+    for_type = {NODE_TYPE.MACHINE}
+
+    def execute(self):
+        self.node.lock(self.user, "via web interface")
+
+
+class Unlock(NodeAction):
+    """Unlock a node."""
+
+    name = "unlock"
+    display = "Unlock"
+    display_sentence = "Unlock"
+    actionable_statuses = ALL_STATUSES
+    permission = NODE_PERMISSION.LOCK
+    for_type = {NODE_TYPE.MACHINE}
+    allowed_when_locked = True
+
+    def is_actionable(self):
+        if not super().is_actionable():
+            return False
+        # don't show action if not locked
+        return self.node.locked
+
+    def execute(self):
+        self.node.unlock(self.user, "via web interface")
+
+
 class OverrideFailedTesting(NodeAction):
     """Override failed tests and reset node into a usable state."""
     name = "override-failed-testing"
@@ -601,6 +642,8 @@ ACTION_CLASSES = (
     MarkBroken,
     MarkFixed,
     OverrideFailedTesting,
+    Lock,
+    Unlock,
     SetZone,
     ImportImages,
     Delete,

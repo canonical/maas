@@ -159,6 +159,12 @@
                         <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
                         </span>
+                        <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $}
+                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $}
+                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
                         <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
                         </span>

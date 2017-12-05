@@ -164,7 +164,8 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertItemsEqual(
             ['release', 'mark-broken', 'on', 'deploy', 'mark-fixed',
              'commission', 'abort', 'acquire', 'off', 'rescue-mode',
-             'exit-rescue-mode', 'test', 'override-failed-testing'],
+             'exit-rescue-mode', 'lock', 'test', 'override-failed-testing',
+             'unlock'],
             [action['name'] for action in handler.machine_actions({})])
 
     def test_device_actions_for_admin(self):

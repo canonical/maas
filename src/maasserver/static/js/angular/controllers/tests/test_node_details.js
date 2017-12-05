@@ -1439,6 +1439,18 @@ describe("NodeDetailsController", function() {
                     "isRackControllerConnected").and.returnValue(true);
                 expect($scope.canEdit()).toBe(true);
             });
+
+        it("returns false if machine is locked",
+           function() {
+               var controller = makeController();
+               $scope.isController = false;
+               spyOn(
+                   $scope,
+                   "isRackControllerConnected").and.returnValue(true);
+               $scope.node = makeNode();
+               $scope.node.locked = true;
+               expect($scope.canEdit()).toBe(false);
+           });
     });
 
     describe("editHeaderDomain", function() {

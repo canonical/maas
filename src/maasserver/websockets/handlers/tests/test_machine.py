@@ -1799,10 +1799,19 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_update_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()
+        node = factory.make_Node()
         handler = MachineHandler(user, {})
         self.assertRaises(
             HandlerPermissionError,
-            handler.update, {})
+            handler.update, {'system_id': node.system_id})
+
+    def test_update_raise_permissions_error_for_locked_node(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.update, {'system_id': node.system_id})
 
     def test_update_raises_validation_error_for_invalid_architecture(self):
         user = factory.make_admin()
@@ -1980,6 +1989,18 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(new_name, block_device.name)
         self.assertItemsEqual(new_tags, block_device.tags)
 
+    def test_update_disk_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        new_name = factory.make_name("new")
+        params = {
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': new_name}
+        self.assertRaises(HandlerPermissionError, handler.update_disk, params)
+
     def test_delete_disk(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -1995,6 +2016,16 @@ class TestMachineHandler(MAASServerTestCase):
             })
         self.assertIsNone(reload_object(block_device))
 
+    def test_delete_disk_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        params = {
+            'system_id': node.system_id,
+            'block_id': block_device.id}
+        self.assertRaises(HandlerPermissionError, handler.delete_disk, params)
+
     def test_delete_partition(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -2009,6 +2040,17 @@ class TestMachineHandler(MAASServerTestCase):
             'partition_id': partition.id,
             })
         self.assertIsNone(reload_object(partition))
+
+    def test_delete_partition_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        partition = factory.make_Partition(node=node)
+        params = {
+            'system_id': node.system_id,
+            'partition_id': partition.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.delete_partition, params)
 
     def test_delete_volume_group(self):
         user = factory.make_admin()
@@ -2026,6 +2068,18 @@ class TestMachineHandler(MAASServerTestCase):
             })
         self.assertIsNone(reload_object(volume_group))
 
+    def test_delete_volume_group_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        volume_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        params = {
+            'system_id': node.system_id,
+            'volume_group_id': volume_group.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.delete_volume_group, params)
+
     def test_delete_cache_set(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -2040,6 +2094,17 @@ class TestMachineHandler(MAASServerTestCase):
             'cache_set_id': cache_set.id,
             })
         self.assertIsNone(reload_object(cache_set))
+
+    def test_delete_cache_set_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        cache_set = factory.make_CacheSet(node=node)
+        params = {
+            'system_id': node.system_id,
+            'cache_set_id': cache_set.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.delete_cache_set, params)
 
     def test_delete_filesystem_deletes_blockdevice_filesystem(self):
         user = factory.make_admin()
@@ -2078,6 +2143,20 @@ class TestMachineHandler(MAASServerTestCase):
             })
         self.assertIsNone(reload_object(filesystem))
         self.assertIsNotNone(reload_object(partition))
+
+    def test_delete_filesystem_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        partition = factory.make_Partition(node=node)
+        filesystem = factory.make_Filesystem(
+            partition=partition, fstype=FILESYSTEM_TYPE.EXT4)
+        params = {
+            'system_id': node.system_id,
+            'partition_id': partition.id,
+            'filesystem_id': filesystem.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.delete_filesystem, params)
 
     def test_create_partition(self):
         user = factory.make_admin()
@@ -2142,6 +2221,29 @@ class TestMachineHandler(MAASServerTestCase):
             fstype=fstype, mount_point=mount_point,
             mount_options=mount_options))
 
+    def test_create_partition_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        block_device = factory.make_BlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, node=node)
+        size = partition_table.block_device.size // 2
+        fstype = factory.pick_filesystem_type()
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        params = {
+            'system_id': node.system_id,
+            'block_id': partition_table.block_device_id,
+            'partition_size': size,
+            'fstype': fstype,
+            'mount_point': mount_point,
+            'mount_options': mount_options}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_partition, params)
+
     def test_create_cache_set_for_partition(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -2170,6 +2272,17 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertIsNotNone(cache_set)
         self.assertEqual(
             block_device.id, cache_set.get_filesystem().block_device.id)
+
+    def test_create_cache_set_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        partition = factory.make_Partition(node=node)
+        params = {
+            'system_id': node.system_id,
+            'partition_id': partition.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_cache_set, params)
 
     def test_create_bcache_for_partition(self):
         user = factory.make_admin()
@@ -2303,6 +2416,29 @@ class TestMachineHandler(MAASServerTestCase):
             fstype=fstype, mount_point=mount_point,
             mount_options=mount_options))
 
+    def test_create_bcache_set_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        name = factory.make_name("bcache")
+        cache_set = factory.make_CacheSet(node=node)
+        cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        fstype = factory.pick_filesystem_type()
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        params = {
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': name,
+            'cache_set': cache_set.id,
+            'cache_mode': cache_mode,
+            'fstype': fstype,
+            'mount_point': mount_point,
+            'mount_options': mount_options}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_bcache, params)
+
     def test_create_raid(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -2362,6 +2498,20 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertThat(efs, MatchesStructure.byEquality(
             fstype=fstype, mount_point=mount_point,
             mount_options=mount_options))
+
+    def test_create_raid_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        disk0 = factory.make_PhysicalBlockDevice(node=node)
+        disk1 = factory.make_PhysicalBlockDevice(node=node)
+        params = {
+            'system_id': node.system_id,
+            'name': factory.make_name('md'),
+            'level': 'raid-1',
+            'block_devices': [disk0.id, disk1.id]}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_raid, params)
 
     def test_create_volume_group(self):
         user = factory.make_admin()
@@ -2439,6 +2589,21 @@ class TestMachineHandler(MAASServerTestCase):
             fstype=fstype, mount_point=mount_point,
             mount_options=mount_options))
 
+    def test_create_logical_volume_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        volume_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
+        size = volume_group.get_lvm_free_space()
+        params = {
+            'system_id': node.system_id,
+            'name': factory.make_name("lv"),
+            'volume_group_id': volume_group.id,
+            'size': size}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_logical_volume, params)
+
     def test_set_boot_disk(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -2463,6 +2628,17 @@ class TestMachineHandler(MAASServerTestCase):
             })
         self.assertEqual(
             str(error), "Only a physical disk can be set as the boot disk.")
+
+    def test_set_boot_disk_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        params = {
+            'system_id': node.system_id,
+            'block_id': boot_disk.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.set_boot_disk, params)
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()
@@ -2625,6 +2801,19 @@ class TestMachineHandler(MAASServerTestCase):
                 node=node, type=INTERFACE_TYPE.VLAN, parents=interface))
         self.assertIsNotNone(vlan_interface)
 
+    def test_create_physical_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        vlan = factory.make_VLAN()
+        params = {
+            "system_id": node.system_id,
+            "name": factory.make_name("eth"),
+            "mac_address": factory.make_mac_address(),
+            "vlan": vlan.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_physical, params)
+
     def test_create_vlan_creates_link_auto(self):
         user = factory.make_admin()
         node = factory.make_Node()
@@ -2692,6 +2881,23 @@ class TestMachineHandler(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=new_subnet)
         self.assertIsNotNone(link_up_ip)
 
+    def test_create_vlan_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        new_subnet = factory.make_Subnet(vlan=vlan)
+        params = {
+            "system_id": node.system_id,
+            "parent": interface.id,
+            "vlan": vlan.id,
+            "mode": INTERFACE_LINK_TYPE.AUTO,
+            "subnet": new_subnet.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_vlan, params)
+
     def test_create_bond_creates_bond(self):
         user = factory.make_admin()
         node = factory.make_Node()
@@ -2729,6 +2935,24 @@ class TestMachineHandler(MAASServerTestCase):
                 "parents": [nic1.id, nic2.id],
                 })
 
+    def test_create_bond_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=nic1.vlan)
+        bond_mode = factory.pick_enum(BOND_MODE)
+        params = {
+            "system_id": node.system_id,
+            "name": factory.make_name("bond"),
+            "parents": [nic1.id, nic2.id],
+            "mac_address": "%s" % nic1.mac_address,
+            "vlan": nic1.vlan.id,
+            "bond_mode": bond_mode}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_bond, params)
+
     def test_create_bridge_creates_bridge(self):
         user = factory.make_admin()
         node = factory.make_Node()
@@ -2764,6 +2988,22 @@ class TestMachineHandler(MAASServerTestCase):
                 "system_id": node.system_id,
                 "parents": [nic1.id],
                 })
+
+    def test_create_bridge_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        params = {
+            "system_id": node.system_id,
+            "name": factory.make_name("br"),
+            "parents": [nic1.id],
+            "mac_address": "%s" % nic1.mac_address,
+            "vlan": nic1.vlan.id,
+            "bridge_stp": factory.pick_bool(),
+            "bridge_fd": random.randint(0, 15)}
+        self.assertRaises(
+            HandlerPermissionError, handler.create_bridge, params)
 
     def test_update_interface(self):
         user = factory.make_admin()
@@ -2814,6 +3054,20 @@ class TestMachineHandler(MAASServerTestCase):
                 "vlan": random.randint(1000, 5000),
                 })
 
+    def test_update_interface_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        handler._script_results = {}
+        handler._refresh_script_result_cache(node.get_latest_script_results)
+        params = {
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "name": factory.make_name("name")}
+        self.assertRaises(
+            HandlerPermissionError, handler.update_interface, params)
+
     def test_delete_interface(self):
         user = factory.make_admin()
         node = factory.make_Node()
@@ -2824,6 +3078,17 @@ class TestMachineHandler(MAASServerTestCase):
             "interface_id": interface.id,
             })
         self.assertIsNone(reload_object(interface))
+
+    def test_delete_interface_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        params = {
+            "system_id": node.system_id,
+            "interface_id": interface.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.delete_interface, params)
 
     def test_link_subnet_calls_update_link_by_id_if_link_id(self):
         user = factory.make_admin()
@@ -2894,6 +3159,22 @@ class TestMachineHandler(MAASServerTestCase):
             MockCalledOnceWith(
                 ANY, mode, subnet, ip_address=ip_address))
 
+    def test_link_subnet_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        params = {
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "link_id": factory.make_StaticIPAddress(interface=interface).id,
+            "subnet": subnet.id,
+            "mode": factory.pick_enum(INTERFACE_LINK_TYPE),
+            "ip_address": factory.make_ip_address()}
+        self.assertRaises(
+            HandlerPermissionError, handler.link_subnet, params)
+
     def test_unlink_subnet(self):
         user = factory.make_admin()
         node = factory.make_Node()
@@ -2901,12 +3182,26 @@ class TestMachineHandler(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         link_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=interface)
-        handler.delete_interface({
+        handler.unlink_subnet({
             "system_id": node.system_id,
             "interface_id": interface.id,
             "link_id": link_ip.id,
             })
         self.assertIsNone(reload_object(link_ip))
+
+    def test_unlink_subnet_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        node = factory.make_Node(locked=True)
+        handler = MachineHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        link_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=interface)
+        params = {
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "link_id": link_ip.id}
+        self.assertRaises(
+            HandlerPermissionError, handler.unlink_subnet, params)
 
     def test_get_grouped_storages_parses_blockdevices(self):
         user = factory.make_User()
@@ -3044,6 +3339,17 @@ class TestMachineHandlerMountSpecial(MAASServerTestCase):
                 # XXX: Wow, what a lame error from AbsolutePathField!
                 'mount_point': Equals(["Enter a valid value."]),
             }))
+
+    def test_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        machine = factory.make_Node(locked=True, owner=user)
+        params = {
+            'system_id': machine.system_id, 'fstype': FILESYSTEM_TYPE.RAMFS,
+            'mount_point': factory.make_absolute_path(),
+        }
+        self.assertRaises(
+            HandlerPermissionError, handler.mount_special, params)
 
 
 class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
@@ -3247,8 +3553,36 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
                 raises_node_state_violation,
                 "using status %d on %s" % (status, self.fstype))
 
+    def test_locked_raises_permission_error(self):
+        admin = factory.make_admin()
+        node = factory.make_Node(locked=True, owner=admin)
+        filesystem = factory.make_Filesystem(
+            node=node, fstype=self.fstype,
+            mount_point=factory.make_absolute_path())
+        handler = MachineHandler(admin, {})
+        params = {
+            'system_id': node.system_id,
+            'mount_point': filesystem.mount_point}
+        self.assertRaises(
+            HandlerPermissionError, handler.unmount_special, params)
+
 
 class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
+
+    def test_locked_raises_permission_error(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        node = factory.make_Node(locked=True)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        fs = factory.make_Filesystem(block_device=block_device)
+        params = {
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'fstype': fs.fstype,
+            'mount_point': None,
+            'mount_options': None}
+        self.assertRaises(
+            HandlerPermissionError, handler.update_filesystem, params)
 
     def test_unmount_blockdevice_filesystem(self):
         user = factory.make_admin()

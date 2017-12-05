@@ -739,11 +739,21 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return $scope.power_types.length > 0;
         };
 
+        // Return true if the node is locked
+        $scope.isLocked = function() {
+            if ($scope.node === null) {
+                return false;
+            }
+
+            return $scope.node.locked;
+        };
+
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
             return (
                 $scope.isRackControllerConnected() &&
-                $scope.isSuperUser());
+                    $scope.isSuperUser() &&
+                    ! $scope.isLocked());
         };
 
         // Called to edit the domain name.
