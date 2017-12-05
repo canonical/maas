@@ -121,7 +121,7 @@
                     </fieldset>
                 </form>
                 <div class="page-header__controls" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
-                    <button class="button--base button--inline" data-ng-click="actionCancel(tab)">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
                     <button class="button--inline" data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
                         <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
@@ -194,7 +194,7 @@
             </section>
             <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test'">
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="actionCancel(tab)">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
                     <button class="button--inline" data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
                         <span data-ng-if="tabs[tab].actionOption.name === 'commission'">Commission {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
@@ -347,7 +347,7 @@
             <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-show="showMachine()">
                 <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="cancel()">Cancel</button>
                     <button class="button--secondary button--inline"
                         data-ng-disabled="machineHasError()"
                         data-ng-click="saveMachine(true)">Save and add another</button>
@@ -361,7 +361,7 @@
             <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="showChassis()">
                 <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="cancel()">Cancel</button>
                     <button class="button--secondary button--inline"
                         data-ng-disabled="chassisHasErrors()"
                         data-ng-click="saveChassis(true)">Save and add another</button>
@@ -521,7 +521,7 @@
                 <form class="form form--inline">
                     <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
+                        <button class="button--base button--inline" type="button" data-ng-click="cancel()">Cancel</button>
                         <button class="button--secondary button--inline"
                             data-ng-class="{ disabled: deviceHasError() }"
                             data-ng-click="save(true)">Save and add another</button>
@@ -560,7 +560,7 @@
                     </fieldset>
                 </form>
                 <div class="page-header__controls" data-ng-if="tabs.controllers.actionOption.name !== 'test'">
-                    <button class="button--base button--inline" data-ng-click="actionCancel('controllers')">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
                     <button class="button--positive button--inline" data-ng-click="actionGo('controllers')">
                         <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
                             <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
@@ -592,7 +592,7 @@
             </div>
             <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="actionCancel('controllers')">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
                     <button class="button--positive button--inline" data-ng-click="actionGo('controllers')">
                         <span>Test {$ tabs.controllers.selectedItems.length $}
                             <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>

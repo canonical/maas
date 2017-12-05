@@ -34,7 +34,7 @@
                               <p><span class="icon icon--warning u-margin--right-small"></span>Ensure all in-use IP addresses are registered in MAAS before releasing this range to avoid potential collisions. Are you sure you want to remove this IP range?</p>
                         </div>
                         <div class="table__data u-float--right">
-                              <button class="button--base button--inline" data-ng-click="ipRangeCancelDelete()">Cancel</button>
+                              <button class="button--base button--inline" type="button" data-ng-click="ipRangeCancelDelete()">Cancel</button>
                               <button class="button--destructive button--inline" data-ng-click="ipRangeConfirmDelete()">Remove</button>
                         </div>
                     </div>
@@ -70,7 +70,7 @@
                                         <maas-obj-errors></maas-obj-errors>
                                     </div>
                                     <div class="table__data u-float--right">
-                                        <button class="button--base button--inline" data-ng-click="ipRangeToggleEditMode(iprange)">Cancel</button>
+                                        <button class="button--base button--inline" type="button" data-ng-click="ipRangeToggleEditMode(iprange)">Cancel</button>
                                         <button class="button--positive button--inline" maas-obj-save>Save</button>
                                     </div>
                                 </div>
@@ -112,7 +112,7 @@
                                 <maas-obj-errors></maas-obj-errors>
                             </div>
                             <div class="table__data u-float--right">
-                                <button class="button--base button--inline" data-ng-click="cancelAddRange()">Cancel</button>
+                                <button class="button--base button--inline" type="button" data-ng-click="cancelAddRange()">Cancel</button>
                                 <button class="button--positive button--inline" maas-obj-save>Reserve</button>
                             </div>
                         </div>

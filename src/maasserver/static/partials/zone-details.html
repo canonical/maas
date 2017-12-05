@@ -20,7 +20,7 @@
                         Zone cannot be deleted because it is the default zone.
                     </p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                     </div>
                 </section>
                 <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
@@ -28,14 +28,14 @@
                         Are you sure you want to delete this zone?
                     </p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                         <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete zone</button>
                     </div>
                 </section>
                 <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && error">
                     <p class="page-header__message page-header__message--error">{$ error $}</p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                         <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
                     </div>
                 </section>
@@ -73,7 +73,7 @@
                         </dl>
                     </fieldset>
                     <div class="twelve-col u-align--right">
-                        <button class="button--base button--inline"
+                        <button class="button--base button--inline" type="button"
                            data-ng-click="exitEditSummary()">Cancel</button>
                         <button class="button--positive button--inline" maas-obj-save>Save summary</button>
                     </div>

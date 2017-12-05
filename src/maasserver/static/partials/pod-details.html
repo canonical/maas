@@ -91,7 +91,7 @@
                         <p class="page-header__message page-header__message--error" maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
                         <p class="page-header__message" maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
                         <div class="page-header__controls" maas-obj-hide-saving>
-                            <button class="button--base button--inline" data-ng-click="cancelCompose()">Cancel</button>
+                            <button class="button--base button--inline" type="button" data-ng-click="cancelCompose()">Cancel</button>
                             <button class="button--positive button--inline" maas-obj-save>Compose machine</button>
                         </div>
                     </section>
@@ -110,7 +110,7 @@
                             Performing {$ action.option.sentence $} failed: {$ action.error $}
                         </p>
                         <div class="page-header__controls">
-                            <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                            <button class="button--base button--inline" type="button" data-ng-click="actionCancel()">Cancel</button>
                             <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
                                 <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
                                 <span data-ng-if="action.option.name === 'delete'">Delete pod</span>

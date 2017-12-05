@@ -29,7 +29,7 @@
                     </div>
                     <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
+                        <button class="button--base button--inline" type="button" data-ng-click="cancel()">Cancel</button>
                         <button class="button--secondary button--inline"
                             data-ng-class="{ disabled: domainHasError() }"
                             data-ng-click="save(true)">Save and add another</button>

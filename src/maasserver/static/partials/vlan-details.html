@@ -203,7 +203,7 @@
                         Are you sure you want to delete this VLAN?
                     </p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
+                        <button class="button--base button--inline" type="button" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
                         <button class="button--inline" data-ng-class="vlanDetails.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'"  data-ng-click="vlanDetails.actionGo()" data-ng-disabled="!vlanDetails.canPerformAction()">{$ vlanDetails.actionOption.title $}</button>
                     </div>
                 </section>
@@ -211,7 +211,7 @@
                      data-ng-if="vlanDetails.isActionError()">
                     <p class="page-header__message page-header__message--error">{$ vlanDetails.actionError $}</p>
                     <div class="page-header__controls">
-                        <button class="button--base button--inline u-margin--right" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
+                        <button class="button--base button--inline u-margin--right" type="button" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
                         <button class="button--secondary button--inline" data-ng-click="vlanDetails.actionRetry()">Retry</button>
                     </div>
                 </section>
@@ -285,7 +285,7 @@
                     </dl>
                 </div>
                 <div class="twelve-col u-align--right">
-                    <button class="button--base button--inline"
+                    <button class="button--base button--inline" type="button"
                        data-ng-click="vlanDetails.exitEditSummary()">Cancel</button>
                     <button class="button--positive button--inline" maas-obj-save>Save summary</button>
                 </div>

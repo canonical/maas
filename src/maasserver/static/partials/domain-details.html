@@ -19,7 +19,7 @@
                     Domain cannot be deleted because it has resource records.  Remove all resource records from the domain to allow deletion.
                 </p>
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                 </div>
             </div>
               <div class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
@@ -27,7 +27,7 @@
                     Are you sure you want to delete this domain?
                 </p>
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                     <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete domain</button>
                 </div>
             </div>
@@ -36,7 +36,7 @@
                     {$ error $}
                 </p>
                 <div class="page-header__controls">
-                    <button class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                     <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
