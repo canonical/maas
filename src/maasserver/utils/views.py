@@ -31,6 +31,7 @@ from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
 from piston3.oauth import OAuthError
 from provisioningserver.utils.twisted import retries
+from requests.structures import CaseInsensitiveDict
 from twisted.internet import reactor as clock
 from twisted.web import wsgi
 
@@ -96,6 +97,16 @@ def reset_request(request):
         wsgi_input.seek(0)
 
     return request.__class__(request.environ)
+
+
+def request_headers(request):
+    """Return a dict with headers from a request.
+
+    Header keys are case insensitive.
+    """
+    return CaseInsensitiveDict(
+        (key[5:].lower().replace('_', '-'), value) for key, value
+        in request.META.items() if key.startswith('HTTP_'))
 
 
 class MAASDjangoTemplateResponse(SimpleTemplateResponse):

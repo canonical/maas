@@ -28,7 +28,10 @@ from django.core.handlers.wsgi import (
     WSGIRequest,
 )
 from django.db import connection
-from django.http import HttpResponse
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+)
 from fixtures import FakeLogger
 from maasserver.exceptions import MAASAPIException
 from maasserver.testing.factory import factory
@@ -609,3 +612,31 @@ class TestWebApplicationHandlerAtomicViews(MAASServerTestCase):
             view_atomic(sentinel.arg, kwarg=sentinel.kwarg),
             Equals(((sentinel.arg, ), {"kwarg": sentinel.kwarg})))
         self.assertThat(post_commit_hooks.hooks, Is(hooks))
+
+
+class TestRequestHeaders(MAASTestCase):
+
+    def test_headers(self):
+        request = HttpRequest()
+        request.META.update({
+            'HTTP_HOST': 'www.example.com',
+            'HTTP_CONTENT_TYPE': 'text/plain'})
+        self.assertEqual(
+            views.request_headers(request),
+            {'host': 'www.example.com',
+             'content-type': 'text/plain'})
+
+    def test_non_http_headers_ignored(self):
+        request = HttpRequest()
+        request.META.update({
+            'HTTP_HOST': 'www.example.com',
+            'SERVER_NAME': 'myserver'})
+        self.assertEqual(
+            views.request_headers(request),
+            {'host': 'www.example.com'})
+
+    def test_case_insensitive(self):
+        request = HttpRequest()
+        request.META['HTTP_CONTENT_TYPE'] = 'text/plain'
+        headers = views.request_headers(request)
+        self.assertEqual(headers['Content-type'], 'text/plain')
