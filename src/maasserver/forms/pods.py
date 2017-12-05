@@ -13,6 +13,7 @@ import crochet
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import (
+    BooleanField,
     CharField,
     ChoiceField,
     IntegerField,
@@ -325,6 +326,8 @@ class ComposeMachineForm(forms.Form):
         self.fields['storage'] = CharField(
             validators=[storage_validator], required=False)
         self.initial['storage'] = 'root:8(local)'
+        self.fields['skip_commissioning'] = BooleanField(required=False)
+        self.initial['skip_commissioning'] = False
 
     def get_value_for(self, field):
         """Get the value for `field`. Use initial data if missing or set to
@@ -363,8 +366,7 @@ class ComposeMachineForm(forms.Form):
         raise AttributeError("Use `compose` instead of `save`.")
 
     def compose(
-            self, timeout=120, skip_commissioning=False,
-            creation_type=NODE_CREATION_TYPE.MANUAL):
+            self, timeout=120, creation_type=NODE_CREATION_TYPE.MANUAL):
         """Compose the machine.
 
         Internal operation of this form is asynchronously. It will block the
@@ -376,7 +378,7 @@ class ComposeMachineForm(forms.Form):
             discovered_machine, pod_hints = result
             created_machine = self.pod.create_machine(
                 discovered_machine, self.request.user,
-                skip_commissioning=skip_commissioning,
+                skip_commissioning=self.get_value_for('skip_commissioning'),
                 creation_type=creation_type,
                 domain=self.get_value_for('domain'),
                 zone=self.get_value_for('zone'))

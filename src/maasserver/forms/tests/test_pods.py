@@ -782,9 +782,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         # Mock start_commissioning so it doesn't use post commit hooks.
         mock_commissioning = self.patch(Machine, "start_commissioning")
 
-        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        form = ComposeMachineForm(
+            data={"skip_commissioning": 'true'}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
-        created_machine = form.compose(skip_commissioning=True)
+        created_machine = form.compose()
         self.assertThat(created_machine, MatchesAll(
             IsInstance(Machine),
             MatchesStructure(
@@ -813,9 +814,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={
             "domain": domain.id,
             "zone": zone.id,
+            "skip_commissioning": 'true',
         }, request=request, pod=pod)
         self.assertTrue(form.is_valid())
-        created_machine = form.compose(skip_commissioning=True)
+        created_machine = form.compose()
         self.assertThat(created_machine, MatchesAll(
             IsInstance(Machine),
             MatchesStructure(
