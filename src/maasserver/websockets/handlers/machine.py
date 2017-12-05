@@ -162,6 +162,7 @@ class MachineHandler(NodeHandler):
             "id",
             "system_id",
             "hostname",
+            "locked",
             "owner",
             "cpu_count",
             "memory",
@@ -206,6 +207,7 @@ class MachineHandler(NodeHandler):
         """Add extra fields to `data`."""
         data = super(MachineHandler, self).dehydrate(
             obj, data, for_list=for_list)
+        data["locked"] = obj.locked
         bmc = obj.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data['pod'] = bmc.id

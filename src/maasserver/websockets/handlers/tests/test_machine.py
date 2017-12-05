@@ -198,6 +198,7 @@ class TestMachineHandler(MAASServerTestCase):
             "installation_status": (
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set)),
+            "locked": node.locked,
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),
@@ -284,7 +285,6 @@ class TestMachineHandler(MAASServerTestCase):
             "zone": handler.dehydrate_zone(node.zone),
             "default_user": node.default_user,
             "dhcp_on": node.interface_set.filter(vlan__dhcp_on=True).exists(),
-            "locked": False,
         }
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
@@ -302,6 +302,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "fabrics",
                 "fqdn",
                 "link_type",
+                "locked",
                 "metadata",
                 "node_type_display",
                 "osystem",

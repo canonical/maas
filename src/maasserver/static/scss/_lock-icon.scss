@@ -1,0 +1,6 @@
+.icon {
+    &.icon--locked {
+        background: url('#{$asset-path}images/locked.svg') no-repeat;
+        background-size: 100% 100%;
+    }
+}

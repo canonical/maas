@@ -1,0 +1,8 @@
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+        <path d="M8,3e-05 C5.7926,3e-05 4,1.79263 4,4.00003 L4,7.00003 L2,7.00003 L2,15.99953 L14,15.99953 L14,7.00003 L12,7.00003 L12,4.00003 C12,1.79263 10.207,3e-05 8,3e-05 L8,0 L8,3e-05 Z M8,1.00003 C9.6706,1.00003 11,2.32933 11,4.00003 L11,7.00003 L5,7.00003 L5,4.00003 C5,2.32933 6.3293,1.00003 8,1.00003 Z M9,9.50003 L9,13.99953 L7,13.99953 L7,9.99953 L9,9.50003 L9,9.50003 Z" id="padlock-icon"></path>
+    </defs>
+    <g id="padlock-16">
+        <use id="lock-icon" fill="#666666" fill-rule="nonzero" xlink:href="#padlock-icon"></use>
+    </g>
+</svg>
