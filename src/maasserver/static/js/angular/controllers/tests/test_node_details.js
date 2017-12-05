@@ -2287,6 +2287,14 @@ describe("NodeDetailsController", function() {
 
     describe("showFailedTestWarning", function() {
 
+        it("returns false when device", function() {
+            var controller = makeController();
+            $scope.node = {
+                node_type: 1
+            };
+            expect($scope.showFailedTestWarning()).toBe(false);
+        });
+
         it("returns false when new, commissioning, or testing", function() {
             var controller = makeController();
             $scope.node = node;
