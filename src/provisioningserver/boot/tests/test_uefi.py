@@ -308,7 +308,7 @@ class TestUEFIBootMethod(MAASTestCase):
         self.assertEqual(grub_data, saved_grub_data)
 
         shim_expected = os.path.join(
-            tmp, "usr", "lib", "shim", "shim.efi.signed")
+            tmp, "usr", "lib", "shim", "shimx64.efi.signed")
         shim_dest_expected = os.path.join(dest, method.bootloader_path)
         grub_expected = os.path.join(
             tmp, "usr", "lib", "grub", "x86_64-efi-signed",

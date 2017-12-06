@@ -143,7 +143,7 @@ class UEFIBootMethod(BootMethod):
             # Extract the package with dpkg, and install the shim
             call_and_check(["dpkg", "-x", shim_output, tmp])
             install_bootloader(
-                os.path.join(tmp, 'usr', 'lib', 'shim', 'shim.efi.signed'),
+                os.path.join(tmp, 'usr', 'lib', 'shim', 'shimx64.efi.signed'),
                 os.path.join(destination, self.bootloader_path))
 
             # Download the grub-efi-amd64-signed package.
