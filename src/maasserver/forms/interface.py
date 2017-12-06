@@ -422,6 +422,11 @@ class BondInterfaceForm(ChildInterfaceForm):
 
     bond_updelay = forms.IntegerField(min_value=0, initial=0, required=False)
 
+    # Note: we don't need a separate bond_num_unsol_na field, since (as of
+    # Linux kernel 3.0+) it's actually an alias for the same value.
+    bond_num_grat_arp = forms.IntegerField(
+        min_value=0, max_value=255, initial=1, required=False)
+
     bond_lacp_rate = forms.ChoiceField(
         choices=BOND_LACP_RATE_CHOICES, required=False,
         initial=BOND_LACP_RATE_CHOICES[0][0], error_messages={

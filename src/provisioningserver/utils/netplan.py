@@ -55,11 +55,12 @@ ifenslave_to_netplan_bond_params = {
     "bond-active-slave": None,
     "bond-fail-over-mac": None,
     "bond-master": None,
-    "bond-num-unsol-na": None,  # XXX: use bond-num-grat-arp?
     "bond-primary": None,
     "bond-queue-id": None,
     "bond-slaves": None,
     "bond-use-carrier": None,
+    # This is just an internal alias for bond-num-grat-arp.
+    "bond-num-unsol-na": "gratuitous-arp",
 }
 
 
