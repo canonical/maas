@@ -112,6 +112,12 @@ class NodeHandler(TimestampedModelHandler):
             "name": zone.name,
         }
 
+    def dehydrate_pod(self, pod):
+        return {
+            "id": pod.id,
+            "name": pod.name,
+        }
+
     def dehydrate_last_image_sync(self, last_image_sync):
         """Return formatted datetime."""
         return dehydrate_datetime(

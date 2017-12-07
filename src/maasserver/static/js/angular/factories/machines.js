@@ -23,6 +23,9 @@ angular.module('MAAS').factory(
                 "status": null,
                 "owner": null,
                 "tags": null,
+                "pod": function(machine) {
+                    return (machine.pod === undefined) ? '' :machine.pod.name;
+                },
                 "zone": function(machine) {
                     return machine.zone.name;
                 },

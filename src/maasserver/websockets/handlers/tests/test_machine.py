@@ -288,7 +288,7 @@ class TestMachineHandler(MAASServerTestCase):
         }
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
-            data['pod'] = bmc.id
+            data['pod'] = {'id': bmc.id, 'name': bmc.name}
         if for_list:
             allowed_fields = MachineHandler.Meta.list_fields + [
                 "actions",
@@ -478,6 +478,24 @@ class TestMachineHandler(MAASServerTestCase):
             "id": zone.id,
             "name": zone.name,
             }, handler.dehydrate_zone(zone))
+
+    def test_dehydrate_pod(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        pod = factory.make_Pod()
+        self.assertEqual(
+            handler.dehydrate_pod(pod),
+            {'id': pod.id, 'name': pod.name})
+
+    def test_dehydrate_node_with_pod(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        pod = factory.make_Pod()
+        node = factory.make_Node()
+        node.bmc = pod
+        data = {}
+        handler.dehydrate(node, data)
+        self.assertEqual(data['pod'], {'id': pod.id, 'name': pod.name})
 
     def test_dehydrate_power_parameters_returns_None_when_empty(self):
         owner = factory.make_User()

@@ -32,6 +32,9 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
             zone: function(node) {
                 return node.zone.name;
             },
+            pod: function(node) {
+                return (node.pod === undefined) ? undefined : node.pod.name;
+            },
             power: function(node) {
                 return node.power_state;
             },

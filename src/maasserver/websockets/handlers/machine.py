@@ -210,7 +210,7 @@ class MachineHandler(NodeHandler):
         data["locked"] = obj.locked
         bmc = obj.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
-            data['pod'] = bmc.id
+            data['pod'] = self.dehydrate_pod(bmc)
 
         if not for_list:
             # Add info specific to a machine.
