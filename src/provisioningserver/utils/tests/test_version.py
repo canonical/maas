@@ -392,11 +392,17 @@ class TestGetMAASVersionTrackChannel(MAASTestCase):
             }),
         ("stable", {
             "version": "2.3.0-6192-g10a4565-0ubuntu1",
-            "output": ("2.3/stable"),
+            # XXX - revert this once snap store easily supports tracks
+            # for MAAS snap.
+            # "output": ("2.3/stable"),
+            "output": ("latest/stable"),
             }),
         ("stable", {
             "version": "",
-            "output": ("%s/stable" % '.'.join(old_version.split('.')[0:2])),
+            # XXX - revert this once snap store easily supports tracks
+            # for MAAS snap.
+            # "output": ("%s/stable" % '.'.join(old_version.split('.')[0:2])),
+            "output": ("latest/stable"),
             }),
     ]
 
