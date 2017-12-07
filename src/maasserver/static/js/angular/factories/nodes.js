@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Nodes Manager
@@ -336,6 +336,18 @@ angular.module('MAAS').service(
                 return RegionConnection.callMethod(
                     this._handler + ".set_boot_disk", params);
             };
+
+        NodesManager.prototype.getSummaryXML = function(node) {
+            return RegionConnection.callMethod(
+                this._handler + ".get_summary_xml",
+                {"system_id": node.system_id});
+        };
+
+        NodesManager.prototype.getSummaryYAML = function(node) {
+            return RegionConnection.callMethod(
+                this._handler + ".get_summary_yaml",
+                {"system_id": node.system_id});
+        };
 
         return NodesManager;
     }]);

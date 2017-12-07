@@ -826,4 +826,36 @@ describe("NodesManager", function() {
             });
         });
     });
+
+    describe("getSummaryXML", function() {
+
+        it("calls machine.get_summary_xml", function(done) {
+            var fakemachine = makemachine();
+            var summary_xml = makeName("summary_xml");
+            webSocket.returnData.push(makeFakeResponse(summary_xml));
+            MachinesManager.getSummaryXML(fakemachine).then(function(output) {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("machine.get_summary_xml");
+                expect(sentObject.params.system_id).toBe(fakemachine.system_id);
+                expect(output).toBe(summary_xml);
+                done();
+            });
+        });
+    });
+
+    describe("getSummaryYAML", function() {
+
+        it("calls machine.get_summary_yaml", function(done) {
+            var fakemachine = makemachine();
+            var summary_yaml = makeName("summary_yaml");
+            webSocket.returnData.push(makeFakeResponse(summary_yaml));
+            MachinesManager.getSummaryYAML(fakemachine).then(function(output) {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("machine.get_summary_yaml");
+                expect(sentObject.params.system_id).toBe(fakemachine.system_id);
+                expect(output).toBe(summary_yaml);
+                done();
+            });
+        });
+    });
 });
