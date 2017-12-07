@@ -50,7 +50,10 @@ from maasserver.models.node import (
     Machine,
     Node,
 )
-from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.nodeprobeddetails import (
+    get_single_probed_details,
+    script_output_nsmap,
+)
 from maasserver.models.partition import (
     Partition,
     PARTITION_ALIGNMENT_SIZE,
@@ -140,8 +143,7 @@ class TestMachineHandler(MAASServerTestCase):
         ]
         return get_status_from_qs(blockdevice_script_results)
 
-    def dehydrate_node(
-            self, node, handler, for_list=False, include_summary=False):
+    def dehydrate_node(self, node, handler, for_list=False):
         # Prime handler._script_results
         handler._script_results = {}
         handler._refresh_script_result_cache(node.get_latest_script_results)
@@ -172,6 +174,11 @@ class TestMachineHandler(MAASServerTestCase):
         testing_scripts = node.get_latest_testing_script_results
         testing_scripts = testing_scripts.exclude(
             status=SCRIPT_STATUS.ABORTED)
+        log_results = set()
+        for script_result in commissioning_scripts:
+            if (script_result.name in script_output_nsmap and
+                    script_result.status == SCRIPT_STATUS.PASSED):
+                log_results.add(script_result.name)
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
@@ -191,13 +198,13 @@ class TestMachineHandler(MAASServerTestCase):
             "testing_status_tooltip": (
                 handler.dehydrate_hardware_status_tooltip(testing_scripts)),
             "current_testing_script_set": node.current_testing_script_set_id,
-            "installation_results": handler.dehydrate_script_set(
-                node.current_installation_script_set),
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
             "installation_status": (
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set)),
+            "has_logs": (
+                log_results.difference(script_output_nsmap.keys()) == set()),
             "locked": node.locked,
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
@@ -320,6 +327,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "testing_script_count",
                 "testing_status",
                 "testing_status_tooltip",
+                "has_logs",
             ]
             for key in list(data):
                 if key not in allowed_fields:
@@ -388,8 +396,6 @@ class TestMachineHandler(MAASServerTestCase):
 
         data["grouped_storages"] = handler.get_grouped_storages(blockdevices)
 
-        if include_summary:
-            data = handler.dehydrate_summary_output(node, data)
         return data
 
     def make_nodes(self, number):
@@ -1279,17 +1285,14 @@ class TestMachineHandler(MAASServerTestCase):
             [{"subnet_id": bond_subnet.id, "ip_address": bond_ip}],
             dehydrated_interface["discovered"])
 
-    def test_dehydrate_summary_output_returns_None(self):
+    def test_get_summary_xml_returns_empty_string(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {})
-        observed = handler.dehydrate_summary_output(node, {})
-        self.assertEqual({
-            "summary_xml": None,
-            "summary_yaml": None,
-            }, observed)
+        observed = handler.get_summary_xml({'system_id': node.system_id})
+        self.assertEquals('', observed)
 
-    def test_dehydrate_summary_output_returns_data(self):
+    def test_dehydrate_summary_xml_returns_data(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, with_empty_script_sets=True)
         handler = MachineHandler(owner, {})
@@ -1298,138 +1301,36 @@ class TestMachineHandler(MAASServerTestCase):
         script_result = script_set.find_script_result(
             script_name=LLDP_OUTPUT_NAME)
         script_result.store_result(exit_status=0, stdout=lldp_data)
-        observed = handler.dehydrate_summary_output(node, {})
+        observed = handler.get_summary_xml({'system_id': node.system_id})
         probed_details = merge_details_cleanly(
             get_single_probed_details(node))
-        self.assertEqual({
-            "summary_xml": etree.tostring(
-                probed_details, encoding=str, pretty_print=True),
-            "summary_yaml": XMLToYAML(
-                etree.tostring(
-                    probed_details, encoding=str,
-                    pretty_print=True)).convert(),
-            }, observed)
-
-    def test_dehydrate_script_set(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {})
-        script_set = factory.make_ScriptSet(
-            result_type=RESULT_TYPE.COMMISSIONING)
-        script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.PASSED, script_set=script_set)
-        self.assertEqual([
-            {
-                'id': script_result.id,
-                'name': script_result.name,
-                'ui_name': '%s (%s)' % (
-                    script_result.script.title, script_result.name),
-                'title': script_result.script.title,
-                'status': script_result.status,
-                'status_name': script_result.status_name,
-                'tags': ', '.join(script_result.script.tags),
-                'output': script_result.stdout,
-                'updated': dehydrate_datetime(script_result.updated),
-                'started': dehydrate_datetime(script_result.started),
-                'ended': dehydrate_datetime(script_result.ended),
-                'runtime': script_result.runtime,
-                'starttime': script_result.starttime,
-                'endtime': script_result.endtime,
-                'estimated_runtime': script_result.estimated_runtime,
-            },
-            {
-                'id': script_result.id,
-                'name': '%s.err' % script_result.name,
-                'ui_name': '%s (%s)' % (
-                    script_result.script.title, script_result.name),
-                'title': script_result.script.title,
-                'status': script_result.status,
-                'status_name': script_result.status_name,
-                'tags': ', '.join(script_result.script.tags),
-                'output': script_result.stderr,
-                'updated': dehydrate_datetime(script_result.updated),
-                'started': dehydrate_datetime(script_result.started),
-                'ended': dehydrate_datetime(script_result.ended),
-                'runtime': script_result.runtime,
-                'starttime': script_result.starttime,
-                'endtime': script_result.endtime,
-                'estimated_runtime': script_result.estimated_runtime,
-            }], handler.dehydrate_script_set(script_set))
-
-    def test_dehydrate_script_set_returns_output_if_stdout_empty(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {})
-        script_set = factory.make_ScriptSet(
-            result_type=RESULT_TYPE.COMMISSIONING)
-        script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.PASSED, stdout=''.encode(),
-            stderr=''.encode(), output=factory.make_string().encode(),
-            script_set=script_set)
-        self.assertDictEqual(
-            {
-                'id': script_result.id,
-                'name': script_result.name,
-                'ui_name': '%s (%s)' % (
-                    script_result.script.title, script_result.name),
-                'title': script_result.script.title,
-                'status': script_result.status,
-                'status_name': script_result.status_name,
-                'tags': ', '.join(script_result.script.tags),
-                'output': script_result.output,
-                'updated': dehydrate_datetime(script_result.updated),
-                'started': dehydrate_datetime(script_result.started),
-                'ended': dehydrate_datetime(script_result.ended),
-                'runtime': script_result.runtime,
-                'starttime': script_result.starttime,
-                'endtime': script_result.endtime,
-                'estimated_runtime': script_result.estimated_runtime,
-            }, handler.dehydrate_script_set(script_result.script_set)[0])
-
-    def test_dehydrate_script_set_returns_combined_for_testing(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {})
-        script_set = factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING)
-        script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.PASSED, script_set=script_set)
-        self.assertDictEqual(
-            {
-                'id': script_result.id,
-                'name': script_result.name,
-                'ui_name': '%s (%s)' % (
-                    script_result.script.title, script_result.name),
-                'title': script_result.script.title,
-                'status': script_result.status,
-                'status_name': script_result.status_name,
-                'tags': ', '.join(script_result.script.tags),
-                'output': script_result.output,
-                'updated': dehydrate_datetime(script_result.updated),
-                'started': dehydrate_datetime(script_result.started),
-                'ended': dehydrate_datetime(script_result.ended),
-                'runtime': script_result.runtime,
-                'starttime': script_result.starttime,
-                'endtime': script_result.endtime,
-                'estimated_runtime': script_result.estimated_runtime,
-            }, handler.dehydrate_script_set(script_result.script_set)[0])
-
-    def test_dehydrate_script_set_status(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {})
-        script_result = factory.make_ScriptResult()
-        # See ScriptSet.status
-        if script_result.status == SCRIPT_STATUS.INSTALLING:
-            expected_script_status = SCRIPT_STATUS.RUNNING
-        elif script_result.status in (
-                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED_INSTALLING):
-            expected_script_status = SCRIPT_STATUS.FAILED
-        else:
-            expected_script_status = script_result.status
         self.assertEquals(
-            expected_script_status,
-            handler.dehydrate_script_set_status(script_result.script_set))
+            etree.tostring(probed_details, encoding=str, pretty_print=True),
+            observed)
 
-    def test_dehydrate_script_set_status_returns_neg_when_none(self):
+    def test_get_summary_yaml_returns_empty_string(self):
         owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {})
-        self.assertEquals(-1, handler.dehydrate_script_set_status(None))
+        observed = handler.get_summary_yaml({'system_id': node.system_id})
+        self.assertEquals('', observed)
+
+    def test_dehydrate_summary_yaml_returns_data(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, with_empty_script_sets=True)
+        handler = MachineHandler(owner, {})
+        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.find_script_result(
+            script_name=LLDP_OUTPUT_NAME)
+        script_result.store_result(exit_status=0, stdout=lldp_data)
+        observed = handler.get_summary_yaml({'system_id': node.system_id})
+        probed_details = merge_details_cleanly(
+            get_single_probed_details(node))
+        self.assertEqual(
+            XMLToYAML(etree.tostring(
+                probed_details, encoding=str, pretty_print=True)).convert(),
+            observed)
 
     def test_dehydrate_events_only_includes_lastest_50(self):
         owner = factory.make_User()
@@ -1595,7 +1496,7 @@ class TestMachineHandler(MAASServerTestCase):
         node.save()
 
         observed = handler.get({"system_id": node.system_id})
-        expected = self.dehydrate_node(node, handler, include_summary=True)
+        expected = self.dehydrate_node(node, handler)
         self.assertThat(observed, MatchesDict({
             name: Equals(value) for name, value in expected.items()
         }))

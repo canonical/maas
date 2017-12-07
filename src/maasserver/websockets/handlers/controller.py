@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The controller handler for the WebSocket connection."""
@@ -43,6 +43,8 @@ class ControllerHandler(MachineHandler):
             'delete_interface',
             'link_subnet',
             'unlink_subnet',
+            'get_summary_xml',
+            'get_summary_yaml',
         ]
         form = ControllerForm
         exclude = [
