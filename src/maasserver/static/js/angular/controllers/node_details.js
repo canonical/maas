@@ -1113,6 +1113,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Only show a warning that tests have failed if there are failed tests
         // and the node isn't currently commissioning or testing.
         $scope.showFailedTestWarning = function() {
+            // Devices can't have failed tests and don't have status_code
+            // defined.
+            if($scope.node.node_type === 1 || !$scope.node.status_code) {
+                return false;
+            }
             switch($scope.node.status_code) {
                 // NEW
                 case 0:
