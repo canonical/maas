@@ -569,7 +569,7 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
-    def test__bond_with_params(self):
+    def test__non_lacp_bond_with_params(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
             node=node, name='eth0', mac_address="00:01:02:03:04:05")
@@ -581,6 +581,7 @@ class TestNetplan(MAASServerTestCase):
                 "bond_mode": "active-backup",
                 "bond_lacp_rate": "slow",
                 "bond_xmit_hash_policy": "layer2",
+                "bond_num_grat_arp": 3,
             })
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
@@ -604,8 +605,98 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'parameters': {
                             "mode": "active-backup",
+                            "transmit-hash-policy": "layer2",
+                            "gratuitous-arp": 3,
+                        },
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__lacp_bond_with_params(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node, name='bond0', parents=[eth0, eth1], params={
+                "bond_mode": "802.3ad",
+                "bond_lacp_rate": "slow",
+                "bond_xmit_hash_policy": "layer2",
+                "bond_num_grat_arp": 3,
+            })
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bonds': {
+                    'bond0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500,
+                        'parameters': {
+                            "mode": "802.3ad",
                             "lacp-rate": "slow",
                             "transmit-hash-policy": "layer2",
+                        },
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__active_backup_with_legacy_parameter(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node, name='bond0', parents=[eth0, eth1], params={
+                "bond_mode": "active-backup",
+                "bond_lacp_rate": "slow",
+                "bond_xmit_hash_policy": "layer2",
+                "bond_num_unsol_na": 3,
+            })
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bonds': {
+                    'bond0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500,
+                        'parameters': {
+                            "mode": "active-backup",
+                            "transmit-hash-policy": "layer2",
+                            "gratuitous-arp": 3
                         },
                     },
                 },

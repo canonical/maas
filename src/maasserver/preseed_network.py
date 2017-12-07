@@ -396,6 +396,15 @@ class InterfaceConfiguration:
                     # which MAAS uses to keep consistent with bridges.
                     params[key.replace("_", "-")] = (
                         _get_param_value(value))
+        bond_mode = params.get('bond-mode')
+        if bond_mode is not None:
+            # Bug #1730626: lacp-rate should only be set on 802.3ad bonds.
+            if bond_mode != "802.3ad":
+                params.pop("bond-lacp-rate", None)
+            # Bug #1730991: these parameters only apply to active-backup mode.
+            if bond_mode != "active-backup":
+                params.pop("bond-num-grat-arp", None)
+                params.pop("bond-num-unsol-na", None)
         return params
 
     def _get_bridge_params(self, version=1):

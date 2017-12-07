@@ -218,6 +218,9 @@ class InterfacesHandler(OperationsHandler):
         :param bond_xmit_hash_policy: The transmit hash policy to use for
             slave selection in balance-xor, 802.3ad, and tlb modes.
             (Default: layer2)
+        :param bond_num_grat_arp: The number of peer notifications (IPv4 ARP
+            or IPv6 Neighbour Advertisements) to be issued after a failover.
+            (Default: 1)
 
         Supported bonding modes (bond-mode):
         balance-rr - Transmit packets in sequential order from the first

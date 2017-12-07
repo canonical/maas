@@ -789,6 +789,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_miimon": 100,
             "bond_downdelay": 0,
             "bond_updelay": 0,
+            "bond_num_grat_arp": 1,
             "bond_lacp_rate": "fast",
             "bond_xmit_hash_policy": "layer2",
             }, interface.params)
@@ -803,6 +804,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
         bond_miimon = random.randint(0, 1000)
         bond_downdelay = random.randint(0, 1000)
         bond_updelay = random.randint(0, 1000)
+        bond_num_grat_arp = random.randint(0, 255)
         bond_lacp_rate = factory.pick_choice(BOND_LACP_RATE_CHOICES)
         bond_xmit_hash_policy = factory.pick_choice(
             BOND_XMIT_HASH_POLICY_CHOICES)
@@ -818,6 +820,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'bond_updelay': bond_updelay,
                 'bond_lacp_rate': bond_lacp_rate,
                 'bond_xmit_hash_policy': bond_xmit_hash_policy,
+                'bond_num_grat_arp': bond_num_grat_arp,
             })
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
@@ -828,6 +831,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_updelay": bond_updelay,
             "bond_lacp_rate": bond_lacp_rate,
             "bond_xmit_hash_policy": bond_xmit_hash_policy,
+            "bond_num_grat_arp": bond_num_grat_arp,
             }, interface.params)
 
     def test__rejects_no_parents(self):
