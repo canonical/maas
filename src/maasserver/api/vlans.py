@@ -57,8 +57,18 @@ class VlansHandler(OperationsHandler):
         """Create a VLAN.
 
         :param name: Name of the VLAN.
+        :type name: unicode
         :param description: Description of the VLAN.
+        :type description: unicode
         :param vid: VLAN ID of the VLAN.
+        :type vid: integer
+        :param mtu: The MTU to use on the VLAN.
+        :type mtu: integer
+        :param space: The space this VLAN should be placed in. Passing in an
+            empty string (or the string 'undefined') will cause the VLAN to be
+            placed in the 'undefined' space.
+        :type space: unicode
+
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NODE_PERMISSION.ADMIN)
