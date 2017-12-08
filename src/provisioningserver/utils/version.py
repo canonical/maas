@@ -107,7 +107,13 @@ def get_maas_version_track_channel():
     if 'alpha' in series or 'beta' in series or 'rc' in series:
         return "latest/edge"
     else:
-        return "%s/stable" % '.'.join(series.split('.')[0:2])
+        # XXX - The snap store doesn't make it easy to create tracks
+        # for projects. As such, MAAS will continue to use the latest
+        # stable channel for the snap publishing regardless of the
+        # version. As such, use the stable channel instead. This needs
+        # to be reverted once tracks are easily supported by the store.
+        # return "%s/stable" % '.'.join(series.split('.')[0:2])
+        return "latest/stable"
 
 
 MAASVersion = namedtuple('MAASVersion', (
