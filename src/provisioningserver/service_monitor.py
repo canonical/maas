@@ -10,7 +10,6 @@ from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import GetControllerType
 from provisioningserver.utils.service_monitor import (
-    AlwaysOnService,
     Service,
     SERVICE_STATE,
     ServiceMonitor,
@@ -59,14 +58,6 @@ class DHCPv6Service(DHCPService):
     snap_service_name = "dhcpd6"
 
 
-class TGTService(AlwaysOnService):
-    """Monitored tgt service."""
-
-    name = "tgt"
-    service_name = "tgt"
-    snap_service_name = "tgt"
-
-
 class NTPServiceOnRack(Service):
     """Monitored NTP service on a rack controller host."""
 
@@ -100,5 +91,4 @@ service_monitor = ServiceMonitor(
     DHCPv4Service(),
     DHCPv6Service(),
     NTPServiceOnRack(),
-    TGTService(),
 )

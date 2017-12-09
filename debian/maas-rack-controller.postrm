@@ -22,11 +22,6 @@ case "$1" in
         rm -rf /var/lib/maas/dhcpd6.conf
         rm -rf /var/lib/maas/dhcpd6-interfaces
 
-        # Delete symlink for iSCSI config.
-        if [ -L /etc/tgt/conf.d/maas.conf ]; then
-            rm -rf /etc/tgt/conf.d/maas.conf
-        fi
-
         # Remove authbind
         MAAS_UID="`id -u maas`"
         if [ -f "/etc/authbind/byuid/$MAAS_UID" ]; then
@@ -48,3 +43,8 @@ case "$1" in
         fi
 
 esac
+
+# Delete symlink for iSCSI config, it is no longer used.
+if [ -L /etc/tgt/conf.d/maas.conf ]; then
+    rm -rf /etc/tgt/conf.d/maas.conf
+fi

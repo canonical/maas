@@ -14,10 +14,6 @@ import hashlib
 import json
 import os
 from random import randint
-from subprocess import (
-    PIPE,
-    Popen,
-)
 from unittest import mock
 from unittest.mock import (
     call,
@@ -25,14 +21,11 @@ from unittest.mock import (
 )
 
 from maastesting.factory import factory
-from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnce,
-    MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
-    MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
@@ -50,117 +43,13 @@ from provisioningserver.testing.config import (
     BootSourcesFixture,
     ClusterConfigurationFixture,
 )
-from provisioningserver.utils.fs import (
-    tempdir,
-    write_text_file,
-)
-from provisioningserver.utils.service_monitor import ServiceActionError
-from provisioningserver.utils.shell import ExternalProcessError
-from testtools.content import Content
-from testtools.content_type import UTF8_TEXT
+from provisioningserver.utils.fs import write_text_file
 from testtools.matchers import (
     DirExists,
     FileExists,
     Not,
 )
 import yaml
-
-
-class TestTgtEntry(MAASTestCase):
-    """Tests for `tgt_entry`."""
-
-    def test_generates_one_target(self):
-        spec = make_image_spec()
-        osystem = factory.make_name('osystem')
-        image = self.make_file()
-        entry = boot_resources.tgt_entry(
-            osystem, spec.arch, spec.subarch, spec.release, spec.label, image)
-        # The entry looks a bit like XML, but isn't well-formed.  So don't try
-        # to parse it as such!
-        self.assertIn('<target iqn.2004-05.com.ubuntu:maas:', entry)
-        self.assertIn('backing-store "%s"' % image, entry)
-        self.assertEqual(1, entry.count('</target>'))
-
-    def test_produces_suitable_output_for_tgt_admin(self):
-        spec = make_image_spec()
-        image = self.make_file()
-        osystem = factory.make_name('osystem')
-        entry = boot_resources.tgt_entry(
-            osystem, spec.arch, spec.subarch, spec.release, spec.label, image)
-        config = self.make_file(contents=entry)
-        # Pretend to be root, but without requiring the actual privileges and
-        # without prompting for a password.  In that state, run tgt-admin.
-        # It has to think it's root, even for a "pretend" run.
-        # Make it read the config we just produced, and pretend to update its
-        # iSCSI targets based on what it finds in the config.
-        #
-        # The only real test is that this succeed.
-        cmd = Popen(
-            [
-                'fakeroot', 'tgt-admin',
-                '--conf', config,
-                '--pretend',
-                '--update', 'ALL',
-            ],
-            stdout=PIPE, stderr=PIPE)
-        stdout, stderr = cmd.communicate()
-        self.addDetail('tgt-stderr', Content(UTF8_TEXT, lambda: [stderr]))
-        self.addDetail('tgt-stdout', Content(UTF8_TEXT, lambda: [stdout]))
-        self.assertEqual(0, cmd.returncode)
-
-
-class TestComposeTargetsConf(MAASTestCase):
-    """Tests for `compose_targets_conf`."""
-
-    def make_fake_boot_resource(
-            self, boot_resource_path, image, boot_images=None):
-        if boot_images is None:
-            boot_images = []
-        osystem = factory.make_name('osystem')
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
-        release = factory.make_name('release')
-        label = factory.make_name('label')
-        boot_images.append({
-            'osystem': osystem,
-            'architecture': arch,
-            'subarchitecture': subarch,
-            'release': release,
-            'label': label,
-        })
-        path = os.path.join(
-            boot_resource_path, osystem, arch, subarch, release, label)
-        os.makedirs(path)
-        path = os.path.join(path, image)
-        open(path, 'a').close()
-        return boot_images, path
-
-    def test__creates_root_image_entry(self):
-        with tempdir('boot_resource_path') as boot_resource_path:
-            boot_images, path = self.make_fake_boot_resource(
-                boot_resource_path, 'root-image')
-            self.patch(
-                boot_resources, 'list_boot_images').return_value = boot_images
-            output = boot_resources.compose_targets_conf(boot_resource_path)
-            self.assertIn(path, output.decode('utf-8'))
-
-    def test__creates_squashfs_entry(self):
-        with tempdir('boot_resource_path') as boot_resource_path:
-            boot_images, path = self.make_fake_boot_resource(
-                boot_resource_path, 'squashfs')
-            self.patch(
-                boot_resources, 'list_boot_images').return_value = boot_images
-            output = boot_resources.compose_targets_conf(boot_resource_path)
-            self.assertIn(path, output.decode('utf-8'))
-
-    def test__returns_empty_for_unknown_image(self):
-        with tempdir('boot_resource_path') as boot_resource_path:
-            boot_images, _ = self.make_fake_boot_resource(
-                boot_resource_path, factory.make_name('unknown_image'))
-            self.patch(
-                boot_resources, 'list_boot_images').return_value = boot_images
-            output = boot_resources.compose_targets_conf(boot_resource_path)
-            self.assertEquals(b'', output)
 
 
 class TestUpdateCurrentSymlink(MAASTestCase):
@@ -469,7 +358,6 @@ class TestMain(MAASTestCase):
         self.assertThat(current, DirExists())
         self.assertThat(os.path.join(current, 'pxelinux.0'), FileExists())
         self.assertThat(os.path.join(current, 'maas.meta'), FileExists())
-        self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
         self.assertThat(
             os.path.join(
                 current, osystem, arch, subarch, self.release, self.label),
@@ -550,7 +438,6 @@ class TestMain(MAASTestCase):
             BootImageMapping())
         self.patch_maaslog()
         self.patch(boot_resources, 'RepoWriter')
-        self.patch(boot_resources, 'update_iscsi_targets')
         args = self.make_args(sources_file=sources_fixture.filename)
 
         boot_resources.main(args)
@@ -589,61 +476,6 @@ class TestMain(MAASTestCase):
         self.assertRaises(
             boot_resources.NoConfigFile,
             boot_resources.main, self.make_args(sources="", sources_file=""))
-
-    def test_update_targets_conf_ensures_tgt_service(self):
-        mock_ensureService = self.patch(
-            boot_resources.service_monitor, "ensureService")
-        self.patch(boot_resources, "call_and_check")
-        boot_resources.update_targets_conf(factory.make_name("snapshot"))
-        self.assertThat(mock_ensureService, MockCalledOnceWith("tgt"))
-
-    def test_update_targets_conf_logs_tgt_service_check_error(self):
-        # Regression test for LP:1735025
-        mock_ensureService = self.patch(
-            boot_resources.service_monitor, "ensureService")
-        mock_ensureService.side_effect = ServiceActionError()
-        mock_try_send_rack_event = self.patch(
-            boot_resources, 'try_send_rack_event')
-        mock_maaslog = self.patch(boot_resources.maaslog, 'warning')
-        boot_resources.update_targets_conf(factory.make_name("snapshot"))
-        self.assertThat(mock_try_send_rack_event, MockCalledOnce())
-        self.assertThat(mock_maaslog, MockCalledOnce())
-
-    def test_update_targets_conf_logs_error(self):
-        self.patch(boot_resources.service_monitor, "ensureService")
-        mock_try_send_rack_event = self.patch(
-            boot_resources, 'try_send_rack_event')
-        mock_maaslog = self.patch(boot_resources.maaslog, 'warning')
-        self.patch(boot_resources.os.path, 'exists').return_value = True
-        self.patch(boot_resources, 'call_and_check').side_effect = (
-            ExternalProcessError(
-                returncode=2, cmd=('tgt-admin',), output='error'))
-        snapshot = factory.make_name("snapshot")
-        boot_resources.update_targets_conf(snapshot)
-        self.assertThat(mock_try_send_rack_event, MockCalledOnce())
-        self.assertThat(mock_maaslog, MockCalledOnce())
-        self.assertThat(
-            boot_resources.call_and_check,
-            MockCalledOnceWith([
-                'sudo', '-n', '/usr/sbin/tgt-admin',
-                '--conf', os.path.join(snapshot, 'maas.tgt'),
-                '--update', 'ALL']))
-
-    def test_update_targets_only_runs_when_conf_exists(self):
-        # Regression test for LP:1655721
-        temp_dir = self.useFixture(TempDirectory()).path
-        self.useFixture(ClusterConfigurationFixture(tftp_root=temp_dir))
-        mock_ensureService = self.patch(
-            boot_resources.service_monitor, "ensureService")
-        mock_call_and_check = self.patch(boot_resources, "call_and_check")
-        mock_path_exists = self.patch(boot_resources.os.path, 'exists')
-        mock_path_exists.return_value = False
-        boot_resources.update_targets_conf(temp_dir)
-        self.assertThat(mock_ensureService, MockCalledOnceWith("tgt"))
-        self.assertThat(
-            mock_path_exists,
-            MockCalledOnceWith(os.path.join(temp_dir, 'maas.tgt')))
-        self.assertThat(mock_call_and_check, MockNotCalled())
 
 
 class TestMetaContains(MAASTestCase):
@@ -751,8 +583,6 @@ class TestImportImages(MAASTestCase):
         fake_download_all_image_descriptions = self.patch(
             boot_resources, 'download_all_image_descriptions')
         fake_download_all_image_descriptions.return_value = MagicMock()
-        fake_update_iscsi_targets = self.patch(
-            boot_resources, 'update_iscsi_targets')
 
         self.patch(boot_resources, 'write_all_keyrings')
         sources = [
@@ -771,7 +601,6 @@ class TestImportImages(MAASTestCase):
             },
             ],
         self.assertFalse(boot_resources.import_images(sources))
-        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
 
     def test__returns_false_when_no_new_images(self):
         # Stop import_images() from actually doing anything.
@@ -783,8 +612,6 @@ class TestImportImages(MAASTestCase):
         fake_download_all_image_descriptions.return_value = (
             fake_image_descriptions)
         self.patch(boot_resources, 'meta_contains').return_value = True
-        fake_update_iscsi_targets = self.patch(
-            boot_resources, 'update_iscsi_targets')
 
         self.patch(boot_resources, 'write_all_keyrings')
         sources = [
@@ -803,7 +630,6 @@ class TestImportImages(MAASTestCase):
             },
             ],
         self.assertFalse(boot_resources.import_images(sources))
-        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
 
     def test__cleans_up_on_failure(self):
         # Stop import_images() from actually doing anything.
@@ -819,8 +645,6 @@ class TestImportImages(MAASTestCase):
         self.patch(
             boot_resources, 'download_all_boot_resources'
             ).side_effect = Exception
-        fake_update_iscsi_targets = self.patch(
-            boot_resources, 'update_iscsi_targets')
         fake_cleanup_snapshots_and_cache = self.patch(
             boot_resources, 'cleanup_snapshots_and_cache')
 
@@ -842,7 +666,6 @@ class TestImportImages(MAASTestCase):
             ],
         self.assertRaises(
             Exception, boot_resources.import_images, sources)
-        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
         self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())
 
     def test__runs_import_and_returns_true(self):
@@ -859,13 +682,9 @@ class TestImportImages(MAASTestCase):
         self.patch(boot_resources, 'download_all_boot_resources')
         fake_write_snapshot_metadata = self.patch(
             boot_resources, 'write_snapshot_metadata')
-        fake_targets_conf = self.patch(
-            boot_resources, 'write_targets_conf')
         fake_link_bootloaders = self.patch(boot_resources, 'link_bootloaders')
         fake_update_current_symlink = self.patch(
             boot_resources, 'update_current_symlink')
-        fake_update_iscsi_targets = self.patch(
-            boot_resources, 'update_iscsi_targets')
         fake_cleanup_snapshots_and_cache = self.patch(
             boot_resources, 'cleanup_snapshots_and_cache')
 
@@ -887,8 +706,6 @@ class TestImportImages(MAASTestCase):
             ],
         self.assertTrue(boot_resources.import_images(sources))
         self.assertThat(fake_write_snapshot_metadata, MockCalledOnce())
-        self.assertThat(fake_targets_conf, MockCalledOnce())
         self.assertThat(fake_link_bootloaders, MockCalledOnce())
         self.assertThat(fake_update_current_symlink, MockCalledOnce())
-        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
         self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())

@@ -538,14 +538,6 @@ CONFIG_ITEMS = {
             'min_value': 1,
         },
     },
-    'http_boot': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "When true all ephemeral environments boot over HTTP.",
-            'required': False
-        }
-    },
 }
 
 

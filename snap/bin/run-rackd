@@ -24,15 +24,5 @@ export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_CLUSTER_CONFIG="$SNAP_DATA/rackd.conf"
 
-# Setup language and perl5 correctly. Needed by tgt-admin written in
-# Perl, yes really!
-#
-# XXX blake_r: Fix the hardcoded x86_64-linux-gnu to work for other
-# architectures.
-export LANGUAGE="C.UTF-8"
-export LC_ALL="C.UTF-8"
-export LANG="C.UTF-8"
-export PERL5LIB="$SNAP/usr/lib/x86_64-linux-gnu/perl/5.22:$SNAP/usr/share/perl/5.22:$SNAP/usr/share/perl5"
-
 # Run the rackd.
 exec $SNAP/usr/bin/twistd3 --logger=provisioningserver.logger.EventLogger --nodaemon --pidfile= maas-rackd

@@ -35,10 +35,6 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
 )
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.import_images.boot_resources import (
-    update_targets_conf,
-    write_targets_conf,
-)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import snappy
 
@@ -191,11 +187,6 @@ def migrate_architectures_into_ubuntu_directory():
     os.mkdir(ubuntu_dir)
     for arch in arches:
         shutil.move(os.path.join(current_dir, arch), ubuntu_dir)
-
-    # Re-write the maas.tgt to point to the new location for the ubuntu boot
-    # resources.
-    write_targets_conf(current_dir)
-    update_targets_conf(current_dir)
 
 
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no

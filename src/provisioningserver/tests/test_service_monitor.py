@@ -21,7 +21,6 @@ from provisioningserver.service_monitor import (
     DHCPv6Service,
     NTPServiceOnRack,
     service_monitor,
-    TGTService,
 )
 from provisioningserver.utils.service_monitor import SERVICE_STATE
 from testtools.matchers import Equals
@@ -98,17 +97,6 @@ class TestDHCPv6Service(MAASTestCase):
         self.assertEqual("maas-dhcpd6", service.service_name)
 
 
-class TestTGTService(MAASTestCase):
-
-    def test_service_name(self):
-        tgt = TGTService()
-        self.assertEqual("tgt", tgt.service_name)
-
-    def test_getExpectedState(self):
-        tgt = TGTService()
-        self.assertEqual((SERVICE_STATE.ON, None), tgt.getExpectedState())
-
-
 class TestNTPServiceOnRack(MAASTestCase):
 
     def test_name_and_service_name(self):
@@ -161,5 +149,5 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["dhcpd", "dhcpd6", "ntp_rack", "tgt"],
+            ["dhcpd", "dhcpd6", "ntp_rack"],
             service_monitor._services.keys())

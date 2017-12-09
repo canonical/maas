@@ -650,8 +650,7 @@ class BootResourceStore(ObjectStore):
 
         # A ROOT_IMAGE may already be downloaded for the release if the stream
         # switched from one not containg SquashFS images to one that does. We
-        # want to use the SquashFS image but if both are available TGT will
-        # fail to start because both images will be shared with the same name.
+        # want to use the SquashFS image so ignore the tgz.
         if product['ftype'] == BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE:
             resource_set.files.filter(
                 filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE).delete()

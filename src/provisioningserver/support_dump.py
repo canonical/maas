@@ -91,9 +91,6 @@ IMAGES_DUMP = [
         "title": "get_image_metadata()",
         "function": lambda *args: json.loads(get_image_metadata(*args))
     },
-    {
-        "command": "/usr/sbin/tgt-admin --show"
-    }
 ]
 
 

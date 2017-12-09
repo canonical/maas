@@ -230,38 +230,6 @@ class TestRepoWriter(MAASTestCase):
                 label=product['label'], subarches={subarch},
                 bootloader_type=None))
 
-    def test_inserts_root_image(self):
-        product_mapping = ProductMapping()
-        subarch = factory.make_name('subarch')
-        product = self.make_product(ftype='root-image.gz', subarch=subarch)
-        product_mapping.add(product, subarch)
-        repo_writer = download_resources.RepoWriter(
-            None, None, product_mapping)
-        self.patch(
-            download_resources, 'products_exdata').return_value = product
-        # Prevent MAAS from trying to actually write the file.
-        mock_insert_root_image = self.patch(
-            download_resources, 'insert_root_image')
-        mock_link_resources = self.patch(download_resources, 'link_resources')
-        # We only need to provide the product as the other fields are only used
-        # when writing the actual files to disk.
-        repo_writer.insert_item(product, None, None, None, None)
-        # None is used for the store and the content source as we're not
-        # writing anything to disk.
-        self.assertThat(
-            mock_insert_root_image,
-            MockCalledOnceWith(
-                None, product['sha256'], {'sha256': product['sha256']},
-                product['size'], None))
-        # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None, links=mock.ANY, osystem=product['os'],
-                arch=product['arch'], release=product['release'],
-                label=product['label'], subarches={subarch},
-                bootloader_type=None))
-
     def test_inserts_file(self):
         product_mapping = ProductMapping()
         subarch = factory.make_name('subarch')

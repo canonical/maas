@@ -52,14 +52,6 @@ configure_libdir() {
     fi
 }
 
-configure_maas_tgt() {
-    # Ensure that iSCSI targets get re-defined on reboot.
-    # Creates a softlink in /etc/tgt/conf.d/ that points to the current
-    # boot images' tgt configuration.
-    mkdir -p /etc/tgt/conf.d
-    ln -sf /var/lib/maas/boot-resources/current/maas.tgt /etc/tgt/conf.d/maas.conf
-}
-
 extract_cluster_uuid(){
     # Extract ClUSTER_UUID setting from config file $1. This will work
     # on the old the cluster config file (which is shell).
@@ -138,7 +130,6 @@ maas-rack config
 if [ "$1" = "configure" ] && [ -z "$2" ]; then
     configure_logging
     configure_libdir
-    configure_maas_tgt
     configure_maas_url
     configure_cluster_uuid
     configure_cluster_authbind

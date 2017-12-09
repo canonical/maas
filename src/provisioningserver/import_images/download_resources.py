@@ -8,19 +8,15 @@ __all__ = [
     ]
 
 from datetime import datetime
-from gzip import GzipFile
 import os.path
 import tarfile
 
-from provisioningserver.config import is_dev_environment
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
     maaslog,
 )
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.shell import call_and_check
-from simplestreams.contentsource import FdContentSource
 from simplestreams.mirrors import (
     BasicMirrorWriter,
     UrlMirrorReader,
@@ -63,68 +59,6 @@ def insert_file(store, name, tag, checksums, size, content_source):
     store.insert(tag, content_source, checksums, mutable=False, size=size)
     # XXX jtv 2014-04-24 bug=1313580: Isn't _fullpath meant to be private?
     return [(store._fullpath(tag), name)]
-
-
-def call_uec2roottar(root_image_path, root_tgz_path):
-    """Invoke `uec2roottar` with the given arguments.
-
-    Here only so tests can stub it out.
-
-    :param root_image_path: Input file.
-    :param root_tgz_path: Output file.
-    """
-    if is_dev_environment():
-        # In debug mode this is skipped as it requires the uec2roottar
-        # script to have sudo abilities. The root-tgz is created as an
-        # empty file so the correct links can be made.
-        log.msg(
-            "Conversion of root-image to root-tgz is skipped in DEVELOP mode.")
-        open(root_tgz_path, "wb").close()
-    else:
-        call_and_check([
-            'sudo', '/usr/bin/uec2roottar',
-            '--user=maas',
-            root_image_path,
-            root_tgz_path,
-            ])
-
-
-def insert_root_image(store, tag, checksums, size, content_source):
-    """Insert a root image into `store`.
-
-    This may involve converting a UEC boot image into a root tarball.
-
-    :param store: A simplestreams `ObjectStore`.
-    :param tag: UUID, or "tag," for the file root image file.  The root image
-        and root tarball will both be stored in the cache directory under
-        names derived from this tag.
-    :param checksums: A Simplestreams checksums dict, mapping hash algorihm
-        names (such as `sha256`) to the file's respective checksums as
-        computed by those hash algorithms.
-    :param size: Optional size for the file, so Simplestreams knows what size
-        to expect.
-    :param content_source: A Simplestreams `ContentSource` for reading the
-        file.
-    :return: A list of inserted files (root image and root tarball) described
-        as tuples of (path, logical name).  The path lies in the directory
-        managed by `store` and has a filename based on `tag`, not logical name.
-    """
-    maaslog.debug("Inserting root image (tag=%s, size=%s).", tag, size)
-    root_image_tag = 'root-image-%s' % tag
-    # XXX jtv 2014-04-24 bug=1313580: Isn't _fullpath meant to be private?
-    root_image_path = store._fullpath(root_image_tag)
-    root_tgz_tag = 'root-tgz-%s' % tag
-    root_tgz_path = store._fullpath(root_tgz_tag)
-    if not os.path.isfile(root_image_path):
-        maaslog.debug("New root image: %s.", root_image_path)
-        store.insert(tag, content_source, checksums, mutable=False, size=size)
-        uncompressed = FdContentSource(GzipFile(store._fullpath(tag)))
-        store.insert(root_image_tag, uncompressed, mutable=False)
-        store.remove(tag)
-    if not os.path.isfile(root_tgz_path):
-        maaslog.debug("Converting root tarball: %s.", root_tgz_path)
-        call_uec2roottar(root_image_path, root_tgz_path)
-    return [(root_image_path, 'root-image'), (root_tgz_path, 'root-tgz')]
 
 
 def extract_archive_tar(store, name, tag, checksums, size, content_source):
@@ -279,9 +213,6 @@ class RepoWriter(BasicMirrorWriter):
         if ftype == 'archive.tar.xz':
             links = extract_archive_tar(
                 self.store, filename, tag, checksums, size, contentsource)
-        elif ftype == 'root-image.gz':
-            links = insert_root_image(
-                self.store, tag, checksums, size, contentsource)
         else:
             links = insert_file(
                 self.store, filename, tag, checksums, size, contentsource)

@@ -47,8 +47,6 @@ def make_kernel_parameters(testcase=None, **parms):
         {field: factory.make_name(field)
          for field in KernelParameters._fields
          if field not in parms})
-    if not isinstance(parms['http_boot'], bool):
-        parms['http_boot'] = True
     params = KernelParameters(**parms)
 
     if testcase is not None:
@@ -365,12 +363,3 @@ class TestKernelOpts(MAASTestCase):
                 (
                     params.fs_host, params.osystem, params.arch,
                     params.subarch, params.release, params.label)]))
-
-    def test_compose_rootfs_over_iscsi(self):
-        params = make_kernel_parameters(
-            fs_host=factory.make_ipv6_address(), http_boot=False)
-        self.assertThat(
-            compose_kernel_command_line(params),
-            ContainsAll([
-                "root=/dev/disk/by-path/ip-",
-                "iscsi_initiator="]))

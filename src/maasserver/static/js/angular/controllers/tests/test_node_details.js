@@ -336,7 +336,6 @@ describe("NodeDetailsController", function() {
 
     it("updateServices sets $scope.services when node is loaded", function() {
         spyOn(ControllersManager, "getServices").and.returnValue([
-            { "status": "unknown", "name": "tgt" },
             { "status": "running", "name": "rackd" }
         ]);
         spyOn(ControllersManager, "setActiveItem").and.returnValue(
@@ -355,8 +354,7 @@ describe("NodeDetailsController", function() {
 
         expect(ControllersManager.getServices).toHaveBeenCalledWith(node);
         expect($scope.services).not.toBeNull();
-        expect(Object.keys($scope.services).length).toBe(2);
-        expect($scope.services.tgt.status).toBe('unknown');
+        expect(Object.keys($scope.services).length).toBe(1);
         expect($scope.services.rackd.status).toBe('running');
     });
 

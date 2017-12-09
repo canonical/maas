@@ -407,13 +407,13 @@ class BOOT_RESOURCE_FILE_TYPE:
     #: Root image in SquashFS form, does not need to be converted
     SQUASHFS_IMAGE = 'squashfs'
 
-    #: Boot Kernel (ISCSI kernel)
+    #: Boot Kernel
     BOOT_KERNEL = 'boot-kernel'
 
-    #: Boot Initrd (ISCSI initrd)
+    #: Boot Initrd
     BOOT_INITRD = 'boot-initrd'
 
-    #: Boot DTB (ISCSI dtb)
+    #: Boot DTB
     BOOT_DTB = 'boot-dtb'
 
     #: An uncompressed bootloader (PXELinux, GRUB, etc)

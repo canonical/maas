@@ -32,7 +32,6 @@ parts:
       - iproute2
       - isc-dhcp-client
       - isc-dhcp-server
-      - libconfig-general-perl
       - libjs-angularjs
       - libjs-jquery
       - libjs-yui3-full
@@ -43,7 +42,6 @@ parts:
       - postgresql
       - squid
       - tcpdump
-      - tgt
       - ubuntu-cloudimage-keyring
     install: |
       ln -s ../usr/lib/postgresql/9.5/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
@@ -157,7 +155,6 @@ parts:
     source: snap
     organize:
       bind: usr/share/maas/bind
-      conf/empty.tgt: usr/share/maas/empty.tgt
       conf/ntp.conf: usr/share/maas/ntp.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
     stage:

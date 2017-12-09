@@ -12,10 +12,8 @@ from argparse import ArgumentParser
 import errno
 from io import StringIO
 import os
-from textwrap import dedent
 
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.boot.tftppath import list_boot_images
 from provisioningserver.config import (
     BootSources,
     ClusterConfiguration,
@@ -36,20 +34,12 @@ from provisioningserver.import_images.download_resources import (
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
-from provisioningserver.path import get_path
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils import sudo
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
     read_text_file,
     tempdir,
-)
-from provisioningserver.utils.service_monitor import ServiceActionError
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
 )
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.filepath import FilePath
@@ -57,47 +47,6 @@ from twisted.python.filepath import FilePath
 
 class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
-
-
-def tgt_entry(osystem, arch, subarch, release, label, image):
-    """Generate tgt target used to commission arch/subarch with release
-
-    Tgt target used to commission arch/subarch machine with a specific Ubuntu
-    release should have the following name: ephemeral-arch-subarch-release.
-    This function creates target description in a format used by tgt-admin.
-    It uses arch, subarch and release to generate target name and image as
-    a path to image file which should be shared. Tgt target is marked as
-    read-only. Tgt target has 'allow-in-use' option enabled because this
-    script actively uses hardlinks to do image management and root images
-    in different folders may point to the same inode. Tgt doesn't allow us to
-    use the same inode for different tgt targets (even read-only targets which
-    looks like a bug to me) without this option enabled.
-
-    :param osystem: Operating System name we generate tgt target for
-    :param arch: Architecture name we generate tgt target for
-    :param subarch: Subarchitecture name we generate tgt target for
-    :param release: Ubuntu release we generate tgt target for
-    :param label: The images' label
-    :param image: Path to the image which should be shared via tgt/iscsi
-    :return Tgt entry which can be written to tgt-admin configuration file
-    """
-    prefix = 'iqn.2004-05.com.ubuntu:maas'
-    target_name = 'ephemeral-%s-%s-%s-%s-%s' % (
-        osystem,
-        arch,
-        subarch,
-        release,
-        label
-        )
-    entry = dedent("""\
-        <target {prefix}:{target_name}>
-            readonly 1
-            allow-in-use yes
-            backing-store "{image}"
-            driver iscsi
-        </target>
-        """).format(prefix=prefix, target_name=target_name, image=image)
-    return entry
 
 
 def link_bootloaders(destination):
@@ -126,42 +75,6 @@ def make_arg_parser(doc):
         )
     )
     return parser
-
-
-def compose_targets_conf(snapshot_path):
-    """Produce the contents of a snapshot's tgt conf file.
-
-    :param snapshot_path: Filesystem path to a snapshot of current upstream
-        boot resources.
-    :return: Contents for a `targets.conf` file.
-    :rtype: bytes
-    """
-    # Use a set to make sure we don't register duplicate entries in tgt.
-    entries = set()
-    for item in list_boot_images(snapshot_path):
-        osystem = item['osystem']
-        arch = item['architecture']
-        subarch = item['subarchitecture']
-        release = item['release']
-        label = item['label']
-        entries.add((osystem, arch, subarch, release, label))
-    tgt_entries = []
-    for osystem, arch, subarch, release, label in sorted(entries):
-        base_path = os.path.join(
-            snapshot_path, osystem, arch, subarch,
-            release, label)
-        root_image = os.path.join(base_path, 'root-image')
-        if os.path.isfile(root_image):
-            entry = tgt_entry(
-                osystem, arch, subarch, release, label, root_image)
-            tgt_entries.append(entry)
-        squashfs_image = os.path.join(base_path, 'squashfs')
-        if os.path.isfile(squashfs_image):
-            entry = tgt_entry(
-                osystem, arch, subarch, release, label, squashfs_image)
-            tgt_entries.append(entry)
-    text = ''.join(tgt_entries)
-    return text.encode('utf-8')
 
 
 def meta_contains(storage, content):
@@ -196,44 +109,6 @@ def write_snapshot_metadata(snapshot, meta_file_content):
     atomic_write(meta_file_content.encode("ascii"), meta_file, mode=0o644)
 
 
-def write_targets_conf(snapshot):
-    """Write "maas.tgt" file."""
-    targets_conf = os.path.join(snapshot, 'maas.tgt')
-    targets_conf_content = compose_targets_conf(snapshot)
-    atomic_write(targets_conf_content, targets_conf, mode=0o644)
-
-
-def update_targets_conf(snapshot):
-    """Runs tgt-admin to update the new targets from "maas.tgt"."""
-    # Ensure that tgt is running before tgt-admin is used.
-    try:
-        service_monitor.ensureService("tgt").wait(30)
-    except ServiceActionError:
-        msg = "Unable to start tgt"
-        try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
-        maaslog.warning(msg)
-        return
-
-    # Update the tgt config.
-    targets_conf = os.path.join(snapshot, 'maas.tgt')
-
-    # The targets_conf may not exist in the event the BootSource is broken
-    # and images havn't been imported yet. This fixes LP:1655721
-    if not os.path.exists(targets_conf):
-        return
-
-    try:
-        call_and_check(sudo([
-            get_path('/usr/sbin/tgt-admin'),
-            '--conf', targets_conf,
-            '--update', 'ALL',
-            ]))
-    except ExternalProcessError as e:
-        msg = "Unable to update TGT config: %s" % e
-        try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
-        maaslog.warning(msg)
-
-
 def read_sources(sources_yaml):
     """Read boot resources config file.
 
@@ -258,11 +133,6 @@ def read_sources(sources_yaml):
 def parse_sources(sources_yaml):
     """Given a YAML `config` string, return a `BootSources` for it."""
     return BootSources.parse(StringIO(sources_yaml))
-
-
-def update_iscsi_targets(snapshot_path):
-    maaslog.info("Updating boot image iSCSI targets.")
-    update_targets_conf(snapshot_path)
 
 
 def import_images(sources):
@@ -304,7 +174,6 @@ def import_images(sources):
         image_descriptions = download_all_image_descriptions(
             sources, validate_products=False)
         if image_descriptions.is_empty():
-            update_iscsi_targets(os.path.join(storage, 'current'))
             msg = (
                 "Finished importing boot images, the region does not have "
                 "any boot images available.")
@@ -314,7 +183,6 @@ def import_images(sources):
 
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
-            update_iscsi_targets(os.path.join(storage, 'current'))
             maaslog.info(
                 "Finished importing boot images, the region does not "
                 "have any new images.")
@@ -331,7 +199,6 @@ def import_images(sources):
             try_send_rack_event(
                 EVENT_TYPES.RACK_IMPORT_ERROR,
                 "Unable to import boot images: %s" % e)
-            update_iscsi_targets(os.path.join(storage, 'current'))
             maaslog.error(
                 "Unable to import boot images; cleaning up failed snapshot "
                 "and cache.")
@@ -339,17 +206,14 @@ def import_images(sources):
             cleanup_snapshots_and_cache(storage)
             raise
 
-    maaslog.info("Writing boot image metadata and iSCSI targets.")
+    maaslog.info("Writing boot image metadata.")
     write_snapshot_metadata(snapshot_path, meta_file_content)
-    write_targets_conf(snapshot_path)
 
     maaslog.info("Linking boot images snapshot %s" % snapshot_path)
     link_bootloaders(snapshot_path)
 
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)
-
-    update_iscsi_targets(snapshot_path)
 
     # Now cleanup the old snapshots and cache.
     maaslog.info('Cleaning up old snapshots and cache.')

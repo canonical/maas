@@ -344,20 +344,3 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 os.path.join(
                     storage_dir, 'current', arch, subarch, release, label))
         return storage_dir
-
-    def test__calls_write_targets_conf_with_current_dir(self):
-        storage_dir = self.setup_working_migration_scenario()
-        mock_write = self.patch(upgrade_cluster, 'write_targets_conf')
-        self.patch(upgrade_cluster, 'update_targets_conf')
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
-        self.assertThat(
-            mock_write,
-            MockCalledOnceWith(os.path.join(storage_dir, 'current')))
-
-    def test__calls_update_targets_conf_with_current_dir(self):
-        storage_dir = self.setup_working_migration_scenario()
-        mock_update = self.patch(upgrade_cluster, 'update_targets_conf')
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
-        self.assertThat(
-            mock_update,
-            MockCalledOnceWith(os.path.join(storage_dir, 'current')))

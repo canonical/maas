@@ -214,7 +214,6 @@ Depends: authbind,
          python3-zope.interface,
          syslinux-common,
          tcpdump,
-         tgt,
          uuid-runtime,
          wget,
          ${misc:Depends},
@@ -239,8 +238,8 @@ Description: Rack Controller for MAAS
  network interfaces on one or two other nearby racks for high
  availability redundancy.
  .
- This package depends on the necessary components to provide iSCSI,
- DHCP, TFTP and power management.
+ This package depends on the necessary components to provide DHCP, TFTP
+ and power management.
 
 Package: python3-django-maas
 Section: python

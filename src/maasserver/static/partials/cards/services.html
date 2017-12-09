@@ -69,13 +69,6 @@
               <span data-ng-if="services.dhcpd6.status_info"> &mdash; {$ services.dhcpd6.status_info $}</span>
           </span>
       </li>
-      <li class="list__item" data-ng-if="node.node_type == 2 || node.node_type == 4">
-          <span>
-              <span class="icon icon--{$ getServiceClass(services.tgt) $}"></span>
-              &nbsp;tgt
-              <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>
-          </span>
-      </li>
       <li class="list__item" data-ng-if="(node.node_type == 2 || node.node_type == 4) && services.ntp_rack">
           <span>
               <span class="icon icon--{$ getServiceClass(services.ntp_rack) $}"></span>

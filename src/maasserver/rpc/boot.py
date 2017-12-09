@@ -386,7 +386,9 @@ def get_config(
         "fs_host": local_ip,
         "log_host": server_host,
         "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
-        "http_boot": Config.objects.get_config('http_boot'),
+        # As of MAAS 2.4 only HTTP boot is supported. This ensures MAAS 2.3
+        # rack controllers use HTTP boot as well.
+        "http_boot": True,
     }
     if machine is not None:
         params["system_id"] = machine.system_id

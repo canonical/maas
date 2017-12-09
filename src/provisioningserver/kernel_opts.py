@@ -42,7 +42,8 @@ KernelParametersBase = namedtuple(
         "fs_host",      # Host/IP on which ephemeral filesystems are hosted.
         "extra_opts",   # String of extra options to supply, will be appended
                         # verbatim to the kernel command line
-        "http_boot",    # Whether or not to boot over HTTP.
+        "http_boot",    # Used to make sure a MAAS 2.3 rack controller uses
+                        # http_boot.
         ))
 
 
@@ -72,56 +73,18 @@ def get_last_directory(root):
     return max(dirs)
 
 
-ISCSI_TARGET_NAME_PREFIX = "iqn.2004-05.com.ubuntu:maas"
-
-
-def get_ephemeral_name(osystem, arch, subarch, release, label):
-    """Return the name of the most recent ephemeral image."""
-    return "ephemeral-%s-%s-%s-%s-%s" % (
-        osystem,
-        arch,
-        subarch,
-        release,
-        label
-        )
-
-
-def prefix_target_name(name):
-    """Prefix an ISCSI target name with the standard target-name prefix."""
-    return "%s:%s" % (ISCSI_TARGET_NAME_PREFIX, name)
-
-
 def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
-    if params.http_boot:
-        kernel_params = [
-            "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs" % (
-                (
-                    '[%s]' % params.fs_host
-                    if IPAddress(params.fs_host).version == 6
-                    else params.fs_host
-                ),
-                params.osystem, params.arch, params.subarch, params.release,
-                params.label),
-        ]
-    else:
-        tname = prefix_target_name(
-            get_ephemeral_name(
-                params.osystem, params.arch, params.subarch,
-                params.release, params.label))
-        kernel_params = [
-            # Read by the open-iscsi initramfs code.
-            "iscsi_target_name=%s" % tname,
-            "iscsi_target_ip=%s" % params.fs_host,
-            "iscsi_target_port=3260",
-            "iscsi_initiator=%s" % params.hostname,
-            # kernel / udev name iscsi devices with this path
-            "root=/dev/disk/by-path/ip-%s:%s-iscsi-%s-lun-1" % (
-                params.fs_host, "3260", tname),
-        ]
-
-    kernel_params += [
+    kernel_params = [
         "ro",
+        "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs" % (
+            (
+                '[%s]' % params.fs_host
+                if IPAddress(params.fs_host).version == 6
+                else params.fs_host
+            ),
+            params.osystem, params.arch, params.subarch, params.release,
+            params.label),
         # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
         # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
         # family of fs_host.  If BOOTIF is set, IPv6 config uses that

@@ -1,6 +1,3 @@
-# Install uec2roottar
-debian/tmp/usr/bin/uec2roottar
-
 # Install maas-dhcp-helper
 debian/tmp/usr/sbin/maas-dhcp-helper
 

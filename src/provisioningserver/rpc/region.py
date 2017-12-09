@@ -142,6 +142,11 @@ class GetBootConfig(amp.Command):
         (b"log_host", amp.Unicode()),
         (b"extra_opts", amp.Unicode()),
         (b"system_id", amp.Unicode(optional=True)),
+        # MAAS 2.3 introduced this parameter to toggle using TGT or HTTP to
+        # boot. TGT support was removed in MAAS 2.4 however without this option
+        # a MAAS 2.3 rack controller connected to a MAAS 2.4 region controller
+        # will try to use TGT as Twisted sets optional parameters to False when
+        # not defined.
         (b"http_boot", amp.Boolean(optional=True)),
     ]
     errors = {

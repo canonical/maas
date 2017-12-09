@@ -3,12 +3,6 @@
 UTIL_DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd)"
 RUN_DIR=$UTIL_DIR/../.run
 
-
-echo "Symlinking .run/var/lib/maas/boot-resources/current/maas.tgt"
-echo "to /etc/tgt/conf.d/maas.conf"
-sudo ln -sf $RUN_DIR/var/lib/maas/boot-resources/current/maas.tgt \
-    /etc/tgt/conf.d/maas.conf
-
 LOCAL_LIB_DIR=$RUN_DIR/var/lib
 
 if [ ! -d "$LOCAL_LIB_DIR" ];
