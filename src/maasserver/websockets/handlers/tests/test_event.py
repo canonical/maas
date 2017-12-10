@@ -36,6 +36,9 @@ class TestEventHandler(MAASServerTestCase):
         data = {
             "id": event.id,
             "node_id": event.node.id,
+            "node_hostname": event.node_hostname,
+            "user": event.user,
+            "username": event.username,
             "action": event.action,
             "description": event.description,
             "type": {

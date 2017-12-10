@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Event model."""
@@ -85,24 +85,44 @@ class EventTest(MAASServerTestCase):
         # Check whether we created the event type.
         self.assertIsNotNone(EventType.objects.get(name=type_name))
 
+    def test_register_event_and_event_type_registers_event_with_user(self):
+        # EventType does not exist
+        node = factory.make_Node()
+        type_name = factory.make_name('type_name')
+        description = factory.make_name('description')
+        action = factory.make_name('action')
+
+        Event.objects.register_event_and_event_type(
+            system_id=node.system_id, type_name=type_name,
+            type_description=description,
+            type_level=random.choice(
+                [logging.ERROR, logging.WARNING, logging.INFO]),
+            event_action=action,
+            event_description=description,
+            user=node.owner)
+
+        # Check whether we created the event type.
+        self.assertIsNotNone(EventType.objects.get(name=type_name))
+        self.assertIsNotNone(Event.objects.get(user=node.owner))
+
     def test_create_node_event_creates_event(self):
         # EventTypes that are currently being used for
         # create_node_event
         node = factory.make_Node()
         event_type = random.choice([EVENT_TYPES.NODE_PXE_REQUEST])
         Event.objects.create_node_event(
-            system_id=node.system_id, event_type=event_type)
+            system_id=node.system_id, event_type=event_type, user=node.owner)
         self.assertIsNotNone(EventType.objects.get(name=event_type))
-        self.assertIsNotNone(Event.objects.get(node=node))
+        self.assertIsNotNone(Event.objects.get(node=node, user=node.owner))
 
     def test_create_region_event_creates_region_event(self):
         region = factory.make_RegionRackController()
         self.patch(event_module, 'get_maas_id').return_value = region.system_id
         Event.objects.create_region_event(
-            event_type=EVENT_TYPES.REGION_IMPORT_ERROR)
+            event_type=EVENT_TYPES.REGION_IMPORT_ERROR, user=region.owner)
         self.assertIsNotNone(
             EventType.objects.get(name=EVENT_TYPES.REGION_IMPORT_ERROR))
-        self.assertIsNotNone(Event.objects.get(node=region))
+        self.assertIsNotNone(Event.objects.get(node=region, user=region.owner))
 
     def test_register_event_and_event_type_handles_integrity_errors(self):
         # It's possible that two calls to
