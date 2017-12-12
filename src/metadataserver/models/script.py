@@ -159,6 +159,21 @@ class Script(CleanSave, TimestampedModel):
 
     script = OneToOneField(VersionedTextFile, on_delete=CASCADE)
 
+    # A list of hardware identifiers(modalias, PCI id, USB id, or name) this
+    # script is applicable to. This script will always run on machines with
+    # matching hardware.
+    for_hardware = ArrayField(
+        CharField(max_length=255), blank=True, default=list)
+
+    # Whether or not the script may reboot while running. Tells the status
+    # monitor to wait until NODE_FAILURE_MONITORED_STATUS_TIMEOUTS before
+    # timing out.
+    may_reboot = BooleanField(default=False)
+
+    # Only applicable to commissioning scripts. When true reruns commissioning
+    # scripts after receiving the result.
+    recommission = BooleanField(default=False)
+
     @property
     def script_type_name(self):
         for script_type, script_type_name in SCRIPT_TYPE_CHOICES:

@@ -21,4 +21,9 @@ class ScriptHandler(TimestampedModelHandler):
         allowed_methods = [
             'list',
         ]
+        exclude = [
+            'for_hardware',
+            'may_reboot',
+            'recommission',
+        ]
         listen_channels = ['script']

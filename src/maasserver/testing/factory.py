@@ -725,7 +725,8 @@ class Factory(maastesting.factory.Factory):
     def make_Script(
             self, name=None, title=None, description=None, tags=None,
             script_type=None, hardware_type=None, parallel=None, timeout=None,
-            destructive=False, default=False, script=None, **kwargs):
+            destructive=False, default=False, script=None, may_reboot=None,
+            recommission=None, **kwargs):
         if name is None:
             name = self.make_name('name')
         if title is None:
@@ -742,6 +743,12 @@ class Factory(maastesting.factory.Factory):
             parallel = self.pick_choice(SCRIPT_PARALLEL_CHOICES)
         if timeout is None:
             timeout = timedelta(seconds=random.randint(0, 600))
+        if may_reboot is None:
+            may_reboot = factory.pick_bool()
+        if recommission and script_type == SCRIPT_TYPE.COMMISSIONING:
+            recommission = factory.pick_bool()
+        else:
+            recommission = False
         if script is None:
             script = VersionedTextFile.objects.create(
                 data=self.make_script_content())
@@ -749,7 +756,8 @@ class Factory(maastesting.factory.Factory):
             name=name, title=title, description=description, tags=tags,
             script_type=script_type, hardware_type=hardware_type,
             parallel=parallel, timeout=timeout, destructive=destructive,
-            default=default, script=script, **kwargs)
+            default=default, script=script, may_reboot=may_reboot,
+            recommission=recommission, **kwargs)
 
     def make_ScriptSet(self, last_ping=None, node=None, result_type=None):
         if last_ping is None:
