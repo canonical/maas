@@ -596,19 +596,68 @@ def get_dmi_data(modaliases):
     return frozenset()
 
 
-def filter_modaliases(modaliases_discovered, candidates):
+def filter_modaliases(
+        modaliases_discovered, modaliases=None, pci=None, usb=None):
     """Determines which candidate modaliases match what was discovered.
 
     :param modaliases_discovered: The list of modaliases found on the node.
-    :param candidates: The candidate modaliases to match against. This
+    :param modaliases: The candidate modaliases to match against. This
         parameter must be iterable. Wildcards are accepted.
+    :param pci: A list of strings in the format <vendor>:<device>. May include
+        wildcards.
+    :param usb: A list of strings in the format <vendor>:<product>. May include
+        wildcards.
     :return: The list of modaliases on the node matching the candidate(s).
     """
+    patterns = []
+    if modaliases is not None:
+        patterns.extend(modaliases)
+    if pci is not None:
+        for pattern in pci:
+            try:
+                vendor, device = pattern.split(':')
+            except ValueError:
+                # Ignore malformed patterns.
+                continue
+            vendor = vendor.upper()
+            device = device.upper()
+            # v: vendor
+            # d: device
+            # sv: subvendor
+            # sd: subdevice
+            # bc: bus class
+            # sc: bus subclass
+            # i: interface
+            patterns.append(
+                "pci:v0000{vendor}d0000{device}sv*sd*bc*sc*i*".format(
+                    vendor=vendor, device=device))
+    if usb is not None:
+        for pattern in usb:
+            try:
+                vendor, product = pattern.split(':')
+            except ValueError:
+                # Ignore malformed patterns.
+                continue
+            vendor = vendor.upper()
+            product = product.upper()
+            # v: vendor
+            # p: product
+            # d: bcdDevice (device release number)
+            # dc: device class
+            # dsc: device subclass
+            # dp: device protocol
+            # ic: interface class
+            # isc: interface subclass
+            # ip: interface protocol
+            patterns.append(
+                "usb:v{vendor}p{product}d*dc*dsc*dp*ic*isc*ip*".format(
+                    vendor=vendor, product=product))
     matches = []
-    for candidate in candidates:
-        new_matches = fnmatch.filter(
-            modaliases_discovered, candidate)
-        matches.extend(new_matches)
+    for pattern in patterns:
+        new_matches = fnmatch.filter(modaliases_discovered, pattern)
+        for match in new_matches:
+            if match not in matches:
+                matches.append(match)
     return matches
 
 

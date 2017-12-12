@@ -27,6 +27,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.hooks import (
     add_switch,
     add_switch_vendor_model_tags,
@@ -215,10 +216,36 @@ class TestDetectSwitchVendorModel(MAASServerTestCase):
         self.assertThat(detected, Equals((None, None)))
 
 
-class TestFilterModaliases(MAASServerTestCase):
+TEST_MODALIASES = [
+    'pci:v00001A03d00001150sv000015D9sd00000888bc06sc04i00',
+    'pci:v00001A03d00002000sv000015D9sd00000888bc03sc00i00',
+    'pci:v00008086d00001533sv000015D9sd00001533bc02sc00i00',
+    'pci:v00008086d000015B7sv000015D9sd000015B7bc02sc00i00',
+    'pci:v00008086d00001918sv000015D9sd00000888bc06sc00i00',
+    'pci:v00008086d0000A102sv000015D9sd00000888bc01sc06i01',
+    'pci:v00008086d0000A118sv000015D9sd00000888bc06sc04i00',
+    'pci:v00008086d0000A119sv000015D9sd00000888bc06sc04i00',
+    'pci:v00008086d0000A11Asv000015D9sd00000888bc06sc04i00',
+    'pci:v00008086d0000A121sv000015D9sd00000888bc05sc80i00',
+    'pci:v00008086d0000A123sv000015D9sd00000888bc0Csc05i00',
+    'pci:v00008086d0000A12Fsv000015D9sd00000888bc0Csc03i30',
+    'pci:v00008086d0000A131sv000015D9sd00000888bc11sc80i00',
+    'pci:v00008086d0000A13Dsv000015D9sd00000888bc07sc00i02',
+    'pci:v00008086d0000A149sv000015D9sd00000888bc06sc01i00',
+    'pci:v00008086d0000A170sv000015D9sd00000888bc04sc03i00',
+    'usb:v0557p2419d0100dc00dsc00dp00ic03isc01ip01in00',
+    'usb:v0557p2419d0100dc00dsc00dp00ic03isc01ip02in01',
+    'usb:v0557p7000d0000dc09dsc00dp01ic09isc00ip00in00',
+    'usb:v174Cp07D1d1000dc00dsc00dp00ic08isc06ip50in00',
+    'usb:v1D6Bp0002d0410dc09dsc00dp01ic09isc00ip00in00',
+    'usb:v1D6Bp0003d0410dc09dsc00dp03ic09isc00ip00in00',
+]
+
+
+class TestFilterModaliases(MAASTestCase):
 
     scenarios = (
-        ('wildcard_multiple_match', {
+        ('modalias_wildcard_multiple_match', {
             'modaliases': [
                 "os:vendorCanonical:productUbuntu:version14.04",
                 "beverage:typeCoffee:variantEspresso",
@@ -228,12 +255,14 @@ class TestFilterModaliases(MAASServerTestCase):
             'candidates': [
                 'beverage:typeCoffee:*',
             ],
+            'pci': None,
+            'usb': None,
             'result': [
                 "beverage:typeCoffee:variantEspresso",
                 "beverage:typeCoffee:variantCappuccino",
             ]
         }),
-        ('multiple_wildcard_match', {
+        ('modalias_multiple_wildcard_match', {
             'modaliases': [
                 "os:vendorCanonical:productUbuntu:version14.04",
                 "beverage:typeCoffee:variantEspresso",
@@ -245,13 +274,14 @@ class TestFilterModaliases(MAASServerTestCase):
                 'os:*:productUbuntu:*',
                 'beverage:*ProperBritish'
             ],
+            'pci': None,
+            'usb': None,
             'result': [
-                "os:vendorCanonical:productUbuntu:version14.04",
                 "os:vendorCanonical:productUbuntu:version14.04",
                 "beverage:typeTea:variantProperBritish",
             ]
         }),
-        ('exact_match', {
+        ('modalias_exact_match', {
             'modaliases': [
                 "os:vendorCanonical:productUbuntu:version14.04",
                 "beverage:typeCoffee:variantEspresso",
@@ -261,15 +291,82 @@ class TestFilterModaliases(MAASServerTestCase):
             'candidates': [
                 'os:vendorCanonical:productUbuntu:version14.04',
             ],
+            'pci': None,
+            'usb': None,
             'result': [
                 "os:vendorCanonical:productUbuntu:version14.04",
+            ]
+        }),
+        ('pci_malformed_string', {
+            'modaliases': TEST_MODALIASES,
+            'candidates': None,
+            'pci': [
+                "8086"
+            ],
+            'usb': None,
+            'result': []
+        }),
+        ('pci_exact_match', {
+            'modaliases': TEST_MODALIASES,
+            'candidates': None,
+            'pci': [
+                "8086:1918"
+            ],
+            'usb': None,
+            'result': [
+                "pci:v00008086d00001918sv000015D9sd00000888bc06sc00i00",
+            ]
+        }),
+        ('pci_wildcard_match', {
+            'modaliases': TEST_MODALIASES,
+            'candidates': None,
+            'pci': [
+                "1a03:*"
+            ],
+            'usb': None,
+            'result': [
+                'pci:v00001A03d00001150sv000015D9sd00000888bc06sc04i00',
+                'pci:v00001A03d00002000sv000015D9sd00000888bc03sc00i00',
+            ]
+        }),
+        ('usb_malformed_string', {
+            'modaliases': TEST_MODALIASES,
+            'candidates': None,
+            'pci': None,
+            'usb': [
+                "174c"
+            ],
+            'result': []
+        }),
+        ('usb_exact_match', {
+            'modaliases': TEST_MODALIASES,
+            'candidates': None,
+            'pci': None,
+            'usb': [
+                "174c:07d1"
+            ],
+            'result': [
+                'usb:v174Cp07D1d1000dc00dsc00dp00ic08isc06ip50in00',
+            ]
+        }),
+        ('usb_wildcard_match', {
+            'modaliases': TEST_MODALIASES,
+            'candidates': None,
+            'pci': None,
+            'usb': [
+                "0557:*"
+            ],
+            'result': [
+                'usb:v0557p2419d0100dc00dsc00dp00ic03isc01ip01in00',
+                'usb:v0557p2419d0100dc00dsc00dp00ic03isc01ip02in01',
+                'usb:v0557p7000d0000dc09dsc00dp01ic09isc00ip00in00'
             ]
         }),
     )
 
     def test__filter_modaliases(self):
         matches = filter_modaliases(
-            self.modaliases, self.candidates)
+            self.modaliases, self.candidates, pci=self.pci, usb=self.usb)
         self.assertThat(matches, Equals(self.result))
 
 
