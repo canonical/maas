@@ -27,6 +27,10 @@ add_ipmi_config() {
 main() {
     prep_maas_api_helper
 
+    # LP:1730524 - Make sure we can signal the metadata service before updating
+    # the BMC username and password.
+    signal WORKING "Starting [maas-bmc-autodetect]" || exit 1
+
     # Install IPMI deps
     aptget install freeipmi-tools openipmi ipmitool sshpass
 
@@ -61,7 +65,7 @@ main() {
     if [ ! -z "$power_settings" ]; then
         signal \
           "--power-type=${power_type}" "--power-parameters=${power_settings}" \
-          WORKING "Finished [maas-ipmi-autodetect]"
+          WORKING "Finished [maas-bmc-autodetect]"
     fi
 
     maas-run-remote-scripts "--config=${CRED_CFG}" "${TEMP_D}"
