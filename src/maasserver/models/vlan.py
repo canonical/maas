@@ -10,7 +10,6 @@ __all__ = [
 
 
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
 from django.db.models import (
     BooleanField,
     CASCADE,
@@ -25,7 +24,10 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
-from maasserver.fields import MAASIPAddressField
+from maasserver.fields import (
+    MAASIPAddressField,
+    MODEL_NAME_VALIDATOR,
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import VLANInterface
 from maasserver.models.notification import Notification
@@ -34,8 +36,6 @@ from maasserver.utils.orm import MAASQueriesMixin
 from netaddr import AddrFormatError
 from provisioningserver.utils.network import parse_integer
 
-
-VLAN_NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
 
 DEFAULT_VLAN_NAME = 'Default VLAN'
 DEFAULT_VID = 0
@@ -160,7 +160,7 @@ class VLAN(CleanSave, TimestampedModel):
 
     name = CharField(
         max_length=256, editable=True, null=True, blank=True,
-        validators=[VLAN_NAME_VALIDATOR])
+        validators=[MODEL_NAME_VALIDATOR])
 
     description = TextField(null=False, blank=True)
 

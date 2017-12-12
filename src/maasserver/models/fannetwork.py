@@ -5,7 +5,6 @@
 
 __all__ = [
     "FanNetwork",
-    "FANNETWORK_NAME_VALIDATOR",
     "FANNETWORK_BRIDGE_VALIDATOR",
     ]
 
@@ -22,13 +21,15 @@ from django.db.models import (
 )
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
-from maasserver.fields import IPv4CIDRField
+from maasserver.fields import (
+    IPv4CIDRField,
+    MODEL_NAME_VALIDATOR,
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import IPNetwork
 
 
-FANNETWORK_NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
 FANNETWORK_BRIDGE_VALIDATOR = RegexValidator('^[\w\-_]+$')
 
 
@@ -78,7 +79,7 @@ class FanNetwork(CleanSave, TimestampedModel):
     name = CharField(
         max_length=256, unique=True, editable=True,
         help_text="Name of the fan network",
-        validators=[FANNETWORK_NAME_VALIDATOR])
+        validators=[MODEL_NAME_VALIDATOR])
 
     overlay = IPv4CIDRField(
         blank=False, unique=True, editable=True, null=False)

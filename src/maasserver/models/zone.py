@@ -6,13 +6,11 @@
 __all__ = [
     "DEFAULT_ZONE_NAME",
     "Zone",
-    "ZONE_NAME_VALIDATOR",
     ]
 
 import datetime
 
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
@@ -20,11 +18,9 @@ from django.db.models import (
 )
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
+from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-
-
-ZONE_NAME_VALIDATOR = RegexValidator('^[\w-]+$')
 
 # Name of the special, default zone.  This zone can be neither deleted nor
 # renamed.
@@ -70,7 +66,7 @@ class Zone(CleanSave, TimestampedModel):
 
     name = CharField(
         max_length=256, unique=True, editable=True,
-        validators=[ZONE_NAME_VALIDATOR])
+        validators=[MODEL_NAME_VALIDATOR])
 
     description = TextField(blank=True, editable=True)
 

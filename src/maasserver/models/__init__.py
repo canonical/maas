@@ -63,6 +63,7 @@ __all__ = [
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
     'RegionRackRPCConnection',
+    'ResourcePool',
     'Service',
     'signals',
     'Space',
@@ -164,6 +165,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.service import Service
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey

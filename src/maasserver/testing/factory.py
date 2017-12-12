@@ -94,6 +94,7 @@ from maasserver.models import (
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
     RegionRackRPCConnection,
+    ResourcePool,
     Service,
     Space,
     SSHKey,
@@ -1000,6 +1001,15 @@ class Factory(maastesting.factory.Factory):
         user.userprofile.completed_intro = completed_intro
         user.userprofile.save()
         return user
+
+    def make_ResourcePool(self, name=None, description=None):
+        if name is None:
+            name = self.make_name('resourcepool')
+        if description is None:
+            description = self.make_string()
+        pool = ResourcePool(name=name, description=description)
+        pool.save()
+        return pool
 
     def make_KeySource(self, protocol=None, auth_id=None, auto_update=False):
         if protocol is None:

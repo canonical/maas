@@ -18,7 +18,10 @@ from django.db.models import (
     Q,
 )
 from django.forms.fields import Field
-from maasserver.fields import mac_validator
+from maasserver.fields import (
+    mac_validator,
+    MODEL_NAME_VALIDATOR,
+)
 from maasserver.forms import (
     MultipleChoiceField,
     UnconstrainedMultipleChoiceField,
@@ -35,7 +38,6 @@ from maasserver.models import (
     VLAN,
     Zone,
 )
-from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.forms import set_form_error
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
@@ -572,7 +574,7 @@ class AcquireNodeForm(RenamableFieldsForm):
     zone = forms.CharField(label="Physical zone", required=False)
 
     not_in_zone = ValidatorMultipleChoiceField(
-        validator=ZONE_NAME_VALIDATOR, label="Not in zone", required=False,
+        validator=MODEL_NAME_VALIDATOR, label="Not in zone", required=False,
         error_messages={
             'invalid_list': "Invalid parameter: must list physical zones.",
             })

@@ -14,6 +14,7 @@ __all__ = [
     "MAC",
     "MACAddressField",
     "MACAddressFormField",
+    "MODEL_NAME_VALIDATOR",
     "NodeChoiceField",
     "register_mac_type",
     "VerboseRegexValidator",
@@ -66,6 +67,9 @@ from netaddr import (
 )
 from provisioningserver.utils import typed
 import psycopg2.extensions
+
+# Validator for the name attribute of model entities.
+MODEL_NAME_VALIDATOR = RegexValidator(r'^\w[ \w-]*$')
 
 
 class Field(_BrokenField):

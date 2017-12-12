@@ -6,7 +6,6 @@
 __all__ = [
     "DEFAULT_FABRIC_NAME",
     "Fabric",
-    "NAME_VALIDATOR",
     ]
 
 import datetime
@@ -17,7 +16,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
@@ -25,6 +23,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
+from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.subnet import Subnet
@@ -39,8 +38,6 @@ def validate_fabric_name(value):
     namespec = re.compile(r'^[\w-]+$')
     if not namespec.search(value):
         raise ValidationError("Invalid fabric name: %s." % value)
-
-NAME_VALIDATOR = RegexValidator(r'^[ \w-]+$')
 
 # Name of the special, default fabric.  This fabric cannot be deleted.
 DEFAULT_FABRIC_NAME = 'fabric-0'
@@ -165,7 +162,7 @@ class Fabric(CleanSave, TimestampedModel):
 
     class_type = CharField(
         max_length=256, editable=True, null=True, blank=True,
-        validators=[NAME_VALIDATOR])
+        validators=[MODEL_NAME_VALIDATOR])
 
     def __str__(self):
         return "name=%s" % self.get_name()

@@ -26,6 +26,7 @@ from maasserver.fields import (
     LargeObjectField,
     LargeObjectFile,
     MAC,
+    MODEL_NAME_VALIDATOR,
     NodeChoiceField,
     register_mac_type,
     URLOrPPAFormField,
@@ -189,6 +190,26 @@ class TestMAC(MAASServerTestCase):
         register_mac_type(connection.cursor())
         # The test is that we get here without crashing.
         pass
+
+
+class TestModelNameValidator(MAASServerTestCase):
+
+    def test_valid_name(self):
+        self.assertIsNone(MODEL_NAME_VALIDATOR('a-valid-name'))
+
+    def test_valid_with_number(self):
+        self.assertIsNone(MODEL_NAME_VALIDATOR('with-number-10'))
+
+    def test_valid_with_spaces(self):
+        self.assertIsNone(MODEL_NAME_VALIDATOR('with spaces'))
+
+    def test_invalid_start_space(self):
+        self.assertRaises(
+            ValidationError, MODEL_NAME_VALIDATOR, ' not-at-start')
+
+    def test_invalid_start_dash(self):
+        self.assertRaises(
+            ValidationError, MODEL_NAME_VALIDATOR, '-not-at-start')
 
 
 class TestVerboseRegexValidator(MAASServerTestCase):
