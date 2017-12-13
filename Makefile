@@ -27,7 +27,6 @@ js_enums := src/maasserver/static/js/enums.js
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
-scss_theme := include/nodejs/node_modules/maas-gui-vanilla-theme
 scss_input := src/maasserver/static/scss/build.scss
 scss_deps := $(wildcard src/maasserver/static/scss/_*.scss)
 scss_output := src/maasserver/static/css/build.css
@@ -37,9 +36,9 @@ scss_output := src/maasserver/static/css/build.css
 # which those commands appear.
 dbrun := bin/database --preserve run --
 
-# Disable progress when running npm and warning log levels.
-npm_install := NODE_ENV=production NPM_CONFIG_PROGRESS="false" npm install \
-	--loglevel error --cache-min 600
+# Path to install local nodejs.
+mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+nodejs_path := $(mkfile_dir)/include/nodejs/bin:$(PATH)
 
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
@@ -148,7 +147,7 @@ bin/test.e2e: \
 # bin/maas-region is needed for South migration tests. bin/flake8 is
 # needed for checking lint and bin/sass is needed for checking css.
 bin/test.testing: \
-  bin/maas-region bin/flake8 bin/sass $(scss_theme) bin/buildout \
+  bin/maas-region bin/flake8 bin/sass bin/buildout \
   buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -179,37 +178,56 @@ bin/coverage: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install coverage
 	@touch --no-create bin/coverage
 
-define karma-deps
-  jasmine-core@2.4.1
-  karma@0.13.19
-  karma-chrome-launcher@0.2.2
-  karma-firefox-launcher@0.1.7
-  karma-jasmine@0.3.6
-  karma-opera-launcher@0.3.0
-  karma-phantomjs-launcher@0.2.3
-  karma-failed-reporter@0.0.3
-  karma-ng-html2js-preprocessor@1.0.0
-  phantomjs@2.1.7
+include/nodejs/bin/node:
+	mkdir -p include/nodejs
+	wget -O include/nodejs/nodejs.tar.gz https://nodejs.org/dist/v8.9.3/node-v8.9.3-linux-x64.tar.gz
+	tar -C include/nodejs/ -xf include/nodejs/nodejs.tar.gz --strip-components=1
+
+include/nodejs/yarn.tar.gz:
+	mkdir -p include/nodejs
+	wget -O include/nodejs/yarn.tar.gz https://yarnpkg.com/latest.tar.gz
+
+include/nodejs/bin/yarn: include/nodejs/yarn.tar.gz
+	tar -C include/nodejs/ -xf include/nodejs/yarn.tar.gz --strip-components=1
+
+include/nodejs/node_modules: include/nodejs/bin/node  include/nodejs/bin/yarn
+	PATH=$(nodejs_path) yarn --modules-folder include/nodejs/node_modules
+
+define BIN_KARMA
+#!/bin/sh
+export PATH=$(mkfile_dir)/include/nodejs/bin:$$PATH
+$(mkfile_dir)/include/nodejs/node_modules/karma/bin/karma $$@
 endef
 
-bin/karma: deps = $(strip $(karma-deps))
-bin/karma: prefix = include/nodejs
-bin/karma:
-	@mkdir -p $(@D) $(prefix)
-	$(npm_install) --prefix $(prefix) $(deps)
-	@ln -srf $(prefix)/node_modules/karma/bin/karma $@
+bin/karma: export BIN_KARMA:=$(BIN_KARMA)
+bin/karma: include/nodejs/node_modules
+	@mkdir -p bin/
+	@echo "$${BIN_KARMA}" > $@
+	@chmod +x $@
 
-bin/protractor: prefix = include/nodejs
-bin/protractor:
-	@mkdir -p $(@D) $(prefix)
-	$(npm_install) --prefix $(prefix) protractor@3.0.0
-	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
+define BIN_PROTRACTOR
+#!/bin/sh
+export PATH=$(mkfile_dir)/include/nodejs/bin:$$PATH
+$(mkfile_dir)/include/nodejs/node_modules/protractor/bin/protractor $$@
+endef
 
-bin/sass: prefix = include/nodejs
-bin/sass:
-	@mkdir -p $(@D) $(prefix)
-	$(npm_install) --prefix $(prefix) node-sass@3.4.2
-	@ln -srf $(prefix)/node_modules/node-sass/bin/node-sass $@
+bin/protractor: export BIN_PROTRACTOR:=$(BIN_PROTRACTOR)
+bin/protractor: include/nodejs/node_modules
+	@mkdir -p bin/
+	@echo "$${BIN_PROTRACTOR}" > $@
+	@chmod +x $@
+
+define BIN_SASS
+#!/bin/sh
+export PATH=$(mkfile_dir)/include/nodejs/bin:$$PATH
+$(mkfile_dir)/include/nodejs/node_modules/node-sass/bin/node-sass $$@
+endef
+
+bin/sass: export BIN_SASS:=$(BIN_SASS)
+bin/sass: include/nodejs/node_modules
+	@mkdir -p bin/
+	@echo "$${BIN_SASS}" > $@
+	@chmod +x $@
 
 define test-scripts
   bin/test.cli
@@ -382,13 +400,9 @@ $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 
 styles: clean-styles $(scss_output)
 
-$(scss_output): bin/sass $(scss_theme) $(scss_input) $(scss_deps)
+$(scss_output): bin/sass $(scss_input) $(scss_deps)
 	bin/sass --include-path=src/maasserver/static/scss \
 	    --output-style compressed $(scss_input) -o $(dir $@)
-
-$(scss_theme): prefix = include/nodejs
-$(scss_theme):
-	$(npm_install) --prefix $(prefix) maas-gui-vanilla-theme-new@1.3.0
 
 clean-styles:
 	$(RM) $(scss_output)
@@ -752,7 +766,7 @@ phony := $(sort $(strip $(phony)))
 
 define secondary
   bin/py bin/buildout
-  bin/sass $(scss_theme)
+  bin/sass
   bin/sphinx bin/sphinx-build
 endef
 

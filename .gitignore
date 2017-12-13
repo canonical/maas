@@ -44,6 +44,7 @@
 /man/.doctrees
 /media/demo/*
 /media/development
+/node_modules
 /parts
 /prime
 /services/*/supervise
@@ -54,6 +55,7 @@
 /tags
 /xunit.*.xml
 dropin.cache
+yarn.lock
 __pycache__
 *.orig
 *~

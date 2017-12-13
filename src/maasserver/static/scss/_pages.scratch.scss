@@ -476,7 +476,6 @@
               position: relative;
 
                   input[type='text'] {
-                      @extend %input--styles;
                       line-height: 30px;
                       padding-right: 30px;
                       width: 100%;
@@ -665,4 +664,3 @@ button.button--inline,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
