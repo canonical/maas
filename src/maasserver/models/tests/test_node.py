@@ -106,6 +106,7 @@ from maasserver.models.node import (
     generate_node_system_id,
     PowerInfo,
 )
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
@@ -1025,6 +1026,26 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(
             ValidationError,
             factory.make_Node, hostname=bad_hostname)
+
+    def test_default_pool_for_machine(self):
+        node = factory.make_Node()
+        self.assertEqual(
+            node.pool, ResourcePool.objects.get_default_resource_pool())
+
+    def test_other_pool_for_machine(self):
+        pool = factory.make_ResourcePool()
+        node = factory.make_Node(pool=pool)
+        self.assertEqual(node.pool, pool)
+
+    def test_no_pool_for_device(self):
+        node = factory.make_Node(node_type=NODE_TYPE.DEVICE)
+        self.assertIsNone(node.pool)
+
+    def test_no_pool_assign_for_device(self):
+        pool = factory.make_ResourcePool()
+        self.assertRaises(
+            ValidationError, factory.make_Node, node_type=NODE_TYPE.DEVICE,
+            pool=pool)
 
     def test_lock(self):
         user = factory.make_User()

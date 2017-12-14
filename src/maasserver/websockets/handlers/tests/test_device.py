@@ -183,6 +183,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "id": node.zone.id,
                 "name": node.zone.name,
                 },
+            "pool": None,
             }
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [

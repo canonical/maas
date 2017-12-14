@@ -122,6 +122,7 @@ def register(
             "Region controller '%s' running version %s converted into a "
             "region and rack controller.", node.hostname, version_log)
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        node.pool = None
         node.save()
     else:
         maaslog.info(
@@ -129,6 +130,7 @@ def register(
             "rack controller.", this_region.hostname, node.hostname,
             version_log)
         node.node_type = NODE_TYPE.RACK_CONTROLLER
+        node.pool = None
         node.save()
 
     if node.current_commissioning_script_set is None:

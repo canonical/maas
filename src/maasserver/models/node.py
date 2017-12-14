@@ -119,6 +119,7 @@ from maasserver.models.licensekey import LicenseKey
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.service import Service
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
@@ -756,6 +757,10 @@ class RegionControllerManager(ControllerManager):
         if node.owner is None:
             node.owner = get_worker_user()
             update_fields.append("owner")
+        if node.pool:
+            # controllers aren't assigned to pools
+            node.pool = None
+            update_fields.append('pool')
         if len(update_fields) > 0:
             node.save(update_fields=update_fields)
         # Always cast to a region controller.
@@ -862,6 +867,10 @@ class Node(CleanSave, TimestampedModel):
     hostname = CharField(
         max_length=255, default='', blank=True, unique=True,
         validators=[validate_hostname])
+
+    pool = ForeignKey(
+        ResourcePool, default=None, null=True, blank=True, editable=True,
+        on_delete=PROTECT)
 
     # What Domain do we use for this host unless the individual StaticIPAddress
     # record overrides it?
@@ -1566,11 +1575,21 @@ class Node(CleanSave, TimestampedModel):
         elif self.domain is None:
             self.domain = Domain.objects.get_default_domain()
 
+    def clean_pool(self, prev):
+        # Only machines can be in resource pools.
+        if self.is_machine:
+            if not self.pool:
+                self.pool = ResourcePool.objects.get_default_resource_pool()
+        elif self.pool:
+            raise ValidationError(
+                {'pool': ["Can't assign to a resource pool."]})
+
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
         prev = get_one(Node.objects.filter(pk=self.pk))
         self.prev_bmc_id = prev.bmc_id if prev else None
         self.clean_hostname_domain(prev)
+        self.clean_pool(prev)
         self.clean_status(prev)
         self.clean_architecture(prev)
         self.clean_boot_disk(prev)

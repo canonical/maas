@@ -112,6 +112,15 @@ class NodeHandler(TimestampedModelHandler):
             "name": zone.name,
         }
 
+    def dehydrate_pool(self, pool):
+        """Return zone name."""
+        if pool is None:
+            return None
+        return {
+            "id": pool.id,
+            "name": pool.name,
+        }
+
     def dehydrate_pod(self, pod):
         return {
             "id": pod.id,

@@ -290,6 +290,7 @@ class TestMachineHandler(MAASServerTestCase):
             "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
+            "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
             "dhcp_on": node.interface_set.filter(vlan__dhcp_on=True).exists(),
         }
@@ -484,6 +485,19 @@ class TestMachineHandler(MAASServerTestCase):
             "id": zone.id,
             "name": zone.name,
             }, handler.dehydrate_zone(zone))
+
+    def test_dehydrate_pool_none(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        self.assertIsNone(handler.dehydrate_pool(None))
+
+    def test_dehydrate_pool(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        pool = factory.make_ResourcePool()
+        self.assertEqual(
+            handler.dehydrate_pool(pool),
+            {"id": pool.id, "name": pool.name})
 
     def test_dehydrate_pod(self):
         owner = factory.make_User()

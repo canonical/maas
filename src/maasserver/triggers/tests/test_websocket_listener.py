@@ -3802,6 +3802,8 @@ class TestNodeTypeChange(
         yield listener2.startService()
         try:
             node.node_type = self.to_type
+            if self.to_type != NODE_TYPE.MACHINE:
+                node.pool = None
             yield deferToDatabase(node.save)
             self.assertEqual(
                 ('delete', node.system_id),
