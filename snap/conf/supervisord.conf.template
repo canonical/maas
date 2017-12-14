@@ -89,6 +89,7 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd6.log
+{{endif}}
 
 {{if rackd or regiond}}
 [program:ntp]
