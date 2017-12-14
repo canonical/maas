@@ -69,6 +69,37 @@ from testtools.matchers import (
 )
 
 
+class TestSubnet(MAASServerTestCase):
+
+    def test_can_create_update_and_delete_subnet_with_attached_range(self):
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/8", gateway_ip=None, dns_servers=[])
+        iprange = factory.make_IPRange(
+            subnet, start_ip="10.0.0.1", end_ip="10.255.255.254")
+        subnet.description = "foo"
+        subnet.save()
+        subnet.delete()
+        iprange.delete()
+
+    def test_can_create_update_and_delete_subnet_with_assigned_ips(self):
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/8", gateway_ip=None, dns_servers=[])
+        iprange = factory.make_IPRange(
+            subnet, start_ip="10.0.0.1", end_ip="10.255.255.252")
+        static_ip = factory.make_StaticIPAddress(
+            "10.255.255.254", subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        static_ip_2 = factory.make_StaticIPAddress(
+            "10.255.255.253", subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        subnet.description = "foo"
+        subnet.save()
+        static_ip_2.delete()
+        subnet.delete()
+        iprange.delete()
+        static_ip.delete()
+
+
 class CreateCidrTest(MAASServerTestCase):
 
     def test_creates_cidr_from_ipv4_strings(self):

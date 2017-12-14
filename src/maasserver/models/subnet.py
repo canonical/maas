@@ -858,6 +858,9 @@ class Subnet(CleanSave, TimestampedModel):
         return None
 
     def update_allocation_notification(self):
+        # Workaround for edge cases in Django. (See bug #1702527.)
+        if self.id is None:
+            return
         ident = "ip_exhaustion__subnet_%d" % self.id
         # Circular imports.
         from maasserver.models import Config, Notification
