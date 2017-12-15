@@ -627,7 +627,7 @@ class TestMain(MAASTestCase):
             MockCalledOnceWith([
                 'sudo', '-n', '/usr/sbin/tgt-admin',
                 '--conf', os.path.join(snapshot, 'maas.tgt'),
-                '--update', 'ALL']))
+                '--update', 'ALL'], env=os.environ))
 
     def test_update_targets_only_runs_when_conf_exists(self):
         # Regression test for LP:1655721
@@ -644,6 +644,29 @@ class TestMain(MAASTestCase):
             mock_path_exists,
             MockCalledOnceWith(os.path.join(temp_dir, 'maas.tgt')))
         self.assertThat(mock_call_and_check, MockNotCalled())
+
+    def test_update_targets_conf_sets_env_var_in_snap(self):
+        # Regression test for LP:1718706
+        self.patch(boot_resources.service_monitor, "ensureService")
+        self.patch(boot_resources.os.path, 'exists').return_value = True
+        self.patch(boot_resources, 'call_and_check')
+        self.patch(boot_resources, 'running_in_snap').return_value = True
+        snap_data_path = factory.make_name('snap_data_path')
+        self.patch(boot_resources, 'get_snap_data_path').return_value = (
+            snap_data_path)
+        snapshot = factory.make_name("snapshot")
+        boot_resources.update_targets_conf(snapshot)
+        self.assertThat(
+            boot_resources.call_and_check,
+            MockCalledOnceWith([
+                'sudo', '-n', '/usr/sbin/tgt-admin',
+                '--conf', os.path.join(snapshot, 'maas.tgt'),
+                '--update', 'ALL'
+                ], env={
+                    'TGT_IPC_SOCKET': os.path.join(
+                        snap_data_path, 'tgtd-socket'),
+                    **os.environ,
+                }))
 
 
 class TestMetaContains(MAASTestCase):

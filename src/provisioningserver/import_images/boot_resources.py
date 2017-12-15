@@ -9,6 +9,7 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
+import copy
 import errno
 from io import StringIO
 import os
@@ -50,6 +51,10 @@ from provisioningserver.utils.service_monitor import ServiceActionError
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+)
+from provisioningserver.utils.snappy import (
+    get_snap_data_path,
+    running_in_snap,
 )
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.filepath import FilePath
@@ -223,11 +228,18 @@ def update_targets_conf(snapshot):
         return
 
     try:
+        env = copy.deepcopy(os.environ)
+        # LP:1718706 - When TGT is run in a snap the socket is stored in the
+        # SNAP_DATA path. Define it before calling tgt-admin otherwise the
+        # standard path is used and the call will fail.
+        if running_in_snap():
+            env['TGT_IPC_SOCKET'] = os.path.join(
+                get_snap_data_path(), 'tgtd-socket')
         call_and_check(sudo([
             get_path('/usr/sbin/tgt-admin'),
             '--conf', targets_conf,
             '--update', 'ALL',
-            ]))
+            ]), env=env)
     except ExternalProcessError as e:
         msg = "Unable to update TGT config: %s" % e
         try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
