@@ -67,7 +67,7 @@ TARBALL="maas_$FULL_VER.orig.tar.gz"
 
 get_orig_source() {
         git archive --format=tar.gz --prefix="${PKG}-${FULL_VER}.orig/" ${COMMIT} -o ${TARBALL}
-	
+
 }
 # Obtain the tarball from a local branch
 get_orig_source
@@ -84,26 +84,8 @@ tar zxvf ${PKG}_${FULL_VER}.orig.tar.gz
 cd "${PKG}-${FULL_VER}.orig/"
 cp -r $ROOTDIR/debian .
 
-if echo "$PACKAGE_DISTROS" | grep -q "xenial"; then
+if echo "$PACKAGE_DISTROS" | grep -q "bionic"; then
     cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~16.04.1) xenial;/i" debian/changelog
+    sed -i "s/) UNRELEASED;/~18.04.1) bionic;/i" debian/changelog
     debuild -S -sa
-fi
-
-if echo "$PACKAGE_DISTROS" | grep -q "yakkety"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~16.10.1) yakkety;/" debian/changelog
-    debuild -S
-fi
-
-if echo "$PACKAGE_DISTROS" | grep -q "zesty"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~17.04.1) zesty;/" debian/changelog
-    debuild -S
-fi
-
-if echo "$PACKAGE_DISTROS" | grep -q "artful"; then
-    cp $ROOTDIR/debian/changelog debian/changelog
-    sed -i "s/) UNRELEASED;/~17.10.1) artful;/" debian/changelog
-    debuild -S
 fi
