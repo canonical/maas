@@ -1,6 +1,6 @@
 name: maas
 version: git
-version-script: utilities/calc-snap-version  
+version-script: utilities/calc-snap-version
 summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
@@ -118,12 +118,17 @@ parts:
       - python3-simplejson
       - python3-markupsafe
     organize:
-        lib/python3.5/site-packages/etc: etc
-        lib/python3.5/site-packages/usr: usr
+        lib/python3.*/site-packages/etc/*: etc
+        lib/python3.*/site-packages/usr/bin/*: usr/bin
+        lib/python3.*/site-packages/usr/lib/*: usr/lib
+        lib/python3.*/site-packages/usr/sbin/*: usr/sbin
+        lib/python3.*/site-packages/usr/share/*: usr/share
         usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers
     filesets:
       remove:
-        - -lib/python3.5/site-packages/maastesting
+        - -lib/python3.*/site-packages/etc
+        - -lib/python3.*/site-packages/usr
+        - -lib/python3/dist-packages/maastesting
         - -share
         - -usr/include/libjs-angularjs
         - -usr/share/applications
@@ -150,8 +155,8 @@ parts:
     plugin: dump
     source: twisted/plugins
     organize:
-      maasrackd.py: lib/python3.5/site-packages/twisted/plugins/maasrackd.py
-      maasregiond.py: lib/python3.5/site-packages/twisted/plugins/maasregiond.py
+      maasrackd.py: usr/lib/python3/dist-packages/twisted/plugins/maasrackd.py
+      maasregiond.py: usr/lib/python3/dist-packages/twisted/plugins/maasregiond.py
   snap:
     plugin: dump
     source: snap
