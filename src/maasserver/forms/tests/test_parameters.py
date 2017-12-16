@@ -311,7 +311,7 @@ class TestParametersForm(MAASServerTestCase):
             }, form.errors)
 
     def test__input_runtime_validates_min(self):
-        min_runtime = random.randint(0, 100)
+        min_runtime = random.randint(1, 100)
         script = factory.make_Script(parameters={'runtime': {
             'type': 'runtime',
             'min': min_runtime,
