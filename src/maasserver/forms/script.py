@@ -10,6 +10,7 @@ __all__ = [
 ]
 from datetime import timedelta
 import json
+from json import JSONDecodeError
 import pipes
 import re
 
@@ -68,6 +69,11 @@ class ScriptForm(ModelForm):
         label='Comment', required=False, help_text='Description of change',
         initial='')
 
+    for_hardware = CharField(
+        label='For hardware', required=False,
+        help_text='Hardware identifiers this script requires to run.',
+        initial='')
+
     class Meta:
         model = Script
         fields = (
@@ -82,6 +88,9 @@ class ScriptForm(ModelForm):
             'timeout',
             'destructive',
             'script',
+            'for_hardware',
+            'may_reboot',
+            'recommission',
         )
 
     def __init__(self, instance=None, data=None, edit_default=False, **kwargs):
@@ -243,10 +252,11 @@ class ScriptForm(ModelForm):
                 'timeout' not in self.data):
             self.data['timeout'] = str(timeout)
 
-        # Packages must be a JSON string for the form.
-        packages = parsed_yaml.pop('packages', None)
-        if packages is not None and 'packages' not in self.data:
-            self.data['packages'] = json.dumps(packages)
+        # Packages and for_hardware must be a JSON string for the form.
+        for key in ['packages', 'for_hardware']:
+            value = parsed_yaml.pop(key, None)
+            if value is not None and key not in self.data:
+                self.data[key] = json.dumps(value)
 
         for key, value in parsed_yaml.items():
             if key in self.fields:
@@ -300,6 +310,30 @@ class ScriptForm(ModelForm):
                         set_form_error(
                             self, 'packages', 'Snap package must be a string.')
             return packages
+
+    def clean_for_hardware(self):
+        """Convert from JSON and validate for_hardware input."""
+        if self.cleaned_data['for_hardware'] == '':
+            return self.instance.for_hardware
+        try:
+            for_hardware = json.loads(self.cleaned_data['for_hardware'])
+        except JSONDecodeError:
+            for_hardware = self.cleaned_data['for_hardware']
+        if isinstance(for_hardware, str):
+            for_hardware = for_hardware.split(',')
+        if not isinstance(for_hardware, list):
+            set_form_error(self, 'for_hardware', 'Must be a list or string')
+            return
+        regex = re.compile(
+            '^modalias:.+|pci:[\da-f]{4}:[\da-f]{4}|'
+            'usb:[\da-f]{4}:[\da-f]{4}$', re.I)
+        for hw_id in for_hardware:
+            if regex.search(hw_id) is None:
+                set_form_error(
+                    self, 'for_hardware',
+                    "Hardware identifier '%s' must be a modalias, PCI ID, or "
+                    "USB ID." % hw_id)
+        return for_hardware
 
     def clean(self):
         cleaned_data = super().clean()

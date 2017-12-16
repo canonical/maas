@@ -64,6 +64,9 @@ class TestScriptForm(MAASServerTestCase):
         self.assertFalse(script.destructive)
         self.assertEquals(script_content, script.script.data)
         self.assertFalse(script.default)
+        self.assertItemsEqual([], script.for_hardware)
+        self.assertFalse(script.may_reboot)
+        self.assertFalse(script.recommission)
 
     def test__create_with_defined_values(self):
         name = factory.make_name('name')
@@ -78,6 +81,19 @@ class TestScriptForm(MAASServerTestCase):
         destructive = factory.pick_bool()
         script_content = factory.make_script_content()
         comment = factory.make_name('comment')
+        may_reboot = factory.pick_bool()
+        if script_type == SCRIPT_TYPE.COMMISSIONING:
+            for_hardware = [
+                'modalias:%s' % factory.make_name('mod_alias'),
+                'pci:%04X:%04x' % (
+                    random.randint(0, 9999), random.randint(0, 9999)),
+                'usb:%04x:%04X' % (
+                    random.randint(0, 9999), random.randint(0, 9999)),
+                ]
+            recommission = factory.pick_bool()
+        else:
+            for_hardware = []
+            recommission = False
 
         form = ScriptForm(data={
             'name': name,
@@ -92,6 +108,9 @@ class TestScriptForm(MAASServerTestCase):
             'destructive': destructive,
             'script': script_content,
             'comment': comment,
+            'may_reboot': may_reboot,
+            'for_hardware': ','.join(for_hardware),
+            'recommission': recommission,
         })
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
@@ -111,6 +130,9 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEquals(destructive, script.destructive)
         self.assertEquals(script_content, script.script.data)
         self.assertEquals(comment, script.script.comment)
+        self.assertEquals(may_reboot, script.may_reboot)
+        self.assertItemsEqual(for_hardware, script.for_hardware)
+        self.assertEquals(recommission, script.recommission)
         self.assertFalse(script.default)
 
     def test__create_setting_default_has_no_effect(self):
@@ -138,6 +160,19 @@ class TestScriptForm(MAASServerTestCase):
         script_content = factory.make_script_content()
         comment = factory.make_name('comment')
         orig_script_content = script.script.data
+        may_reboot = factory.pick_bool()
+        if script_type == SCRIPT_TYPE.COMMISSIONING:
+            for_hardware = [
+                'modalias:%s' % factory.make_name('mod_alias'),
+                'pci:%04x:%04X' % (
+                    random.randint(0, 9999), random.randint(0, 9999)),
+                'usb:%04x:%04X' % (
+                    random.randint(0, 9999), random.randint(0, 9999)),
+                ]
+            recommission = factory.pick_bool()
+        else:
+            for_hardware = []
+            recommission = False
 
         form = ScriptForm(data={
             'name': name,
@@ -152,6 +187,9 @@ class TestScriptForm(MAASServerTestCase):
             'destructive': destructive,
             'script': script_content,
             'comment': comment,
+            'may_reboot': may_reboot,
+            'for_hardware': ','.join(for_hardware),
+            'recommission': recommission,
         }, instance=script)
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
@@ -200,7 +238,7 @@ class TestScriptForm(MAASServerTestCase):
                 value = factory.pick_choice(HARDWARE_TYPE_CHOICES)
             elif name == 'parallel':
                 value = factory.pick_choice(SCRIPT_PARALLEL_CHOICES)
-            elif name == 'destructive':
+            elif name in ['destructive', 'may_reboot']:
                 value = factory.pick_bool()
             elif name == 'packages':
                 value = json.dumps({'apt': [factory.make_name('package')]})
@@ -208,6 +246,9 @@ class TestScriptForm(MAASServerTestCase):
                 value = str(random.randint(0, 1000))
             elif name == 'comment':
                 # A comment must be done with a script
+                continue
+            elif name in ['for_hardware', 'recommission']:
+                # Only available on commissioning scripts
                 continue
             else:
                 value = factory.make_string()
@@ -224,7 +265,7 @@ class TestScriptForm(MAASServerTestCase):
                 value = factory.pick_choice(HARDWARE_TYPE_CHOICES)
             elif name == 'parallel':
                 value = factory.pick_choice(SCRIPT_PARALLEL_CHOICES)
-            elif name == 'destructive':
+            elif name in ['destructive', 'may_reboot']:
                 value = factory.pick_bool()
             elif name == 'packages':
                 value = json.dumps({'apt': [factory.make_name('package')]})
@@ -234,6 +275,9 @@ class TestScriptForm(MAASServerTestCase):
                 value = factory.make_script_content()
             elif name == 'comment':
                 # A comment must be done with a script
+                continue
+            elif name in ['for_hardware', 'recommission']:
+                # Only available on commissioning scripts
                 continue
             else:
                 value = factory.make_string()
@@ -285,6 +329,9 @@ class TestScriptForm(MAASServerTestCase):
         packages = script.packages
         timeout = script.timeout
         destructive = script.destructive
+        may_reboot = script.may_reboot
+        for_hardware = script.for_hardware
+        recommission = script.recommission
 
         form = ScriptForm(data={'script': script_content}, instance=script)
         self.assertTrue(form.is_valid(), form.errors)
@@ -304,6 +351,9 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEquals(destructive, script.destructive)
         self.assertFalse(script.default)
         self.assertEquals(script_content, script.script.data)
+        self.assertEquals(may_reboot, script.may_reboot)
+        self.assertItemsEqual(for_hardware, script.for_hardware)
+        self.assertEquals(recommission, script.recommission)
 
     def test__yaml_doesnt_update_tags(self):
         script = factory.make_Script()
@@ -490,7 +540,17 @@ class TestScriptForm(MAASServerTestCase):
             'packages': {'apt': [factory.make_name('package')]},
             'timeout': random.randint(0, 1000),
             'destructive': factory.pick_bool(),
+            'may_reboot': factory.pick_bool(),
         }
+        if embedded_yaml['script_type'] == SCRIPT_TYPE.COMMISSIONING:
+            embedded_yaml['for_hardware'] = [
+                'modalias:%s' % factory.make_name('mod_alias'),
+                'pci:%04X:%04x' % (
+                    random.randint(0, 9999), random.randint(0, 9999)),
+                'usb:%04X:%04x' % (
+                    random.randint(0, 9999), random.randint(0, 9999)),
+                ]
+            embedded_yaml['recommission'] = factory.pick_bool()
         script_content = factory.make_script_content(embedded_yaml)
         form = ScriptForm(data={'script': script_content})
         self.assertTrue(form.is_valid(), form.errors)
@@ -508,6 +568,15 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEquals(
             timedelta(0, embedded_yaml['timeout']), script.timeout)
         self.assertEquals(embedded_yaml['destructive'], script.destructive)
+        self.assertEquals(embedded_yaml['may_reboot'], script.may_reboot)
+        if embedded_yaml['script_type'] == SCRIPT_TYPE.COMMISSIONING:
+            self.assertItemsEqual(
+                embedded_yaml['for_hardware'], script.for_hardware)
+            self.assertEquals(
+                embedded_yaml['recommission'], script.recommission)
+        else:
+            self.assertItemsEqual([], script.for_hardware)
+            self.assertFalse(script.recommission)
         self.assertFalse(script.default)
         self.assertEquals(script_content, script.script.data)
 
@@ -797,6 +866,31 @@ class TestScriptForm(MAASServerTestCase):
             {'results': [
                 'results must be a list of strings or a dictionary of '
                 'dictionaries.']}, form.errors)
+        self.assertItemsEqual([], VersionedTextFile.objects.all())
+
+    def test__errors_when_hardware_not_a_list(self):
+        form = ScriptForm(data={'script': factory.make_script_content({
+            'name': factory.make_name('name'),
+            'for_hardware': {},
+            })})
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {'for_hardware': ['Must be a list or string']},
+            form.errors)
+        self.assertItemsEqual([], VersionedTextFile.objects.all())
+
+    def test__errors_when_hardware_invalid(self):
+        hw_id = factory.make_name('hw_id')
+        form = ScriptForm(data={'script': factory.make_script_content({
+            'name': factory.make_name('name'),
+            'for_hardware': hw_id,
+            })})
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {'for_hardware': [
+                "Hardware identifier '%s' must be a modalias, PCI ID, "
+                "or USB ID." % hw_id]},
+            form.errors)
         self.assertItemsEqual([], VersionedTextFile.objects.all())
 
 
