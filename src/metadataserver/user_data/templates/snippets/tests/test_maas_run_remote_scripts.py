@@ -42,15 +42,16 @@ from snippets.maas_run_remote_scripts import (
     run_scripts_from_metadata,
 )
 
+# Unused ScriptResult id, used to make sure number is always unique.
+SCRIPT_RESULT_ID = 0
+
 
 def make_script(
         scripts_dir=None, with_added_attribs=True, name=None,
-        script_result_id=None, script_version_id=None, timeout_seconds=None,
-        parallel=None, hardware_type=None, with_output=True):
+        script_version_id=None, timeout_seconds=None, parallel=None,
+        hardware_type=None, with_output=True):
     if name is None:
         name = factory.make_name('name')
-    if script_result_id is None:
-        script_result_id = random.randint(1, 1000)
     if script_version_id is None:
         script_version_id = random.randint(1, 1000)
     if timeout_seconds is None:
@@ -59,6 +60,9 @@ def make_script(
         parallel = random.randint(0, 2)
     if hardware_type is None:
         hardware_type = random.randint(0, 4)
+    global SCRIPT_RESULT_ID
+    script_result_id = SCRIPT_RESULT_ID
+    SCRIPT_RESULT_ID += 1
     ret = {
         'name': name,
         'path': '%s/%s' % (random.choice(['commissioning', 'testing']), name),
@@ -867,7 +871,8 @@ class TestRunScripts(MAASTestCase):
         single_thread = make_scripts(instance=False, parallel=0)
         instance_thread = [
             make_scripts(parallel=1)
-            for _ in range(3)]
+            for _ in range(3)
+        ]
         any_thread = make_scripts(instance=False, parallel=2)
         scripts = copy.deepcopy(single_thread)
         for instance_thread_group in instance_thread:
