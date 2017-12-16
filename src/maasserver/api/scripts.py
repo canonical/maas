@@ -71,6 +71,16 @@ class NodeScriptsHandler(OperationsHandler):
             Can be testing or commissioning, defaults to testing.
         :type script_type: unicode
 
+        :param hardware_type: The hardware_type defines what type of hardware
+            the script is assoicated with. May be CPU, memory, storage, or
+            node.
+        :type hardware_type: unicode
+
+        :param parallel: Whether the script may be run in parallel with other
+            scripts. May be disabled to run by itself, instance to run along
+            scripts with the same name, or any to run along any script.
+        :type parallel: unicode
+
         :param timeout: How long the script is allowed to run before failing.
             0 gives unlimited time, defaults to 0.
         :type timeout: unicode
@@ -85,9 +95,23 @@ class NodeScriptsHandler(OperationsHandler):
             filename is ignored; MAAS will know it by the name you pass to the
             request. Optionally you can ignore the name and script parameter in
             favor of uploading a single file as part of the request.
+        :type script: unicode
 
         :param comment: A comment about what this change does.
         :type comment: unicode
+
+        :param for_hardware: A list of modalias, PCI IDs, and/or USB IDs the
+            script will automatically run on. Must start with modalias:, pci:,
+            or usb:.
+        :type for_hardware: unicode
+
+        :param may_reboot: Whether or not the script may reboot the system
+            while running.
+        :type may_reboot: boolean
+
+        :param recommission: Whether builtin commissioning scripts should be
+            rerun after successfully running this scripts.
+        :type recommission: boolean
         """
         data = request.data.copy()
         if 'script' in request.FILES:
@@ -180,6 +204,9 @@ class NodeScriptHandler(OperationsHandler):
         'packages',
         'timeout',
         'destructive',
+        'for_hardware',
+        'may_reboot',
+        'recommission',
         'history',
         'default',
     )
@@ -265,6 +292,20 @@ class NodeScriptHandler(OperationsHandler):
             testing or commissioning, defaults to testing.
         :type script_type: unicode
 
+        :param hardware_type: The hardware_type defines what type of hardware
+            the script is assoicated with. May be CPU, memory, storage, or
+            node.
+        :type hardware_type: unicode
+
+        :param parallel: Whether the script may be run in parallel with other
+            scripts. May be disabled to run by itself, instance to run along
+            scripts with the same name, or any to run along any script.
+        :type parallel: unicode
+
+        :param timeout: How long the script is allowed to run before failing.
+            0 gives unlimited time, defaults to 0.
+        :type timeout: unicode
+
         :param timeout: How long the script is allowed to run before failing.
             0 gives unlimited time, defaults to 0.
         :type timeout: unicode
@@ -282,6 +323,20 @@ class NodeScriptHandler(OperationsHandler):
 
         :param comment: A comment about what this change does.
         :type comment: unicode
+
+        :param for_hardware: A list of modalias, PCI IDs, and/or USB IDs the
+            script will automatically run on. Must start with modalias:, pci:,
+            or usb:.
+        :type for_hardware: unicode
+
+        :param may_reboot: Whether or not the script may reboot the system
+            while running.
+        :type may_reboot: boolean
+
+        :param recommission: Whether builtin commissioning scripts should be
+            rerun after successfully running this scripts.
+        :type recommission: boolean
+
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))

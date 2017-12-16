@@ -270,6 +270,9 @@ class TestScriptAPI(APITestCase.ForUser):
             'packages': script.packages,
             'timeout': str(script.timeout),
             'destructive': script.destructive,
+            'for_hardware': script.for_hardware,
+            'may_reboot': script.may_reboot,
+            'recommission': script.recommission,
             'default': script.default,
             'resource_uri': '/api/2.0/scripts/%s' % script.name,
             }, parsed_result)
@@ -313,6 +316,9 @@ class TestScriptAPI(APITestCase.ForUser):
             'packages': script.packages,
             'timeout': str(script.timeout),
             'destructive': script.destructive,
+            'for_hardware': script.for_hardware,
+            'may_reboot': script.may_reboot,
+            'recommission': script.recommission,
             'default': script.default,
             'resource_uri': '/api/2.0/scripts/%s' % script.name,
             }, parsed_result)
