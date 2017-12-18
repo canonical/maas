@@ -16,6 +16,7 @@ from itertools import groupby
 from operator import itemgetter
 from typing import (
     Iterable,
+    Optional,
     Union,
 )
 
@@ -395,7 +396,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 @typed
 def make_subnet_config(
-        rack_controller, subnet, default_dns_servers: list,
+        rack_controller, subnet, default_dns_servers: Optional[list],
         ntp_servers: Union[list, dict], default_domain, search_list=None,
         failover_peer=None, subnets_dhcp_snippets: list=None):
     """Return DHCP subnet configuration dict for a rack interface.

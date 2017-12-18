@@ -1534,11 +1534,11 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = MachineHandler(user, {})
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_ScriptResult(
             script_set=factory.make_ScriptSet(node=node),
             status=SCRIPT_STATUS.PASSED)
+        handler = MachineHandler(user, {})
         factory.make_PhysicalBlockDevice(node)
         self.assertNotIn(node.id, handler._script_results.keys())
         self.assertItemsEqual(
