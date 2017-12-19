@@ -933,13 +933,14 @@ class MAASScriptsHandler(OperationsHandler):
                 continue
 
             path = os.path.join(prefix, script_result.name)
+            md_item = {}
             if script_result.script is None:
                 # Check if its a builtin in commissioning script and pull the
                 # data from the source.
                 if script_result.name in NODE_INFO_SCRIPTS:
                     script = NODE_INFO_SCRIPTS[script_result.name]
                     add_file_to_tar(tar, path, script['content'], mtime)
-                    meta_data.append({
+                    md_item = {
                         'name': script_result.name,
                         'path': path,
                         'script_result_id': script_result.id,
@@ -949,7 +950,8 @@ class MAASScriptsHandler(OperationsHandler):
                         'hardware_type': script.get(
                             'hardware_type', HARDWARE_TYPE.NODE),
                         'packages': script.get('packages', {}),
-                    })
+                        'for_hardware': script.get('for_hardware', []),
+                    }
                 else:
                     # Script was deleted by the user and it is not a builtin
                     # commissioning script. Don't expect a result.
@@ -958,7 +960,7 @@ class MAASScriptsHandler(OperationsHandler):
             else:
                 content = script_result.script.script.data.encode()
                 add_file_to_tar(tar, path, content, mtime)
-                meta_data.append({
+                md_item = {
                     'name': script_result.name,
                     'path': path,
                     'script_result_id': script_result.id,
@@ -968,7 +970,25 @@ class MAASScriptsHandler(OperationsHandler):
                     'hardware_type': script_result.script.hardware_type,
                     'parameters': script_result.parameters,
                     'packages': script_result.script.packages,
-                })
+                    'for_hardware': script_result.script.for_hardware,
+                }
+            if script_result.status == SCRIPT_STATUS.PENDING:
+                md_item['has_started'] = False
+            else:
+                md_item['has_started'] = True
+                # If the script has already started send any results MAAS has
+                # received. The script runner will append these files and send
+                # them back when done.
+                out_path = os.path.join('out', '%s.%s' % (
+                    script_result.name, script_result.id))
+                add_file_to_tar(tar, out_path, script_result.output, mtime)
+                add_file_to_tar(
+                    tar, '%s.out' % out_path, script_result.stdout, mtime)
+                add_file_to_tar(
+                    tar, '%s.err' % out_path, script_result.stderr, mtime)
+                add_file_to_tar(
+                    tar, '%s.yaml' % out_path, script_result.result, mtime)
+            meta_data.append(md_item)
         return meta_data
 
     def read(self, request, version, mac=None):

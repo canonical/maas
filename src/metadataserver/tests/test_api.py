@@ -85,6 +85,7 @@ from metadataserver.api import (
 )
 from metadataserver.enum import (
     SCRIPT_STATUS,
+    RESULT_TYPE,
     HARDWARE_TYPE,
     SCRIPT_PARALLEL,
     SCRIPT_STATUS_CHOICES,
@@ -1121,11 +1122,62 @@ class TestMAASScripts(MAASServerTestCase):
         self.assertEqual(0o755, member.mode)
         self.assertEqual(content, tar.extractfile(path).read())
 
+    def validate_scripts(
+            self, script_set, path_name, tar, start_time, end_time):
+        meta_data = []
+        for script_result in script_set:
+            script_path = os.path.join(path_name, script_result.name)
+            md_item = {
+                'name': script_result.name,
+                'path': script_path,
+                'script_result_id': script_result.id,
+            }
+            if script_result.script is None:
+                script = NODE_INFO_SCRIPTS[script_result.name]
+                content = script['content']
+                md_item['timeout_seconds'] = script['timeout'].seconds
+                md_item['parallel'] = script.get(
+                    'parallel', SCRIPT_PARALLEL.DISABLED)
+                md_item['hardware_type'] = script.get(
+                    'hardware_type', HARDWARE_TYPE.NODE)
+                md_item['packages'] = script.get('packages', {})
+                md_item['for_hardware'] = script.get('for_hardware', [])
+            else:
+                content = script_result.script.script.data.encode()
+                md_item['script_version_id'] = script_result.script.script.id
+                md_item['timeout_seconds'] = (
+                    script_result.script.timeout.seconds)
+                md_item['parallel'] = script_result.script.parallel
+                md_item['hardware_type'] = script_result.script.hardware_type
+                md_item['parameters'] = script_result.parameters
+                md_item['packages'] = script_result.script.packages
+                md_item['for_hardware'] = script_result.script.for_hardware
+            if script_result.status == SCRIPT_STATUS.PENDING:
+                md_item['has_started'] = False
+            else:
+                md_item['has_started'] = True
+                out_path = os.path.join('out', '%s.%s' % (
+                    script_result.name, script_result.id))
+                self.extract_and_validate_file(
+                    tar, out_path, start_time, end_time, script_result.output)
+                self.extract_and_validate_file(
+                    tar, '%s.out' % out_path, start_time, end_time,
+                    script_result.stdout)
+                self.extract_and_validate_file(
+                    tar, '%s.err' % out_path, start_time, end_time,
+                    script_result.stderr)
+                self.extract_and_validate_file(
+                    tar, '%s.yaml' % out_path, start_time, end_time,
+                    script_result.result)
+            self.extract_and_validate_file(
+                tar, script_path, start_time, end_time, content)
+            meta_data.append(md_item)
+        return meta_data
+
     def test__returns_all_scripts_when_commissioning(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
-
         response = make_node_client(node=node).get(
             reverse('maas-scripts', args=['latest']))
         self.assertEqual(
@@ -1141,53 +1193,12 @@ class TestMAASScripts(MAASServerTestCase):
             node.current_testing_script_set.scriptresult_set.count() + 1,
             len(tar.getmembers()))
 
-        commissioning_meta_data = []
-        for script_result in node.current_commissioning_script_set:
-            path = os.path.join('commissioning', script_result.name)
-            md_item = {
-                'name': script_result.name,
-                'path': path,
-                'script_result_id': script_result.id,
-            }
-            if script_result.script is None:
-                script = NODE_INFO_SCRIPTS[script_result.name]
-                content = script['content']
-                md_item['timeout_seconds'] = script['timeout'].seconds
-                md_item['parallel'] = script.get(
-                    'parallel', SCRIPT_PARALLEL.DISABLED)
-                md_item['hardware_type'] = script.get(
-                    'hardware_type', HARDWARE_TYPE.NODE)
-                md_item['packages'] = script.get('packages', {})
-            else:
-                content = script_result.script.script.data.encode()
-                md_item['script_version_id'] = script_result.script.script.id
-                md_item['timeout_seconds'] = (
-                    script_result.script.timeout.seconds)
-                md_item['parallel'] = script_result.script.parallel
-                md_item['hardware_type'] = script_result.script.hardware_type
-                md_item['parameters'] = script_result.parameters
-                md_item['packages'] = script_result.script.packages
-            self.extract_and_validate_file(
-                tar, path, start_time, end_time, content)
-            commissioning_meta_data.append(md_item)
-
-        testing_meta_data = []
-        for script_result in node.current_testing_script_set:
-            path = os.path.join('testing', script_result.name)
-            self.extract_and_validate_file(
-                tar, path, start_time, end_time,
-                script_result.script.script.data.encode())
-            testing_meta_data.append({
-                'name': script_result.name,
-                'path': path,
-                'script_result_id': script_result.id,
-                'script_version_id': script_result.script.script.id,
-                'timeout_seconds': script_result.script.timeout.seconds,
-                'parallel': script_result.script.parallel,
-                'hardware_type': script_result.script.hardware_type,
-                'parameters': script_result.parameters,
-                'packages': script_result.script.packages,
-            })
+        commissioning_meta_data = self.validate_scripts(
+            node.current_commissioning_script_set, 'commissioning',
+            tar, start_time, end_time)
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set, 'testing',
+            tar, start_time, end_time)
 
         meta_data = json.loads(
             tar.extractfile('index.json').read().decode('utf-8'))
@@ -1220,23 +1231,9 @@ class TestMAASScripts(MAASServerTestCase):
             node.current_testing_script_set.scriptresult_set.count() + 1,
             len(tar.getmembers()))
 
-        testing_meta_data = []
-        for script_result in node.current_testing_script_set:
-            path = os.path.join('testing', script_result.name)
-            self.extract_and_validate_file(
-                tar, path, start_time, end_time,
-                script_result.script.script.data.encode())
-            testing_meta_data.append({
-                'name': script_result.name,
-                'path': path,
-                'script_result_id': script_result.id,
-                'script_version_id': script_result.script.script.id,
-                'timeout_seconds': script_result.script.timeout.seconds,
-                'parallel': script_result.script.parallel,
-                'hardware_type': script_result.script.hardware_type,
-                'parameters': script_result.parameters,
-                'packages': script_result.script.packages,
-            })
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set, 'testing',
+            tar, start_time, end_time)
 
         meta_data = json.loads(
             tar.extractfile('index.json').read().decode('utf-8'))
@@ -1302,58 +1299,18 @@ class TestMAASScripts(MAASServerTestCase):
             node.current_testing_script_set.scriptresult_set.count() - 1,
             len(tar.getmembers()))
 
-        commissioning_meta_data = []
-        for script_result in node.current_commissioning_script_set:
-            if script_result.id == already_run_commissioning_script.id:
-                continue
-            path = os.path.join('commissioning', script_result.name)
-            md_item = {
-                'name': script_result.name,
-                'path': path,
-                'script_result_id': script_result.id,
-            }
-            if script_result.script is None:
-                script = NODE_INFO_SCRIPTS[script_result.name]
-                content = script['content']
-                md_item['timeout_seconds'] = script['timeout'].seconds
-                md_item['parallel'] = script.get(
-                    'parallel', SCRIPT_PARALLEL.DISABLED)
-                md_item['hardware_type'] = script.get(
-                    'hardware_type', HARDWARE_TYPE.NODE)
-                md_item['packages'] = script.get('packages', {})
-            else:
-                content = script_result.script.script.data.encode()
-                md_item['script_version_id'] = script_result.script.script.id
-                md_item['timeout_seconds'] = (
-                    script_result.script.timeout.seconds)
-                md_item['parallel'] = script_result.script.parallel
-                md_item['hardware_type'] = script_result.script.hardware_type
-                md_item['parameters'] = script_result.parameters
-                md_item['packages'] = script_result.script.packages
-            self.extract_and_validate_file(
-                tar, path, start_time, end_time, content)
-            commissioning_meta_data.append(md_item)
-
-        testing_meta_data = []
-        for script_result in node.current_testing_script_set:
-            if script_result.id == already_run_testing_script.id:
-                continue
-            path = os.path.join('testing', script_result.name)
-            md_item = {
-                'name': script_result.name,
-                'path': path,
-                'script_result_id': script_result.id,
-                'script_version_id': script_result.script.script.id,
-                'timeout_seconds': script_result.script.timeout.seconds,
-                'parallel': script_result.script.parallel,
-                'hardware_type': script_result.script.hardware_type,
-                'parameters': script_result.parameters,
-                'packages': script_result.script.packages,
-            }
-            content = script_result.script.script.data.encode()
-            self.extract_and_validate_file(
-                tar, path, start_time, end_time, content)
-            testing_meta_data.append(md_item)
+        commissioning_meta_data = self.validate_scripts(
+            [
+                script_result
+                for script_result in node.current_commissioning_script_set
+                if script_result.id != already_run_commissioning_script.id
+            ], 'commissioning', tar, start_time, end_time)
+        testing_meta_data = self.validate_scripts(
+            [
+                script_result
+                for script_result in node.current_testing_script_set
+                if script_result.id != already_run_testing_script.id
+            ], 'testing', tar, start_time, end_time)
 
         meta_data = json.loads(
             tar.extractfile('index.json').read().decode('utf-8'))
@@ -1362,6 +1319,41 @@ class TestMAASScripts(MAASServerTestCase):
                 'commissioning_scripts': sorted(
                     commissioning_meta_data, key=itemgetter(
                         'name', 'script_result_id')),
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
+    def test__returns_output_when_has_started(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        script_set = factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING)
+        node.current_testing_script_set = script_set
+        node.save()
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING)
+
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # index.json + one script + combined, stdout, stderr, and result
+        # output.
+        self.assertEquals(6, len(tar.getmembers()))
+
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set, 'testing',
+            tar, start_time, end_time)
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
                 'testing_scripts': sorted(
                     testing_meta_data, key=itemgetter(
                         'name', 'script_result_id')),

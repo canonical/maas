@@ -133,6 +133,7 @@ from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
 from metadataserver.enum import (
     HARDWARE_TYPE_CHOICES,
+    RESULT_TYPE,
     RESULT_TYPE_CHOICES,
     SCRIPT_PARALLEL_CHOICES,
     SCRIPT_STATUS,
@@ -779,15 +780,17 @@ class Factory(maastesting.factory.Factory):
         if script_set is None:
             script_set = self.make_ScriptSet()
         if script is None and script_name is None:
-            script = self.make_Script()
+            if script_set.result_type == RESULT_TYPE.COMMISSIONING:
+                script = self.make_Script(
+                    script_type=SCRIPT_TYPE.COMMISSIONING)
+            else:
+                script = self.make_Script(script_type=SCRIPT_TYPE.TESTING)
         if script is not None:
             script_name = script.name
         if status is None:
             status = self.pick_choice(SCRIPT_STATUS_CHOICES)
-        if status in (
-                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                SCRIPT_STATUS.RUNNING):
-            # Pending and running script results shouldn't have results stored.
+        if status == SCRIPT_STATUS.PENDING:
+            # Pending results shouldn't have results stored.
             if output is None:
                 output = b''
             if stdout is None:
@@ -796,8 +799,6 @@ class Factory(maastesting.factory.Factory):
                 stderr = b''
             if result is None:
                 result = b''
-            if status == SCRIPT_STATUS.RUNNING and started is None:
-                started = datetime.now()
         else:
             if exit_status is None:
                 exit_status = random.randint(0, 255)
@@ -816,7 +817,8 @@ class Factory(maastesting.factory.Factory):
             if started is None:
                 started = datetime.now() - timedelta(
                     seconds=random.randint(1, 500))
-            if ended is None:
+            if ended is None and status not in (
+                    SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.INSTALLING):
                 ended = datetime.now()
         return ScriptResult.objects.create(
             script_set=script_set, script=script,
