@@ -1248,9 +1248,12 @@ class TestMAASScripts(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
 
-        script_result = (
+        bad_script_result = (
             node.current_testing_script_set.scriptresult_set.first())
-        script_result.script.delete()
+        bad_script_result.script.delete()
+        script_result = factory.make_ScriptResult(
+            script_set=node.current_testing_script_set,
+            status=SCRIPT_STATUS.PENDING)
 
         response = make_node_client(node=node).get(
             reverse('maas-scripts', args=['latest']))
@@ -1260,14 +1263,27 @@ class TestMAASScripts(MAASServerTestCase):
             % (response.status_code, response.content))
         self.assertEquals('application/x-tar', response['Content-Type'])
         tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
-        self.assertEquals(1, len(tar.getmembers()))
+        self.assertEquals(2, len(tar.getmembers()))
 
         self.assertEquals(
-            0, node.current_testing_script_set.scriptresult_set.count())
+            1, node.current_testing_script_set.scriptresult_set.count())
 
         meta_data = json.loads(
             tar.extractfile('index.json').read().decode('utf-8'))
-        self.assertDictEqual({'1.0': {}}, meta_data)
+        self.assertDictEqual(
+            {'1.0': {'testing_scripts': [{
+                'name': script_result.name,
+                'path': os.path.join('testing', script_result.name),
+                'script_result_id': script_result.id,
+                'script_version_id': script_result.script.script.id,
+                'timeout_seconds': script_result.script.timeout.seconds,
+                'parallel': script_result.script.parallel,
+                'hardware_type': script_result.script.hardware_type,
+                'parameters': script_result.parameters,
+                'packages': script_result.script.packages,
+                'for_hardware': script_result.script.for_hardware,
+                'has_started': False,
+                }]}}, meta_data)
 
     def test__only_returns_scripts_which_havnt_been_run(self):
         start_time = floor(time.time())
@@ -1358,6 +1374,15 @@ class TestMAASScripts(MAASServerTestCase):
                     testing_meta_data, key=itemgetter(
                         'name', 'script_result_id')),
             }}, meta_data)
+
+    def test__returns_no_content_when_no_scripts(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
 
 
 class TestCommissioningAPI(MAASServerTestCase):

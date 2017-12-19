@@ -1024,6 +1024,9 @@ class MAASScriptsHandler(OperationsHandler):
                 tar_meta_data['testing_scripts'] = sorted(
                     meta_data, key=itemgetter('name', 'script_result_id'))
 
+            if not tar_meta_data:
+                return HttpResponse(status=int(http.client.NO_CONTENT))
+
             add_file_to_tar(
                 tar, 'index.json', json.dumps({'1.0': tar_meta_data}).encode(),
                 mtime, 0o644)
