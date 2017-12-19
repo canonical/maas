@@ -40,6 +40,7 @@ from maasserver.models import (
     LargeFile,
     Node,
 )
+from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -64,7 +65,6 @@ from provisioningserver.utils.twisted import (
     callOut,
     FOREVER,
 )
-from provisioningserver.utils.version import get_maas_version_user_agent
 from twisted.internet.defer import Deferred
 
 
@@ -794,7 +794,7 @@ class BootResourceHandler(Handler):
             try:
                 descriptions = download_all_image_descriptions(
                     [source],
-                    user_agent=get_maas_version_user_agent())
+                    user_agent=get_maas_user_agent())
             except Exception as error:
                 raise HandlerError(str(error))
         items = list(descriptions.items())
