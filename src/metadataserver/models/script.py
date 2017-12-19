@@ -8,6 +8,7 @@ __all__ = [
     "translate_script_type",
 ]
 
+from collections import namedtuple
 import datetime
 
 from django.contrib.postgres.fields import ArrayField
@@ -35,6 +36,13 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
+
+
+ForHardware = namedtuple('ForHardware', (
+    'modaliases',
+    'pci',
+    'usb',
+))
 
 
 def translate_script_type(script_type):
@@ -173,6 +181,25 @@ class Script(CleanSave, TimestampedModel):
     # Only applicable to commissioning scripts. When true reruns commissioning
     # scripts after receiving the result.
     recommission = BooleanField(default=False)
+
+    @property
+    def ForHardware(self):
+        """Parses the for_hardware field and returns a ForHardware tuple."""
+        modaliases = []
+        pci = []
+        usb = []
+        for descriptor in self.for_hardware:
+            try:
+                hwtype, value = descriptor.split(':', 1)
+            except ValueError:
+                continue
+            if hwtype == "modalias":
+                modaliases.append(value)
+            elif hwtype == "pci":
+                pci.append(value)
+            elif hwtype == "usb":
+                usb.append(value)
+        return ForHardware(modaliases, pci, usb)
 
     @property
     def script_type_name(self):

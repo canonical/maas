@@ -726,7 +726,9 @@ class Factory(maastesting.factory.Factory):
             self, name=None, title=None, description=None, tags=None,
             script_type=None, hardware_type=None, parallel=None, timeout=None,
             destructive=False, default=False, script=None, may_reboot=None,
-            recommission=None, **kwargs):
+            recommission=None, for_hardware=None, **kwargs):
+        if for_hardware is None:
+            for_hardware = []
         if name is None:
             name = self.make_name('name')
         if title is None:
@@ -757,7 +759,7 @@ class Factory(maastesting.factory.Factory):
             script_type=script_type, hardware_type=hardware_type,
             parallel=parallel, timeout=timeout, destructive=destructive,
             default=default, script=script, may_reboot=may_reboot,
-            recommission=recommission, **kwargs)
+            recommission=recommission, for_hardware=for_hardware, **kwargs)
 
     def make_ScriptSet(self, last_ping=None, node=None, result_type=None):
         if last_ping is None:

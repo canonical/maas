@@ -16,6 +16,9 @@
       <excludeFolder url="file://$MODULE_DIR$/coverage" />
       <excludeFolder url="file://$MODULE_DIR$/local" />
       <excludeFolder url="file://$MODULE_DIR$/logs" />
+      <excludeFolder url="file://$MODULE_DIR$/stage" />
+      <excludeFolder url="file://$MODULE_DIR$/prime" />
+      <excludeFolder url="file://$MODULE_DIR$/parts" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.5.1+ (/usr/bin/python3)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

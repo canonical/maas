@@ -24,6 +24,7 @@ import random
 import re
 import socket
 from socket import gethostname
+from typing import List
 from urllib.parse import urlparse
 import uuid
 
@@ -188,7 +189,10 @@ from provisioningserver.refresh import (
     get_sys_info,
     refresh,
 )
-from provisioningserver.refresh.node_info_scripts import IPADDR_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    IPADDR_OUTPUT_NAME,
+    LIST_MODALIASES_OUTPUT_NAME,
+)
 from provisioningserver.rpc.cluster import (
     AddChassis,
     DisableAndShutoffRackd,
@@ -4267,6 +4271,21 @@ class Node(CleanSave, TimestampedModel):
         """Returns a QuerySet of the latest installation results."""
         return self.get_latest_script_results.filter(
             script_set__result_type=RESULT_TYPE.INSTALLATION)
+
+    @property
+    def modaliases(self) -> List[str]:
+        """Return a list of modaliases from the node."""
+        script_set = self.current_commissioning_script_set
+        if script_set is None:
+            return []
+
+        script_result = script_set.find_script_result(
+            script_name=LIST_MODALIASES_OUTPUT_NAME)
+        if (script_result is None or
+                script_result.status != SCRIPT_STATUS.PASSED):
+            return []
+        else:
+            return script_result.stdout.decode('utf-8').splitlines()
 
 
 # Piston serializes objects based on the object class.

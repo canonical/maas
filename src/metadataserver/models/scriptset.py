@@ -6,6 +6,7 @@ __all__ = [
     "get_status_from_qs",
     "translate_result_type",
 ]
+
 from datetime import timedelta
 
 from django.core.exceptions import (
@@ -13,6 +14,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db.models import (
+    BooleanField,
     CASCADE,
     CharField,
     Count,
@@ -22,6 +24,10 @@ from django.db.models import (
     Manager,
     Model,
     Q,
+)
+from django.db.models.expressions import (
+    Case,
+    When,
 )
 from django.db.models.query import QuerySet
 from maasserver.enum import (
@@ -40,6 +46,7 @@ from metadataserver import (
     DefaultMeta,
     logger,
 )
+from metadataserver.builtin_scripts.hooks import filter_modaliases
 from metadataserver.enum import (
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
@@ -105,7 +112,21 @@ def translate_result_type(result_type):
 
 class ScriptSetManager(Manager):
 
-    def create_commissioning_script_set(self, node, scripts=[], input={}):
+    @staticmethod
+    def _add_pending_script(script_set, script, node, input):
+        # Avoid circular dependencies.
+        from metadataserver.models import ScriptResult
+        form = ParametersForm(
+            data=input.get(script.name, {}), script=script, node=node)
+        if not form.is_valid():
+            script_set.delete()
+            raise ValidationError(form.errors)
+        for param in form.cleaned_data['input']:
+            ScriptResult.objects.create(
+                script_set=script_set, status=SCRIPT_STATUS.PENDING,
+                script=script, script_name=script.name, parameters=param)
+
+    def create_commissioning_script_set(self, node, scripts=None, input=None):
         """Create a new commissioning ScriptSet with ScriptResults
 
         ScriptResults will be created for all builtin commissioning scripts.
@@ -113,6 +134,12 @@ class ScriptSetManager(Manager):
         ScriptResults for. If None all user scripts will be assumed. Scripts
         may also have paramaters passed to them.
         """
+        if scripts is None:
+            scripts = []
+
+        if input is None:
+            input = {}
+
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
 
@@ -134,42 +161,67 @@ class ScriptSetManager(Manager):
         if node.is_controller:
             return script_set
 
-        if scripts == []:
-            qs = Script.objects.filter(
-                script_type=SCRIPT_TYPE.COMMISSIONING)
-        else:
-            ids = [
-                int(id)
-                for id in scripts
-                if isinstance(id, int) or id.isdigit()
+        all_commissioning_scripts = Script.objects.filter(
+            script_type=SCRIPT_TYPE.COMMISSIONING)
+
+        add_specified_scripts = len(scripts) > 0
+
+        if add_specified_scripts:
+            script_ids = [
+                int(potential_script_id)
+                for potential_script_id in scripts
+                if (isinstance(potential_script_id, int) or
+                    potential_script_id.isdigit())
             ]
-            qs = Script.objects.filter(
-                Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
-                script_type=SCRIPT_TYPE.COMMISSIONING)
-        for script in qs:
-            form = ParametersForm(
-                data=input.get(script.name, {}), script=script, node=node)
-            if not form.is_valid():
-                script_set.delete()
-                raise ValidationError(form.errors)
-            for param in form.cleaned_data['input']:
-                ScriptResult.objects.create(
-                    script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                    script=script, script_name=script.name, parameters=param)
+            all_commissioning_scripts = all_commissioning_scripts.annotate(
+                matches_tags=Case(
+                    When(tags__overlap=scripts, then=True),
+                    default=False,
+                    output_field=BooleanField())
+            )
+
+        matching_scripts = set()
+        modaliases = node.modaliases
+
+        for script in all_commissioning_scripts:
+            if len(script.for_hardware) > 0:
+                if node.is_controller and (
+                        script.may_reboot or script.recommission):
+                    # Don't run scripts on controllers that might reboot, or
+                    # reconfigure hardware such that it would require
+                    # recommissioning.
+                    continue
+                # Found a script with a for_hardware specification. This only
+                # applies to nodes with matching hardware.
+                matches = filter_modaliases(modaliases, *script.ForHardware)
+                if len(matches) == 0:
+                    # Hardware doesn't match, so don't add this script to
+                    # the set of pending scripts.
+                    continue
+                matching_scripts.add(script)
+            elif not add_specified_scripts:
+                matching_scripts.add(script)
+            elif (script.matches_tags or
+                    script.id in script_ids or
+                    script.name in scripts):
+                matching_scripts.add(script)
+
+        for script in matching_scripts:
+            self._add_pending_script(script_set, script, node, input)
 
         return script_set
 
-    def create_testing_script_set(self, node, scripts=[], input={}):
+    def create_testing_script_set(self, node, scripts=None, input=None):
         """Create a new testing ScriptSet with ScriptResults.
 
         Optionally a list of user scripts and tags can be given to create
         ScriptResults for. If None all Scripts tagged 'commissioning' will be
         assumed. Script may also have parameters passed to them."""
-        # Avoid circular dependencies.
-        from metadataserver.models import ScriptResult
+        if scripts is None or len(scripts) == 0:
+            scripts = ['commissioning']
 
-        if scripts == []:
-            scripts.append('commissioning')
+        if input is None:
+            input = {}
 
         ids = [
             int(id)
@@ -191,15 +243,7 @@ class ScriptSetManager(Manager):
             power_state_before_transition=node.power_state)
 
         for script in qs:
-            form = ParametersForm(
-                data=input.get(script.name, {}), script=script, node=node)
-            if not form.is_valid():
-                script_set.delete()
-                raise ValidationError(form.errors)
-            for param in form.cleaned_data['input']:
-                ScriptResult.objects.create(
-                    script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                    script=script, script_name=script.name, parameters=param)
+            self._add_pending_script(script_set, script, node, input)
 
         self._clean_old(node, RESULT_TYPE.TESTING, script_set)
         return script_set

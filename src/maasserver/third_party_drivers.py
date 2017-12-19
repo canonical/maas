@@ -22,19 +22,13 @@ __all__ = [
 
 from copy import deepcopy
 import fnmatch
-from typing import List
 
 from formencode import ForEach
 from formencode.validators import String
-from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.config import (
     ConfigBase,
     ConfigMeta,
 )
-from provisioningserver.refresh.node_info_scripts import (
-    LIST_MODALIASES_OUTPUT_NAME,
-)
-from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
     ByteString,
     Schema,
@@ -120,21 +114,6 @@ class DriversConfig(ConfigBase, Schema, metaclass=DriversConfigMeta):
     drivers = ForEach(ConfigDriver)
 
 
-@typed
-def node_modaliases(node) -> List[str]:
-    """Return a list of modaliases from the node."""
-    script_set = node.current_commissioning_script_set
-    if script_set is None:
-        return []
-
-    script_result = script_set.find_script_result(
-        script_name=LIST_MODALIASES_OUTPUT_NAME)
-    if script_result is None or script_result.status != SCRIPT_STATUS.PASSED:
-        return []
-    else:
-        return script_result.stdout.decode('utf-8').splitlines()
-
-
 def match_aliases_to_driver(detected_aliases, drivers):
     """Find the first driver that matches any supplied modalias."""
     for driver in drivers:
@@ -161,7 +140,7 @@ def get_third_party_driver(node):
     Use the node's modaliases strings to determine if a third party
     driver is required.
     """
-    detected_aliases = node_modaliases(node)
+    detected_aliases = node.modaliases
 
     third_party_drivers_config = DriversConfig.load_from_cache()
     third_party_drivers = third_party_drivers_config['drivers']

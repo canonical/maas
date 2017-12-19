@@ -14,7 +14,6 @@ from maasserver.third_party_drivers import (
     DriversConfig,
     get_third_party_driver,
     match_aliases_to_driver,
-    node_modaliases,
     populate_kernel_opts,
 )
 from maastesting import root
@@ -33,12 +32,12 @@ class TestNodeModaliases(MAASServerTestCase):
             script_name=LIST_MODALIASES_OUTPUT_NAME)
         script_result.store_result(exit_status=0, stdout=test_data)
 
-        aliases = node_modaliases(node)
+        aliases = node.modaliases
         self.assertEqual(['hulla', 'baloo'], aliases)
 
     def test_survives_no_commissioning_data(self):
         node = factory.make_Node()
-        aliases = node_modaliases(node)
+        aliases = node.modaliases
         self.assertEqual([], aliases)
 
     def test_only_returns_data_from_passed_results(self):
@@ -49,7 +48,7 @@ class TestNodeModaliases(MAASServerTestCase):
             script_name=LIST_MODALIASES_OUTPUT_NAME)
         script_result.store_result(exit_status=1, stdout=test_data)
 
-        aliases = node_modaliases(node)
+        aliases = node.modaliases
         self.assertEqual([], aliases)
 
 
