@@ -27,6 +27,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import (
     get_one,
@@ -53,7 +54,6 @@ from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
 )
-from provisioningserver.utils.version import get_maas_version_user_agent
 from testtools.matchers import (
     ContainsAll,
     HasLength,
@@ -1038,7 +1038,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             mock_download,
             MockCalledOnceWith(
                 [expected_source],
-                user_agent=get_maas_version_user_agent()))
+                user_agent=get_maas_user_agent()))
 
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()

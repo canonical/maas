@@ -83,7 +83,10 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils import absolute_reverse
+from maasserver.utils import (
+    absolute_reverse,
+    get_maas_user_agent,
+)
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_one,
@@ -114,7 +117,6 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     DeferredValue,
 )
-from provisioningserver.utils.version import get_maas_version_user_agent
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -1561,7 +1563,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.assertThat(
             mock_UrlMirrorReader,
             MockCalledOnceWith(
-                ANY, policy=ANY, user_agent=get_maas_version_user_agent()))
+                ANY, policy=ANY, user_agent=get_maas_user_agent()))
 
     def test_download_boot_resources_fallsback_to_no_user_agent(self):
         self.patch(bootresources.BootResourceRepoWriter, 'sync')
@@ -1579,7 +1581,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             MockCallsMatch(
                 call(
                     ANY, policy=ANY,
-                    user_agent=get_maas_version_user_agent()),
+                    user_agent=get_maas_user_agent()),
                 call(
                     ANY, policy=ANY)))
 
@@ -1735,7 +1737,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.expectThat(
             image_descriptions,
             MockCalledOnceWith(
-                [sentinel.source], get_maas_version_user_agent()))
+                [sentinel.source], get_maas_user_agent()))
         self.expectThat(
             map_products,
             MockCalledOnceWith(descriptions))
