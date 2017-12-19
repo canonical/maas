@@ -6,16 +6,27 @@
 __all__ = [
     'admin_method',
     'AnonymousOperationsHandler',
+    'ModelCollectionOperationsHandler',
+    'ModelOperationsHandler',
     'operation',
     'OperationsHandler',
     ]
 
+from abc import (
+    ABCMeta,
+    abstractproperty,
+)
 from functools import wraps
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from maasserver.api.doc import get_api_description_hash
-from maasserver.exceptions import MAASAPIBadRequest
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIValidationError,
+)
+from maasserver.utils.orm import get_one
 from piston3.authentication import NoAuthentication
 from piston3.emitters import Emitter
 from piston3.handler import (
@@ -354,3 +365,108 @@ def method_fields_reserved_fields_patch(self, handler, fields):
     return ret
 
 Emitter.method_fields = method_fields_reserved_fields_patch
+
+
+class ModelOperationsHandlerType(OperationsHandlerType, ABCMeta):
+    """Metaclass for ModelOperationsHandler"""
+
+
+class ModelOperationsHandler(OperationsHandler,
+                             metaclass=ModelOperationsHandlerType):
+    """Manage API access for a model.
+
+    By default, the id is used as unique identifier to get instances. It can be
+    changed by setting `id_field` to the desired model field.
+
+    """
+
+    @abstractproperty
+    def model(self):
+        """Model class for database operations."""
+
+    id_field = 'id'  # can be overridden by subclasses
+
+    @abstractproperty
+    def model_form(self):
+        """A Form class used to validate data for the Model."""
+
+    @abstractproperty
+    def handler_url_name(cls):
+        """Name of the handler for the API."""
+
+    @classmethod
+    def resource_uri(cls, instance=None):
+        if instance:
+            id_value = getattr(instance, cls.id_field)
+        else:
+            id_value = cls.id_field
+        return (cls.handler_url_name, [id_value])
+
+    create = None   # create is handled by the collection class.
+
+    def read(self, request, **kwargs):
+        """GET request.  Return a single model instance."""
+        return self._get_instance_or_404(**kwargs)
+
+    @admin_method
+    def update(self, request, **kwargs):
+        """PUT request.  Update a model instance.
+
+        If the instance is not found, return 404.
+        """
+        instance = self._get_instance_or_404(**kwargs)
+        form = self.model_form(instance=instance, data=request.data)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        return form.save()
+
+    @admin_method
+    def delete(self, request, **kwargs):
+        """DELETE request.  Delete a resource pool."""
+        filters = {self.id_field: kwargs[self.id_field]}
+        instance = get_one(self.model.objects.filter(**filters))
+        if instance:
+            instance.delete()
+        return rc.DELETED
+
+    def _get_instance_or_404(self, **kwargs):
+        return get_object_or_404(self.model, **kwargs)
+
+
+class ModelCollectionOperationsHandler(OperationsHandler,
+                                       metaclass=ModelOperationsHandlerType):
+    """Manage API access for a model collection."""
+
+    @abstractproperty
+    def model(self):
+        """Model class for database operations."""
+
+    @abstractproperty
+    def model_form(self):
+        """A Form class used to validate data for the Model."""
+
+    @abstractproperty
+    def handler_url_name(cls):
+        """Name of the handler for the API."""
+
+    # Model field to use for collection ordering.
+    order_field = 'name'
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return (cls.handler_url_name, [])
+
+    @admin_method
+    def create(self, request):
+        """POST request.  Create a new instance of the model."""
+        form = self.model_form(request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    def read(self, request):
+        """GET request.  List all model instances ordered by name."""
+        return self.model.objects.all().order_by(self.order_field)
+
+    update = delete = None

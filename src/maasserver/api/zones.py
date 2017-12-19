@@ -6,19 +6,15 @@
 __all__ = [
     'ZoneHandler',
     'ZonesHandler',
-    ]
+]
 
-from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
-    admin_method,
     AnonymousOperationsHandler,
-    OperationsHandler,
+    ModelCollectionOperationsHandler,
+    ModelOperationsHandler,
 )
-from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
-from maasserver.utils.orm import get_one
-from piston3.utils import rc
 
 
 DISPLAYED_ZONE_FIELDS = (
@@ -35,7 +31,7 @@ class AnonZoneHandler(AnonymousOperationsHandler):
     fields = DISPLAYED_ZONE_FIELDS
 
 
-class ZoneHandler(OperationsHandler):
+class ZoneHandler(ModelOperationsHandler):
     """Manage a physical zone.
 
     Any node is in a physical zone, or "zone" for short.  The meaning of a
@@ -46,64 +42,46 @@ class ZoneHandler(OperationsHandler):
     This functionality is only available to administrators.  Other users can
     view physical zones, but not modify them.
     """
-    api_doc_section_name = "Zone"
-    model = Zone
-    fields = DISPLAYED_ZONE_FIELDS
 
-    # Creation happens on the ZonesHandler.
-    create = None
+    model = Zone
+    id_field = 'name'
+    fields = DISPLAYED_ZONE_FIELDS
+    model_form = ZoneForm
+    handler_url_name = 'zone_handler'
+    api_doc_section_name = 'Zone'
 
     def read(self, request, name):
         """GET request.  Return zone.
 
         Returns 404 if the zone is not found.
         """
-        return get_object_or_404(Zone, name=name)
+        return super().read(request, name=name)
 
-    @admin_method
     def update(self, request, name):
         """PUT request.  Update zone.
 
         Returns 404 if the zone is not found.
         """
-        zone = get_object_or_404(Zone, name=name)
-        form = ZoneForm(instance=zone, data=request.data)
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-        return form.save()
+        return super().update(request, name=name)
 
-    @admin_method
     def delete(self, request, name):
         """DELETE request.  Delete zone.
 
         Returns 404 if the zone is not found.
         Returns 204 if the zone is successfully deleted.
         """
-        zone = get_one(Zone.objects.filter(name=name))
-        if zone is not None:
-            zone.delete()
-        return rc.DELETED
-
-    @classmethod
-    def resource_uri(cls, zone=None):
-        # See the comment in NodeHandler.resource_uri.
-        if zone is None:
-            name = 'name'
-        else:
-            name = zone.name
-        return ('zone_handler', (name, ))
+        return super().delete(request, name=name)
 
 
-class ZonesHandler(OperationsHandler):
+class ZonesHandler(ModelCollectionOperationsHandler):
     """Manage physical zones."""
-    api_doc_section_name = "Zones"
-    update = delete = None
 
-    @classmethod
-    def resource_uri(cls, *args, **kwargs):
-        return ('zones_handler', [])
+    model = Zone
+    fields = DISPLAYED_ZONE_FIELDS
+    model_form = ZoneForm
+    handler_url_name = 'zones_handler'
+    api_doc_section_name = 'Zones'
 
-    @admin_method
     def create(self, request):
         """Create a new physical zone.
 
@@ -112,15 +90,11 @@ class ZonesHandler(OperationsHandler):
         :param description: Free-form description of the new zone.
         :type description: unicode
         """
-        form = ZoneForm(request.data)
-        if form.is_valid():
-            return form.save()
-        else:
-            raise MAASAPIValidationError(form.errors)
+        return super().create(request)
 
     def read(self, request):
         """List zones.
 
         Get a listing of all the physical zones.
         """
-        return Zone.objects.all().order_by('name')
+        return super().read(request)
