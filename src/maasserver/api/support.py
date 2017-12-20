@@ -438,8 +438,8 @@ class ModelCollectionOperationsHandler(OperationsHandler,
     """Manage API access for a model collection."""
 
     @abstractproperty
-    def model(self):
-        """Model class for database operations."""
+    def model_manager(self):
+        """Manager class for database operations."""
 
     @abstractproperty
     def model_form(self):
@@ -467,6 +467,6 @@ class ModelCollectionOperationsHandler(OperationsHandler,
 
     def read(self, request):
         """GET request.  List all model instances ordered by name."""
-        return self.model.objects.all().order_by(self.order_field)
+        return self.model_manager.all().order_by(self.order_field)
 
     update = delete = None

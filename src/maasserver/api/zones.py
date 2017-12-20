@@ -76,7 +76,7 @@ class ZoneHandler(ModelOperationsHandler):
 class ZonesHandler(ModelCollectionOperationsHandler):
     """Manage physical zones."""
 
-    model = Zone
+    model_manager = Zone.objects
     fields = DISPLAYED_ZONE_FIELDS
     model_form = ZoneForm
     handler_url_name = 'zones_handler'
