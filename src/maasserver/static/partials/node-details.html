@@ -33,8 +33,9 @@
 
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <p class="page-header__status" data-ng-if="!isController && !isDevice && !header.editing">
-                <span data-ng-if="node.locked" class="icon icon--locked"></span>
-                {$ node.status $} <span data-ng-if="node.locked">(Locked)</span>
+                <span data-ng-if="node.locked" class="icon icon--locked tooltip tooltip--bottom"
+                      aria-label="This machine is locked. You have to unlock it to perform any actions."></span>
+                {$ node.status $}
                 <span class="u-margin--left-small"><i class="icon icon--power-{$ getPowerStateClass() $} u-margin--right-tiny"></i>{$ getPowerStateText() $}</span>
                 <button class="page-header__status-check" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
             </p>
