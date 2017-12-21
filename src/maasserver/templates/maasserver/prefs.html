@@ -30,7 +30,7 @@
                     {% for token in user.userprofile.get_authorisation_tokens %}
                     <li class="bundle">
                         <a href="#" class="delete-link icon icon--delete right"></a>
-                        <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" />
+                        <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" readonly>
                     </li>
                     {% endfor %}
                 </ul>
