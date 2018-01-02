@@ -11,7 +11,7 @@ This utility runs agains the installed running MAAS from packaging, but you
 run it from a local MAAS branch on the installed region controller.
 
 How to use:
-    bzr branch lp:maas
+    git clone https://git.launchpad.net/maas
     cd maas
     make
     utilities/regiond-storm

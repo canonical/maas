@@ -65,31 +65,22 @@ def extract_version_subversion(version):
     return main_version, subversion
 
 
-def get_maas_branch_version():
-    """Return the Bazaar revision for this running MAAS.
+def get_maas_repo_hash():
+    """Return the Git hash for this running MAAS.
 
-    :return: An integer if MAAS is running from a Bazaar working tree, else
-        `None`. The revision number is only representative of the BRANCH, not
-        the working tree.
+    :return: A string if MAAS is running from a git working tree, else `None`.
     """
     try:
-        revno = shell.call_and_check(("bzr", "revno", __file__))
+        return shell.call_and_check(['git', 'rev-parse', 'HEAD']).decode(
+            'ascii').strip()
     except shell.ExternalProcessError:
-        # We may not be in a Bazaar working tree, or any manner of other
-        # errors. For the purposes of this function we don't care; simply say
-        # we don't know.
+        # We may not be in a git repository, or any manner of other errors. For
+        # the purposes of this function we don't care; simply say we don't
+        # know.
         return None
     except FileNotFoundError:
-        # Bazaar is not installed. We don't care and simply say we don't know.
+        # Git is not installed. We don't care and simply say we don't know.
         return None
-    else:
-        # `bzr revno` can return '???' when it can't find the working tree's
-        # current revision in the branch. Hopefully a fairly unlikely thing to
-        # happen, but we guard against it, and other ills, here.
-        try:
-            return int(revno)
-        except ValueError:
-            return None
 
 
 def get_maas_version_track_channel():
@@ -210,13 +201,13 @@ def get_maas_version_subversion():
         return extract_version_subversion(version)
     else:
         # Get the branch information
-        branch_version = get_maas_branch_version()
-        if branch_version is None:
-            # Not installed not in branch, then no way to identify. This should
-            # not happen, but just in case.
+        commit_hash = get_maas_repo_hash()
+        if commit_hash is None:
+            # Not installed or not in repo, then no way to identify. This
+            # should not happen, but just in case.
             return DEFAULT_VERSION, "unknown"
         else:
-            return "%s from source" % DEFAULT_VERSION, "bzr%d" % branch_version
+            return "%s from source" % DEFAULT_VERSION, "git+%s" % commit_hash
 
 
 @lru_cache(maxsize=1)

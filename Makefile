@@ -80,10 +80,7 @@ install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    purge $(shell sort -u required-packages/forbidden | sed '/^\#/d')
 
-.bzrignore: FORCE
-	LC_ALL=C.UTF-8 sort -f $@ --output $@
-
-.gitignore: .bzrignore
+.gitignore:
 	sed 's:^[.]/:/:' $^ > $@
 
 configure-buildout:
@@ -295,11 +292,11 @@ coverage-report: coverage/index.html
 coverage.xml: bin/coverage .coverage
 	bin/coverage xml -o $@
 
-coverage/index.html: revno = $(or $(shell bzr revno 2>/dev/null),???)
+coverage/index.html: revno = $(or $(shell git rev-parse HEAD 2>/dev/null),???)
 coverage/index.html: bin/coverage .coverage
 	@$(RM) -r $(@D)
 	bin/coverage html \
-	    --title "Coverage for MAAS r$(revno)" \
+	    --title "Coverage for MAAS rev $(revno)" \
 	    --directory $(@D)
 
 .coverage:

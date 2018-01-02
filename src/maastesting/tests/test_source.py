@@ -26,14 +26,13 @@ from testtools.content import (
 
 class TestSource(MAASTestCase):
 
-    @skipIf(not isdir(join(root, ".bzr")), "Not a branch.")
+    @skipIf(not isdir(join(root, ".git")), "Not a branch.")
     def test_no_conflict_markers(self):
         # Do not search for '=======' as a conflict marker since it's used in
         # docstrings, search for angle brackets instead. Express the conflict
         # markers as a regular expression so that this very file won't match.
         command = (
-            "bzr ls --kind=file --recursive --versioned --null | "
-            "xargs -r0 egrep -nI '[<]{7}|[>]{7}' -C 3")
+            "git ls-files -z | xargs -r0 egrep -snI '[<]{7}|[>]{7}' -C 3")
         process = Popen(
             command, shell=True, stdout=PIPE, stderr=STDOUT, cwd=root)
         output, _ = process.communicate()
@@ -44,12 +43,12 @@ class TestSource(MAASTestCase):
         # Don't check the process's exit code because xargs muddles things.
         # Checking the output should suffice.
 
-    @skipIf(not isdir(join(root, ".bzr")), "Not a branch.")
+    @skipIf(not isdir(join(root, ".git")), "Not a branch.")
     def test_no_yaml_load_or_dump(self):
         # PyYAML's load and dump functions are unsafe by default.
         command = (
-            "bzr ls --kind=file --recursive --versioned --null | "
-            "xargs -r0 egrep -nI '\\byaml[.](load|dump)\\b' -C 3")
+            "git ls-files -z | "
+            "xargs -r0 egrep -snI '\\byaml[.](load|dump)\\b' -C 3")
         process = Popen(
             command, shell=True, stdout=PIPE, stderr=STDOUT, cwd=root)
         output, _ = process.communicate()

@@ -291,29 +291,22 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 
 # Gather information about the branch and the build date.
 try:
-    bzr_last_revision_number = check_output(['bzr', 'revno'])
-    bzr_last_revision_date = check_output(['bzr', 'version-info', '--template={date}', '--custom'])
-    bzr_build_date = check_output(['bzr', 'version-info', '--template={build_date}', '--custom'])
+    revision_number = check_output(
+        ['git', 'log', '-1', '--pretty=%H', 'HEAD']).decode('ascii')
+    revision_date = check_output(
+        ['git', 'log', '-1', '--pretty=%ai', 'HEAD']).decode('ascii')
 except CalledProcessError:
-    # This is not a Bazaar branch.
-    bzr_last_revision_number = 'unknown'
-    bzr_last_revision_date = (
+    # This is not a repository branch.
+    revision_number = 'unknown'
+    revision_date = (
         datetime.utcnow().replace(tzinfo=UTC)
         .strftime('+%Y-%m-%d %H:%M:%S %z'))
-    bzr_build_date = bzr_last_revision_date
-else:
-    # Output from check_output() is bytes; decode to str.
-    bzr_last_revision_number = bzr_last_revision_number.decode("ascii")
-    bzr_last_revision_date = bzr_last_revision_date.decode("ascii")
-    bzr_build_date = bzr_build_date.decode("ascii")
-
 
 # Populate html_context with the variables used in the templates.
 html_context = {
     'add_version_switcher': 'true' if add_version_switcher else 'false',
     'versions_json_path': '/'.join(['', doc_prefix, versions_path]),
     'doc_prefix': doc_prefix,
-    'bzr_last_revision_date': bzr_last_revision_date,
-    'bzr_last_revision_number': bzr_last_revision_number,
-    'bzr_build_date': bzr_build_date,
+    'revision_number': revision_number,
+    'revision_date': revision_date
 }

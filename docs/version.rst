@@ -12,8 +12,8 @@ When programmatically probing a MAAS installation, use only the
 other than informational purposes. It's transferred as a JSON document::
 
     {
-      "subversion": "bzr4001",
       "version": "1.8.0",
+      "subversion": "6472-gc33bbb8",
       "capabilities": [
           "name-of-capability-1",
           "name-of-capability-2"

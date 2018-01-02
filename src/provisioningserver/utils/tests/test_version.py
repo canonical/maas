@@ -7,7 +7,6 @@ __all__ = []
 
 
 import os.path
-import random
 from unittest import skipUnless
 from unittest.mock import (
     MagicMock,
@@ -28,9 +27,7 @@ from provisioningserver.utils.version import (
 )
 from testtools.matchers import (
     Equals,
-    GreaterThan,
     Is,
-    IsInstance,
 )
 
 
@@ -97,32 +94,28 @@ class TestGetVersionFromAPT(MAASTestCase):
                 version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
 
 
-class TestGetMAASBranchVersion(MAASTestCase):
+class TestGetMAASRepoHash(MAASTestCase):
 
-    def test__returns_None_if_this_is_not_a_branch(self):
-        self.patch(version, "__file__", "/")
-        self.assertIsNone(version.get_maas_branch_version())
+    def test__returns_None_if_this_is_not_a_git_repo(self):
+        call_and_check = self.patch(shell, "call_and_check")
+        call_and_check.side_effect = shell.ExternalProcessError(127, "cmd")
+        self.assertIsNone(version.get_maas_repo_hash())
 
-    def test__returns_None_if_bzr_crashes(self):
+    def test__returns_None_if_git_crashes(self):
         call_and_check = self.patch(shell, "call_and_check")
         call_and_check.side_effect = shell.ExternalProcessError(2, "cmd")
-        self.assertIsNone(version.get_maas_branch_version())
+        self.assertIsNone(version.get_maas_repo_hash())
 
-    def test__returns_None_if_bzr_not_found(self):
+    def test__returns_None_if_git_not_found(self):
         call_and_check = self.patch(shell, "call_and_check")
         call_and_check.side_effect = FileNotFoundError()
-        self.assertIsNone(version.get_maas_branch_version())
+        self.assertIsNone(version.get_maas_repo_hash())
 
-    def test__returns_None_if_bzr_emits_something_thats_not_a_number(self):
-        call_and_check = self.patch(shell, "call_and_check")
-        call_and_check.return_value = b"???"
-        self.assertIsNone(version.get_maas_branch_version())
-
-    @skipUnless(os.path.isdir(os.path.join(root, ".bzr")), "Not a branch")
-    def test__returns_revno_for_this_branch(self):
-        revno = version.get_maas_branch_version()
-        self.assertThat(revno, IsInstance(int))
-        self.assertThat(revno, GreaterThan(0))
+    @skipUnless(os.path.isdir(os.path.join(root, ".git")), "Not a branch")
+    def test__returns_hash_for_this_branch(self):
+        commit_hash = version.get_maas_repo_hash()
+        self.assertIsInstance(commit_hash, str)
+        self.assertEqual(40, len(commit_hash))
 
 
 class TestExtractVersionSubversion(MAASTestCase):
@@ -246,11 +239,11 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
             ("1.8.0~alpha4", "bzr356-0ubuntu1"),
             version.get_maas_version_subversion())
 
-    def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
+    def test__returns_unknown_if_version_is_empty_and_not_git_repo(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        mock_branch_version = self.patch(version, "get_maas_branch_version")
-        mock_branch_version.return_value = None
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = None
         self.assertEqual(
             (old_version, "unknown"),
             version.get_maas_version_subversion())
@@ -258,11 +251,10 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
     def test__returns_from_source_and_revno_from_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        revno = random.randint(1, 5000)
-        mock_branch_version = self.patch(version, "get_maas_branch_version")
-        mock_branch_version.return_value = revno
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = 'deadbeef'
         self.assertEqual(
-            ("%s from source" % old_version, "bzr%d" % revno),
+            ("%s from source" % old_version, 'git+deadbeef'),
             version.get_maas_version_subversion())
 
 
@@ -270,15 +262,16 @@ class TestGetMAASVersionUI(TestVersionTestCase):
 
     def test__returns_package_version(self):
         mock_apt = self.patch(version, "get_version_from_apt")
-        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
+        mock_apt.return_value = "1.8.0~alpha4+git+deadbeef-0ubuntu1"
         self.assertEqual(
-            "1.8.0~alpha4 (bzr356-0ubuntu1)", version.get_maas_version_ui())
+            "1.8.0~alpha4 (git+deadbeef-0ubuntu1)",
+            version.get_maas_version_ui())
 
-    def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
+    def test__returns_unknown_if_version_is_empty_and_not_git_repo(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        mock_branch_version = self.patch(version, "get_maas_branch_version")
-        mock_branch_version.return_value = None
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = None
         self.assertEqual(
             "%s (unknown)" % old_version,
             version.get_maas_version_ui())
@@ -286,11 +279,11 @@ class TestGetMAASVersionUI(TestVersionTestCase):
     def test__returns_from_source_and_revno_from_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        revno = random.randint(1, 5000)
-        mock_branch_version = self.patch(version, "get_maas_branch_version")
-        mock_branch_version.return_value = revno
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = 'deadbeef'
+
         self.assertEqual(
-            "%s from source (bzr%d)" % (old_version, revno),
+            "{} from source (git+deadbeef)".format((old_version)),
             version.get_maas_version_ui())
 
 
@@ -303,23 +296,22 @@ class TestGetMAASVersionUserAgent(TestVersionTestCase):
             "maas/1.8.0~alpha4/bzr356-0ubuntu1",
             version.get_maas_version_user_agent())
 
-    def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
+    def test__returns_unknown_if_version_is_empty_and_not_git_repo(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        mock_branch_version = self.patch(version, "get_maas_branch_version")
-        mock_branch_version.return_value = None
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = None
         self.assertEqual(
             "maas/%s/unknown" % old_version,
             version.get_maas_version_user_agent())
 
-    def test__returns_from_source_and_revno_from_branch(self):
+    def test__returns_from_source_and_hashfrom_repo(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        revno = random.randint(1, 5000)
-        mock_branch_version = self.patch(version, "get_maas_branch_version")
-        mock_branch_version.return_value = revno
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = 'deadbeef'
         self.assertEqual(
-            "maas/%s from source/bzr%d" % (old_version, revno),
+            "maas/%s from source/git+%s" % (old_version, 'deadbeef'),
             version.get_maas_version_user_agent())
 
 
@@ -370,7 +362,9 @@ class TestVersionMethodsCached(TestVersionTestCase):
 class TestGetMAASVersionTuple(MAASTestCase):
 
     def test_get_maas_version_tuple(self):
-        self.assertEquals(
+        mock_repo_hash = self.patch(version, "get_maas_repo_hash")
+        mock_repo_hash.return_value = None
+        self.assertEqual(
             '.'.join([str(i) for i in version.get_maas_version_tuple()]),
             version.get_maas_version_subversion()[0])
 
