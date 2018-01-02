@@ -9,6 +9,7 @@ from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_NAME,
     ResourcePool,
 )
+from maasserver.models.role import Role
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -30,6 +31,21 @@ class TestResourcePoolManager(MAASServerTestCase):
         self.assertEqual(
             ResourcePool.objects.get_default_resource_pool().name,
             DEFAULT_RESOURCEPOOL_NAME)
+
+    def test_get_user_resource_pools(self):
+        user = factory.make_User()
+        default_pool = ResourcePool.objects.get_default_resource_pool()
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
+        factory.make_ResourcePool()  # a pool the user doesn't have access to
+
+        role = factory.make_Role()
+        role.users.add(user)
+        role.resource_pools.add(pool1)
+        role.resource_pools.add(pool2)
+        self.assertCountEqual(
+            ResourcePool.objects.get_user_resource_pools(user),
+            [default_pool, pool1, pool2])
 
 
 class TestResourcePool(MAASServerTestCase):
@@ -58,3 +74,9 @@ class TestResourcePool(MAASServerTestCase):
     def test_delete_default_fails(self):
         pool = ResourcePool.objects.get_default_resource_pool()
         self.assertRaises(ValidationError, pool.delete)
+
+    def test_create_adds_predefined_role(self):
+        name = factory.make_name()
+        pool = factory.make_ResourcePool(name=name)
+        role = Role.objects.get(name='role-{}'.format(name))
+        self.assertCountEqual(role.resource_pools.all(), [pool])

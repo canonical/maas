@@ -64,6 +64,7 @@ __all__ = [
     'RegionControllerProcessEndpoint',
     'RegionRackRPCConnection',
     'ResourcePool',
+    'Role',
     'Service',
     'signals',
     'Space',
@@ -165,7 +166,11 @@ from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
-from maasserver.models.resourcepool import ResourcePool
+from maasserver.models.resourcepool import (
+    create_resource_pool,
+    ResourcePool,
+)
+from maasserver.models.role import Role
 from maasserver.models.service import Service
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
@@ -190,8 +195,9 @@ from maasserver.utils.django_urls import (
 from piston3.doc import HandlerDocumentation
 from provisioningserver.utils import is_instance_or_subclass
 
-# Connect the 'create_user' method to the post save signal of User.
+# Connect post-creation methods for models.
 post_save.connect(create_user, sender=User)
+post_save.connect(create_resource_pool, sender=ResourcePool)
 
 
 # Monkey patch django.contrib.auth.models.User to force email to be unique.

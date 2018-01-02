@@ -43,6 +43,10 @@ class ResourcePoolManager(Manager):
                 'updated': now})
         return pool
 
+    def get_user_resource_pools(self, user):
+        """Return ResourcePools a user has access to."""
+        return self.model.objects.filter(role__users=user)
+
 
 class ResourcePool(CleanSave, TimestampedModel):
     """A resource pool."""
@@ -70,3 +74,17 @@ class ResourcePool(CleanSave, TimestampedModel):
             raise ValidationError(
                 'This is the default pool, it cannot be deleted.')
         super().delete()
+
+
+# When a resource pool is created is created, create a default role associated
+# to it.
+def create_resource_pool(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    from maasserver.models.role import Role
+    role = Role(
+        name='role-{}'.format(instance.name),
+        description='Default role for resource pool {}'.format(instance.name))
+    role.save()
+    role.resource_pools.add(instance)
