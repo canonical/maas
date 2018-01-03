@@ -84,7 +84,7 @@ def geturl(url, creds, headers=None, data=None):
         authenticate_headers(url, headers, creds, clockskew)
         try:
             req = urllib.request.Request(url=url, data=data, headers=headers)
-            return urllib.request.urlopen(req).read()
+            return urllib.request.urlopen(req)
         except urllib.error.HTTPError as exc:
             error = exc
             if 'date' not in exc.headers:
@@ -251,11 +251,11 @@ def signal(
         params, ({} if files is None else files))
 
     try:
-        payload = geturl(url, creds=creds, headers=headers, data=data)
-        if payload != b'OK':
+        ret = geturl(url, creds=creds, headers=headers, data=data)
+        if ret.status != 200:
             raise SignalException(
-                "Unexpected result sending region commissioning data: %s" % (
-                    payload))
+                "Unexpected status(%d) sending region commissioning data: %s"
+                % (ret.status, ret.read().decode()))
     except urllib.error.HTTPError as exc:
         raise SignalException("HTTP error [%s]" % exc.code)
     except urllib.error.URLError as exc:

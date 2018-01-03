@@ -18,6 +18,7 @@ from subprocess import (
     TimeoutExpired,
 )
 import time
+from unittest.mock import MagicMock
 import urllib
 
 from lxml import etree
@@ -130,8 +131,8 @@ class TestGetUrl(MAASTestCase):
 
     def test_geturl_sends_request(self):
         self.assertEquals(
-            "mock response",
-            maas_api_helper.geturl("http://%s" % factory.make_hostname(), {}))
+            "mock response", maas_api_helper.geturl(
+                "http://%s" % factory.make_hostname(), {}).read())
 
     def test_geturl_raises_exception_on_failure(self):
         sleep = self.patch(maas_api_helper.time, 'sleep')
@@ -216,7 +217,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
 
@@ -236,7 +240,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         error = factory.make_name('error')
@@ -258,7 +265,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         script_result_id = random.randint(1, 1000)
@@ -281,7 +291,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         exit_status = random.randint(0, 255)
@@ -303,7 +316,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         script_version_id = random.randint(1, 1000)
@@ -326,7 +342,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         power_type = factory.make_name('power_type')
@@ -359,7 +378,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         power_type = 'moonshot'
@@ -392,7 +414,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = b'OK'
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = b'OK'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
         files = {factory.make_name(): factory.make_bytes()}
@@ -413,7 +438,10 @@ class TestSignal(MAASTestCase):
             maas_api_helper, 'encode_multipart_data')
         mock_encode_multipart_data.return_value = None, None
         mock_geturl = self.patch(maas_api_helper, 'geturl')
-        mock_geturl.return_value = factory.make_name('bad_ret')
+        mm = MagicMock()
+        mm.status = 400
+        mm.read.return_value = b'bad_ret'
+        mock_geturl.return_value = mm
 
         status = factory.make_name('status')
 

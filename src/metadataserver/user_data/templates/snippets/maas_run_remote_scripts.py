@@ -22,6 +22,7 @@
 
 import copy
 from datetime import timedelta
+import http.client
 from io import BytesIO
 import json
 import os
@@ -68,6 +69,7 @@ except ImportError:
 
 def fail(msg):
     sys.stderr.write("FAIL: %s" % msg)
+    sys.stderr.flush()
     sys.exit(1)
 
 
@@ -90,14 +92,21 @@ def output_and_send(error, send_result=True, *args, **kwargs):
 def download_and_extract_tar(url, creds, scripts_dir):
     """Download and extract a tar from the given URL.
 
-    The URL may contain a compressed or uncompressed tar.
+    The URL may contain a compressed or uncompressed tar. Returns false when
+    there is no content.
     """
     sys.stdout.write(
         "Downloading and extracting %s to %s\n" % (url, scripts_dir))
-    binary = BytesIO(geturl(url, creds))
+    sys.stdout.flush()
+    ret = geturl(url, creds)
+    if ret.status == int(http.client.NO_CONTENT):
+        return False
+    binary = BytesIO(ret.read())
 
     with tarfile.open(mode='r|*', fileobj=binary) as tar:
         tar.extractall(scripts_dir)
+
+    return True
 
 
 def run_and_check(cmd, scripts, send_result=True):
@@ -324,6 +333,7 @@ def run_script(script, scripts_dir, send_result=True):
     env['RESULT_PATH'] = script['result_path']
     env['DOWNLOAD_PATH'] = script['download_path']
     env['RUNTIME'] = str(timeout_seconds)
+    env['HAS_STARTED'] = str(script.get('has_started', False))
 
     try:
         script_arguments = parse_parameters(script, scripts_dir)
@@ -381,6 +391,7 @@ def run_script(script, scripts_dir, send_result=True):
             'Failed to execute %s: %d' % (
                 script['msg_name'], args['exit_status']), **args)
         sys.stdout.write('%s\n' % stderr)
+        sys.stdout.flush()
         return False
     except TimeoutExpired:
         args['status'] = 'TIMEDOUT'
@@ -547,33 +558,36 @@ def run_scripts_from_metadata(
     commissioning_scripts = scripts.get('commissioning_scripts')
     if commissioning_scripts is not None:
         sys.stdout.write('Starting commissioning scripts...\n')
+        sys.stdout.flush()
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, commissioning_scripts,
             send_result)
 
+    if fail_count != 0:
+        output_and_send(
+            '%d commissioning scripts failed to run' % fail_count, send_result,
+            url, creds, 'FAILED')
+        return fail_count
+
+    # After commissioning has successfully finished redownload the scripts tar
+    # in case new hardware was discovered that has an associated script with
+    # the for_hardware field.
+    if commissioning_scripts is not None and download:
+        if not download_and_extract_tar(
+                "%s/maas-scripts/" % url, creds, scripts_dir):
+            return fail_count
+        return run_scripts_from_metadata(
+            url, creds, scripts_dir, out_dir, send_result, download)
+
     testing_scripts = scripts.get('testing_scripts')
-    if fail_count == 0 and testing_scripts is not None:
+    if testing_scripts is not None:
         # If the node status was COMMISSIONING transition the node into TESTING
         # status. If the node is already in TESTING status this is ignored.
         if send_result:
             signal_wrapper(url, creds, 'TESTING')
 
-        # If commissioning previously ran and a test script uses a storage
-        # parameter redownload the script tar as the storage devices may have
-        # changed causing different ScriptResults.
-        if commissioning_scripts is not None and download:
-            for test_script in testing_scripts:
-                for param in test_script.get('parameters', {}).values():
-                    if param['type'] == 'storage':
-                        sys.stdout.write(
-                            "Commissioning complete; updating test "
-                            "scripts...\n")
-                        download_and_extract_tar(
-                            "%s/maas-scripts/" % url, creds, scripts_dir)
-                        return run_scripts_from_metadata(
-                            url, creds, scripts_dir, out_dir, send_result)
-
         sys.stdout.write("Starting testing scripts...\n")
+        sys.stdout.flush()
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, testing_scripts, send_result)
 
@@ -584,8 +598,8 @@ def run_scripts_from_metadata(
             'All scripts successfully ran', send_result, url, creds, 'OK')
     else:
         output_and_send(
-            '%d scripts failed to run' % fail_count, send_result, url, creds,
-            'FAILED')
+            '%d test scripts failed to run' % fail_count, send_result, url,
+            creds, 'FAILED')
 
     return fail_count
 
@@ -709,12 +723,14 @@ def main():
     out_dir = os.path.join(args.storage_directory, 'out')
     os.makedirs(out_dir, exist_ok=True)
 
+    has_content = True
     if not args.no_download:
-        download_and_extract_tar(
+        has_content = download_and_extract_tar(
             "%s/maas-scripts/" % url, creds, scripts_dir)
-    run_scripts_from_metadata(
-        url, creds, scripts_dir, out_dir, not args.no_send,
-        not args.no_download)
+    if has_content:
+        run_scripts_from_metadata(
+            url, creds, scripts_dir, out_dir, not args.no_send,
+            not args.no_download)
 
     heart_beat.stop()
 

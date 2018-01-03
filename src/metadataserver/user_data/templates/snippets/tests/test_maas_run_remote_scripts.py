@@ -7,6 +7,7 @@ __all__ = []
 
 import copy
 from datetime import timedelta
+import http.client
 from io import BytesIO
 import json
 import os
@@ -18,6 +19,7 @@ import time
 from unittest.mock import (
     ANY,
     call,
+    MagicMock,
 )
 from zipfile import ZipFile
 
@@ -72,6 +74,7 @@ def make_script(
         'parallel': parallel,
         'hardware_type': hardware_type,
         'args': {},
+        'has_started': factory.pick_bool(),
     }
     ret['msg_name'] = '%s (id: %s, script_version_id: %s)' % (
         name, script_result_id, script_version_id)
@@ -147,6 +150,8 @@ class TestInstallDependencies(MAASTestCase):
         super().setUp()
         self.mock_output_and_send = self.patch(
             maas_run_remote_scripts, 'output_and_send')
+        self.patch(maas_run_remote_scripts.sys.stdout, 'write')
+        self.patch(maas_run_remote_scripts.sys.stderr, 'write')
 
     def test_run_and_check(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -679,6 +684,7 @@ class TestRunScript(MAASTestCase):
         self.assertEquals(script['result_path'], env['RESULT_PATH'])
         self.assertEquals(script['download_path'], env['DOWNLOAD_PATH'])
         self.assertEquals(str(script['timeout_seconds']), env['RUNTIME'])
+        self.assertEquals(str(script['has_started']), env['HAS_STARTED'])
         self.assertIn('PATH', env)
 
     def test_run_script_only_sends_result_when_avail(self):
@@ -930,6 +936,7 @@ class TestRunScripts(MAASTestCase):
             'timeout_seconds': script['timeout_seconds'],
             'parallel': script['parallel'],
             'hardware_type': script['hardware_type'],
+            'has_started': script['has_started'],
         }]
         run_scripts(url, creds, scripts_dir, out_dir, scripts)
         scripts[0].pop('thread', None)
@@ -965,10 +972,25 @@ class TestRunScriptsFromMetadata(MAASTestCase):
             f.write(json.dumps({'1.0': index_json}))
         return index_json
 
+    def mock_download_and_extract_tar(self, url, creds, scripts_dir):
+        """Simulate redownloading a scripts tarball after finishing commiss."""
+        index_path = os.path.join(scripts_dir, 'index.json')
+        with open(index_path, 'r') as f:
+            index_json = json.loads(f.read())
+        index_json['1.0'].pop('commissioning_scripts', None)
+        os.remove(index_path)
+        with open(index_path, 'w') as f:
+            f.write(json.dumps(index_json))
+        return True
+
     def test_run_scripts_from_metadata(self):
         scripts_dir = self.useFixture(TempDirectory()).path
         self.mock_run_scripts.return_value = 0
         index_json = self.make_index_json(scripts_dir)
+        mock_download_and_extract_tar = self.patch(
+            maas_run_remote_scripts, 'download_and_extract_tar')
+        mock_download_and_extract_tar.side_effect = (
+            self.mock_download_and_extract_tar)
 
         # Don't need to give the url, creds, or out_dir as we're not running
         # the scripts and sending the results.
@@ -987,6 +1009,8 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
         self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
             'All scripts successfully ran', True, None, None, 'OK'))
+        self.assertThat(mock_download_and_extract_tar, MockCalledOnceWith(
+            'None/maas-scripts/', None, scripts_dir))
 
     def test_run_scripts_from_metadata_doesnt_run_tests_on_commiss_fail(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1005,8 +1029,8 @@ class TestRunScriptsFromMetadata(MAASTestCase):
                 index_json['commissioning_scripts'], True))
         self.assertThat(self.mock_signal, MockNotCalled())
         self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
-            '%s scripts failed to run' % fail_count, True, None, None,
-            'FAILED'))
+            '%s commissioning scripts failed to run' % fail_count, True, None,
+            None, 'FAILED'))
 
     def test_run_scripts_from_metadata_redownloads_after_commiss(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -1043,32 +1067,6 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
             'All scripts successfully ran', True, None, None, 'OK'))
 
-    def test_run_scripts_from_metadata_only_redownloads_when_needed(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        self.mock_run_scripts.return_value = 0
-        mock_download_and_extract_tar = self.patch(
-            maas_run_remote_scripts, 'download_and_extract_tar')
-        index_json = self.make_index_json(scripts_dir)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['commissioning_scripts'], True))
-        self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
-        self.assertThat(mock_download_and_extract_tar, MockNotCalled())
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                None, None, scripts_dir, None,
-                index_json['testing_scripts'], True))
-        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
-            'All scripts successfully ran', True, None, None, 'OK'))
-
     def test_run_scripts_from_metadata_does_nothing_on_empty(self):
         scripts_dir = self.useFixture(TempDirectory()).path
         self.make_index_json(scripts_dir, False, False)
@@ -1094,14 +1092,29 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             tarinfo.mode = 0o755
             tar.addfile(tarinfo, BytesIO(file_content))
         mock_geturl = self.patch(maas_run_remote_scripts, 'geturl')
-        mock_geturl.return_value = binary.getvalue()
+        mm = MagicMock()
+        mm.status = 200
+        mm.read.return_value = binary.getvalue()
+        mock_geturl.return_value = mm
 
         # geturl is mocked out so we don't need to give a url or creds.
-        download_and_extract_tar(None, None, scripts_dir)
+        self.assertTrue(download_and_extract_tar(None, None, scripts_dir))
 
         written_file_content = open(
             os.path.join(scripts_dir, 'test-file'), 'rb').read()
         self.assertEquals(file_content, written_file_content)
+
+    def test_download_and_extract_tar_returns_false_on_no_content(self):
+        self.patch(maas_run_remote_scripts.sys.stdout, 'write')
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_geturl = self.patch(maas_run_remote_scripts, 'geturl')
+        mm = MagicMock()
+        mm.status = int(http.client.NO_CONTENT)
+        mm.read.return_value = b'No content'
+        mock_geturl.return_value = mm
+
+        # geturl is mocked out so we don't need to give a url or creds.
+        self.assertFalse(download_and_extract_tar(None, None, scripts_dir))
 
     def test_heartbeat(self):
         mock_signal = self.patch(maas_run_remote_scripts, 'signal')
