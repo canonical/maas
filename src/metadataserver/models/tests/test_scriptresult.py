@@ -23,10 +23,12 @@ from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
 )
+from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_TYPE,
 )
 from metadataserver.models import scriptresult as scriptresult_module
 from provisioningserver.events import EVENT_TYPES
@@ -289,6 +291,50 @@ class TestScriptResult(MAASServerTestCase):
         self.assertThat(
             expected_event.description,
             DocTestMatches("...failed during post-processing."))
+
+    def test_store_result_on_recommission_script_resets_builtin_commiss(self):
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.COMMISSIONING)
+        for script_name in NODE_INFO_SCRIPTS.keys():
+            factory.make_ScriptResult(
+                script_name=script_name, script_set=script_set,
+                status=SCRIPT_STATUS.PENDING)
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, recommission=True)
+        script_result = factory.make_ScriptResult(
+            script=script, script_set=script_set, status=SCRIPT_STATUS.PENDING)
+
+        script_result.store_result(0)
+
+        for script_result in script_set:
+            if script_result.name in NODE_INFO_SCRIPTS:
+                self.assertEquals(SCRIPT_STATUS.PENDING, script_result.status)
+                self.assertIsNone(script_result.started)
+                self.assertIsNone(script_result.ended)
+            else:
+                self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
+
+    def test_store_result_on_recommission_script_failure_does_nothing(self):
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.COMMISSIONING)
+        for script_name in NODE_INFO_SCRIPTS.keys():
+            factory.make_ScriptResult(
+                script_name=script_name, script_set=script_set,
+                status=SCRIPT_STATUS.PASSED)
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, recommission=True)
+        script_result = factory.make_ScriptResult(
+            script=script, script_set=script_set, status=SCRIPT_STATUS.PENDING)
+
+        script_result.store_result(1)
+
+        for script_result in script_set:
+            if script_result.name in NODE_INFO_SCRIPTS:
+                self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
+                self.assertIsNotNone(script_result.started)
+                self.assertIsNotNone(script_result.ended)
+            else:
+                self.assertEquals(SCRIPT_STATUS.FAILED, script_result.status)
 
     def test_save_stores_start_time(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
