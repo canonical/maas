@@ -10,6 +10,7 @@ __all__ = [
 from django.db.models.signals import (
     post_init,
     post_save,
+    pre_delete,
     pre_save,
 )
 from maasserver.enum import NODE_STATUS
@@ -36,6 +37,18 @@ NODE_CLASSES = [
 ]
 
 signals = SignalsManager()
+
+
+def pre_delete_set_event_node_hostname(sender, instance, **kwargs):
+    """Set node_hostname for events that reference node being deleted."""
+    for event in instance.event_set.all():
+        event.node_hostname = instance.hostname
+        event.save()
+
+
+for klass in NODE_CLASSES:
+    signals.watch(
+        pre_delete, pre_delete_set_event_node_hostname, sender=klass)
 
 
 def post_init_store_previous_status(sender, instance, **kwargs):

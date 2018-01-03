@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -62,7 +62,14 @@ def fix_piston_emitter_related():
             emitters.Emitter.construct = local_vars['emitter_new_construct']
 
 
+def fix_piston_consumer_delete():
+    """Fix Piston so it doesn't try to send an email when a user is delete."""
+    from piston3 import signals
+    signals.send_consumer_mail = lambda consumer: None
+
+
 def add_patches():
     add_patches_to_twisted()
     fix_django_http_request()
     fix_piston_emitter_related()
+    fix_piston_consumer_delete()
