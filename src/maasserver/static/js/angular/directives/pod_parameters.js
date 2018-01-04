@@ -70,8 +70,10 @@ angular.module('MAAS').directive(
                   });
                   html += '</maas-obj-field-group>';
                   childScope = scope.$new();
-                  fieldsElement.append($compile(html)(
-                      childScope, undefined, {maasObjForm: controller}));
+                  var ele = angular.element(html);
+                  fieldsElement.append(ele);
+                  $compile(ele)(
+                      childScope, undefined, {maasObjForm: controller});
                 }
             };
 

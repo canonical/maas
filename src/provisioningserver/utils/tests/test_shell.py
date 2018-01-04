@@ -6,29 +6,20 @@
 __all__ = []
 
 import os
-from random import randint
-import re
-import signal
 from subprocess import CalledProcessError
-import time
 
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
-from maastesting.fixtures import DetectLeakedFileDescriptors
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
     has_command_available,
-    objectfork,
-    pipefork,
-    PipeForkError,
     select_c_utf8_bytes_locale,
     select_c_utf8_locale,
 )
 import provisioningserver.utils.shell as shell_module
-from testtools import ExpectedException
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -172,125 +163,6 @@ class TestExternalProcessError(MAASTestCase):
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
         self.assertEqual(unicode_output, error.output_as_unicode)
-
-
-class TestPipeFork(MAASTestCase):
-
-    def setUp(self):
-        super(TestPipeFork, self).setUp()
-        self.useFixture(DetectLeakedFileDescriptors())
-
-    def test__forks(self):
-        with pipefork() as (pid, fin, fout):
-            if pid == 0:
-                # Child.
-                message_in = fin.read()
-                message_out = b"Hello %s!" % message_in
-                fout.write(message_out)
-                fout.close()
-            else:
-                # Parent.
-                message_out = factory.make_name("Parent").encode("ascii")
-                fout.write(message_out)
-                fout.close()
-                message_in = fin.read()
-                self.assertEqual(b"Hello %s!" % message_out, message_in)
-
-    def test__raises_childs_exception_when_child_crashes(self):
-        # If the child process exits with an exception, it is passed back to
-        # the parent via a pickled t.p.failure.Failure, and re-raised.
-        with ExpectedException(ZeroDivisionError):
-            with pipefork() as (pid, fin, fout):
-                if pid == 0:
-                    # Child.
-                    raise ZeroDivisionError()
-
-    def test__raises_parents_exception_when_parent_crashes(self):
-        # If the parent raises an exception, it is propagated. During
-        # tear-down of the pipefork's context the child is reaped, but any
-        # exceptions (via the crash file, or raised on behalf of the child
-        # because of a non-zero exit code or non-zero signal) propagating back
-        # from the child are masked by the exception in the parent.
-        with ExpectedException(ZeroDivisionError):
-            with pipefork() as (pid, fin, fout):
-                if pid != 0:
-                    # Parent.
-                    raise ZeroDivisionError()
-
-    def test__raises_exception_when_child_killed_by_signal(self):
-        expected_message = re.escape("Child killed by signal 15 (SIGTERM)")
-        with ExpectedException(PipeForkError, expected_message):
-            with pipefork() as (pid, fin, fout):
-                if pid == 0:
-                    # Reset SIGTERM to the default handler; the Twisted
-                    # reactor may have clobbered it in the parent.
-                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
-                    # Close `fout` to signal to parent that we're running.
-                    fout.close()
-                    time.sleep(10)
-                else:
-                    # Wait for child to close its `fout` before signalling.
-                    fin.read()
-                    os.kill(pid, signal.SIGTERM)
-
-    def test__raises_exception_when_child_exits_with_non_zero_code(self):
-        exit_code = randint(1, 99)
-        expected_message = re.escape("Child exited with code %s" % exit_code)
-        with ExpectedException(PipeForkError, expected_message):
-            with pipefork() as (pid, fin, fout):
-                if pid == 0:
-                    os._exit(exit_code)
-
-    def test__SystemExit_in_child_is_not_raised_in_parent(self):
-        # All exceptions are pickled and passed back to the parent process,
-        # except for SystemExit. It instead results in a call to os._exit().
-        exit_code = randint(1, 99)
-        expected_message = re.escape("Child exited with code %s" % exit_code)
-        with ExpectedException(PipeForkError, expected_message):
-            with pipefork() as (pid, fin, fout):
-                if pid == 0:
-                    raise SystemExit(exit_code)
-
-
-class TestObjectFork(MAASTestCase):
-
-    def setUp(self):
-        super(TestObjectFork, self).setUp()
-        self.useFixture(DetectLeakedFileDescriptors())
-
-    def test__can_send_and_receive_objects(self):
-
-        def child(recv, send):
-            # Sum numbers until we get None through.
-            for numbers in iter(recv, None):
-                send(sum(numbers))
-            # Now echo things until we get None.
-            for things in iter(recv, None):
-                send(things)
-
-        def parent(recv, send):
-            # Send numbers to the child first.
-            for _ in range(randint(3, 10)):
-                numbers = list(randint(1, 100) for _ in range(10))
-                send(numbers)
-                self.assertEqual(sum(numbers), recv())
-            # Signal that we're done with numbers.
-            send(None)
-            # Send some other things and see that they come back.
-            picklable_things = {
-                "foo": [randint(1, 1000) for _ in range(10)],
-                (1, 2, b"three", 4.0): {self.__class__, "bar"},
-            }
-            send(picklable_things)
-            self.assertEqual(picklable_things, recv())
-            # Signal that we're done again.
-            send(None)
-
-        with objectfork() as (pid, recv, send):
-            if pid == 0:
-                child(recv, send)
-            else:
-                parent(recv, send)
 
 
 class TestHasCommandAvailable(MAASTestCase):

@@ -39,7 +39,7 @@ def login(request):
         'no_users': UserProfile.objects.all_users().count() == 0,
         'create_command': django_settings.MAAS_CLI,
         }
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         return HttpResponseRedirect(reverse('index'))
     else:
         redirect_url = request.GET.get(

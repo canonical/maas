@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
-                ('node', models.OneToOneField(serialize=False, primary_key=True, to='maasserver.Node')),
+                ('node', models.OneToOneField(serialize=False, primary_key=True, to='maasserver.Node', on_delete=models.CASCADE)),
                 ('version', models.CharField(blank=True, null=True, max_length=255)),
                 ('interfaces', maasserver.fields.JSONObjectField(default='', blank=True, max_length=32768)),
                 ('interface_update_hints', maasserver.fields.JSONObjectField(default='', blank=True, max_length=32768)),
@@ -38,6 +38,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='switch',
             name='node',
-            field=models.OneToOneField(serialize=False, primary_key=True, to='maasserver.Node'),
+            field=models.OneToOneField(serialize=False, primary_key=True, to='maasserver.Node', on_delete=models.CASCADE),
         ),
     ]

@@ -298,11 +298,11 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
             IPAddress(gateway).version
             for gateway in unique_gateways
             )
-        too_many = [
+        too_many = sorted([
             ip_family
             for ip_family, count in gateway_versions.items()
             if count > 1
-        ]
+        ])
         if len(too_many) > 0:
             set_form_error(
                 self, "link_id",

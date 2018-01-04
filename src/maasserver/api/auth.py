@@ -44,7 +44,7 @@ class MAASAPIAuthentication(OAuthAuthentication):
     """
 
     def is_authenticated(self, request):
-        if request.user.is_authenticated():
+        if request.user.is_authenticated:
             return request.user
 
         # The following is much the same as is_authenticated from Piston's

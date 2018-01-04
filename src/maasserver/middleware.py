@@ -105,7 +105,7 @@ class AccessMiddleware:
         if is_public_path(request.path_info):
             return None
 
-        if request.user.is_anonymous():
+        if request.user.is_anonymous:
             return HttpResponseRedirect("%s?next=%s" % (
                 reverse('login'), urlquote_plus(request.path)))
 

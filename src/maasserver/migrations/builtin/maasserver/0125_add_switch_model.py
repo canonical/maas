@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('updated', models.DateTimeField(editable=False)),
                 ('nos_driver', models.CharField(max_length=64, blank=True, default='')),
                 ('nos_parameters', maasserver.fields.JSONObjectField(max_length=32768, blank=True, default='')),
-                ('node', models.OneToOneField(to='maasserver.Node')),
+                ('node', models.OneToOneField(to='maasserver.Node', on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'Switch',

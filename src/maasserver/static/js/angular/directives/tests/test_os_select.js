@@ -242,8 +242,11 @@ describe("maasOsSelect", function() {
             release: ""
         };
         $scope.$digest();
-        expect(directive.isolateScope().releases).toEqual(
-            [['ubuntu/xenial', 'xenial']]);
+        var release = directive.isolateScope().releases[0].map(function(txt) {
+          return new String(txt);
+        });
+        expect(release).toEqual(
+            ['ubuntu/xenial', 'xenial']);
     });
 
 });

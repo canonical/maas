@@ -18,11 +18,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scriptresult',
             name='physical_blockdevice',
-            field=models.ForeignKey(to='maasserver.PhysicalBlockDevice', null=True, editable=False, blank=True),
+            field=models.ForeignKey(to='maasserver.PhysicalBlockDevice', null=True, editable=False, blank=True, on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='scriptresult',
             name='script',
-            field=models.ForeignKey(to='metadataserver.Script', null=True, editable=False, blank=True),
+            field=models.ForeignKey(to='metadataserver.Script', null=True, editable=False, blank=True, on_delete=models.CASCADE),
         ),
     ]

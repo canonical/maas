@@ -359,7 +359,7 @@ class TestVersionMethodsCached(TestVersionTestCase):
                 version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME))
 
 
-class TestGetMAASVersionTuple(MAASTestCase):
+class TestGetMAASVersionTuple(TestVersionTestCase):
 
     def test_get_maas_version_tuple(self):
         mock_repo_hash = self.patch(version, "get_maas_repo_hash")
@@ -369,7 +369,7 @@ class TestGetMAASVersionTuple(MAASTestCase):
             version.get_maas_version_subversion()[0])
 
 
-class TestGetMAASVersionTrackChannel(MAASTestCase):
+class TestGetMAASVersionTrackChannel(TestVersionTestCase):
 
     scenarios = [
         ("alpha", {

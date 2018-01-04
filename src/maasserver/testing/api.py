@@ -171,7 +171,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     @transactional
     def become_admin(self):
         """Promote `self.user` to admin."""
-        self.assertFalse(self.user.is_anonymous(), (
+        self.assertFalse(self.user.is_anonymous, (
             "Cannot promote anonymous user to admin."))
         self.user.is_superuser = True
         self.user.save()

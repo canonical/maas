@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('updated', models.DateTimeField(editable=False)),
                 ('key', models.CharField(max_length=64)),
                 ('value', models.TextField()),
-                ('node', models.ForeignKey(to='maasserver.Node', editable=False)),
+                ('node', models.ForeignKey(to='maasserver.Node', editable=False, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'NodeMetadata',

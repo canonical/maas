@@ -34,7 +34,7 @@ def global_options(request):
     user_completed_intro = False
     if hasattr(request.user, 'userprofile'):
         user_completed_intro = request.user.userprofile.completed_intro
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         analytics_user_id = '%s-user%d' % (uuid, request.user.id)
     else:
         analytics_user_id = '%s-anon' % uuid

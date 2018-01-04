@@ -14,7 +14,7 @@ from django.db import (
 )
 from django.db.utils import (
     DatabaseError,
-    OperationalError,
+    DataError,
     ProgrammingError,
 )
 from maasserver.sequence import Sequence
@@ -92,7 +92,7 @@ class TestSequence(MAASServerTestCase):
         seq.create()
         self.assertSequenceEqual([1, 2], [next(seq), next(seq)])
         self.assertRaisesRegex(
-            OperationalError, "nextval: reached maximum value of sequence",
+            DataError, "nextval: reached maximum value of sequence",
             next, seq)
 
     def test_sequence_can_be_owned(self):

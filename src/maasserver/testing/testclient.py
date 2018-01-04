@@ -52,7 +52,7 @@ class MAASSensibleClient(SensibleClient):
     def login(self, *, user=None, **credentials):
         if user is None:
             return super(MAASSensibleClient, self).login(**credentials)
-        elif user.is_anonymous():
+        elif user.is_anonymous:
             self.logout()
             return False
         else:
@@ -87,7 +87,7 @@ class MAASSensibleOAuthClient(MAASSensibleClient):
             assert token is not None
             return self._token_set(token)
         else:
-            if user.is_anonymous():
+            if user.is_anonymous:
                 self._token_clear()
                 return False
             elif token is None:
