@@ -102,7 +102,10 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.refresh.node_info_scripts import (
+    NODE_INFO_SCRIPTS,
+    LIST_MODALIASES_OUTPUT_NAME,
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -1211,6 +1214,40 @@ class TestMAASScripts(MAASServerTestCase):
                     testing_meta_data, key=itemgetter(
                         'name', 'script_result_id')),
             }}, meta_data)
+
+    def test__adds_for_hardware_scripts_when_commissioning_on_second_req(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        commissioning_script_set = node.current_commissioning_script_set
+        testing_script_set = node.current_testing_script_set
+        # Subtract one as modalias will no longer be returned due to it
+        # finishing.
+        orig_script_count = (
+            commissioning_script_set.scriptresult_set.count() +
+            testing_script_set.scriptresult_set.count() - 1)
+        modalias_script_result = commissioning_script_set.find_script_result(
+            script_name=LIST_MODALIASES_OUTPUT_NAME)
+        modalias_script_result.store_result(
+            exit_status=0,
+            stdout=b'pci:v00008086d00001918sv000015D9sd00000888bc06sc00i00')
+        for_hardware_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            for_hardware=['pci:8086:1918'])
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        # The + 2 is for the index.json file and the for_hardware script.
+        self.assertEquals(
+            orig_script_count + 2, len(tar.getmembers()))
+        self.assertEquals(
+            for_hardware_script,
+            commissioning_script_set.scriptresult_set.get(
+                script=for_hardware_script).script)
 
     def test__returns_testing_scripts_when_testing(self):
         start_time = floor(time.time())

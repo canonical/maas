@@ -1009,7 +1009,25 @@ class MAASScriptsHandler(OperationsHandler):
         # django.middleware.gzip.GZipMiddleware.
         with tarfile.open(mode='w', fileobj=binary) as tar:
             # Commissioning scripts should only be run during commissioning.
-            if node.status == NODE_STATUS.COMMISSIONING:
+            if (node.status == NODE_STATUS.COMMISSIONING and
+                    node.current_commissioning_script_set is not None):
+                # Prefetch all the data we need.
+                qs = node.current_commissioning_script_set.scriptresult_set
+                qs = qs.select_related('script', 'script__script')
+                # After the script runner finishes sending all commissioning
+                # results it redownloads the script tar. It does this in-case
+                # a commissioning script discovers hardware associated with
+                # hardware identified in the for_hardware field of a script.
+                # add_for_hardware_scripts() processes the output of the
+                # builtin commissioning scripts and adds any associated script.
+                # This does not need to happen the first time the script runner
+                # downloads the tar as the region has not yet received new
+                # data.
+                for script_result in qs:
+                    if script_result.status != SCRIPT_STATUS.PENDING:
+                        script_set = node.current_commissioning_script_set
+                        script_set.add_for_hardware_scripts(warn_on_error=True)
+                        break
                 meta_data = self._add_script_set_to_tar(
                     node.current_commissioning_script_set, tar,
                     'commissioning', mtime)
@@ -1018,11 +1036,15 @@ class MAASScriptsHandler(OperationsHandler):
                         meta_data, key=itemgetter('name', 'script_result_id'))
 
             # Always send testing scripts.
-            meta_data = self._add_script_set_to_tar(
-                node.current_testing_script_set, tar, 'testing', mtime)
-            if meta_data != []:
-                tar_meta_data['testing_scripts'] = sorted(
-                    meta_data, key=itemgetter('name', 'script_result_id'))
+            if node.current_testing_script_set is not None:
+                # prefetch all the data we need
+                qs = node.current_testing_script_set.scriptresult_set
+                qs = qs.select_related('script', 'script__script')
+                meta_data = self._add_script_set_to_tar(
+                    qs, tar, 'testing', mtime)
+                if meta_data != []:
+                    tar_meta_data['testing_scripts'] = sorted(
+                        meta_data, key=itemgetter('name', 'script_result_id'))
 
             if not tar_meta_data:
                 return HttpResponse(status=int(http.client.NO_CONTENT))
