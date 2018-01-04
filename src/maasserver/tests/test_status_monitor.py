@@ -16,7 +16,10 @@ from maasserver import status_monitor
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Node
 from maasserver.models.signals.testing import SignalsDisabled
-from maasserver.node_status import NODE_FAILURE_MONITORED_STATUS_TRANSITIONS
+from maasserver.node_status import (
+    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
+    NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
+)
 from maasserver.status_monitor import (
     mark_nodes_failed_after_expiring,
     mark_nodes_failed_after_missing_script_timeout,
@@ -32,7 +35,10 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.enum import (
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import ScriptSet
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from twisted.internet.defer import maybeDeferred
@@ -161,6 +167,27 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         for script_result in script_results:
             self.assertEquals(
                 SCRIPT_STATUS.TIMEDOUT, reload_object(script_result).status)
+
+    def test_sets_status_expires_when_flatlined_with_may_reboot_script(self):
+        node, script_set = self.make_node()
+        now = datetime.now()
+        if self.status == NODE_STATUS.COMMISSIONING:
+            script_type = SCRIPT_TYPE.COMMISSIONING
+        else:
+            script_type = SCRIPT_TYPE.TESTING
+        script = factory.make_Script(script_type=script_type, may_reboot=True)
+        factory.make_ScriptResult(
+            script=script, script_set=script_set, status=SCRIPT_STATUS.RUNNING)
+        script_set.last_ping = now - timedelta(11)
+        script_set.save()
+
+        mark_nodes_failed_after_missing_script_timeout()
+        node = reload_object(node)
+
+        self.assertEquals(
+            now - (now - script_set.last_ping) + timedelta(
+                minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[self.status]),
+            node.status_expires)
 
     def test_mark_nodes_failed_after_script_overrun(self):
         node, script_set = self.make_node()

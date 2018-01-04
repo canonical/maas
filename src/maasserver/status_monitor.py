@@ -84,8 +84,29 @@ def mark_nodes_failed_after_missing_script_timeout():
             script_set = node.current_commissioning_script_set
         elif node.status == NODE_STATUS.TESTING:
             script_set = node.current_testing_script_set
-        if (script_set.last_ping is not None and
-                script_set.last_ping < heartbeat_expired):
+        qs = script_set.scriptresult_set.filter(
+            status=SCRIPT_STATUS.RUNNING).prefetch_related('script')
+        maybe_rebooting = False
+        for script_result in qs:
+            if script_result.script and script_result.script.may_reboot:
+                maybe_rebooting = True
+                break
+        flatlined = (script_set.last_ping is not None and
+                     script_set.last_ping < heartbeat_expired)
+        if maybe_rebooting and flatlined:
+            # If the script currently running may_reboot and the nodes
+            # heartbeat has flatlined assume the node is rebooting. Set the
+            # node.status_expires time to the boot timeout minus what has
+            # already passed.
+            node.status_expires = (
+                now -
+                (now - script_set.last_ping) +
+                timedelta(
+                    minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status]
+                ))
+            node.save(update_fields=['status_expires'])
+            continue
+        elif flatlined:
             maaslog.info(
                 '%s: Has not been heard from for the last 10 minutes' %
                 node.hostname)
@@ -99,9 +120,7 @@ def mark_nodes_failed_after_missing_script_timeout():
             continue
 
         # Check for scripts which have gone past their timeout.
-        script_qs = script_set.scriptresult_set.filter(
-            status=SCRIPT_STATUS.RUNNING).prefetch_related('script')
-        for script_result in script_qs:
+        for script_result in qs:
             timeout = None
             for param in script_result.parameters.values():
                 if param.get('type') == 'runtime':
