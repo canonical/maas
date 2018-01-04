@@ -84,12 +84,15 @@ class NodeHandler(TimestampedModelHandler):
 
     default_osystem = None
     default_distro_series = None
-    _script_results = {}
 
     class Meta:
         abstract = True
         pk = 'system_id'
         pk_type = str
+
+    def __init__(self, user, cache):
+        super().__init__(user, cache)
+        self._script_results = {}
 
     def dehydrate_owner(self, user):
         """Return owners username."""
