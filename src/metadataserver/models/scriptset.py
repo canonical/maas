@@ -9,6 +9,7 @@ __all__ = [
 
 from datetime import timedelta
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
@@ -23,6 +24,7 @@ from django.db.models import (
     Manager,
     Model,
     Q,
+    TextField,
 )
 from django.db.models.query import QuerySet
 from maasserver.enum import (
@@ -115,17 +117,18 @@ class ScriptSetManager(Manager):
         ScriptResults for. If None all user scripts will be assumed. Scripts
         may also have paramaters passed to them.
         """
-        if scripts is None:
-            scripts = []
-        if input is None:
-            input = {}
-
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
 
+        if scripts is None:
+            scripts = []
+        else:
+            scripts = [str(i) for i in scripts]
+
         script_set = self.create(
             node=node, result_type=RESULT_TYPE.COMMISSIONING,
-            power_state_before_transition=node.power_state)
+            power_state_before_transition=node.power_state,
+            requested_scripts=scripts)
 
         # Add all builtin commissioning scripts.
         for script_name, data in NODE_INFO_SCRIPTS.items():
@@ -135,42 +138,18 @@ class ScriptSetManager(Manager):
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
                 script_name=script_name)
 
-        # MAAS doesn't run custom commissioning scripts during controller
-        # refresh.
         if node.is_controller:
+            # MAAS doesn't run custom commissioning scripts during controller
+            # refresh.
             return script_set
-
-        requested_scripts = Script.objects.filter(
-            script_type=SCRIPT_TYPE.COMMISSIONING)
-
-        # User has specific commissioning scripts they want to run.
-        if scripts != []:
-            ids = [
-                int(id)
-                for id in scripts
-                if isinstance(id, int) or id.isdigit()
-            ]
-            requested_scripts = requested_scripts.filter(
-                Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids))
-
-        modaliases = node.modaliases
-        for script in requested_scripts:
-            # If a script has a for_hardware specification make sure it is only
-            # matched with current known hardware.
-            if script.for_hardware != []:
-                matches = filter_modaliases(modaliases, *script.ForHardware)
-                if len(matches) == 0:
-                    continue
-            try:
+        elif not scripts:
+            # If the user hasn't selected any commissioning Scripts select
+            # all by default excluding for_hardware scripts.
+            for script in Script.objects.filter(
+                    script_type=SCRIPT_TYPE.COMMISSIONING, for_hardware=[]):
                 script_set.add_pending_script(script, input)
-            except ValidationError:
-                script_set.delete()
-                raise
-
-        # If the user selected specific scripts make sure commissioning scripts
-        # with for_hardware fields matching this nodes hardware are run.
-        if scripts != []:
-            script_set.add_for_hardware_scripts(modaliases)
+        else:
+            self._add_user_selected_scripts(script_set, scripts, input)
 
         self._clean_old(node, RESULT_TYPE.COMMISSIONING, script_set)
         return script_set
@@ -183,35 +162,22 @@ class ScriptSetManager(Manager):
         assumed. Script may also have parameters passed to them."""
         if scripts is None or len(scripts) == 0:
             scripts = ['commissioning']
+        else:
+            scripts = [str(i) for i in scripts]
 
-        if input is None:
-            input = {}
+        script_set = self.create(
+            node=node, result_type=RESULT_TYPE.TESTING,
+            power_state_before_transition=node.power_state,
+            requested_scripts=scripts)
 
-        ids = [
-            int(id)
-            for id in scripts
-            if isinstance(id, int) or id.isdigit()
-        ]
-        qs = Script.objects.filter(
-            Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
-            script_type=SCRIPT_TYPE.TESTING)
+        self._add_user_selected_scripts(script_set, scripts, input)
 
         # A ScriptSet should never be empty. If an empty script set is set as a
         # node's current_testing_script_set the UI will show an empty table and
         # the node-results API will not output any test results.
-        if not qs.exists():
+        if not script_set.scriptresult_set.exists():
+            script_set.delete()
             raise NoScriptsFound()
-
-        script_set = self.create(
-            node=node, result_type=RESULT_TYPE.TESTING,
-            power_state_before_transition=node.power_state)
-
-        for script in qs:
-            try:
-                script_set.add_pending_script(script, input)
-            except ValidationError:
-                script_set.delete()
-                raise
 
         self._clean_old(node, RESULT_TYPE.TESTING, script_set)
         return script_set
@@ -233,6 +199,38 @@ class ScriptSetManager(Manager):
 
         self._clean_old(node, RESULT_TYPE.INSTALLATION, script_set)
         return script_set
+
+    def _add_user_selected_scripts(self, script_set, scripts=None, input=None):
+        """Add user selected scripts to the ScriptSet."""
+        if scripts is None:
+            scripts = []
+        if input is None:
+            input = {}
+        ids = [
+            int(id)
+            for id in scripts
+            if isinstance(id, int) or id.isdigit()
+        ]
+        if script_set.result_type == RESULT_TYPE.COMMISSIONING:
+            script_type = SCRIPT_TYPE.COMMISSIONING
+        else:
+            script_type = SCRIPT_TYPE.TESTING
+        qs = Script.objects.filter(
+            Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
+            script_type=script_type)
+        modaliases = script_set.node.modaliases
+        for script in qs:
+            # If a script with the for_hardware field is selected by tag only
+            # add it if matching hardware is found.
+            if script.for_hardware and script.name not in scripts:
+                matches = filter_modaliases(modaliases, *script.ForHardware)
+                if len(matches) == 0:
+                    continue
+            try:
+                script_set.add_pending_script(script, input)
+            except ValidationError:
+                script_set.delete()
+                raise
 
     def _clean_old(self, node, result_type, new_script_set):
         # Avoid circular dependencies.
@@ -299,6 +297,9 @@ class ScriptSet(CleanSave, Model):
         max_length=10, null=False, blank=False,
         choices=POWER_STATE_CHOICES, default=POWER_STATE.UNKNOWN,
         editable=False)
+
+    requested_scripts = ArrayField(
+        TextField(), blank=True, null=True, default=list)
 
     def __str__(self):
         return "%s/%s" % (self.node.system_id, self.result_type_name)
@@ -378,12 +379,12 @@ class ScriptSet(CleanSave, Model):
                 script_set=self, status=SCRIPT_STATUS.PENDING,
                 script=script, script_name=script.name, parameters=param)
 
-    def add_for_hardware_scripts(self, modaliases=None, warn_on_error=False):
-        """Add scripts associated with the node through a for_hardware field.
+    def select_for_hardware_scripts(self, modaliases=None):
+        """Select for_hardware scripts for the given node and user input.
 
-        Search through the builtin commissioning scripts for hardware which
-        matches a for_hardware field in a Script and add a ScriptResult if
-        one does not currently exist.
+        Goes through an existing ScriptSet and adds any for_hardware tagged
+        Script and removes those that were autoselected but the hardware has
+        been removed.
         """
         # Only the builtin commissioning scripts run on controllers.
         if self.node.is_controller:
@@ -392,37 +393,44 @@ class ScriptSet(CleanSave, Model):
         if modaliases is None:
             modaliases = self.node.modaliases
 
+        # Remove scripts autoselected at the start of commissioning but updated
+        # commissioning data shows the Script is no longer applicable.
+        script_results = self.scriptresult_set.exclude(script=None)
+        script_results = script_results.filter(status=SCRIPT_STATUS.PENDING)
+        script_results = script_results.exclude(script__for_hardware=[])
+        for script_result in script_results:
+            # User selected the specific script, always do what the user says.
+            if (script_result.name in self.requested_scripts or
+                    str(script_result.script.id) in self.requested_scripts):
+                continue
+            matches = filter_modaliases(
+                modaliases, *script_result.script.ForHardware)
+            if len(matches) == 0:
+                script_result.delete()
+
+        # Add Scripts which match the node with current commissioning data.
         scripts = Script.objects.all()
         if self.result_type == RESULT_TYPE.COMMISSIONING:
             scripts = scripts.filter(script_type=SCRIPT_TYPE.COMMISSIONING)
         else:
             scripts = scripts.filter(script_type=SCRIPT_TYPE.TESTING)
+        scripts = scripts.filter(tags__overlap=self.requested_scripts)
         scripts = scripts.exclude(for_hardware=[])
-        scripts = scripts.exclude(id__in=[
-            script_result.script.id for script_result in self
-            if script_result.script])
-
+        scripts = scripts.exclude(name__in=[s.name for s in self])
         for script in scripts:
-            # Found a script with a for_hardware specification. This only
-            # applies to nodes with matching hardware.
             matches = filter_modaliases(modaliases, *script.ForHardware)
             if len(matches) != 0:
                 try:
                     self.add_pending_script(script)
                 except ValidationError as e:
-                    if warn_on_error:
-                        err_msg = (
-                            "Error adding for_hardware Script %s due to error "
-                            "- %s" % (script.name, str(e)))
-                        logger.error(err_msg)
-                        Event.objects.create_node_event(
-                            system_id=self.node.system_id,
-                            event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
-                            event_description=err_msg)
-                        continue
-                    else:
-                        self.delete()
-                        raise e
+                    err_msg = (
+                        "Error adding for_hardware Script %s due to error - %s"
+                        % (script.name, str(e)))
+                    logger.error(err_msg)
+                    Event.objects.create_node_event(
+                        system_id=self.node.system_id,
+                        event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
+                        event_description=err_msg)
 
     def regenerate(self):
         """Regenerate any ScriptResult which has a storage parameter.
