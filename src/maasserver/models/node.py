@@ -1584,6 +1584,10 @@ class Node(CleanSave, TimestampedModel):
         if self.is_machine:
             if not self.pool:
                 self.pool = ResourcePool.objects.get_default_resource_pool()
+            elif self.owner and not ResourcePool.objects.user_can_access_pool(
+                    self.owner, self.pool):
+                raise ValidationError(
+                    "User doesn't have access to the resource pool")
         elif self.pool:
             raise ValidationError(
                 {'pool': ["Can't assign to a resource pool."]})

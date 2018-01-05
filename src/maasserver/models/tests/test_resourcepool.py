@@ -13,6 +13,8 @@ from maasserver.models.role import Role
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.worker_user import get_worker_user
+from metadataserver.nodeinituser import get_node_init_user
 
 
 class TestResourcePoolManager(MAASServerTestCase):
@@ -47,6 +49,26 @@ class TestResourcePoolManager(MAASServerTestCase):
             ResourcePool.objects.get_user_resource_pools(user),
             [default_pool, pool1, pool2])
 
+    def test_user_can_access_pool(self):
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        manager = ResourcePool.objects
+        self.assertFalse(manager.user_can_access_pool(user, pool))
+        pool.grant_user(user)
+        self.assertTrue(manager.user_can_access_pool(user, pool))
+
+    def test_user_can_access_pool_worker_user(self):
+        user = get_worker_user()
+        pool = factory.make_ResourcePool()
+        self.assertTrue(
+            ResourcePool.objects.user_can_access_pool(user, pool))
+
+    def test_user_can_access_pool_node_init_user(self):
+        user = get_node_init_user()
+        pool = factory.make_ResourcePool()
+        self.assertTrue(
+            ResourcePool.objects.user_can_access_pool(user, pool))
+
 
 class TestResourcePool(MAASServerTestCase):
 
@@ -71,8 +93,19 @@ class TestResourcePool(MAASServerTestCase):
         pool.delete()
         self.assertIsNone(reload_object(pool))
 
+    def test_delete_removes_role(self):
+        pool = factory.make_ResourcePool()
+        role = pool.role_set.first()
+        pool.delete()
+        self.assertIsNone(reload_object(role))
+
     def test_delete_default_fails(self):
         pool = ResourcePool.objects.get_default_resource_pool()
+        self.assertRaises(ValidationError, pool.delete)
+
+    def test_delete_pool_with_machines_fails(self):
+        pool = ResourcePool.objects.get_default_resource_pool()
+        factory.make_Node(pool=pool)
         self.assertRaises(ValidationError, pool.delete)
 
     def test_create_adds_predefined_role(self):
@@ -80,3 +113,24 @@ class TestResourcePool(MAASServerTestCase):
         pool = factory.make_ResourcePool(name=name)
         role = Role.objects.get(name='role-{}'.format(name))
         self.assertCountEqual(role.resource_pools.all(), [pool])
+
+    def test_grant_user(self):
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        pool.grant_user(user)
+        self.assertIn(
+            pool,
+            ResourcePool.objects.get_user_resource_pools(user))
+
+    def test_revoke_user(self):
+        user = factory.make_User()
+        default_pool = ResourcePool.objects.get_default_resource_pool()
+        default_pool.revoke_user(user)
+        self.assertCountEqual(
+            ResourcePool.objects.get_user_resource_pools(user), [])
+
+    def test_revoke_user_with_machine_in_pool_fail(self):
+        user = factory.make_User()
+        factory.make_Node(owner=user)
+        default_pool = ResourcePool.objects.get_default_resource_pool()
+        self.assertRaises(ValidationError, default_pool.revoke_user, user)

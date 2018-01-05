@@ -1047,6 +1047,35 @@ class TestNode(MAASServerTestCase):
             ValidationError, factory.make_Node, node_type=NODE_TYPE.DEVICE,
             pool=pool)
 
+    def test_pool_and_owner_with_access(self):
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        pool.grant_user(user)
+        node = factory.make_Node(owner=user, pool=pool)
+        self.assertEqual(node.pool, pool)
+
+    def test_pool_and_owner_without_access(self):
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        self.assertRaises(
+            ValidationError, factory.make_Node, owner=user, pool=pool)
+
+    def test_update_pool(self):
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        pool.grant_user(user)
+        node = factory.make_Node(owner=user)
+        node.pool = pool
+        node.save()
+        self.assertEqual(node.pool, pool)
+
+    def test_update_pool_no_user_access(self):
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        node.pool = pool
+        self.assertRaises(ValidationError, node.save)
+
     def test_lock(self):
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
