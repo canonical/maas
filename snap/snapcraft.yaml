@@ -6,6 +6,7 @@ description: |
   Total automation of your physical servers for amazing data center operational efficiency.
 grade: stable
 confinement: strict
+base: base-18
 
 apps:
   supervisor:
@@ -15,16 +16,30 @@ apps:
     command: bin/maas
 
 parts:
-  distro-info:
-    plugin: nil
+  maas:
+    plugin: python
+    source: .
+    requirements: requirements.txt
+    build-packages:
+      - build-essential
+      - bzr
+      - git
+      - libffi-dev
+      - libpq-dev
+      - libxml2-dev
+      - libxslt1-dev
     stage-packages:
-      - python3-distro-info
-    stage:
-      - usr/share/distro-info/debian.csv
-      - usr/share/distro-info/ubuntu.csv
-  packages:
-    plugin: nil
-    stage-packages:
+      - amtterm                 # AMT
+      - libsoap-lite-perl       # Dependencies for AMT
+      - libxml-parser-perl      # Dependencies for AMT
+      - libxml-parser-lite-perl # Dependencies for AMT
+      - wsmancli                # AMT
+      - snmp                    # APC
+      - wget                    # DLI
+      - fence-agents            # Fence CDU
+      - freeipmi-tools          # IPMI
+      - ipmitool                # Moonshot
+      - libvirt-bin             # Virsh
       - archdetect-deb
       - avahi-utils
       - bind9
@@ -40,48 +55,6 @@ parts:
       - ntp
       - openssh-client
       - postgresql
-      - squid
-      - tcpdump
-      - ubuntu-cloudimage-keyring
-    install: |
-      ln -s ../usr/lib/postgresql/9.5/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
-      ln -s ../usr/lib/postgresql/9.5/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
-      ln -s ../usr/lib/postgresql/9.5/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
-      ln -s ../usr/lib/postgresql/9.5/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
-  power-drivers:
-    plugin: nil
-    stage-packages:
-      - amtterm        # AMT
-      - libsoap-lite-perl # Missing dependencies for AMT
-      - libxml-parser-perl # Missing dependencies for AMT
-      - libxml-parser-lite-perl # Missing dependencies for AMT
-      - wsmancli       # AMT
-      - snmp           # APC
-      - wget           # DLI
-      - fence-agents   # Fence CDU
-      - freeipmi-tools # IPMI
-      - ipmitool       # Moonshot
-      - libvirt-bin    # Virsh
-    filesets:
-      remove:
-        - -lib/systemd
-    stage:
-      - $remove
-    prime:
-      - $remove
-  maas:
-    plugin: python
-    source: .
-    requirements: requirements.txt
-    build-packages:
-      - build-essential
-      - bzr
-      - git
-      - libffi-dev
-      - libpq-dev
-      - libxml2-dev
-      - libxslt1-dev
-    stage-packages:
       - python3-bson
       - python3-convoy
       - python3-crochet
@@ -115,6 +88,9 @@ parts:
       - python3-attr
       - python3-simplejson
       - python3-markupsafe
+      - squid
+      - tcpdump
+      - ubuntu-cloudimage-keyring
     organize:
         lib/python3.*/site-packages/etc/*: etc
         lib/python3.*/site-packages/usr/bin/*: usr/bin
@@ -144,6 +120,11 @@ parts:
       - $remove
     prime:
       - $remove
+    install: |
+      ln -s ../usr/lib/postgresql/9.5/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
+      ln -s ../usr/lib/postgresql/9.5/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
+      ln -s ../usr/lib/postgresql/9.5/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
+      ln -s ../usr/lib/postgresql/9.5/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
   region-static:
     plugin: dump
     source: src/maasserver/static
