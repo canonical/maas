@@ -27,6 +27,7 @@ from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
@@ -650,10 +651,13 @@ class NodeHandler(TimestampedModelHandler):
         # Get the object and update update the script_result_cache.
         self._refresh_script_result_cache(obj.get_latest_script_results)
 
-        if self.user.is_superuser:
+        if self.user.is_superuser or obj.owner == self.user:
             return obj.as_self()
-        if obj.owner is None or obj.owner == self.user:
+
+        if obj.pool is not None and ResourcePool.objects.user_can_access_pool(
+                self.user, obj.pool):
             return obj.as_self()
+
         raise HandlerDoesNotExistError(params[self._meta.pk])
 
     def get_mac_addresses(self, data):

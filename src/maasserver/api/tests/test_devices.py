@@ -31,7 +31,7 @@ class DeviceOwnerDataTest(APITestCase.ForUser):
         owner_data = {
             factory.make_name("key"): factory.make_name("value"),
         }
-        factory.make_Device(owner_data=owner_data)
+        factory.make_Device(owner=self.user, owner_data=owner_data)
         response = self.client.get(reverse('devices_handler'))
         self.assertEqual(
             http.client.OK.value, response.status_code, response.content)

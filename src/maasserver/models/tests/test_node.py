@@ -465,14 +465,15 @@ class TestMachineManager(MAASServerTestCase):
             [],
             list(Machine.objects.get_available_machines_for_acquisition(user)))
 
-    def test_get_available_machines_ignores_invisible_machines(self):
+    def test_get_available_machines_only_in_accessible_pools(self):
         user = factory.make_User()
+        pool = factory.make_ResourcePool()
         machine = self.make_machine()
-        machine.owner = factory.make_User()
-        machine.save()
-        self.assertEqual(
-            [],
-            list(Machine.objects.get_available_machines_for_acquisition(user)))
+        # the user doesn't have access to this pool
+        self.make_machine(pool=pool)
+        self.assertCountEqual(
+            Machine.objects.get_available_machines_for_acquisition(user),
+            [machine])
 
 
 class TestControllerManager(MAASServerTestCase):
@@ -4853,15 +4854,17 @@ class NodeManagerTest(MAASServerTestCase):
             [node], Node.objects.filter_by_ids(Node.objects.all(), None))
 
     def test_get_nodes_for_user_lists_visible_nodes(self):
-        """get_nodes with perm=NODE_PERMISSION.VIEW lists the nodes a user
-        has access to.
+        """get_nodes with perm=NODE_PERMISSION.VIEW lists the nodes a user has access
+        to.
 
-        When run for a regular user it returns unowned nodes, and nodes
-        owned by that user.
+        When run for a regular user it returns all nodes in pools the user has
+        access to.
         """
         user = factory.make_User()
-        visible_nodes = [self.make_node(owner) for owner in [None, user]]
-        self.make_node(factory.make_User())
+        other_user = factory.make_User()
+        visible_nodes = [
+            self.make_node(owner) for owner in [None, user, other_user]]
+        self.make_node(pool=factory.make_ResourcePool())
         self.assertItemsEqual(
             visible_nodes, Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
 
@@ -4906,8 +4909,9 @@ class NodeManagerTest(MAASServerTestCase):
         matching_node = factory.make_Node(owner=user)
         # Node that we'll exclude from from_nodes:
         factory.make_Node(owner=user)
-        # Node that will be ignored on account of belonging to someone else:
-        invisible_node = factory.make_Node(owner=factory.make_User())
+        # Node that will be ignored on account of being in a pool the user
+        # doesn't have access to
+        invisible_node = factory.make_Node(pool=factory.make_ResourcePool())
 
         self.assertItemsEqual(
             [matching_node],
@@ -4989,9 +4993,11 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_get_nodes_non_admin_hides_controllers(self):
         user = factory.make_User()
-        user_visible_nodes = [self.make_node(user), self.make_node(None)]
+        user_visible_nodes = [
+            self.make_node(user), self.make_node(None),
+            self.make_node(factory.make_User())]
         admin_visible_nodes = user_visible_nodes + [
-            self.make_node(factory.make_User()),
+            self.make_node(pool=factory.make_ResourcePool()),
             factory.make_RackController(owner=user),
             factory.make_RackController(owner=None),
             factory.make_RegionController(),
@@ -5004,6 +5010,24 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertItemsEqual(
             user_visible_nodes,
             Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_only_from_accessible_pools(self):
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        node = factory.make_Node()
+        # the user doesn't have access to the pool
+        factory.make_Node(pool=pool)
+        self.assertCountEqual(
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW),
+            [node])
+
+    def test_get_nodes_no_accessible_pool(self):
+        user = factory.make_User()
+        default_pool = ResourcePool.objects.get_default_resource_pool()
+        default_pool.revoke_user(user)
+        factory.make_Node()
+        self.assertCountEqual(
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW), [])
 
     def test_filter_nodes_by_spaces(self):
         # Create a throwaway node and a throwaway space.
@@ -5175,6 +5199,15 @@ class NodeManagerTest(MAASServerTestCase):
             node.system_id, user, NODE_PERMISSION.VIEW)
         self.assertEqual(node, rack)
         self.assertIsInstance(rack, RackController)
+
+    def test_get_node_or_404_user_not_in_pool(self):
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        node = factory.make_Node(pool=pool)
+        self.assertRaises(
+            PermissionDenied,
+            Node.objects.get_node_or_404,
+            node.system_id, user, NODE_PERMISSION.VIEW)
 
     def test_netboot_on(self):
         node = factory.make_Node(netboot=False)

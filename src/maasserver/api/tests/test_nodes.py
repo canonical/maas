@@ -240,15 +240,16 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
             extract_system_ids_from_nodes(node_list))
 
     def test_node_lists_list_devices(self):
+        query = RequestFixture({}, '')
+
         machines = [
             factory.make_Node(agent_name=factory.make_name('agent-name'))
             for _ in range(3)]
         # Create devices.
         devices = [
-            factory.make_Device()
+            factory.make_Device(owner=query.user)
             for _ in range(3)]
 
-        query = RequestFixture({}, '')
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         system_ids = extract_system_ids_from_nodes(node_list)
@@ -485,7 +486,7 @@ class TestNodesAPI(APITestCase.ForUser):
             for _ in range(3)]
         # Create devices.
         devices = [
-            factory.make_Node(node_type=NODE_TYPE.DEVICE)
+            factory.make_Node(node_type=NODE_TYPE.DEVICE, owner=self.user)
             for _ in range(3)]
         rack_controllers = [
             factory.make_Node(agent_name=factory.make_name('agent-name'))

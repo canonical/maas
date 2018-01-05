@@ -15,7 +15,6 @@ from unittest.mock import (
 from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
 from maasserver import middleware
-from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
 from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
@@ -139,7 +138,7 @@ class TestTagAPI(APITestCase.ForUser):
     def test_GET_nodes_returns_nodes(self):
         tag = factory.make_Tag()
         machine = factory.make_Node()
-        device = factory.make_Device()
+        device = factory.make_Device(owner=self.user)
         rack = factory.make_RackController()
         region = factory.make_RegionController()
         # Create a second node that isn't tagged.
@@ -189,7 +188,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result_2 = json.loads(
             response2.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
-            [http.client.OK, http.client.OK, 6, 12],
+            [http.client.OK, http.client.OK, 3, 6],
             [
                 response1.status_code,
                 response2.status_code,
@@ -265,7 +264,7 @@ class TestTagAPI(APITestCase.ForUser):
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()
         machine = factory.make_Node()
-        device = factory.make_Device()
+        device = factory.make_Device(owner=self.user)
         rack = factory.make_RackController()
         region = factory.make_RegionController()
         # Create a second node that isn't tagged.
@@ -291,7 +290,7 @@ class TestTagAPI(APITestCase.ForUser):
 
         tag = factory.make_Tag()
         for _ in range(3):
-            device = factory.make_Device()
+            device = factory.make_Device(owner=self.user)
             device.tags.add(tag)
         num_queries1, response1 = count_queries(
             self.client.get, self.get_tag_uri(tag), {'op': 'devices'})
@@ -309,7 +308,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result_2 = json.loads(
             response2.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
-            [http.client.OK, http.client.OK, 3, 6],
+            [http.client.OK, http.client.OK, 3, 3],
             [
                 response1.status_code,
                 response2.status_code,
@@ -481,7 +480,9 @@ class TestTagAPI(APITestCase.ForUser):
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_User()
         node1 = factory.make_Node()
-        node2 = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user2)
+        pool = factory.make_ResourcePool()
+        pool.grant_user(user2)
+        node2 = factory.make_Node(pool=pool)
         tag = factory.make_Tag()
         node1.tags.add(tag)
         node2.tags.add(tag)

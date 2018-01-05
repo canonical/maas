@@ -301,8 +301,12 @@ class MAASAuthorizationBackend(ModelBackend):
 
         if isinstance(obj, Node):
             if perm == NODE_PERMISSION.VIEW:
-                # Any registered user can view a node regardless of its state.
-                return True
+                # users can see machines if they're in a pool they have access
+                # too.  Other types of Node are always visible.
+                return (
+                    not obj.is_machine or
+                    ResourcePool.objects.user_can_access_pool(
+                        user, obj.pool))
             elif perm == NODE_PERMISSION.EDIT:
                 return obj.owner == user and not obj.locked
             elif perm == NODE_PERMISSION.LOCK:

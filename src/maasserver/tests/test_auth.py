@@ -59,11 +59,6 @@ class LoginLogoutTest(MAASServerTestCase):
         self.assertNotIn('_auth_user_id', self.client.session)
 
 
-def make_unallocated_node():
-    """Return a node that is not allocated to anyone."""
-    return factory.make_Node()
-
-
 def make_allocated_node(owner=None):
     """Create a node, owned by `owner` (or create owner if not given)."""
     if owner is None:
@@ -84,19 +79,19 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         backend = MAASAuthorizationBackend()
         self.assertRaises(
             NotImplementedError, backend.has_perm,
-            factory.make_admin(), 'not-access', make_unallocated_node())
+            factory.make_admin(), 'not-access', factory.make_Node())
 
     def test_node_init_user_cannot_access(self):
         backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(
             get_node_init_user(), NODE_PERMISSION.VIEW,
-            make_unallocated_node()))
+            factory.make_Node()))
 
     def test_user_can_view_unowned_node(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(backend.has_perm(
             factory.make_User(), NODE_PERMISSION.VIEW,
-            make_unallocated_node()))
+            factory.make_Node()))
 
     def test_user_can_view_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
@@ -127,7 +122,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(
             factory.make_User(), NODE_PERMISSION.EDIT,
-            make_unallocated_node()))
+            factory.make_Node()))
 
     def test_user_can_edit_his_own_nodes(self):
         backend = MAASAuthorizationBackend()
@@ -385,18 +380,19 @@ class TestNodeVisibility(MAASServerTestCase):
     def test_admin_sees_all_nodes(self):
         nodes = [
             make_allocated_node(),
-            make_unallocated_node(),
+            factory.make_Node(),
             ]
         self.assertItemsEqual(
             nodes,
             Node.objects.get_nodes(
                 factory.make_admin(), NODE_PERMISSION.VIEW))
 
-    def test_user_sees_own_nodes_and_unowned_nodes(self):
+    def test_user_sees_all_nodes_in_own_pools(self):
         user = factory.make_User()
-        make_allocated_node()
         own_node = make_allocated_node(owner=user)
-        unowned_node = make_unallocated_node()
+        other_owned_node = make_allocated_node()
+        unowned_node = factory.make_Node()
+        factory.make_Node(pool=factory.make_ResourcePool())
         self.assertItemsEqual(
-            [own_node, unowned_node],
+            [own_node, unowned_node, other_owned_node],
             Node.objects.get_nodes(own_node.owner, NODE_PERMISSION.VIEW))

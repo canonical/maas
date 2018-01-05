@@ -458,7 +458,8 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ]))
         if perm == NODE_PERMISSION.VIEW:
-            return nodes.filter(Q(owner__isnull=True) | Q(owner=user))
+            pools = ResourcePool.objects.get_user_resource_pools(user)
+            return nodes.filter(Q(pool__in=pools) | Q(owner=user))
         elif perm == NODE_PERMISSION.EDIT:
             return nodes.filter(owner=user)
         elif perm == NODE_PERMISSION.ADMIN:

@@ -13,7 +13,6 @@ import re
 from unittest.mock import ANY
 
 from crochet import wait_for
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
@@ -94,7 +93,6 @@ from maasserver.websockets.handlers.machine import (
     Node as node_model,
 )
 from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
-from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -1556,40 +1554,20 @@ class TestMachineHandler(MAASServerTestCase):
             [self.dehydrate_node(node, handler, for_list=True)],
             handler.list({}))
 
-    def test_list_num_queries_is_independent_of_num_nodes(self):
-        user = factory.make_User()
-        user_ssh_prefetch = User.objects.filter(
-            id=user.id).prefetch_related('sshkey_set').first()
-        handler = MachineHandler(user_ssh_prefetch, {})
-        self.make_nodes(10)
-        query_10_count, _ = count_queries(handler.list, {})
-        self.make_nodes(10)
-        query_20_count, _ = count_queries(handler.list, {})
-
-        # This check is to notify the developer that a change was made that
-        # affects the number of queries performed when doing a node listing.
-        # It is important to keep this number as low as possible. A larger
-        # number means regiond has to do more work slowing down its process
-        # and slowing down the client waiting for the response.
-        self.assertEqual(
-            query_10_count, 15,
-            "Number of queries has changed; make sure this is expected.")
-        self.assertEqual(
-            query_10_count, query_20_count,
-            "Number of queries is not independent to the number of nodes.")
-
     def test_list_returns_nodes_only_viewable_by_user(self):
         user = factory.make_User()
         other_user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
         ownered_node = factory.make_Node(
             owner=user, status=NODE_STATUS.ALLOCATED)
-        factory.make_Node(
+        other_ownered_node = factory.make_Node(
             owner=other_user, status=NODE_STATUS.ALLOCATED)
+        factory.make_Node(pool=factory.make_ResourcePool())
         handler = MachineHandler(user, {})
         self.assertItemsEqual([
             self.dehydrate_node(node, handler, for_list=True),
             self.dehydrate_node(ownered_node, handler, for_list=True),
+            self.dehydrate_node(other_ownered_node, handler, for_list=True),
         ], handler.list({}))
 
     def test_get_object_returns_node_if_super_user(self):
@@ -1613,9 +1591,16 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             node, handler.get_object({"system_id": node.system_id}))
 
-    def test_get_object_raises_error_if_owner_by_another_user(self):
+    def test_get_object_returns_node_if_other_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
+        handler = MachineHandler(user, {})
+        self.assertEqual(
+            node, handler.get_object({"system_id": node.system_id}))
+
+    def test_get_object_raises_error_if_in_unaccessible_pool(self):
+        user = factory.make_User()
+        node = factory.make_Node(pool=factory.make_ResourcePool())
         handler = MachineHandler(user, {})
         self.assertRaises(
             HandlerDoesNotExistError,
