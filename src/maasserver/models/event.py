@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`Event` and friends."""
@@ -20,7 +20,10 @@ from django.db.models import (
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.eventtype import EventType
+from maasserver.models.eventtype import (
+    AUDIT,
+    EventType,
+)
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.dns import validate_hostname
@@ -67,6 +70,19 @@ class EventManager(Manager):
         """Helper to register event and event type for the running region."""
         self.create_node_event(
             system_id=get_maas_id(), event_type=event_type,
+            event_description=event_description, user=user)
+
+    def create_audit_event(
+            self, system_id, event_type, user,
+            event_action='', event_description=''):
+        """Helper to register Audit events.
+
+        These are events that have an event type level of AUDIT."""
+        self.register_event_and_event_type(
+            system_id=system_id, type_name=event_type,
+            type_description=EVENT_DETAILS[event_type].description,
+            type_level=AUDIT,
+            event_action=event_action,
             event_description=event_description, user=user)
 
 

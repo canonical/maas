@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Event model."""
@@ -160,3 +160,13 @@ class EventTest(MAASServerTestCase):
         event_type = EventType.objects.get(name=type_name)
         self.assertIsNotNone(event_type)
         self.assertEqual(2, Event.objects.filter(node=node).count())
+
+    def test_create_audit_event_creates_audit_event(self):
+        # EventTypes that are currently being used for
+        # create_node_event
+        node = factory.make_Node()
+        event_type = random.choice([EVENT_TYPES.NODE_PXE_REQUEST])
+        Event.objects.create_audit_event(
+            system_id=node.system_id, user=node.owner, event_type=event_type)
+        self.assertIsNotNone(EventType.objects.get(level=event_module.AUDIT))
+        self.assertIsNotNone(Event.objects.get(node=node, user=node.owner))
