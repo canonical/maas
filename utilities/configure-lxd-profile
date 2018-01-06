@@ -22,21 +22,10 @@ function check_exists {
 }
 
 check_exists lxc lxd
-check_exists bzr bzr
 check_exists setfacl acl
 
 cd "$(dirname $0)"/..
 SANDBOX=$(pwd)
-cd ..
-SHARED_REPO=$(pwd)
-
-if bzr info | grep -q ^Shared; then
-    echo "Using shared repository for mount point:"
-    echo "    $SHARED_REPO"
-else
-    echo "Warning: could not find a bzr shared repository at:"
-    echo "    $SHARED_REPO"
-fi
 
 # Recreate the profile from scratch.
 if lxc profile show $PROFILE &> /dev/null; then
@@ -50,7 +39,7 @@ else
     # Add a mount point from wherever the MAAS sandbox is to /opt/src/maas 
     # on the container.
     lxc profile device add $PROFILE maas-bindmount \
-        disk source=$SHARED_REPO path=/opt/src/maas
+        disk source=$SANDBOX path=/opt/src/maas
 
     # Add a mount point to the user's eventual $HOME in the container.
     lxc profile device add $PROFILE home-bindmount \

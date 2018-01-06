@@ -237,10 +237,7 @@ endef
 
 lxd:
 	utilities/configure-lxd-profile
-	utilities/create-lxd-xenial-image
-
-test+lxd: lxd $(strip $(test-scripts))
-	utilities/isolated-make-test
+	utilities/create-lxd-bionic-image
 
 test: bin/test.parallel bin/coverage
 	@$(RM) .coverage .coverage.*

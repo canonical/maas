@@ -7,5 +7,5 @@ rm -rf build_pkg
 rm -rf ~/pbuilder/*_result
 rm -rf ~/pbuilder/archive
 
-utilities/release-build --xenial
-utilities/create-deb-repo --xenial
+utilities/release-build --bionic
+utilities/create-deb-repo --bionic

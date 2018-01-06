@@ -270,7 +270,7 @@ Launch LXD container
 
 Once the profile has been created, you can now launch the LXC container::
 
-  $ lxc launch -p maas ubuntu:16.04 xenial-maas
+  $ lxc launch -p maas ubuntu-daily:18.04 bionic-maas
 
 Install MAAS
 ^^^^^^^^^^^^
@@ -278,7 +278,7 @@ Install MAAS
 Once the container is running, you can now install MAAS. First you need
 to access the container with::
 
-  $ lxc exec xenial-maas bash
+  $ lxc exec bionic-maas bash
 
 And you can proceed with the installation as above, :ref:`From a package repository. <pkg-install>`
 

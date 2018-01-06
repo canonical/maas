@@ -7,14 +7,13 @@ set -o errexit
 # Treat unset variables as an error when substituting.
 set -o nounset
 
-CONTAINER=xenial-maas-$USER
+CONTAINER=bionic-maas-$USER
 LXD_USER=$USER
 MAAS_BIND_MOUNT=/opt/src/maas
 PROFILE=maas-dev-$USER
-DESCRIPTION="MAAS Xenial development environment"
+DESCRIPTION="MAAS Bionic development environment"
 
 cd "$(dirname $0)"/..
-MAAS_SANDBOX=$(basename $PWD)
 
 if lxc profile show "$PROFILE" >/dev/null 2>&1; then
     echo "Found LXD profile: $PROFILE"
@@ -25,7 +24,7 @@ else
 fi
 
 
-if ! lxc launch ubuntu:x $CONTAINER --profile $PROFILE ; then
+if ! lxc launch ubuntu-daily:bionic $CONTAINER --profile $PROFILE ; then
     echo "Container has already been created."
     echo "If you wish to recreate it, use:"
     echo "    lxc delete $CONTAINER --force"
@@ -52,7 +51,7 @@ lxc exec $CONTAINER -- apt-get clean
 lxc snapshot $CONTAINER installed
 lxc exec $CONTAINER -- mknod /dev/loop0 b 7 0
 lxc exec $CONTAINER -- sudo -u $LXD_USER bash -c \
-    "cd $MAAS_BIND_MOUNT/$MAAS_SANDBOX ; make install-dependencies"
+    "cd $MAAS_BIND_MOUNT ; make install-dependencies"
 lxc exec $CONTAINER -- apt-get clean
 lxc snapshot $CONTAINER $PROFILE
 # Create an image based on the container we just created, so that we can

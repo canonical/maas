@@ -61,33 +61,9 @@ scan_packages () {
     gpg --digest-algo sha512 -abs -o dists/$1/Release.gpg dists/$1/Release
 }
 
-distro=xenial
+distro=bionic
 if echo "$PACKAGE_DISTROS" | grep -q "$distro"; then
-    version=16.04
-    cd $BUILDDIR
-    pbuilder-dist $distro build $(ls -1rt *.dsc | grep "~$version" | tail -1)
-    scan_packages $distro
-fi
-
-distro=yakkety
-if echo "$PACKAGE_DISTROS" | grep -q "$distro"; then
-    version=16.10
-    cd $BUILDDIR
-    pbuilder-dist $distro build $(ls -1rt *.dsc | grep "~$version" | tail -1)
-    scan_packages $distro
-fi
-
-distro=zesty
-if echo "$PACKAGE_DISTROS" | grep -q "$distro"; then
-    version=17.04
-    cd $BUILDDIR
-    pbuilder-dist $distro build $(ls -1rt *.dsc | grep "~$version" | tail -1)
-    scan_packages $distro
-fi
-
-distro=artful
-if echo "$PACKAGE_DISTROS" | grep -q "$distro"; then
-    version=17.10
+    version=18.04
     cd $BUILDDIR
     pbuilder-dist $distro build $(ls -1rt *.dsc | grep "~$version" | tail -1)
     scan_packages $distro
