@@ -29,15 +29,7 @@ Prerequisites
 Container
 ^^^^^^^^^
 
-You can hack on MAAS in a container, to keep your host machine clean.
-The container should at least have the following configuration set::
-
-      raw.lxc: |
-          lxc.aa_profile = unconfined
-          lxc.cgroup.devices.allow = b 7:* rwm
-          lxc.cgroup.devices.allow = c 10:237 rwm
-
-There's also a configure-lxd-profile script in utilities, that will set
+There's a configure-lxd-profile script in utilities, that will set
 up a LXD profile that is configured properly.
 
 

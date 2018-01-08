@@ -45,11 +45,6 @@ else
     lxc profile device add $PROFILE home-bindmount \
         disk source=$HOME path=/home/$USER
 
-    # Make sure the profile is set up with the appropriate permissions.
-    lxc profile set $PROFILE raw.lxc \
-        "lxc.aa_profile=unconfined
-         lxc.cgroup.devices.allow = b 7:* rwm
-         lxc.cgroup.devices.allow = c 10:237 rwm"
     lxc profile set $PROFILE security.privileged true
     lxc profile show $PROFILE  |
         sed 's/^description:.*/description: MAAS development profile/' |

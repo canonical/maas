@@ -49,7 +49,6 @@ lxc exec $CONTAINER --env DEBIAN_FRONTEND=noninteractive -- apt-get dist-upgrade
 lxc exec $CONTAINER --env DEBIAN_FRONTEND=noninteractive -- apt-get install build-essential -y
 lxc exec $CONTAINER -- apt-get clean
 lxc snapshot $CONTAINER installed
-lxc exec $CONTAINER -- mknod /dev/loop0 b 7 0
 lxc exec $CONTAINER -- sudo -u $LXD_USER bash -c \
     "cd $MAAS_BIND_MOUNT ; make install-dependencies"
 lxc exec $CONTAINER -- apt-get clean

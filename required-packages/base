@@ -4,6 +4,7 @@ authbind
 bind9
 bind9utils
 daemontools
+devscripts
 distro-info
 dnsutils
 freeipmi-tools
@@ -56,7 +57,7 @@ python3-txtftp
 python3-tz
 python3-yaml
 python3-zope.interface
+snapcraft
 syslinux-common
-tgt
 ubuntu-cloudimage-keyring
 wget
