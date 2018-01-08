@@ -21,5 +21,5 @@ class Role(Model):
         max_length=255, unique=True, blank=False,
         validators=[MODEL_NAME_VALIDATOR])
     description = TextField(blank=True, editable=True)
-    users = ManyToManyField(User, null=False)
-    resource_pools = ManyToManyField(ResourcePool, null=False)
+    users = ManyToManyField(User)
+    resource_pools = ManyToManyField(ResourcePool)
