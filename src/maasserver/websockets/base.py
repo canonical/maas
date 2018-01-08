@@ -196,7 +196,7 @@ class Handler(metaclass=HandlerMetaclass):
             if dehydrate_method is not None:
                 data[field_name] = dehydrate_method(field_obj)
             else:
-                value = field._get_val_from_obj(obj)
+                value = field.value_from_object(obj)
                 if is_protected_type(value):
                     data[field_name] = value
                 elif isinstance(field, ArrayField):

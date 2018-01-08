@@ -185,7 +185,7 @@ class WebApplicationService(StreamServerEndpointService):
 
     def __init__(self, endpoint, listener, status_worker):
         self.site = OverlaySite(
-            StartPage(), logFormatter=reducedWebLogFormatter)
+            StartPage(), logFormatter=reducedWebLogFormatter, timeout=None)
         self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
         self.websocket = WebSocketFactory(listener)

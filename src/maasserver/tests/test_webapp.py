@@ -209,6 +209,7 @@ class TestWebApplicationService(MAASTestCase):
         self.assertThat(service.site, MatchesStructure(
             requestFactory=Is(webapp.CleanPathRequest),
             _logFormatter=Is(reducedWebLogFormatter),
+            timeOut=Is(None),
         ))
         self.assertThat(service.websocket, IsInstance(WebSocketFactory))
 
