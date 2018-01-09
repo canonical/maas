@@ -7,7 +7,7 @@
 # https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml
 # https://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xhtml
 
-IP="/sbin/ip"
+IP="ip"
 
 # Note: The 'ip maddr add <mcast-address> dev <ifname>' command only supports
 # link-layer multicast addresses. Specifying an IPv4 address will not work.

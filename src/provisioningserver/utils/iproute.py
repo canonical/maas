@@ -69,5 +69,5 @@ def get_ip_route():
         gathered.
     """
     ip_route_output = call_and_check(
-        ["/sbin/ip", "route", "list", "scope", "global"])
+        ["ip", "route", "list", "scope", "global"])
     return parse_ip_route(ip_route_output)

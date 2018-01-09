@@ -725,7 +725,7 @@ build/dev-snap/prime: build/dev-snap
 sync-dev-snap: build/dev-snap/prime
 	rsync -v --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude '*.pyc' --exclude '__pycache__' -r -u -l -t -W -L \
-		src/ build/dev-snap/prime/lib/python3.5/site-packages/
+		src/ build/dev-snap/prime/lib/python3.6/site-packages/
 	rsync -v -r -u -l -t -W -L \
 		src/maasserver/static/ build/dev-snap/prime/usr/share/maas/web/static/
 

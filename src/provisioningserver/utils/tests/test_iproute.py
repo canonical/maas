@@ -88,7 +88,6 @@ class TestGetIPRoute(MAASTestCase):
         self.assertEquals(sentinel.output, get_ip_route())
         self.assertThat(
             patch_call_and_check,
-            MockCalledOnceWith(
-                ["/sbin/ip", "route", "list", "scope", "global"]))
+            MockCalledOnceWith(["ip", "route", "list", "scope", "global"]))
         self.assertThat(
             patch_parse_ip_route, MockCalledOnceWith(sentinel.ip_route_cmd))

@@ -390,7 +390,7 @@ def get_ip_addr():
     :raises:ExternalProcessError: if IP address information could not be
         gathered.
     """
-    ip_addr_output = call_and_check(["/sbin/ip", "addr"])
+    ip_addr_output = call_and_check(["ip", "addr"])
     ifaces = parse_ip_addr(ip_addr_output)
     return annotate_with_driver_information(ifaces)
 

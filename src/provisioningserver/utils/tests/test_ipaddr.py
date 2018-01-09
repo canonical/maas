@@ -493,7 +493,7 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
     def test__populates_interface_type_for_each_interface(self):
         # Note: this is more of an end-to-end test, since we call
         # "/sbin/ip addr" on the host running the tests.
-        ip_addr_output = check_output(['/sbin/ip', 'addr'])
+        ip_addr_output = check_output(['ip', 'addr'])
         interfaces = parse_ip_addr(ip_addr_output)
         interfaces_with_types = annotate_with_driver_information(interfaces)
         for name in interfaces:
@@ -582,7 +582,7 @@ class TestGetIPAddr(MAASTestCase):
         patch_annotate_with_driver_information.return_value = sentinel.output
         self.assertEquals(sentinel.output, get_ip_addr())
         self.assertThat(
-            patch_call_and_check, MockCalledOnceWith(["/sbin/ip", "addr"]))
+            patch_call_and_check, MockCalledOnceWith(["ip", "addr"]))
         self.assertThat(
             patch_parse_ip_addr, MockCalledOnceWith(sentinel.ip_addr_cmd))
         self.assertThat(

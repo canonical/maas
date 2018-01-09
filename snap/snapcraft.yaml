@@ -121,10 +121,10 @@ parts:
     prime:
       - $remove
     install: |
-      ln -s ../usr/lib/postgresql/9.5/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
-      ln -s ../usr/lib/postgresql/9.5/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
-      ln -s ../usr/lib/postgresql/9.5/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
-      ln -s ../usr/lib/postgresql/9.5/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
+      ln -s ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
+      ln -s ../usr/lib/postgresql/10/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
+      ln -s ../usr/lib/postgresql/10/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
+      ln -s ../usr/lib/postgresql/10/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
   region-static:
     plugin: dump
     source: src/maasserver/static
