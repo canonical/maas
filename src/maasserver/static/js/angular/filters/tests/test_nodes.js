@@ -246,6 +246,23 @@ describe("nodesFilter", function() {
         expect(nodesFilter(nodes, "pod:pod1")).toEqual([matchingNode]);
     });
 
+    it("matches using pod-id mapping function", function() {
+        var matchingNode = {
+            pod: {
+                name: "pod1",
+                id: 1
+            }
+        };
+        var otherNode = {
+            pod: {
+                name: "pod2",
+                id: 2
+            }
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "pod-id:=1")).toEqual([matchingNode]);
+    });
+
     it("matches using power mapping function", function() {
         var matchingNode = {
             power_state: 'on'
