@@ -1007,8 +1007,6 @@ class TestRunScriptsFromMetadata(MAASTestCase):
                 None, None, scripts_dir, None,
                 index_json['testing_scripts'], True))
         self.assertThat(self.mock_signal, MockAnyCall(None, None, 'TESTING'))
-        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
-            'All scripts successfully ran', True, None, None, 'OK'))
         self.assertThat(mock_download_and_extract_tar, MockCalledOnceWith(
             'None/maas-scripts/', None, scripts_dir))
 
@@ -1064,19 +1062,6 @@ class TestRunScriptsFromMetadata(MAASTestCase):
             MockAnyCall(
                 None, None, scripts_dir, None,
                 index_json['testing_scripts'], True))
-        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
-            'All scripts successfully ran', True, None, None, 'OK'))
-
-    def test_run_scripts_from_metadata_does_nothing_on_empty(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        self.make_index_json(scripts_dir, False, False)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(self.mock_output_and_send, MockCalledOnceWith(
-            'All scripts successfully ran', True, None, None, 'OK'))
 
 
 class TestMaasRunRemoteScripts(MAASTestCase):
@@ -1142,3 +1127,49 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         heart_beat.stop()
         self.assertLess(time.time() - start_time, 1)
         self.assertThat(mock_signal, MockCalledOnceWith(url, creds, 'WORKING'))
+
+    def test_main_signals_success(self):
+        self.patch(
+            maas_run_remote_scripts.argparse.ArgumentParser,
+            'parse_args')
+        self.patch(maas_run_remote_scripts, 'read_config')
+        self.patch(maas_run_remote_scripts, 'os')
+        self.patch(maas_run_remote_scripts, 'open')
+        self.patch(
+            maas_run_remote_scripts,
+            'download_and_extract_tar').return_value = True
+        self.patch(
+            maas_run_remote_scripts,
+            'run_scripts_from_metadata').return_value = 0
+        self.patch(maas_run_remote_scripts, 'signal')
+        mock_output_and_send = self.patch(
+            maas_run_remote_scripts, 'output_and_send')
+
+        maas_run_remote_scripts.main()
+
+        self.assertThat(mock_output_and_send, MockCalledOnceWith(
+            'All scripts successfully ran', ANY, ANY, ANY, 'OK'))
+
+    def test_main_signals_failure(self):
+        failures = random.randint(1, 100)
+        self.patch(
+            maas_run_remote_scripts.argparse.ArgumentParser,
+            'parse_args')
+        self.patch(maas_run_remote_scripts, 'read_config')
+        self.patch(maas_run_remote_scripts, 'os')
+        self.patch(maas_run_remote_scripts, 'open')
+        self.patch(
+            maas_run_remote_scripts,
+            'download_and_extract_tar').return_value = True
+        self.patch(
+            maas_run_remote_scripts,
+            'run_scripts_from_metadata').return_value = failures
+        self.patch(maas_run_remote_scripts, 'signal')
+        mock_output_and_send = self.patch(
+            maas_run_remote_scripts, 'output_and_send')
+
+        maas_run_remote_scripts.main()
+
+        self.assertThat(mock_output_and_send, MockCalledOnceWith(
+            '%d test scripts failed to run' % failures, ANY, ANY, ANY,
+            'FAILED'))

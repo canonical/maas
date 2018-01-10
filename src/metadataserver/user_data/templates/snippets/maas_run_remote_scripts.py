@@ -20,6 +20,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
 import copy
 from datetime import timedelta
 import http.client
@@ -591,16 +592,6 @@ def run_scripts_from_metadata(
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, testing_scripts, send_result)
 
-    # Signal success or failure after all scripts have ran. This tells the
-    # region to transistion the status.
-    if fail_count == 0:
-        output_and_send(
-            'All scripts successfully ran', send_result, url, creds, 'OK')
-    else:
-        output_and_send(
-            '%d test scripts failed to run' % fail_count, send_result, url,
-            creds, 'FAILED')
-
     return fail_count
 
 
@@ -650,8 +641,6 @@ class HeartBeat(Thread):
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(
         description='Download and run scripts from the MAAS metadata service.')
     parser.add_argument(
@@ -724,13 +713,24 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
 
     has_content = True
+    fail_count = 0
     if not args.no_download:
         has_content = download_and_extract_tar(
             "%s/maas-scripts/" % url, creds, scripts_dir)
     if has_content:
-        run_scripts_from_metadata(
+        fail_count = run_scripts_from_metadata(
             url, creds, scripts_dir, out_dir, not args.no_send,
             not args.no_download)
+
+    # Signal success or failure after all scripts have ran. This tells the
+    # region to transistion the status.
+    if fail_count == 0:
+        output_and_send(
+            'All scripts successfully ran', not args.no_send, url, creds, 'OK')
+    else:
+        output_and_send(
+            '%d test scripts failed to run' % fail_count, not args.no_send,
+            url, creds, 'FAILED')
 
     heart_beat.stop()
 
