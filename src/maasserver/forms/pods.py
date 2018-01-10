@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Pod forms."""
@@ -366,19 +366,22 @@ class ComposeMachineForm(forms.Form):
         raise AttributeError("Use `compose` instead of `save`.")
 
     def compose(
-            self, timeout=120, creation_type=NODE_CREATION_TYPE.MANUAL):
+            self, timeout=120, creation_type=NODE_CREATION_TYPE.MANUAL,
+            skip_commissioning=None):
         """Compose the machine.
 
         Internal operation of this form is asynchronously. It will block the
         calling thread until the asynchronous operation is complete. Adjust
         `timeout` to minimize the maximum wait for the asynchronous operation.
         """
+        if skip_commissioning is None:
+            skip_commissioning = self.get_value_for('skip_commissioning')
 
         def create_and_sync(result):
             discovered_machine, pod_hints = result
             created_machine = self.pod.create_machine(
                 discovered_machine, self.request.user,
-                skip_commissioning=self.get_value_for('skip_commissioning'),
+                skip_commissioning=skip_commissioning,
                 creation_type=creation_type,
                 domain=self.get_value_for('domain'),
                 zone=self.get_value_for('zone'))
