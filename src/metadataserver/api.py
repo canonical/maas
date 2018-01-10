@@ -225,10 +225,11 @@ def add_event_to_node_event_log(
 
     event_details = EVENT_DETAILS[type_name]
     return Event.objects.register_event_and_event_type(
-        node.system_id, type_name, type_level=event_details.level,
+        type_name, type_level=event_details.level,
         type_description=event_details.description,
         event_action=action,
-        event_description="'%s' %s" % (origin, description), created=created)
+        event_description="'%s' %s" % (origin, description),
+        system_id=node.system_id, created=created)
 
 
 def process_file(results, script_set, script_name, content, request):
@@ -1158,7 +1159,8 @@ class AnonMetaDataHandler(VersionIndexHandler):
         type_name = EVENT_TYPES.NODE_INSTALLATION_FINISHED
         event_details = EVENT_DETAILS[type_name]
         Event.objects.register_event_and_event_type(
-            node.system_id, type_name, type_level=event_details.level,
+            type_name, type_level=event_details.level,
             type_description=event_details.description,
-            event_description="Node disabled netboot")
+            event_description="Node disabled netboot",
+            system_id=node.system_id)
         return rc.ALL_OK

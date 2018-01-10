@@ -19,6 +19,7 @@ from django.db.models import (
     TextField,
 )
 from maasserver import DefaultMeta
+from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import (
     AUDIT,
@@ -39,11 +40,13 @@ class EventManager(Manager):
     """A utility to manage the collection of Events."""
 
     def register_event_and_event_type(
-            self, system_id, type_name, type_description='',
-            type_level=logging.INFO, event_action='', event_description='',
-            user=None, created=None):
+            self, type_name, type_description='',
+            type_level=logging.INFO, event_action='',
+            event_description='', system_id=None, user=None,
+            ip_address=None, user_agent='', created=None):
         """Register EventType if it does not exist, then register the Event."""
-        node = Node.objects.get(system_id=system_id)
+        node = (Node.objects.get(system_id=system_id)
+                if system_id is not None else None)
         try:
             # Be optimistic; try to retrieve the event type first.
             event_type = EventType.objects.get(name=type_name)
@@ -52,8 +55,9 @@ class EventManager(Manager):
             event_type = EventType.objects.register(
                 type_name, type_description, type_level)
         return Event.objects.create(
-            node=node, type=event_type, action=event_action,
-            description=event_description, user=user, created=created)
+            type=event_type, node=node, user=user, ip_address=ip_address,
+            user_agent=user_agent, action=event_action,
+            description=event_description, created=created)
 
     def create_node_event(
             self, system_id, event_type, event_action='',
@@ -73,17 +77,17 @@ class EventManager(Manager):
             event_description=event_description, user=user)
 
     def create_audit_event(
-            self, system_id, event_type, user,
-            event_action='', event_description=''):
+            self, event_type, user, ip_address, user_agent,
+            system_id=None, event_action='', event_description=''):
         """Helper to register Audit events.
 
         These are events that have an event type level of AUDIT."""
         self.register_event_and_event_type(
-            system_id=system_id, type_name=event_type,
+            type_name=event_type,
             type_description=EVENT_DETAILS[event_type].description,
-            type_level=AUDIT,
-            event_action=event_action,
-            event_description=event_description, user=user)
+            type_level=AUDIT, event_action=event_action,
+            event_description=event_description,
+            system_id=system_id, user=user)
 
 
 class Event(CleanSave, TimestampedModel):
@@ -91,8 +95,13 @@ class Event(CleanSave, TimestampedModel):
 
     :ivar type: The event's type.
     :ivar node: The node of the event.
-    :ivar description: A free-form description of the event.
+    :ivar node_hostname: The hostname of the node of the event.
     :ivar user: The user responsible for this event.
+    :ivar username: The username of the user responsible for this event.
+    :ivar ip_address: IP address used in the request for this event.
+    :ivar user_agent: User agent used in the request for this event.
+    :ivar action: The action of the event.
+    :ivar description: A free-form description of the event.
     """
 
     type = ForeignKey(
@@ -100,21 +109,27 @@ class Event(CleanSave, TimestampedModel):
 
     node = ForeignKey('Node', null=True, editable=False, on_delete=SET_NULL)
 
-    action = TextField(default='', blank=True, editable=False)
-
-    description = TextField(default='', blank=True, editable=False)
+    # Set on node deletion.
+    node_hostname = CharField(
+        max_length=255, default='', blank=True, validators=[validate_hostname])
 
     user = ForeignKey(
         User, default=None, blank=True, null=True, editable=False,
         on_delete=SET_NULL)
 
     # Set on user deletion.
-    username = CharField(
-        max_length=32, blank=True, default='')
+    username = CharField(max_length=32, blank=True, default='')
 
-    # Set on node deletion.
-    node_hostname = CharField(
-        max_length=255, default='', blank=True, validators=[validate_hostname])
+    # IP address of the request that caused this event.
+    ip_address = MAASIPAddressField(
+        unique=False, null=True, editable=False, blank=True, default=None)
+
+    # User agent of request used to register the event.
+    user_agent = CharField(max_length=32, blank=True, default='')
+
+    action = TextField(default='', blank=True, editable=False)
+
+    description = TextField(default='', blank=True, editable=False)
 
     objects = EventManager()
 

@@ -1294,10 +1294,10 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports.
         from maasserver.models.event import Event
         Event.objects.register_event_and_event_type(
-            self.system_id, type_name, type_level=event_details.level,
+            type_name, type_level=event_details.level,
             type_description=event_details.description,
-            event_action=action,
-            event_description=description)
+            event_action=action, event_description=description,
+            system_id=self.system_id)
 
     def storage_layout_issues(self):
         """Return any errors with the storage layout.
@@ -3734,14 +3734,15 @@ class Node(CleanSave, TimestampedModel):
         event_details = EVENT_DETAILS[
             EVENT_TYPES.NODE_POWER_QUERY_FAILED]
         Event.objects.register_event_and_event_type(
-            self.system_id, EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+            EVENT_TYPES.NODE_POWER_QUERY_FAILED,
             type_level=event_details.level, event_action='',
             type_description=event_details.description,
             event_description=(
                 '(%s) - Aborting %s and reverting to %s. Unable to '
                 'power control the node. Please check power '
                 'credentials.' % (
-                    user, stat[self.status], stat[old_status])))
+                    user, stat[self.status], stat[old_status])),
+            system_id=self.system_id)
 
         self.status = old_status
         self.save()

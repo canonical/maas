@@ -46,9 +46,9 @@ def emit_state_transition_event(instance, old_values, **kwargs):
         description += " (to %s)" % node.owner.username
 
     Event.objects.register_event_and_event_type(
-        node.system_id, type_name, type_level=event_details.level,
+        type_name, type_level=event_details.level,
         type_description=event_details.description,
-        event_description=description)
+        event_description=description, system_id=node.system_id)
 
 signals.watch_fields(
     emit_state_transition_event,

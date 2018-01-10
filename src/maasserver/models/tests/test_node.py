@@ -4169,12 +4169,12 @@ class TestNode(MAASServerTestCase):
         event_description = "(%s) - %s" % (user.username, comment)
         node._register_request_event(user, event_name, event_action, comment)
         self.assertThat(log_mock, MockCalledOnceWith(
-            node.system_id,
             EVENT_TYPES.REQUEST_NODE_START,
             type_level=event_details.level,
             type_description=event_details.description,
             event_action=event_action,
-            event_description=event_description))
+            event_description=event_description,
+            system_id=node.system_id))
 
     def test__register_request_event_none_user_saves_comment_not_user(self):
         node = factory.make_Node()
@@ -4187,12 +4187,12 @@ class TestNode(MAASServerTestCase):
         event_description = "%s" % (comment)
         node._register_request_event(None, event_name, event_action, comment)
         self.assertThat(log_mock, MockCalledOnceWith(
-            node.system_id,
             EVENT_TYPES.REQUEST_NODE_START,
             type_level=event_details.level,
             type_description=event_details.description,
             event_action=event_action,
-            event_description=event_description))
+            event_description=event_description,
+            system_id=node.system_id))
 
     def test__status_message_returns_most_recent_event(self):
         # The first event won't be returned.
