@@ -7,6 +7,7 @@ __all__ = []
 
 from functools import partial
 import json
+import random
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -115,6 +116,8 @@ class TestConfigurationSet(MAASTestCase):
         # Set the option to a random value.
         if self.option == "database_port":
             value = factory.pick_port()
+        elif self.option == "database_conn_max_age":
+            value = random.randint(0, 60)
         else:
             value = factory.make_name("foobar")
 

@@ -19,6 +19,10 @@ class TestRegionConfiguration(MAASTestCase):
         config = RegionConfiguration({})
         self.assertEqual("http://localhost:5240/MAAS", config.maas_url)
 
+    def test_default_database_conn_max_age(self):
+        config = RegionConfiguration({})
+        self.assertEqual(60 * 5, config.database_conn_max_age)
+
     def test_set_and_get_maas_url(self):
         config = RegionConfiguration({})
         example_url = factory.make_simple_http_url()
@@ -67,6 +71,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         "database_name": "maasdb",
         "database_user": "maas",
         "database_pass": "",
+        "database_conn_max_age": 5 * 60,
     }
 
     scenarios = tuple(

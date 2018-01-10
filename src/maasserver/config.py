@@ -51,3 +51,7 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     database_pass = ConfigurationOption(
         "database_pass", "The password for the PostgreSQL user.",
         UnicodeString(if_missing="", accept_python=False))
+    database_conn_max_age = ConfigurationOption(
+        "database_conn_max_age",
+        "The lifetime of a database connection, in seconds.",
+        Int(if_missing=(5 * 60), accept_python=False, min=0))

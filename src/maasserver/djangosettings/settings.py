@@ -118,6 +118,7 @@ try:
                 'PASSWORD': config.database_pass,
                 'HOST': config.database_host,
                 'PORT': str(config.database_port),
+                'CONN_MAX_AGE': config.database_conn_max_age,
             }
         }
 except:
