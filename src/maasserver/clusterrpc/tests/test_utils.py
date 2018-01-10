@@ -11,6 +11,10 @@ from unittest.mock import (
     sentinel,
 )
 
+from django.core.exceptions import (
+    NON_FIELD_ERRORS,
+    ValidationError,
+)
 from fixtures import FakeLogger
 from maasserver.clusterrpc import utils
 from maasserver.clusterrpc.utils import call_racks_synchronously
@@ -224,3 +228,8 @@ class TestGetErrorMessageForException(MAASServerTestCase):
             "Unable to connect to rack controller '%s' (%s); no connections "
             "available." % (rack.hostname, rack.system_id),
             utils.get_error_message_for_exception(exception))
+
+    def test_ValidationError(self):
+        exception = ValidationError({NON_FIELD_ERRORS: 'Some error'})
+        self.assertEqual(
+            utils.get_error_message_for_exception(exception), 'Some error')

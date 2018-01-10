@@ -245,8 +245,8 @@ class Commission(NodeAction):
                 skip_storage=skip_storage,
                 commissioning_scripts=commissioning_scripts,
                 testing_scripts=testing_scripts)
-        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
+        except RPC_EXCEPTIONS + (ExternalProcessError, ValidationError) as e:
+            raise NodeActionError(e)
 
 
 class Test(NodeAction):
@@ -317,7 +317,10 @@ class Acquire(NodeAction):
     def execute(self):
         """See `NodeAction.execute`."""
         with locks.node_acquire:
-            self.node.acquire(self.user, token=None)
+            try:
+                self.node.acquire(self.user, token=None)
+            except ValidationError as e:
+                raise NodeActionError(e)
 
 
 class Deploy(NodeAction):
@@ -333,7 +336,10 @@ class Deploy(NodeAction):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
             with locks.node_acquire:
-                self.node.acquire(self.user, token=None)
+                try:
+                    self.node.acquire(self.user, token=None)
+                except ValidationError as e:
+                    raise NodeActionError(e)
 
         if osystem and distro_series:
             try:

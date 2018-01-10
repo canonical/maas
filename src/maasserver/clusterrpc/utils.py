@@ -12,6 +12,7 @@ __all__ = [
 from collections import namedtuple
 from functools import partial
 
+from django.core.exceptions import ValidationError
 from maasserver import logger
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.models.node import RackController
@@ -210,8 +211,11 @@ def get_error_message_for_exception(exception):
         return (
             "Unable to connect to rack controller '%s' (%s); no connections "
             "available." % (controller.hostname, controller.system_id))
+    elif isinstance(exception, ValidationError):
+        error_message = ' '.join(exception.messages)
+    else:
+        error_message = str(exception)
 
-    error_message = str(exception)
     if len(error_message) == 0:
         error_message = (
             "Unexpected exception: %s. See /var/log/maas/regiond.log "

@@ -353,6 +353,15 @@ class TestCommissionAction(MAASServerTestCase):
             node_start,
             MockCalledOnceWith(admin, ANY, ANY, allow_power_cycle=True))
 
+    def test_commission_raises_NodeActionError_if_not_in_accessible_pool(self):
+        pool = factory.make_ResourcePool()
+        node = factory.make_Node(pool=pool)
+        user = factory.make_admin()
+        action = Commission(node, user)
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            str(exception), "User doesn't have access to the resource pool")
+
 
 class TestTest(MAASServerTestCase):
 
@@ -497,6 +506,15 @@ class TestAcquireNodeAction(MAASServerTestCase):
         self.assertThat(
             node_acquire.__exit__, MockCalledOnceWith(None, None, None))
 
+    def test_Acquire_raises_NodeActionError_if_not_in_accessible_pool(self):
+        pool = factory.make_ResourcePool()
+        node = factory.make_Node(pool=pool)
+        user = factory.make_admin()
+        action = Acquire(node, user)
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            str(exception), "User doesn't have access to the resource pool")
+
 
 class TestDeployAction(MAASServerTestCase):
 
@@ -541,6 +559,15 @@ class TestDeployAction(MAASServerTestCase):
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
 
+    def test_Deploy_raises_NodeActionError_if_not_in_accessible_pool(self):
+        pool = factory.make_ResourcePool()
+        node = factory.make_Node(pool=pool)
+        user = factory.make_admin()
+        action = Deploy(node, user)
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            str(exception), "User doesn't have access to the resource pool")
+
     def test_Deploy_raises_NodeActionError_for_no_curtin_config(self):
         user = factory.make_User()
         node = factory.make_Node(
@@ -569,7 +596,7 @@ class TestDeployAction(MAASServerTestCase):
         error = self.assertRaises(
             NodeActionError, Deploy(node, user).execute, **extra)
         self.assertEqual(
-            "['%s is not a support operating system.']" % os_name,
+            '{} is not a support operating system.'.format(os_name),
             str(error))
 
     def test_Deploy_sets_osystem_and_series(self):
