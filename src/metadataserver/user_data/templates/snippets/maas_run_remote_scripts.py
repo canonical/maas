@@ -5,7 +5,7 @@
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017 Canonical
+# Copyright (C) 2017-2018 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -110,7 +110,9 @@ def download_and_extract_tar(url, creds, scripts_dir):
     return True
 
 
-def run_and_check(cmd, scripts, send_result=True):
+def run_and_check(cmd, scripts, send_result=True, sudo=False):
+    if sudo:
+        cmd = ['sudo', '-En'] + cmd
     proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
     capture_script_output(
         proc, scripts[0]['combined_path'], scripts[0]['stdout_path'],
@@ -152,8 +154,8 @@ def install_dependencies(scripts, send_result=True):
                 'Installing apt packages for %s' % script['msg_name'],
                 send_result, status='INSTALLING', **script['args'])
         if not run_and_check(
-                ['sudo', '-n', 'apt-get', '-qy', 'install'] + apt,
-                scripts, send_result):
+                ['apt-get', '-qy', 'install'] + apt, scripts, send_result,
+                True):
             return False
 
     if snap is not None:
@@ -163,9 +165,9 @@ def install_dependencies(scripts, send_result=True):
                 send_result, status='INSTALLING', **script['args'])
         for pkg in snap:
             if isinstance(pkg, str):
-                cmd = ['sudo', '-n', 'snap', 'install', pkg]
+                cmd = ['snap', 'install', pkg]
             elif isinstance(pkg, dict):
-                cmd = ['sudo', '-n', 'snap', 'install', pkg['name']]
+                cmd = ['snap', 'install', pkg['name']]
                 if 'channel' in pkg:
                     cmd.append('--%s' % pkg['channel'])
                 if 'mode' in pkg:
@@ -178,7 +180,7 @@ def install_dependencies(scripts, send_result=True):
                 # string or dictionary. This should never happen but just
                 # incase it does...
                 continue
-            if not run_and_check(cmd, scripts, send_result):
+            if not run_and_check(cmd, scripts, send_result, True):
                 return False
 
     if url is not None:
@@ -218,16 +220,14 @@ def install_dependencies(scripts, send_result=True):
             elif filename.endswith('.deb'):
                 # Allow dpkg to fail incase it just needs dependencies
                 # installed.
-                run_and_check(
-                    ['sudo', '-n', 'dpkg', '-i', filename], scripts, False)
+                run_and_check(['dpkg', '-i', filename], scripts, False, True)
                 if not run_and_check(
-                        ['sudo', '-n', 'apt-get', 'install', '-qyf'], scripts,
-                        send_result):
+                        ['apt-get', 'install', '-qyf'], scripts, send_result,
+                        True):
                     return False
             elif filename.endswith('.snap'):
                 if not run_and_check(
-                        ['sudo', '-n', 'snap', filename], scripts,
-                        send_result):
+                        ['snap', filename], scripts, send_result, True):
                     return False
 
     # All went well, clean up the install logs so only script output is
@@ -702,6 +702,11 @@ def main():
     # Give the runner the highest nice value to ensure the heartbeat keeps
     # running.
     os.nice(-20)
+
+    # Make sure installing packages is noninteractive for this process
+    # and all subprocesses.
+    if 'DEBIAN_FRONTEND' not in os.environ:
+        os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
 
     heart_beat = HeartBeat(url, creds)
     if not args.no_send:
