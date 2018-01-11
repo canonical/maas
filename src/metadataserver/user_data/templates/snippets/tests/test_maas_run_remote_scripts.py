@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for maas_run_remote_scripts.py."""
@@ -12,12 +12,17 @@ import json
 import os
 import random
 import stat
-from subprocess import TimeoutExpired
+from subprocess import (
+    DEVNULL,
+    PIPE,
+    TimeoutExpired,
+)
 import tarfile
 import time
 from unittest.mock import (
     ANY,
     call,
+    MagicMock,
 )
 from zipfile import ZipFile
 
@@ -212,6 +217,16 @@ class TestInstallDependencies(MAASTestCase):
             '%s\n%s\n' % (script['stdout'], script['stderr']),
             open(script['combined_path'], 'r').read())
 
+    def test_sudo_run_and_check(self):
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        self.patch(maas_run_remote_scripts, 'capture_script_output')
+        cmd = factory.make_name('cmd')
+
+        run_and_check([cmd], MagicMock(), False, True)
+
+        self.assertThat(mock_popen, MockCalledOnceWith(
+            ['sudo', '-En', cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE))
+
     def test_install_dependencies_does_nothing_when_empty(self):
         self.assertTrue(install_dependencies(make_scripts()))
         self.assertThat(self.mock_output_and_send, MockNotCalled())
@@ -231,8 +246,7 @@ class TestInstallDependencies(MAASTestCase):
                 'Installing apt packages for %s' % script['msg_name'],
                 True, status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockCalledOnceWith(
-                ['sudo', '-n', 'apt-get', '-qy', 'install'] + packages,
-                scripts, True))
+                ['apt-get', '-qy', 'install'] + packages, scripts, True, True))
             # Verify cleanup
             self.assertFalse(os.path.exists(script['combined_path']))
             self.assertFalse(os.path.exists(script['stdout_path']))
@@ -254,8 +268,7 @@ class TestInstallDependencies(MAASTestCase):
                 'Installing apt packages for %s' % script['msg_name'],
                 True, status='INSTALLING'))
             self.assertThat(mock_run_and_check, MockCalledOnceWith(
-                ['sudo', '-n', 'apt-get', '-qy', 'install'] + packages,
-                scripts, True))
+                ['apt-get', '-qy', 'install'] + packages, scripts, True, True))
 
     def test_install_dependencies_snap_str_list(self):
         mock_run_and_check = self.patch(
@@ -278,8 +291,7 @@ class TestInstallDependencies(MAASTestCase):
 
         for package in packages:
             self.assertThat(mock_run_and_check, MockAnyCall(
-                ['sudo', '-n', 'snap', 'install', package],
-                scripts, True))
+                ['snap', 'install', package], scripts, True, True))
 
     def test_install_dependencies_snap_str_dict(self):
         mock_run_and_check = self.patch(
@@ -319,28 +331,27 @@ class TestInstallDependencies(MAASTestCase):
             self.assertFalse(os.path.exists(script['stdout_path']))
             self.assertFalse(os.path.exists(script['stderr_path']))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'snap', 'install', packages[0]['name']],
-            scripts, True))
+            ['snap', 'install', packages[0]['name']], scripts, True, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
-                'sudo', '-n', 'snap', 'install', packages[1]['name'],
+                'snap', 'install', packages[1]['name'],
                 '--%s' % packages[1]['channel']
             ],
-            scripts, True))
+            scripts, True, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
-                'sudo', '-n', 'snap', 'install', packages[2]['name'],
+                'snap', 'install', packages[2]['name'],
                 '--%s' % packages[2]['channel'],
                 '--%smode' % packages[2]['mode'],
             ],
-            scripts, True))
+            scripts, True, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
             [
-                'sudo', '-n', 'snap', 'install', packages[3]['name'],
+                'snap', 'install', packages[3]['name'],
                 '--%s' % packages[3]['channel'],
                 '--%smode' % packages[3]['mode'],
             ],
-            scripts, True))
+            scripts, True, True))
 
     def test_install_dependencies_snap_errors(self):
         mock_run_and_check = self.patch(
@@ -359,8 +370,7 @@ class TestInstallDependencies(MAASTestCase):
                 True, status='INSTALLING'))
 
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'snap', 'install', packages[0]],
-            scripts, True))
+            ['snap', 'install', packages[0]], scripts, True, True))
 
     def test_install_dependencies_url(self):
         mock_run_and_check = self.patch(
@@ -456,9 +466,9 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'dpkg', '-i', deb_file], scripts, False))
+            ['dpkg', '-i', deb_file], scripts, False, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'apt-get', 'install', '-qyf'], scripts, True))
+            ['apt-get', 'install', '-qyf'], scripts, True, True))
 
     def test_install_dependencies_url_deb_errors(self):
         mock_run_and_check = self.patch(
@@ -475,9 +485,9 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'dpkg', '-i', deb_file], scripts, False))
+            ['dpkg', '-i', deb_file], scripts, False, True))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'apt-get', 'install', '-qyf'], scripts, True))
+            ['apt-get', 'install', '-qyf'], scripts, True, True))
 
     def test_install_dependencies_url_snap(self):
         mock_run_and_check = self.patch(
@@ -493,7 +503,7 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'snap', snap_file], scripts, True))
+            ['snap', snap_file], scripts, True, True))
 
     def test_install_dependencies_url_snap_errors(self):
         mock_run_and_check = self.patch(
@@ -510,7 +520,7 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         self.assertThat(mock_run_and_check, MockAnyCall(
-            ['sudo', '-n', 'snap', snap_file], scripts, True))
+            ['snap', snap_file], scripts, True, True))
 
 
 class TestParseParameters(MAASTestCase):
