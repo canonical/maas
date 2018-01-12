@@ -122,7 +122,7 @@ class AMTPowerDriver(PowerDriver):
 
     def _get_amt_environment(self, power_pass):
         """Set and return environment for AMT."""
-        env = shell.select_c_utf8_locale()
+        env = shell.get_env_with_locale()
         env['AMT_PASSWORD'] = power_pass
         return env
 

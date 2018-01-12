@@ -36,7 +36,7 @@ from provisioningserver.dhcp.testing.config import (
 )
 from provisioningserver.utils import flatten
 import provisioningserver.utils.network as net_utils
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.text import quote
 from testtools.content import (
     Content,
@@ -168,7 +168,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
         cmd = "aa-exec", "--profile", "unconfined", *cmd
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            env=select_c_utf8_locale())
+            env=get_env_with_locale())
         command = " ".join(map(pipes.quote, process.args))
         output, _ = process.communicate()
         # Record the output from `dhcpd -t` as a detail.

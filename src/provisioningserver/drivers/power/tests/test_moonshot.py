@@ -20,8 +20,8 @@ from provisioningserver.drivers.power import (
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.utils.shell import (
     ExternalProcessError,
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 from testtools.matchers import Equals
 
@@ -77,7 +77,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
 
     def test__issue_ipmitool_command_sets_pxe_boot(self):
         context = make_context()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         pxe_command = make_pxe_command(context)
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, 'call_and_check')
@@ -89,7 +89,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
 
     def test__issue_ipmitool_command_returns_stdout_if_no_match(self):
         context = make_context()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         ipmitool_command = make_ipmitool_command('status', context)
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, 'call_and_check')

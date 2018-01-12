@@ -15,9 +15,9 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+    get_env_with_bytes_locale,
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_bytes_locale,
-    select_c_utf8_locale,
 )
 import provisioningserver.utils.shell as shell_module
 from testtools.matchers import (
@@ -192,12 +192,12 @@ LC_VAR_NAMES = {
 }
 
 
-class TestSelectCUTF8Locale(MAASTestCase):
-    """Tests for `select_c_utf8_locale`."""
+class TestGetEnvWithLocale(MAASTestCase):
+    """Tests for `get_env_with_locale`."""
 
     def test__sets_LANG_and_LC_ALL(self):
         self.assertThat(
-            select_c_utf8_locale({}),
+            get_env_with_locale({}),
             Equals({
                 "LANG": "C.UTF-8",
                 "LANGUAGE": "C.UTF-8",
@@ -207,7 +207,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
 
     def test__overwrites_LANG(self):
         self.assertThat(
-            select_c_utf8_locale({
+            get_env_with_locale({
                 "LANG": factory.make_name("LANG"),
             }),
             Equals({
@@ -219,7 +219,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
 
     def test__overwrites_LANGUAGE(self):
         self.assertThat(
-            select_c_utf8_locale({
+            get_env_with_locale({
                 "LANGUAGE": factory.make_name("LANGUAGE"),
             }),
             Equals({
@@ -231,7 +231,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
 
     def test__removes_other_LC_variables(self):
         self.assertThat(
-            select_c_utf8_locale({
+            get_env_with_locale({
                 name: factory.make_name(name)
                 for name in LC_VAR_NAMES
             }),
@@ -250,7 +250,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
         expected = basis.copy()
         expected["LANG"] = expected["LC_ALL"] = expected["LANGUAGE"] = (
             "C.UTF-8")
-        observed = select_c_utf8_locale(basis)
+        observed = get_env_with_locale(basis)
         self.assertThat(observed, Equals(expected))
 
     def test__defaults_to_process_environment(self):
@@ -258,17 +258,17 @@ class TestSelectCUTF8Locale(MAASTestCase):
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):
             self.assertThat(
-                select_c_utf8_locale(),
+                get_env_with_locale(),
                 ContainsDict({name: Equals(value)}),
             )
 
 
-class TestSelectCUTF8BytesLocale(MAASTestCase):
-    """Tests for `select_c_utf8_bytes_locale`."""
+class TestGetEnvWithBytesLocale(MAASTestCase):
+    """Tests for `get_env_with_bytes_locale`."""
 
     def test__sets_LANG_and_LC_ALL(self):
         self.assertThat(
-            select_c_utf8_bytes_locale({}),
+            get_env_with_bytes_locale({}),
             Equals({
                 b"LANG": b"C.UTF-8",
                 b"LANGUAGE": b"C.UTF-8",
@@ -278,7 +278,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
 
     def test__overwrites_LANG(self):
         self.assertThat(
-            select_c_utf8_bytes_locale({
+            get_env_with_bytes_locale({
                 b"LANG": factory.make_name("LANG").encode("ascii"),
             }),
             Equals({
@@ -290,7 +290,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
 
     def test__overwrites_LANGUAGE(self):
         self.assertThat(
-            select_c_utf8_bytes_locale({
+            get_env_with_bytes_locale({
                 b"LANGUAGE": factory.make_name("LANGUAGE").encode("ascii"),
             }),
             Equals({
@@ -302,7 +302,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
 
     def test__removes_other_LC_variables(self):
         self.assertThat(
-            select_c_utf8_bytes_locale({
+            get_env_with_bytes_locale({
                 name.encode("ascii"): factory.make_name(name).encode("ascii")
                 for name in LC_VAR_NAMES
             }),
@@ -322,7 +322,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
         expected = basis.copy()
         expected[b"LANG"] = expected[b"LC_ALL"] = expected[b"LANGUAGE"] = (
             b"C.UTF-8")
-        observed = select_c_utf8_bytes_locale(basis)
+        observed = get_env_with_bytes_locale(basis)
         self.assertThat(observed, Equals(expected))
 
     def test__defaults_to_process_environment(self):
@@ -330,7 +330,7 @@ class TestSelectCUTF8BytesLocale(MAASTestCase):
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):
             self.assertThat(
-                select_c_utf8_bytes_locale(),
+                get_env_with_bytes_locale(),
                 ContainsDict({
                     name.encode("ascii"): Equals(value.encode("ascii")),
                 }),

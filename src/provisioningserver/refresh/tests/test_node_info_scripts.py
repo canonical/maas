@@ -36,7 +36,7 @@ from provisioningserver.refresh.node_info_scripts import (
     VIRTUALITY_SCRIPT,
 )
 from provisioningserver.utils import typed
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 from testtools.content import text_content
 from testtools.matchers import (
     Equals,
@@ -853,7 +853,7 @@ class TestVirtualityScript(MAASTestCase):
         script = self.bindir.joinpath("virtuality")
         script.write_text(VIRTUALITY_SCRIPT, "ascii")
         script.chmod(0o700)
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         env["PATH"] = str(self.bindir)
         try:
             return check_output((str(script),), stderr=STDOUT, env=env)

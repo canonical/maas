@@ -36,8 +36,8 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.drivers.pod.virsh import VirshPodDriver
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils.shell import (
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
@@ -782,7 +782,7 @@ class TestVirshSSH(MAASTestCase):
         """
         VirshSSH resets the locale to ensure we only ever get English strings.
         """
-        c_utf8_environment = select_c_utf8_locale()
+        c_utf8_environment = get_env_with_locale()
         mock_spawn = self.patch(pexpect.spawn, "__init__")
         self.configure_virshssh('')
         self.assertThat(

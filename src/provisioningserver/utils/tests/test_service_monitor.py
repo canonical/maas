@@ -36,7 +36,7 @@ from provisioningserver.utils.service_monitor import (
     ServiceState,
     ServiceUnknownError,
 )
-from provisioningserver.utils.shell import select_c_utf8_bytes_locale
+from provisioningserver.utils.shell import get_env_with_bytes_locale
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -460,7 +460,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(
             mock_getProcessOutputAndValue, MockCalledOnceWith(
                 # The environment contains LC_ALL and LANG too.
-                cmd[0], cmd[1:], env=select_c_utf8_bytes_locale()))
+                cmd[0], cmd[1:], env=get_env_with_bytes_locale()))
 
     @inlineCallbacks
     def test___execSystemDServiceAction_calls_systemctl_with_options(self):
@@ -477,7 +477,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(
             mock_getProcessOutputAndValue, MockCalledOnceWith(
                 # The environment contains LC_ALL and LANG too.
-                cmd[0], cmd[1:], env=select_c_utf8_bytes_locale()))
+                cmd[0], cmd[1:], env=get_env_with_bytes_locale()))
 
     @inlineCallbacks
     def test___execSystemDServiceAction_decodes_stdout_and_stderr(self):
@@ -518,7 +518,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(
             mock_getProcessOutputAndValue, MockCalledOnceWith(
                 # The environment contains LC_ALL and LANG too.
-                cmd[0], cmd[1:], env=select_c_utf8_bytes_locale()))
+                cmd[0], cmd[1:], env=get_env_with_bytes_locale()))
 
     @inlineCallbacks
     def test___execSupervisorServiceAction_decodes_stdout_and_stderr(self):

@@ -31,7 +31,7 @@ from provisioningserver.utils import (
     snappy,
     typed,
 )
-from provisioningserver.utils.shell import select_c_utf8_bytes_locale
+from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import (
     DeferredList,
@@ -372,7 +372,7 @@ class ServiceMonitor:
 
         :return: tuple (exit code, std-output, std-error)
         """
-        env = select_c_utf8_bytes_locale()
+        env = get_env_with_bytes_locale()
         cmd = ["sudo", "--non-interactive", "systemctl", action]
         if extra_opts is not None:
             cmd.extend(extra_opts)
@@ -391,7 +391,7 @@ class ServiceMonitor:
 
         :return: tuple (exit code, std-output, std-error)
         """
-        env = select_c_utf8_bytes_locale()
+        env = get_env_with_bytes_locale()
         cmd = os.path.join(snappy.get_snap_path(), "bin", "run-supervisorctl")
         cmd = (cmd, action, service_name)
 

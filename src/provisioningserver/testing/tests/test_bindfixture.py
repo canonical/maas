@@ -15,7 +15,7 @@ from provisioningserver.testing.bindfixture import (
     BINDServer,
     BINDServerResources,
 )
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 from testtools.matchers import (
     Contains,
     FileExists,
@@ -49,7 +49,7 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
         if not isinstance(commands, list):
             commands = (commands, )
         cmd.extend(commands)
-    output = check_output(cmd, env=select_c_utf8_locale())
+    output = check_output(cmd, env=get_env_with_locale())
     return output.decode("utf-8").strip()
 
 

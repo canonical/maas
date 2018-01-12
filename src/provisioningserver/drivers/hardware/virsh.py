@@ -15,7 +15,7 @@ from provisioningserver.rpc.utils import (
     create_node,
 )
 from provisioningserver.utils import typed
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -88,7 +88,7 @@ class VirshSSH(pexpect.spawn):
     def __init__(self, timeout=30, maxread=2000, dom_prefix=None):
         super(VirshSSH, self).__init__(
             None, timeout=timeout, maxread=maxread,
-            env=select_c_utf8_locale())
+            env=get_env_with_locale())
         self.name = '<virssh>'
         if dom_prefix is None:
             self.dom_prefix = ''

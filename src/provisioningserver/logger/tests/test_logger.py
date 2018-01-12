@@ -15,7 +15,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LoggingMode
 from provisioningserver.logger.testing import find_log_lines
 from provisioningserver.utils import typed
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 from testtools.content import text_content
 
 
@@ -26,7 +26,7 @@ here = pathlib.Path(__file__).parent
 def log_something(
         name: str, *, verbosity: int, set_verbosity: int=None,
         mode: LoggingMode):
-    env = dict(select_c_utf8_locale(), PYTHONPATH=":".join(sys.path))
+    env = dict(get_env_with_locale(), PYTHONPATH=":".join(sys.path))
     script = here.parent.joinpath("testing", "logsomething.py")
     args = [
         "--name", name,

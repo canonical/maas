@@ -26,8 +26,8 @@ from netaddr.core import AddrFormatError
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.shell import (
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 
 
@@ -219,7 +219,7 @@ def run_nmap(args: NmapParameters) -> dict:
     nmap = subprocess.Popen(
         get_nmap_arguments(args), stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        env=select_c_utf8_locale(),
+        env=get_env_with_locale(),
         # This pre-exec function prevents `nmap` from writing to the pty, which
         # misbehaves when it runs in parallel and can require a `reset`.
         preexec_fn=os.setsid)
@@ -298,7 +298,7 @@ def run_ping(args: PingParameters) -> dict:
     ping = subprocess.Popen(
         get_ping_arguments(args),
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL, env=select_c_utf8_locale())
+        stderr=subprocess.DEVNULL, env=get_env_with_locale())
     ping.wait()
     result = bool(ping.returncode == 0)
     event = {

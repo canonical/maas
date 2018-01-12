@@ -6,8 +6,8 @@
 __all__ = [
     'call_and_check',
     'ExternalProcessError',
-    'select_c_utf8_bytes_locale',
-    'select_c_utf8_locale',
+    'get_env_with_bytes_locale',
+    'get_env_with_locale',
 ]
 
 import os
@@ -122,33 +122,34 @@ def has_command_available(command):
     return True
 
 
-def select_c_utf8_locale(environ=os.environ):
-    """Return a dict containing an environment that uses the C.UTF-8 locale.
+def get_env_with_locale(environ=os.environ, locale='C.UTF-8'):
+    """Return an environment dict with locale vars set (to C.UTF-8 by default).
 
     C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
     other locale makes sense.
 
     This function takes a starting environment, by default that of the current
     process, strips away all locale and language settings (i.e. LC_* and LANG)
-    and selects C.UTF-8 in their place.
+    and selects the specified locale in their place.
 
     :param environ: A base environment to start from. By default this is
         ``os.environ``. It will not be modified.
+    :param locale: The locale to set in the environment, 'C.UTF-8' by default.
     """
     environ = {
         name: value for name, value in environ.items()
         if not name.startswith('LC_')
     }
     environ.update({
-        'LC_ALL': 'C.UTF-8',
-        'LANG': 'C.UTF-8',
-        'LANGUAGE': 'C.UTF-8',
+        'LC_ALL': locale,
+        'LANG': locale,
+        'LANGUAGE': locale,
     })
     return environ
 
 
-def select_c_utf8_bytes_locale(environ=os.environb):
-    """Return a dict containing an environment that uses the C.UTF-8 locale.
+def get_env_with_bytes_locale(environ=os.environb, locale=b'C.UTF-8'):
+    """Return an environment dict with locale vars set (to C.UTF-8 by default).
 
     C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
     other locale makes sense.
@@ -159,14 +160,15 @@ def select_c_utf8_bytes_locale(environ=os.environb):
 
     :param environ: A base environment to start from. By default this is
         ``os.environb``. It will not be modified.
+    :param locale: The locale to set in the environment, 'C.UTF-8' by default.
     """
     environ = {
         name: value for name, value in environ.items()
         if not name.startswith(b'LC_')
     }
     environ.update({
-        b'LC_ALL': b'C.UTF-8',
-        b'LANG': b'C.UTF-8',
-        b'LANGUAGE': b'C.UTF-8',
+        b'LC_ALL': locale,
+        b'LANG': locale,
+        b'LANGUAGE': locale,
     })
     return environ

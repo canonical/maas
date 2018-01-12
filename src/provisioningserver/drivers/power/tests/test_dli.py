@@ -24,8 +24,8 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.utils.shell import (
     ExternalProcessError,
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 from testtools.matchers import Equals
 
@@ -65,7 +65,7 @@ class TestDLIPowerDriver(MAASTestCase):
 
     def test__set_outlet_state_calls_wget(self):
         driver = dli_module.DLIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         power_change = factory.make_name('power_change')
         outlet_id = choice(['1', '2', '3', '4', '5', '6', '7', '8'])
         power_user = factory.make_name('power_user')
@@ -95,7 +95,7 @@ class TestDLIPowerDriver(MAASTestCase):
 
     def test__query_outlet_state_queries_on(self):
         driver = dli_module.DLIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         outlet_id = choice(['1', '2', '3', '4', '5', '6', '7', '8'])
         power_user = factory.make_name('power_user')
         power_pass = factory.make_name('power_pass')
@@ -116,7 +116,7 @@ class TestDLIPowerDriver(MAASTestCase):
 
     def test__query_outlet_state_queries_off(self):
         driver = dli_module.DLIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         outlet_id = choice(['1', '2', '3', '4', '5', '6', '7', '8'])
         power_user = factory.make_name('power_user')
         power_pass = factory.make_name('power_pass')

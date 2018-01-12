@@ -13,7 +13,7 @@ from subprocess import check_output
 
 from metadataserver import logger
 from provisioningserver.utils.network import get_all_addresses_for_interface
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 
 # fcntl operation as defined in <ioctls.h>.  This is GNU/Linux-specific!
 SIOCGIFADDR = 0x8915
@@ -30,7 +30,7 @@ def get_command_output(*command_line):
     :return: Output from the command.
     :rtype: List of unicode, one per line.
     """
-    env = select_c_utf8_locale()
+    env = get_env_with_locale()
     output = check_output(command_line, env=env)
     return output.decode("utf-8").splitlines()
 

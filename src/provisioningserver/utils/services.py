@@ -47,7 +47,7 @@ from provisioningserver.utils.network import (
     enumerate_ipv4_addresses,
     get_all_interfaces_definition,
 )
-from provisioningserver.utils.shell import select_c_utf8_bytes_locale
+from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import (
     callOut,
     deferred,
@@ -222,7 +222,7 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
 
     @deferred
     def startProcess(self):
-        env = select_c_utf8_bytes_locale()
+        env = get_env_with_bytes_locale()
         log.msg("%s started." % self.getDescription())
         args = self.getProcessParameters()
         assert all(isinstance(arg, bytes) for arg in args), (

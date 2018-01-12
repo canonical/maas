@@ -19,7 +19,7 @@ from subprocess import (
 )
 from tempfile import TemporaryDirectory
 
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 
 
 OPENSSH_PROTOCOL2_KEY_TYPES = frozenset((
@@ -120,7 +120,7 @@ def normalise_openssh_public_key(keytext):
                 pipes.quote(keytype), " ".join(
                     sorted(OPENSSH_PROTOCOL2_KEY_TYPES))))
 
-    env = select_c_utf8_locale()
+    env = get_env_with_locale()
     # Request OpenSSH to use /bin/true when prompting for passwords. We also
     # have to redirect stdin from, say, /dev/null so that it doesn't use the
     # terminal (when this is executed from a terminal).

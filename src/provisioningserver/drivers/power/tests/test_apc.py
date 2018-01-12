@@ -16,8 +16,8 @@ from provisioningserver.drivers.power import (
     PowerActionError,
 )
 from provisioningserver.utils.shell import (
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 from testtools.matchers import Equals
 
@@ -59,7 +59,7 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_run_process_calls_command_and_returns_output(self):
         driver = apc_module.APCPowerDriver()
         context = self.make_context()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         command = 'snmpget ' + COMMON_ARGS % (
             context['power_address'], context['node_outlet'])
         self.patch_popen(

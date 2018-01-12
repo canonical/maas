@@ -21,7 +21,7 @@ from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
-    select_c_utf8_locale,
+    get_env_with_locale,
 )
 
 
@@ -58,7 +58,7 @@ class MoonshotIPMIPowerDriver(PowerDriver):
         else:
             command += ('power', power_change)
         try:
-            stdout = call_and_check(command, env=select_c_utf8_locale())
+            stdout = call_and_check(command, env=get_env_with_locale())
             stdout = stdout.decode('utf-8')
         except ExternalProcessError as e:
             raise PowerActionError(

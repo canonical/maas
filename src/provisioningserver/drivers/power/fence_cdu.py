@@ -21,7 +21,7 @@ from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
-    select_c_utf8_locale,
+    get_env_with_locale,
 )
 
 
@@ -54,7 +54,7 @@ class FenceCDUPowerDriver(PowerDriver):
             stdout = call_and_check([
                 'fence_cdu', '-a', power_address, '-n', power_id, '-l',
                 power_user, '-p', power_pass, '-o', command],
-                env=select_c_utf8_locale())
+                env=get_env_with_locale())
         except ExternalProcessError as e:
             # XXX 2016-01-08 newell-jensen, bug=1532310:
             # fence-agents fence_action method returns an exit code

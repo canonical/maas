@@ -24,8 +24,8 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.utils.shell import (
     ExternalProcessError,
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 from testtools.matchers import Equals
 
@@ -58,7 +58,7 @@ class TestFenceCDUPowerDriver(MAASTestCase):
                 'fence_cdu', '-a', sentinel.power_address, '-n',
                 sentinel.power_id, '-l', sentinel.power_user, '-p',
                 sentinel.power_pass, '-o', sentinel.command],
-                env=select_c_utf8_locale()))
+                env=get_env_with_locale()))
         self.expectThat(stdout, Equals('test'))
 
     def test__issue_fence_cdu_command_handles_power_query_off(self):
@@ -90,7 +90,7 @@ class TestFenceCDUPowerDriver(MAASTestCase):
 
     def test_power_on(self):
         driver = fence_cdu_module.FenceCDUPowerDriver()
-        environ = select_c_utf8_locale()
+        environ = get_env_with_locale()
         context = self.make_context()
         mock = self.patch(fence_cdu_module, 'call_and_check')
         mock.side_effect = (

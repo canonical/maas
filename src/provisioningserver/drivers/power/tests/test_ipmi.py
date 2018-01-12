@@ -30,8 +30,8 @@ from provisioningserver.drivers.power.ipmi import (
     IPMIPowerDriver,
 )
 from provisioningserver.utils.shell import (
+    get_env_with_locale,
     has_command_available,
-    select_c_utf8_locale,
 )
 from testtools.matchers import (
     Contains,
@@ -210,7 +210,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ('--cycle', '--on-if-off')
         ipmi_power_driver = IPMIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.side_effect = [(b'', b''), (b'on', b'')]
@@ -233,7 +233,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ('--off', )
         ipmi_power_driver = IPMIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.side_effect = [(b'', b''), (b'off', b'')]
@@ -257,7 +257,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ('--soft', )
         ipmi_power_driver = IPMIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.side_effect = [(b'', b''), (b'off', b'')]
@@ -278,7 +278,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ('--stat', )
         ipmi_power_driver = IPMIPowerDriver()
-        env = select_c_utf8_locale()
+        env = get_env_with_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.return_value = (b'other', b'')

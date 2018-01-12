@@ -186,7 +186,7 @@ class IPMIPowerDriver(PowerDriver):
     @staticmethod
     def _issue_ipmi_chassis_config_command(
             command, power_change, power_address):
-        env = shell.select_c_utf8_locale()
+        env = shell.get_env_with_locale()
         with NamedTemporaryFile("w+", encoding="utf-8") as tmp_config:
             # Write out the chassis configuration.
             tmp_config.write(IPMI_CONFIG)
@@ -215,7 +215,7 @@ class IPMIPowerDriver(PowerDriver):
 
     @staticmethod
     def _issue_ipmipower_command(command, power_change, power_address):
-        env = shell.select_c_utf8_locale()
+        env = shell.get_env_with_locale()
         command = tuple(command)  # For consistency when testing.
         process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
         stdout, _ = process.communicate()

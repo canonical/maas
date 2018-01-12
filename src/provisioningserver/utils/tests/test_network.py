@@ -83,6 +83,7 @@ from provisioningserver.utils.network import (
     resolves_to_loopback_address,
     reverseResolve,
 )
+from provisioningserver.utils.shell import get_env_with_locale
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -268,9 +269,10 @@ class TestFindMACViaARP(MAASTestCase):
     def test__calls_ip_neigh(self):
         call_and_check = self.patch_call('')
         find_mac_via_arp(factory.make_ipv4_address())
+        env = get_env_with_locale(locale='C')
         self.assertThat(
             call_and_check,
-            MockCalledOnceWith(['ip', 'neigh'], env={'LC_ALL': 'C'}))
+            MockCalledOnceWith(['ip', 'neigh'], env=env))
 
     def test__works_with_real_call(self):
         find_mac_via_arp(factory.make_ipv4_address())

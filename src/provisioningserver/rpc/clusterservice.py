@@ -97,7 +97,7 @@ from provisioningserver.utils.network import (
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
-    select_c_utf8_bytes_locale,
+    get_env_with_bytes_locale,
 )
 from provisioningserver.utils.snappy import (
     get_snap_path,
@@ -210,7 +210,7 @@ def spawnProcessAndNullifyStdout(protocol, args):
                 1: devnull.fileno(),
                 2: 'r'
             },
-            env=select_c_utf8_bytes_locale())
+            env=get_env_with_bytes_locale())
 
 
 def executeScanNetworksSubprocess(

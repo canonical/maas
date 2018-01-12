@@ -37,7 +37,7 @@ from provisioningserver.utils.scan_network import (
     yield_ping_parameters,
 )
 from provisioningserver.utils.script import ActionScriptError
-from provisioningserver.utils.shell import select_c_utf8_locale
+from provisioningserver.utils.shell import get_env_with_locale
 from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
@@ -183,7 +183,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         self.assertThat(self.popen, MockCalledOnceWith(
             get_ping_arguments(expected_params),
             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale()))
+            stdout=subprocess.DEVNULL, env=get_env_with_locale()))
 
     def test__runs_ping_e2e(self):
         ip = factory.make_ip_address(ipv6=False)
@@ -193,7 +193,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         self.assertThat(self.popen, MockCalledOnceWith(
             get_ping_arguments(expected_params),
             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale()))
+            stdout=subprocess.DEVNULL, env=get_env_with_locale()))
 
     def test__runs_ping_e2e_prints_summary(self):
         self.popen.return_value.returncode = 0
@@ -224,7 +224,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         self.assertThat(self.popen, MockCalledOnceWith(
             get_nmap_arguments(expected_params),
             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale(),
+            stdout=subprocess.DEVNULL, env=get_env_with_locale(),
             preexec_fn=os.setsid))
 
     def test__runs_nmap_e2e(self):
@@ -242,7 +242,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         self.assertThat(self.popen, MockCalledOnceWith(
             get_nmap_arguments(expected_params),
             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale(),
+            stdout=subprocess.DEVNULL, env=get_env_with_locale(),
             preexec_fn=os.setsid))
 
     def test__runs_nmap_e2e_prints_summary(self):
@@ -278,7 +278,7 @@ class TestRunPing(MAASTestCase):
         self.assertThat(popen, MockCalledOnceWith(
             get_ping_arguments(params),
             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale()))
+            stdout=subprocess.DEVNULL, env=get_env_with_locale()))
 
 
 class TestRunNmap(MAASTestCase):
@@ -294,7 +294,7 @@ class TestRunNmap(MAASTestCase):
         self.assertThat(popen, MockCalledOnceWith(
             get_nmap_arguments(params),
             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale(),
+            stdout=subprocess.DEVNULL, env=get_env_with_locale(),
             preexec_fn=os.setsid))
 
     def test__runs_popen_with_expected_parameters__slow(self):
@@ -308,7 +308,7 @@ class TestRunNmap(MAASTestCase):
         nmap_args = get_nmap_arguments(params)
         self.assertThat(popen, MockCalledOnceWith(
             nmap_args, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL, env=select_c_utf8_locale(),
+            stdout=subprocess.DEVNULL, env=get_env_with_locale(),
             preexec_fn=os.setsid))
         self.assertThat(nmap_args, Contains("--max-rate"))
 
