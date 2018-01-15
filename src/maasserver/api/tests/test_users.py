@@ -16,6 +16,7 @@ from maasserver.enum import (
 )
 from maasserver.models import (
     Node,
+    ResourcePool,
     SSHKey,
     SSLKey,
     StaticIPAddress,
@@ -165,6 +166,9 @@ class TestUser(APITestCase.ForUser):
 
     def test_GET_finds_user(self):
         user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        pool.grant_user(user)
+        default_pool = ResourcePool.objects.get_default_resource_pool()
 
         response = self.client.get(
             reverse('user_handler', args=[user.username]))
@@ -177,6 +181,9 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(user.email, returned_user['email'])
         self.assertFalse(returned_user['is_superuser'])
         self.assertEqual(get_user_uri(user), returned_user['resource_uri'])
+        self.assertCountEqual(
+            [entry['id'] for entry in returned_user['resource_pools']],
+            [default_pool.id, pool.id])
 
     def test_GET_shows_expected_fields(self):
         user = factory.make_User()
@@ -189,8 +196,8 @@ class TestUser(APITestCase.ForUser):
         returned_user = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
-            ['username', 'email', 'resource_uri', 'is_superuser'],
-            returned_user.keys())
+            ['username', 'email', 'resource_pools',
+             'resource_uri', 'is_superuser'], returned_user.keys())
 
     def test_GET_identifies_superuser_as_such(self):
         user = factory.make_admin()
