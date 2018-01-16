@@ -9,6 +9,7 @@ __all__ = [
 
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
     CASCADE,
@@ -19,6 +20,7 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.exceptions import CannotDeleteUserException
+from maasserver.models import ResourcePool
 from maasserver.models.cleansave import CleanSave
 from piston3.models import Token
 
@@ -96,6 +98,12 @@ class UserProfile(CleanSave, Model):
         :type new_owner: maasserver.models.UserProfile
 
         """
+        user_pools = ResourcePool.objects.get_user_resource_pools(new_owner)
+        nodes = self.user.node_set
+        if nodes.exists() and nodes.exclude(pool__in=user_pools).exists():
+            raise ValidationError(
+                "Can't transfer machines to new user,"
+                " user missing access target resource pool(s)")
         self.user.node_set.update(owner=new_owner)
         self.user.staticipaddress_set.update(user=new_owner)
 
