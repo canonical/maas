@@ -10,8 +10,6 @@ from django.core.exceptions import ValidationError
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models import (
     FileStorage,
-    Node,
-    StaticIPAddress,
     UserProfile,
 )
 from maasserver.models.user import (
@@ -107,24 +105,40 @@ class UserProfileTest(MAASServerTestCase):
         # Cannot delete a user with nodes attached to it.
         profile = factory.make_User().userprofile
         factory.make_Node(owner=profile.user)
-        self.assertRaises(CannotDeleteUserException, profile.delete)
+        error = self.assertRaises(CannotDeleteUserException, profile.delete)
+        self.assertIn('1 node(s)', str(error))
 
     def test_delete_attached_static_ip_addresses(self):
         # Cannot delete a user with static IP address attached to it.
         profile = factory.make_User().userprofile
         factory.make_StaticIPAddress(user=profile.user)
-        self.assertRaises(CannotDeleteUserException, profile.delete)
+        error = self.assertRaises(CannotDeleteUserException, profile.delete)
+        self.assertIn('1 static IP address(es)', str(error))
+
+    def test_delete_attached_iprange(self):
+        # Cannot delete a user with an IP range attached to it.
+        profile = factory.make_User().userprofile
+        factory.make_IPRange(user=profile.user)
+        error = self.assertRaises(CannotDeleteUserException, profile.delete)
+        self.assertIn('1 IP range(s)', str(error))
+
+    def test_delete_attached_multiple_resources(self):
+        profile = factory.make_User().userprofile
+        factory.make_Node(owner=profile.user)
+        factory.make_StaticIPAddress(user=profile.user)
+        error = self.assertRaises(CannotDeleteUserException, profile.delete)
+        self.assertIn('1 static IP address(es), 1 node(s)', str(error))
 
     def test_transfer_resources(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         ipaddress = factory.make_StaticIPAddress(user=user)
+        iprange = factory.make_IPRange(user=user)
         new_user = factory.make_User()
         user.userprofile.transfer_resources(new_user)
-        node = Node.objects.get(id=node.id)
-        self.assertEqual(node.owner, new_user)
-        ipaddress = StaticIPAddress.objects.get(id=ipaddress.id)
-        self.assertEqual(ipaddress.user, new_user)
+        self.assertEqual(reload_object(node).owner, new_user)
+        self.assertEqual(reload_object(ipaddress).user, new_user)
+        self.assertEqual(reload_object(iprange).user, new_user)
 
     def test_transfer_resources_missing_target_access(self):
         user = factory.make_User()

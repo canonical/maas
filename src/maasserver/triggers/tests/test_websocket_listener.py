@@ -31,6 +31,7 @@ from maasserver.triggers.websocket import register_websocket_triggers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
+from netaddr import IPAddress
 from provisioningserver.utils.twisted import (
     asynchronous,
     DeferredValue,
@@ -1695,10 +1696,17 @@ class TestIPRangeListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("iprange", lambda *args: dv.set(args))
+        network = factory.make_ipv4_network()
+        subnet = yield deferToDatabase(
+            self.create_subnet, {'cidr': str(network)})
+        params = {
+            'subnet': subnet,
+            'start_ip': IPAddress(network.first + 2),
+            'end_ip': IPAddress(network.last - 1)}
         yield listener.startService()
         try:
             iprange = yield deferToDatabase(
-                self.create_iprange)
+                self.create_iprange, params)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % iprange.id), dv.value)
         finally:
@@ -3424,7 +3432,7 @@ class TestIPRangeSubnetListener(
         try:
             iprange = yield deferToDatabase(
                 self.create_iprange, {
-                    "type": IPRANGE_TYPE.DYNAMIC,
+                    "alloc_type": IPRANGE_TYPE.DYNAMIC,
                     "subnet": subnet,
                     "start_ip": '192.168.0.100',
                     "end_ip": '192.168.0.110',
@@ -3472,7 +3480,7 @@ class TestIPRangeSubnetListener(
                 })
         iprange = yield deferToDatabase(
             self.create_iprange, {
-                "type": IPRANGE_TYPE.DYNAMIC,
+                "alloc_type": IPRANGE_TYPE.DYNAMIC,
                 "subnet": old_subnet,
                 "start_ip": '192.168.0.100',
                 "end_ip": '192.168.0.110',

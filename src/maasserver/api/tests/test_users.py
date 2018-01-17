@@ -300,6 +300,17 @@ class TestUser(APITestCase.ForUser):
         self.assertIn(
             b'1 static IP address(es) are still allocated', response.content)
 
+    def test_DELETE_user_with_iprange_fails(self):
+        self.become_admin()
+        user = factory.make_User()
+        factory.make_IPRange(user=user)
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            response.status_code)
+        self.assertIn(b'1 IP range(s) are still allocated', response.content)
+
     def test_DELETE_user_with_staticaddress_and_transfer(self):
         self.become_admin()
         user = factory.make_User()

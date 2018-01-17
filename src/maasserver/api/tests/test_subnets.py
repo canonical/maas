@@ -12,7 +12,6 @@ import random
 from django.conf import settings
 from maasserver.enum import (
     IPADDRESS_TYPE,
-    IPRANGE_TYPE,
     NODE_STATUS,
     RDNS_MODE_CHOICES,
 )
@@ -443,9 +442,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         boilerplate that creates the requested range, then makes sure the
         unreserved_ip_ranges API call successfully returns an empty list.
         """
-        factory.make_IPRange(
-            subnet, first_address, last_address,
-            type=IPRANGE_TYPE.DYNAMIC)
+        factory.make_IPRange(subnet, first_address, last_address)
         response = self.client.get(
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})
