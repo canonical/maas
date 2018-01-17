@@ -25,10 +25,7 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
 )
 from maasserver.forms import DeleteUserForm
-from maasserver.models import (
-    ResourcePool,
-    User,
-)
+from maasserver.models import User
 from maasserver.utils.orm import get_one
 from piston3.models import Consumer
 from piston3.utils import rc
@@ -95,13 +92,7 @@ class UserHandler(OperationsHandler):
         'username',
         'email',
         'is_superuser',
-        'resource_pools',
         )
-
-    @staticmethod
-    def resource_pools(user):
-        """Return the list of resource pools for a user."""
-        return ResourcePool.objects.get_user_resource_pools(user)
 
     def read(self, request, username):
         return get_object_or_404(User, username=username)

@@ -772,74 +772,6 @@ class TestAcquireNodeForm(MAASServerTestCase):
             [nodes[2]],
             {'not_in_zone': [nodes[0].zone.name, nodes[1].zone.name]})
 
-    def test_pool(self):
-        node1 = factory.make_Node()
-        node2 = factory.make_Node()
-        node3 = factory.make_Node()
-
-        pool1 = factory.make_ResourcePool(nodes=[node1, node2])
-        pool2 = factory.make_ResourcePool()
-
-        self.assertConstrainedNodes(
-            [node1, node2], {'pool': pool1.name})
-        self.assertConstrainedNodes(
-            [node1, node2, node3], {'pool': ''})
-        self.assertConstrainedNodes(
-            [node1, node2, node3], {})
-        self.assertConstrainedNodes(
-            [], {'pool': pool2.name})
-
-    def test_invalid_pool(self):
-        form = AcquireNodeForm(data={'pool': 'unknown'})
-        self.assertEqual(
-            (False, {'pool': ["No such pool: 'unknown'."]}),
-            (form.is_valid(), form.errors))
-
-    def test_not_in_pool_excludes_given_pools(self):
-        node1 = factory.make_Node()
-        node2 = factory.make_Node()
-        node3 = factory.make_Node()
-        node4 = factory.make_Node()
-
-        factory.make_ResourcePool(nodes=[node1, node2])
-        pool2 = factory.make_ResourcePool(nodes=[node3, node4])
-        self.assertConstrainedNodes(
-            [node1, node2], {'not_in_pool': [pool2.name]})
-
-    def test_not_in_pool_with_required_pool_yields_no_nodes(self):
-        node = factory.make_Node()
-        pool = factory.make_ResourcePool(nodes=[node])
-        self.assertConstrainedNodes(
-            [], {'pool': pool.name, 'not_in_pool': [pool.name]})
-
-    def test_validates_not_in_pool(self):
-        bad_pool_name = '#$&*!'
-        form = AcquireNodeForm(data={'not_in_pool': [bad_pool_name]})
-        self.assertFalse(form.is_valid())
-        self.assertEqual(['not_in_pool'], list(form.errors.keys()))
-
-    def test_not_in_pool_must_be_pool_name(self):
-        non_pool = factory.make_name('nonpool')
-        form = AcquireNodeForm(data={'not_in_pool': [non_pool]})
-        self.assertFalse(form.is_valid())
-        self.assertEqual(
-            {'not_in_pool': ["No such pool(s): %s." % non_pool]},
-            form.errors)
-
-    def test_not_in_pool_can_exclude_multiple_pool(self):
-        # Three nodes, all in different pools.  If we say we don't
-        # want the first node's pool or the second node's pool, we get the node
-        # in the remaining pool.
-        node1 = factory.make_Node()
-        pool1 = factory.make_ResourcePool(nodes=[node1])
-        node2 = factory.make_Node()
-        pool2 = factory.make_ResourcePool(nodes=[node2])
-        node3 = factory.make_Node()
-        factory.make_ResourcePool(nodes=[node3])
-
-        self.assertConstrainedNodes(
-            [node3], {'not_in_pool': [pool1.name, pool2.name]})
-
     def test_tags(self):
         tag_big = factory.make_Tag(name='big')
         tag_burly = factory.make_Tag(name='burly')
@@ -1460,8 +1392,6 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
             'not_in_zone': [factory.make_Zone().name],
-            'pool': factory.make_ResourcePool(),
-            'not_in_pool': [factory.make_ResourcePool().name],
             'pod': factory.make_name(),
             'pod_type': factory.make_name(),
             'storage': '0(ssd),10(ssd)',

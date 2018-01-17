@@ -1133,37 +1133,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         })
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
-    def test_POST_allocate_allocates_machine_by_pool(self):
-        node1 = factory.make_Node(
-            status=NODE_STATUS.READY, with_boot_disk=True)
-        factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
-        pool = factory.make_ResourcePool(nodes=[node1], users=[self.user])
-        response = self.client.post(reverse('machines_handler'), {
-            'op': 'allocate',
-            'pool': pool.name,
-        })
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        response_json = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(node1.system_id, response_json['system_id'])
-
-    def test_POST_allocate_allocates_machine_by_pool_fails_if_no_machine(self):
-        factory.make_Node(
-            status=NODE_STATUS.READY, with_boot_disk=True)
-        pool = factory.make_ResourcePool(users=[self.user])
-        response = self.client.post(reverse('machines_handler'), {
-            'op': 'allocate',
-            'pool': pool.name,
-        })
-        self.assertThat(response, HasStatusCode(http.client.CONFLICT))
-
-    def test_POST_allocate_rejects_unknown_pool(self):
-        response = self.client.post(reverse('machines_handler'), {
-            'op': 'allocate',
-            'pool': factory.make_name('pool'),
-        })
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-
     def test_POST_allocate_allocates_machine_by_tags_comma_separated(self):
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
@@ -1480,26 +1449,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         system_id = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         self.assertEqual(eligible_machine.system_id, system_id)
-
-    def test_POST_allocate_obeys_not_in_pool(self):
-        # Pool we don't want to acquire from.
-        node1 = factory.make_Node(
-            status=NODE_STATUS.READY, with_boot_disk=True)
-        node2 = factory.make_Node(
-            status=NODE_STATUS.READY, with_boot_disk=True)
-        pool1 = factory.make_ResourcePool(nodes=[node1], users=[self.user])
-        factory.make_ResourcePool(nodes=[node2], users=[self.user])
-
-        response = self.client.post(
-            reverse('machines_handler'),
-            {
-                'op': 'allocate',
-                'not_in_pool': [pool1.name],
-            })
-        self.assertEqual(http.client.OK, response.status_code)
-        system_id = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
-        self.assertEqual(node2.system_id, system_id)
 
     def test_POST_allocate_sets_a_token(self):
         # "acquire" should set the Token being used in the request on

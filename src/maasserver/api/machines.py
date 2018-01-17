@@ -1414,16 +1414,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
             exclude, this parameter must be repeated in the request with each
             value.
         :type not_in_zone: unicode (accepts multiple)
-        :param pool: Resource pool name the machine must belong to.
-        :type pool: unicode
-        :param not_in_pool: List of resource pool from which the machine must
-            not be acquired.
-
-            If multiple pools are specified, the machine must NOT be
-            associated with ANY of them. To request multiple pools to
-            exclude, this parameter must be repeated in the request with each
-            value.
-        :type not_in_pool: unicode (accepts multiple)
         :param pod: Pod the machine must be located in.
         :type pod: unicode
         :param pod_type: Pod type the machine must be located in.
