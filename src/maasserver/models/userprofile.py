@@ -68,12 +68,12 @@ class UserProfile(CleanSave, Model):
 
     def delete(self):
         # check owned resources
-        owned_resources = {
-            'staticipaddress': 'static IP address(es)',
-            'iprange': 'IP range(s)',
-            'node': 'node(s)'}
+        owned_resources = [
+            ('staticipaddress', 'static IP address(es)'),
+            ('iprange', 'IP range(s)'),
+            ('node', 'node(s)')]
         messages = []
-        for attr, title in owned_resources.items():
+        for attr, title in owned_resources:
             count = getattr(self.user, attr + '_set').count()
             if count:
                 messages.append('{} {}'.format(count, title))
