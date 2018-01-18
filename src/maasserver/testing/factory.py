@@ -1324,16 +1324,26 @@ class Factory(maastesting.factory.Factory):
 
     def make_IPRange(
             self, subnet=None, start_ip=None, end_ip=None, comment=None,
-            user=None, type=IPRANGE_TYPE.DYNAMIC):
+            user=None, alloc_type=None):
+        if alloc_type is None:
+            alloc_type = (
+                IPRANGE_TYPE.RESERVED if user else IPRANGE_TYPE.DYNAMIC)
+
         if subnet is None and start_ip is None and end_ip is None:
             subnet = self.make_ipv4_Subnet_with_IPRanges()
-            return subnet.get_dynamic_ranges().first()
+            iprange = subnet.get_dynamic_ranges().first()
+            iprange.comment = comment
+            iprange.user = user
+            iprange.type = alloc_type
+            iprange.save()
+            return iprange
+
         # If any of these values are provided, they must all be provided.
         assert subnet is not None
         assert start_ip is not None
         assert end_ip is not None
         iprange = IPRange(
-            subnet=subnet, start_ip=start_ip, end_ip=end_ip, type=type,
+            subnet=subnet, start_ip=start_ip, end_ip=end_ip, type=alloc_type,
             comment=comment, user=user)
         iprange.save()
         return iprange
@@ -1372,13 +1382,13 @@ class Factory(maastesting.factory.Factory):
                 subnet.vlan.dhcp_on = True
                 subnet.vlan.save()
             self.make_IPRange(
-                subnet, type=IPRANGE_TYPE.DYNAMIC,
+                subnet, alloc_type=IPRANGE_TYPE.DYNAMIC,
                 start_ip=str(IPAddress(network.first + 2)),
                 end_ip=str(IPAddress(network.first + range_size + 2)))
         # Create a "static range" for this Subnet.
         if not with_static_range:
             self.make_IPRange(
-                subnet, type=IPRANGE_TYPE.RESERVED,
+                subnet, alloc_type=IPRANGE_TYPE.RESERVED,
                 start_ip=str(IPAddress(network.last - range_size - 2)),
                 end_ip=str(IPAddress(network.last - 2)))
         return reload_object(subnet)

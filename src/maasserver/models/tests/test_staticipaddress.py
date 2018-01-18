@@ -276,7 +276,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr=network)
         factory.make_IPRange(
             subnet, '192.168.230.1', '192.168.230.254',
-            type=IPRANGE_TYPE.RESERVED)
+            alloc_type=IPRANGE_TYPE.RESERVED)
         e = self.assertRaises(
             StaticIPAddressExhaustion,
             StaticIPAddress.objects.allocate_new,

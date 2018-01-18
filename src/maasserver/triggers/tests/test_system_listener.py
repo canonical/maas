@@ -1436,7 +1436,7 @@ class TestDHCPIPRangeListener(
             end_ip = str(IPAddress(network.first + 3))
             yield deferToDatabase(self.create_iprange, {
                 "subnet": subnet,
-                "type": IPRANGE_TYPE.DYNAMIC,
+                "alloc_type": IPRANGE_TYPE.DYNAMIC,
                 "start_ip": start_ip,
                 "end_ip": end_ip,
             })
@@ -1471,7 +1471,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.DYNAMIC,
+            "alloc_type": IPRANGE_TYPE.DYNAMIC,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
@@ -1522,7 +1522,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.DYNAMIC,
+            "alloc_type": IPRANGE_TYPE.DYNAMIC,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
@@ -1572,7 +1572,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.RESERVED,
+            "alloc_type": IPRANGE_TYPE.RESERVED,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
@@ -1622,7 +1622,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.DYNAMIC,
+            "alloc_type": IPRANGE_TYPE.DYNAMIC,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
