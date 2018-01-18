@@ -422,7 +422,7 @@ class ModelOperationsHandler(OperationsHandler,
 
     @admin_method
     def delete(self, request, **kwargs):
-        """DELETE request.  Delete a resource pool."""
+        """DELETE request.  Delete a model instance."""
         filters = {self.id_field: kwargs[self.id_field]}
         instance = get_one(self.model.objects.filter(**filters))
         if instance:
