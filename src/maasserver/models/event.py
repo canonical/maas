@@ -26,10 +26,7 @@ from maasserver.enum import (
 )
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.eventtype import (
-    AUDIT,
-    EventType,
-)
+from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.dns import validate_hostname
@@ -48,7 +45,8 @@ class EventManager(Manager):
             self, type_name, type_description='',
             type_level=logging.INFO, event_action='',
             event_description='', system_id=None, user=None,
-            ip_address=None, user_agent='', created=None):
+            ip_address=None, endpoint=ENDPOINT.API,
+            user_agent='', created=None):
         """Register EventType if it does not exist, then register the Event."""
         node = (Node.objects.get(system_id=system_id)
                 if system_id is not None else None)
@@ -61,7 +59,7 @@ class EventManager(Manager):
                 type_name, type_description, type_level)
         return Event.objects.create(
             type=event_type, node=node, user=user, ip_address=ip_address,
-            user_agent=user_agent, action=event_action,
+            endpoint=endpoint, user_agent=user_agent, action=event_action,
             description=event_description, created=created)
 
     def create_node_event(
@@ -81,19 +79,6 @@ class EventManager(Manager):
             system_id=get_maas_id(), event_type=event_type,
             event_description=event_description, user=user)
 
-    def create_audit_event(
-            self, event_type, user, ip_address, user_agent,
-            system_id=None, event_action='', event_description=''):
-        """Helper to register Audit events.
-
-        These are events that have an event type level of AUDIT."""
-        self.register_event_and_event_type(
-            type_name=event_type,
-            type_description=EVENT_DETAILS[event_type].description,
-            type_level=AUDIT, event_action=event_action,
-            event_description=event_description,
-            system_id=system_id, user=user)
-
 
 class Event(CleanSave, TimestampedModel):
     """An `Event` represents a MAAS event.
@@ -104,6 +89,7 @@ class Event(CleanSave, TimestampedModel):
     :ivar user: The user responsible for this event.
     :ivar username: The username of the user responsible for this event.
     :ivar ip_address: IP address used in the request for this event.
+    :ivar endpoint: Endpoint used in the request for this event.
     :ivar user_agent: User agent used in the request for this event.
     :ivar action: The action of the event.
     :ivar description: A free-form description of the event.
