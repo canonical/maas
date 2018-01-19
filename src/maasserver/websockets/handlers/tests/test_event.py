@@ -40,6 +40,7 @@ class TestEventHandler(MAASServerTestCase):
             "user": event.user.id,
             "username": event.username,
             "ip_address": event.ip_address,
+            "endpoint": event.endpoint,
             "user_agent": event.user_agent,
             "action": event.action,
             "description": event.description,

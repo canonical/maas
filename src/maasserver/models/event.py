@@ -13,12 +13,17 @@ from django.contrib.auth.models import User
 from django.db.models import (
     CharField,
     ForeignKey,
+    IntegerField,
     Manager,
     PROTECT,
     SET_NULL,
     TextField,
 )
 from maasserver import DefaultMeta
+from maasserver.enum import (
+    ENDPOINT,
+    ENDPOINT_CHOICES,
+)
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import (
@@ -124,8 +129,12 @@ class Event(CleanSave, TimestampedModel):
     ip_address = MAASIPAddressField(
         unique=False, null=True, editable=False, blank=True, default=None)
 
+    # Endpoint of request used to register the event.
+    endpoint = IntegerField(
+        choices=ENDPOINT_CHOICES, editable=False, default=ENDPOINT.API)
+
     # User agent of request used to register the event.
-    user_agent = CharField(max_length=32, blank=True, default='')
+    user_agent = TextField(default='', blank=True, editable=False)
 
     action = TextField(default='', blank=True, editable=False)
 
@@ -138,6 +147,10 @@ class Event(CleanSave, TimestampedModel):
         index_together = (
             ("node", "id"),
         )
+
+    @property
+    def endpoint_name(self):
+        return ENDPOINT_CHOICES[self.endpoint][1]
 
     def __str__(self):
         return "%s (node=%s, type=%s, created=%s)" % (

@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the maasserver application."""
@@ -766,3 +766,15 @@ class NODE_METADATA:
     PHYSICAL_NAME = "physical-name"
     PHYSICAL_SERIAL_NUM = "physical-serial-num"
     VENDOR_NAME = "vendor-name"
+
+
+class ENDPOINT:
+
+    API = 0
+    UI = 1
+
+
+ENDPOINT_CHOICES = (
+    (ENDPOINT.API, "API"),
+    (ENDPOINT.UI, "WebUI"),
+)
