@@ -1,10 +1,10 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 #
 # memtester - Run memtester against all available userspace memory.
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017 Canonical
+# Copyright (C) 2017-2018 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -28,16 +28,15 @@
 # packages: {apt: memtester}
 # --- End MAAS 1.0 script metadata ---
 
-# Memtester can only test memory free to userspace. As a minimum, reserve
-# the min_free_kbytes or the value of 0.77% of the memory on systems to
-# ensure machine doesn't fail due to the OOM killer. Only run memtester
-# against available RAM once.
+# Memtester can only test memory free to userspace. At a minimum, reserve
+# the min_free_kbytes + 10M or 0.77% of available memory, which ever is
+# higher. This ensures the test doesn't fail due to the OOM killer. Only run
+# memtester against available RAM once.
 
 min_free_kbytes=$(cat /proc/sys/vm/min_free_kbytes)
-reserve=$(awk '/MemTotal/ { print (($2 * 0.077) / 10) }' /proc/meminfo)
-reserve=${reserve%.*}
+reserve=$(awk '/MemTotal/ { print int(($2 * 0.0077)) }' /proc/meminfo)
 if [ $reserve -le $min_free_kbytes ]; then
     reserve=$(($min_free_kbytes + 10240))
 fi
-sudo -n memtester \
-     $(awk -v reserve=$reserve '/MemFree/ { print ($2 - reserve) "K"}' /proc/meminfo) 1
+testable_memory=$(awk -v reserve=$reserve '/MemFree/ { print int($2 - reserve) "K"}' /proc/meminfo)
+sudo -n memtester $testable_memory 1
