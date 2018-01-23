@@ -132,7 +132,7 @@ setup(
         'License :: OSI Approved :: GNU Affero General Public License v3',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: JavaScript',
-        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: System :: Systems Administration',
     ],
 )
