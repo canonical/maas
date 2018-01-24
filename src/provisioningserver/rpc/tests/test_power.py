@@ -147,6 +147,7 @@ class TestPowerHelpers(MAASTestCase):
         )
         self.assertIsNone(extract_result(d))
 
+    @inlineCallbacks
     def test_power_change_failure_emits_event(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -156,6 +157,7 @@ class TestPowerHelpers(MAASTestCase):
         d = power.power_change_failure(
             system_id, hostname, power_change, message)
         io.flush()
+        yield d
         self.assertThat(
             protocol.SendEvent,
             MockCalledOnceWith(
@@ -421,12 +423,12 @@ class TestMaybeChangePowerState(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
 
-        yield power.maybe_change_power_state(
+        d = power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
         self.assertEqual(
             {system_id: (power_change, ANY)},
             power.power_action_registry)
-        reactor.runUntilCurrent()  # Run all delayed calls.
+        yield d
         self.assertEqual({}, power.power_action_registry)
 
     @inlineCallbacks
@@ -446,7 +448,6 @@ class TestMaybeChangePowerState(MAASTestCase):
         }
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
-        reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertThat(
             power_driver.detect_missing_packages, MockCalledOnceWith())
 
@@ -532,7 +533,6 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
-        reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertThat(
             power.change_power_state,
             MockCalledOnceWith(
@@ -557,7 +557,6 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
-        reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertNotIn(system_id, power.power_action_registry)
 
     @inlineCallbacks
@@ -583,7 +582,6 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
-        reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertNotIn(system_id, power.power_action_registry)
         self.assertDocTestMatches(
             """\
@@ -614,11 +612,12 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        yield power.maybe_change_power_state(
+        power_defer = power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
 
         # Get the Deferred from the registry and cancel it.
         _, d = power.power_action_registry[system_id]
+        self.assertEqual(power_defer, d)
         d.cancel()
         yield d
 
@@ -651,7 +650,6 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
-        reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertThat(
             defer_with_timeout, MockCalledOnceWith(
                 power.CHANGE_POWER_STATE_TIMEOUT,

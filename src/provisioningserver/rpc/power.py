@@ -251,6 +251,8 @@ def maybe_change_power_state(
             log.err, "%s: Power %s failed." % (
                 hostname, power_change))
 
+        return d
+
     elif current_power_change == power_change:
         # What we want is already happening; let it continue.
         pass

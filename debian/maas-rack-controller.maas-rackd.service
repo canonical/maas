@@ -20,8 +20,7 @@ ExecStartPre=/bin/rm -f /var/lib/maas/dhcpd6.conf
 # Logs also go to $LOGFILE for backward compatibility. The journal
 # should now be preferred as the $LOGFILE will be removed.
 ExecStart=/bin/sh -c \
-    'exec /usr/bin/authbind --deep /usr/bin/twistd3 --nodaemon --pidfile= \
-       --logger=provisioningserver.logger.EventLogger maas-rackd 2>&1 | \
+    'exec /usr/bin/authbind --deep /usr/sbin/rackd 2>&1 | \
      tee -a $LOGFILE'
 
 [Install]

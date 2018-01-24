@@ -76,7 +76,7 @@ install-dependencies: release := $(shell lsb_release -c -s)
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    --no-install-recommends install $(shell sort -u \
-	        $(addprefix required-packages/,base build dev doc $(release)) | sed '/^\#/d')
+	        $(addprefix required-packages/,base build dev doc) | sed '/^\#/d')
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    purge $(shell sort -u required-packages/forbidden | sed '/^\#/d')
 

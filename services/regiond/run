@@ -32,7 +32,5 @@ export MAAS_DNS_DEFAULT_CONTROLS=0
 export MAAS_REGIOND_WORKER_ID=1
 
 # Exec the MAAS API and Web UI Server.
-script="$(readlink -f bin/twistd.region)"
-exec "${script}" \
-    --logger=provisioningserver.logger.EventLogger \
-    --nodaemon --pidfile="" maas-regiond
+script="$(readlink -f bin/regiond)"
+exec "${script}"

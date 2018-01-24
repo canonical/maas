@@ -20,8 +20,7 @@ Environment="LOGFILE=/var/log/maas/regiond.log"
 # Logs also go to $LOGFILE for backward compatibility. The journal
 # should now be preferred as $LOGFILE will be removed.
 ExecStart=/bin/sh -c \
-    'exec twistd3 --nodaemon --pidfile= \
-       --logger=provisioningserver.logger.EventLogger maas-regiond 2>&1 | \
+    'exec /usr/sbin/regiond 2>&1 | \
      tee -a $LOGFILE'
 
 [Install]

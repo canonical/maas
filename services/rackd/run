@@ -28,8 +28,6 @@ bin/maas-rack config \
 until bin/maas-rack check-for-shared-secret; do sleep 2; done
 
 # Exec the Provisioning Server.
-script="$(readlink -f bin/twistd.rack)"
+script="$(readlink -f bin/rackd)"
 
-exec $(command -v authbind && echo --deep) \
-    "${script}" --logger=provisioningserver.logger.EventLogger \
-    --nodaemon --pidfile="" maas-rackd
+exec $(command -v authbind && echo --deep) "${script}"

@@ -25,4 +25,4 @@ export MAAS_ROOT="$SNAP_DATA"
 export MAAS_CLUSTER_CONFIG="$SNAP_DATA/rackd.conf"
 
 # Run the rackd.
-exec $SNAP/usr/bin/twistd3 --logger=provisioningserver.logger.EventLogger --nodaemon --pidfile= maas-rackd
+exec $SNAP/usr/sbin/rackd

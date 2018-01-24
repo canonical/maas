@@ -16,6 +16,7 @@ libjs-yui3-min
 libpq-dev
 lshw
 postgresql
+pxelinux
 python3-all
 python3-apt
 python3-attr
@@ -55,6 +56,7 @@ python3-tempita
 python3-twisted
 python3-txtftp
 python3-tz
+python3-uvloop
 python3-yaml
 python3-zope.interface
 snapcraft
