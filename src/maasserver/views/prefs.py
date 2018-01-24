@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preferences views."""
@@ -15,6 +15,8 @@ from django.shortcuts import (
     render,
 )
 from django.views.generic import CreateView
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.forms import (
     ProfileForm,
     SSLKeyForm,
@@ -25,6 +27,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     process_form,
 )
+from provisioningserver.events import EVENT_TYPES
 
 
 class SSLKeyCreateView(CreateView):
@@ -76,6 +79,9 @@ def userprefsview(request):
         request, PasswordChangeForm, reverse('prefs'), 'password',
         "Password updated.", {'user': user})
     if response is not None:
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+            description="Password changed for '%(username)s'.")
         return response
 
     return render(

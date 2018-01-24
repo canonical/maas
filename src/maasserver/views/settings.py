@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Settings views."""
@@ -27,7 +27,9 @@ from django.views.generic import (
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
+from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     CommissioningForm,
@@ -57,6 +59,7 @@ from maasserver.utils.osystems import (
 from maasserver.views import process_form
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
+from provisioningserver.events import EVENT_TYPES
 
 
 class AccountsView(DetailView):
@@ -147,6 +150,9 @@ class AccountsEdit(TemplateView, ModelFormMixin,
             request, EditUserForm, next_page, 'profile', "Profile updated.",
             {'instance': user})
         if response is not None:
+            create_audit_event(
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                description="Password changed for '%(username)s'.")
             return response
 
         # Process the password change form, if that's what was submitted.

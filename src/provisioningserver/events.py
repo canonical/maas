@@ -124,7 +124,7 @@ class EVENT_TYPES:
     REGION_IMPORT_INFO = "REGION_IMPORT_INFO"
     # Script result storage and lookup events
     SCRIPT_RESULT_ERROR = "SCRIPT_RESULT_ERROR"
-    # Authorisation token events
+    # Authorisation events
     AUTHORISATION = "AUTHORISATION"
 
 
@@ -355,7 +355,7 @@ EVENT_DETAILS = {
         level=ERROR,
     ),
     EVENT_TYPES.AUTHORISATION: EventDetail(
-        description=("Authorisation token"),
+        description=("Authorisation"),
         level=AUDIT,
     ),
 }

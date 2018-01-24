@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver preferences views."""
@@ -6,13 +6,18 @@
 __all__ = []
 
 import http.client
+from unittest.mock import ANY
 
 from apiclient.creds import convert_tuple_to_string
 from django.contrib.auth.models import User
 from lxml.html import fromstring
+from maasserver.enum import ENDPOINT
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing import get_prefixed_form_data
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.views import prefs as prefs_view
+from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.events import EVENT_TYPES
 
 
 class UserPrefsViewTest(MAASServerTestCase):
@@ -65,6 +70,7 @@ class UserPrefsViewTest(MAASServerTestCase):
 
     def test_prefs_POST_password(self):
         # The preferences page allows the user to change their password.
+        mock_create_audit_event = self.patch(prefs_view, 'create_audit_event')
         self.client_log_in()
         self.logged_in_user.set_password('password')
         old_pw = self.logged_in_user.password
@@ -82,3 +88,6 @@ class UserPrefsViewTest(MAASServerTestCase):
         user = User.objects.get(id=self.logged_in_user.id)
         # The password is SHA1ized, we just make sure that it has changed.
         self.assertNotEqual(old_pw, user.password)
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, ANY, None,
+            description="Password changed for '%(username)s'."))

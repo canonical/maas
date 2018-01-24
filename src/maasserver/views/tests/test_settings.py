@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver settings views."""
@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 from unittest import skip
+from unittest.mock import ANY
 
 from django.contrib.auth.models import User
 from lxml.html import fromstring
@@ -14,6 +15,7 @@ from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
+from maasserver.enum import ENDPOINT
 from maasserver.models import (
     Config,
     PackageRepository,
@@ -34,6 +36,8 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
+from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.events import EVENT_TYPES
 
 
 class SettingsTest(MAASServerTestCase):
@@ -396,6 +400,8 @@ class UserManagementTest(MAASServerTestCase):
         self.assertTrue(user.check_password(password))
 
     def test_edit_user_POST_profile_updates_attributes(self):
+        mock_create_audit_event = self.patch(
+            settings_view, 'create_audit_event')
         self.client_log_in(as_admin=True)
         user = factory.make_User()
         params = make_user_attribute_params(user)
@@ -413,6 +419,9 @@ class UserManagementTest(MAASServerTestCase):
         self.assertEqual(http.client.FOUND, response.status_code)
         self.assertAttributes(
             reload_object(user), subset_dict(params, user_attributes))
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, ANY, None,
+            description="Password changed for '%(username)s'."))
 
     def test_edit_user_POST_updates_password(self):
         self.client_log_in(as_admin=True)
