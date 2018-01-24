@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler: `Account`."""
@@ -19,7 +19,10 @@ from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 def _format_tokens(tokens):
@@ -57,6 +60,9 @@ class AccountHandler(OperationsHandler):
         profile = request.user.userprofile
         consumer_name = get_optional_param(request.data, 'name')
         consumer, token = profile.create_authorisation_token(consumer_name)
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.API,
+            request, None, "Created token for '%(username)s'.")
         auth_info = {
             'token_key': token.key, 'token_secret': token.secret,
             'consumer_key': consumer.key, 'name': consumer.name
@@ -76,6 +82,9 @@ class AccountHandler(OperationsHandler):
         profile = request.user.userprofile
         token_key = get_mandatory_param(request.data, 'token_key')
         profile.delete_authorisation_token(token_key)
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.API,
+            request, None, "Deleted token for '%(username)s'.")
         return rc.DELETED
 
     @operation(idempotent=False)
@@ -96,6 +105,9 @@ class AccountHandler(OperationsHandler):
             token_key = token
         consumer_name = get_mandatory_param(request.data, 'name')
         profile.modify_consumer_name(token_key, consumer_name)
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request,
+            None, "Modified consumer name of token for '%(username)s'.")
         return rc.ACCEPTED
 
     @operation(idempotent=True)

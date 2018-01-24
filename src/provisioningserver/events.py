@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Event catalog."""
@@ -49,6 +49,9 @@ from twisted.internet.defer import (
 
 maaslog = get_maas_logger("events")
 log = LegacyLogger()
+
+# AUDIT event logging level
+AUDIT = 0
 
 
 class EVENT_TYPES:
@@ -121,6 +124,8 @@ class EVENT_TYPES:
     REGION_IMPORT_INFO = "REGION_IMPORT_INFO"
     # Script result storage and lookup events
     SCRIPT_RESULT_ERROR = "SCRIPT_RESULT_ERROR"
+    # Authorisation token events
+    AUTHORISATION = "AUTHORISATION"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -348,6 +353,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.SCRIPT_RESULT_ERROR: EventDetail(
         description=("Script result lookup or storage error"),
         level=ERROR,
+    ),
+    EVENT_TYPES.AUTHORISATION: EventDetail(
+        description=("Authorisation token"),
+        level=AUDIT,
     ),
 }
 

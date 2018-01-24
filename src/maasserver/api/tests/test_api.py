@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -10,11 +10,15 @@ from itertools import chain
 import json
 import random
 import string
-from unittest.mock import Mock
+from unittest.mock import (
+    ANY,
+    Mock,
+)
 
 from django.conf import settings
 from maasserver import urls_api as urlconf
 from maasserver.api import (
+    account as account_module,
     machines as machines_module,
     nodes as nodes_module,
 )
@@ -46,7 +50,12 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnce,
+    MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
 from piston3.doc import generate_doc
 from requests.exceptions import RequestException
@@ -239,6 +248,8 @@ class AccountAPITest(APITestCase.ForUser):
         # The api operation create_authorisation_token returns a json dict
         # with the consumer_key, the token_key, the token_secret and the
         # consumer_name in it.
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response = self.client.post(
             reverse('account_handler'), {'op': 'create_authorisation_token'})
         self.assertEqual(http.client.OK, response.status_code)
@@ -252,10 +263,13 @@ class AccountAPITest(APITestCase.ForUser):
         self.assertIsInstance(parsed_result['token_key'], str)
         self.assertIsInstance(parsed_result['token_secret'], str)
         self.assertIsInstance(parsed_result['name'], str)
+        self.assertThat(mock_create_audit_event, MockCalledOnce())
 
     def test_create_authorisation_token_with_token_name(self):
         # The api operation create_authorisation_token can also accept
         # a new name for the generated token.
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         token_name = 'Test_Token'
         response = self.client.post(
             reverse('account_handler'), {
@@ -267,30 +281,39 @@ class AccountAPITest(APITestCase.ForUser):
             'application/json; charset=utf-8', response["content-type"])
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(parsed_result['name'], token_name)
+        self.assertThat(mock_create_audit_event, MockCalledOnce())
 
     def test_delete_authorisation_token_not_found(self):
         # If the provided token_key does not exist (for the currently
         # logged-in user), the api returns a 'Not Found' (404) error.
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response = self.client.post(
             reverse('account_handler'),
             {'op': 'delete_authorisation_token', 'token_key': 'no-such-token'})
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        self.assertThat(mock_create_audit_event, MockNotCalled())
 
     def test_delete_authorisation_token_bad_request_no_token(self):
         # token_key is a mandatory parameter when calling
         # delete_authorisation_token. It it is not present in the request's
         # parameters, the api returns a 'Bad Request' (400) error.
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response = self.client.post(
             reverse('account_handler'), {
                 'op': 'delete_authorisation_token'
             })
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertThat(mock_create_audit_event, MockNotCalled())
 
     def test_update_authorisation_token(self):
         token_name_orig = 'Test_Token'
         token_name_updated = 'Test_Token update'
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response_creation = self.client.post(
             reverse('account_handler'), {
                 'op': 'create_authorisation_token',
@@ -315,12 +338,16 @@ class AccountAPITest(APITestCase.ForUser):
         for token in parsed_list_response:
             if token['token'] == created_token:
                 self.assertEqual(token['name'], token_name_updated)
+        self.assertThat(
+            mock_create_audit_event, MockCallsMatch(ANY, ANY))
 
     def test_update_authorisation_token_with_token_key(self):
         # We use only "token_key" portion of the authorisation token
         # to update the token name.
         token_name_orig = 'Test_Token'
         token_name_updated = 'Test_Token update'
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response_creation = self.client.post(
             reverse('account_handler'), {
                 'op': 'create_authorisation_token',
@@ -346,10 +373,14 @@ class AccountAPITest(APITestCase.ForUser):
         for token in parsed_list_response:
             if token['token'] == created_token:
                 self.assertEqual(token['name'], token_name_updated)
+        self.assertThat(
+            mock_create_audit_event, MockCallsMatch(ANY, ANY))
 
     def test_update_authorisation_token_name_not_found(self):
         # If the provided token_key does not exist (for the currently
         # logged-in user), the api returns a 'Not Found' (404) error.
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response = self.client.post(
             reverse('account_handler'), {
                 'op': 'update_token_name', 'token': 'no-such-token',
@@ -357,20 +388,26 @@ class AccountAPITest(APITestCase.ForUser):
             })
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        self.assertThat(mock_create_audit_event, MockNotCalled())
 
     def test_update_authorisation_token_name_bad_request_no_token(self):
         # `token` and `name` are mandatory parameters when calling
         # update_token_name. If it is not present in the request's
         # parameters, the api returns a 'Bad Request' (400) error.
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response = self.client.post(
             reverse('account_handler'), {
                 'op': 'update_token_name'
             })
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertThat(mock_create_audit_event, MockNotCalled())
 
     def test_list_tokens(self):
         token1_name = "Test Token 1"
+        mock_create_audit_event = self.patch(
+            account_module, 'create_audit_event')
         response_creation = self.client.post(
             reverse('account_handler'), {
                 'op': 'create_authorisation_token',
@@ -395,6 +432,7 @@ class AccountAPITest(APITestCase.ForUser):
                 self.assertEqual(
                     token_fields[2],
                     parsed_creation_response['token_secret'])
+        self.assertThat(mock_create_audit_event, MockCalledOnce())
 
     def test_list_tokens_format(self):
         self.client.post(

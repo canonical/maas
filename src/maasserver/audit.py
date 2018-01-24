@@ -6,8 +6,10 @@
 __all__ = []
 
 from maasserver.models.event import Event
-from maasserver.models.eventtype import AUDIT
-from provisioningserver.events import EVENT_DETAILS
+from provisioningserver.events import (
+    AUDIT,
+    EVENT_DETAILS,
+)
 
 
 def create_audit_event(

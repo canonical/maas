@@ -12,10 +12,12 @@ from maasserver.models import (
     Event,
     EventType,
 )
-from maasserver.models.eventtype import AUDIT
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.events import EVENT_TYPES
+from provisioningserver.events import (
+    AUDIT,
+    EVENT_TYPES,
+)
 
 
 class CreateAuditEventTest(MAASServerTestCase):
