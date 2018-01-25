@@ -15,6 +15,7 @@ from unittest.mock import (
 from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
 from maasserver import middleware
+from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
 from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
@@ -480,12 +481,12 @@ class TestTagAPI(APITestCase.ForUser):
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_User()
         node1 = factory.make_Node()
-        pool = factory.make_ResourcePool()
-        pool.grant_user(user2)
-        node2 = factory.make_Node(pool=pool)
+        node2 = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user2)
+        node3 = factory.make_Node(pool=factory.make_ResourcePool())
         tag = factory.make_Tag()
         node1.tags.add(tag)
         node2.tags.add(tag)
+        node3.tags.add(tag)
 
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
@@ -494,7 +495,7 @@ class TestTagAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual([node1.system_id],
                          [r['system_id'] for r in parsed_result])
-        # However, for the other user, they should see the result
+        # The other user can also see his node
         client2 = MAASSensibleOAuthClient(user2)
         response = client2.get(self.get_tag_uri(tag), {'op': 'nodes'})
         self.assertEqual(http.client.OK, response.status_code)

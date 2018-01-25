@@ -316,6 +316,10 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
 
     def test_list_displays_only_visible_nodes(self):
         node = factory.make_Node(
+            owner=factory.make_User(), with_empty_script_sets=True)
+        for script_result in node.current_commissioning_script_set:
+            self.store_result(script_result, exit_status=0)
+        node = factory.make_Node(
             pool=factory.make_ResourcePool(), with_empty_script_sets=True)
         for script_result in node.current_commissioning_script_set:
             self.store_result(script_result, exit_status=0)

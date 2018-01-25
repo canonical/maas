@@ -651,13 +651,13 @@ class NodeHandler(TimestampedModelHandler):
         # Get the object and update update the script_result_cache.
         self._refresh_script_result_cache(obj.get_latest_script_results)
 
-        if self.user.is_superuser or obj.owner == self.user:
+        can_access_node = (
+            self.user.is_superuser or obj.owner == self.user or
+            (obj.owner is None and obj.pool is not None and
+             ResourcePool.objects.user_can_access_pool(
+                 self.user, obj.pool)))
+        if can_access_node:
             return obj.as_self()
-
-        if obj.pool is not None and ResourcePool.objects.user_can_access_pool(
-                self.user, obj.pool):
-            return obj.as_self()
-
         raise HandlerDoesNotExistError(params[self._meta.pk])
 
     def get_mac_addresses(self, data):

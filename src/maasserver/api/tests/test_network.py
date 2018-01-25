@@ -177,8 +177,7 @@ class TestListConnectedMACs(APITestCase.ForUser):
 
     def test_excludes_MACs_for_nodes_not_visible_to_user(self):
         subnet = factory.make_Subnet()
-        node = factory.make_Node(pool=factory.make_ResourcePool())
-        self.make_interface(subnets=[subnet], node=node)
+        self.make_interface(subnets=[subnet])
         self.assertEqual([], self.request_connected_macs(subnet))
 
     def test_returns_sorted_MACs(self):

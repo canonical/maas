@@ -1560,14 +1560,13 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         ownered_node = factory.make_Node(
             owner=user, status=NODE_STATUS.ALLOCATED)
-        other_ownered_node = factory.make_Node(
+        factory.make_Node(
             owner=other_user, status=NODE_STATUS.ALLOCATED)
         factory.make_Node(pool=factory.make_ResourcePool())
         handler = MachineHandler(user, {})
         self.assertItemsEqual([
             self.dehydrate_node(node, handler, for_list=True),
             self.dehydrate_node(ownered_node, handler, for_list=True),
-            self.dehydrate_node(other_ownered_node, handler, for_list=True),
         ], handler.list({}))
 
     def test_get_object_returns_node_if_super_user(self):
@@ -1591,12 +1590,13 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             node, handler.get_object({"system_id": node.system_id}))
 
-    def test_get_object_returns_node_if_other_owner(self):
+    def test_get_object_raises_error_if_owner_by_another_user(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         handler = MachineHandler(user, {})
-        self.assertEqual(
-            node, handler.get_object({"system_id": node.system_id}))
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get_object, {"system_id": node.system_id})
 
     def test_get_object_raises_error_if_in_unaccessible_pool(self):
         user = factory.make_User()
