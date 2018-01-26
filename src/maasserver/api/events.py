@@ -22,8 +22,12 @@ from maasserver.api.utils import (
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Event
-from maasserver.models.eventtype import LOGGING_LEVELS_BY_NAME
+from maasserver.models.eventtype import (
+    LOGGING_LEVELS,
+    LOGGING_LEVELS_BY_NAME,
+)
 from maasserver.utils.django_urls import reverse
+from provisioningserver.events import AUDIT
 
 
 MAX_EVENT_LOG_COUNT = 1000
@@ -39,7 +43,10 @@ def event_to_dict(event):
         level=event.type.level_str,
         created=event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
         type=event.type.description,
-        description=event.description
+        description=(
+            event.render_audit_description
+            if event.type.level == AUDIT else event.description
+            )
     )
 
 
@@ -66,6 +73,7 @@ class EventsHandler(OperationsHandler):
         'mac_address',
         'op',
         'zone',
+        'owner',
     ))
 
     @classmethod
@@ -97,18 +105,16 @@ class EventsHandler(OperationsHandler):
             older events.
         :param after: Optional event id.  Defines where to start returning
             newer events.
+        :param owner: If specified, filters the list to show only events
+            owned by the specified username.
         """
-        # Filter first by optional node ID, hostname, MAC, etc.
-        nodes = filtered_nodes_list_from_request(request)
-        # Event lists aren't supported on devices.
-        nodes = nodes.exclude(node_type=NODE_TYPE.DEVICE)
-
         # Extract & validate optional parameters from the request.
         after = get_optional_param(request.GET, 'after', None, Int)
         before = get_optional_param(request.GET, 'before', None, Int)
         level = get_optional_param(request.GET, 'level', 'INFO')
         limit = get_optional_param(
             request.GET, "limit", DEFAULT_EVENT_LOG_LIMIT, Int)
+        owner = get_optional_param(request.GET, 'owner', default=None)
 
         # Limit what we'll return to avoid being swamped.
         if limit > MAX_EVENT_LOG_COUNT:
@@ -119,16 +125,31 @@ class EventsHandler(OperationsHandler):
             # The limit should never be less than 1.
             limit = 1 if limit < 1 else limit
 
-        # Begin constructing the query.
-        node_events = Event.objects.filter(node__in=nodes)
+        # Filter first by optional node ID, hostname, MAC, etc.
+        nodes = filtered_nodes_list_from_request(request)
+        # Event lists aren't supported on devices.
+        nodes = nodes.exclude(node_type=NODE_TYPE.DEVICE)
 
-        # Eliminate logs below the requested level.
-        if level in LOGGING_LEVELS_BY_NAME:
-            node_events = node_events.exclude(
+        # Check first for AUDIT level.
+        if level == LOGGING_LEVELS[AUDIT]:
+            events = Event.objects.filter(type__level=AUDIT)
+            events = (events.all().prefetch_related('type'))
+        elif level in LOGGING_LEVELS_BY_NAME:
+            events = Event.objects.filter(node__in=nodes)
+            # Eliminate logs below the requested level.
+            events = events.exclude(
                 type__level__lt=LOGGING_LEVELS_BY_NAME[level])
+            events = (
+                events.all()
+                .prefetch_related('type')
+                .prefetch_related('node'))
         elif level is not None:
             raise MAASAPIBadRequest(
                 "Unrecognised log level: %s" % level)
+
+        # Filter events for owner.
+        if owner is not None:
+            events = events.filter(user__username=owner)
 
         # Future feature:
         # This is where we would filter for events 'since last node deployment'
@@ -137,26 +158,21 @@ class EventsHandler(OperationsHandler):
         # deployment, and we don't have an event subtype for node status
         # changes to filter for the deploying status event.
 
-        node_events = (
-            node_events.all()
-            .prefetch_related('type')
-            .prefetch_related('node'))
-
         if after is None and before is None:
             # Get `limit` events, newest first.
-            node_events = node_events.order_by('-id')
-            node_events = node_events[:limit]
+            events = events.order_by('-id')
+            events = events[:limit]
         elif after is None:
             # Get `limit` events, newest first, all before `before`.
-            node_events = node_events.filter(id__lt=before)
-            node_events = node_events.order_by('-id')
-            node_events = node_events[:limit]
+            events = events.filter(id__lt=before)
+            events = events.order_by('-id')
+            events = events[:limit]
         elif before is None:
             # Get `limit` events, OLDEST first, all after `after`, then
             # reverse the results.
-            node_events = node_events.filter(id__gt=after)
-            node_events = node_events.order_by('id')
-            node_events = reversed(node_events[:limit])
+            events = events.filter(id__gt=after)
+            events = events.order_by('id')
+            events = reversed(events[:limit])
         else:
             raise MAASAPIBadRequest(
                 "There is undetermined behaviour when both "
@@ -164,7 +180,7 @@ class EventsHandler(OperationsHandler):
 
         # We need to load all of these events at some point, so save them
         # into a list now so that len() is cheap.
-        node_events = list(node_events)
+        events = list(events)
 
         # Helper for building prev_uri and next_uri.
         def make_uri(params, base=reverse('events_handler')):
@@ -175,7 +191,7 @@ class EventsHandler(OperationsHandler):
         # Figure out a URI to obtain a set of newer events.
         next_uri_params = get_overridden_query_dict(
             request.GET, {"before": []}, self.all_params)
-        if len(node_events) == 0:
+        if len(events) == 0:
             if before is None:
                 # There are no newer events NOW, but there may be later.
                 next_uri = make_uri(next_uri_params)
@@ -185,13 +201,13 @@ class EventsHandler(OperationsHandler):
                 next_uri = make_uri(next_uri_params)
         else:
             # The first event is the newest.
-            next_uri_params["after"] = str(node_events[0].id)
+            next_uri_params["after"] = str(events[0].id)
             next_uri = make_uri(next_uri_params)
 
         # Figure out a URI to obtain a set of older events.
         prev_uri_params = get_overridden_query_dict(
             request.GET, {"after": []}, self.all_params)
-        if len(node_events) == 0:
+        if len(events) == 0:
             if after is None:
                 # There are no older events and never will be.
                 prev_uri = None
@@ -201,12 +217,12 @@ class EventsHandler(OperationsHandler):
                 prev_uri = make_uri(prev_uri_params)
         else:
             # The last event is the oldest.
-            prev_uri_params["before"] = str(node_events[-1].id)
+            prev_uri_params["before"] = str(events[-1].id)
             prev_uri = make_uri(prev_uri_params)
 
         return {
-            "count": len(node_events),
-            "events": [event_to_dict(event) for event in node_events],
+            "count": len(events),
+            "events": [event_to_dict(event) for event in events],
             "next_uri": next_uri,
             "prev_uri": prev_uri,
         }

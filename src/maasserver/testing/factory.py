@@ -34,6 +34,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     CACHE_MODE_TYPE,
+    ENDPOINT_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -1703,27 +1704,35 @@ class Factory(maastesting.factory.Factory):
         return EventType.objects.create(
             name=name, description=description, level=level)
 
-    def make_Event(self, node=None, type=None, action=None,
-                   description=None, user=None):
+    def make_Event(self, type=None, node=None, user=None, ip_address=None,
+                   endpoint=None, user_agent=None, action=None,
+                   description=None):
+        if type is None:
+            type = self.make_EventType()
         if node is None:
             node = self.make_Node()
             node_hostname = ''
         else:
             node_hostname = node.hostname
-        if type is None:
-            type = self.make_EventType()
-        if action is None:
-            action = self.make_name('action')
-        if description is None:
-            description = self.make_name('desc')
         if user is None:
             user = self.make_User()
             username = ''
         else:
             username = user.username
+        if ip_address is None:
+            ip_address = factory.make_ipv4_address()
+        if endpoint is None:
+            endpoint = self.pick_choice(ENDPOINT_CHOICES)
+        if user_agent is None:
+            user_agent = factory.make_name('user_agent')
+        if action is None:
+            action = self.make_name('action')
+        if description is None:
+            description = self.make_name('desc')
         return Event.objects.create(
-            node=node, type=type, action=action, description=description,
-            user=user, username=username, node_hostname=node_hostname)
+            type=type, node=node, node_hostname=node_hostname, user=user,
+            username=username, ip_address=ip_address, endpoint=endpoint,
+            user_agent=user_agent, action=action, description=description)
 
     @typed
     def make_LargeFile(self, content: bytes=None, size=512):

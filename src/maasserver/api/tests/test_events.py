@@ -28,6 +28,7 @@ from maasserver.utils import ignore_unused
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maastesting.djangotestcase import count_queries
+from provisioningserver.events import AUDIT
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
@@ -539,6 +540,46 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertSequenceEqual(
             default_result['events'], info_result['events'])
 
+    def test_GET_query_with_log_level_AUDIT_returns_only_that_level(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        audit_description = "Testing audit events for '%(username)s'."
+        generic_description = factory.make_name('desc')
+        event1 = factory.make_Event(
+            type=factory.make_EventType(level=AUDIT),
+            user=user, description=audit_description)
+        factory.make_Event(
+            type=factory.make_EventType(level=logging.DEBUG), node=node,
+            user=user, description=generic_description)
+
+        response = self.client.get(
+            reverse('events_handler'), {
+                'op': 'query',
+                'level': 'AUDIT',
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual([event1.id], extract_event_ids(parsed_result))
+
+    def test_GET_query_with_owner_returns_matching_events(self):
+        # Only events for user will be returned
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        nodes = [factory.make_Node(owner=user1) for _ in range(2)]
+        events = [factory.make_Event(node=node, user=user1) for node in nodes]
+        expected_event = factory.make_Event(user=user2)
+        events.append(expected_event)
+        response = self.client.get(
+            reverse('events_handler'), {
+                'op': 'query',
+                'level': 'DEBUG',
+                'owner': user2.username,
+            })
+        parsed_result = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            [expected_event.id], extract_event_ids(parsed_result))
+        self.assertEqual(1, parsed_result['count'])
+
     def make_nodes_in_group_with_events(
             self, number_nodes=2, number_events=2):
         """Make `number_events` events for `number_nodes` nodes."""
@@ -692,6 +733,7 @@ class TestEventsURIsWithoutEvents(APITestCase.ForUser):
         'limit': lambda: str(randint(1, 6)),
         'mac_address': factory.make_mac_address,
         'zone': factory.make_string,
+        'owner': factory.make_string,
     }
 
     def test_GET_query_prev_next_URIs_preserve_query_params(self):
