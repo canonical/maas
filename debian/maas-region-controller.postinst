@@ -144,8 +144,6 @@ elif [ -n "$DEBCONF_RECONFIGURE" ]; then
 
 elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0ubuntu1; then
     # If upgrading to any later package version, then upgrade db.
-    deb-systemd-invoke restart apache2 || true
-
     # make sure postgresql is running
     restart_postgresql
 
@@ -183,7 +181,6 @@ fi
 
 deb-systemd-invoke enable maas-regiond >/dev/null || true
 deb-systemd-invoke restart maas-regiond >/dev/null || true
-deb-systemd-invoke restart apache2 || true
 
 if [ -f /lib/systemd/system/maas-rackd.service ]; then
     deb-systemd-invoke restart maas-rackd >/dev/null || true

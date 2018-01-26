@@ -7,20 +7,6 @@ db_version 2.0
 
 RELEASE=`lsb_release -rs` || RELEASE=""
 
-configure_region_http() {
-    # handle apache configs
-    if [ -e /usr/share/maas/maas-http.conf -a \
-        ! -e /etc/apache2/conf-enabled/maas-http.conf ]; then
-        ln -sf /usr/share/maas/maas-http.conf /etc/apache2/conf-enabled/maas-http.conf
-    fi
-
-    # enable apache modules needed
-    a2enmod proxy_http
-    a2enmod proxy_wstunnel
-    a2enmod expires
-    a2enmod rewrite
-}
-
 configure_logging() {
     # Give appropriate permissions
     if [ ! -f /var/log/maas/regiond.log ]; then
@@ -36,8 +22,6 @@ configure_logging() {
     # destination folder.
     systemctl restart rsyslog >/dev/null 2>&1 || true
 
-    # apache2 log symlinks
-    ln -sf /var/log/apache2 /var/log/maas/
 }
 
 configure_libdir() {
@@ -58,7 +42,6 @@ configure_libdir() {
 maas-region local_config_set
 
 if [ "$1" = "configure" ] && [ -z "$2" ]; then
-    configure_region_http
     configure_logging
     configure_libdir
 
@@ -67,15 +50,7 @@ elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0
     configure_logging
     configure_libdir
 
-    # If upgrading to any later package version, then upgrade db.
-    invoke-rc.d apache2 stop || true
-
-    # make sure maas http config is symlinked
-    configure_region_http
-
 fi
-
-invoke-rc.d apache2 restart || true
 
 db_stop
 

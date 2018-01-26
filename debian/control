@@ -68,8 +68,7 @@ Description: MAAS server common files
 
 Package: maas-region-api
 Architecture: all
-Depends: apache2,
-         bind9utils,
+Depends: bind9utils,
          iproute2,
          libjs-angularjs,
          libjs-yui3-full,

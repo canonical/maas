@@ -10,29 +10,10 @@ case "$1" in
     purge)
         # Remove logging files & foldesr
         rm -rf /var/log/maas/regiond.log*
-        rm -rf /var/log/maas/apache2
         rm -rf /var/log/maas/rsyslog
 
         # Remove libgdir related files
         rm -rf /var/lib/maas/media
-
-        case $RELEASE in
-            12.04|12.10|13.04)
-                if [ -h /etc/apache2/conf.d/maas-http.conf ]; then
-                    rm -rf /etc/apache2/conf.d/maas-http.conf
-                fi
-                ;;
-            *)
-                if [ -h /etc/apache2/conf-enabled/maas-http.conf ]; then
-                    rm -rf /etc/apache2/conf-enabled/maas-http.conf
-                fi
-                ;;
-        esac
-
-        # Restarting apache2
-        if [ -x /usr/sbin/invoke-rc.d ]; then
-            invoke-rc.d apache2 restart || true
-        fi
 
         # Delete symlink
         if [ -L /etc/squid-deb-proxy/mirror-dstdomain.acl.d/99-maas ]; then

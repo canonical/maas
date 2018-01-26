@@ -34,5 +34,13 @@ if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
         mv /etc/maas/templates /etc/maas/templates.maas-old
     fi
 
+    if [ -f /etc/apache2/conf-enabled/maas-http.conf ]; then
+        rm -rf /etc/apache2/conf-enabled/maas-http.conf
+    fi
+
+    if [ -d /var/log/maas/apache2 ]; then
+        rm -rf /var/log/maas/apache2
+    fi
+
 fi
 #DEBHELPER#

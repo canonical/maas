@@ -5,5 +5,3 @@ set -e
 . /usr/share/debconf/confmodule
 
 #DEBHELPER#
-
-invoke-rc.d apache2 stop || true

@@ -6,7 +6,6 @@ set -e
 
 #DEBHELPER#
 
-invoke-rc.d apache2 stop || true
 invoke-rc.d maas-regiond stop || true
 
 . /usr/share/dbconfig-common/dpkg/prerm.pgsql
