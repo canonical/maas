@@ -25,4 +25,4 @@ export MAAS_ROOT="$SNAP_DATA"
 export MAAS_CLUSTER_CONFIG="$SNAP_DATA/rackd.conf"
 
 # Run the rackd.
-exec $SNAP/usr/sbin/rackd
+exec $SNAP/sbin/rackd
