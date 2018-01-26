@@ -174,7 +174,6 @@ echo "Restarting services and ensuring migrations are up to date..."
     ssh_run service maas-rackd stop
     ssh_run maas-region dbupgrade
     sleep 1
-    ssh_run service apache2 restart
     ssh_run service maas-regiond start
     sleep 2  # Wait for the region to start up.
     ssh_run service maas-rackd start
