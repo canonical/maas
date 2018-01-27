@@ -27,6 +27,8 @@ from maasserver.utils import (
     absolute_url_reverse,
     build_absolute_uri,
     find_rack_controller,
+    get_default_region_ip,
+    get_host_without_port,
     get_local_cluster_UUID,
     get_maas_user_agent,
     strip_domain,
@@ -40,6 +42,7 @@ from provisioningserver.utils.testing import MAASIDFixture
 from provisioningserver.utils.version import get_maas_version_user_agent
 from testtools.matchers import (
     Contains,
+    Equals,
     Not,
 )
 
@@ -223,9 +226,13 @@ class TestGetLocalClusterUUID(MAASTestCase):
         self.assertEqual(uuid, get_local_cluster_UUID())
 
 
-def make_request(origin_ip):
+def make_request(origin_ip, http_host=None):
     """Return a fake HTTP request with the given remote address."""
-    return RequestFactory().post('/', REMOTE_ADDR=str(origin_ip))
+    if http_host is None:
+        return RequestFactory().post('/', REMOTE_ADDR=str(origin_ip))
+    else:
+        return RequestFactory().post(
+            '/', REMOTE_ADDR=str(origin_ip), HTTP_HOST=str(http_host))
 
 
 class TestFindRackController(MAASServerTestCase):
@@ -283,3 +290,52 @@ class TestGetMAASUserAgent(MAASServerTestCase):
         composed_user_agent = "%s/%s" % (
             get_maas_version_user_agent(), Config.objects.get_config('uuid'))
         self.assertEquals(user_agent, composed_user_agent)
+
+
+class TestGetHostWithoutPort(MAASTestCase):
+
+    scenarios = (
+        ("ipv4", {
+            'host': '127.0.0.1',
+            'expected': '127.0.0.1'
+        }),
+        ("ipv4-with-port", {
+            'host': '127.0.0.1:1234',
+            'expected': '127.0.0.1'
+        }),
+        ("ipv6", {
+            'host': '[2001:db8::1:2:3:4]',
+            'expected': '2001:db8::1:2:3:4'
+        }),
+        ("ipv6-with-port", {
+            'host': '[2001:db8::1]:4567',
+            'expected': '2001:db8::1'
+        }),
+        ("dns", {
+            'host': 'maas.example.com',
+            'expected': 'maas.example.com'
+        }),
+    )
+
+    def test__returns_expected_results(self):
+        self.assertThat(
+            get_host_without_port(self.host), Equals(self.expected))
+
+
+class TestGetDefaultRegionIP(MAASServerTestCase):
+
+    def test__returns_source_ip_based_on_remote_ip_if_no_Host_header(self):
+        # Note: the source IP should resolve to the loopback interface here.
+        self.assertThat(
+            get_default_region_ip(make_request("127.0.0.2")),
+            Equals("127.0.0.1"))
+
+    def test__returns_Host_header_if_available(self):
+        self.assertThat(
+            get_default_region_ip(make_request("127.0.0.1", "localhost")),
+            Equals("localhost"))
+
+    def test__returns_Host_header_if_available_and_strips_port(self):
+        self.assertThat(
+            get_default_region_ip(make_request("127.0.0.1", "localhost:5240")),
+            Equals("localhost"))

@@ -72,7 +72,7 @@ from maasserver.preseed import (
 )
 from maasserver.utils import (
     find_rack_controller,
-    get_remote_ip,
+    get_default_region_ip,
 )
 from maasserver.utils.orm import (
     get_one,
@@ -102,7 +102,6 @@ from provisioningserver.events import (
     EVENT_TYPES,
 )
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.network import get_source_address
 import yaml
 
 
@@ -165,15 +164,6 @@ def get_queried_node(request, for_mac=None):
     else:
         # Access keyed by MAC address.
         return get_node_for_mac(for_mac)
-
-
-def get_default_region_ip(request):
-    """Returns the default reply address for the given HTTP request."""
-    remote_ip = get_remote_ip(request)
-    default_region_ip = None
-    if remote_ip is not None:
-        default_region_ip = get_source_address(remote_ip)
-    return default_region_ip
 
 
 def make_text_response(contents):

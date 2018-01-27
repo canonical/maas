@@ -19,6 +19,7 @@ from urllib.parse import (
     urlencode,
     urljoin,
     urlparse,
+    urlsplit,
 )
 
 from maasserver.config import RegionConfiguration
@@ -27,6 +28,7 @@ from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
 )
+from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.url import compose_URL
 from provisioningserver.utils.version import get_maas_version_user_agent
 
@@ -141,6 +143,18 @@ def get_maas_user_agent():
     return user_agent
 
 
+def get_host_without_port(http_host):
+    return urlsplit('http://%s/' % http_host).hostname
+
+
+def get_request_host(request):
+    """Returns the Host header from the specified HTTP request."""
+    request_host = request.META.get('HTTP_HOST')
+    if request_host is not None:
+        request_host = get_host_without_port(request_host)
+    return request_host
+
+
 def get_remote_ip(request):
     """Returns the IP address of the host that initiated the request."""
     return request.META.get('REMOTE_ADDR')
@@ -178,3 +192,15 @@ def synchronised(lock):
                 return func(*args, **kwargs)
         return call_with_lock
     return synchronise
+
+
+def get_default_region_ip(request):
+    """Returns the default reply address for the given HTTP request."""
+    request_host = get_request_host(request)
+    if request_host is not None:
+        return request_host
+    remote_ip = get_remote_ip(request)
+    default_region_ip = None
+    if remote_ip is not None:
+        default_region_ip = get_source_address(remote_ip)
+    return default_region_ip
