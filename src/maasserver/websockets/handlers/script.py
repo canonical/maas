@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The DHCPSnippet handler for the WebSocket connection."""
@@ -20,10 +20,5 @@ class ScriptHandler(TimestampedModelHandler):
         pk = 'id'
         allowed_methods = [
             'list',
-        ]
-        exclude = [
-            'for_hardware',
-            'may_reboot',
-            'recommission',
         ]
         listen_channels = ['script']

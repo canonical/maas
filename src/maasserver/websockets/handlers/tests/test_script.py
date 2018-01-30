@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.script`"""
@@ -32,6 +32,9 @@ class TestScriptHandler(MAASServerTestCase):
             'destructive': script.destructive,
             'default': script.default,
             'script': script.script_id,
+            'for_hardware': script.for_hardware,
+            'may_reboot': script.may_reboot,
+            'recommission': script.recommission,
             'created': dehydrate_datetime(script.created),
             'updated': dehydrate_datetime(script.updated),
             }

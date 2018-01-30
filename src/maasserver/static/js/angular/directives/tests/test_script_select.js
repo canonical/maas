@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for script select directive.
@@ -32,13 +32,14 @@ describe("maasScriptSelect", function() {
         spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
     }));
 
-    function makeScript(script_type, tags) {
+    function makeScript(script_type, tags, for_hardware) {
         script = {
             id: makeInteger(0, 100),
             name: makeName("script_name"),
             description: makeName("description"),
             script_type: script_type,
-            tags: tags
+            tags: tags,
+            for_hardware: for_hardware
         };
         ScriptsManager._items.push(script);
         return script;
@@ -63,9 +64,13 @@ describe("maasScriptSelect", function() {
 
     it("creates entry for commissioning scripts", function() {
         // Create a commissioning script to be displayed.
-        var script = makeScript(0, []);
+        var script = makeScript(0, [], []);
+        // Create a commissiong script which uses the for_hardware field
+        // which should not be autoselected.
+        var for_hardware_script = makeScript(
+            0, [], [makeName("for_hardware")]);
         // Add a test script to ensure its not shown.
-        makeScript(2, []);
+        makeScript(2, [], []);
         var defer = $q.defer();
         var spy = spyOn(ManagerHelperService, "loadManager");
         spy.and.returnValue(defer.promise);
@@ -80,15 +85,20 @@ describe("maasScriptSelect", function() {
         expect(isolateScope.ngModel.length).toBe(1);
         expect(isolateScope.ngModel[0].name).toBe(script.name);
         expect(isolateScope.ngModel[0].description).toBe(script.description);
-        expect(isolateScope.scripts).toEqual([script]);
+        expect(isolateScope.scripts).toEqual([script, for_hardware_script]);
     });
 
     it("creates entry for testing scripts", function() {
         // Create a test script for user selection.
-        var script = makeScript(2, []);
+        var script = makeScript(2, [], []);
+        // Create a test script which uses the for_hardware field
+        // which should not be autoselected.
+        var for_hardware_script = makeScript(
+            2, ['commissioning'], [makeName("for_hardware")]);
         // Create a test script which is autoselected.
-        var selected_script = makeScript(2, ['commissioning']);
-        makeScript(0, []);
+        var selected_script = makeScript(2, ['commissioning'], []);
+        // Commissioning script which should be ignored
+        makeScript(0, [], []);
         var defer = $q.defer();
         var spy = spyOn(ManagerHelperService, "loadManager");
         spy.and.returnValue(defer.promise);
@@ -103,6 +113,7 @@ describe("maasScriptSelect", function() {
         expect(isolateScope.ngModel[0].name).toBe(selected_script.name);
         expect(isolateScope.ngModel[0].description).toBe(
             selected_script.description);
-        expect(isolateScope.scripts).toEqual([script, selected_script]);
+        expect(isolateScope.scripts).toEqual(
+            [script, for_hardware_script, selected_script]);
     });
 });

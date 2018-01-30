@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Script select directive.
@@ -89,7 +89,8 @@ angular.module('MAAS').directive(
                 function() {
                     $scope.ngModel.length = 0;
                     angular.forEach($scope.allScripts, function(script) {
-                        if(script.script_type === $scope.scriptType) {
+                        if(script.script_type === $scope.scriptType &&
+                           script.for_hardware.length === 0) {
                             if($scope.scriptType === 0) {
                                 // By default MAAS runs all custom
                                 // commissioning scripts in addition to all
