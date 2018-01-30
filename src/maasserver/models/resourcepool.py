@@ -24,7 +24,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.worker_user import user_name as worker_username
 from metadataserver.nodeinituser import user_name as node_init_username
 
-# The default pool cannot be renamed or deleted.
+
 DEFAULT_RESOURCEPOOL_NAME = 'default'
 DEFAULT_RESOURCEPOOL_DESCRIPTION = 'Default pool'
 

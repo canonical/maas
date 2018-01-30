@@ -77,6 +77,8 @@ __all__ = [
     'Tag',
     'Template',
     'UnknownInterface',
+    'UserGroup',
+    'UserGroupMembership',
     'UserProfile',
     'VersionedTextFile',
     'VirtualBlockDevice',
@@ -182,6 +184,10 @@ from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.template import Template
 from maasserver.models.user import create_user
+from maasserver.models.usergroup import (
+    UserGroup,
+    UserGroupMembership,
+)
 from maasserver.models.userprofile import UserProfile
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice

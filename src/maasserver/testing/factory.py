@@ -105,6 +105,8 @@ from maasserver.models import (
     StaticRoute,
     Subnet,
     Tag,
+    UserGroup,
+    UserGroupMembership,
     VersionedTextFile,
     VirtualBlockDevice,
     VLAN,
@@ -1005,16 +1007,31 @@ class Factory(maastesting.factory.Factory):
 
     def make_User(
             self, username=None, password='test', email=None,
-            completed_intro=True):
+            completed_intro=True, groups=()):
         if username is None:
             username = self.make_username()
         if email is None:
             email = self.make_email()
         user = User.objects.create_user(
             username=username, password=password, email=email)
+        for group in groups:
+            UserGroupMembership.objects.create(
+                user=user, group=group)
         user.userprofile.completed_intro = completed_intro
         user.userprofile.save()
         return user
+
+    def make_UserGroup(self, name=None, description=None,
+                       users=()):
+        if name is None:
+            name = self.make_name('usergroup')
+        if description is None:
+            description = self.make_string()
+        group = UserGroup(name=name, description=description)
+        group.save()
+        for user in users:
+            UserGroupMembership.objects.create(user=user, group=group)
+        return group
 
     def make_ResourcePool(self, name=None, description=None,
                           nodes=None, users=None):
