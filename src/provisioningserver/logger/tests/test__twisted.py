@@ -206,7 +206,8 @@ class TestObserveTwistedInternetUNIX(MAASTestCase):
     """Tests for `observe_twisted_internet_unix`."""
 
     def test__ignores_port_closed_events(self):
-        event = make_event("(Port %r Closed)" % factory.make_name("port"))
+        event = make_event("(%s Port %r Closed)" % (
+            factory.make_name("port-name"), factory.make_name("port")))
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_unix(event)
         self.assertThat(logger.events, HasLength(0))
@@ -321,6 +322,28 @@ class TestFormatModernEvent(MAASTestCase):
                 "%s %s: [%s] >%s< >%s<\n" % (
                     logger.formatTime(log_time, DEFAULT_LOG_FORMAT_DATE),
                     log_system, self.log_level.name, thing1, thing2),
+            ),
+        )
+
+    def test_format_failure(self):
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            failure = Failure()
+        log_system = factory.make_name("system")
+        log_time = pick_log_time()
+        self.assertThat(
+            _formatModernEvent({
+                "log_time": log_time,
+                "log_system": log_system,
+                "log_level": self.log_level,
+                "log_failure": failure,
+            }),
+            Equals(
+                "%s %s: [%s] \n\t%s\n" % (
+                    logger.formatTime(log_time, DEFAULT_LOG_FORMAT_DATE),
+                    log_system, self.log_level.name,
+                    failure.getTraceback().replace("\n", "\n\t")),
             ),
         )
 

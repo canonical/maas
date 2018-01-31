@@ -157,6 +157,12 @@ _lineFormat = DEFAULT_LOG_FORMAT + "\n"
 def _formatModernEvent(event):
     """Format a "modern" event according to MAAS's conventions."""
     text = twistedModern.formatEvent(event)
+    if "log_failure" in event:
+        try:
+            traceback = event["log_failure"].getTraceback()
+        except:
+            traceback = u"(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
+        text = "\n".join((text, traceback))
     time = event["log_time"] if "log_time" in event else None
     level = event["log_level"] if "log_level" in event else None
     system = event["log_system"] if "log_system" in event else None
@@ -396,7 +402,7 @@ def observe_twisted_internet_udp(event):
 
 
 _observe_twisted_internet_unix_noise = re.compile(
-    r"^(?:[(]Port .+ Closed[)]|.+ starting on .+)")
+    r"^(?:[(].+ Port .+ Closed[)]|.+ starting on .+)")
 
 
 def observe_twisted_internet_unix(event):
