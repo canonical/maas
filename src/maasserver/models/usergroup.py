@@ -74,7 +74,7 @@ class UserGroup(CleanSave, TimestampedModel):
     def delete(self):
         if self.is_default():
             raise ValidationError(
-                'This is the user group, it cannot be deleted.')
+                'This is the default user group, it cannot be deleted.')
         super().delete()
 
 
