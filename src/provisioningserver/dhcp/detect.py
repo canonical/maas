@@ -450,7 +450,7 @@ class DHCPRequestMonitor:
             log.info(
                 "External DHCP server(s) discovered on interface '{ifname}': "
                 "{servers}", ifname=self.ifname, servers=', '.join(
-                    str(server) for server in servers))
+                    str(server) for server in sorted(list(servers))))
         self.servers = servers
 
     @property
@@ -464,8 +464,8 @@ class DHCPRequestMonitor:
 
 @attr.s(hash=True)
 class DHCPServer:
-    server = attr.ib(convert=IPAddress)
-    address = attr.ib(convert=IPAddress)
+    server = attr.ib(converter=IPAddress)
+    address = attr.ib(converter=IPAddress)
 
     def __str__(self):
         """Returns either a longer format string (if the address we received

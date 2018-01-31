@@ -117,11 +117,11 @@ class _Configuration:
     """Configuration for the rack's NTP servers."""
 
     # Addresses or hostnames of reference time servers.
-    references = attr.ib(convert=frozenset)
+    references = attr.ib(converter=frozenset)
     # Addresses of peer time servers.
-    peers = attr.ib(convert=frozenset)
+    peers = attr.ib(converter=frozenset)
 
     # The type of this controller. It's fair to assume that is_rack is true,
     # but check nevertheless before applying this configuration.
-    is_region = attr.ib(convert=bool)
-    is_rack = attr.ib(convert=bool)
+    is_region = attr.ib(converter=bool)
+    is_rack = attr.ib(converter=bool)

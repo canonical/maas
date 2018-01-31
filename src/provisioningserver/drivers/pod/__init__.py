@@ -96,9 +96,9 @@ class PodActionError(PodError):
     or `discover`."""
 
 
-def convert_obj(expected, optional=False):
+def converter_obj(expected, optional=False):
     """Convert the given value to an object of type `expected`."""
-    def convert(value):
+    def converter(value):
         if optional and value is None:
             return None
         if isinstance(value, expected):
@@ -108,12 +108,12 @@ def convert_obj(expected, optional=False):
         else:
             raise TypeError(
                 "%r is not of type %s or dict" % (value, expected))
-    return convert
+    return converter
 
 
-def convert_list(expected):
+def converter_list(expected):
     """Convert the given value to a list of objects of type `expected`."""
-    def convert(value):
+    def converter(value):
         if isinstance(value, list):
             if len(value) == 0:
                 return value
@@ -131,7 +131,7 @@ def convert_list(expected):
                 return new_list
         else:
             raise TypeError("%r is not of type list" % value)
-    return convert
+    return converter
 
 
 class Capabilities:
@@ -184,45 +184,46 @@ class AttrHelperMixin:
 @attr.s
 class DiscoveredMachineInterface(AttrHelperMixin):
     """Discovered machine interface."""
-    mac_address = attr.ib(convert=str)
-    vid = attr.ib(convert=int, default=-1)
-    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
-    boot = attr.ib(convert=bool, default=False)
+    mac_address = attr.ib(converter=str)
+    vid = attr.ib(converter=int, default=-1)
+    tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
+    boot = attr.ib(converter=bool, default=False)
 
 
 @attr.s
 class DiscoveredMachineBlockDevice(AttrHelperMixin):
     """Discovered machine block device."""
-    model = attr.ib(convert=convert_obj(str, optional=True))
-    serial = attr.ib(convert=convert_obj(str, optional=True))
-    size = attr.ib(convert=int)
-    block_size = attr.ib(convert=int, default=512)
-    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
-    id_path = attr.ib(convert=convert_obj(str, optional=True), default=None)
-    type = attr.ib(convert=str, default=BlockDeviceType.PHYSICAL)
+    model = attr.ib(converter=converter_obj(str, optional=True))
+    serial = attr.ib(converter=converter_obj(str, optional=True))
+    size = attr.ib(converter=int)
+    block_size = attr.ib(converter=int, default=512)
+    tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
+    id_path = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
+    type = attr.ib(converter=str, default=BlockDeviceType.PHYSICAL)
 
     # Used when `type` is set to `BlockDeviceType.ISCSI`. The pod driver must
     # define an `iscsi_target` or it will not create the device for the
     # discovered machine.
     iscsi_target = attr.ib(
-        convert=convert_obj(str, optional=True), default=None)
+        converter=converter_obj(str, optional=True), default=None)
 
 
 @attr.s
 class DiscoveredMachine(AttrHelperMixin):
     """Discovered machine."""
-    architecture = attr.ib(convert=str)
-    cores = attr.ib(convert=int)
-    cpu_speed = attr.ib(convert=int)
-    memory = attr.ib(convert=int)
-    interfaces = attr.ib(convert=convert_list(DiscoveredMachineInterface))
+    architecture = attr.ib(converter=str)
+    cores = attr.ib(converter=int)
+    cpu_speed = attr.ib(converter=int)
+    memory = attr.ib(converter=int)
+    interfaces = attr.ib(converter=converter_list(DiscoveredMachineInterface))
     block_devices = attr.ib(
-        convert=convert_list(DiscoveredMachineBlockDevice))
-    power_state = attr.ib(convert=str, default='unknown')
+        converter=converter_list(DiscoveredMachineBlockDevice))
+    power_state = attr.ib(converter=str, default='unknown')
     power_parameters = attr.ib(
-        convert=convert_obj(dict), default=attr.Factory(dict))
-    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
-    hostname = attr.ib(convert=str, default=None)
+        converter=converter_obj(dict), default=attr.Factory(dict))
+    tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
+    hostname = attr.ib(converter=str, default=None)
 
 
 @attr.s
@@ -232,37 +233,38 @@ class DiscoveredPodHints(AttrHelperMixin):
     Hints provide helpful information to a user trying to compose a machine.
     Limiting the maximum cores allow request on a per machine basis.
     """
-    cores = attr.ib(convert=int)
-    cpu_speed = attr.ib(convert=int)
-    memory = attr.ib(convert=int)
-    local_storage = attr.ib(convert=int)
-    local_disks = attr.ib(convert=int, default=-1)
-    iscsi_storage = attr.ib(convert=int, default=-1)
+    cores = attr.ib(converter=int)
+    cpu_speed = attr.ib(converter=int)
+    memory = attr.ib(converter=int)
+    local_storage = attr.ib(converter=int)
+    local_disks = attr.ib(converter=int, default=-1)
+    iscsi_storage = attr.ib(converter=int, default=-1)
 
 
 @attr.s
 class DiscoveredPod(AttrHelperMixin):
     """Discovered pod information."""
-    architectures = attr.ib(convert=convert_list(str))
-    cores = attr.ib(convert=int)
-    cpu_speed = attr.ib(convert=int)
-    memory = attr.ib(convert=int)
-    local_storage = attr.ib(convert=int)
-    hints = attr.ib(convert=convert_obj(DiscoveredPodHints))
-    local_disks = attr.ib(convert=int, default=-1)
-    iscsi_storage = attr.ib(convert=int, default=-1)
+    architectures = attr.ib(converter=converter_list(str))
+    cores = attr.ib(converter=int)
+    cpu_speed = attr.ib(converter=int)
+    memory = attr.ib(converter=int)
+    local_storage = attr.ib(converter=int)
+    hints = attr.ib(converter=converter_obj(DiscoveredPodHints))
+    local_disks = attr.ib(converter=int, default=-1)
+    iscsi_storage = attr.ib(converter=int, default=-1)
     capabilities = attr.ib(
-        convert=convert_list(str), default=attr.Factory(
+        converter=converter_list(str), default=attr.Factory(
             lambda: [Capabilities.FIXED_LOCAL_STORAGE]))
     machines = attr.ib(
-        convert=convert_list(DiscoveredMachine), default=attr.Factory(list))
+        converter=converter_list(DiscoveredMachine),
+        default=attr.Factory(list))
 
 
 @attr.s
 class RequestedMachineBlockDevice(AttrHelperMixin):
     """Requested machine block device information."""
-    size = attr.ib(convert=int)
-    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
+    size = attr.ib(converter=int)
+    tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
 
 
 @attr.s
@@ -274,16 +276,17 @@ class RequestedMachineInterface(AttrHelperMixin):
 @attr.s
 class RequestedMachine(AttrHelperMixin):
     """Requested machine information."""
-    hostname = attr.ib(convert=str)
-    architecture = attr.ib(convert=str)
-    cores = attr.ib(convert=int)
-    memory = attr.ib(convert=int)
-    block_devices = attr.ib(convert=convert_list(RequestedMachineBlockDevice))
-    interfaces = attr.ib(convert=convert_list(RequestedMachineInterface))
+    hostname = attr.ib(converter=str)
+    architecture = attr.ib(converter=str)
+    cores = attr.ib(converter=int)
+    memory = attr.ib(converter=int)
+    block_devices = attr.ib(
+        converter=converter_list(RequestedMachineBlockDevice))
+    interfaces = attr.ib(converter=converter_list(RequestedMachineInterface))
 
     # Optional fields.
     cpu_speed = attr.ib(
-        convert=convert_obj(int, optional=True), default=None)
+        converter=converter_obj(int, optional=True), default=None)
 
     @classmethod
     def fromdict(cls, data):

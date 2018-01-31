@@ -107,7 +107,7 @@ class _Configuration:
     """Configuration for the region's NTP servers."""
 
     # Addresses or hostnames of reference time servers.
-    references = attr.ib(convert=frozenset)
+    references = attr.ib(converter=frozenset)
 
     # Addresses of peer region controller hosts.
-    peers = attr.ib(convert=frozenset)
+    peers = attr.ib(converter=frozenset)
