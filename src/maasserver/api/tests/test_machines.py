@@ -24,7 +24,10 @@ from maasserver.enum import (
     POWER_STATE,
 )
 import maasserver.forms as forms_module
-from maasserver.forms.pods import ComposeMachineForPodsForm
+from maasserver.forms.pods import (
+    ComposeMachineForm,
+    ComposeMachineForPodsForm,
+)
 from maasserver.models import (
     Config,
     Domain,
@@ -667,6 +670,73 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, parsed_result['system_id'])
         self.assertThat(mock_compose, MockCalledOnceWith())
+
+    def test_POST_allocate_returns_a_composed_machine_with_pool_access(self):
+        # The "allocate" operation returns a composed machine.
+        def compose_machine(*args, **kwargs):
+            return factory.make_Node(
+                status=NODE_STATUS.READY, owner=None, with_boot_disk=True,
+                bmc=pod, hostname=pod_machine_hostname)
+
+        pod_machine_hostname = factory.make_name('pod-machine')
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pool = factory.make_ResourcePool(users=[self.user])
+        pod = factory.make_Pod(
+            architectures=architectures, default_pool=pool)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_compose = self.patch(ComposeMachineForm, 'compose')
+        mock_compose.side_effect = compose_machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': 'amd64'
+                })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(pod_machine_hostname, parsed_result['hostname'])
+
+    def test_POST_allocate_no_composed_machine_with_no_pool_access(self):
+        # The "allocate" operation returns a composed machine.
+        def compose_machine(*args, **kwargs):
+            return factory.make_Node(
+                status=NODE_STATUS.READY, owner=None, with_boot_disk=True,
+                bmc=pod)
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pool = factory.make_ResourcePool(users=[])
+        pod = factory.make_Pod(
+            architectures=architectures, default_pool=pool)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_compose = self.patch(ComposeMachineForm, 'compose')
+        mock_compose.side_effect = compose_machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': 'amd64'
+                })
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_POST_allocate_returns_a_composed_machine_wildcard_arch(self):
         # The "allocate" operation returns a composed machine.

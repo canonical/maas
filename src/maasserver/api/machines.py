@@ -1609,7 +1609,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "architecture": architecture,
                     "storage": storage,
                 }
-                pods = Pod.objects.all()
+                pods = Pod.objects.filter(
+                    default_pool__role__users=request.user)
                 # We don't want to compose a machine from a pod if the
                 # constraints contain tags.
                 if pods and not any(
