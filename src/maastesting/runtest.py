@@ -92,15 +92,19 @@ def check_for_deferred(result):
         return result
 
 
-def call_belongs_to_crochet(call):
-    """Return True when `call` belongs to crochet.
+def call_belongs_to_internals(call):
+    """Return True when `call` belongs to internal crochet and twisted..
 
     Crochet schedules a looping call that calls `reapAllProcesses` every 0.1
     seconds. This checks if this `DelayedCall` matches this signature.
 
+    Twisted uses callLater in it's async reactor.
+
     :type call: :class:`DelayedCall`
     """
-    if isinstance(call.func, LoopingCall):
+    if call.func.__module__ == 'twisted.internet.asyncioreactor':
+        return True
+    elif isinstance(call.func, LoopingCall):
         return call.func.f is reapAllProcesses
     else:
         return False
@@ -256,10 +260,10 @@ class MAASCrochetRunTest(MAASRunTest):
     def _cleanPending(self):
         """Cancel all pending calls and return their string representations.
 
-        Delayed calls belonging to crochet are ignored.
+        Delayed calls belonging to crochet and twisted internals are ignored.
         """
         for call in reactor.getDelayedCalls():
-            if call.active() and not call_belongs_to_crochet(call):
+            if call.active() and not call_belongs_to_internals(call):
                 yield call
                 call.cancel()
 
