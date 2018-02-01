@@ -13,6 +13,7 @@ from unittest.mock import (
 
 from crochet import wait_for
 from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -26,6 +27,7 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
+    Pod,
 )
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import Interface
@@ -35,6 +37,7 @@ from maasserver.models.iscsiblockdevice import (
 )
 from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import MatchesSetwiseWithAll
@@ -660,6 +663,30 @@ class TestPod(MAASServerTestCase):
             ),
             machines=machines)
 
+    def test_create_with_default_pool(self):
+        pool = ResourcePool.objects.get_default_resource_pool()
+        pod = Pod(power_type='virsh', power_parameters={}, default_pool=pool)
+        pod.save()
+        self.assertEqual(pool, pod.default_pool)
+
+    def test_create_with_no_default_pool(self):
+        pod = Pod(power_type='virsh', power_parameters={})
+        pod.save()
+        self.assertEqual(
+            ResourcePool.objects.get_default_resource_pool(),
+            pod.default_pool)
+
+    def test_save_with_no_pool(self):
+        pod = Pod(power_type='virsh', power_parameters={})
+        pod.default_pool = None
+        self.assertRaises(ValidationError, pod.save)
+
+    def test_no_delete_default_pool(self):
+        pool = factory.make_ResourcePool()
+        pod = Pod(power_type='virsh', power_parameters={}, default_pool=pool)
+        pod.save()
+        self.assertRaises(ProtectedError, pool.delete)
+
     def test_sync_pod_properties_and_hints(self):
         discovered = self.make_discovered_pod()
         pod = factory.make_Pod()
@@ -821,6 +848,20 @@ class TestPod(MAASServerTestCase):
         # that will cause a database exception.
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertNotEqual(machine.hostname, 'invalid_name')
+
+    def test_create_machine_pod_default_pool(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(default_pool=pool)
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertEqual(pool, machine.pool)
 
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()

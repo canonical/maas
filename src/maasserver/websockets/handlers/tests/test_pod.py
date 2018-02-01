@@ -137,6 +137,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     (pod.local_storage - pod.get_used_local_storage()) / (
                         (1024 ** 3))),
                 },
+            "default_pool": pod.default_pool.id,
             "capabilities": pod.capabilities,
             "architectures": pod.architectures,
             "hints": {

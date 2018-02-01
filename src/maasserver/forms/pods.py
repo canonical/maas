@@ -42,6 +42,7 @@ from maasserver.models import (
     Node,
     Pod,
     RackController,
+    ResourcePool,
     Zone,
 )
 from maasserver.node_constraint_filter_forms import (
@@ -159,6 +160,8 @@ class PodForm(MAASModelForm):
                         # Convert the BMC to a Pod and set as the instance for
                         # the PodForm.
                         bmc.bmc_type = BMC_TYPE.POD
+                        bmc.default_pool = (
+                            ResourcePool.objects.get_default_resource_pool())
                         return bmc.as_pod()
                     else:
                         # Pod already exists with the same power_type and

@@ -22,6 +22,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     ManyToManyField,
+    PROTECT,
     SET_NULL,
     TextField,
 )
@@ -52,6 +53,7 @@ from maasserver.models.node import (
 )
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
@@ -151,6 +153,7 @@ class BMC(CleanSave, TimestampedModel):
     #  6. Total amount of memory in the Pod.
     #  7. Total about in bytes of local storage available in the Pod.
     #  8. Total number of available local disks in the Pod.
+    #  9. The resource pool machines in the pod should belong to by default.
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
     architectures = ArrayField(
@@ -165,6 +168,9 @@ class BMC(CleanSave, TimestampedModel):
     local_disks = IntegerField(blank=False, null=False, default=-1)
     iscsi_storage = BigIntegerField(  # Bytes
         blank=False, null=False, default=-1)
+    default_pool = ForeignKey(
+        ResourcePool, default=None, null=True, blank=True, editable=True,
+        on_delete=PROTECT)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -435,8 +441,16 @@ class Pod(BMC):
     _machine_name_re = re.compile(r'[a-z][a-z0-9-]+$', flags=re.I)
 
     def __init__(self, *args, **kwargs):
+        if 'default_pool' not in kwargs:
+            kwargs['default_pool'] = (
+                ResourcePool.objects.get_default_resource_pool())
         super(Pod, self).__init__(
             bmc_type=BMC_TYPE.POD, *args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        if self.default_pool is None:
+            raise ValidationError('A pod needs to have a default pool')
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('power_type', 'power_parameters', 'ip_address'):
@@ -579,7 +593,8 @@ class Pod(BMC):
             cpu_speed=discovered_machine.cpu_speed,
             memory=discovered_machine.memory,
             power_state=discovered_machine.power_state,
-            creation_type=creation_type, **kwargs)
+            creation_type=creation_type,
+            pool=self.default_pool, **kwargs)
         machine.bmc = self
         machine.instance_power_parameters = discovered_machine.power_parameters
         if not machine.hostname:
