@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from django import forms
+from django.core.exceptions import ValidationError
 from maasserver.enum import RDNS_MODE_CHOICES
 from maasserver.fields import IPListFormField
 from maasserver.forms import MAASModelForm
@@ -16,6 +17,10 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import get_one
+from netaddr import (
+    AddrFormatError,
+    IPNetwork,
+)
 
 
 class SubnetForm(MAASModelForm):
@@ -85,6 +90,16 @@ class SubnetForm(MAASModelForm):
             # determination on what should be done in this case.
             cleaned_data = self._clean_vlan(cleaned_data)
         return cleaned_data
+
+    def clean_cidr(self):
+        data = self.cleaned_data['cidr']
+        try:
+            network = IPNetwork(data)
+            if network.prefixlen == 0:
+                raise ValidationError("Prefix length must be greater than 0.")
+        except AddrFormatError:
+            raise ValidationError("Required format: <network>/<prefixlen>.")
+        return data
 
     def _clean_name(self, cleaned_data):
         name = cleaned_data.get("name", None)
