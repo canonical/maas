@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test hooks."""
@@ -20,6 +20,7 @@ from maasserver.enum import (
 from maasserver.fields import MAC
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import Interface
+from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
@@ -729,14 +730,61 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)
 
+    def test_hardware_updates_node_attribs(self):
+        node = factory.make_Node()
+        system_vendor = factory.make_name('system_vendor')
+        system_product = factory.make_name('system_product')
+        system_version = factory.make_name('system_version')
+        system_serial = factory.make_name('system_serial')
+        mainboard_firmware_version = factory.make_name(
+            'mainboard_firmware_version')
+        mainboard_firmware_date = factory.make_name(
+            'mainboard_firmware_date')
+        xmlbytes = dedent("""\
+        <node>
+          <node class="system">
+            <vendor>%s</vendor>
+            <product>%s</product>
+            <version>%s</version>
+            <serial>%s</serial>
+          </node>
+          <node id="core">
+            <node id="firmware">
+              <version>%s</version>
+              <date>%s</date>
+            </node>
+          </node>
+        </node>
+        """ % (
+            system_vendor, system_product, system_version, system_serial,
+            mainboard_firmware_version, mainboard_firmware_date)).encode()
+        update_hardware_details(node, xmlbytes, 0)
+
+        nmd = NodeMetadata.objects.get(node=node, key='system_vendor')
+        self.assertEquals(system_vendor, nmd.value)
+        nmd = NodeMetadata.objects.get(node=node, key='system_product')
+        self.assertEquals(system_product, nmd.value)
+        nmd = NodeMetadata.objects.get(node=node, key='system_version')
+        self.assertEquals(system_version, nmd.value)
+        nmd = NodeMetadata.objects.get(node=node, key='system_serial')
+        self.assertEquals(system_serial, nmd.value)
+
+        nmd = NodeMetadata.objects.get(
+            node=node, key='mainboard_firmware_version')
+        self.assertEquals(mainboard_firmware_version, nmd.value)
+        nmd = NodeMetadata.objects.get(
+            node=node, key='mainboard_firmware_date')
+        self.assertEquals(mainboard_firmware_date, nmd.value)
+
 
 class TestParseCPUInfo(MAASServerTestCase):
 
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
-    def test_parse_cpuinfo(self):
+    def test_parse_cpuinfo_speed_in_model(self):
         node = factory.make_Node()
         node.cpu_count = 2
+        node.cpu_speed = 9999
         node.save()
         # Sample lscpu output from a single socket, quad core with
         # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
@@ -755,7 +803,7 @@ class TestParseCPUInfo(MAASServerTestCase):
         Model:                 60
         Model name:            Intel(R) Core(TM) i7-4910MQ CPU @ 2.90GHz
         Stepping:              3
-        CPU MHz:               1247.000
+        CPU MHz:               2893.284
         CPU max MHz:           3900.0000
         CPU min MHz:           800.0000
         BogoMIPS:              5786.32
@@ -779,7 +827,109 @@ class TestParseCPUInfo(MAASServerTestCase):
         7,3,0
         """).encode('utf-8')
         parse_cpuinfo(node, cpuinfo, 0)
-        self.assertEqual(8, reload_object(node).cpu_count)
+        node = reload_object(node)
+        self.assertEqual(8, node.cpu_count)
+        self.assertEqual(2900, node.cpu_speed)
+        nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
+        self.assertEqual('Intel(R) Core(TM) i7-4910MQ CPU', nmd.value)
+
+    def test_parse_cpuinfo_max_speed(self):
+        node = factory.make_Node()
+        node.cpu_count = 2
+        node.cpu_speed = 9999
+        node.save()
+        # Sample lscpu output from a single socket, quad core with
+        # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
+        cpuinfo = dedent("""\
+        Architecture:          x86_64
+        CPU op-mode(s):        32-bit, 64-bit
+        Byte Order:            Little Endian
+        CPU(s):                4
+        On-line CPU(s) list:   0-3
+        Thread(s) per core:    1
+        Core(s) per socket:    4
+        Socket(s):             1
+        NUMA node(s):          1
+        Vendor ID:             AuthenticAMD
+        CPU family:            22
+        Model:                 0
+        Model name:            AMD Athlon(tm) 5350 APU with Radeon(tm) R3
+        Stepping:              1
+        CPU MHz:               800.000
+        CPU max MHz:           2050.0000
+        CPU min MHz:           800.0000
+        BogoMIPS:              4092.20
+        Virtualization:        AMD-V
+        L1d cache:             32K
+        L1i cache:             32K
+        L2 cache:              2048K
+        NUMA node0 CPU(s):     0-3
+        # The following is the parsable format, which can be fed to other
+        # programs. Each different item in every column has an unique ID
+        # starting from zero.
+        # CPU,Core,Socket
+        0,0,0
+        1,1,0
+        2,2,0
+        3,3,0
+        """).encode('utf-8')
+        parse_cpuinfo(node, cpuinfo, 0)
+        node = reload_object(node)
+        self.assertEqual(4, node.cpu_count)
+        self.assertEqual(2050, node.cpu_speed)
+        nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
+        self.assertEqual(
+            'AMD Athlon(tm) 5350 APU with Radeon(tm) R3', nmd.value)
+
+    def test_parse_cpuinfo_speed_current(self):
+        node = factory.make_Node()
+        node.cpu_count = 2
+        node.cpu_speed = 9999
+        node.save()
+        # Sample lscpu output from a single socket, quad core with
+        # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
+        cpuinfo = dedent("""\
+        Architecture:          x86_64
+        CPU op-mode(s):        32-bit, 64-bit
+        Byte Order:            Little Endian
+        CPU(s):                8
+        On-line CPU(s) list:   0-7
+        Thread(s) per core:    2
+        Core(s) per socket:    4
+        Socket(s):             1
+        NUMA node(s):          1
+        Vendor ID:             GenuineIntel
+        CPU family:            6
+        Model:                 60
+        Model name:            Intel(R) Core(TM) i7-4910MQ CPU
+        Stepping:              3
+        CPU MHz:               2893.284
+        BogoMIPS:              5786.32
+        Virtualization:        VT-x
+        L1d cache:             32K
+        L1i cache:             32K
+        L2 cache:              256K
+        L3 cache:              8192K
+        NUMA node0 CPU(s):     0-7
+        # The following is the parsable format, which can be fed to other
+        # programs. Each different item in every column has an unique ID
+        # starting from zero.
+        # CPU,Core,Socket
+        0,0,0
+        1,0,0
+        2,1,0
+        3,1,0
+        4,2,0
+        5,2,0
+        6,3,0
+        7,3,0
+        """).encode('utf-8')
+        parse_cpuinfo(node, cpuinfo, 0)
+        node = reload_object(node)
+        self.assertEqual(8, node.cpu_count)
+        self.assertEqual(2900, node.cpu_speed)
+        nmd = NodeMetadata.objects.get(node=node, key='cpu_model')
+        self.assertEqual('Intel(R) Core(TM) i7-4910MQ CPU', nmd.value)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

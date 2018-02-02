@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeDetailsController.
@@ -91,7 +91,8 @@ describe("NodeDetailsController", function() {
             installation_results: [],
             events: [],
             interfaces: [],
-            extra_macs: []
+            extra_macs: [],
+            cpu_count: makeInteger(0, 64)
         };
         MachinesManager._items.push(node);
         return node;
@@ -2181,6 +2182,33 @@ describe("NodeDetailsController", function() {
                     expect($scope.showFailedTestWarning()).toBe(true);
                 }
             }
+        });
+    });
+
+    describe("getCPUSubtext", function() {
+
+        it("returns only cores when unknown speed", function() {
+            var controller = makeController();
+            $scope.node = node;
+            expect($scope.getCPUSubtext()).toEqual(
+                node.cpu_count + " cores");
+        });
+
+        it("returns speed in mhz", function() {
+            var controller = makeController();
+            node.cpu_speed = makeInteger(100, 999);
+            $scope.node = node;
+            expect($scope.getCPUSubtext()).toEqual(
+                node.cpu_count + " cores @ " + node.cpu_speed + " Mhz");
+        });
+
+        it("returns speed in ghz", function() {
+            var controller = makeController();
+            node.cpu_speed = makeInteger(1000, 10000);
+            $scope.node = node;
+            expect($scope.getCPUSubtext()).toEqual(
+                node.cpu_count + " cores @ " + (node.cpu_speed / 1000) +
+                " Ghz");
         });
     });
 });

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Region Controller API."""
@@ -66,6 +66,7 @@ class TestRegionControllersAPI(APITestCase.ForUser):
                 'fqdn',
                 'architecture',
                 'cpu_count',
+                'cpu_speed',
                 'memory',
                 'swap_size',
                 'osystem',
@@ -95,5 +96,6 @@ class TestRegionControllersAPI(APITestCase.ForUser):
                 'storage_test_status_name',
                 'other_test_status',
                 'other_test_status_name',
+                'hardware_info',
             ],
             list(parsed_result[0]))

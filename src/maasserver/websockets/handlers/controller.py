@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The controller handler for the WebSocket connection."""
@@ -75,6 +75,8 @@ class ControllerHandler(MachineHandler):
             "node_type",
             "status",
             "last_image_sync",
+            "cpu_count",
+            "cpu_speed",
         ]
         listen_channels = [
             "controller",

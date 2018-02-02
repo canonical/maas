@@ -1,4 +1,4 @@
-# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Node API."""
@@ -261,6 +261,34 @@ class TestNodeAPI(APITestCase.ForUser):
         self.assertEquals(
             status_name(node_script_result),
             parsed_result['other_test_status_name'])
+
+    def test_hardware_info(self):
+        self.become_admin()
+        machine = factory.make_Machine(owner=self.user)
+        system_vendor = factory.make_NodeMetadata(machine, 'system_vendor')
+        system_product = factory.make_NodeMetadata(machine, 'system_product')
+        system_version = factory.make_NodeMetadata(machine, 'system_version')
+        system_serial = factory.make_NodeMetadata(machine, 'system_serial')
+        cpu_model = factory.make_NodeMetadata(machine, 'cpu_model')
+        mainboard_firmware_version = factory.make_NodeMetadata(
+            machine, 'mainboard_firmware_version')
+        mainboard_firmware_date = factory.make_NodeMetadata(
+            machine, 'mainboard_firmware_date')
+        factory.make_NodeMetadata(machine)
+
+        response = self.client.get(self.get_node_uri(machine))
+        parsed_result = json_load_bytes(response.content)
+
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertDictEqual({
+            'system_vendor': system_vendor.value,
+            'system_product': system_product.value,
+            'system_version': system_version.value,
+            'system_serial': system_serial.value,
+            'cpu_model': cpu_model.value,
+            'mainboard_firmware_version': mainboard_firmware_version.value,
+            'mainboard_firmware_date': mainboard_firmware_date.value,
+            }, parsed_result['hardware_info'])
 
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.

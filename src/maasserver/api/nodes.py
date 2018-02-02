@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -158,6 +158,7 @@ NODES_PREFETCH = [
      'children_relationships__child__'
      'children_relationships__child__vlan'),
     'tags',
+    'nodemetadata_set',
 ]
 
 
@@ -385,6 +386,26 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def other_test_status_name(handler, node):
         return get_script_status_name(handler.other_test_status(node))
+
+    @classmethod
+    def hardware_info(handler, node):
+        ret = {
+            'system_vendor': 'Unknown',
+            'system_product': 'Unknown',
+            'system_version': 'Unknown',
+            'system_serial': 'Unknown',
+            'cpu_model': 'Unknown',
+            'mainboard_firmware_version': 'Unknown',
+            'mainboard_firmware_date': 'Unknown',
+        }
+        # Iterate over the NodeMetadata objects instead of filtering to
+        # avoid another database call as the values have been prefetched.
+        for nmd in node.nodemetadata_set.all():
+            # The NodeMetdata model may contains values that shouldn't be
+            # shown here. Only set the ones we expect.
+            if nmd.key in ret:
+                ret[nmd.key] = nmd.value
+        return ret
 
     def read(self, request, system_id):
         """Read a specific Node.

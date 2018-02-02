@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
@@ -22,6 +22,7 @@ from maasserver.models.interface import (
     Interface,
     PhysicalInterface,
 )
+from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
@@ -42,16 +43,6 @@ from provisioningserver.utils.ipaddr import parse_ip_addr
 
 logger = logging.getLogger(__name__)
 
-
-# Some machines have a <size> element in their memory <node> with the total
-# amount of memory, and other machines declare the size of the memory in
-# individual memory banks. This expression is mean to cope with both.
-_xpath_memory_bytes = """\
-    sum(//node[@id='memory']/size[@units='bytes'] |
-        //node[starts-with(@id, 'memory:')]
-            /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
-    div 1024 div 1024
-"""
 
 SWITCH_TAG_NAME = "switch"
 SWITCH_HARDWARE = [
@@ -200,6 +191,17 @@ def update_node_network_interface_tags(node, output, exit_status):
                 iface.save()
 
 
+def get_xml_field_value(evaluator, expression):
+    """Return an XML field or 'Unknown' if its not found."""
+    field = evaluator(expression)
+    # Supermicro used 0123456789 as a place holder.
+    if (isinstance(field, list) and len(field) > 0 and
+            '0123456789' not in field[0].lower()):
+        return field[0]
+    else:
+        return 'Unknown'
+
+
 def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
 
@@ -223,11 +225,39 @@ def update_hardware_details(node, output, exit_status):
     else:
         # Same document, many queries: use XPathEvaluator.
         evaluator = etree.XPathEvaluator(doc)
-        memory = evaluator(_xpath_memory_bytes)
+
+        # Some machines have a <size> element in their memory <node> with the
+        # total amount of memory, and other machines declare the size of the
+        # memory in individual memory banks. This expression is mean to cope
+        # with both.
+        memory = evaluator("""\
+            sum(//node[@id='memory']/size[@units='bytes'] |
+            //node[starts-with(@id, 'memory:')]
+                /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
+            div 1024 div 1024
+        """)
         if not memory or math.isnan(memory):
             memory = 0
         node.memory = memory
-        node.save()
+        node.save(update_fields=['memory'])
+
+        # XXX ltrager 2018-2-1: This gathers the system vendor, product,
+        # version, and serial. Custom built machines and some Supermicro
+        # servers do not provide this information.
+        for key in ["product", "vendor", "version", "serial"]:
+            value = get_xml_field_value(
+                evaluator, "//node[@class='system']/%s/text()" % key)
+            NodeMetadata.objects.update_or_create(
+                node=node, key="system_%s" % key,
+                defaults={"value": value})
+
+        for key in ["version", "date"]:
+            value = get_xml_field_value(
+                evaluator,
+                "//node[@id='core']/node[@id='firmware']/%s/text()" % key)
+            NodeMetadata.objects.update_or_create(
+                node=node, key="mainboard_firmware_%s" % key,
+                defaults={'value': value})
 
 
 def parse_cpuinfo(node, output, exit_status):
@@ -239,12 +269,45 @@ def parse_cpuinfo(node, output, exit_status):
         return
     assert isinstance(output, bytes)
     output = output.decode('ascii')
+
     cpu_count = len(
         re.findall(
             '^(?P<CPU>\d+),(?P<CORE>\d+),(?P<SOCKET>\d+)$',
             output, re.MULTILINE))
     node.cpu_count = cpu_count
-    node.save()
+
+    # Some CPU vendors(Intel) include the speed in the model. If so use that
+    # for the CPU speed as the speeds from lscpu are effected by CPU scaling.
+    m = re.search(
+        '^Model name:\s+(?P<model_name>.+)(\s@\s(?P<ghz>\d+\.\d+)GHz)$',
+        output, re.MULTILINE)
+    if m is not None:
+        cpu_model = m.group('model_name')
+        node.cpu_speed = int(float(m.group('ghz')) * 1000)
+    else:
+        m = re.search(
+            '^Model name:\s+(?P<model_name>.+)$', output, re.MULTILINE)
+        if m is not None:
+            cpu_model = m.group('model_name')
+        else:
+            cpu_model = 'Unknown'
+        # Try the max MHz if available.
+        m = re.search(
+            '^CPU max MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
+        if m is not None:
+            node.cpu_speed = int(m.group('mhz'))
+        else:
+            # Fall back on the current speed, round it to the nearest hundredth
+            # as the number may be effected by CPU scaling.
+            m = re.search(
+                '^CPU MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
+            if m is not None:
+                node.cpu_speed = round(int(m.group('mhz')) / 100) * 100
+
+    NodeMetadata.objects.update_or_create(
+        node=node, key='cpu_model', defaults={'value': cpu_model})
+
+    node.save(update_fields=['cpu_count', 'cpu_speed'])
 
 
 def set_virtual_tag(node, output, exit_status):

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the machines API."""
@@ -348,7 +348,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # Because of fields `status_action`, `status_message`,
         # `default_gateways`, and `health_status` the number of queries is not
         # the same but it is proportional to the number of machines.
-        DEFAULT_NUM = 57
+        DEFAULT_NUM = 58
         self.assertEqual(DEFAULT_NUM + (10 * 4), num_queries1)
         self.assertEqual(DEFAULT_NUM + (20 * 4), num_queries2)
 
