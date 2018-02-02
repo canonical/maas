@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a nodes physical block device."""
@@ -45,6 +45,10 @@ class PhysicalBlockDevice(BlockDevice):
     serial = CharField(
         max_length=255, blank=True, null=False,
         help_text="Serial number of block device.")
+
+    firmware_version = CharField(
+        max_length=255, blank=True, null=False, default="Unknown",
+        help_text="Firmware version of block device.")
 
     def clean(self):
         if not self.id_path and not (self.model and self.serial):

@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin node info scripts."""
@@ -511,9 +511,11 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     # Grab the device path, serial number, and sata connection.
     UDEV_MAPPINGS = {
         "DEVNAME": "PATH",
+        "DEVPATH": "DEVPATH",
         "ID_SERIAL_SHORT": "SERIAL",
         "ID_ATA_SATA": "SATA",
-        "ID_ATA_ROTATION_RATE_RPM": "RPM"
+        "ID_ATA_ROTATION_RATE_RPM": "RPM",
+        "ID_REVISION": "FIRMWARE_VERSION",
         }
     del_blocks = set()
     seen_devices = set()
@@ -539,6 +541,15 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
                 # cannot use this device for installation.
                 del_blocks.add(block_name)
                 break
+
+        # If the udevadm does not know the firmware version of an NVME drive
+        # try to read it from /sys
+        if "ID_REVISION" not in block_info and "nvme" in block_info["NAME"]:
+            firmware_ver_path = os.path.join(
+                "/sys", block_info.get("DEVPATH", ""), "..", "firmware_rev")
+            if os.path.exists(firmware_ver_path):
+                block_info["FIRMWARE_VERSION"] = open(
+                    firmware_ver_path, 'r').read().strip()
 
         if block_name in del_blocks:
             continue

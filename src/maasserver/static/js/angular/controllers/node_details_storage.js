@@ -359,7 +359,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "has_partitions": has_partitions,
                         "is_boot": disk.is_boot,
                         "original": disk,
-                        "test_status": disk.test_status
+                        "test_status": disk.test_status,
+                        "firmware_version": disk.firmware_version
                     };
                     if(disk.type === "virtual") {
                         data.parent_type = disk.parent.type;
@@ -459,7 +460,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "used_for": disk.used_for,
                         "is_boot": disk.is_boot,
                         "has_partitions": has_partitions,
-                        "test_status": disk.test_status
+                        "test_status": disk.test_status,
+                        "firmware_version": disk.firmware_version
                     };
                     if(disk.type === "virtual") {
                         data.parent_type = disk.parent.type;

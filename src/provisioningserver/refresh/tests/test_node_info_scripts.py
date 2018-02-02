@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test node info scripts."""
@@ -353,9 +353,11 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
     @typed
     def make_udevadm_output(
             self, name, serial=None, sata=True, cdrom=False,
-            dev='/dev') -> bytes:
+            dev='/dev', firmware_version=None) -> bytes:
         if serial is None:
             serial = factory.make_name('serial')
+        if firmware_version is None:
+            firmware_version = factory.make_name('firmware_version')
         sata = "1" if sata else "0"
         output = dedent("""\
             P: /devices/pci0000:00/ata3/host2/target2:0:0/2:0:0:0/block/{name}
@@ -364,8 +366,10 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             E: DEVTYPE=disk
             E: ID_ATA_SATA={sata}
             E: ID_SERIAL_SHORT={serial}
+            E: ID_REVISION={firmware_version}
             """).format(dev=os.path.abspath(dev), name=name,
-                        serial=serial, sata=sata)
+                        serial=serial, sata=sata,
+                        firmware_version=firmware_version)
         if cdrom:
             output += "E: ID_CDROM=1"
         else:
@@ -392,8 +396,8 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
 
     def make_output(
             self, name, maj_min, model, serial, size, block_size,
-            drive_path=None, device_id_path=None, rotary=True,
-            removable=False, read_only=False, sata=True):
+            firmware_version, drive_path=None, device_id_path=None,
+            rotary=True, removable=False, read_only=False, sata=True):
         if drive_path is None:
             drive_path = '/dev/%s' % name
         ret = {
@@ -409,6 +413,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             'SIZE': str(size),
             'BLOCK_SIZE': str(block_size),
             'RPM': '5400',
+            'FIRMWARE_VERSION': firmware_version,
         }
         if device_id_path is not None:
             ret['ID_PATH'] = device_id_path
@@ -515,6 +520,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
             block_size = random.choice([512, 1024, 4096])
             maj_min = (random.randint(0, 255), random.randint(0, 255))
+            firmware_version = factory.make_name('firmware_version')
 
             # Create simulated /dev tree
             drive_path = os.path.join(devroot, name)
@@ -526,14 +532,16 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             check_output_side_effects += [
                 self.make_lsblk_output(
                     name=name, model=model, maj_min=maj_min),
-                self.make_udevadm_output(name, serial=serial, dev=devroot),
+                self.make_udevadm_output(
+                    name, serial=serial, dev=devroot,
+                    firmware_version=firmware_version),
                 b'%d' % size,
                 b'%d' % block_size,
             ]
             output.append(
                 self.make_output(
                     name, maj_min, model, serial, size, block_size,
-                    drive_path, device_id_path))
+                    firmware_version, drive_path, device_id_path))
 
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = check_output_side_effects
@@ -550,6 +558,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        firmware_version = factory.make_name('firmware_version')
         maj_min = (random.randint(0, 255), random.randint(0, 255))
         check_output = self.patch(subprocess, "check_output")
 
@@ -576,8 +585,12 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                     name=name, model=model, maj_min=maj_min),
                 self.make_lsblk_output(
                     name=name2, model=model, maj_min=maj_min)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
+            self.make_udevadm_output(
+                name2, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
             b'%d' % size,
             b'%d' % block_size,
             b'%d' % size,
@@ -586,8 +599,8 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
 
         self.assertItemsEqual(
             [self.make_output(
-                name, maj_min, model, serial, size, block_size, drive_path,
-                device_id_path)],
+                name, maj_min, model, serial, size, block_size,
+                firmware_version, drive_path, device_id_path)],
             self.call_gather_physical_block_devices(byidroot))
 
     def test__keeps_block_device_same_serial_different_model(self):
@@ -597,6 +610,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         maj_min = (0, 0)
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        firmware_version = factory.make_name('firmware_version')
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
 
@@ -627,8 +641,12 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 self.make_lsblk_output(
                     name=name2, model=model2, maj_min=maj_min2)
                 ]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
+            self.make_udevadm_output(
+                name2, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
             b'%d' % size,
             b'%d' % block_size,
             b'%d' % size,
@@ -639,10 +657,10 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size, block_size,
-                        drive_path, device_id_path),
+                        firmware_version, drive_path, device_id_path),
                     self.make_output(
                         name2, maj_min2, model2, serial, size, block_size,
-                        drive_path2, device_id_path2),
+                        firmware_version, drive_path2, device_id_path2),
                 ], self.call_gather_physical_block_devices(byidroot)):
             self.assertDictEqual(ref, out)
 
@@ -654,6 +672,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = ''
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        firmware_version = factory.make_name('firmware_version')
         check_output = self.patch(subprocess, "check_output")
 
         name2 = factory.make_name('name')
@@ -681,8 +700,12 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                     name=name, model=model, maj_min=maj_min),
                 self.make_lsblk_output(
                     name=name2, model=model, maj_min=maj_min2)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
+            self.make_udevadm_output(
+                name2, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
             b'%d' % size,
             b'%d' % block_size,
             b'%d' % size,
@@ -693,10 +716,10 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size, block_size,
-                        drive_path, device_id_path),
+                        firmware_version, drive_path, device_id_path),
                     self.make_output(
                         name2, maj_min2, model, serial, size, block_size,
-                        drive_path2, device_id_path2),
+                        firmware_version, drive_path2, device_id_path2),
                 ], self.call_gather_physical_block_devices(byidroot)):
             self.assertDictEqual(ref, out)
 
@@ -709,6 +732,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
+        firmware_version = factory.make_name('firmware_version')
 
         # Create simulated /dev tree without by-id link
         devroot = self.make_dir()
@@ -720,7 +744,9 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
 
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model, maj_min=maj_min),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial,
+                dev=devroot),
             b'%d' % size,
             b'%d' % block_size,
             ]
@@ -728,7 +754,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size, block_size,
-                        drive_path),
+                        firmware_version, drive_path),
                 ], self.call_gather_physical_block_devices(byidroot)):
             self.assertDictEqual(ref, out)
 
@@ -739,11 +765,13 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        firmware_version = factory.make_name('firmware_version')
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
             self.make_lsblk_output(
                 name=name, model=model, read_only=True, maj_min=maj_min),
-            self.make_udevadm_output(name, serial=serial),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial),
             b'%d' % size,
             b'%d' % block_size,
             ]
@@ -751,7 +779,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size,
-                        block_size, read_only=True),
+                        block_size, firmware_version, read_only=True),
                 ], self.call_gather_physical_block_devices()):
             self.assertDictEqual(ref, out)
 
@@ -762,11 +790,13 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        firmware_version = factory.make_name('firmware_version')
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
             self.make_lsblk_output(
                 name=name, model=model, rotary=False, maj_min=maj_min),
-            self.make_udevadm_output(name, serial=serial),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial),
             b'%d' % size,
             b'%d' % block_size,
             ]
@@ -774,7 +804,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size, block_size,
-                        rotary=False),
+                        firmware_version, rotary=False),
                 ], self.call_gather_physical_block_devices()):
             self.assertDictEqual(ref, out)
 
@@ -785,10 +815,13 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        firmware_version = factory.make_name('firmware_version')
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model, maj_min=maj_min),
-            self.make_udevadm_output(name, serial=serial, sata=False),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial,
+                sata=False),
             b'%d' % size,
             b'%d' % block_size,
             ]
@@ -796,7 +829,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size, block_size,
-                        sata=False),
+                        firmware_version, sata=False),
                 ], self.call_gather_physical_block_devices()):
             self.assertDictEqual(ref, out)
 
@@ -807,11 +840,13 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        firmware_version = factory.make_name('firmware_version')
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
             self.make_lsblk_output(
                 name=name, model=model, removable=True, maj_min=maj_min),
-            self.make_udevadm_output(name, serial=serial),
+            self.make_udevadm_output(
+                name, firmware_version=firmware_version, serial=serial),
             b'%d' % size,
             b'%d' % block_size,
             ]
@@ -819,7 +854,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 [
                     self.make_output(
                         name, maj_min, model, serial, size, block_size,
-                        removable=True),
+                        firmware_version, removable=True),
                 ], self.call_gather_physical_block_devices()):
             self.assertDictEqual(ref, out)
 

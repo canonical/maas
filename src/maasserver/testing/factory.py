@@ -1969,7 +1969,7 @@ class Factory(maastesting.factory.Factory):
     def make_PhysicalBlockDevice(
             self, node=None, name=None, size=None, block_size=None,
             tags=None, model=None, serial=None, id_path=None,
-            formatted_root=False):
+            formatted_root=False, firmware_version=None):
         if node is None:
             node = self.make_Node()
         if name is None:
@@ -1995,9 +1995,12 @@ class Factory(maastesting.factory.Factory):
         else:
             model = ""
             serial = ""
+        if firmware_version is None:
+            firmware_version = factory.make_name('firmware_version')
         block_device = PhysicalBlockDevice.objects.create(
             node=node, name=name, size=size, block_size=block_size,
-            tags=tags, model=model, serial=serial, id_path=id_path)
+            tags=tags, model=model, serial=serial, id_path=id_path,
+            firmware_version=firmware_version)
         if formatted_root:
             partition = self.make_Partition(
                 partition_table=(

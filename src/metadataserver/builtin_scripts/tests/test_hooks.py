@@ -937,7 +937,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def make_block_device(
             self, name=None, path=None, id_path=None, size=None,
             block_size=None, model=None, serial=None, rotary=True, rpm=None,
-            removable=False, sata=False):
+            removable=False, sata=False, firmware_version=None):
         if name is None:
             name = factory.make_name('name')
         if path is None:
@@ -955,6 +955,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             serial = factory.make_name('serial')
         if rpm is None:
             rpm = random.choice(('4800', '5400', '10000', '15000'))
+        if firmware_version is None:
+            firmware_version = factory.make_name('firmware_version')
         return {
             "NAME": name,
             "PATH": path,
@@ -967,7 +969,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             "RM": "1" if removable else "0",
             "ROTA": "1" if rotary else "0",
             "SATA": "1" if sata else "0",
-            "RPM": "0" if not rotary else rpm
+            "RPM": "0" if not rotary else rpm,
+            "FIRMWARE_VERSION": firmware_version,
             }
 
     def test__does_nothing_when_exit_status_is_not_zero(self):
@@ -1110,9 +1113,10 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
+        firmware_version = factory.make_name('firmware_version')
         device = self.make_block_device(
             name=name, size=size, block_size=block_size,
-            model=model, serial=serial)
+            model=model, serial=serial, firmware_version=firmware_version)
         node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
@@ -1120,7 +1124,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
                 name=name, id_path=id_path, size=size,
-                block_size=block_size, model=model, serial=serial))
+                block_size=block_size, model=model, serial=serial,
+                firmware_version=firmware_version))
 
     def test__creates_physical_block_device_with_path(self):
         name = factory.make_name('name')
@@ -1128,9 +1133,11 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
+        firmware_version = factory.make_name('firmware_version')
         device = self.make_block_device(
             name=name, size=size, block_size=block_size,
-            model=model, serial=serial, id_path='')
+            model=model, serial=serial, id_path='',
+            firmware_version=firmware_version)
         node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
@@ -1138,7 +1145,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
                 name=name, id_path='/dev/%s' % name, size=size,
-                block_size=block_size, model=model, serial=serial))
+                block_size=block_size, model=model, serial=serial,
+                firmware_version=firmware_version))
 
     def test__creates_physical_block_device_with_path_for_missing_serial(self):
         name = factory.make_name('name')

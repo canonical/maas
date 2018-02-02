@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeStorageController.
@@ -145,7 +145,8 @@ describe("NodeStorageController", function() {
                 used_for: "Unused",
                 filesystem: null,
                 partitions: null,
-                test_status: 0
+                test_status: 0,
+                firmware_version: makeName("firmware_version")
             },
             {
                 // Disk with filesystem, no mount point
@@ -172,7 +173,8 @@ describe("NodeStorageController", function() {
                     mount_options: null
                     },
                 partitions: null,
-                test_status: 1
+                test_status: 1,
+                firmware_version: makeName("firmware_version")
             },
             {
                 // Disk with mounted filesystem
@@ -199,7 +201,8 @@ describe("NodeStorageController", function() {
                     mount_options: makeName("options")
                     },
                 partitions: null,
-                test_status: 2
+                test_status: 2,
+                firmware_version: makeName("firmware_version")
             },
             {
                 // Partitioned disk, one partition free one used
@@ -242,7 +245,8 @@ describe("NodeStorageController", function() {
                         used_for: "ext4 formatted filesystem mounted at /mnt."
                     }
                 ],
-                test_status: 3
+                test_status: 3,
+                firmware_version: makeName("firmware_version")
             },
             {
                 // Disk that is a cache set.
@@ -263,7 +267,8 @@ describe("NodeStorageController", function() {
                 used_for: "",
                 filesystem: null,
                 partitions: null,
-                test_status: 4
+                test_status: 4,
+                firmware_version: makeName("firmware_version")
             }
         ];
     }
@@ -365,6 +370,7 @@ describe("NodeStorageController", function() {
                 has_partitions: false,
                 original: disks[0],
                 test_status: disks[0].test_status,
+                firmware_version: disks[0].firmware_version,
                 $selected: false,
                 $options: {}
             },
@@ -386,6 +392,7 @@ describe("NodeStorageController", function() {
                 has_partitions: false,
                 original: disks[1],
                 test_status: disks[1].test_status,
+                firmware_version: disks[1].firmware_version,
                 $selected: false,
                 $options: {}
             },
@@ -421,7 +428,8 @@ describe("NodeStorageController", function() {
                 tags: disks[2].tags,
                 used_for: disks[2].used_for,
                 has_partitions: false,
-                test_status: disks[2].test_status
+                test_status: disks[2].test_status,
+                firmware_version: disks[2].firmware_version
             },
             {
                 name: disks[3].name,
@@ -432,7 +440,8 @@ describe("NodeStorageController", function() {
                 tags: disks[3].tags,
                 used_for: disks[3].used_for,
                 has_partitions: true,
-                test_status: disks[3].test_status
+                test_status: disks[3].test_status,
+                firmware_version: disks[3].firmware_version
             },
             {
                 name: disks[3].partitions[1].name,

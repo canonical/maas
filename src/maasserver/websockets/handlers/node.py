@@ -373,8 +373,9 @@ class NodeHandler(TimestampedModelHandler):
         if isinstance(blockdevice, PhysicalBlockDevice):
             model = blockdevice.model
             serial = blockdevice.serial
+            firmware_version = blockdevice.firmware_version
         else:
-            serial = model = ""
+            serial = model = firmware_version = ""
         partition_table = blockdevice.get_partitiontable()
         if partition_table is not None:
             partition_table_type = partition_table.table_type
@@ -399,6 +400,7 @@ class NodeHandler(TimestampedModelHandler):
             "block_size": blockdevice.block_size,
             "model": model,
             "serial": serial,
+            "firmware_version": firmware_version,
             "partition_table_type": partition_table_type,
             "used_for": blockdevice.used_for,
             "filesystem": self.dehydrate_filesystem(

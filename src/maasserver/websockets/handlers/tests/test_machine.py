@@ -788,6 +788,7 @@ class TestMachineHandler(MAASServerTestCase):
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
+            "firmware_version": blockdevice.firmware_version,
             "partition_table_type": partition_table.table_type,
             "used_for": blockdevice.used_for,
             "filesystem": handler.dehydrate_filesystem(
@@ -821,6 +822,7 @@ class TestMachineHandler(MAASServerTestCase):
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
+            "firmware_version": blockdevice.firmware_version,
             "partition_table_type": "",
             "used_for": blockdevice.used_for,
             "filesystem": handler.dehydrate_filesystem(
@@ -853,6 +855,7 @@ class TestMachineHandler(MAASServerTestCase):
             "block_size": blockdevice.block_size,
             "model": "",
             "serial": "",
+            "firmware_version": "",
             "partition_table_type": "",
             "used_for": blockdevice.used_for,
             "filesystem": handler.dehydrate_filesystem(

@@ -429,6 +429,7 @@ def update_node_physical_block_devices(node, output, exit_status):
             id_path = block_info["PATH"]
         size = int(block_info["SIZE"])
         block_size = int(block_info["BLOCK_SIZE"])
+        firmware_version = block_info.get("FIRMWARE_VERSION", "Unknown")
         tags = get_tags_from_block_info(block_info)
 
         # First check if there is an existing device with the same name.
@@ -439,7 +440,7 @@ def update_node_physical_block_devices(node, output, exit_status):
         for device in existing:
             # Use the device ID to ensure a unique temporary name.
             device.name = "%s.%d" % (device.name, device.id)
-            device.save()
+            device.save(update_fields=['name'])
 
         block_device = get_matching_block_device(
             previous_block_devices, serial, id_path)
@@ -454,6 +455,7 @@ def update_node_physical_block_devices(node, output, exit_status):
             block_device.id_path = id_path
             block_device.size = size
             block_device.block_size = block_size
+            block_device.firmware_version = firmware_version
             block_device.tags = tags
             block_device.save()
         else:
@@ -473,6 +475,7 @@ def update_node_physical_block_devices(node, output, exit_status):
                 tags=tags,
                 model=model,
                 serial=serial,
+                firmware_version=firmware_version,
                 )
 
     # Clear boot_disk if it is being removed.
@@ -481,7 +484,7 @@ def update_node_physical_block_devices(node, output, exit_status):
         boot_disk = None
     if node.boot_disk != boot_disk:
         node.boot_disk = boot_disk
-        node.save()
+        node.save(update_fields=['boot_disk'])
 
     # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on controllers.
     # Currently this is not needed saving us 1 database query. However, if
