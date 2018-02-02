@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from django.contrib.auth.models import AnonymousUser
 from maasserver.models.event import Event
 from netaddr import (
     valid_ipv4,
@@ -44,10 +45,11 @@ def create_audit_event(
     # Retrieve Django request's user agent if it is set.
     user_agent = request.META.get('HTTP_USER_AGENT', '')
     ip_address = get_client_ip(request)
+    user = None if isinstance(request.user, AnonymousUser) else request.user
 
     Event.objects.register_event_and_event_type(
         type_name=event_type,
         type_description=EVENT_DETAILS[event_type].description,
         type_level=AUDIT, event_description=event_description,
-        system_id=system_id, user=request.user, ip_address=ip_address,
+        system_id=system_id, user=user, ip_address=ip_address,
         endpoint=endpoint, user_agent=user_agent)

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Account views."""
@@ -26,12 +26,15 @@ from django.http import (
     JsonResponse,
 )
 from django.shortcuts import render
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.models import UserProfile
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
 )
 from maasserver.utils.django_urls import reverse
+from provisioningserver.events import EVENT_TYPES
 
 
 def login(request):
@@ -48,9 +51,17 @@ def login(request):
             redirect_field_name = None  # Ignore next page.
         else:
             redirect_field_name = REDIRECT_FIELD_NAME
-        return dj_login(
+        result = dj_login(
             request, redirect_field_name=redirect_field_name,
             extra_context=extra_context)
+        if request.user.is_authenticated:
+            create_audit_event(
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                description=(
+                    "%s" % (
+                        'Admin' if request.user.is_superuser else 'User') +
+                    " '%(username)s' logged in."))
+        return result
 
 
 class LogoutForm(forms.Form):
@@ -65,6 +76,12 @@ def logout(request):
     if request.method == 'POST':
         form = LogoutForm(request.POST)
         if form.is_valid():
+            create_audit_event(
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                description=(
+                    "%s" % (
+                        'Admin' if request.user.is_superuser else 'User') +
+                    " '%(username)s' logged out."))
             return dj_logout(request, next_page=reverse('login'))
     else:
         form = LogoutForm()
@@ -116,7 +133,14 @@ def authenticate(request):
 
     # When no existing token is found, create a new one.
     if token is None:
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+            description="Created API (OAuth) token for '%(username)s'.")
         token = create_auth_token(user, consumer)
+    else:
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+            description="Retrieved API (OAuth) token for '%(username)s'.")
 
     # Return something with the same shape as that rendered by
     # AccountHandler.create_authorisation_token.

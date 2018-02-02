@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 from maasserver.audit import (
     create_audit_event,
@@ -138,3 +139,17 @@ class CreateAuditEventTest(MAASServerTestCase):
         self.assertIsNotNone(EventType.objects.get(level=AUDIT))
         self.assertEquals(request.META['HTTP_USER_AGENT'], event.user_agent)
         self.assertEquals(description, event.description)
+
+    def test_create_audit_event_creates_audit_event_with_AnonymousUser(self):
+        request = HttpRequest()
+        request.user = AnonymousUser()
+        request.META = {
+            'HTTP_USER_AGENT': factory.make_name('user_agent'),
+            'HTTP_HOST': factory.make_ipv4_address(),
+            }
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        create_audit_event(EVENT_TYPES.NODE_PXE_REQUEST, endpoint, request)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertIsNotNone(EventType.objects.get(level=AUDIT))
+        self.assertIsNone(event.user)
