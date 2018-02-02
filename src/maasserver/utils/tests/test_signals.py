@@ -272,7 +272,7 @@ class TestSignalsManager(MAASServerTestCase):
         self.assertThat(
             signal.disconnect, MatchesPartialCall(
                 django_signal.disconnect, sentinel.callback,
-                sender=sentinel.sender, weak=sentinel.weak,
+                sender=sentinel.sender,
                 dispatch_uid=sentinel.dispatch_uid))
 
     def make_Signal(self):

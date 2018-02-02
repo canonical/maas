@@ -31,7 +31,7 @@ class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
             self.signal.connect, receiver=self.receiver, sender=self.sender,
             weak=self.weak, dispatch_uid=self.dispatch_uid)
         self.signal.disconnect(
-            receiver=self.receiver, sender=self.sender, weak=self.weak,
+            receiver=self.receiver, sender=self.sender,
             dispatch_uid=self.dispatch_uid)
 
 

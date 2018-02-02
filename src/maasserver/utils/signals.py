@@ -188,7 +188,7 @@ class SignalsManager:
                     sig.connect, cb, sender=sender, weak=weak,
                     dispatch_uid=dispatch_uid),
                 partial(
-                    sig.disconnect, cb, sender=sender, weak=weak,
+                    sig.disconnect, cb, sender=sender,
                     dispatch_uid=dispatch_uid),
             )
         )
