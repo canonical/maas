@@ -13,7 +13,6 @@ from operator import itemgetter
 import os
 from os import urandom
 import random
-import re
 from socket import (
     AF_INET,
     AF_INET6,
@@ -116,6 +115,7 @@ from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    Deferred,
     DeferredList,
     inlineCallbacks,
     maybeDeferred,
@@ -133,12 +133,11 @@ from twisted.internet.error import (
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python.reflect import fullyQualifiedName
-from twisted.web import http
-import twisted.web.client
 from twisted.web.client import (
-    getPage,
-    URI,
+    _ReadBodyProtocol,
+    Agent,
 )
+from twisted.web.http_headers import Headers
 from zope.interface import implementer
 
 
@@ -931,46 +930,6 @@ class ClusterClient(Cluster):
         log.msg("Peer certificate: %r" % self.peerCertificate)
 
 
-class PatchedURI(URI):
-
-    @classmethod
-    def fromBytes(cls, uri, defaultPort=None):
-        """Patched replacement for `twisted.web.client._URI.fromBytes`.
-
-        The Twisted version of this function breaks when you give it a URL
-        whose netloc is based on an IPv6 address.
-        """
-        uri = uri.strip()
-        scheme, netloc, path, params, query, fragment = http.urlparse(uri)
-
-        if defaultPort is None:
-            scheme_ports = {b'https': 443, b'http': 80}
-            defaultPort = scheme_ports.get(scheme, 80)
-
-        if b'[' in netloc:
-            # IPv6 address.  This is complicated.
-            parsed_netloc = re.match(
-                b'\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$',
-                netloc)
-            host, port = parsed_netloc.group('host', 'port')
-        elif b':' in netloc:
-            # IPv4 address or hostname, with port spec.  This is easy.
-            host, port = netloc.split(b':')
-        else:
-            # IPv4 address or hostname, without port spec.  This is trivial.
-            host = netloc
-            port = None
-
-        if port is None:
-            port = defaultPort
-        try:
-            port = int(port)
-        except ValueError:
-            port = defaultPort
-
-        return cls(scheme, netloc, host, port, path, params, query, fragment)
-
-
 class ClusterClientService(TimerService, object):
     """A cluster controller RPC client service.
 
@@ -998,17 +957,6 @@ class ClusterClientService(TimerService, object):
         self.try_connections = {}
         self._previous_work = (None, None)
         self.clock = reactor
-
-        # XXX jtv 2014-09-23, bug=1372767: Fix
-        # twisted.web.client._URI.fromBytes to handle IPv6 addresses.
-        # A `getPage` call on Twisted's web client breaks if you give it a
-        # URL with an IPv6 address, at the point where `_makeGetterFactory`
-        # calls `fromBytes`.  That last function assumes that a colon can only
-        # occur in the URL's netloc portion as part of a port specification.
-        if hasattr(twisted.web.client, "_URI"):
-            twisted.web.client._URI = PatchedURI
-        else:
-            twisted.web.client.URI = PatchedURI
 
         # When _doUpdate is called we capture it into _updateInProgress so
         # that concurrent calls can piggyback rather than initiating extra
@@ -1155,9 +1103,19 @@ class ClusterClientService(TimerService, object):
             else:
                 return {"eventloops": None}
 
-        d = getPage(url, agent=fullyQualifiedName(cls))
-        d.addCallback(lambda data: data.decode("ascii"))
-        d.addCallback(json.loads)
+        def read_body(response):
+            # Read the body of the response and convert it to JSON.
+            d = Deferred()
+            protocol = _ReadBodyProtocol(response.code, response.phrase, d)
+            response.deliverBody(protocol)
+            d.addCallback(lambda data: json.loads(data.decode('utf-8')))
+            return d
+
+        agent = Agent(reactor)
+        d = agent.request(
+            b'GET', url,
+            Headers({b'User-Agent': [fullyQualifiedName(cls)]}))
+        d.addCallback(read_body)
         d.addErrback(catch_503_error)
         return d
 

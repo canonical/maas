@@ -117,52 +117,66 @@ def fix_tftp_requests():
     tftp.protocol.TFTP._startSession = new_startSession
 
 
-def fix_twisted_web_client():
-    """Properly create Host: header in twisted.web.client.HTTPPageGetter
+def get_patched_URI():
+    """Create the patched `twisted.web.client.URI` to handle IPv6."""
+    import re
+    from twisted.web import http
+    from twisted.web.client import URI
 
-       Specifically, IPv6 IP addresses need to be wrapped in [].
+    class PatchedURI(URI):
 
-       See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
-    """
+        @classmethod
+        def fromBytes(cls, uri, defaultPort=None):
+            """Patched replacement for `twisted.web.client._URI.fromBytes`.
+
+            The Twisted version of this function breaks when you give it a URL
+            whose netloc is based on an IPv6 address.
+            """
+            uri = uri.strip()
+            scheme, netloc, path, params, query, fragment = http.urlparse(uri)
+
+            if defaultPort is None:
+                scheme_ports = {b'https': 443, b'http': 80}
+                defaultPort = scheme_ports.get(scheme, 80)
+
+            if b'[' in netloc:
+                # IPv6 address.  This is complicated.
+                parsed_netloc = re.match(
+                    b'\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$',
+                    netloc)
+                host, port = parsed_netloc.group('host', 'port')
+            elif b':' in netloc:
+                # IPv4 address or hostname, with port spec.  This is easy.
+                host, port = netloc.split(b':')
+            else:
+                # IPv4 address or hostname, without port spec.
+                # This is trivial.
+                host = netloc
+                port = None
+
+            if port is None:
+                port = defaultPort
+            try:
+                port = int(port)
+            except ValueError:
+                port = defaultPort
+
+            return cls(
+                scheme, netloc, host, port, path, params, query, fragment)
+
+    return PatchedURI
+
+
+def fix_twisted_web_client_URI():
+    """Patch the `twisted.web.client.URI` to handle IPv6."""
     import twisted.web.client
-    from twisted.python.compat import intToBytes
 
-    def new_connectionMade(self):
-        method = getattr(self.factory, 'method', b'GET')
-        self.sendCommand(method, self.factory.path)
-        # The standard for IPv6-based URLs is scheme://[ip:addr]:port/path,
-        # with the ':port' being optional.  Since ':' is not a legal character
-        # in hostnames, we just check for the existence of that to decide that
-        # it is IPv6.
-        host = self.factory.host
-        if b':' in host:
-            host = b'[' + host + b']:' + intToBytes(self.factory.port)
-        else:
-            host = host + b':' + intToBytes(self.factory.port)
-        self.sendHeader(b'Host', self.factory.headers.get(b"host", host))
-        self.sendHeader(b'User-Agent', self.factory.agent)
-        data = getattr(self.factory, 'postdata', None)
-        if data is not None:
-            self.sendHeader(b"Content-Length", intToBytes(len(data)))
+    PatchedURI = get_patched_URI()
 
-        cookieData = []
-        for (key, value) in self.factory.headers.items():
-            if key.lower() not in self._specialHeaders:
-                # we calculated it on our own
-                self.sendHeader(key, value)
-            if key.lower() == b'cookie':
-                cookieData.append(value)
-        for cookie, cookval in self.factory.cookies.items():
-            cookieData.append(cookie + b'=' + cookval)
-        if cookieData:
-            self.sendHeader(b'Cookie', b'; '.join(cookieData))
-        self.endHeaders()
-        self.headers = {}
-
-        if data is not None:
-            self.transport.write(data)
-
-    twisted.web.client.HTTPPageGetter.connectionMade = new_connectionMade
+    if hasattr(twisted.web.client, "_URI"):
+        twisted.web.client._URI = PatchedURI
+    else:
+        twisted.web.client.URI = PatchedURI
 
 
 def fix_twisted_web_http_Request():
@@ -333,7 +347,7 @@ def add_patches_to_txtftp():
 
 
 def add_patches_to_twisted():
-    fix_twisted_web_client()
+    fix_twisted_web_client_URI()
     fix_twisted_web_http_Request()
     fix_twisted_web_server_addressToTuple()
     fix_twisted_internet_tcp()

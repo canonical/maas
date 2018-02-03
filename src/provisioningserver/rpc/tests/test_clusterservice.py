@@ -17,6 +17,7 @@ import socket
 from unittest.mock import (
     ANY,
     call,
+    MagicMock,
     Mock,
     sentinel,
 )
@@ -92,7 +93,6 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClientService,
     executeScanNetworksSubprocess,
     get_scan_all_networks_args,
-    PatchedURI,
     spawnProcessAndNullifyStdout,
 )
 from provisioningserver.rpc.interfaces import IConnection
@@ -131,10 +131,7 @@ from testtools.matchers import (
 )
 from twisted import web
 from twisted.application.internet import TimerService
-from twisted.internet import (
-    error,
-    reactor,
-)
+from twisted.internet import error
 from twisted.internet.defer import (
     Deferred,
     fail,
@@ -148,6 +145,7 @@ from twisted.protocols import amp
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from twisted.test.proto_helpers import StringTransportWithDisconnection
+from twisted.web.client import Headers
 from zope.interface.verify import verifyObject
 
 
@@ -440,60 +438,6 @@ class TestClusterProtocol_DescribeNOSTypes(MAASTestCase):
             NOSDriverRegistry.get_schema(), response["nos_types"])
 
 
-class TestPatchedURI(MAASTestCase):
-
-    def test__parses_URL_with_hostname(self):
-        hostname = factory.make_name('host').encode('ascii')
-        path = factory.make_name('path').encode('ascii')
-        uri = PatchedURI.fromBytes(b'http://%s/%s' % (hostname, path))
-        self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
-        self.expectThat(uri.port, Equals(80))
-
-    def test__parses_URL_with_hostname_and_port(self):
-        hostname = factory.make_name('host').encode('ascii')
-        port = factory.pick_port()
-        path = factory.make_name('path').encode('ascii')
-        uri = PatchedURI.fromBytes(b'http://%s:%d/%s' % (hostname, port, path))
-        self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
-        self.expectThat(uri.port, Equals(port))
-
-    def test__parses_URL_with_IPv4_address(self):
-        ip = factory.make_ipv4_address().encode('ascii')
-        path = factory.make_name('path').encode('ascii')
-        uri = PatchedURI.fromBytes(b'http://%s/%s' % (ip, path))
-        self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
-        self.expectThat(uri.port, Equals(80))
-
-    def test__parses_URL_with_IPv4_address_and_port(self):
-        ip = factory.make_ipv4_address().encode('ascii')
-        port = factory.pick_port()
-        path = factory.make_name('path').encode('ascii')
-        uri = PatchedURI.fromBytes(b'http://%s:%d/%s' % (ip, port, path))
-        self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
-        self.expectThat(uri.port, Equals(port))
-
-    def test__parses_URL_with_IPv6_address(self):
-        ip = factory.make_ipv6_address().encode('ascii')
-        path = factory.make_name('path').encode('ascii')
-        uri = PatchedURI.fromBytes(b'http://[%s]/%s' % (ip, path))
-        self.expectThat(uri.host, Equals(b'%s' % ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
-        self.expectThat(uri.port, Equals(80))
-
-    def test__parses_URL_with_IPv6_address_and_port(self):
-        ip = factory.make_ipv6_address().encode('ascii')
-        port = factory.pick_port()
-        path = factory.make_name('path').encode('ascii')
-        uri = PatchedURI.fromBytes(b'http://[%s]:%d/%s' % (ip, port, path))
-        self.expectThat(uri.host, Equals(b'%s' % ip))
-        self.expectThat(uri.path, Equals(b'/%s' % path))
-        self.expectThat(uri.port, Equals(port))
-
-
 def make_inert_client_service():
     service = ClusterClientService(Clock())
     # ClusterClientService's superclass, TimerService, creates a
@@ -507,6 +451,18 @@ def make_inert_client_service():
 class TestClusterClientService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def fakeAgentResponse(self, data):
+
+        def mock_body_producer(code, phrase, defer):
+            defer.callback(data)
+            return Mock()
+
+        self.patch(clusterservice, '_ReadBodyProtocol', mock_body_producer)
+        mock_agent = MagicMock()
+        response = MagicMock()
+        mock_agent.request.return_value = succeed(response)
+        self.patch(clusterservice, 'Agent').return_value = mock_agent
 
     def test_init_sets_appropriate_instance_attributes(self):
         service = ClusterClientService(sentinel.reactor)
@@ -522,8 +478,9 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
 
     def test__doUpdate_connect_503_error_is_logged_tersely(self):
-        getPage = self.patch(clusterservice, "getPage")
-        getPage.return_value = fail(web.error.Error("503"))
+        mock_agent = MagicMock()
+        mock_agent.request.return_value = fail(web.error.Error("503"))
+        self.patch(clusterservice, 'Agent').return_value = mock_agent
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -535,8 +492,9 @@ class TestClusterClientService(MAASTestCase):
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(getPage, MockCalledOnceWith(
-            ascii_url('http://[::ffff:127.0.0.1]/MAAS'), agent=ANY))
+        self.assertThat(mock_agent.request, MockCalledOnceWith(
+            b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+            Headers({'User-Agent': [ANY]})))
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
 
@@ -556,8 +514,9 @@ class TestClusterClientService(MAASTestCase):
         self.assertIn('Connection was refused by other side.', dump)
 
     def test_update_connect_error_is_logged_tersely(self):
-        getPage = self.patch(clusterservice, "getPage")
-        getPage.side_effect = error.ConnectionRefusedError()
+        mock_agent = MagicMock()
+        mock_agent.request.side_effect = error.ConnectionRefusedError()
+        self.patch(clusterservice, "Agent").return_value = mock_agent
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -569,20 +528,14 @@ class TestClusterClientService(MAASTestCase):
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(getPage, MockCalledOnceWith(
-            ascii_url('http://[::ffff:127.0.0.1]/MAAS'), agent=ANY))
+        self.assertThat(mock_agent.request, MockCalledOnceWith(
+            b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+            Headers({'User-Agent': [ANY]})))
         dump = logger.dump()
         self.assertIn(
             "Region not available: Connection was refused by other side.",
             dump)
         self.assertIn("While requesting RPC info at", dump)
-
-    def test__get_rpc_info_accepts_IPv6_url(self):
-        connect_tcp = self.patch_autospec(reactor, 'connectTCP')
-        url = factory.make_url(
-            scheme='http', netloc='[%s]' % factory.make_ipv6_address())
-        ClusterClientService(Clock())._fetch_rpc_info(url.encode('ascii'))
-        self.assertThat(connect_tcp, MockCalledOnceWith(ANY, ANY, ANY))
 
     # The following represents an example response from the RPC info
     # view in maasserver. Event-loops listen on ephemeral ports, and
@@ -614,8 +567,7 @@ class TestClusterClientService(MAASTestCase):
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         self.patch_autospec(socket, 'getaddrinfo').return_value = (
             None, None, None, None, ('::ffff:127.0.0.1', 80, 0, 1))
-        getPage = self.patch(clusterservice, "getPage")
-        getPage.return_value = succeed(self.example_rpc_info_view_response)
+        self.fakeAgentResponse(self.example_rpc_info_view_response)
         service = ClusterClientService(Clock())
         _update_connections = self.patch(service, "_update_connections")
         service.startService()
