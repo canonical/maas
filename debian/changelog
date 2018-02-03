@@ -1,3 +1,9 @@
+maas (2.3.1-0ubuntu1) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 02 Feb 2018 19:43:16 -0500
+
 maas (2.3.0-6434-gd354690-0ubuntu1) artful; urgency=medium
 
   * New upstream release, MAAS 2.3.0:
