@@ -1117,7 +1117,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
         machine_tag_names = ["fast", "stable", "cute"]
-        machine.tags = [factory.make_Tag(t) for t in machine_tag_names]
+        machine.tags.set(factory.make_Tag(t) for t in machine_tag_names)
         # Legacy call using comma-separated tags.
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1155,8 +1155,8 @@ class TestMachinesAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY, with_boot_disk=True)
         machine_tag_names = ["fast", "stable", "cute"]
         tags = [factory.make_Tag(t) for t in machine_tag_names]
-        tagged_machine.tags = tags
-        partially_tagged_machine.tags = tags[:-1]
+        tagged_machine.tags.set(tags)
+        partially_tagged_machine.tags.set(tags[:-1])
         # Legacy call using comma-separated tags.
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1207,7 +1207,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
         machine_tag_names = ["fast", "stable", "cute"]
-        machine.tags = [factory.make_Tag(t) for t in machine_tag_names]
+        machine.tags.set(factory.make_Tag(t) for t in machine_tag_names)
         # Legacy call using comma-separated tags.
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1222,7 +1222,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
         machine_tag_names = ["fast", "stable", "cute"]
-        machine.tags = [factory.make_Tag(t) for t in machine_tag_names]
+        machine.tags.set(factory.make_Tag(t) for t in machine_tag_names)
         # Legacy call using space-separated tags.
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1237,7 +1237,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
         machine_tag_names = ["fast", "stable", "cute"]
-        machine.tags = [factory.make_Tag(t) for t in machine_tag_names]
+        machine.tags.set(factory.make_Tag(t) for t in machine_tag_names)
         # Legacy call using comma-and-space-separated tags.
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1252,7 +1252,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
         machine_tag_names = ["fast", "stable", "cute"]
-        machine.tags = [factory.make_Tag(t) for t in machine_tag_names]
+        machine.tags.set(factory.make_Tag(t) for t in machine_tag_names)
         # Mixed call using comma-separated tags in a list.
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1420,11 +1420,11 @@ class TestMachinesAPI(APITestCase.ForUser):
         # tags.
         machine1 = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
-        machine1.tags = [
-            factory.make_Tag(t) for t in ("fast", "stable", "cute")]
+        machine1.tags.set(
+            factory.make_Tag(t) for t in ("fast", "stable", "cute"))
         machine2 = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
-        machine2.tags = [factory.make_Tag("cheap")]
+        machine2.tags.set([factory.make_Tag("cheap")])
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
             'tags': 'fast, cheap',
@@ -1435,7 +1435,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # Asking for a tag that does not exist gives a specific error.
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=True)
-        machine.tags = [factory.make_Tag("fast")]
+        machine.tags.set([factory.make_Tag("fast")])
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
             'tags': 'fast, hairy, boo',
