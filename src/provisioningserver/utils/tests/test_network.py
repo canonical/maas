@@ -83,7 +83,6 @@ from provisioningserver.utils.network import (
     resolves_to_loopback_address,
     reverseResolve,
 )
-from provisioningserver.utils.shell import call_and_check
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -105,13 +104,6 @@ from twisted.names.error import (
     DomainError,
     ResolverError,
 )
-
-
-installed_curtin_version = call_and_check([
-    "dpkg-query", "--showformat=${Version}",
-    "--show", "python3-curtin"]).decode("ascii")
-installed_curtin_version = int(
-    installed_curtin_version.split("~bzr", 1)[1].split("-", 1)[0])
 
 
 class TestMakeNetwork(MAASTestCase):
