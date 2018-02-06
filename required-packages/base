@@ -60,5 +60,5 @@ python3-yaml
 python3-zope.interface
 snapcraft
 syslinux-common
-ubuntu-cloudimage-keyring
+ubuntu-keyring
 wget
