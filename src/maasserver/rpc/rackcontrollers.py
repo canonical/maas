@@ -14,7 +14,6 @@ from typing import Optional
 
 from django.db.models import Q
 from maasserver import (
-    is_master_process,
     locks,
     worker_user,
 )
@@ -111,12 +110,11 @@ def register(
             "region '%s' upon first connection.", node.hostname, version_log,
             this_region.hostname)
     elif node.is_rack_controller:
-        if is_master_process():
-            # Only the master process logs to the maaslog.
-            maaslog.info(
-                "Existing rack controller '%s' running version %s has "
-                "connected to region '%s'.", node.hostname, version_log,
-                this_region.hostname)
+        # Only the master process logs to the maaslog.
+        maaslog.info(
+            "Existing rack controller '%s' running version %s has "
+            "connected to region '%s'.", node.hostname, version_log,
+            this_region.hostname)
     elif node.is_region_controller:
         maaslog.info(
             "Region controller '%s' running version %s converted into a "

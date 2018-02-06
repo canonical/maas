@@ -1,24 +1,24 @@
+[Install]
+WantedBy=multi-user.target
+
 [Unit]
 Description=MAAS Region Controller
 Documentation=https://maas.io/
+Requires=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/maas/regiond.conf
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-# systemd.service(5) clearly states that ExecStart can be specified zero
-# times when Type=oneshot, but it does appears to be needed at present.
-ExecStart=/bin/true
-
-#
-# The maas-region-api package configures four workers. This
-# should work for most people. However:
-#
-# * `systemctl start maas-regiond-worker@x` (where 'x' can be anything,
-#   though integers >= 5 seem logical) will start an additional worker.
-#
-# * `systemctl enable maas-regiond-worker@x` will configure that worker
-#   so that it's persistent across reboots.
-#
-
-[Install]
-WantedBy=multi-user.target
+User=maas
+Group=maas
+Restart=always
+RestartSec=10s
+Environment="DJANGO_SETTINGS_MODULE=maasserver.djangosettings.settings"
+Environment="LOGFILE=/var/log/maas/regiond.log"
+# Logs go to the journal; read them with:
+#   journalctl -u maas-regiond
+# Logs also go to $LOGFILE for backward compatibility. The journal
+# should now be preferred as $LOGFILE will be removed.
+ExecStart=/bin/sh -c \
+    'exec /usr/sbin/regiond 2>&1 | \
+     tee -a $LOGFILE'

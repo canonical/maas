@@ -11,7 +11,9 @@ from django.db.backends.base.base import BaseDatabaseWrapper
 from maasserver import eventloop
 from maasserver.plugin import (
     Options,
-    RegionServiceMaker,
+    RegionAllInOneServiceMaker,
+    RegionMasterServiceMaker,
+    RegionWorkerServiceMaker,
 )
 from maasserver.utils.orm import (
     disable_all_database_connections,
@@ -54,12 +56,14 @@ class TestOptions(MAASTestCase):
         options.parseOptions(arguments)  # No error.
 
 
-class TestRegionServiceMaker(MAASTestCase):
-    """Tests for `maasserver.plugin.RegionServiceMaker`."""
+class TestServiceMaker(MAASTestCase):
+    """Mixin with helpers for all the service marker tests."""
 
     def setUp(self):
-        super(TestRegionServiceMaker, self).setUp()
+        super(TestServiceMaker, self).setUp()
         self.patch(eventloop.loop, "services", MultiService())
+        # Prevent setting the pdeathsig in tests.
+        self.patch_autospec(RegionWorkerServiceMaker, "_set_pdeathsig")
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")
         # Enable database access in the reactor just for these tests.
@@ -67,47 +71,49 @@ class TestRegionServiceMaker(MAASTestCase):
         import_websocket_handlers()
 
     def tearDown(self):
-        super(TestRegionServiceMaker, self).tearDown()
+        super(TestServiceMaker, self).tearDown()
         # Disable database access in the reactor again.
         asynchronous(disable_all_database_connections, timeout=5)()
 
+    def assertConnectionsEnabled(self):
+        for alias in connections:
+            self.assertThat(
+                connections[alias],
+                IsInstance(BaseDatabaseWrapper))
+
+    def assertConnectionsDisabled(self):
+        for alias in connections:
+            self.assertEqual(
+                DisabledDatabaseConnection,
+                type(connections[alias]))
+
+
+class TestRegionWorkerServiceMaker(TestServiceMaker):
+    """Tests for `maasserver.plugin.RegionWorkerServiceMaker`."""
+
     def test_init(self):
-        service_maker = RegionServiceMaker("Harry", "Hill")
+        service_maker = RegionWorkerServiceMaker("Harry", "Hill")
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
 
     @asynchronous(timeout=5)
     def test_makeService(self):
         options = Options()
-        service_maker = RegionServiceMaker("Harry", "Hill")
-        # Look like the master process.
-        self.patch(eventloop, "is_master_process").return_value = True
-        # Disable _ensureConnection() its not allowed in the reactor.
-        self.patch_autospec(service_maker, "_ensureConnection")
+        service_maker = RegionWorkerServiceMaker("Harry", "Hill")
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "active-discovery",
             "database-tasks",
-            "dns-publication-cleanup",
-            "import-resources",
-            "import-resources-progress",
-            "networks-monitor",
-            "nonce-cleanup",
-            "ntp",
-            "postgres-listener",
+            "postgres-listener-worker",
             "rack-controller",
-            "region-controller",
-            "reverse-dns",
             "rpc",
             "rpc-advertise",
             "service-monitor",
-            "stats",
-            "status-monitor",
             "status-worker",
             "web",
+            "ipc-worker",
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
@@ -127,7 +133,76 @@ class TestRegionServiceMaker(MAASTestCase):
         patcher.add_patch(reactor, "threadpoolForDatabase", None)
         patcher.patch()
         try:
-            service_maker = RegionServiceMaker("Harry", "Hill")
+            service_maker = RegionWorkerServiceMaker("Harry", "Hill")
+            service_maker.makeService(Options())
+            threadpool = reactor.getThreadPool()
+            self.assertThat(threadpool, IsInstance(ThreadPool))
+        finally:
+            patcher.restore()
+
+    @asynchronous(timeout=5)
+    def test_disables_database_connections_in_reactor(self):
+        self.assertConnectionsEnabled()
+        service_maker = RegionWorkerServiceMaker("Harry", "Hill")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service_maker.makeService(Options())
+        self.assertConnectionsDisabled()
+
+
+class TestRegionMasterServiceMaker(TestServiceMaker):
+    """Tests for `maasserver.plugin.RegionMasterServiceMaker`."""
+
+    def test_init(self):
+        service_maker = RegionMasterServiceMaker("Harry", "Hill")
+        self.assertEqual("Harry", service_maker.tapname)
+        self.assertEqual("Hill", service_maker.description)
+
+    @asynchronous(timeout=5)
+    def test_makeService(self):
+        options = Options()
+        service_maker = RegionMasterServiceMaker("Harry", "Hill")
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service = service_maker.makeService(options)
+        self.assertIsInstance(service, MultiService)
+        expected_services = [
+            "region-controller",
+            "nonce-cleanup",
+            "dns-publication-cleanup",
+            "status-monitor",
+            "stats",
+            "import-resources",
+            "import-resources-progress",
+            "postgres-listener-master",
+            "networks-monitor",
+            "active-discovery",
+            "reverse-dns",
+            "ntp",
+            "workers",
+            "ipc-master",
+        ]
+        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        self.assertEqual(
+            len(service.namedServices), len(service.services),
+            "Not all services are named.")
+        self.assertThat(
+            logger.configure, MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD))
+        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+
+    @asynchronous(timeout=5)
+    def test_configures_thread_pool(self):
+        # Patch and restore where it's visible because patching a running
+        # reactor is potentially fairly harmful.
+        patcher = monkey.MonkeyPatcher()
+        patcher.add_patch(reactor, "threadpool", None)
+        patcher.add_patch(reactor, "threadpoolForDatabase", None)
+        patcher.patch()
+        try:
+            service_maker = RegionMasterServiceMaker("Harry", "Hill")
             # Disable _ensureConnection() its not allowed in the reactor.
             self.patch_autospec(service_maker, "_ensureConnection")
             service_maker.makeService(Options())
@@ -136,22 +211,94 @@ class TestRegionServiceMaker(MAASTestCase):
         finally:
             patcher.restore()
 
-    def assertConnectionsEnabled(self):
-        for alias in connections:
-            self.assertThat(
-                connections[alias],
-                IsInstance(BaseDatabaseWrapper))
+    @asynchronous(timeout=5)
+    def test_disables_database_connections_in_reactor(self):
+        self.assertConnectionsEnabled()
+        service_maker = RegionMasterServiceMaker("Harry", "Hill")
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service_maker.makeService(Options())
+        self.assertConnectionsDisabled()
 
-    def assertConnectionsDisabled(self):
-        for alias in connections:
-            self.assertEqual(
-                DisabledDatabaseConnection,
-                type(connections[alias]))
+
+class TestRegionAllInOneServiceMaker(TestServiceMaker):
+    """Tests for `maasserver.plugin.RegionAllInOneServiceMaker`."""
+
+    def test_init(self):
+        service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
+        self.assertEqual("Harry", service_maker.tapname)
+        self.assertEqual("Hill", service_maker.description)
+
+    @asynchronous(timeout=5)
+    def test_makeService(self):
+        options = Options()
+        service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service = service_maker.makeService(options)
+        self.assertIsInstance(service, MultiService)
+        expected_services = [
+            # Worker services.
+            "database-tasks",
+            "postgres-listener-worker",
+            "rack-controller",
+            "rpc",
+            "rpc-advertise",
+            "service-monitor",
+            "status-worker",
+            "web",
+            "ipc-worker",
+            # Master services.
+            "region-controller",
+            "nonce-cleanup",
+            "dns-publication-cleanup",
+            "status-monitor",
+            "stats",
+            "import-resources",
+            "import-resources-progress",
+            "postgres-listener-master",
+            "networks-monitor",
+            "active-discovery",
+            "reverse-dns",
+            "ntp",
+            # "workers",  Prevented in all-in-one.
+            "ipc-master",
+        ]
+        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        self.assertEqual(
+            len(service.namedServices), len(service.services),
+            "Not all services are named.")
+        self.assertThat(
+            logger.configure, MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD))
+        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+
+    @asynchronous(timeout=5)
+    def test_configures_thread_pool(self):
+        # Patch and restore where it's visible because patching a running
+        # reactor is potentially fairly harmful.
+        patcher = monkey.MonkeyPatcher()
+        patcher.add_patch(reactor, "threadpool", None)
+        patcher.add_patch(reactor, "threadpoolForDatabase", None)
+        patcher.patch()
+        try:
+            service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
+            # Disable _ensureConnection() its not allowed in the reactor.
+            self.patch_autospec(service_maker, "_ensureConnection")
+            service_maker.makeService(Options())
+            threadpool = reactor.getThreadPool()
+            self.assertThat(threadpool, IsInstance(ThreadPool))
+        finally:
+            patcher.restore()
 
     @asynchronous(timeout=5)
     def test_disables_database_connections_in_reactor(self):
         self.assertConnectionsEnabled()
-        service_maker = RegionServiceMaker("Harry", "Hill")
+        service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
         # Disable _ensureConnection() its not allowed in the reactor.
         self.patch_autospec(service_maker, "_ensureConnection")
         # Disable _configureThreads() as it's too invasive right now.

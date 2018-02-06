@@ -4,17 +4,13 @@
 
 set -e
 
-# Supervisord starts workers at 0 where as systemd starts them at 1. Increment
-# the WORKER_ID by 1 to keep it consistent with systemd.
-MAAS_REGIOND_WORKER_ID=$((MAAS_REGIOND_WORKER_ID+1))
-export MAAS_REGIOND_WORKER_ID
-
 # Configure python and django.
 export DJANGO_SETTINGS_MODULE=maasserver.djangosettings.snappy
 
 # Configure MAAS to work in a snap.
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
+export MAAS_IPC_SOCKET_PATH = "$SNAP_DATA/maas-regiond.sock"
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"

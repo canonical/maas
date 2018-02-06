@@ -4,9 +4,12 @@
 """Twisted Application Plugin code for the MAAS Region."""
 
 __all__ = [
-    "RegionServiceMaker",
+    "RegionAllInOneServiceMaker",
+    "RegionMasterServiceMaker",
+    "RegionWorkerServiceMaker",
 ]
 
+import signal
 import time
 
 from provisioningserver import logger
@@ -29,14 +32,24 @@ class Options(logger.VerbosityOptions):
 
 
 @implementer(IServiceMaker, IPlugin)
-class RegionServiceMaker:
-    """Create a service for the Twisted plugin."""
+class RegionWorkerServiceMaker:
+    """Create the worker service for the Twisted plugin."""
 
     options = Options
 
     def __init__(self, name, description):
         self.tapname = name
         self.description = description
+
+    def _set_pdeathsig(self):
+        # Worker must die when the the master dies, no exceptions, no hanging
+        # around so it must be killed.
+        #
+        # Sadly the only way to do this in python is to use ctypes. This tells
+        # the kernel that when my parent dies to kill me.
+        import ctypes
+        libc = ctypes.CDLL("libc.so.6")
+        libc.prctl(1, signal.SIGKILL)
 
     def _configureThreads(self):
         from maasserver.utils import threads
@@ -68,6 +81,36 @@ class RegionServiceMaker:
         # In other words, this makes crochet.setup() a no-op.
         import crochet
         crochet.no_setup()
+
+    def makeService(self, options):
+        """Construct the MAAS Region service."""
+        register_sigusr2_thread_dump_handler()
+
+        self._set_pdeathsig()
+        self._configureThreads()
+        self._configureLogging(options["verbosity"])
+        self._configureDjango()
+        self._configureReactor()
+        self._configureCrochet()
+
+        # Populate the region's event-loop with services.
+        from maasserver import eventloop
+        eventloop.loop.populate(master=False)
+
+        # Return the eventloop's services to twistd, which will then be
+        # responsible for starting them all.
+        return eventloop.loop.services
+
+
+@implementer(IServiceMaker, IPlugin)
+class RegionMasterServiceMaker(RegionWorkerServiceMaker):
+    """Create the master service for the Twisted plugin."""
+
+    options = Options
+
+    def __init__(self, name, description):
+        self.tapname = name
+        self.description = description
 
     def _ensureConnection(self):
         # If connection is already made close it.
@@ -102,7 +145,41 @@ class RegionServiceMaker:
 
         # Populate the region's event-loop with services.
         from maasserver import eventloop
-        eventloop.loop.populate()
+        eventloop.loop.populate(master=True)
+
+        # Return the eventloop's services to twistd, which will then be
+        # responsible for starting them all.
+        return eventloop.loop.services
+
+
+@implementer(IServiceMaker, IPlugin)
+class RegionAllInOneServiceMaker(RegionMasterServiceMaker):
+    """Create the all-in-one service for the Twisted plugin.
+
+    This service runs all the Twisted services in the same process, instead
+    of forking the workers.
+    """
+
+    options = Options
+
+    def __init__(self, name, description):
+        self.tapname = name
+        self.description = description
+
+    def makeService(self, options):
+        """Construct the MAAS Region service."""
+        register_sigusr2_thread_dump_handler()
+
+        self._configureThreads()
+        self._configureLogging(options["verbosity"])
+        self._configureDjango()
+        self._configureReactor()
+        self._configureCrochet()
+        self._ensureConnection()
+
+        # Populate the region's event-loop with services.
+        from maasserver import eventloop
+        eventloop.loop.populate(master=True, all_in_one=True)
 
         # Return the eventloop's services to twistd, which will then be
         # responsible for starting them all.

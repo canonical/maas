@@ -12,7 +12,6 @@ import logging
 from django.db import connection
 from django.db.utils import DatabaseError
 from maasserver import (
-    is_master_process,
     locks,
     security,
 )
@@ -48,7 +47,7 @@ log = LegacyLogger()
 
 @asynchronous(timeout=FOREVER)
 @inlineCallbacks
-def start_up():
+def start_up(master=False):
     """Perform start-up tasks for this MAAS server.
 
     This is used to:
@@ -69,7 +68,7 @@ def start_up():
             # Execute other start-up tasks that must not run concurrently with
             # other invocations of themselves, across the whole of this MAAS
             # installation.
-            yield deferToDatabase(inner_start_up)
+            yield deferToDatabase(inner_start_up, master=master)
         except SystemExit:
             raise
         except KeyboardInterrupt:
@@ -101,7 +100,7 @@ def start_up():
 @with_connection  # Needed by the following lock.
 @synchronised(locks.startup)
 @transactional
-def inner_start_up():
+def inner_start_up(master=False):
     """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Register our MAC data type with psycopg.
     register_mac_type(connection.cursor())
@@ -117,7 +116,7 @@ def inner_start_up():
 
     # Only perform the following if the master process for the
     # region controller.
-    if is_master_process():
+    if master:
         # Freshen the kms SRV records.
         dns_kms_setting_changed()
         # Add or update all builtin scripts

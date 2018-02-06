@@ -1151,7 +1151,12 @@ def download_all_boot_resources(
     stop = False  # True when it should be stopped.
 
     # Grab the runnning postgres listener service to register the stop handler.
-    listener = services.getServiceNamed("postgres-listener")
+    try:
+        listener = services.getServiceNamed("postgres-listener-worker")
+    except KeyError:
+        # Fallback to the master listener if this is running in the master
+        # process and not in a worker.
+        listener = services.getServiceNamed("postgres-listener-master")
 
     # Allow the import process to be stopped out-of-band.
     def stop_import(channel, payload):

@@ -73,8 +73,7 @@ class TestStartUp(MAASTransactionServerTestCase):
             raise locked if locks.startup.is_locked() else unlocked
 
         self.patch(start_up, 'register_mac_type').side_effect = check_lock
-        self.patch(start_up, 'is_master_process').return_value = False
-        self.assertRaises(type(locked), start_up.inner_start_up)
+        self.assertRaises(type(locked), start_up.inner_start_up, master=False)
 
     def test_start_up_retries_with_wait_on_exception(self):
         inner_start_up = self.patch(start_up, 'inner_start_up')
@@ -88,7 +87,9 @@ class TestStartUp(MAASTransactionServerTestCase):
         start_up.start_up()
         # However, it did call inner_start_up() twice; the first call resulted
         # in the "Boom!" exception so it tried again.
-        self.expectThat(inner_start_up, MockCallsMatch(call(), call()))
+        self.expectThat(
+            inner_start_up,
+            MockCallsMatch(call(master=False), call(master=False)))
         # It also slept once, for 3 seconds, between those attempts.
         self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
 
@@ -99,7 +100,6 @@ class TestInnerStartUp(MAASServerTestCase):
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
         self.useFixture(MAASIDFixture(None))
-        self.patch_autospec(start_up, "is_master_process")
         self.patch_autospec(start_up, 'dns_kms_setting_changed')
         self.patch_autospec(start_up, 'load_builtin_scripts')
         self.patch_autospec(start_up, 'post_commit_do')
@@ -108,68 +108,58 @@ class TestInnerStartUp(MAASServerTestCase):
         bootsources.signals.disable()
 
     def test__calls_dns_kms_setting_changed_if_master(self):
-        start_up.is_master_process.return_value = True
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=True)
         self.assertThat(start_up.dns_kms_setting_changed, MockCalledOnceWith())
 
     def test__does_not_call_dns_kms_setting_changed_if_not_master(self):
-        start_up.is_master_process.return_value = False
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
 
     def test__calls_load_builtin_scripts_if_master(self):
-        start_up.is_master_process.return_value = True
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=True)
         self.assertThat(start_up.load_builtin_scripts, MockCalledOnceWith())
 
     def test__does_not_call_load_builtin_scripts_if_not_master(self):
-        start_up.is_master_process.return_value = False
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         self.assertThat(start_up.load_builtin_scripts, MockNotCalled())
 
     def test__refreshes_if_master(self):
-        start_up.is_master_process.return_value = True
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=True)
         region = RegionController.objects.first()
         self.assertThat(start_up.post_commit_do, MockCalledOnceWith(
             reactor.callLater, 0, start_up.refreshRegion, region))
 
     def test__does_refresh_if_not_master(self):
-        start_up.is_master_process.return_value = False
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         self.assertThat(start_up.post_commit_do, MockNotCalled())
 
     def test__doesnt_call_dns_kms_setting_changed_if_not_master(self):
-        start_up.is_master_process.return_value = False
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
 
     def test__creates_region_controller(self):
-        start_up.is_master_process.return_value = False
         self.assertThat(RegionController.objects.all(), HasLength(0))
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         self.assertThat(RegionController.objects.all(), HasLength(1))
 
     def test__creates_maas_id_file(self):
-        start_up.is_master_process.return_value = False
         self.assertThat(get_maas_id(), Is(None))
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         self.assertThat(get_maas_id(), Not(Is(None)))
 
     def test__creates_maas_uuid(self):
-        start_up.is_master_process.return_value = False
         self.assertThat(get_maas_id(), Is(None))
         with post_commit_hooks:
-            start_up.inner_start_up()
+            start_up.inner_start_up(master=False)
         uuid = Config.objects.get_config('uuid')
         self.assertThat(uuid, Not(Is(None)))
 

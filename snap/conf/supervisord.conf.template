@@ -31,9 +31,7 @@ stdout_logfile=%(ENV_SNAP_COMMON)s/log/postgresql.log
 
 {{if regiond}}
 [program:regiond]
-numprocs=4
-process_name=regiond-%(process_num)s
-environment=MAAS_REGIOND_WORKER_ID="%(process_num)s"
+process_name=regiond
 command=%(ENV_SNAP)s/bin/run-regiond
 stopasgroup=true
 killasgroup=true

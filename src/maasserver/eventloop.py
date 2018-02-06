@@ -46,7 +46,6 @@ import os
 import socket
 from socket import gethostname
 
-from maasserver import is_master_process
 from maasserver.utils.orm import disable_all_database_connections
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.service import (
@@ -192,6 +191,21 @@ def make_WebApplicationService(postgresListener, statusWorker):
     return site_service
 
 
+def make_WorkersService():
+    from maasserver.workers import WorkersService
+    return WorkersService(reactor)
+
+
+def make_IPCMasterService(workers=None):
+    from maasserver.ipc import IPCMasterService
+    return IPCMasterService(reactor, workers)
+
+
+def make_IPCWorkerService():
+    from maasserver.ipc import IPCWorkerService
+    return IPCWorkerService(reactor)
+
+
 class MAASServices(MultiService):
 
     def __init__(self, eventloop):
@@ -236,7 +250,7 @@ class RegionEventLoop:
         "region-controller": {
             "only_on_master": True,
             "factory": make_RegionControllerService,
-            "requires": ["postgres-listener"],
+            "requires": ["postgres-listener-master"],
         },
         "rpc": {
             "only_on_master": False,
@@ -278,7 +292,12 @@ class RegionEventLoop:
             "factory": make_ImportResourcesProgressService,
             "requires": [],
         },
-        "postgres-listener": {
+        "postgres-listener-master": {
+            "only_on_master": True,
+            "factory": make_PostgresListenerService,
+            "requires": [],
+        },
+        "postgres-listener-worker": {
             "only_on_master": False,
             "factory": make_PostgresListenerService,
             "requires": [],
@@ -286,10 +305,10 @@ class RegionEventLoop:
         "web": {
             "only_on_master": False,
             "factory": make_WebApplicationService,
-            "requires": ["postgres-listener", "status-worker"],
+            "requires": ["postgres-listener-worker", "status-worker"],
         },
         "service-monitor": {
-            "only_on_master": True,
+            "only_on_master": False,
             "factory": make_ServiceMonitorService,
             "requires": ["rpc-advertise"],
         },
@@ -299,28 +318,45 @@ class RegionEventLoop:
             "requires": ["database-tasks"],
         },
         "networks-monitor": {
-            "only_on_master": False,
+            "only_on_master": True,
             "factory": make_NetworksMonitoringService,
             "requires": [],
         },
         "active-discovery": {
             "only_on_master": True,
             "factory": make_ActiveDiscoveryService,
-            "requires": ["postgres-listener"],
+            "requires": ["postgres-listener-master"],
         },
         "reverse-dns": {
             "only_on_master": True,
             "factory": make_ReverseDNSService,
-            "requires": ["postgres-listener"],
+            "requires": ["postgres-listener-master"],
         },
         "rack-controller": {
             "only_on_master": False,
             "factory": make_RackControllerService,
-            "requires": ["postgres-listener", "rpc-advertise"],
+            "requires": ["postgres-listener-worker", "rpc-advertise"],
         },
         "ntp": {
             "only_on_master": True,
             "factory": make_NetworkTimeProtocolService,
+            "requires": [],
+        },
+        "workers": {
+            "only_on_master": True,
+            "not_all_in_one": True,
+            "factory": make_WorkersService,
+            "requires": [],
+        },
+        "ipc-master": {
+            "only_on_master": True,
+            "factory": make_IPCMasterService,
+            "requires": [],
+            "optional": ["workers"],
+        },
+        "ipc-worker": {
+            "only_on_master": False,
+            "factory": make_IPCWorkerService,
             "requires": [],
         },
     }
@@ -329,41 +365,74 @@ class RegionEventLoop:
         super(RegionEventLoop, self).__init__()
         self.services = MAASServices(self)
         self.handle = None
+        self.master = False
 
     @asynchronous
-    def populateService(self, name):
+    def populateService(self, name, master=False, all_in_one=False):
         """Prepare a service."""
         factoryInfo = self.factories[name]
+        if not all_in_one:
+            if factoryInfo["only_on_master"] and not master:
+                raise ValueError(
+                    "Service '%s' cannot be created because it can only run "
+                    "on the master process." % name)
+            elif not factoryInfo["only_on_master"] and master:
+                raise ValueError(
+                    "Service '%s' cannot be created because it can only run "
+                    "on a worker process." % name)
+        else:
+            dont_run = factoryInfo.get('not_all_in_one', False)
+            if dont_run:
+                raise ValueError(
+                    "Service '%s' cannot be created because it can not run "
+                    "in the all-in-one process." % name)
         try:
             service = self.services.getServiceNamed(name)
         except KeyError:
             # Get all dependent services for this services.
             dependencies = []
+            optional_args = {}
             for require in factoryInfo["requires"]:
-                dependencies.append(self.populateService(require))
+                dependencies.append(
+                    self.populateService(
+                        require, master=master, all_in_one=all_in_one))
+            for optional in factoryInfo.get("optional", []):
+                try:
+                    service = self.populateService(
+                        optional, master=master, all_in_one=all_in_one)
+                except ValueError:
+                    pass
+                else:
+                    optional_args[optional] = service
 
             # Create the service with dependencies.
-            service = factoryInfo["factory"](*dependencies)
+            service = factoryInfo["factory"](*dependencies, **optional_args)
             service.setName(name)
             service.setServiceParent(self.services)
         return service
 
     @asynchronous
-    def populate(self):
+    def populate(self, master=False, all_in_one=False):
         """Prepare services."""
-        if is_master_process():
-            for name in self.factories.keys():
-                self.populateService(name)
-        else:
-            for name, item in self.factories.items():
-                if not item["only_on_master"]:
-                    self.populateService(name)
+        self.master = master
+        for name, item in self.factories.items():
+            if all_in_one:
+                if not item.get('not_all_in_one', False):
+                    self.populateService(
+                        name, master=master, all_in_one=all_in_one)
+            else:
+                if item['only_on_master'] and master:
+                    self.populateService(
+                        name, master=master, all_in_one=all_in_one)
+                elif not item['only_on_master'] and not master:
+                    self.populateService(
+                        name, master=master, all_in_one=all_in_one)
 
     @asynchronous
     def prepare(self):
         """Perform start_up of the region process."""
         from maasserver.start_up import start_up
-        return start_up()
+        return start_up(self.master)
 
     @asynchronous
     def startMultiService(self, result):

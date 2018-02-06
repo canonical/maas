@@ -68,14 +68,14 @@ def handle_scss_change(event):
 
 def handle_maas_change(event):
     if is_interesting_python_change(event.name):
-        handle_python_change(event, "regiond", "regiond2")
+        handle_python_change(event, "regiond")
     if is_interesting_scss_change(event.name):
         handle_scss_change(event)
 
 
 def handle_pserv_change(event):
     if is_interesting_python_change(event.name):
-        handle_python_change(event, "rackd", "regiond", "regiond2")
+        handle_python_change(event, "rackd", "regiond")
 
 
 class TestReloader(unittest.TestCase):

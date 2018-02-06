@@ -1,8 +1,1 @@
-# dh-systemd does not yet appear to fully grok template units, so we
-# install unit dependencies directly instead.
-lib/systemd/system/maas-regiond-worker@.service lib/systemd/system/maas-regiond.service.wants/maas-regiond-worker@1.service
-lib/systemd/system/maas-regiond-worker@.service lib/systemd/system/maas-regiond.service.wants/maas-regiond-worker@2.service
-lib/systemd/system/maas-regiond-worker@.service lib/systemd/system/maas-regiond.service.wants/maas-regiond-worker@3.service
-lib/systemd/system/maas-regiond-worker@.service lib/systemd/system/maas-regiond.service.wants/maas-regiond-worker@4.service
-
 usr/sbin/maas-region usr/sbin/maas-region-admin

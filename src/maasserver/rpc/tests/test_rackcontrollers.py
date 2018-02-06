@@ -164,10 +164,9 @@ class TestRegisterRackController(MAASServerTestCase):
         register(system_id=node.system_id)
         self.assertEqual(node_type, node.node_type)
 
-    def test_logs_finding_existing_node_when_master(self):
+    def test_logs_finding_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        self.patch(rackcontrollers, "is_master_process").return_value = True
         register(system_id=node.system_id)
         self.assertEqual(
             "Existing rack controller '%s' running version 2.2 or below has "
@@ -175,10 +174,9 @@ class TestRegisterRackController(MAASServerTestCase):
                 node.hostname, self.this_region.hostname),
             logger.output.strip())
 
-    def test_logs_finding_existing_node_when_master_with_version(self):
+    def test_logs_finding_existing_node_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        self.patch(rackcontrollers, "is_master_process").return_value = True
         register(system_id=node.system_id, version="4.0")
         self.assertEqual(
             "Existing rack controller '%s' running version 4.0 has "

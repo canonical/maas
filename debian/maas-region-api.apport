@@ -64,7 +64,7 @@ def add_info(report, ui):
     # Attaching log files (systemd). These will overwrite the logs above on a
     # system where systemd is available.
     attach_journal_logs(
-        report, "MAASRegionLog", "maas-regiond", "maas-regiond-worker@*")
+        report, "MAASRegionLog", "maas-regiond")
     attach_journal_logs(
         report, "MAASClusterLog", "maas-rackd")
 

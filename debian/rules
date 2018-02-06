@@ -14,7 +14,6 @@ override_dh_auto_test:
 
 override_dh_installinit:
 	dh_installinit -p maas-region-api --name=maas-regiond --no-start
-	dh_installinit -p maas-region-api --name=maas-regiond-worker@  --no-start
 	dh_installinit -p maas-rack-controller --name=maas-rackd
 	dh_installinit -p maas-proxy --name=maas-proxy
 	dh_installinit -p maas-dhcp --name=maas-dhcpd

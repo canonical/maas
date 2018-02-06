@@ -28,9 +28,6 @@ export MAAS_DNS_CONFIG_DIR="$(readlink -f run/named)"
 export MAAS_DNS_RNDC_PORT=5247
 export MAAS_DNS_DEFAULT_CONTROLS=0
 
-# Regiond worker id. (Master)
-export MAAS_REGIOND_WORKER_ID=1
-
 # Exec the MAAS API and Web UI Server.
 script="$(readlink -f bin/regiond)"
-exec "${script}"
+exec "${script}" -d

@@ -491,7 +491,7 @@ endef
 # Development services.
 #
 
-service_names_region := database dns regiond regiond2 reloader
+service_names_region := database dns regiond reloader
 service_names_rack := rackd reloader
 service_names_all := $(service_names_region) $(service_names_rack)
 
@@ -526,10 +526,6 @@ run:
 	@services/run $(service_names_all)
 
 phony_services_targets += run-region run-rack run
-
-# This one's for the rapper, yo. Don't run the load-balancing regiond2.
-run+regiond:
-	@services/run $(filter-out regiond2,$(service_names_region)) +regiond
 
 phony_services_targets += run+regiond
 
@@ -583,8 +579,6 @@ services/rackd/@deps: bin/twistd.rack bin/maas-rack bin/maas-common
 services/reloader/@deps:
 
 services/regiond/@deps: bin/maas-region bin/maas-rack bin/maas-common
-
-services/regiond2/@deps: bin/maas-region bin/maas-rack bin/maas-common
 
 #
 # Package building

@@ -263,7 +263,8 @@ class OperationsHandlerType(HandlerMetaClass):
         # to generate documentation. We ignore those modules we consider "for
         # internal use only" since we do not intend to generate documentation
         # for these.
-        if not has_resource_uri and not is_internal_only:
+        if (not has_resource_uri and not is_internal_only and
+                not cls.is_anonymous):
             log.warn(
                 "{handler.__module__}.{handler.__name__} does not have "
                 "`resource_uri`. This means it may be omitted from generated "

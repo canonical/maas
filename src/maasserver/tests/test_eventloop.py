@@ -17,12 +17,14 @@ from django.db import connections
 from maasserver import (
     bootresources,
     eventloop,
+    ipc,
     nonces_cleanup,
     rack_controller,
     region_controller,
     stats,
     status_monitor,
     webapp,
+    workers,
 )
 from maasserver.eventloop import (
     DEFAULT_PORT,
@@ -42,6 +44,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from metadataserver import api_twisted
+from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -98,32 +101,44 @@ class TestRegionEventLoop(MAASTestCase):
         self.patch(eventloop.os, "getpid").return_value = 12345
         self.assertEqual("foo:pid=12345", eventloop.loop.name)
 
-    def test_populate_on_master(self):
+    def test_populateService_prevent_worker_service_on_master(self):
         self.patch(eventloop.services, "getServiceNamed")
-        self.patch(eventloop, "is_master_process").return_value = True
         an_eventloop = eventloop.RegionEventLoop()
-        # At first there are no services.
-        self.assertEqual(
-            set(), {service.name for service in an_eventloop.services})
-        # populate() creates a service with each factory.
-        an_eventloop.populate().wait(30)
-        self.assertEqual(
-            {name for name in an_eventloop.factories.keys()},
-            {svc.name for svc in an_eventloop.services})
-        # The services are not started.
-        self.assertEqual(
-            {name: False for name in an_eventloop.factories.keys()},
-            {svc.name: svc.running for svc in an_eventloop.services})
 
-    def test_populate_not_on_master(self):
+        @asynchronous
+        def tryPopulate(*args, **kwargs):
+            self.assertRaises(
+                ValueError, an_eventloop.populateService, *args, **kwargs)
+        tryPopulate('web', master=True).wait(30)
+
+    def test_populateService_prevent_master_service_on_worker(self):
         self.patch(eventloop.services, "getServiceNamed")
-        self.patch(eventloop, "is_master_process").return_value = False
+        an_eventloop = eventloop.RegionEventLoop()
+
+        @asynchronous
+        def tryPopulate(*args, **kwargs):
+            self.assertRaises(
+                ValueError, an_eventloop.populateService, *args, **kwargs)
+        tryPopulate('workers', master=False).wait(30)
+
+    def test_populateService_prevent_service_on_all_in_one(self):
+        self.patch(eventloop.services, "getServiceNamed")
+        an_eventloop = eventloop.RegionEventLoop()
+
+        @asynchronous
+        def tryPopulate(*args, **kwargs):
+            self.assertRaises(
+                ValueError, an_eventloop.populateService, *args, **kwargs)
+        tryPopulate('workers', master=True, all_in_one=True).wait(30)
+
+    def test_populate_on_worker(self):
+        self.patch(eventloop.services, "getServiceNamed")
         an_eventloop = eventloop.RegionEventLoop()
         # At first there are no services.
         self.assertEqual(
             set(), {service.name for service in an_eventloop.services})
         # populate() creates a service with each factory.
-        an_eventloop.populate().wait(30)
+        an_eventloop.populate(master=False).wait(30)
         self.assertEqual(
             {
                 name
@@ -137,6 +152,54 @@ class TestRegionEventLoop(MAASTestCase):
                 name: False
                 for name, item in an_eventloop.factories.items()
                 if item["only_on_master"] is False
+            },
+            {svc.name: svc.running for svc in an_eventloop.services})
+
+    def test_populate_on_master(self):
+        self.patch(eventloop.services, "getServiceNamed")
+        an_eventloop = eventloop.RegionEventLoop()
+        # At first there are no services.
+        self.assertEqual(
+            set(), {service.name for service in an_eventloop.services})
+        # populate() creates a service with each factory.
+        an_eventloop.populate(master=True).wait(30)
+        self.assertEqual(
+            {
+                name
+                for name, item in an_eventloop.factories.items()
+                if item["only_on_master"] is True
+            },
+            {svc.name for svc in an_eventloop.services})
+        # The services are not started.
+        self.assertEqual(
+            {
+                name: False
+                for name, item in an_eventloop.factories.items()
+                if item["only_on_master"] is True
+            },
+            {svc.name: svc.running for svc in an_eventloop.services})
+
+    def test_populate_on_all_in_one(self):
+        self.patch(eventloop.services, "getServiceNamed")
+        an_eventloop = eventloop.RegionEventLoop()
+        # At first there are no services.
+        self.assertEqual(
+            set(), {service.name for service in an_eventloop.services})
+        # populate() creates a service with each factory.
+        an_eventloop.populate(master=True, all_in_one=True).wait(30)
+        self.assertEqual(
+            {
+                name
+                for name, item in an_eventloop.factories.items()
+                if item.get("not_all_in_one", False) is False
+            },
+            {svc.name for svc in an_eventloop.services})
+        # The services are not started.
+        self.assertEqual(
+            {
+                name: False
+                for name, item in an_eventloop.factories.items()
+                if item.get("not_all_in_one", False) is False
             },
             {svc.name: svc.running for svc in an_eventloop.services})
 
@@ -329,7 +392,7 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["web"]["factory"])
         # Has a dependency of postgres-listener.
         self.assertEquals(
-            ["postgres-listener", "status-worker"],
+            ["postgres-listener-worker", "status-worker"],
             eventloop.loop.factories["web"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["web"]["only_on_master"])
@@ -345,7 +408,7 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["rack-controller"]["factory"])
         # Has a dependency of postgres-listener and rpc-advertise.
         self.assertEquals(
-            ["postgres-listener", "rpc-advertise"],
+            ["postgres-listener-worker", "rpc-advertise"],
             eventloop.loop.factories["rack-controller"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["rack-controller"]["only_on_master"])
@@ -363,7 +426,7 @@ class TestFactories(MAASTestCase):
         self.assertEquals(
             ["rpc-advertise"],
             eventloop.loop.factories["service-monitor"]["requires"])
-        self.assertTrue(
+        self.assertFalse(
             eventloop.loop.factories["service-monitor"]["only_on_master"])
 
     def test_make_StatusWorkerService(self):
@@ -381,6 +444,57 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["status-worker"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["status-worker"]["only_on_master"])
+
+    def test_make_WorkersService(self):
+        service = eventloop.make_WorkersService()
+        self.assertThat(service, IsInstance(
+            workers.WorkersService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_WorkersService,
+            eventloop.loop.factories["workers"]["factory"])
+        # Has a no dependencies.
+        self.assertEquals(
+            [],
+            eventloop.loop.factories["workers"]["requires"])
+        self.assertTrue(
+            eventloop.loop.factories["workers"]["only_on_master"])
+        self.assertTrue(
+            eventloop.loop.factories["workers"]["not_all_in_one"])
+
+    def test_make_IPCMasterService(self):
+        service = eventloop.make_IPCMasterService()
+        self.assertThat(service, IsInstance(
+            ipc.IPCMasterService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_IPCMasterService,
+            eventloop.loop.factories["ipc-master"]["factory"])
+        # Has a no dependencies.
+        self.assertEquals(
+            [],
+            eventloop.loop.factories["ipc-master"]["requires"])
+        # Has an optional dependency on workers.
+        self.assertEquals(
+            ["workers"],
+            eventloop.loop.factories["ipc-master"]["optional"])
+        self.assertTrue(
+            eventloop.loop.factories["ipc-master"]["only_on_master"])
+
+    def test_make_IPCWorkerService(self):
+        service = eventloop.make_IPCWorkerService()
+        self.assertThat(service, IsInstance(
+            ipc.IPCWorkerService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_IPCWorkerService,
+            eventloop.loop.factories["ipc-worker"]["factory"])
+        # Has a no dependencies.
+        self.assertEquals(
+            [],
+            eventloop.loop.factories["ipc-worker"]["requires"])
+        self.assertFalse(
+            eventloop.loop.factories["ipc-worker"]["only_on_master"])
 
 
 class TestDisablingDatabaseConnections(MAASServerTestCase):
