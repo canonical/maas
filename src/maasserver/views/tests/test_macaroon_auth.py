@@ -9,10 +9,20 @@ from maasserver.views.macaroon_auth import (
     IDClient,
     MacaroonAuthenticationBackend,
 )
-from macaroonbakery.bakery import (
-    IdentityError,
-    SimpleIdentity,
-)
+
+
+try:
+    # 0.0.6 - XXX drop this when version is updated
+    from macaroonbakery import (
+        IdentityError,
+        SimpleIdentity,
+    )
+except ImportError:
+    # 1.1.0
+    from macaroonbakery.bakery import (
+        IdentityError,
+        SimpleIdentity,
+    )
 
 
 class TestIDClient(TestCase):
