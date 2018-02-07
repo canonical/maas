@@ -84,7 +84,7 @@ Depends: bind9utils,
          python3-maas-provisioningserver (= ${binary:Version}),
          python3-petname,
          python3-requests,
-         ubuntu-cloudimage-keyring,
+         ubuntu-keyring,
          ${misc:Depends},
          ${python3:Depends}
 Conflicts: maas-region-controller-min
@@ -100,7 +100,7 @@ Architecture: all
 Depends: avahi-utils,
          dbconfig-pgsql,
          iputils-ping,
-         python3-macaroonbakery (>= 1.1.0),
+         python3-macaroonbakery (>= 0.0.6),
          maas-dns (= ${binary:Version}),
          maas-region-api (= ${binary:Version}),
          postgresql (>= 9.1),

@@ -6,8 +6,9 @@ maas (2.4.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
     will no longer be supported.
   * debian/maas-{dhcp,proxy}.lintian-overrides: Add lintin overrides.
   * debian/control:
-    - Add depends on python3-uvloop.
     - Bump Standards-Version.
+    - Add depends on python3-uvloop, python3-macaroonbakery.
+    - Drop depends on ubuntu-cloudimage-keyring in favor of ubuntu-keyring.
     - Drop depends on dh-systemd as it is now deprecated. Newer debhelper
       integrates it, as such, bump dep version.
 
