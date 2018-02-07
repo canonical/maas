@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the user accounts API."""
@@ -20,9 +20,11 @@ from maasserver.models import (
     SSLKey,
     StaticIPAddress,
 )
+from maasserver.models.event import Event
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
+from provisioningserver.events import AUDIT
 from testtools.matchers import (
     ContainsAll,
     Equals,
@@ -101,6 +103,40 @@ class TestUsers(APITestCase.ForUser):
             })
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_POST_creates_audit_event_for_user(self):
+        self.become_admin()
+        username = factory.make_name('user')
+        self.client.post(
+            reverse('users_handler'),
+            {
+                'username': username,
+                'email': factory.make_email_address(),
+                'password': factory.make_string(),
+                'is_superuser': '0',
+            })
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "User %s" % username + " created by '%(username)s'.")
+
+    def test_POST_creates_audit_event_for_admin(self):
+        self.become_admin()
+        username = factory.make_name('user')
+        self.client.post(
+            reverse('users_handler'),
+            {
+                'username': username,
+                'email': factory.make_email_address(),
+                'password': factory.make_string(),
+                'is_superuser': '1',
+            })
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "Admin %s" % username + " created by '%(username)s'.")
 
     def test_GET_lists_users(self):
         users = [factory.make_User() for counter in range(2)]
@@ -255,6 +291,15 @@ class TestUser(APITestCase.ForUser):
             http.client.NO_CONTENT, response.status_code, response.status_code)
         self.assertItemsEqual([], User.objects.filter(username=user.username))
 
+    def test_DELETE_deletes_admin(self):
+        self.become_admin()
+        user = factory.make_admin()
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.status_code)
+        self.assertItemsEqual([], User.objects.filter(username=user.username))
+
     def test_DELETE_user_with_node_fails(self):
         self.become_admin()
         user = factory.make_User()
@@ -351,3 +396,25 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.status_code)
         self.assertFalse(SSHKey.objects.filter(id=key_id).exists())
+
+    def test_DELETE_user_creates_audit_event(self):
+        self.become_admin()
+        user = factory.make_User()
+        self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "User %s" % user.username + " deleted by '%(username)s'.")
+
+    def test_DELETE_admin_creates_audit_event(self):
+        self.become_admin()
+        user = factory.make_admin()
+        self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "Admin %s" % user.username + " deleted by '%(username)s'.")

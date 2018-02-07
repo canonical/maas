@@ -7,7 +7,6 @@ __all__ = []
 
 import http.client
 from unittest import skip
-from unittest.mock import ANY
 
 from django.contrib.auth.models import User
 from lxml.html import fromstring
@@ -15,12 +14,12 @@ from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
-from maasserver.enum import ENDPOINT
 from maasserver.models import (
     Config,
     PackageRepository,
     UserProfile,
 )
+from maasserver.models.event import Event
 from maasserver.models.signals import bootsources
 from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.testing import (
@@ -36,8 +35,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
-from maastesting.matchers import MockCalledOnceWith
-from provisioningserver.events import EVENT_TYPES
+from provisioningserver.events import AUDIT
 
 
 class SettingsTest(MAASServerTestCase):
@@ -399,9 +397,45 @@ class UserManagementTest(MAASServerTestCase):
         self.assertAttributes(user, subset_dict(params, user_attributes))
         self.assertTrue(user.check_password(password))
 
+    def test_add_user_POST_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        username = factory.make_string()
+        params = {
+            'username': username,
+            'last_name': factory.make_string(30),
+            'email': factory.make_email_address(),
+            'is_superuser': False,
+        }
+        password = factory.make_string()
+        params.update(make_password_params(password))
+
+        self.client.post(reverse('accounts-add'), params)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "User %s" % username + " created by '%(username)s'.")
+
+    def test_add_admin_POST_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        username = factory.make_string()
+        params = {
+            'username': username,
+            'last_name': factory.make_string(30),
+            'email': factory.make_email_address(),
+            'is_superuser': True,
+        }
+        password = factory.make_string()
+        params.update(make_password_params(password))
+
+        self.client.post(reverse('accounts-add'), params)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "Admin %s" % username + " created by '%(username)s'.")
+
     def test_edit_user_POST_profile_updates_attributes(self):
-        mock_create_audit_event = self.patch(
-            settings_view, 'create_audit_event')
         self.client_log_in(as_admin=True)
         user = factory.make_User()
         params = make_user_attribute_params(user)
@@ -419,9 +453,33 @@ class UserManagementTest(MAASServerTestCase):
         self.assertEqual(http.client.FOUND, response.status_code)
         self.assertAttributes(
             reload_object(user), subset_dict(params, user_attributes))
-        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, ANY, None,
-            description="Password changed for '%(username)s'."))
+
+    def test_edit_user_POST_profile_update_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        user = factory.make_User()
+        new_username = factory.make_name('newname')
+        params = make_user_attribute_params(user)
+        last_name = factory.make_name('Newname')
+        email = 'new-%s@example.com' % factory.make_string()
+        is_superuser = True
+        params.update({
+            'last_name': last_name,
+            'email': email,
+            'is_superuser': is_superuser,
+            'username': new_username,
+            })
+
+        self.client.post(
+            reverse('accounts-edit', args=[user.username]),
+            get_prefixed_form_data('profile', params))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description, (
+                "User profile (username: %s, full name: %s, email: %s, "
+                "administrator: %s)"
+            ) % (new_username, last_name, email, is_superuser) +
+            " updated by '%(username)s'.")
 
     def test_edit_user_POST_updates_password(self):
         self.client_log_in(as_admin=True)
@@ -433,6 +491,19 @@ class UserManagementTest(MAASServerTestCase):
             get_prefixed_form_data('password', params))
         self.assertEqual(http.client.FOUND, response.status_code)
         self.assertTrue(reload_object(user).check_password(new_password))
+
+    def test_edit_user_POST_password_update_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        user = factory.make_User()
+        new_password = factory.make_string()
+        params = make_password_params(new_password)
+        self.client.post(
+            reverse('accounts-edit', args=[user.username]),
+            get_prefixed_form_data('password', params))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description, "Password changed for '%(username)s'.")
 
     def test_delete_user_GET(self):
         # The user delete page displays a confirmation page with a form.
@@ -457,6 +528,28 @@ class UserManagementTest(MAASServerTestCase):
         response = self.client.post(del_link, {'post': 'yes'})
         self.assertEqual(http.client.FOUND, response.status_code)
         self.assertItemsEqual([], User.objects.filter(id=user_id))
+
+    def test_delete_user_POST_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        user = factory.make_User()
+        del_link = reverse('accounts-del', args=[user.username])
+        self.client.post(del_link, {'post': 'yes'})
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "User %s" % user.username + " deleted by '%(username)s'.")
+
+    def test_delete_admin_POST_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        user = factory.make_admin()
+        del_link = reverse('accounts-del', args=[user.username])
+        self.client.post(del_link, {'post': 'yes'})
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "Admin %s" % user.username + " deleted by '%(username)s'.")
 
     def test_view_user(self):
         # The user page feature the basic information about the user.

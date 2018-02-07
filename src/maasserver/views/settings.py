@@ -88,7 +88,13 @@ class AccountsAdd(CreateView):
         return reverse('settings')
 
     def form_valid(self, form):
+        username = self.request._post['username']
         messages.info(self.request, "User added.")
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, self.request, None,
+            description=("%s %s" % (
+                'Admin' if form.cleaned_data['is_superuser'] else 'User',
+                username) + " created by '%(username)s'."))
         return super(AccountsAdd, self).form_valid(form)
 
 
@@ -109,6 +115,12 @@ class AccountsDelete(DeleteView):
         profile = self.get_object()
         username = profile.user.username
         try:
+            create_audit_event(
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                description=(
+                    "%s %s" % (
+                        'Admin' if profile.user.is_superuser else 'User',
+                        username) + " deleted by '%(username)s'."))
             profile.delete()
             messages.info(request, "User %s deleted." % username)
         except CannotDeleteUserException as e:
@@ -152,7 +164,14 @@ class AccountsEdit(TemplateView, ModelFormMixin,
         if response is not None:
             create_audit_event(
                 EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-                description="Password changed for '%(username)s'.")
+                description=(
+                    "User profile (username: %s, full name: %s, email: %s, "
+                    "administrator: %s)" % (
+                        profile_form.cleaned_data['username'],
+                        profile_form.cleaned_data['last_name'],
+                        profile_form.cleaned_data['email'],
+                        profile_form.cleaned_data['is_superuser']) +
+                    " updated by '%(username)s'."))
             return response
 
         # Process the password change form, if that's what was submitted.
@@ -160,6 +179,9 @@ class AccountsEdit(TemplateView, ModelFormMixin,
             request, AdminPasswordChangeForm, next_page, 'password',
             "Password updated.", {'user': user})
         if response is not None:
+            create_audit_event(
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                description="Password changed for '%(username)s'.")
             return response
 
         return self.respond(request, profile_form, password_form)

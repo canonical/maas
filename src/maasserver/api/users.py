@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `User`."""
@@ -20,6 +20,8 @@ from maasserver.api.utils import (
     extract_bool,
     get_mandatory_param,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import (
     CannotDeleteUserException,
     MAASAPIValidationError,
@@ -29,6 +31,7 @@ from maasserver.models import User
 from maasserver.utils.orm import get_one
 from piston3.models import Consumer
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 class UsersHandler(OperationsHandler):
@@ -74,6 +77,11 @@ class UsersHandler(OperationsHandler):
         is_superuser = extract_bool(
             get_mandatory_param(request.data, 'is_superuser'))
 
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
+            description=(
+                "%s %s" % ('Admin' if is_superuser else 'User', username) +
+                " created by '%(username)s'."))
         if is_superuser:
             return User.objects.create_superuser(
                 username=username, password=password, email=email)
@@ -119,6 +127,12 @@ class UserHandler(OperationsHandler):
             Consumer.objects.filter(user=user).delete()
             try:
                 user.userprofile.delete()
+                create_audit_event(
+                    EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
+                    description=(
+                        "%s %s" % (
+                            'Admin' if user.is_superuser else 'User',
+                            username) + " deleted by '%(username)s'."))
             except CannotDeleteUserException as e:
                 raise ValidationError(str(e))
 
