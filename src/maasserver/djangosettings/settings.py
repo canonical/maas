@@ -105,7 +105,8 @@ STATIC_LOCAL_SERVE = DEBUG
 
 AUTHENTICATION_BACKENDS = (
     'maasserver.models.MAASAuthorizationBackend',
-    )
+    'maasserver.views.macaroon_auth.MacaroonAuthenticationBackend',
+)
 
 # Database access configuration.
 try:
