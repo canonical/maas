@@ -13,6 +13,7 @@ from abc import (
     abstractproperty,
 )
 from errno import ENOENT
+from functools import lru_cache
 from io import BytesIO
 import os
 from typing import Dict
@@ -283,10 +284,12 @@ class BootMethod(metaclass=ABCMeta):
             isinstance(element, str) for element in self.bootloader_files)
         assert isinstance(self.arch_octet, str) or self.arch_octet is None
 
+    @lru_cache(1)
     def get_template_dir(self):
         """Gets the template directory for the boot method."""
         return locate_template("%s" % self.template_subdir)
 
+    @lru_cache(512)
     def get_template(self, purpose, arch, subarch):
         """Gets the best avaliable template for the boot method.
 

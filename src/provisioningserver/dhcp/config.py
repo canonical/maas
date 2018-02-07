@@ -28,7 +28,7 @@ from provisioningserver.path import (
     get_path,
 )
 from provisioningserver.utils import (
-    locate_template,
+    load_template,
     snappy,
     typed,
 )
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 # Used to generate the conditional bootloader behaviour
-CONDITIONAL_BOOTLOADER = ("""
+CONDITIONAL_BOOTLOADER = tempita.Template("""
 {{if ipv6}}
            {{behaviour}} exists dhcp6.client-arch-type and
              option dhcp6.client-arch-type = {{arch_octet}} {
@@ -64,7 +64,7 @@ CONDITIONAL_BOOTLOADER = ("""
 """)
 
 # Used to generate the PXEBootLoader special case
-DEFAULT_BOOTLOADER = ("""
+DEFAULT_BOOTLOADER = tempita.Template("""
 {{if ipv6}}
             else {
                option dhcp6.bootfile-url \"{{url}}\";
@@ -94,8 +94,7 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
             if method.path_prefix:
                 url += method.path_prefix
             url += '/%s' % method.bootloader_path
-            output += tempita.sub(
-                CONDITIONAL_BOOTLOADER,
+            output += CONDITIONAL_BOOTLOADER.substitute(
                 ipv6=ipv6, rack_ip=rack_ip, url=url,
                 behaviour=next(behaviour),
                 arch_octet=method.arch_octet,
@@ -114,8 +113,7 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
         if method.path_prefix:
             url += method.path_prefix
         url += '/%s' % method.bootloader_path
-        output += tempita.sub(
-            DEFAULT_BOOTLOADER,
+        output += DEFAULT_BOOTLOADER.substitute(
             ipv6=ipv6, rack_ip=rack_ip, url=url,
             bootloader=method.bootloader_path,
             path_prefix=method.path_prefix,
@@ -262,8 +260,7 @@ def get_config_v4(
     """
     bootloader = compose_conditional_bootloader(False)
     platform_codename = linux_distribution()[2]
-    template_file = locate_template('dhcp', template_name)
-    template = tempita.Template.from_filename(template_file, encoding="UTF-8")
+    template = load_template('dhcp', template_name)
     dhcp_socket = get_data_path('/var/lib/maas/dhcpd.sock')
 
     # Helper functions to stuff into the template namespace.
@@ -318,8 +315,7 @@ def get_config_v6(
     :return: A full configuration, as a string.
     """
     platform_codename = linux_distribution()[2]
-    template_file = locate_template('dhcp', template_name)
-    template = tempita.Template.from_filename(template_file, encoding="UTF-8")
+    template = load_template('dhcp', template_name)
     # Helper functions to stuff into the template namespace.
     helpers = {
         "oneline": normalise_whitespace,
