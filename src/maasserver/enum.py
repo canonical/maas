@@ -513,6 +513,9 @@ class FILESYSTEM_TYPE:
     #: BTRFS
     BTRFS = "btrfs"
 
+    #: ZFS
+    ZFSROOT = "zfsroot"
+
 
 # Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
 # representation).
@@ -533,6 +536,7 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.RAMFS, "ramfs"),
     (FILESYSTEM_TYPE.TMPFS, "tmpfs"),
     (FILESYSTEM_TYPE.BTRFS, "btrfs"),
+    (FILESYSTEM_TYPE.ZFSROOT, "zfsroot"),
     )
 
 
@@ -551,6 +555,7 @@ FILESYSTEM_FORMAT_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.RAMFS, "ramfs"),
     (FILESYSTEM_TYPE.TMPFS, "tmpfs"),
     (FILESYSTEM_TYPE.BTRFS, "btrfs"),
+    (FILESYSTEM_TYPE.ZFSROOT, "zfsroot"),
     )
 
 
