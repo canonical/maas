@@ -43,4 +43,13 @@ if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
     fi
 
 fi
+
+# "$2" is the older version we are upgrading from. If we are upgrading from
+# a version that is 'le' from 2.4.0~alpha1-6555-g2acf28404-0ubuntu1, we need
+# to stop regiond to ensure old style regiond workers don't stay running, as
+# now MAAS doesn't run workers via systemd anymore.
+if [ "$1" = "upgrade" ] && dpkg --compare-versions "$2" le 2.4.0~alpha1-6555-g2acf28404-0ubuntu1; then
+       deb-systemd-invoke stop maas-regiond >/dev/null || true
+fi
+
 #DEBHELPER#
