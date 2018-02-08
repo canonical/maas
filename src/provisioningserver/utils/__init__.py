@@ -16,7 +16,10 @@ __all__ = [
 ]
 
 from collections import Iterable
-from functools import reduce
+from functools import (
+    lru_cache,
+    reduce,
+)
 from itertools import chain
 import os
 from pipes import quote
@@ -58,6 +61,13 @@ def locate_template(*path: Tuple[str]):
         os.path.join(
             os.path.dirname(__file__),
             '..', 'templates', *path))
+
+
+@lru_cache(256)
+def load_template(*path: Tuple[str]):
+    """Load the template."""
+    return tempita.Template.from_filename(
+        locate_template(*path), encoding="UTF-8")
 
 
 def dict_depth(d, depth=0):

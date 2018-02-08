@@ -22,13 +22,12 @@ import sys
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
+    load_template,
     locate_config,
-    locate_template,
 )
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
 from provisioningserver.utils.shell import call_and_check
-import tempita
 
 
 maaslog = get_maas_logger("dns")
@@ -181,12 +180,6 @@ def execute_rndc_command(arguments):
     call_and_check(rndc_cmd)
 
 
-def get_dns_template_path(template_name):
-    """Return the path to a dns template file."""
-    # This function exists solely to make unit testing easier.
-    return locate_template('dns', template_name)
-
-
 def set_up_options_conf(overwrite=True, **kwargs):
     """Write out the named.conf.options.inside.maas file.
 
@@ -195,10 +188,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
     so relies on either the DNSFixture in the test suite, or the packaging.
     Both should set that file up appropriately to include our file.
     """
-    template_path = get_dns_template_path(
-        "named.conf.options.inside.maas.template")
-    template = tempita.Template.from_filename(
-        template_path, encoding="UTF-8")
+    template = load_template('dns', 'named.conf.options.inside.maas.template')
 
     # Make sure "upstream_dns" is set at least to None. It's a special piece
     # of config and we don't want to require that every call site has to
@@ -257,8 +247,7 @@ def render_dns_template(template_name, *parameters):
     :param parameters: One or more dicts of paramaters to be passed to the
         template.  Each adds to (and may overwrite) the previous ones.
     """
-    template_path = locate_template('dns', template_name)
-    template = tempita.Template.from_filename(template_path, encoding="UTF-8")
+    template = load_template('dns', template_name)
     combined_params = {}
     for params_dict in parameters:
         combined_params.update(params_dict)

@@ -259,22 +259,6 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
         self.assertThat(target_file, FileExists())
 
-    def test_template_path_is_correct(self):
-        template_path = config.get_dns_template_path("file")
-        expected = os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "../../templates/dns/file"))
-        self.assertEqual(expected, template_path)
-
-    def test_set_up_options_conf_raises_on_bad_template(self):
-        template = self.make_file(
-            name="named.conf.options.inside.maas.template",
-            contents=b"{{nonexistent}}")
-        self.patch(
-            config, "get_dns_template_path").return_value = template
-        exception = self.assertRaises(DNSConfigFail, set_up_options_conf)
-        self.assertIn("name 'nonexistent' is not defined", repr(exception))
-
     def test_rndc_config_includes_default_controls(self):
         dns_conf_dir = patch_dns_config_path(self)
         patch_dns_default_controls(self, enable=True)
