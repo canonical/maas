@@ -1,10 +1,11 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.sshkey`"""
 
 __all__ = []
 
+from maasserver.models.event import Event
 from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
 from maasserver.testing import get_data
@@ -19,6 +20,7 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.sshkey import SSHKeyHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.events import AUDIT
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -92,7 +94,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
         self.assertIsNone(
             get_one(SSHKey.objects.filter(id=sshkey.id)))
 
-    def test_import_keys_calls_save_keys_for_user(self):
+    def test_import_keys_calls_save_keys_for_user_and_create_audit_event(self):
         user = factory.make_User()
         handler = SSHKeyHandler(user, {})
         protocol = factory.make_name("protocol")
@@ -105,6 +107,10 @@ class TestSSHKeyHandler(MAASServerTestCase):
         self.assertThat(
             mock_save_keys,
             MockCalledOnceWith(user=user, protocol=protocol, auth_id=auth_id))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "SSH keys imported by '%(username)s'.")
 
     def test_import_keys_raises_HandlerError(self):
         user = factory.make_User()

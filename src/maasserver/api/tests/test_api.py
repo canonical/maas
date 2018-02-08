@@ -36,6 +36,7 @@ from maasserver.models import (
     keysource as keysource_module,
     SSHKey,
 )
+from maasserver.models.event import Event
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
 from maasserver.testing.api import (
@@ -58,6 +59,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from piston3.doc import generate_doc
+from provisioningserver.events import AUDIT
 from requests.exceptions import RequestException
 from testtools.matchers import (
     Contains,
@@ -163,7 +165,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         error = self.assertRaises(
             ClusterUnavailable, store_node_power_parameters,
             self.node, self.request)
-        self.assertEquals(
+        self.assertEqual(
             "No rack controllers connected to validate the power_type.",
             str(error))
         self.assertThat(
@@ -495,7 +497,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             )
         self.assertEqual(expected, parsed_result)
 
-    def test_delete_by_id_works(self):
+    def test_delete_by_id_works_and_creates_audit_event(self):
         _, keys = factory.make_user_with_keys(
             n_keys=2, user=self.user)
         response = self.client.delete(
@@ -505,6 +507,11 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         keys_after = SSHKey.objects.filter(user=self.user)
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "SSH key id=%s" % keys[0].id + " deleted by '%(username)s'.")
 
     def test_delete_fails_if_not_your_key(self):
         user, keys = factory.make_user_with_keys(n_keys=1)
@@ -539,7 +546,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             dict(key=["This field is required."]),
             json_load_bytes(response.content))
 
-    def test_import_ssh_keys_creates_keys_and_keysource(self):
+    def test_import_ssh_keys_creates_keys_keysource_and_audit_event(self):
         protocol = random.choice(
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
         auth_id = factory.make_name('auth_id')
@@ -557,6 +564,10 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code, response)
         self.assertThat(
             mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "SSH keys imported by '%(username)s'.")
 
     def test_import_ssh_keys_creates_keys_not_duplicate_keysource(self):
         protocol = random.choice(

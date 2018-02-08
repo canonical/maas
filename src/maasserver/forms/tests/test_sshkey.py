@@ -1,0 +1,33 @@
+# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for `SSHKeyForm`."""
+
+__all__ = []
+
+from django.http import HttpRequest
+from maasserver.enum import ENDPOINT_CHOICES
+from maasserver.forms import SSHKeyForm
+from maasserver.models import Event
+from maasserver.testing import get_data
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.events import AUDIT
+
+
+class TestSSHKeyForm(MAASServerTestCase):
+    """Tests for `SSHKeyForm`."""
+
+    def test_creates_audit_event_on_save(self):
+        user = factory.make_User()
+        key_string = get_data('data/test_rsa0.pub')
+        form = SSHKeyForm(
+            user=user,
+            data={'key': key_string})
+        request = HttpRequest()
+        request.user = user
+        form.save(factory.pick_choice(ENDPOINT_CHOICES), request)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "SSH key created by '%(username)s'.")

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `SSHKey`."""
@@ -20,7 +20,11 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.enum import KEYS_PROTOCOL_TYPE
+from maasserver.audit import create_audit_event
+from maasserver.enum import (
+    ENDPOINT,
+    KEYS_PROTOCOL_TYPE,
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -34,6 +38,7 @@ from maasserver.utils.keys import ImportSSHKeysError
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 from requests.exceptions import RequestException
 
 
@@ -58,7 +63,7 @@ class SSHKeysHandler(OperationsHandler):
         """
         form = SSHKeyForm(user=request.user, data=request.data)
         if form.is_valid():
-            sshkey = form.save()
+            sshkey = form.save(ENDPOINT.API, request)
             emitter = JSONEmitter(
                 sshkey, typemapper, None, DISPLAY_SSHKEY_FIELDS)
             stream = emitter.render(request)
@@ -83,8 +88,12 @@ class SSHKeysHandler(OperationsHandler):
                 protocol = KEYS_PROTOCOL_TYPE.LP
                 auth_id = keysource
             try:
-                return KeySource.objects.save_keys_for_user(
+                keysource = KeySource.objects.save_keys_for_user(
                     user=request.user, protocol=protocol, auth_id=auth_id)
+                create_audit_event(
+                    EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
+                    description=("SSH keys imported by '%(username)s'."))
+                return keysource
             except (ImportSSHKeysError, RequestException) as e:
                 raise MAASAPIBadRequest(e.args[0])
         else:
@@ -130,6 +139,10 @@ class SSHKeyHandler(OperationsHandler):
                     "text/plain; charset=%s" % settings.DEFAULT_CHARSET)
             )
         key.delete()
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
+            description=(
+                "SSH key id=%s" % id + " deleted by '%(username)s'."))
         return rc.DELETED
 
     @classmethod

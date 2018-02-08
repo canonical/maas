@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The SSHKey handler for the WebSocket connection."""
@@ -8,6 +8,9 @@ __all__ = [
     ]
 
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.forms import SSHKeyForm
 from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
@@ -20,6 +23,7 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+from provisioningserver.events import EVENT_TYPES
 
 
 class SSHKeyHandler(TimestampedModelHandler):
@@ -69,7 +73,10 @@ class SSHKeyHandler(TimestampedModelHandler):
         form = SSHKeyForm(user=self.user, data=params)
         if form.is_valid():
             try:
-                obj = form.save()
+                request = HttpRequest()
+                request.user = self.user
+                request.data = params
+                obj = form.save(ENDPOINT.UI, request)
             except ValidationError as e:
                 try:
                     raise HandlerValidationError(e.message_dict)
@@ -90,5 +97,10 @@ class SSHKeyHandler(TimestampedModelHandler):
                 user=self.user,
                 protocol=params['protocol'],
                 auth_id=params['auth_id'])
+            request = HttpRequest()
+            request.user = self.user
+            create_audit_event(
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
+                description="SSH keys imported by '%(username)s'.")
         except ImportSSHKeysError as e:
             raise HandlerError(str(e))
