@@ -457,7 +457,14 @@ def get_curtin_installer_url(node):
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
     image = get_curtin_image(node)
     if image['xinstall_type'] == 'squashfs':
-        return 'cp:///media/root-ro'
+        # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and drop
+        # of iscsi), precise is no longer deployable. To address a squashfs
+        # image is made available allowing it to be deployed in the
+        # commissioning ephemeral environment.
+        if series == 'precise':
+            url_prepend = "fsimage:"
+        else:
+            return 'cp:///media/root-ro'
     elif image['xinstall_type'] == 'tgz':
         url_prepend = ''
     else:
