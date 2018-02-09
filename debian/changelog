@@ -1,6 +1,12 @@
-maas (2.4.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.4.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 09 Feb 2018 18:58:32 -0500
+
+maas (2.4.0~alpha1-6573-g12ee2331b-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release
   * debian/*: Drop usage of apache2. It has long been used to maintain
     backwards compat for 1.x versions of MAAS, but starting from 2.4, it
     will no longer be supported.
@@ -12,7 +18,7 @@ maas (2.4.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
     - Drop depends on dh-systemd as it is now deprecated. Newer debhelper
       integrates it, as such, bump dep version.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 21 Nov 2017 10:30:54 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 09 Feb 2018 18:50:10 -0500
 
 maas (2.3.0-6434-gd354690-0ubuntu1) bionic; urgency=medium
 
