@@ -18,6 +18,7 @@ from maasserver.management.commands import (
     changepasswords,
     createadmin,
 )
+from maasserver.models.config import Config
 import maasserver.models.keysource as keysource_module
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.user import get_creds_tuple
@@ -94,6 +95,29 @@ class TestCommands(MAASServerTestCase):
         self.assertThat(stderr, IsEmpty)
         self.assertThat(stdout, IsEmpty)
         self.assertTrue(user.check_password(password))
+
+    def test_createadmin_not_prompts_for_password_if_ext_auth(self):
+        Config.objects.set_config('external_auth_url', 'http://example.com/')
+
+        stderr = StringIO()
+        stdout = StringIO()
+        username = factory.make_name('user')
+        ssh_import = "%s:%s" % (
+            random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
+            factory.make_name('user-id'))
+        email = factory.make_email_address()
+        prompt_for_password = self.patch(createadmin, 'prompt_for_password')
+        prompt_for_password.return_value = factory.make_string()
+        self.patch(keysource_module.KeySource, 'import_keys')
+
+        call_command(
+            'createadmin', username=username, email=email,
+            ssh_import=ssh_import, stdout=stdout, stderr=stderr)
+
+        user = User.objects.get(username=username)
+        self.assertIsNotNone(user)
+        self.assertFalse(prompt_for_password.called)
+        self.assertEqual('', stderr.getvalue().strip())
 
     def test_createadmin_prompts_for_username_if_not_given(self):
         stderr = StringIO()

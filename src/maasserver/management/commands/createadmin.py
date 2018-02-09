@@ -15,6 +15,7 @@ from django.core.management.base import (
 )
 from django.db import DEFAULT_DB_ALIAS
 from maasserver.enum import KEYS_PROTOCOL_TYPE
+from maasserver.models.config import Config
 from maasserver.models.keysource import KeySource
 from maasserver.utils.keys import ImportSSHKeysError
 import requests
@@ -153,13 +154,14 @@ class Command(BaseCommand):
         password = options.get('password', None)
         email = options.get('email', None)
         ssh_import = options.get('ssh_import', None)
+        external_auth_url = Config.objects.get_config('external_auth_url')
         prompt_ssh_import = False
         if ssh_import is None and (username is None or
            password is None or email is None):
             prompt_ssh_import = True
         if username is None:
             username = prompt_for_username()
-        if password is None:
+        if password is None and not external_auth_url:
             password = prompt_for_password()
         if email is None:
             email = prompt_for_email()
