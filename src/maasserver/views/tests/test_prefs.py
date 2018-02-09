@@ -6,18 +6,23 @@
 __all__ = []
 
 import http.client
-from unittest.mock import ANY
 
 from apiclient.creds import convert_tuple_to_string
 from django.contrib.auth.models import User
 from lxml.html import fromstring
-from maasserver.enum import ENDPOINT
+from maasserver.models import (
+    Event,
+    SSLKey,
+)
 from maasserver.models.user import get_creds_tuple
-from maasserver.testing import get_prefixed_form_data
+from maasserver.testing import (
+    get_data,
+    get_prefixed_form_data,
+)
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views import prefs as prefs_view
-from maastesting.matchers import MockCalledOnceWith
-from provisioningserver.events import EVENT_TYPES
+from maasserver.utils.django_urls import reverse
+from provisioningserver.events import AUDIT
 
 
 class UserPrefsViewTest(MAASServerTestCase):
@@ -70,7 +75,6 @@ class UserPrefsViewTest(MAASServerTestCase):
 
     def test_prefs_POST_password(self):
         # The preferences page allows the user to change their password.
-        mock_create_audit_event = self.patch(prefs_view, 'create_audit_event')
         self.client_log_in()
         self.logged_in_user.set_password('password')
         old_pw = self.logged_in_user.password
@@ -88,6 +92,29 @@ class UserPrefsViewTest(MAASServerTestCase):
         user = User.objects.get(id=self.logged_in_user.id)
         # The password is SHA1ized, we just make sure that it has changed.
         self.assertNotEqual(old_pw, user.password)
-        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, ANY, None,
-            description="Password changed for '%(username)s'."))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Password changed for '%(username)s'.")
+
+    def test_create_ssl_key_POST(self):
+        self.client_log_in(as_admin=True)
+        key_string = get_data('data/test_x509_0.pem')
+        params = {'key': key_string}
+        response = self.client.post(reverse('prefs-add-sslkey'), params)
+        sslkey = SSLKey.objects.get(user=self.logged_in_user)
+        self.assertEqual(http.client.FOUND, response.status_code)
+        self.assertIsNotNone(sslkey)
+        self.assertEqual(key_string, sslkey.key)
+
+    def test_delete_ssl_key_POST_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        sslkey = factory.make_SSLKey(self.logged_in_user)
+        keyid = sslkey.id
+        del_link = reverse('prefs-delete-sslkey', args=[keyid])
+        self.client.post(del_link, {'post': 'yes'})
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "SSL key id=%s" % keyid + " deleted by '%(username)s'.")

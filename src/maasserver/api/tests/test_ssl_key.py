@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the ssl key API."""
@@ -9,12 +9,16 @@ import http.client
 import json
 
 from django.conf import settings
-from maasserver.models import SSLKey
+from maasserver.models import (
+    Event,
+    SSLKey,
+)
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import get_one
+from provisioningserver.events import AUDIT
 
 
 class TestSSLKeyHandlers(APITestCase.ForUser):
@@ -124,7 +128,7 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
             reverse('sslkey_handler', args=[key.id]))
         self.assertEqual(http.client.FORBIDDEN, response.status_code, response)
 
-    def test_delete_by_id_works(self):
+    def test_delete_by_id_works_and_creates_audit_event(self):
         _, keys = factory.make_user_with_ssl_keys(
             n_keys=2, user=self.user)
         response = self.client.delete(
@@ -132,8 +136,13 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response)
         keys_after = SSLKey.objects.filter(user=self.user)
+        event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
+        self.assertIsNotNone(event)
+        self.assertEquals(
+            event.description,
+            "SSL key id=%s" % keys[0].id + " deleted by '%(username)s'.")
 
     def test_delete_fails_if_not_your_key(self):
         user, keys = factory.make_user_with_ssl_keys(n_keys=1)

@@ -10,6 +10,10 @@ __all__ = [
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied
+from django.http import (
+    HttpResponseNotFound,
+    HttpResponseRedirect,
+)
 from django.shortcuts import (
     get_object_or_404,
     render,
@@ -41,8 +45,11 @@ class SSLKeyCreateView(CreateView):
         return kwargs
 
     def form_valid(self, form):
-        messages.info(self.request, "SSL key added.")
-        return super(SSLKeyCreateView, self).form_valid(form)
+        if form.is_valid():
+            form.save(ENDPOINT.UI, self.request)
+            messages.info(self.request, "SSL key added.")
+            return HttpResponseRedirect(self.get_success_url())
+        return HttpResponseNotFound()
 
     def get_success_url(self):
         return reverse('prefs')
@@ -59,6 +66,10 @@ class SSLKeyDeleteView(HelpfulDeleteView):
         key = get_object_or_404(SSLKey, id=keyid)
         if key.user != self.request.user:
             raise PermissionDenied("Can't delete this key.  It's not yours.")
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, self.request, None,
+            description=(
+                "SSL key id=%s" % keyid + " deleted by '%(username)s'."))
         return key
 
     def get_next_url(self):

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `SSLKey`."""
@@ -17,12 +17,15 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSLKeyForm
 from maasserver.models import SSLKey
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAY_SSLKEY_FIELDS = ("id", "key")
@@ -46,7 +49,7 @@ class SSLKeysHandler(OperationsHandler):
         """
         form = SSLKeyForm(user=request.user, data=request.data)
         if form.is_valid():
-            sslkey = form.save()
+            sslkey = form.save(ENDPOINT.API, request)
             emitter = JSONEmitter(
                 sslkey, typemapper, None, DISPLAY_SSLKEY_FIELDS)
             stream = emitter.render(request)
@@ -98,6 +101,10 @@ class SSLKeyHandler(OperationsHandler):
                     "text/plain; charset=%s" % settings.DEFAULT_CHARSET)
             )
         key.delete()
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
+            description=(
+                "SSL key id=%s" % id + " deleted by '%(username)s'."))
         return rc.DELETED
 
     @classmethod

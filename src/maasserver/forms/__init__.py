@@ -1118,6 +1118,13 @@ class SSLKeyForm(KeyForm):
         model = SSLKey
         fields = ["key"]
 
+    def save(self, endpoint, request):
+        sslkey = super(SSLKeyForm, self).save()
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, endpoint, request, None,
+            description="SSL key created by '%(username)s'.")
+        return sslkey
+
 
 class MultipleMACAddressField(forms.MultiValueField):
 
