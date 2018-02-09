@@ -126,6 +126,18 @@ class EVENT_TYPES:
     SCRIPT_RESULT_ERROR = "SCRIPT_RESULT_ERROR"
     # Authorisation events
     AUTHORISATION = "AUTHORISATION"
+    # Settings events
+    SETTINGS = "SETTINGS"
+    # Node events
+    NODE = "NODE"
+    # Images events
+    IMAGES = "IMAGES"
+    # Pod events
+    POD = "POD"
+    # Networking events
+    NETWORKING = "NETWORKING"
+    # Zones events
+    ZONES = "ZONES"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -356,6 +368,30 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.AUTHORISATION: EventDetail(
         description=("Authorisation"),
+        level=AUDIT,
+    ),
+    EVENT_TYPES.SETTINGS: EventDetail(
+        description=("Settings"),
+        level=AUDIT,
+    ),
+    EVENT_TYPES.NODE: EventDetail(
+        description=("Node"),
+        level=AUDIT,
+    ),
+    EVENT_TYPES.IMAGES: EventDetail(
+        description=("Images"),
+        level=AUDIT,
+    ),
+    EVENT_TYPES.POD: EventDetail(
+        description=("Pod"),
+        level=AUDIT,
+    ),
+    EVENT_TYPES.NETWORKING: EventDetail(
+        description=("Networking"),
+        level=AUDIT,
+    ),
+    EVENT_TYPES.ZONES: EventDetail(
+        description=("Zones"),
         level=AUDIT,
     ),
 }
