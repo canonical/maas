@@ -64,12 +64,15 @@ def validate_rrtype(value):
 
 class HostnameRRsetMapping:
     """This is used to return non-address information for a hostname in a way
-       that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
+       that keeps life simple for the callers.  Rrset is a set of (ttl, rrtype,
        rrdata) tuples."""
 
-    def __init__(self, system_id=None, rrset: set=None, node_type=None):
+    def __init__(
+            self, system_id=None, rrset: set=None, node_type=None,
+            dnsresource_id=None):
         self.system_id = system_id
         self.node_type = node_type
+        self.dnsresource_id = dnsresource_id
         self.rrset = set() if rrset is None else rrset.copy()
 
     def __repr__(self):
@@ -130,7 +133,8 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         else:
             raise PermissionDenied()
 
-    def get_hostname_dnsdata_mapping(self, domain, raw_ttl=False):
+    def get_hostname_dnsdata_mapping(
+            self, domain, raw_ttl=False, with_ids=True):
         """Return hostname to RRset mapping for this domain."""
         cursor = connection.cursor()
         default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
@@ -144,10 +148,12 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                     %s)""" % default_ttl
         sql_query = """
             SELECT
+                dnsresource.id,
                 dnsresource.name,
                 domain.name,
                 node.system_id,
                 node.node_type,
+                dnsdata.id,
                 """ + ttl_clause + """ AS ttl,
                 dnsdata.rrtype,
                 dnsdata.rrdata
@@ -213,8 +219,8 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         # not spill CNAME and other data.
         mapping = defaultdict(HostnameRRsetMapping)
         cursor.execute(sql_query, (domain.id,))
-        for (name, d_name, system_id, node_type,
-                ttl, rrtype, rrdata) in cursor.fetchall():
+        for (dnsresource_id, name, d_name, system_id, node_type,
+                dnsdata_id, ttl, rrtype, rrdata) in cursor.fetchall():
             if name == '@' and d_name != domain.name:
                 name, d_name = d_name.split('.', 1)
                 # Since we don't allow more than one label in dnsresource
@@ -224,7 +230,12 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                         d_name, domain.name))
             mapping[name].node_type = node_type
             mapping[name].system_id = system_id
-            mapping[name].rrset.add((ttl, rrtype, rrdata))
+            if with_ids:
+                mapping[name].dnsresource_id = dnsresource_id
+                rrtuple = (ttl, rrtype, rrdata, dnsdata_id)
+            else:
+                rrtuple = (ttl, rrtype, rrdata)
+            mapping[name].rrset.add(rrtuple)
         return mapping
 
 

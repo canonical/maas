@@ -373,19 +373,23 @@ class Domain(CleanSave, TimestampedModel):
                 rr_mapping[hostname].node_type = info.node_type
             for ip in info.ips:
                 if IPAddress(ip).version == 6:
-                    rr_mapping[hostname].rrset.add((info.ttl, 'AAAA', ip))
+                    rr_mapping[hostname].rrset.add(
+                        (info.ttl, 'AAAA', ip, None))
                 else:
-                    rr_mapping[hostname].rrset.add((info.ttl, 'A', ip))
+                    rr_mapping[hostname].rrset.add(
+                        (info.ttl, 'A', ip, None))
         data = []
         for hostname, info in rr_mapping.items():
             data += [{
                 'name': hostname,
                 'system_id': info.system_id,
                 'node_type': info.node_type,
+                'dnsresource_id': info.dnsresource_id,
                 'ttl': ttl,
                 'rrtype': rrtype,
-                'rrdata': rrdata
+                'rrdata': rrdata,
+                'dnsdata_id': dnsdata_id,
                 }
-                for ttl, rrtype, rrdata in info.rrset
+                for ttl, rrtype, rrdata, dnsdata_id in info.rrset
                 ]
         return data

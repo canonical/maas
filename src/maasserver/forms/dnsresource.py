@@ -48,10 +48,13 @@ class DNSResourceForm(MAASModelForm):
             )
 
     def __init__(
-            self, data=None, instance=None, request=None, *args, **kwargs):
+            self, data=None, instance=None, request=None, user=None, *args,
+            **kwargs):
         # Always save the user, in case we create a StaticIPAddress in save().
         if request is not None:
             self.user = request.user
+        if user is not None:
+            self.user = user
         super().__init__(data=data, instance=instance, *args, **kwargs)
 
     def clean_ip(self, ipaddr):

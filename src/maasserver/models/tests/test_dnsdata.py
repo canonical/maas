@@ -257,7 +257,8 @@ class TestDNSDataMapping(MAASServerTestCase):
             system_id = None
             node_type = None
         mapping = HostnameRRsetMapping(
-            system_id=system_id, node_type=node_type)
+            system_id=system_id, node_type=node_type,
+            dnsresource_id=dnsresource.id)
         for data in dnsresource.dnsdata_set.all():
             if raw_ttl or data.ttl is not None:
                 ttl = data.ttl
@@ -265,7 +266,7 @@ class TestDNSDataMapping(MAASServerTestCase):
                 ttl = dnsresource.domain.ttl
             else:
                 ttl = Config.objects.get_config('default_dns_ttl')
-            mapping.rrset.add((ttl, data.rrtype, data.rrdata))
+            mapping.rrset.add((ttl, data.rrtype, data.rrdata, data.id))
         return {dnsresource.name: mapping}
 
     def test_get_hostname_dnsdata_mapping_returns_mapping(self):

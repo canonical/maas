@@ -80,7 +80,8 @@ def get_hostname_dnsdata_mapping(domain):
     `domain`.  Info contains: system_id and rrsets (which contain (ttl, rrtype,
     rrdata) tuples.
     """
-    return DNSData.objects.get_hostname_dnsdata_mapping(domain)
+    return DNSData.objects.get_hostname_dnsdata_mapping(
+        domain, with_ids=False)
 
 
 WARNING_MESSAGE = (

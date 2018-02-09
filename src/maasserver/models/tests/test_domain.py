@@ -383,20 +383,22 @@ class DomainTest(MAASServerTestCase):
                 rr_map[hostname].system_id = info.system_id
             for ip in info.ips:
                 if IPAddress(ip).version == 4:
-                    rr_map[hostname].rrset.add((info.ttl, 'A', ip))
+                    rr_map[hostname].rrset.add((info.ttl, 'A', ip, None))
                 else:
-                    rr_map[hostname].rrset.add((info.ttl, 'AAAA', ip))
+                    rr_map[hostname].rrset.add((info.ttl, 'AAAA', ip, None))
         rrsets = [
             {
                 'name': name,
                 'system_id': info.system_id,
                 'node_type': info.node_type,
+                'dnsresource_id': info.dnsresource_id,
                 'ttl': ttl,
                 'rrtype': rrtype,
                 'rrdata': rrdata,
+                'dnsdata_id': dnsdata_id,
             }
             for name, info in rr_map.items()
-            for ttl, rrtype, rrdata in info.rrset
+            for ttl, rrtype, rrdata, dnsdata_id in info.rrset
         ]
         return (rrsets)
 
