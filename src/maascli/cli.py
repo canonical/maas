@@ -171,6 +171,7 @@ commands = {
 # python3-maasserver.
 regiond_commands = (
     ('apikey', 'maasserver', None),
+    ('configauth', 'maasserver', None),
     ('createadmin', 'maasserver', None),
     ('changepassword', 'django.contrib.auth',
      "Change a MAAS user's password."),
