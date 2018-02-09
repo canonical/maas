@@ -238,6 +238,14 @@ class TestGetMACOrganization(MAASTestCase):
         organization = get_eui_organization(mock_eui)
         self.assertThat(organization, Is(None))
 
+    def test_get_eui_organization_returns_None_for_IndexError(self):
+        mock_eui = Mock()
+        mock_eui.oui = Mock()
+        mock_eui.oui.registration = Mock()
+        mock_eui.oui.registration.side_effect = IndexError
+        organization = get_eui_organization(mock_eui)
+        self.assertThat(organization, Is(None))
+
     def test_get_eui_organization_returns_none_for_invalid_mac(self):
         organization = get_eui_organization(EUI("FF:FF:b7:00:00:00"))
         self.assertThat(organization, Is(None))
