@@ -950,6 +950,9 @@ def get_eui_organization(eui):
         # the fact that netaddr assumes all the data is ASCII, sometimes
         # netaddr will raise an exception during this process.
         return None
+    except IndexError:
+        # See bug #1748031; this is another way netaddr can fail.
+        return None
     except NotRegisteredError:
         # This could happen for locally-administered MACs.
         return None
