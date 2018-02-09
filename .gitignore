@@ -54,7 +54,6 @@
 /TAGS
 /tags
 /xunit.*.xml
-dropin.cache
 yarn.lock
 __pycache__
 *.orig

@@ -131,12 +131,6 @@ parts:
     source: src/maasserver/static
     organize:
       '*': usr/share/maas/web/static/
-  twisted-plugins:
-    plugin: dump
-    source: twisted/plugins
-    organize:
-      maasrackd.py: usr/lib/python3/dist-packages/twisted/plugins/maasrackd.py
-      maasregiond.py: usr/lib/python3/dist-packages/twisted/plugins/maasregiond.py
   snap:
     plugin: dump
     source: snap

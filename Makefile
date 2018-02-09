@@ -54,8 +54,8 @@ build: \
   bin/maas-common \
   bin/maas-rack \
   bin/maas-region \
-  bin/twistd.rack \
-  bin/twistd.region \
+  bin/rackd \
+  bin/regiond \
   bin/test.cli \
   bin/test.rack \
   bin/test.region \
@@ -107,7 +107,7 @@ bin/test.parallel: \
 	$(buildout) install parallel-test
 	@touch --no-create $@
 
-bin/maas-region bin/twistd.region: \
+bin/maas-region bin/regiond: \
     bin/buildout buildout.cfg versions.cfg setup.py \
     $(js_enums) $(scss_output)
 	$(buildout) install region
@@ -149,7 +149,7 @@ bin/test.testing: \
 	$(buildout) install testing-test
 	@touch --no-create $@
 
-bin/maas-rack bin/twistd.rack bin/maas-common: \
+bin/maas-rack bin/rackd bin/maas-common: \
   bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install rack
 	@touch --no-create $@
@@ -313,7 +313,7 @@ lint-css:
 
 # Python lint checks are time-intensive, but flake8 now knows how to run
 # parallel jobs, and does so by default.
-lint-py: sources = setup.py src twisted
+lint-py: sources = setup.py src
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' -print0 \
@@ -323,7 +323,7 @@ lint-py: bin/flake8
 # be close to 10 but MAAS has many functions that are over that so we
 # start with a much higher number. Over time we can ratchet it down.
 lint-py-complexity: maximum=26
-lint-py-complexity: sources = setup.py src twisted
+lint-py-complexity: sources = setup.py src
 lint-py-complexity: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
@@ -331,7 +331,7 @@ lint-py-complexity: bin/flake8
 	  -print0 | xargs -r0 bin/flake8 --config=.flake8 --max-complexity=$(maximum)
 
 # Statically check imports against policy.
-lint-py-imports: sources = setup.py src twisted
+lint-py-imports: sources = setup.py src
 lint-py-imports:
 	@utilities/check-imports
 	@find $(sources) -name '*.py' \
@@ -351,7 +351,7 @@ lint-js:
 		| xargs -r0 -n20 -P4 $(pocketlint)
 
 # Apply automated formatting to all Python files.
-format: sources = $(wildcard *.py contrib/*.py) src twisted utilities etc
+format: sources = $(wildcard *.py contrib/*.py) src utilities etc
 format:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
 
@@ -405,7 +405,6 @@ clean: stop clean-failed
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
-	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development media/development.*
 	$(RM) $(js_enums) $(js_enums).tmp
 	$(RM) src/maasserver/data/templates.py
@@ -574,7 +573,7 @@ services/dns/@deps: bin/py
 
 services/database/@deps: bin/database
 
-services/rackd/@deps: bin/twistd.rack bin/maas-rack bin/maas-common
+services/rackd/@deps: bin/rackd bin/maas-rack bin/maas-common
 
 services/reloader/@deps:
 

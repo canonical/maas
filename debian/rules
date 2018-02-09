@@ -60,12 +60,6 @@ override_dh_auto_install:
 	install -m 644 $(CURDIR)/debian/maas-dhcp.apparmor \
 	    $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d/maas
 
-	# install python3 twisted plugins
-	set -ex; for python in $(PYTHON3); do \
-		dh_install twisted/plugins/maasregiond.py usr/lib/$$python/dist-packages/twisted/plugins -pmaas-region-api; \
-		dh_install twisted/plugins/maasrackd.py usr/lib/$$python/dist-packages/twisted/plugins -pmaas-rack-controller; \
-	done
-
 	dh_install --list-missing
 
 override_dh_auto_clean:

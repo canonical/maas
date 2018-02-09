@@ -213,6 +213,10 @@ RackControllerRule = Rule(
     Allow("formencode|formencode.**"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
+    # This is only allowed because of how `regiond` needs imports done
+    # after the reactor has been installed. The code handles those imports
+    # not being present when the machine is a rack controller only.
+    Allow("maasserver.plugin.*"),
     Allow("netaddr|netaddr.**"),
     Allow("netifaces|netifaces.*"),
     Allow("oauthlib.oauth1"),
