@@ -7,6 +7,7 @@ __all__ = []
 
 from crochet import wait_for
 from django.core.exceptions import ValidationError
+from maasserver.models import NodeMetadata
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -39,3 +40,11 @@ class TestNodeMetadata(MAASServerTestCase):
         entry2 = factory.make_NodeMetadata(
             node=entry1.node, key="key2", value="value")
         self.assertNotEqual(entry1, entry2)
+
+    def test_get(self):
+        node = factory.make_Node()
+        key = factory.make_name("key")
+        default = factory.make_name("default")
+        self.assertEqual(
+            default, NodeMetadata.objects.get(
+                node=node, key=key, default=default))

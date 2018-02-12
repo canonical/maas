@@ -5,6 +5,7 @@
 
 __all__ = [
     'NODE_INFO_SCRIPTS',
+    'parse_lshw_nic_info',
     'update_node_network_information',
     ]
 
@@ -27,6 +28,7 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
+from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     BLOCK_DEVICES_OUTPUT_NAME,
     CPUINFO_OUTPUT_NAME,
@@ -74,7 +76,7 @@ SWITCH_HARDWARE = [
 SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
-def _create_default_physical_interface(node, ifname, mac):
+def _create_default_physical_interface(node, ifname, mac, **kwargs):
     """Assigns the specified interface to the specified Node.
 
     Creates or updates a PhysicalInterface that corresponds to the given MAC.
@@ -90,9 +92,54 @@ def _create_default_physical_interface(node, ifname, mac):
     fabric = Fabric.objects.get_default_fabric()
     vlan = fabric.get_default_vlan()
     interface = PhysicalInterface.objects.create(
-        mac_address=mac, name=ifname, node=node, vlan=vlan)
+        mac_address=mac, name=ifname, node=node, vlan=vlan, **kwargs)
 
     return interface
+
+
+def parse_lshw_nic_info(node):
+    """Parse lshw output for additional NIC information."""
+    nics = {}
+    script_set = node.current_commissioning_script_set
+    # Should never happen but just incase...
+    if not script_set:
+        return nics
+    script_result = script_set.find_script_result(script_name=LSHW_OUTPUT_NAME)
+    if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
+        logger.error(
+            '%s: Unable to discover extended NIC information due to missing '
+            'passed output from %s' % (node.hostname, LSHW_OUTPUT_NAME))
+        return nics
+
+    try:
+        doc = etree.XML(script_result.stdout)
+    except etree.XMLSyntaxError:
+        logger.exception(
+            '%s: Unable to discover extended NIC information due to %s output '
+            'containing invalid XML' % (node.hostname, LSHW_OUTPUT_NAME))
+        return nics
+
+    evaluator = etree.XPathEvaluator(doc)
+
+    for e in evaluator('//node[@class="network"]'):
+        mac = e.find('serial')
+        if mac is None:
+            continue
+        else:
+            mac = mac.text
+        # Bridged devices may appear multiple times but only one element
+        # may contain firmware information.
+        if mac not in nics:
+            nics[mac] = {}
+        for field in ['vendor', 'product']:
+            value = get_xml_field_value(e.xpath, '//%s/text()' % field)
+            if value:
+                nics[mac][field] = value
+        firmware_version = get_xml_field_value(
+            e.xpath, "//configuration/setting[@id='firmware']/@value")
+        if firmware_version:
+            nics[mac]['firmware_version'] = firmware_version
+    return nics
 
 
 def update_node_network_information(node, output, exit_status):
@@ -119,6 +166,7 @@ def update_node_network_information(node, output, exit_status):
     # Get the MAC addresses of all connected interfaces.
     ip_addr_info = parse_ip_addr(output)
     current_interfaces = set()
+    extended_nic_info = parse_lshw_nic_info(node)
 
     for link in ip_addr_info.values():
         link_mac = link.get('mac')
@@ -131,9 +179,11 @@ def update_node_network_information(node, output, exit_status):
             continue
         else:
             ifname = link['name']
+            extra_info = extended_nic_info.get(link_mac, {})
             try:
                 interface = PhysicalInterface.objects.get(
                     mac_address=link_mac)
+                update_fields = []
                 if interface.node is not None and interface.node != node:
                     logger.warning(
                         "Interface with MAC %s moved from node %s to %s. "
@@ -142,16 +192,24 @@ def update_node_network_information(node, output, exit_status):
                          node.fqdn))
                     interface.delete()
                     interface = _create_default_physical_interface(
-                        node, ifname, link_mac)
+                        node, ifname, link_mac, **extra_info)
                 else:
                     # Interface already exists on this Node, so just update
-                    # the name.
+                    # the name and NIC info.
+                    update_fields = []
                     if interface.name != ifname:
                         interface.name = ifname
-                        interface.save(update_fields=['name', 'updated'])
+                        update_fields.append('name')
+                    for k, v in extra_info.items():
+                        if getattr(interface, k, v) != v:
+                            setattr(interface, k, v)
+                            update_fields.append(k)
+                    if update_fields:
+                        interface.save(
+                            update_fields=['updated', *update_fields])
             except PhysicalInterface.DoesNotExist:
                 interface = _create_default_physical_interface(
-                    node, ifname, link_mac)
+                    node, ifname, link_mac, **extra_info)
 
             current_interfaces.add(interface)
             ips = link.get('inet', []) + link.get('inet6', [])
@@ -192,14 +250,14 @@ def update_node_network_interface_tags(node, output, exit_status):
 
 
 def get_xml_field_value(evaluator, expression):
-    """Return an XML field or 'Unknown' if its not found."""
+    """Return an XML field or None if its not found."""
     field = evaluator(expression)
-    # Supermicro used 0123456789 as a place holder.
+    # Supermicro uses 0123456789 as a place holder.
     if (isinstance(field, list) and len(field) > 0 and
             '0123456789' not in field[0].lower()):
         return field[0]
     else:
-        return 'Unknown'
+        return None
 
 
 def update_hardware_details(node, output, exit_status):
@@ -241,23 +299,34 @@ def update_hardware_details(node, output, exit_status):
         node.memory = memory
         node.save(update_fields=['memory'])
 
-        # XXX ltrager 2018-2-1: This gathers the system vendor, product,
-        # version, and serial. Custom built machines and some Supermicro
-        # servers do not provide this information.
-        for key in ["product", "vendor", "version", "serial"]:
+        # This gathers the system vendor, product, version, and serial. Custom
+        # built machines and some Supermicro servers do not provide this
+        # information.
+        for key in ["vendor", "product", "version", "serial"]:
             value = get_xml_field_value(
                 evaluator, "//node[@class='system']/%s/text()" % key)
-            NodeMetadata.objects.update_or_create(
-                node=node, key="system_%s" % key,
-                defaults={"value": value})
+            if value:
+                NodeMetadata.objects.update_or_create(
+                    node=node, key="system_%s" % key,
+                    defaults={"value": value})
+
+        # Gather the mainboard information, all systems should have this.
+        for key in ["vendor", "product"]:
+            value = get_xml_field_value(
+                evaluator, "//node[@id='core']/%s/text()" % key)
+            if value:
+                NodeMetadata.objects.update_or_create(
+                    node=node, key="mainboard_%s" % key,
+                    defaults={"value": value})
 
         for key in ["version", "date"]:
             value = get_xml_field_value(
                 evaluator,
                 "//node[@id='core']/node[@id='firmware']/%s/text()" % key)
-            NodeMetadata.objects.update_or_create(
-                node=node, key="mainboard_firmware_%s" % key,
-                defaults={'value': value})
+            if value:
+                NodeMetadata.objects.update_or_create(
+                    node=node, key="mainboard_firmware_%s" % key,
+                    defaults={'value': value})
 
 
 def parse_cpuinfo(node, output, exit_status):
@@ -290,7 +359,7 @@ def parse_cpuinfo(node, output, exit_status):
         if m is not None:
             cpu_model = m.group('model_name')
         else:
-            cpu_model = 'Unknown'
+            cpu_model = None
         # Try the max MHz if available.
         m = re.search(
             '^CPU max MHz:\s+(?P<mhz>\d+)(\.\d+)?$', output, re.MULTILINE)
@@ -304,8 +373,9 @@ def parse_cpuinfo(node, output, exit_status):
             if m is not None:
                 node.cpu_speed = round(int(m.group('mhz')) / 100) * 100
 
-    NodeMetadata.objects.update_or_create(
-        node=node, key='cpu_model', defaults={'value': cpu_model})
+    if cpu_model:
+        NodeMetadata.objects.update_or_create(
+            node=node, key='cpu_model', defaults={'value': cpu_model})
 
     node.save(update_fields=['cpu_count', 'cpu_speed'])
 
@@ -429,7 +499,7 @@ def update_node_physical_block_devices(node, output, exit_status):
             id_path = block_info["PATH"]
         size = int(block_info["SIZE"])
         block_size = int(block_info["BLOCK_SIZE"])
-        firmware_version = block_info.get("FIRMWARE_VERSION", "Unknown")
+        firmware_version = block_info.get("FIRMWARE_VERSION")
         tags = get_tags_from_block_info(block_info)
 
         # First check if there is an existing device with the same name.
@@ -560,8 +630,11 @@ def add_switch(node, vendor, model):
     """Add Switch object representing the switch hardware."""
     switch, created = Switch.objects.get_or_create(node=node)
     logger.info("%s: detected as a switch." % node.hostname)
-    node.set_metadata(key=NODE_METADATA.VENDOR_NAME, value=vendor)
-    node.set_metadata(key=NODE_METADATA.PHYSICAL_MODEL_NAME, value=model)
+    NodeMetadata.objects.update_or_create(
+        node=node, key=NODE_METADATA.VENDOR_NAME, defaults={"value": vendor})
+    NodeMetadata.objects.update_or_create(
+        node=node, key=NODE_METADATA.PHYSICAL_MODEL_NAME,
+        defaults={"value": model})
     return switch
 
 
@@ -583,7 +656,8 @@ def update_node_fruid_metadata(node, output: bytes, exit_status):
     info = data.get("Information", {})
     for fruid_key, node_key in key_name_map.items():
         if fruid_key in info:
-            node.set_metadata(key=node_key, value=info[fruid_key])
+            NodeMetadata.objects.update_or_create(
+                node=node, key=node_key, defaults={"value": info[fruid_key]})
 
 
 def detect_switch_vendor_model(dmi_data):

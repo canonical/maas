@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -11,6 +11,7 @@ import email
 import os
 import random
 import re
+from textwrap import dedent
 from unittest.mock import (
     ANY,
     call,
@@ -81,7 +82,6 @@ from maasserver.models import (
     Machine,
     Node,
     node as node_module,
-    NodeMetadata,
     OwnerData,
     PhysicalInterface,
     RackController,
@@ -184,6 +184,7 @@ from provisioningserver.events import (
 )
 from provisioningserver.refresh.node_info_scripts import (
     IPADDR_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.rpc.cluster import (
@@ -1302,26 +1303,13 @@ class TestNode(MAASServerTestCase):
         factory.make_Switch(node=node)
         self.assertTrue(node.is_switch())
 
-    def test_set_metadata(self):
-        node = factory.make_Node()
-        node.set_metadata("foo", "bar")
-        self.assertEqual(
-            "bar", NodeMetadata.objects.get(node=node, key="foo").value)
-
-    def test_set_metadata_overwrite(self):
-        node = factory.make_Node()
-        node.set_metadata("foo", "bar")
-        node.set_metadata("foo", "baz")
-        self.assertEqual(
-            "baz", NodeMetadata.objects.get(node=node, key="foo").value)
-
     def test_get_metadata_empty(self):
         node = factory.make_Node()
         self.assertEqual({}, node.get_metadata())
 
     def test_get_metadata(self):
         node = factory.make_Node()
-        node.set_metadata("foo", "bar")
+        factory.make_NodeMetadata(node=node, key="foo", value="bar")
         self.assertEqual({"foo": "bar"}, node.get_metadata())
 
     def test_get_osystem_returns_default_osystem(self):
@@ -7156,8 +7144,8 @@ class UpdateInterfacesMixin:
             with_beaconing=True, passes=2))
     )
 
-    def create_empty_controller(self):
-        return factory.make_Node(node_type=self.node_type).as_self()
+    def create_empty_controller(self, **kwargs):
+        return factory.make_Node(node_type=self.node_type, **kwargs).as_self()
 
     def update_interfaces(self, controller, interfaces, topology_hints=None):
         for _ in range(self.passes):
@@ -7703,6 +7691,48 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 alloc_type=IPADDRESS_TYPE.DHCP,
                 ip=None,
             ))
+
+    def test__new_physical_with_multiple_dhcp_link_with_lshw(self):
+        controller = self.create_empty_controller(with_empty_script_sets=True)
+        mac_address = factory.make_mac_address()
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": mac_address,
+                "parents": [],
+                "links": [
+                    {
+                        "mode": "dhcp",
+                    },
+                    {
+                        "mode": "dhcp",
+                    },
+                ],
+                "enabled": True,
+            },
+        }
+        vendor = factory.make_name('vendor')
+        product = factory.make_name('product')
+        firmware_version = factory.make_name('firmware_version')
+        lshw = controller.current_commissioning_script_set.find_script_result(
+            script_name=LSHW_OUTPUT_NAME)
+        lshw_xml = dedent("""\
+        <node class="network">
+            <serial>%s</serial>
+            <vendor>%s</vendor>
+            <product>%s</product>
+            <configuration>
+                <setting id="firmware" value="%s" />
+            </configuration>
+        </node>
+        """ % (mac_address, vendor, product, firmware_version)).encode()
+        lshw.store_result(0, stdout=lshw_xml)
+
+        self.update_interfaces(controller, interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        self.assertEqual(vendor, eth0.vendor)
+        self.assertEqual(product, eth0.product)
+        self.assertEqual(firmware_version, eth0.firmware_version)
 
     def test__new_physical_with_existing_subnet_link_with_gateway(self):
         controller = self.create_empty_controller()

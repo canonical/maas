@@ -395,13 +395,15 @@ class NodeHandler(OperationsHandler):
             'system_version': 'Unknown',
             'system_serial': 'Unknown',
             'cpu_model': 'Unknown',
+            'mainboard_vendor': 'Unknown',
+            'mainboard_product': 'Unknown',
             'mainboard_firmware_version': 'Unknown',
             'mainboard_firmware_date': 'Unknown',
         }
         # Iterate over the NodeMetadata objects instead of filtering to
         # avoid another database call as the values have been prefetched.
         for nmd in node.nodemetadata_set.all():
-            # The NodeMetdata model may contains values that shouldn't be
+            # The NodeMetdata model may contain values that shouldn't be
             # shown here. Only set the ones we expect.
             if nmd.key in ret:
                 ret[nmd.key] = nmd.value

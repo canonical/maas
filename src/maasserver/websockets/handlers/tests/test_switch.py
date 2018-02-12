@@ -76,7 +76,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
             NODE_METADATA.PHYSICAL_MODEL_NAME: "Cloud-in-a-box"
         }
         for key, value in metadata.items():
-            machine.set_metadata(key, value)
+            factory.make_NodeMetadata(node=machine, key=key, value=value)
         factory.make_Switch(node=machine)
         self.assertItemsEqual(
             [metadata],

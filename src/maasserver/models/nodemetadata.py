@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """NodeMetadata objects."""
@@ -24,6 +24,16 @@ from provisioningserver.logger import get_maas_logger
 maaslog = get_maas_logger("nodemetadata")
 
 
+class NodeMetadataManager(Manager):
+
+    def get(self, *args, default=None, **kwargs):
+        """A modified version of Django's get which works like dict's get."""
+        try:
+            return super().get(*args, **kwargs)
+        except NodeMetadata.DoesNotExist:
+            return default
+
+
 class NodeMetadata(CleanSave, TimestampedModel):
     """A `NodeMetadata` represents a key/value storage for Node metadata.
 
@@ -43,7 +53,7 @@ class NodeMetadata(CleanSave, TimestampedModel):
         verbose_name_plural = "NodeMetadata"
         unique_together = ('node', 'key')
 
-    objects = Manager()
+    objects = NodeMetadataManager()
 
     node = ForeignKey(
         Node, null=False, blank=False, editable=False, on_delete=CASCADE)

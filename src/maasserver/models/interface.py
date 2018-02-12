@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for interfaces."""
@@ -548,6 +548,18 @@ class Interface(CleanSave, TimestampedModel):
     # when a machine is acquired. Once the machine is released the bridge
     # interface is removed.
     acquired = BooleanField(default=False, editable=False)
+
+    vendor = CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Vendor name of interface.")
+
+    product = CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Product name of the interface.")
+
+    firmware_version = CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Firmware version of the interface.")
 
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())

@@ -47,7 +47,7 @@ class PhysicalBlockDevice(BlockDevice):
         help_text="Serial number of block device.")
 
     firmware_version = CharField(
-        max_length=255, blank=True, null=False, default="Unknown",
+        max_length=255, blank=True, null=True,
         help_text="Firmware version of block device.")
 
     def clean(self):

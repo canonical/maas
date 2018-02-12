@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -1770,26 +1770,12 @@ class Node(CleanSave, TimestampedModel):
         from maasserver.models.switch import Switch
         return Switch.objects.filter(node=self).exists()
 
-    def set_metadata(self, key, value):
-        """Set (add or overwrite) Node metadata with `key` to `value`."""
-        # Avoid circular imports.
-        from maasserver.models.nodemetadata import NodeMetadata
-        try:
-            metadata_row = NodeMetadata.objects.get(node=self, key=key)
-            metadata_row.value = value
-            metadata_row.save()
-        except NodeMetadata.DoesNotExist:
-            metadata_row = NodeMetadata.objects.create(
-                node=self, key=key, value=value)
-        return metadata_row
-
     def get_metadata(self):
         """Return all Node metadata key, value pairs as a dict."""
-        # Avoid circular imports.
-        from maasserver.models.nodemetadata import NodeMetadata
-        metadata_entries = NodeMetadata.objects.filter(node=self).values(
-            'key', 'value')
-        return {item['key']: item['value'] for item in metadata_entries}
+        return {
+            item.key: item.value
+            for item in self.nodemetadata_set.all()
+        }
 
     def accept_enlistment(self, user):
         """Accept this node's (anonymous) enlistment.
@@ -4941,6 +4927,9 @@ class Controller(Node):
             VLAN. Otherwise, creates the interfaces but does not create any
             links or VLANs.
         """
+        # Avoid circular imports
+        from metadataserver.builtin_scripts.hooks import parse_lshw_nic_info
+
         # Get all of the current interfaces on this controller.
         current_interfaces = {
             interface.id: interface
@@ -4966,6 +4955,7 @@ class Controller(Node):
         # Cache the neighbour discovery settings, since they will be used for
         # every interface on this Controller.
         discovery_mode = Config.objects.get_network_discovery_config()
+        extended_nic_info = parse_lshw_nic_info(self)
         for name in flatten(process_order):
             settings = interfaces[name]
             # Note: the interface that comes back from this call may be None,
@@ -4978,6 +4968,14 @@ class Controller(Node):
                 interface.update_discovery_state(discovery_mode, settings)
             if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
+            extra_info = extended_nic_info.get(settings.get('mac_address'), {})
+            update_fields = []
+            for k, v in extra_info.items():
+                if getattr(interface, k, v) != v:
+                    setattr(interface, k, v)
+                    update_fields.append(k)
+            if update_fields:
+                interface.save(update_fields=update_fields)
 
         if not create_fabrics:
             # This could be an existing rack controller re-registering,

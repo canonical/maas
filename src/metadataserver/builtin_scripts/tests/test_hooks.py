@@ -51,6 +51,7 @@ from metadataserver.builtin_scripts.hooks import (
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import ScriptSet
 from netaddr import IPNetwork
+from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -736,6 +737,8 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         system_product = factory.make_name('system_product')
         system_version = factory.make_name('system_version')
         system_serial = factory.make_name('system_serial')
+        mainboard_vendor = factory.make_name('mainboard_vendor')
+        mainboard_product = factory.make_name('mainboard_product')
         mainboard_firmware_version = factory.make_name(
             'mainboard_firmware_version')
         mainboard_firmware_date = factory.make_name(
@@ -749,6 +752,8 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
             <serial>%s</serial>
           </node>
           <node id="core">
+            <vendor>%s</vendor>
+            <product>%s</product>
             <node id="firmware">
               <version>%s</version>
               <date>%s</date>
@@ -757,7 +762,8 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         </node>
         """ % (
             system_vendor, system_product, system_version, system_serial,
-            mainboard_firmware_version, mainboard_firmware_date)).encode()
+            mainboard_vendor, mainboard_product, mainboard_firmware_version,
+            mainboard_firmware_date)).encode()
         update_hardware_details(node, xmlbytes, 0)
 
         nmd = NodeMetadata.objects.get(node=node, key='system_vendor')
@@ -769,12 +775,34 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         nmd = NodeMetadata.objects.get(node=node, key='system_serial')
         self.assertEquals(system_serial, nmd.value)
 
+        nmd = NodeMetadata.objects.get(node=node, key='mainboard_vendor')
+        self.assertEquals(mainboard_vendor, nmd.value)
+        nmd = NodeMetadata.objects.get(node=node, key='mainboard_product')
+        self.assertEquals(mainboard_product, nmd.value)
         nmd = NodeMetadata.objects.get(
             node=node, key='mainboard_firmware_version')
         self.assertEquals(mainboard_firmware_version, nmd.value)
         nmd = NodeMetadata.objects.get(
             node=node, key='mainboard_firmware_date')
         self.assertEquals(mainboard_firmware_date, nmd.value)
+
+    def test_hardware_ignores_empty_or_missing_node_attribs(self):
+        node = factory.make_Node()
+        xmlbytes = dedent("""\
+        <node>
+          <node class="system">
+            <vendor></vendor>
+            <product>0123456789</product>
+          </node>
+        </node>
+        """).encode()
+        update_hardware_details(node, xmlbytes, 0)
+
+        for key in [
+                'system_vendor', 'system_product', 'system_version',
+                'system_serial', 'mainboard_Vendor', 'mainboard_product',
+                'mainboard_firmware_version', 'mainboard_firmware_date']:
+            self.assertIsNone(NodeMetadata.objects.get(node=node, key=key))
 
 
 class TestParseCPUInfo(MAASServerTestCase):
@@ -1429,6 +1457,88 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist(
             node_interfaces,
             expected_interfaces=self.EXPECTED_INTERFACES_XENIAL)
+
+    def test__adds_lshw_info(self):
+        """Test a node that has no previously known interfaces gets info from
+        lshw added.
+        """
+        node = factory.make_Node(with_empty_script_sets=True)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        vendor = factory.make_name('vendor')
+        product = factory.make_name('product')
+        firmware_version = factory.make_name('firmware_version')
+        lshw = node.current_commissioning_script_set.find_script_result(
+            script_name=LSHW_OUTPUT_NAME)
+        lshw_xml = dedent("""\
+        <node class="network">
+            <serial>00:00:00:00:00:01</serial>
+            <vendor>%s</vendor>
+            <product>%s</product>
+            <configuration>
+                <setting id="firmware" value="%s" />
+            </configuration>
+        </node>
+        """ % (vendor, product, firmware_version)).encode()
+        lshw.store_result(0, stdout=lshw_xml)
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+
+        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
+        self.assertEqual(vendor, nic.vendor)
+        self.assertEqual(product, nic.product)
+        self.assertEqual(firmware_version, nic.firmware_version)
+
+    def test__ignores_bad_lshw(self):
+        """Test a node that has no previous known interfaces ignores bad lshw
+        data.
+        """
+        node = factory.make_Node(with_empty_script_sets=True)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        lshw = node.current_commissioning_script_set.find_script_result(
+            script_name=LSHW_OUTPUT_NAME)
+        lshw.store_result(0, stdout=factory.make_string().encode())
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+
+        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
+        self.assertIsNone(nic.vendor)
+        self.assertIsNone(nic.product)
+        self.assertIsNone(nic.firmware_version)
+
+    def test__ignores_empty_or_missing_lshw_data(self):
+        """Test a node that has no previously known interfaces gets info from
+        lshw added.
+        """
+        node = factory.make_Node(with_empty_script_sets=True)
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        lshw = node.current_commissioning_script_set.find_script_result(
+            script_name=LSHW_OUTPUT_NAME)
+        lshw_xml = dedent("""\
+        <node class="network">
+            <serial>00:00:00:00:00:01</serial>
+            <vendor></vendor>
+            <configuration>
+                <setting id="firmware" />
+            </configuration>
+        </node>
+        """).encode()
+        lshw.store_result(0, stdout=lshw_xml)
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+
+        nic = Interface.objects.get(mac_address='00:00:00:00:00:01')
+        self.assertIsNone(nic.vendor)
+        self.assertIsNone(nic.product)
+        self.assertIsNone(nic.firmware_version)
 
     def test__one_mac_missing(self):
         """Test whether we correctly detach a NIC that no longer appears to be

@@ -270,6 +270,10 @@ class TestNodeAPI(APITestCase.ForUser):
         system_version = factory.make_NodeMetadata(machine, 'system_version')
         system_serial = factory.make_NodeMetadata(machine, 'system_serial')
         cpu_model = factory.make_NodeMetadata(machine, 'cpu_model')
+        mainboard_vendor = factory.make_NodeMetadata(
+            machine, 'mainboard_vendor')
+        mainboard_product = factory.make_NodeMetadata(
+            machine, 'mainboard_product')
         mainboard_firmware_version = factory.make_NodeMetadata(
             machine, 'mainboard_firmware_version')
         mainboard_firmware_date = factory.make_NodeMetadata(
@@ -286,6 +290,8 @@ class TestNodeAPI(APITestCase.ForUser):
             'system_version': system_version.value,
             'system_serial': system_serial.value,
             'cpu_model': cpu_model.value,
+            'mainboard_vendor': mainboard_vendor.value,
+            'mainboard_product': mainboard_product.value,
             'mainboard_firmware_version': mainboard_firmware_version.value,
             'mainboard_firmware_date': mainboard_firmware_date.value,
             }, parsed_result['hardware_info'])

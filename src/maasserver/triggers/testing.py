@@ -341,7 +341,8 @@ class TransactionalHelpersMixin:
 
     @transactional
     def set_node_metadata(self, node, key, value):
-        node.set_metadata(key, value)
+        NodeMetadata.objects.update_or_create(
+            node=node, key=key, defaults={"value": value})
 
     @transactional
     def delete_node_metadata(self, node, key):
