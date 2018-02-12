@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -37,8 +37,15 @@ DEFAULT_EVENT_LOG_LIMIT = 100
 def event_to_dict(event):
     """Convert `Event` to a dictionary."""
     return dict(
-        node=event.node.system_id,
-        hostname=event.node.hostname,
+        username=(
+            event.user.username
+            if event.user is not None else event.username),
+        node=(
+            event.node.system_id
+            if event.node is not None else None),
+        hostname=(
+            event.node.hostname
+            if event.node is not None else event.node_hostname),
         id=event.id,
         level=event.type.level_str,
         created=event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
@@ -133,19 +140,20 @@ class EventsHandler(OperationsHandler):
         # Check first for AUDIT level.
         if level == LOGGING_LEVELS[AUDIT]:
             events = Event.objects.filter(type__level=AUDIT)
-            events = (events.all().prefetch_related('type'))
         elif level in LOGGING_LEVELS_BY_NAME:
             events = Event.objects.filter(node__in=nodes)
             # Eliminate logs below the requested level.
             events = events.exclude(
                 type__level__lt=LOGGING_LEVELS_BY_NAME[level])
-            events = (
-                events.all()
-                .prefetch_related('type')
-                .prefetch_related('node'))
         elif level is not None:
             raise MAASAPIBadRequest(
                 "Unrecognised log level: %s" % level)
+
+        events = (
+            events.all()
+            .select_related('type')
+            .select_related('node')
+            .select_related('user'))
 
         # Filter events for owner.
         if owner is not None:
