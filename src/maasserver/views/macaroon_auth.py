@@ -10,15 +10,10 @@ __all__ = [
 
 from django.contrib.auth.models import User
 from maasserver.models import MAASAuthorizationBackend
-# XXX 0.0.6
 from macaroonbakery import (
     bakery,
     checkers,
 )
-
-
-if not hasattr(bakery, 'IdentityClient'):
-    import macaroonbakery as bakery  # 1.1.0
 
 
 class IDClient(bakery.IdentityClient):
