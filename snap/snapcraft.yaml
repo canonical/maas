@@ -91,7 +91,7 @@ parts:
       - python3-markupsafe
       - squid
       - tcpdump
-      - ubuntu-cloudimage-keyring
+      - ubuntu-keyring
     organize:
         lib/python3.*/site-packages/etc/*: etc
         lib/python3.*/site-packages/usr/bin/*: usr/bin
