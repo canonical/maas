@@ -65,6 +65,7 @@ __all__ = [
     'RegionRackRPCConnection',
     'ResourcePool',
     'Role',
+    'RootKey',
     'Service',
     'signals',
     'Space',
@@ -173,6 +174,7 @@ from maasserver.models.resourcepool import (
     ResourcePool,
 )
 from maasserver.models.role import Role
+from maasserver.models.rootkey import RootKey
 from maasserver.models.service import Service
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey

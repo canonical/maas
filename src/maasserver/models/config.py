@@ -105,6 +105,7 @@ def get_default_config():
         'subnet_ip_exhaustion_threshold_count': 16,
         # Authentication.
         'external_auth_url': '',
+        'macaroon_private_key': None,
     }
 
 

@@ -19,6 +19,7 @@ from itertools import (
     repeat,
 )
 import logging
+import os
 import random
 import time
 
@@ -97,6 +98,7 @@ from maasserver.models import (
     RegionRackRPCConnection,
     ResourcePool,
     Role,
+    RootKey,
     Service,
     Space,
     SSHKey,
@@ -2317,6 +2319,15 @@ class Factory(maastesting.factory.Factory):
         notification.save()
 
         return notification
+
+    def make_RootKey(self, material=None, expiration=None):
+        if material is None:
+            material = os.urandom(24)
+        if expiration is None:
+            expiration = datetime.now() + timedelta(days=1)
+        key = RootKey(material=material, expiration=expiration)
+        key.save()
+        return key
 
 
 # Create factory singleton.
