@@ -218,7 +218,8 @@ Depends: authbind,
          wget,
          ${misc:Depends},
          ${python3:Depends}
-Suggests: amtterm, ipmitool, libvirt-bin, nmap, wsmancli
+Recommends: libvirt-clients
+Suggests: amtterm, ipmitool, nmap, wsmancli
 Conflicts: tftpd-hpa
 Breaks: python-maas-provisioningserver,
         maas-cluster-controller

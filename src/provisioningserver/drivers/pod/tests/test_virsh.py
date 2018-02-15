@@ -1200,7 +1200,7 @@ class TestVirshPodDriver(MAASTestCase):
         mock.return_value = False
         driver = virsh_module.VirshPodDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(['libvirt-bin'], missing)
+        self.assertItemsEqual(['libvirt-clients'], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)

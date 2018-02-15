@@ -39,7 +39,7 @@ parts:
       - fence-agents            # Fence CDU
       - freeipmi-tools          # IPMI
       - ipmitool                # Moonshot
-      - libvirt-bin             # Virsh
+      - libvirt-clients         # Virsh
       - archdetect-deb
       - avahi-utils
       - bind9

@@ -121,8 +121,8 @@ ARCH_FIX_REVERSE = {
 }
 
 
-REQUIRED_PACKAGES = [["virsh", "libvirt-bin"],
-                     ["virt-login-shell", "libvirt-bin"]]
+REQUIRED_PACKAGES = [["virsh", "libvirt-clients"],
+                     ["virt-login-shell", "libvirt-clients"]]
 
 
 class VirshVMState:

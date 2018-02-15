@@ -19,8 +19,8 @@ from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.utils import shell
 
 
-REQUIRED_PACKAGES = [["virsh", "libvirt-bin"],
-                     ["virt-login-shell", "libvirt-bin"]]
+REQUIRED_PACKAGES = [["virsh", "libvirt-clients"],
+                     ["virt-login-shell", "libvirt-clients"]]
 
 
 def extract_virsh_parameters(context):
