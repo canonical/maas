@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Script`."""
@@ -28,6 +28,8 @@ from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.script import ScriptForm
 from metadataserver.models import Script
@@ -36,6 +38,7 @@ from metadataserver.models.script import (
     translate_script_type,
 )
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 class NodeScriptsHandler(OperationsHandler):
@@ -122,7 +125,7 @@ class NodeScriptsHandler(OperationsHandler):
                 data['script'] = script.read()
         form = ScriptForm(data=data)
         if form.is_valid():
-            return form.save()
+            return form.save(request=request, endpoint=ENDPOINT.API)
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -270,6 +273,10 @@ class NodeScriptHandler(OperationsHandler):
             raise MAASAPIValidationError("Unable to delete default script")
 
         script.delete()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+            description=(
+                "Script %s" % script.name + " deleted for '%(username)s'."))
         return rc.DELETED
 
     @admin_method
@@ -353,7 +360,7 @@ class NodeScriptHandler(OperationsHandler):
 
         form = ScriptForm(instance=script, data=data)
         if form.is_valid():
-            return form.save()
+            return form.save(request=request, endpoint=ENDPOINT.API)
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -408,6 +415,12 @@ class NodeScriptHandler(OperationsHandler):
                 script.script = value
                 script.save()
             script.script.revert(revert_to, gc_hook=gc_hook)
+            create_audit_event(
+                EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+                description=(
+                    "Script %s" % script.name +
+                    " reverted to revision %s" % revert_to +
+                    " for '%(username)s'."))
             return script
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])
@@ -434,6 +447,11 @@ class NodeScriptHandler(OperationsHandler):
 
         script.add_tag(tag)
         script.save()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+            description=(
+                "Script %s" % script.name + " had tag %s" % tag +
+                " added for '%(username)s'."))
         return script
 
     @admin_method
@@ -455,4 +473,9 @@ class NodeScriptHandler(OperationsHandler):
 
         script.remove_tag(tag)
         script.save()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+            description=(
+                "Script %s" % script.name + " had tag %s" % tag +
+                " removed for '%(username)s'."))
         return script

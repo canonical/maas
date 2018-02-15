@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver test scripts views."""
@@ -9,6 +9,7 @@ import http.client
 
 from django.conf import settings
 from lxml.html import fromstring
+from maasserver.models import Event
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -19,6 +20,7 @@ from maasserver.utils.django_urls import reverse
 from maasserver.views.settings_test_scripts import TEST_SCRIPTS_ANCHOR
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
+from provisioningserver.events import AUDIT
 from testtools.matchers import ContainsAll
 
 
@@ -85,6 +87,18 @@ class TestScriptDeleteTest(MAASServerTestCase):
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
             Script.objects.filter(id=script.id).exists())
+
+    def test_delete_script_creates_audit_event(self):
+        self.client_log_in(as_admin=True)
+        script = factory.make_Script()
+        script_name = script.name
+        delete_link = reverse('test-script-delete', args=[script.id])
+        self.client.post(delete_link, {'post': 'yes'})
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % script_name +
+            " deleted for '%(username)s'.")
 
 
 class TestScriptUploadTest(MAASServerTestCase):

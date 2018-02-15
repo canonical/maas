@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the script API."""
@@ -14,7 +14,10 @@ import http.client
 import json
 import random
 
-from maasserver.models import VersionedTextFile
+from maasserver.models import (
+    Event,
+    VersionedTextFile,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -27,6 +30,7 @@ from metadataserver.enum import (
     SCRIPT_TYPE_CHOICES,
 )
 from metadataserver.models import Script
+from provisioningserver.events import AUDIT
 from testtools.matchers import ContainsAll
 
 
@@ -341,6 +345,11 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.delete(self.get_script_uri(script))
         self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
         self.assertIsNone(reload_object(script))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % script.name +
+            " deleted for '%(username)s'.")
 
     def test_DELETE_admin_only(self):
         script = factory.make_Script()
@@ -535,6 +544,11 @@ class TestScriptAPI(APITestCase.ForUser):
                 VersionedTextFile.objects.get, id=i)
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % script.name +
+            " reverted to revision %s" % revert_to + " for '%(username)s'.")
 
     def test_revert_admin_only(self):
         script = factory.make_Script()
@@ -599,6 +613,12 @@ class TestScriptAPI(APITestCase.ForUser):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertIn(new_tag, reload_object(script).tags)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % script.name +
+            " had tag %s" % new_tag +
+            " added for '%(username)s'.")
 
     def test_add_tag_disallows_comma(self):
         self.become_admin()
@@ -640,6 +660,11 @@ class TestScriptAPI(APITestCase.ForUser):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertNotIn(removed_tag, reload_object(script).tags)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % script.name + " had tag %s" %
+            removed_tag + " removed for '%(username)s'.")
 
     def test_remove_tag_admin_only(self):
         script = factory.make_Script(destructive=False)

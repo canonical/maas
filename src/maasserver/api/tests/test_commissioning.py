@@ -1,4 +1,4 @@
-# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the commissioning-related portions of the MAAS API."""
@@ -13,6 +13,7 @@ import http.client
 from itertools import chain
 import random
 
+from maasserver.models import Event
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -27,6 +28,7 @@ from metadataserver.enum import (
 from metadataserver.fields import Bin
 from metadataserver.models import Script
 from piston3.utils import rc
+from provisioningserver.events import AUDIT
 
 
 class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
@@ -120,6 +122,11 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         self.client.delete(self.get_url(script.name))
         self.assertItemsEqual([], Script.objects.filter(name=script.name))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "Script %s" % script.name + " deleted for '%(username)s'.")
 
 
 class CommissioningScriptAPITest(APITestCase.ForUser):

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Script form."""
@@ -8,6 +8,7 @@ __all__ = [
     "CommissioningScriptForm",
     "ScriptForm",
 ]
+
 from datetime import timedelta
 import json
 from json import JSONDecodeError
@@ -22,6 +23,8 @@ from django.forms import (
     Form,
     ModelForm,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.fields import VersionedTextFileField
 from maasserver.forms.parameters import ParametersForm
 from maasserver.utils.forms import set_form_error
@@ -36,6 +39,7 @@ from metadataserver.models.script import (
     translate_script_parallel,
     translate_script_type,
 )
+from provisioningserver.events import EVENT_TYPES
 import yaml
 
 
@@ -432,6 +436,19 @@ class ScriptForm(ModelForm):
             self.instance.script.delete()
         return valid
 
+    def save(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        endpoint = kwargs.pop('endpoint', None)
+        script = super(ScriptForm, self).save(*args, **kwargs)
+
+        # Create audit event log if endpoint and request supplied.
+        if request is not None and endpoint is not None:
+            create_audit_event(
+                EVENT_TYPES.SETTINGS, endpoint, request, None,
+                description=(
+                    "Script %s" % script.name + " saved for '%(username)s'."))
+        return script
+
 
 class CommissioningScriptForm(Form):
     """CommissioningScriptForm for the UI
@@ -483,10 +500,12 @@ class CommissioningScriptForm(Form):
         else:
             return valid
 
-    def save(self, *args, **kwargs):
-        script = self._form.save(*args, **kwargs, commit=False)
-        # If the embedded script data did not set a script type set it to
-        # commissioning.
+    def save(self, request, *args, **kwargs):
+        script = self._form.save(
+            *args, **kwargs, commit=False,
+            request=request, endpoint=ENDPOINT.UI)
+        # If the embedded script data did not set a script type,
+        # set it to commissioning.
         if 'script_type' not in self._form.data:
             script.script_type = SCRIPT_TYPE.COMMISSIONING
         script.save()
@@ -542,10 +561,12 @@ class TestingScriptForm(Form):
         else:
             return valid
 
-    def save(self, *args, **kwargs):
-        script = self._form.save(*args, **kwargs, commit=False)
-        # If the embedded script data did not set a script type set it to
-        # test.
+    def save(self, request, *args, **kwargs):
+        script = self._form.save(
+            *args, **kwargs, commit=False,
+            request=request, endpoint=ENDPOINT.UI)
+        # If the embedded script data did not set a script type,
+        # set it to testing.
         if 'script_type' not in self._form.data:
             script.script_type = SCRIPT_TYPE.TESTING
         script.save()

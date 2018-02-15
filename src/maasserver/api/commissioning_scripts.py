@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `CommissioningScript`."""
@@ -14,6 +14,8 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_mandatory_param
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.script import ScriptForm
 from maasserver.utils.django_urls import reverse
@@ -21,6 +23,7 @@ from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import Script
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 def get_content_parameter(request):
@@ -85,7 +88,7 @@ class CommissioningScriptsHandler(OperationsHandler):
         data['script_type'] = SCRIPT_TYPE.COMMISSIONING
         form = ScriptForm(data=data)
         if form.is_valid():
-            script = form.save()
+            script = form.save(request)
             return {
                 'name': script.name,
                 'content': b64encode(script.script.data.encode()),
@@ -122,6 +125,9 @@ class CommissioningScriptHandler(OperationsHandler):
         """Delete a commissioning script."""
         script = get_object_or_404(Script, name=name)
         script.delete()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
+                "Script %s" % script.name + " deleted for '%(username)s'."))
         return rc.DELETED
 
     def update(self, request, name):
@@ -133,7 +139,7 @@ class CommissioningScriptHandler(OperationsHandler):
         data['script_type'] = SCRIPT_TYPE.COMMISSIONING
         form = ScriptForm(instance=script, data=data)
         if form.is_valid():
-            form.save()
+            form.save(request)
             return rc.ALL_OK
         else:
             return MAASAPIValidationError(form.errors)

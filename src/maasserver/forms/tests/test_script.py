@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Script form."""
@@ -10,12 +10,16 @@ import json
 import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpRequest
 from maasserver.forms.script import (
     CommissioningScriptForm,
     ScriptForm,
     TestingScriptForm,
 )
-from maasserver.models import VersionedTextFile
+from maasserver.models import (
+    Event,
+    VersionedTextFile,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.enum import (
@@ -27,6 +31,7 @@ from metadataserver.enum import (
     SCRIPT_TYPE_CHOICES,
 )
 from metadataserver.models import Script
+from provisioningserver.events import AUDIT
 from testtools.matchers import ContainsAll
 
 
@@ -897,6 +902,8 @@ class TestScriptForm(MAASServerTestCase):
 class TestCommissioningScriptForm(MAASServerTestCase):
 
     def test_creates_commissioning_script_from_embedded_yaml_name(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
         name = factory.make_name('name')
         content = factory.make_script_content({'name': name})
         uploaded_file = SimpleUploadedFile(
@@ -904,34 +911,54 @@ class TestCommissioningScriptForm(MAASServerTestCase):
             name=factory.make_name('filename'))
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+        form.save(request)
         new_script = Script.objects.get(name=name)
         self.assertEquals(SCRIPT_TYPE.COMMISSIONING, new_script.script_type)
         self.assertEquals(content, new_script.script.data)
 
     def test_creates_commissioning_script_from_filename(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
         content = factory.make_script_content()
         name = factory.make_name('filename')
         uploaded_file = SimpleUploadedFile(
             content=content.encode('ascii'), name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+        form.save(request)
         new_script = Script.objects.get(name=name)
         self.assertEquals(SCRIPT_TYPE.COMMISSIONING, new_script.script_type)
         self.assertEquals(content, new_script.script.data)
 
     def test_updates_commissioning_script(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         content = factory.make_script_content()
         uploaded_file = SimpleUploadedFile(
             content=content.encode('ascii'), name=script.name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+        form.save(request)
         new_script = Script.objects.get(name=script.name)
         self.assertEquals(SCRIPT_TYPE.COMMISSIONING, new_script.script_type)
         self.assertEquals(content, new_script.script.data)
+
+    def test_creates_audit_event(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
+        content = factory.make_script_content()
+        name = factory.make_name('filename')
+        uploaded_file = SimpleUploadedFile(
+            content=content.encode('ascii'), name=name)
+        form = CommissioningScriptForm(files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save(request)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % name +
+            " saved for '%(username)s'.")
 
     def test_propagates_script_form_errors(self):
         # Regression test for LP:1712422
@@ -951,6 +978,8 @@ class TestCommissioningScriptForm(MAASServerTestCase):
 class TestTestingScriptForm(MAASServerTestCase):
 
     def test_creates_test_script_from_embedded_yaml_name(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
         name = factory.make_name('name')
         content = factory.make_script_content({'name': name})
         uploaded_file = SimpleUploadedFile(
@@ -958,34 +987,55 @@ class TestTestingScriptForm(MAASServerTestCase):
             name=factory.make_name('filename'))
         form = TestingScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+        form.save(request)
         new_script = Script.objects.get(name=name)
         self.assertEquals(SCRIPT_TYPE.TESTING, new_script.script_type)
         self.assertEquals(content, new_script.script.data)
 
     def test_creates_test_script_from_filename(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
         content = factory.make_script_content()
         name = factory.make_name('filename')
         uploaded_file = SimpleUploadedFile(
             content=content.encode('ascii'), name=name)
         form = TestingScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+        form.save(request)
         new_script = Script.objects.get(name=name)
         self.assertEquals(SCRIPT_TYPE.TESTING, new_script.script_type)
         self.assertEquals(content, new_script.script.data)
 
     def test_updates_test_script(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         content = factory.make_script_content()
         uploaded_file = SimpleUploadedFile(
             content=content.encode('ascii'), name=script.name)
         form = TestingScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
+        form.save(request)
         new_script = Script.objects.get(name=script.name)
         self.assertEquals(SCRIPT_TYPE.TESTING, new_script.script_type)
         self.assertEquals(content, new_script.script.data)
+
+    def test_creates_audit_event(self):
+        request = HttpRequest()
+        request.user = factory.make_User()
+        content = factory.make_script_content()
+        name = factory.make_name('filename')
+        uploaded_file = SimpleUploadedFile(
+            content=content.encode('ascii'), name=name)
+        form = TestingScriptForm(files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save(request)
+        new_script = Script.objects.get(name=name)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Script %s" % new_script.name +
+            " saved for '%(username)s'.")
 
     def test_propagates_script_form_errors(self):
         # Regression test for LP:1712422
