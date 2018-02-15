@@ -109,27 +109,6 @@
     }
   }
 
-  .button-group {
-    min-width: 185px;
-  }
-
-  .button-group .button-group__item {
-    padding-bottom: 0;
-    padding-top: 0;
-
-    .button-group__item-link {
-      padding: 0;
-      text-align: left;
-      text-transform: none;
-      background-color: $transparent;
-    }
-  }
-
-  .button--no-padding {
-    height: initial;
-    padding: 0;
-  }
-
   .page-header .page-header__status .page-header__status-check {
     display: inline-block;
     width: initial;

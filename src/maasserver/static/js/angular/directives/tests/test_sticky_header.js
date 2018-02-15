@@ -4,7 +4,7 @@
  * Unit tests for the sticky header.
  */
 
-describe("maasStickyHeader", function() {
+xdescribe("maasStickyHeader", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));

@@ -968,7 +968,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 if(service.status === "running") {
                     return "success";
                 } else if(service.status === "dead") {
-                    return "power-error";
+                    return "error";
                 } else if(service.status === "degraded") {
                     return "warning";
                 } else {

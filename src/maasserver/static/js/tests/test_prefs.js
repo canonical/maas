@@ -60,7 +60,7 @@ suite.add(new Y.maas.testing.TestCase({
         var log = this.logIO(module);
         var widget = this.createWidget();
         widget.render();
-        var link = widget.get('srcNode').one('.delete-link');
+        var link = widget.get('srcNode').one('.js-delete-link');
         link.simulate('click');
         var request_info = log.pop();
         Y.Assert.areEqual(MAAS_config.uris.account_handler, request_info[0]);
@@ -73,7 +73,7 @@ suite.add(new Y.maas.testing.TestCase({
         var log = this.logIO(module);
         var widget = this.createWidget();
         widget.render();
-        var link = widget.get('srcNode').one('.delete-link');
+        var link = widget.get('srcNode').one('.js-delete-link');
         link.simulate('click');
         Y.Assert.areEqual(1, log.length);
     },
@@ -84,7 +84,7 @@ suite.add(new Y.maas.testing.TestCase({
         this.mockFailure('unused', module, 404);
         var widget = this.createWidget();
         widget.render();
-        var link = widget.get('srcNode').one('.delete-link');
+        var link = widget.get('srcNode').one('.js-delete-link');
         link.simulate('click');
         Y.Assert.areEqual(
             "The key has already been deleted.",
@@ -96,7 +96,7 @@ suite.add(new Y.maas.testing.TestCase({
         this.mockFailure('unused', module, 500);
         var widget = this.createWidget();
         widget.render();
-        var link = widget.get('srcNode').one('.delete-link');
+        var link = widget.get('srcNode').one('.js-delete-link');
         link.simulate('click');
         Y.Assert.areEqual(
             "Unable to delete the key.",
@@ -109,7 +109,7 @@ suite.add(new Y.maas.testing.TestCase({
         var log = this.mockSuccess('unused', module);
         var widget = this.createWidget();
         widget.render();
-        var link = widget.get('srcNode').one('.delete-link');
+        var link = widget.get('srcNode').one('.js-delete-link');
         Y.Assert.isNotNull(Y.one('#tokenkey1'));
         link.simulate('click');
         Y.Assert.areEqual(1, log.length);
@@ -123,7 +123,7 @@ suite.add(new Y.maas.testing.TestCase({
         var widget = this.createWidget();
         this.patchWidgetConfirm(widget, false);
         widget.render();
-        var link = widget.get('srcNode').one('.delete-link');
+        var link = widget.get('srcNode').one('.js-delete-link');
         Y.Assert.isNotNull(Y.one('#tokenkey1'));
         link.simulate('click');
         Y.Assert.isNotNull(Y.one('#tokenkey1'));

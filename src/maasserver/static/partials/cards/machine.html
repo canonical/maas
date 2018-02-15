@@ -1,15 +1,15 @@
-<header>
-  <h3>Overview</h3>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">
-    <span data-ng-if="node.locked" class="icon icon--locked"></span>
+<header class="p-card__header">
+  <h2 class="p-heading--four">Overview</h2>
+  <h3 class="p-heading--three">
+    <i class="p-icon--locked">Locked:</i> 
     {$ node.status $}
-    <span ng-if="node.show_os_info" class="u-text--subtle">(<span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>)</span>
-    <p data-ng-if="showFailedTestWarning()" class="u-text--subtle"><i class="icon icon--warning"></i> Machine has failed tests; use with caution!</p>
-  </h2>
+    <span ng-if="node.show_os_info">(<span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>)</span>
+  </h3>
+  <p data-ng-if="showFailedTestWarning()"><i class="p-icon--warning">Warning:</i> Machine has failed tests; use with caution!</p>
 </header>
 <div class="u-padding--bottom">
   <p data-ng-if="node.owner">Owner: {$ node.owner $}</p>
-  <p data-ng-if="!node.owner">Owner: <span class="u-text--subtle">(unassigned)</span></p>
+  <p data-ng-if="!node.owner">Owner: <span>(unassigned)</span></p>
   <p data-ng-if="node.show_os_info && isUbuntuOS() && !isController">Kernel: {$ node.hwe_kernel $}</p>
   <p data-ng-if="node.show_os_info && node.third_party_driver">Third Party Driver: {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"</p>
   <p>Domain: {$ header.domain.selected.name $}</p>
@@ -22,6 +22,6 @@
   <p>Mainboard firmware date: {$ node.metadata.mainboard_firmware_date || "Unknown" $}</p>
   <p data-ng-if="node.power_type">Power type: {$ node.power_type $}</p>
 </div>
-<div class="action-card__position-bottom">
+<footer class="p-card__footer">
   <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
-</div>
+</footer>

@@ -18,80 +18,64 @@
 
     {% include "maasserver/css-conf.html" %}
 </head>
-<body data-ng-init="site = '{{ global_options.site_name }}'" data-maas-version-reloader window-width>
-    <header class="banner global">
-        <nav class="nav-primary">
-            <span class="accessibility-aid">
-                <a href="#main-content">Jump to main content</a>
-            </span>
-            <div class="logo">
-                <a data-ng-class="{ active: page === 'dashboard' }" href="#/dashboard" title="MAAS logo" aria-label="Dashboard">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="25.2" viewBox="545.3 412.6 100 25.2"><title>MAAS logo</title><path fill="#E95420" d="M557.9 412.6c-7 0-12.6 5.7-12.6 12.6 0 7 5.7 12.6 12.6 12.6 7 0 12.6-5.7 12.6-12.6 0-7-5.6-12.6-12.6-12.6z"/><g fill="#FFF"><path d="M563.8 419.2h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.7c.1-.3-.2-.5-.5-.5zM563.8 422.6h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.7c.1-.3-.2-.5-.5-.5zM563.8 426h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.7c.1-.2-.2-.5-.5-.5zM563.8 429.4h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.6c.1-.3-.2-.6-.5-.6z"/></g><g fill="#FFF"><path d="M587.1 431.3c-.2-.4-.4-1-.7-1.7-.3-.7-.7-1.5-1.1-2.3-.4-.8-.8-1.7-1.2-2.5-.4-.9-.8-1.7-1.2-2.5l-1-2-.6-1.2c-.2 2.1-.4 4.4-.5 6.9-.1 2.5-.2 5.1-.3 7.8h-1.7c.2-3.2.3-6.3.5-9.2s.4-5.8.7-8.4h1.5c.5.9 1.1 1.8 1.6 2.9.6 1.1 1.2 2.3 1.7 3.5.6 1.2 1.1 2.4 1.7 3.5s1 2.2 1.4 3.1c.4-.9.9-2 1.4-3.1.5-1.2 1.1-2.3 1.7-3.5.6-1.2 1.1-2.4 1.7-3.5.6-1.1 1.1-2.1 1.6-2.9h1.5c.3 2.7.5 5.5.7 8.4s.4 6 .5 9.2h-1.8c-.1-2.7-.2-5.3-.3-7.8-.1-2.5-.3-4.8-.5-6.9l-.6 1.2-1 2c-.4.8-.8 1.6-1.2 2.5-.4.9-.8 1.7-1.2 2.5-.4.8-.7 1.6-1.1 2.3-.3.7-.6 1.3-.7 1.7h-1.5zM613.1 433.9c-.3-.9-.6-1.7-.9-2.5-.3-.8-.6-1.6-.8-2.3h-8.6c-.3.8-.6 1.5-.9 2.3-.3.8-.6 1.6-.9 2.5h-1.8c.7-1.8 1.3-3.6 1.9-5.1.6-1.6 1.2-3.1 1.8-4.5.6-1.4 1.1-2.8 1.7-4.1l1.8-3.9h1.5l1.8 3.9c.6 1.3 1.1 2.7 1.7 4.1.6 1.4 1.2 2.9 1.7 4.5.6 1.6 1.2 3.3 1.9 5.1h-1.9zm-6-15.7c-.6 1.5-1.3 3-1.9 4.5-.6 1.5-1.2 3.1-1.9 4.9h7.5c-.7-1.8-1.3-3.4-1.9-4.9-.6-1.6-1.2-3.1-1.8-4.5zM630.4 433.9c-.3-.9-.6-1.7-.9-2.5-.3-.8-.6-1.6-.8-2.3H620c-.3.8-.6 1.5-.9 2.3-.3.8-.6 1.6-.9 2.5h-1.8c.7-1.8 1.3-3.6 1.9-5.1.6-1.6 1.2-3.1 1.8-4.5.6-1.4 1.1-2.8 1.7-4.1l1.8-3.9h1.5l1.8 3.9c.6 1.3 1.1 2.7 1.7 4.1s1.2 2.9 1.7 4.5c.6 1.6 1.2 3.3 1.9 5.1h-1.8zm-6.1-15.7c-.6 1.5-1.3 3-1.9 4.5-.6 1.5-1.2 3.1-1.9 4.9h7.5c-.7-1.8-1.3-3.4-1.9-4.9-.5-1.6-1.1-3.1-1.8-4.5zM639.1 432.7c1.4 0 2.4-.3 3.2-.8.8-.5 1.1-1.3 1.1-2.4 0-.6-.1-1.2-.4-1.6-.2-.4-.6-.8-1-1.1s-.9-.6-1.4-.8c-.5-.2-1.1-.4-1.7-.7-.7-.3-1.4-.6-2-.9-.6-.3-1.1-.6-1.5-1-.4-.4-.7-.8-.9-1.3-.2-.5-.3-1.1-.3-1.7 0-1.5.5-2.7 1.5-3.4s2.4-1.2 4.2-1.2c.5 0 .9 0 1.4.1s.9.2 1.3.3c.4.1.8.2 1.1.4.3.1.6.3.8.4l-.6 1.5c-.5-.3-1.1-.6-1.8-.8s-1.5-.3-2.3-.3c-.6 0-1.1.1-1.5.2-.5.1-.9.3-1.2.5s-.6.6-.8.9c-.2.4-.3.8-.3 1.4 0 .5.1 1 .3 1.4.2.4.5.7.9 1 .4.3.8.5 1.3.7.5.2 1 .5 1.6.7.7.3 1.4.6 2 .9.6.3 1.2.6 1.6 1 .5.4.8.9 1.1 1.4.3.6.4 1.2.4 2.1 0 1.6-.6 2.8-1.7 3.6s-2.6 1.2-4.5 1.2c-.7 0-1.3 0-1.9-.1s-1.1-.2-1.5-.3c-.4-.1-.8-.3-1.1-.4-.3-.1-.5-.3-.7-.4l.6-1.5c.2.1.4.2.7.4.3.1.6.3 1 .4.4.1.8.2 1.3.3.6-.1 1.1-.1 1.7-.1z"/></g></svg>
+<body class="has-sticky-footer" data-ng-init="site = '{{ global_options.site_name }}'" data-maas-version-reloader window-width>
+    <header id="navigation" class="p-navigation p-dropdown">
+        <div class="p-navigation__banner">
+            <div class="p-navigation__logo">
+                <a href="{% url 'index' %}#/dashboard" class="p-navigation__link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="25.2" viewBox="545.3 412.6 100 25.2" alt="" class="p-navigation__image"><title>MAAS logo</title><path fill="#E95420" d="M557.9 412.6c-7 0-12.6 5.7-12.6 12.6 0 7 5.7 12.6 12.6 12.6 7 0 12.6-5.7 12.6-12.6 0-7-5.6-12.6-12.6-12.6z"/><g fill="#FFF"><path d="M563.8 419.2h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.7c.1-.3-.2-.5-.5-.5zM563.8 422.6h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.7c.1-.3-.2-.5-.5-.5zM563.8 426h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.7c.1-.2-.2-.5-.5-.5zM563.8 429.4h-11.9c-.3 0-.5.2-.5.5v.7c0 .3.2.5.5.5h11.9c.3 0 .5-.2.5-.5v-.6c.1-.3-.2-.6-.5-.6z"/></g><g fill="#FFF"><path d="M587.1 431.3c-.2-.4-.4-1-.7-1.7-.3-.7-.7-1.5-1.1-2.3-.4-.8-.8-1.7-1.2-2.5-.4-.9-.8-1.7-1.2-2.5l-1-2-.6-1.2c-.2 2.1-.4 4.4-.5 6.9-.1 2.5-.2 5.1-.3 7.8h-1.7c.2-3.2.3-6.3.5-9.2s.4-5.8.7-8.4h1.5c.5.9 1.1 1.8 1.6 2.9.6 1.1 1.2 2.3 1.7 3.5.6 1.2 1.1 2.4 1.7 3.5s1 2.2 1.4 3.1c.4-.9.9-2 1.4-3.1.5-1.2 1.1-2.3 1.7-3.5.6-1.2 1.1-2.4 1.7-3.5.6-1.1 1.1-2.1 1.6-2.9h1.5c.3 2.7.5 5.5.7 8.4s.4 6 .5 9.2h-1.8c-.1-2.7-.2-5.3-.3-7.8-.1-2.5-.3-4.8-.5-6.9l-.6 1.2-1 2c-.4.8-.8 1.6-1.2 2.5-.4.9-.8 1.7-1.2 2.5-.4.8-.7 1.6-1.1 2.3-.3.7-.6 1.3-.7 1.7h-1.5zM613.1 433.9c-.3-.9-.6-1.7-.9-2.5-.3-.8-.6-1.6-.8-2.3h-8.6c-.3.8-.6 1.5-.9 2.3-.3.8-.6 1.6-.9 2.5h-1.8c.7-1.8 1.3-3.6 1.9-5.1.6-1.6 1.2-3.1 1.8-4.5.6-1.4 1.1-2.8 1.7-4.1l1.8-3.9h1.5l1.8 3.9c.6 1.3 1.1 2.7 1.7 4.1.6 1.4 1.2 2.9 1.7 4.5.6 1.6 1.2 3.3 1.9 5.1h-1.9zm-6-15.7c-.6 1.5-1.3 3-1.9 4.5-.6 1.5-1.2 3.1-1.9 4.9h7.5c-.7-1.8-1.3-3.4-1.9-4.9-.6-1.6-1.2-3.1-1.8-4.5zM630.4 433.9c-.3-.9-.6-1.7-.9-2.5-.3-.8-.6-1.6-.8-2.3H620c-.3.8-.6 1.5-.9 2.3-.3.8-.6 1.6-.9 2.5h-1.8c.7-1.8 1.3-3.6 1.9-5.1.6-1.6 1.2-3.1 1.8-4.5.6-1.4 1.1-2.8 1.7-4.1l1.8-3.9h1.5l1.8 3.9c.6 1.3 1.1 2.7 1.7 4.1s1.2 2.9 1.7 4.5c.6 1.6 1.2 3.3 1.9 5.1h-1.8zm-6.1-15.7c-.6 1.5-1.3 3-1.9 4.5-.6 1.5-1.2 3.1-1.9 4.9h7.5c-.7-1.8-1.3-3.4-1.9-4.9-.5-1.6-1.1-3.1-1.8-4.5zM639.1 432.7c1.4 0 2.4-.3 3.2-.8.8-.5 1.1-1.3 1.1-2.4 0-.6-.1-1.2-.4-1.6-.2-.4-.6-.8-1-1.1s-.9-.6-1.4-.8c-.5-.2-1.1-.4-1.7-.7-.7-.3-1.4-.6-2-.9-.6-.3-1.1-.6-1.5-1-.4-.4-.7-.8-.9-1.3-.2-.5-.3-1.1-.3-1.7 0-1.5.5-2.7 1.5-3.4s2.4-1.2 4.2-1.2c.5 0 .9 0 1.4.1s.9.2 1.3.3c.4.1.8.2 1.1.4.3.1.6.3.8.4l-.6 1.5c-.5-.3-1.1-.6-1.8-.8s-1.5-.3-2.3-.3c-.6 0-1.1.1-1.5.2-.5.1-.9.3-1.2.5s-.6.6-.8.9c-.2.4-.3.8-.3 1.4 0 .5.1 1 .3 1.4.2.4.5.7.9 1 .4.3.8.5 1.3.7.5.2 1 .5 1.6.7.7.3 1.4.6 2 .9.6.3 1.2.6 1.6 1 .5.4.8.9 1.1 1.4.3.6.4 1.2.4 2.1 0 1.6-.6 2.8-1.7 3.6s-2.6 1.2-4.5 1.2c-.7 0-1.3 0-1.9-.1s-1.1-.2-1.5-.3c-.4-.1-.8-.3-1.1-.4-.3-.1-.5-.3-.7-.4l.6-1.5c.2.1.4.2.7.4.3.1.6.3 1 .4.4.1.8.2 1.3.3.6-.1 1.1-.1 1.7-.1z"/></g></svg>
                 </a>
             </div>
-            <div class="nav" data-ng-class="{'active':active }" data-ng-click="active= !active" id="navigation" role="menubar">
-                <button
-                  class="nav-toggle"
-                  aria-controls="menu"
-                  aria-label="Toggle navigation"
-                  title="menu"
-                  data-ng-if="windowWidth < 769">
-                </button>
-                <ul id="menu" role="menu" data-ng-if="page !== 'intro'" aria-labelledby="navigation">
-                    {% if user.is_authenticated %}
-                    <li role="menuitem">
-                        <a data-ng-class="{ active: page === 'nodes' }" href="#/nodes">Nodes</a>
-                    </li>
-                    <li role="menuitem">
-                        <a data-ng-class="{ active: page === 'pods' }" href="#/pods">Pods</a>
-                    </li>
-                    <li role="menuitem">
-                        <a data-ng-class="{ active: page === 'images' }" href="#/images">Images</a>
-                    </li>
-                    <li role="menuitem">
-                        <a data-ng-class="{ active: page === 'domains' }" href="#/domains">DNS</a>
-                    </li>
-                    <li role="menuitem">
-                        <a data-ng-class="{ active: page === 'zones' }" href="#/zones">Zones</a>
-                    </li>
-                    <li role="menuitem">
-                        <a data-ng-class="{ active: page === 'networks' }" href="{% url 'index' %}#/networks?by=fabric">Subnets</a>
-                    </li>
-
-                    {% if user.is_superuser %}
-                    <li>
-                        <a data-ng-class="{ active: page == 'settings' }" href="{% url 'settings' %}">Settings</a>
-                    </li>
-                    {% endif %}
-                    {% endif %}
-                </ul>
-                {% if user.is_authenticated %}
-                <ul class="u-float--right">
-                    <li data-ng-if="page === 'intro'">
-                        <a href data-ng-click="skip()">Skip</a>
-                    </li>
-                    <li id="user-link">
-                        <a href="#" class="u-display--hidden">
-                            {{ user.username }}
-                        </a>
-                        <ul class="nav" id="user-options">
-                            <li>
-                                <a data-ng-class="{ active: page == 'account' }" href="{% url 'prefs' %}">{{ user.username }}</a>
-                            </li>
-                            <li>
-                                <a href="{% url 'logout' %}">Logout</a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
+            <a class="p-navigation__toggle--open p-dropdown__toggle" title="open menu">Open menu</a>
+            <a class="p-navigation__toggle--close p-dropdown__toggle" title="close menu">Close menu</a>
+        </div>
+        <nav class="p-navigation__nav p-dropdown__menu" role="menubar">
+            <span class="u-off-screen">
+                <a href="#main-content">Jump to main content</a>
+            </span>
+            <ul class="p-navigation__links" role="menu" data-ng-if="page !== 'intro'">
+                {% if user.is_authenticated and user_completed_intro %}
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page === 'nodes' }">
+                    <a class="{% block nav-active-node-list %}{% endblock %} p-dropdown__item" href="{% url 'index' %}#/nodes">Nodes</a>
+                </li>
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page === 'pods' }">
+                    <a class="{% block nav-active-pod-list %}{% endblock %} p-dropdown__item" href="{% url 'index' %}#/pods">Pods</a>
+                </li>
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page === 'images' }">
+                    <a class="{% block nav-active-images %}{% endblock %} p-dropdown__item" href="{% url 'index' %}#/images">Images</a>
+                </li>
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page === 'domains' }">
+                    <a class="{% block nav-active-domains-list %}{% endblock %} p-dropdown__item" href="{% url 'index' %}#/domains">DNS</a>
+                </li>
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page === 'zones' }">
+                    <a class="{% block nav-active-zone-list %}{% endblock %} p-dropdown__item" href="{% url 'index' %}#/zones">Zones</a>
+                </li>
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page === 'networks' }">
+                    <a class="{% block nav-active-network-list %}{% endblock %} p-dropdown__item" href="{% url 'index' %}#/networks?by=fabric">Subnets</a>
+                </li>
+                {% if user.is_superuser %}
+                <li class="p-navigation__link" role="menuitem" data-ng-class="{ 'is-selected': page == 'settings' }">
+                    <a class="{% block nav-active-settings %}{% endblock %} p-dropdown__item" href="{% url 'settings' %}">Settings</a>
+                </li>
                 {% endif %}
-                <p class="nav__name">
-                  {% include "maasserver/site_title.html" %}
-                </p>
-            </div>
+                <li class="p-navigation__link" role="menuitem">
+                    <a class="{% block nav-active-prefs %}{% endblock %} p-dropdown__item" role="menuitem" href="{% url 'prefs' %}">{{ user.username }}</a>
+                </li>
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <ul class="p-navigation__links--right" role="menu" id="user-options">
+                <li data-ng-if="page === 'intro'" class="p-navigation__link" >
+                    <a href data-ng-click="skip()">Skip</a>
+                </li>
+                <li class="p-navigation__link" role="menuitem">
+                    <a class="{% block nav-active-logout %}{% endblock %} p-dropdown__item" href="{% url 'logout' %}">Logout</a>
+                </li>
+            </ul>
+            {% endif %}
         </nav>
     </header>
-    <main class="wrapper" id="main-content" data-maas-error-overlay>
+    <main class="u-no-margin--top" id="main-content" data-maas-error-overlay>
         {% if user.is_authenticated %}
         <div class="wrapper--inner">
             <div class="ng-hide">
@@ -105,37 +89,11 @@
             </div>
         </div>
         {% endif %}
-        <div data-ng-view></div>
+        <div class="u-no-margin--top" data-ng-view></div>
         <div class="push"></div>
     </main>
-    <footer class="p-footer" data-maas-error-toggle>
-        <div class="wrapper--inner clearfix">
-            <div class="twelve-col">
-                <div class="eight-col">
-                    {% block footer-copyright %}
-                    <p>
-                      <small>MAAS name: <strong>{% include "maasserver/site_title.html" %}</strong></small>
-                    </p>
-                    <p class="eight-col u-clearfix u-margin--none">
-                      <span class="u-display--inline-block u-float--left u-margin--none u-margin--right">
-                        <small>MAAS version: <strong>{{version}}</strong></small>
-                      </span>
-                      <span class="six-col last-col">
-                        <small class="u-display--inline-block"><a href="http://docs.ubuntu.com/maas/{{doc_version}}/en/release-notes">View release notes</a></small>&nbsp;&nbsp;&middot;&nbsp;
-                        <small class="u-display--inline-block"><a href="https://docs.ubuntu.com/maas/{{doc_version}}/">View documentation</a></small>
-                      </span>
-                    </p>
-                    <p>
-                        <small>&copy; {% now "Y" %} Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.</small>
-                    </p>
-                    {% endblock %}
-                </div>
-                <div class="four-col last-col">
-                    <svg role="img" aria-label="Ubuntu logo" class="p-footer__logo" xmlns="http://www.w3.org/2000/svg" width="107.208" height="24.076" viewBox="70.867 73.051 107.208 24.076"><title>Ubuntu logo</title><circle fill="#DD4814" cx="171.657" cy="79.468" r="6.417"/><path fill="#FFF" d="M167.656 78.697c-.426 0-.77.345-.77.77 0 .425.344.772.77.772.427 0 .77-.347.77-.772 0-.427-.344-.77-.77-.77zm5.505 3.504c-.37.212-.494.684-.282 1.052.212.37.684.496 1.053.283s.496-.684.283-1.053-.684-.495-1.052-.28zm-3.83-2.732c0-.762.378-1.436.957-1.843l-.562-.944c-.675.452-1.178 1.14-1.386 1.948.244.2.398.5.398.84 0 .34-.154.64-.4.84.21.807.712 1.496 1.387 1.946l.562-.944c-.578-.408-.956-1.08-.956-1.842zm2.252-2.253c1.177 0 2.142.902 2.243 2.054l1.1-.02c-.056-.848-.426-1.61-.997-2.17-.293.11-.632.094-.924-.076-.293-.17-.477-.454-.528-.764-.285-.078-.584-.122-.895-.122-.532 0-1.036.126-1.482.347l.535.96c.29-.135.61-.21.95-.21zm0 4.503c-.338 0-.66-.074-.95-.21l-.534.96c.447.224.95.347 1.483.347.31 0 .61-.042.896-.12.05-.31.234-.596.528-.766.293-.17.63-.186.924-.075.57-.56.94-1.323.996-2.173l-1.1-.015c-.1 1.15-1.065 2.05-2.242 2.05zm1.58-4.984c.367.212.838.086 1.05-.283.214-.366.088-.838-.28-1.05-.37-.213-.84-.087-1.054.28-.212.37-.087.84.283 1.054z"/><g fill="#333"><path d="M83.7 96.303c-.653.163-1.513.336-2.582.52-1.07.182-2.308.274-3.713.274-1.222 0-2.25-.178-3.086-.535-.836-.355-1.51-.86-2.018-1.512-.51-.65-.875-1.42-1.1-2.307-.225-.886-.336-1.87-.336-2.948v-8.922h2.842v8.31c0 1.937.305 3.32.917 4.155.61.837 1.64 1.254 3.085 1.254.306 0 .62-.01.947-.03.325-.022.632-.047.917-.077.285-.03.544-.062.78-.092.233-.03.4-.065.503-.107V80.873H83.7v15.43zM90.635 81.575c.346-.223.872-.458 1.574-.702.702-.244 1.51-.366 2.428-.366 1.14 0 2.154.204 3.04.61.887.408 1.636.978 2.247 1.71.61.734 1.074 1.61 1.39 2.627.315 1.02.474 2.14.474 3.362 0 1.283-.19 2.44-.566 3.467-.377 1.03-.912 1.9-1.604 2.612-.693.713-1.528 1.263-2.506 1.65-.977.387-2.078.58-3.3.58-1.324 0-2.495-.09-3.513-.275-1.017-.183-1.853-.366-2.504-.55V73.54l2.84-.49v8.525zm0 12.71c.286.082.688.16 1.207.23.52.07 1.166.106 1.94.106 1.528 0 2.75-.503 3.667-1.51.916-1.01 1.374-2.44 1.374-4.293 0-.814-.082-1.578-.244-2.292-.164-.712-.43-1.33-.795-1.848-.366-.52-.84-.927-1.42-1.223-.58-.295-1.28-.443-2.093-.443-.775 0-1.487.134-2.138.398-.653.265-1.152.54-1.498.826v10.05zM117.643 96.303c-.652.163-1.513.336-2.58.52-1.07.182-2.31.274-3.713.274-1.222 0-2.25-.178-3.086-.535-.835-.355-1.507-.86-2.016-1.512-.51-.65-.875-1.42-1.1-2.307-.225-.886-.337-1.87-.337-2.948v-8.922h2.842v8.31c0 1.937.307 3.32.917 4.155.61.837 1.64 1.254 3.084 1.254.307 0 .622-.01.947-.03.327-.022.632-.047.918-.077.285-.03.545-.062.78-.092.234-.03.402-.065.503-.107V80.873h2.843v15.43zM121.737 81.332c.65-.164 1.516-.336 2.597-.52 1.08-.183 2.32-.275 3.727-.275 1.264 0 2.313.178 3.147.535.835.356 1.502.855 2.002 1.497.497.64.85 1.41 1.053 2.305.203.897.306 1.885.306 2.964v8.92h-2.843v-8.31c0-.977-.066-1.812-.198-2.504-.134-.694-.353-1.253-.658-1.68-.306-.43-.713-.74-1.222-.933-.508-.194-1.14-.29-1.894-.29-.307 0-.622.01-.947.03-.328.02-.638.045-.933.077-.296.03-.56.066-.795.106l-.503.09V96.76h-2.842V81.332zM141.137 80.873h6.018v2.383h-6.018v7.333c0 .793.06 1.45.183 1.97s.306.927.55 1.222c.245.295.55.503.917.626s.794.184 1.283.184c.875 0 1.568-.097 2.078-.292.508-.193.855-.33 1.04-.412l.61 2.322c-.286.143-.79.326-1.513.55-.723.224-1.542.336-2.46.336-1.08 0-1.97-.137-2.673-.412-.7-.276-1.267-.688-1.694-1.238-.428-.55-.73-1.227-.902-2.032-.174-.804-.26-1.736-.26-2.795V76.443l2.842-.49v4.92zM162.615 96.303c-.653.163-1.513.336-2.582.52-1.07.182-2.308.274-3.712.274-1.22 0-2.25-.178-3.085-.535-.835-.355-1.508-.86-2.016-1.512-.51-.65-.877-1.42-1.102-2.307-.224-.886-.336-1.87-.336-2.948v-8.922h2.842v8.31c0 1.937.306 3.32.917 4.155.61.837 1.64 1.254 3.087 1.254.306 0 .62-.01.947-.03.325-.022.63-.047.916-.077.286-.03.545-.062.78-.092.233-.03.402-.065.504-.107V80.873h2.842v15.43z"/></g></svg>
-                </div>
-            </div>
-        </div>
-    </footer>
+    {% include "maasserver/footer.html" %}
     {% include "maasserver/js-conf.html" %}
+    <script src="{{ STATIC_URL }}/js/ui/maas-ui.js"></script>
 </body>
 </html>

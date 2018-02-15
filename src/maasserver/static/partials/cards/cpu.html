@@ -1,10 +1,9 @@
-<header>
-  <h3>CPU</h3>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count > 0"><strong>{$ getCPUSubtext() $}</strong> <span class="u-text--subtle">({$ node.architecture $})</span></h2>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong> <span class="u-text--subtle">({$ node.architecture $})</span></h2>
+<header class="p-card__header">
+  <h2 class="p-heading--four">CPU</h2>
+  <h3 class="p-heading--three" data-ng-if="node.cpu_count > 0"><strong>{$ getCPUSubtext() $} cores</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
+  <h3 class="p-heading--three" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
 </header>
-<div class="u-padding--bottom" data-ng-controller="NodeResultsController">
-  <p>CPU model: {$ node.metadata.cpu_model || "Unknown" $}</p>
+<div data-ng-controller="NodeResultsController">
   <div data-ng-repeat="test_result in testing_results">
     <div data-ng-if="test_result.hardware_type === 1">
       <div data-ng-repeat="result in test_result.results['null']">
@@ -17,11 +16,11 @@
     </div>
   </div>
 </div>
-<div class="action-card__position-bottom">
+<footer class="p-card__footer">
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0">
-    <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status"></span>
+    <span node.cpu_test_status="script-status" data-script-status="node.cpu_test_status"></span>
     {$ node.cpu_test_status_tooltip $}
   </p>
   <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count > 0 && node.cpu_test_status !== -1" data-ng-click="section.area = 'testing'">See results &rsaquo;</a></p>
-  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0"><i class="icon icon--info"></i> No data recieved</p>
-</div>
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.cpu_count == 0"><i class="p-icon--information">Information:</i> No data recieved</p>
+</footer>

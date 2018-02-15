@@ -5,16 +5,20 @@
 {% block page-title %}Add user{% endblock %}
 
 {% block content %}
-<div class="eight-col">
-	<form method="post">
-	    {% csrf_token %}
-	    <ul>
-	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
-	    </ul>
-			<div class=" u-float--right">
-					<a class="button--base button--inline" href="{% url 'settings' %}">Cancel</a>
-					<button type="submit" class="button--positive button--inline" />Add user</button>
-			</div>
-	</form>
+<div class="p-strip">
+	<div class="row">
+		<div class="col-8">
+			<form method="post">
+				{% csrf_token %}
+				<ul class="p-list">
+					{% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
+				</ul>
+					<div class="u-float--right">
+							<a class="p-button--base" href="{% url 'settings' %}">Cancel</a>
+							<button type="submit" class="p-button--positive" />Add user</button>
+					</div>
+			</form>
+		</div>
+	</div>
 </div>
 {% endblock %}

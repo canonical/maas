@@ -3,42 +3,51 @@
 {% block nav-active-settings %}active{% endblock %}
 {% block title %}View user{% endblock %}
 {% block page-title %}View user: {{ view_user.username }}{% endblock %}
-{% block layout-modifiers %}sidebar{% endblock %}
-
-{% block sidebar %}
-<div class="three-col append-one">
-    <h4>Actions</h4>
-    <a href="{% url 'accounts-edit' view_user.username %}" class="button--secondary button--inline">Edit user</a>
-    <a href="{% url 'accounts-del' view_user.username %}" class="button--destructive button--inline">Delete user</a>
-</div>
-{% endblock %}
 
 {% block content %}
-<div class="eight-col last-col">
-    <ul class="u-margin--left-none">
-        <li class="two-col">
-            <h4>Username</h4>
-            <span>{{ view_user.username }}</span>
-        </li>
-        <li class="three-col">
-            <h4>Full name</h4>
-            <span>{{ view_user.last_name }}</span>
-        </li>
-        <li class="three-col last-col">
-            <h4>Email address</h4>
-            <span>{{ view_user.email }}</span>
-        </li>
-        <li class="two-col clear">
-            <h4>MAAS Keys</h4>
-            <span>
-            {{ user.userprofile.get_authorisation_tokens.count }}
-            key{{ user.userprofile.get_authorisation_tokens.count|pluralize }}
-          </span>
-        </li>
-        <li class="three-col">
-            <h4>MAAS Administrator</h4>
-            <span>{{ view_user.is_superuser }}</span>
-        </li>
-    </ul>
-</div>
+<div class="p-strip">
+    <form class="p-form p-form--stacked">
+        <div class="row">
+            <div class="col-4">
+                <div class="p-form__group">
+                    <p class="p-form__label"><strong>Username</strong></p>
+                    <div class="p-form__control u-clearfix">
+                        <p>{{ view_user.username }}</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <p class="p-form__label"><strong>Full name</strong></p>
+                    <div class="p-form__control u-clearfix">
+                        <p>{{ view_user.last_name }}</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <p class="p-form__label"><strong>Email address</strong></p>
+                    <div class="p-form__control u-clearfix">
+                        <p>{{ view_user.email }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="p-form__group">
+                    <p class="p-form__label"><strong>MAAS Keys</strong></p>
+                    <div class="p-form__control u-clearfix">
+                        <p>{{ user.userprofile.get_authorisation_tokens.count }}
+                        key{{ user.userprofile.get_authorisation_tokens.count|pluralize }}</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <p class="p-form__label"><strong>MAAS Administrator</strong></p>
+                    <div class="p-form__control u-clearfix">
+                        <p>{{ view_user.is_superuser }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <h4>Actions</h4>
+                <a href="{% url 'accounts-edit' view_user.username %}" class="p-button--neutral">Edit user</a>
+                <a href="{% url 'accounts-del' view_user.username %}" class="p-button--negative">Delete user</a>
+            </div>
+        </div>
+    </form>
 {% endblock %}

@@ -1,15 +1,15 @@
-<header>
-  <h3>Overview</h3>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">
+<header class="p-card__header">
+  <h2 class="p-heading--four">Overview</h2>
+  <h3 class="p-heading--three">
     <span data-ng-if="node.node_type == 2">Rackd</span>
     <span data-ng-if="node.node_type == 3">Regiond</span>
     <span data-ng-if="node.node_type == 4">Regiond+rackd</span>
-    <p data-ng-if="showFailedTestWarning()" class="u-text--subtle"><i class="icon icon--warning"></i> Node has failed tests; use with caution!</p>
-  </h2>
+    <p data-ng-if="showFailedTestWarning()"><i class="p-icon--warning">Warning:</i> Node has failed tests; use with caution!</p>
+  </h3>
 </header>
-<div class="u-padding--bottom">
+<div>
   <p data-ng-if="node.version">Version: {$ node.version__long $}</p>
-  <p data-ng-if="!node.version">Version: <span class="u-text--subtle">Unknown (&lt; 2.3.0)</span></p>
+  <p data-ng-if="!node.version">Version: <span>Unknown (&lt; 2.3.0)</span></p>
   <p data-ng-if="node.show_os_info">OS: <span data-maas-release-name="node.osystem + '/' + node.distro_series"></span></p>
   <p>Domain: {$ header.domain.selected.name $}</p>
   <p>Zone: {$ summary.zone.selected.name $}</p>
@@ -21,6 +21,6 @@
   <p>Mainboard firmware date: {$ node.metadata.mainboard_firmware_date || "Unknown" $}</p>
   <p data-ng-if="node.power_type">Power type: {$ node.power_type $}</p>
 </div>
-<div class="action-card__position-bottom">
+<footer class="p-card__footer">
   <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
-</div>
+</footer>

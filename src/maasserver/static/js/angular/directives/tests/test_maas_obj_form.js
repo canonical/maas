@@ -448,7 +448,7 @@ describe("maasObjForm", function() {
             var input = angular.element(
                 onoff.find("input.onoffswitch-checkbox"));
             var label = angular.element(
-                onoff.find("label.onoffswitch-label"));
+                onoff.find("label.onoffswitch-label u-no-margin--top"));
             expect(onoff.length).toBe(1);
             expect(input.length).toBe(1);
             expect(label.length).toBe(1);
@@ -1088,15 +1088,14 @@ describe("maasObjForm", function() {
             directive = compileDirective(html);
         });
 
-        it("icon add with tooltip added in label", function() {
+        fit("icon add with tooltip added in label", function() {
             var label = directive.find("label");
             var icon = label.find("i");
-            expect(label.text()).toBe("key ");
-            expect(icon.hasClass("icon")).toBe(true);
-            expect(icon.hasClass("icon--info")).toBe(true);
-            expect(icon.hasClass("icon--left")).toBe(true);
-            expect(icon.hasClass("tooltip")).toBe(true);
-            expect(icon.attr('aria-label')).toBe("My Info");
+            var p = label.find("p");
+            expect(label.contents().get(0).nodeValue).toBe("key");
+            expect(icon.hasClass("p-icon--information")).toBe(true);
+            expect(p.hasClass("p-tooltip__message")).toBe(true);
+            expect(p.text()).toBe("My Info");
         });
 
         it('should call preventDefault on click', function() {

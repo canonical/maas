@@ -1,0 +1,9 @@
+@mixin maas-tabs {
+  .p-tabs {
+    &__link {
+      &.is-active {
+        @extend .p-tabs__link[aria-selected="true"];
+      }
+    }
+  }
+}

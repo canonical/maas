@@ -1,198 +1,219 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded" data-window-width>
-    <header class="page-header u-margin--bottom-none" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
-            <h1 class="page-header__title">{$ pod.name $}</h1>
-            <div class="page-header__controls" data-ng-if="isSuperUser()">
-                <div data-maas-cta="action.options"
-                    data-ng-model="action.option"
-                    data-ng-change="actionOptionChanged()">
+<div class="ng-hide u-no-margin--top" data-ng-show="loaded" data-window-width>
+    <header class="p-strip--light is-shallow is-bordered page-header u-no-padding--bottom" media-query="min-width: 769px">
+        <div class="row">
+            <div class="col-8">
+                <h1 class="page-header__title">{$ pod.name $}</h1>
+            </div>
+            <div class="col-4">
+                <div class="page-header__controls " data-ng-if="isSuperUser()">
+                    <div data-maas-cta="action.options"
+                        data-ng-model="action.option"
+                        data-ng-change="actionOptionChanged()">
+                    </div>
                 </div>
             </div>
-            <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option.name === 'compose' }">
-                <maas-obj-form obj="compose.obj" manager="podManager" manager-method="compose"
-                    table-form="true" save-on-blur="false" pre-process="composePreProcess" after-save="cancelCompose" data-ng-if="action.option.name === 'compose'">
-                    <section class="page-header__section twelve-col u-margin--bottom-none">
-                        <h3 class="page-header__dropdown-title">Compose machine</h3>
-                        <div class="form__fieldset six-col">
-                            <maas-obj-field type="text" key="hostname" label="Hostname" label-width="two" input-width="three" subtle="false" placeholder="Hostname (optional)"></maas-obj-field>
-                            <maas-obj-field type="options" key="domain" label="Domain" label-width="two" input-width="three" subtle="false" placeholder="Choose a domain"
-                                options="domain.id as domain.name for domain in domains"></maas-obj-field>
-                            <maas-obj-field type="options" key="zone" label="Zone" label-width="two" input-width="three" subtle="false" placeholder="Choose a zone"
-                                options="zone.id as zone.name for zone in zones"></maas-obj-field>
-                        </div>
-                        <div class="form__fieldset six-col last-col">
-                            <maas-obj-field type="options" key="architecture" label="Architecture" label-width="two" input-width="three" subtle="false" placeholder="Any architecture" placeholder-enabled="true"
-                                options="arch for arch in pod.architectures" data-ng-if="pod.architectures.length > 1"></maas-obj-field>
-                            <maas-obj-field type="text" key="cores" label="Minimum Cores" label-width="two" input-width="three" subtle="false" placeholder="Number of cores (optional)" subtle-text="{$ pod.hints.cores $} cores available"></maas-obj-field>
-                            <maas-obj-field type="text" key="cpu_speed" label="Minimum Speed (MHz)" label-width="two" input-width="three" subtle="false" placeholder="CPU speed (optional)" subtle-text="{$ pod.hints.cpu_speed $}MHz maximum"></maas-obj-field>
-                            <maas-obj-field type="text" key="memory" label="Minimum RAM (MiB)" label-width="two" input-width="three" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ pod.hints.memory $}MiB available"></maas-obj-field>
-                        </div>
-                    </section>
-                    <section class="page-header__section twelve-col u-margin--bottom-none">
-                        <h3 class="page-header__dropdown-title">Storage configuration</h3>
-                        <div class="table">
-                            <div class="table__head">
-                                <div class="table__row">
-                                    <div class="table__header table-col--20">Location</div>
-                                    <div class="table__header table-col--20">Capacity (GB)</div>
-                                    <div class="table__header table-col--40">Tags</div>
-                                    <div class="table__header table-col--20">Boot</div>
-                                </div>
-                            </div>
-                            <div class="table__body">
-                                <div class="table__row" data-ng-repeat="storage in compose.obj.storage">
-                                    <div class="table__data table-col--20">
+        </div>
+        <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option.name === 'compose' }">
+            <maas-obj-form obj="compose.obj" manager="podManager" manager-method="compose"
+            table-form="true" save-on-blur="false" pre-process="composePreProcess" after-save="cancelCompose" data-ng-if="action.option.name === 'compose'">
+                <div class="row">
+                    <div class="col-12">
+                        <hr />
+                        <h3>Compose machine</h3>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <maas-obj-field type="text" key="hostname" label="Hostname" subtle="false" placeholder="Hostname (optional)"></maas-obj-field>
+                        <maas-obj-field type="options" key="domain" label="Domain" subtle="false" placeholder="Choose a domain"
+                            options="domain.id as domain.name for domain in domains"></maas-obj-field>
+                        <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
+                            options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                    </div>
+                    <div class="col-6">
+                        <maas-obj-field type="options" key="architecture" label="Architecture" subtle="false" placeholder="Any architecture" placeholder-enabled="true"
+                            options="arch for arch in pod.architectures" data-ng-if="pod.architectures.length > 1"></maas-obj-field>
+                        <maas-obj-field type="text" key="cores" label="Minimum Cores" subtle="false" placeholder="Number of cores (optional)" subtle-text="{$ pod.hints.cores $} cores available"></maas-obj-field>
+                        <maas-obj-field type="text" key="cpu_speed" label="Minimum Speed (MHz)" subtle="false" placeholder="CPU speed (optional)" subtle-text="{$ pod.hints.cpu_speed $}MHz maximum"></maas-obj-field>
+                        <maas-obj-field type="text" key="memory" label="Minimum RAM (MiB)" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ pod.hints.memory $}MiB available"></maas-obj-field>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <h3>Storage configuration</h3>
+                        <table class="p-table-expanding">
+                            <thead>
+                                <tr>
+                                    <th class="col-2">Location</th>
+                                    <th class="col-3">Capacity (GB)</th>
+                                    <th class="col-4">Tags</th>
+                                    <th class="col-1 u-align--center">Boot</th>
+                                    <th class="col-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-ng-repeat="storage in compose.obj.storage">
+                                    <td class="col-2">
                                         <div class="form__group-input">
                                             <select data-ng-model="storage.type">
-                                              <option value="local">Local</option>
-                                              <option value="iscsi"
-                                                  data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0"
-                                                  data-ng-disabled="storage.boot">iSCSI</option>
+                                                <option value="local">Local</option>
+                                                <option value="iscsi"
+                                                    data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0"
+                                                    data-ng-disabled="storage.boot">iSCSI</option>
                                             </select>
                                         </div>
-                                    </div>
-                                    <div class="table__data table-col--20">
+                                    </td>
+                                    <td class="col-3">
                                         <div class="form__group-input">
                                             <input type="text" placeholder="Enter capacity" data-ng-model="storage.size">
                                         </div>
-                                    </div>
-                                    <div class="table__data table-col--40">
+                                    </td>
+                                    <td class="col-4">
                                         <div class="form__group-input">
                                             <tags-input data-ng-model="storage.tags" allow-tags-pattern="[\\w-]+"></tags-input>
                                         </div>
-                                    </div>
-                                    <div class="table__data table-col--5">
-                                        <input type="radio" id="{$ $index $}-boot"
+                                    </td>
+                                    <td class="col-1 u-align--center">
+                                        <input type="radio" id="{$ $index $}-boot" class="u-no-margin--right"
                                             data-ng-click="composeSetBootDisk(storage)"
                                             data-ng-checked="storage.boot"
                                             data-ng-if="storage.type === 'local'">
                                         <label for="{$ $index $}-boot"></label>
-                                    </div>
-                                    <div class="table__data table-col--15">
-                                        <div class="table__controls" data-ng-if="!storage.boot">
-                                            <button class="icon icon--delete u-display--desktop tooltip"
-                                                aria-label="Remove"
-                                                data-ng-click="composeRemoveDisk(storage)">Remove</button>
+                                    </td>
+                                    <td class="col-2 u-align--right">
+                                        <div data-ng-if="!storage.boot">
+                                            <button data-ng-click="composeRemoveDisk(storage)">Remove</button>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button class="p-button--neutral" data-ng-click="composeAddStorage()">Add another device</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
+                        <p maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
+                        <div class="u-align--right u-no-margin--top" maas-obj-hide-saving>
+                            <button class="p-button--base" type="button" data-ng-click="cancelCompose()">Cancel</button>
+                            <button class="p-button--positive u-no-margin--top" maas-obj-save>Compose machine</button>
                         </div>
-                        <button class="button button--inline button--secondary" data-ng-click="composeAddStorage()">Add another device</button>
-                    </section>
-                    <section class="page-header__section twelve-col u-margin--bottom-none ">
-                        <p class="page-header__message page-header__message--error" maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
-                        <p class="page-header__message" maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
-                        <div class="page-header__controls" maas-obj-hide-saving>
-                            <button class="button--base button--inline" type="button" data-ng-click="cancelCompose()">Cancel</button>
-                            <button class="button--positive button--inline" maas-obj-save>Compose machine</button>
-                        </div>
-                    </section>
-                </maas-obj-form>
-            </div>
-            <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option && action.option.name !== 'compose' }">
-                <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="action.inProgress">
-                    <p class="page-header__message">
-                        <i class="icon icon--loading u-animation--spin"></i>
+                    </div>
+                </div>
+            </maas-obj-form>
+        </div>
+        <div class="page-header__dropdown u-hide" data-ng-class="{ 'u-show': action.option && action.option.name !== 'compose' }">
+            <div class="row" data-ng-if="action.inProgress">
+                <div class="col-12">
+                    <p>
+                        <i class="p-icon--spinner u-animation--spin"></i>
                         Performing {$ action.option.sentence $}.
                     </p>
-                </section>
-                <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="action.option && !action.inProgress">
-                    <form class="form form--inline">
-                        <p class="page-header__message page-header__message--error" data-ng-if="action.error">
-                            Performing {$ action.option.sentence $} failed: {$ action.error $}
-                        </p>
-                        <div class="page-header__controls">
-                            <button class="button--base button--inline" type="button" data-ng-click="actionCancel()">Cancel</button>
-                            <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
-                                <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
-                                <span data-ng-if="action.option.name === 'delete'">Delete pod</span>
-                            </button>
-                            <button class="button--secondary button--inline" data-ng-click="actionGo()" data-ng-if="action.error">Retry</button>
-                        </div>
-                    </form>
                 </div>
             </div>
+            <div class="row" data-ng-if="action.option && !action.inProgress">
+                <form class="p-form p-form--inline u-align--right">
+                    <div class="col-8">
+                        <p data-ng-if="action.error">
+                            <i class="p-icon--error">Error:</i> Performing {$ action.option.sentence $} failed: {$ action.error $}
+                        </p>
+                    </div>
+                    <div class="col-4 u-align--right">
+                        <button class="p-button--base" type="button" data-ng-click="actionCancel()">Cancel</button>
+                        <button class="u-no-margin--top u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
+                            <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
+                            <span data-ng-if="action.option.name === 'delete'">Delete pod</span>
+                        </button>
+                        <button class="p-button--neutral u-no-margin--top" data-ng-click="actionGo()" data-ng-if="action.error">Retry</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </header>
-    <div class="page-navigation" sticky media-query="min-width: 769px" offset="89" data-ng-class="{ 'u-visibility--hidden': action.option }">
-        <div class="wrapper--inner">
-            <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
-                <button role="tab" class="page-navigation__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</button>
-                <button role="tab" class="page-navigation__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</button>
+        <div class="p-strip is-shallow u-no-padding--bottom" media-query="min-width: 769px" offset="89" data-ng-class="{ 'u-hide': action.option }">
+            <nav class="p-tabs">
+                <ul class="p-tabs__list" role="tablist">
+                    <li class="p-tabs__item" role="presentation">
+                        <a href="" role="tab" class="p-tabs__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
+                    </li>
+                    <li class="p-tabs__item" role="presentation">
+                        <a href="" role="tab" class="p-tabs__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</a>
+                    </li>
+                </nav>
             </nav>
         </div>
-    </div>
-    <section class="row u-padding--top" data-ng-if="section.area === 'summary'">
-        <div class="wrapper--inner u-align--flex">
-            <aside class="three-col u-align--top">
-                <div class="three-col">
-                    <div class="action-card u-margin--bottom">
-                        <h3>CPU ({$ pod.total.cores $} cores)</h3>
-                        <meter max="{$ pod.total.cores $}" value="{$ pod.used.cores $}"></meter>
-                        <p>
-                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
-                            <span class="u-float--right">{$ pod.available.cores $} cores available</span>
-                        </p>
-                    </div>
-                    <div class="action-card u-margin--bottom">
-                        <h3>RAM ({$ pod.total.memory_gb $} GiB)</h3>
-                        <meter max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
-                        <p>
-                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
-                            <span class="u-float--right">{$ pod.available.memory_gb $} GiB available</span>
-                        </p>
-                    </div>
-                    <div class="action-card u-margin--bottom">
-                        <h3>Local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
-                        <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}"></meter>
-                        <p>
-                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
-                            <span class="u-float--right">{$ pod.available.local_storage_gb $} GiB available</span>
-                        </p>
-                    </div>
-                    <div class="action-card u-margin--bottom" data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
-                        <h3>iSCSI storage ({$ pod.total.iscsi_storage_gb $} GiB)</h3>
-                        <meter max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
-                        <p>
-                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
-                            <span class="u-float--right">{$ pod.available.iscsi_storage_gb $} GiB available</span>
-                        </p>
-                    </div>
+    </header>
+
+    <section class="p-strip" data-ng-if="section.area === 'summary'">
+        <div class="row">
+            <aside class="col-3">
+                <div class="p-card">
+                    <h3 class="p-heading--four">CPU ({$ pod.total.cores $} cores)</h3>
+                    <meter class="p-meter" max="{$ pod.total.cores $}" value="{$ pod.used.cores $}"></meter>
+                    <p>
+                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
+                        <span class="u-float--right u-no-margin--top">{$ pod.available.cores $} cores available</span>
+                    </p>
+                </div>
+                <div class="p-card">
+                    <h3 class="p-heading--four">RAM ({$ pod.total.memory_gb $}&nbsp;GiB)</h3>
+                    <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
+                    <p>
+                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
+                        <span class="u-float--right u-no-margin--top">{$ pod.available.memory_gb $} GiB available</span>
+                    </p>
+                </div>
+                <div class="p-card">
+                    <h3 class="p-heading--four">Local storage ({$ pod.total.local_storage_gb $}&nbsp;GiB)</h3>
+                    <meter class="p-meter" max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}"></meter>
+                    <p>
+                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
+                        <span class="u-float--right u-no-margin--top">{$ pod.available.local_storage_gb $} GiB available</span>
+                    </p>
+                </div>
+                <div class="p-card" data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
+                    <h3 class="p-heading--four">iSCSI storage ({$ pod.total.iscsi_storage_gb $}&nbsp;GiB)</h3>
+                    <meter class="p-meter" max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
+                    <p>
+                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
+                        <span class="u-float--right u-no-margin--top">{$ pod.available.iscsi_storage_gb $} GiB available</span>
+                    </p>
                 </div>
             </aside>
-            <div class="nine-col last-col u-align--top" data-ng-if="pod.composed_machines_count">
+
+            <div class="col-9" data-ng-if="pod.composed_machines_count">
                 <maas-machines-table search="machinesSearch" hide-checkboxes="true"></maas-machines-table>
             </div>
-            <div class="nine-col last-col" data-ng-if="!pod.composed_machines_count">
+
+            <div class="col-9" data-ng-if="!pod.composed_machines_count">
                 <div class="u-align--center u-vertical--align u-align--center">
-                    <i class="icon icon--compose-machine icon--huge" style="width: 128px; height: 128px;"></i>
+                    <i class="p-icon--compose-machine" style="width: 128px; height: 128px;"></i>
                     <h3>You have not composed any machines yet.</h3>
-                    <button class="button--positive button--inline" data-ng-if="canCompose()" data-ng-click="composeMachine()">Compose machine</button>
+                    <button class="p-button--positive is-inline" data-ng-if="canCompose()" data-ng-click="composeMachine()">Compose machine</button>
                 </div>
             </div>
         </div>
     </section>
-    <section class="row u-padding--top" data-ng-if="pod && section.area === 'power'">
-        <div class="wrapper--inner">
+    <section class="p-strip" data-ng-if="pod && section.area === 'power'">
+        <div class="row">
             <maas-obj-form obj="pod" manager="podManager" manager-method="updateItem"
                 table-form="true" save-on-blur="true">
-                <div class="six-col">
-                    <div class="form__fieldset six-col">
+                <div class="col-6">
+                    <div class="col-6">
                         <dl>
-                            <dt class="two-col">Type</dt>
-                            <dd class="four-col last-col">{$ getPodTypeTitle() $}</dd>
+                            <dt>Type</dt>
+                            <dd>{$ getPodTypeTitle() $}</dd>
                         </dl>
                     </div>
                 </div>
-                <div class="six-col last-col">
+                <div class="col-6">
                     <maas-pod-parameters hide-type="true"></maas-pod-parameters>
                     <maas-obj-errors></maas-obj-errors>
                 </div>
@@ -201,13 +222,13 @@
     </section>
     <section class="row u-padding--top" data-ng-if="section.area === 'storage'">
         <div class="wrapper--inner">
-            <div class="six-col">
+            <div class="col-6">
                 <h3>Total storage ({$ pod.total.local_storage_gb $} GiB)</h3>
                 <div class="action-card u-margin--none">
                   Graph goes here
                 </div>
             </div>
-            <div class="six-col last-col">
+            <div class="col-6">
               <h3>Total local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
               <div class="action-card u-margin--bottom">
                   <h3>0 drives</h3>
@@ -221,42 +242,42 @@
               <p>No remote storage systems haven't been connected yet.</p>
               <p>When you connect a remote system to your pod it will be automatically detacted and displayed here.</p>
             </div>
-            <div class="twelve-col">
+            <div class="col-12">
                 <h3>Available volumes (2000 GiB)</h3>
                 <table>
                     <thead>
                         <tr>
-                            <th class="table-col--25">
+                            <th>
                                 <a href="#">Name</a>
                             </th>
-                            <th class="table-col--25">
+                            <th>
                                 <a href="#">Storage system</a>
                             </th>
-                            <th class="table-col--25">
+                            <th>
                                 <a href="#">Capacity (GiB)</a>
                             </th>
-                            <th class="table-col--20">
+                            <th>
                                 <a href="#">Location</a>
                             </th>
-                            <th class="table-col--5"></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="table-col--25">
+                            <td>
                                 <a href="#">sda</a>
                             </td>
-                            <td class="table-col--25">
+                            <td>
                                 lorem ipsum
                             </td>
-                            <td class="table-col--25">
+                            <td>
                                 500
                             </td>
-                            <td class="table-col--20">
+                            <td>
                                 Local
                             </td>
-                            <td class="table-col--5">
-                                <button class="icon icon--delete"></button>
+                            <td>
+                                <button class="p-icon--delete"></button>
                             </td>
                         </tr>
                     </tbody>

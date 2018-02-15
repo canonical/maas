@@ -1,12 +1,12 @@
-<header>
-  <h3 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">Overview</h3>
+<header class="p-card__header">
+  <h2 class="p-heading--four">Overview</h2>
 </header>
-<div class="u-padding--bottom">
+<div>
   <p data-ng-if="node.owner">Owner: {$ node.owner $}</p>
-  <p data-ng-if="!node.owner">Owner: <span class="u-text--subtle">(unassigned)</span></p>
+  <p data-ng-if="!node.owner">Owner: <span>(unassigned)</span></p>
   <p>Domain: {$ header.domain.selected.name $}</p>
   <p>Zone: {$ summary.zone.selected.name $}</p>
 </div>
-<div class="action-card__position-bottom">
+<footer class="p-card__footer">
   <p data-ng-if="isSuperUser()"><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>
-</div>
+</footer>

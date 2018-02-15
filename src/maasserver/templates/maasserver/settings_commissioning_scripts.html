@@ -1,8 +1,8 @@
 <h2>Commissioning scripts</h2>
 <table class="list">
     <tbody>
-        {% for script in commissioning_scripts %}
-        <tr class="script {% cycle 'even' 'odd' %}" id="{{ script.name }}">
+    {% for script in commissioning_scripts %}
+        <tr id="{{ script.name }}">
             <td class="script-expander">
                 <a href="#" class="script-trigger">{{ script.name }}</a>
                 <div class="script-content">
@@ -10,12 +10,12 @@
                 </div>
             </td>
             <td class="icon-controls u-align--right">
-                <a title="Delete commissioning script {{ script.name }}" class="icon icon--delete" href="{% url 'commissioning-script-delete' script.id %}">Delete</a>
+                <a title="Delete commissioning script {{ script.name }}" class="p-icon--delete" href="{% url 'commissioning-script-delete' script.id %}">Delete</a>
             </td>
         </tr>
     </tbody>
     {% empty %}
-    No commissioning scripts.
+    <p>No commissioning scripts.</p>
     {% endfor %}
 </table>
-<a class="button--secondary button--inline u-float--right" href="{% url 'commissioning-script-add' %}">Upload script</a>
+<a class="p-button--neutral u-float--right" href="{% url 'commissioning-script-add' %}">Upload script</a>

@@ -8,15 +8,23 @@
 {% block content %}
     {% block page-title-block %}
     {% endblock %}
-      <div class="action-card action-card--login">
-          <h1 class="action-card__title">Logout</h1>
-          <p class="u-text--subtle u-border--bottom u-border--dotted u-padding--bottom u-margin--bottom">Are you sure you want to log out?</p>
-          <form method="post" class="form">
-              {% csrf_token %}
-              <input type="hidden" name="post" value="yes" />
-              <a href="{% url 'index' %}" class="button--base u-width--half u-display--block u-float--left">No</a>
-              <button type="submit" class="button--positive u-width--half u-display--block u-float--right">Yes</button>
-          </form>
-      </div>
+        <div class="p-strip">
+            <div class="row">
+                <div class="col-8 prefix-4">
+                    <div class="p-card">
+                        <header class="p-card__header">
+                            <h1 class="p-heading--three">Logout</h1>
+                            <p>Are you sure you want to log out?</p>
+                        </header>
+                        <form method="post" class="u-no-margin--top">
+                            {% csrf_token %}
+                            <input type="hidden" name="post" value="yes" />
+                            <a href="{% url 'index' %}" class="p-button--neutral u-no-margin--top">No</a>
+                            <button type="submit" class="p-button--positive">Yes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
 {% endblock %}
 button--inline

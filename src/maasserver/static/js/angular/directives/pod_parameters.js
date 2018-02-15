@@ -8,9 +8,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the power-parameters.html into the template cache.
     $templateCache.put('directive/templates/pod-parameters.html', [
         '<maas-obj-field type="options" key="type" label="Pod type" ',
-          'label-width="two" input-width="three" ',
+          'label-width="2" input-width="5" ',
           'placeholder="Select the pod type" ',
-          'class="u-margin--bottom-small" ',
           'options="type.name as type.description for type in podTypes" ',
           'ng-if="!hideType">',
         '</maas-obj-field>',
@@ -64,7 +63,7 @@ angular.module('MAAS').directive(
                                   '<maas-obj-field type="text" key="');
                           }
                           html += (field.name + '" label="' + field.label +
-                            '" ' + 'label-width="two" input-width="three">' +
+                            '" ' + 'label-width="2" input-width="5">' +
                             '</maas-obj-field>');
                       }
                   });

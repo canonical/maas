@@ -20,68 +20,96 @@
 
 {% block content %}
 <div id="prefs" class="accounts">
-    <div id="keys" class="eight-col">
-        <h2>Keys</h2>
-        <section class="eight-col">
-            <h3>MAAS keys</h3>
-            <div id="api" class="api eight-col">
-                <p>You'll need a separate API key for each Juju environment.</p>
-                <ul class="no-bullets">
-                    {% for token in user.userprofile.get_authorisation_tokens %}
-                    <li class="bundle">
-                        <a href="#" class="delete-link icon icon--delete right"></a>
-                        <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" readonly>
-                    </li>
-                    {% endfor %}
-                </ul>
-                <p id="token_creation_placeholder" />
+    <section id="keys">
+        <div class="p-strip is-bordered">
+            <div class="row">
+                <div class="col-8">
+                    <h2>Keys</h2>
+                </div>
             </div>
-        </section>
-        <section id="ssh-keys" class="ssh-keys eight-col u-border--bottom" data-ng-controller="PreferencesController">
-            <h3>SSH keys</h3>
-            <span class="u-text--loading" data-ng-if="loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span>
+            <div class="row">
+                <div class="col-8">
+                    <h3>MAAS keys</h3>
+                    <div id="api">
+                        <p>You'll need a separate API key for each Juju environment.</p>
+                        <ul class="p-list">
+                            {% for token in user.userprofile.get_authorisation_tokens %}
+                            <li class="u-equal-height js-bundle">
+                                <div class="col-8 p-code-snippet">
+                                    <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="p-code-snippet__input" readonly />
+                                </div>
+                                <div class="col-1 u-vertically-center">
+                                    <a class="p-tooltip p-tooltip--top-center js-delete-link"><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete API key</span></a>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <div id="token_creation_placeholder"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="p-strip is-bordered">
+            <div class="row">
+                <div id="ssh-keys" class="col-8" data-ng-controller="PreferencesController">
+                    <h3>SSH keys</h3>
+                    <span class="u-text--loading" data-ng-if="loading"><i class="p-icon--spinner p-icon--spinner"></i> Loading...</span>
+                </div>
+            </div>
             <maas-ssh-keys data-ng-if="!loading"></maas-ssh-keys>
-        </section>
-        <section id="ssl-keys" class="eight-col u-border--bottom">
-            <h3>SSL keys</h3>
-            <div class="eight-col">
-                <ul class="no-bullets">
-                    {% for key in user.sslkey_set.all %}
-                    <li>
-                        <a href="{% url 'prefs-delete-sslkey' key.id %}" class="icon right">
-                            <img title="Delete SSL key" class="left" src="{{ STATIC_URL }}img/delete.png" />
-                        </a>
-                        {{ key.display_html }}
-                    </li>
-                    {% empty %} No SSL key configured. {% endfor %}
-                </ul>
-                <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="button--secondary button--inline u-float--right">Add SSL key</a>
+        </div>
+        <div class="p-strip is-bordered">
+            <div class="row">
+                <div class="col-8" id="ssl-keys">
+                    <h3>SSL keys</h3>
+                    <ul class="p-list">
+                        {% for key in user.sslkey_set.all %}
+                        <li class="u-equal-height js-bundle row">
+                            <div class="col-8 p-code-snippet">
+                                <input type="text" value="{{ key.display_html }}" class="p-code-snippet__input" />
+                            </div>
+                            <div class="col-1 u-vertically-center">
+                                <a class="p-tooltip p-tooltip--top-center js-delete-link" href="{% url 'prefs-delete-sslkey' key.id %}"><i class="p-icon--delete"></i><span class="p-tooltip__message" role="tooltip">Delete SSL key</span></a>
+                            </div>
+                        </li>
+                        {% empty %} No SSL key configured. {% endfor %}
+                    </ul>
+                    <div>
+                        <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="p-button--neutral u-float--right">Add SSL key</a>
+                    </div>
+                </div>
             </div>
-        </section>
-        <section id="profile" class="eight-col u-border--bottom">
-            <h3>User details</h3>
-            <div class="eight-col">
+        </div>
+    </section>
+
+    <section id="profile" class="p-strip is-bordered">
+        <div class="row">
+            <div class="col-8">
+                <h2>User details</h2>
                 <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
-                    <ul>
+                    <ul class="p-list">
                         {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
                     <input type="hidden" name="profile_submit" value="1" />
-                    <button type="submit" class="button--positive button--inline u-float--right">Save details</button>
+                    <button type="submit" class="p-button--positive u-float--right">Save details</button>
                 </form>
             </div>
-        </section>
-        <section id="password" class="eight-col">
-            <h3>Password</h3>
-            <div class="eight-col">
+        </div>
+    </section>
+
+    <section id="password" class="p-strip">
+        <div class="row">
+            <div class="col-8">
+                <h2>Password</h2>
                 <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
-                    <ul>
+                    <ul class="p-list">
                         {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
                     <input type="hidden" name="password_submit" value="1" />
-                    <button type="submit" class="button--positive button--inline u-float--right">Save password</button>
+                    <button type="submit" class="p-button--positive u-float--right">Save password</button>
                 </form>
             </div>
-        </section>
-    </div>
+        </div>
+    </section>
 </div>
 {% endblock %}

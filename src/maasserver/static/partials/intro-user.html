@@ -1,33 +1,32 @@
-<div class="row" data-ng-if="!loading">
-    <div class="wrapper--inner">
-        <div class="twelve-col">
-            <div class="action-card">
-                <h2 class="action-card__title">
-                    <i class="icon icon--large u-margin--right-tiny"
-                        data-ng-class="{'icon--success': canContinue(), 'icon--success-grey': !canContinue()}"></i>
-                    SSH keys for {$ user.username $}
-                </h2>
-                <div class="action-card__controls">
-                    <p class="u-margin--top">Add multiple keys from Launchpad and Github or enter them manually.</p>
-                    <h3>Keys</h3>
-                    <maas-ssh-keys></maas-ssh-keys>
-                </div>
+<div class="p-strip" data-ng-if="!loading">
+    <div class="row">
+        <div class="p-card--highlighted col-12">
+            <h2 class="p-card__title">
+                <i data-ng-class="{'p-icon--success': canContinue(), 'p-icon--success-muted': !canContinue()}"></i>
+                SSH keys for {$ user.username $}
+            </h2>
+            <div class="p-card__content">
+                <p class="u-margin--top">Add multiple keys from Launchpad and Github or enter them manually.</p>
+                <h3>Keys</h3>
+                <maas-ssh-keys></maas-ssh-keys>
             </div>
-            <div class="action-card"
-                data-ng-if="isSuperUser()"
-                data-ng-class="{'u-muted': !canContinue()}">
-                <h2 class="action-card__title">
-                    MAAS has been successfully set up
-                </h2>
-                <div class="action-card__controls">
-                    <p class="u-margin--top"><i class="icon icon--success u-margin--right-small"></i>Once DHCP is enabled, set your machines to PXE boot and they will be automatically enlisted in the Nodes tab.</p>
-                    <p class="u-margin--top"><i class="icon icon--success u-margin--right-small"></i>Discovered MAC/IP pairs in your network will be listed on your dashboard and can be added to MAAS.</p>
-                    <p class="u-margin--top u-margin--bottom"><i class="icon icon--success u-margin--right-small"></i>The fabrics, VLANs and subnets in your network will be automatically added to MAAS in Networks.</p>
-                </div>
-            </div>
-            <button class="button button--positive button--large"
-                data-ng-disabled="!canContinue()"
-                data-ng-click="clickContinue()">Go to dashboard</button>
         </div>
+    </div>
+    <div class="row">
+        <div class="p-card--highlighted col-6" data-ng-if="isSuperUser()" data-ng-class="{'u-muted': !canContinue()}">
+            <h2 class="p-card__title">
+                MAAS has been successfully set up
+            </h2>
+            <div class="p-card__content">
+                <p class="u-margin--top"><i class="p-icon--success"></i>Once DHCP is enabled, set your machines to PXE boot and they will be automatically enlisted in the Nodes tab.</p>
+                <p class="u-margin--top"><i class="p-icon--success"></i>Discovered MAC/IP pairs in your network will be listed on your dashboard and can be added to MAAS.</p>
+                <p class="u-margin--top u-margin--bottom"><i class="p-icon--success"></i>The fabrics, VLANs and subnets in your network will be automatically added to MAAS in Networks.</p>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <button class="p-button--positive"
+            data-ng-disabled="!canContinue()"
+            data-ng-click="clickContinue()">Go to dashboard</button>
     </div>
 </div>

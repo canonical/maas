@@ -2,21 +2,21 @@
 <table>
     <tbody>
         {% for key in license_keys %}
-        <tr class="script {% cycle 'even' 'odd' %}" id="{{ key.osystem }}-{{ key.distro_series }}">
+        <tr id="{{ key.osystem }}-{{ key.distro_series }}">
             <td>{{ key.osystem_title }}</td>
             <td>{{ key.distro_series_title }}</td>
             <td class="u-align--right">
-                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="icon icon--edit">
+                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="p-icon--edit">
                     edit
                 </a>
-                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="icon icon--delete">
+                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="p-icon--delete">
                     delete
                 </a>
             </td>
             {% empty %}
-            No license keys.
+            <p>No license keys.</p>
         </tr>
         {% endfor %}
     </tbody>
 </table>
-<a class="button--secondary button--inline u-float--right" href="{% url 'license-key-add' %}">Add license key</a>
+<a class="p-button--neutral u-float--right" href="{% url 'license-key-add' %}">Add license key</a>

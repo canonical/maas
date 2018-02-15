@@ -4,16 +4,22 @@
 {% block page-title %}Add SSL key{% endblock %}
 
 {% block content %}
-<div class="eight-col">
-	<form method="post">
-	    {% csrf_token %}
-	    <ul>
-	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
-	    </ul>
-			<div class=" u-float--right">
-					<button class="button--base button--inline" href="{% url 'prefs' %}">Cancel</button>
-					<button type="submit" class="button--positive button--inline">Add key</button>
-			</div>
-	</form>
-</div>
+<section class="p-strip">
+    <div class="row">
+        <div class="col-8">
+            <form method="post" class="p-form">
+                {% csrf_token %}
+                <ul class="p-form__group p-list">
+                    {% for field in form %}
+                        {% include "maasserver/form_field.html" %}
+                    {% endfor %}
+                </ul>
+                <div class="p-form__group u-float--right">
+                    <button class="p-button--base" href="{% url 'prefs' %}">Cancel</button>
+                    <button type="submit" class="p-button--positive">Add key</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
 {% endblock %}

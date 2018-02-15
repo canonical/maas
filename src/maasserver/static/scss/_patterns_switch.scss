@@ -1,0 +1,96 @@
+@mixin maas-switch {
+  .maas-p-switch {
+    height: $sp-x-large;
+    margin: 0 auto;
+    position: relative;
+    width: $sp-x-large * 2;
+    display: inline-block;
+
+    &--input {
+      cursor: pointer;
+      height: 100%;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 100%;
+    }
+
+    &--mask {
+      background: $color-light;
+      height: 100%;
+      line-height: $sp-x-large;
+      margin-top: 0;
+      pointer-events: none;
+      position: relative;
+
+      &::before {
+        @include vf-animation(
+          background-color,
+          brisk
+        );
+        background: $color-mid-light;
+        content: 'Off';
+        display: block;
+        height: 100%;
+        text-align: right;
+        width: 100%;
+        padding: 0 .3rem 0 .45rem;
+        box-shadow: inset 0 2px 5px 0 transparentize($color-dark, .8);
+        border-radius: 3px;
+        font-size: .875rem;
+      }
+
+      &::after {
+        @include vf-animation(
+          left,
+          brisk,
+          out
+        );
+        width: 50%;
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: $color-x-light;
+        content: ' ';
+        box-shadow: 0 1px 5px 1px transparentize($color-dark, .8);
+        border-radius: 3px;
+      }
+    }
+    
+    // Checked state
+    &--input:checked + &--mask {
+      &::before {
+        text-align: left;
+        content: 'On';
+        color: $color-x-light;
+        background: $color-information;
+      }
+
+      &::after {
+        left: 50%;
+      }
+    }
+    
+    // Disabled state
+    &--input:disabled {
+      cursor: not-allowed;
+    }
+
+    &--input:disabled + &--mask {
+      &::before {
+        background: lighten($color-mid-light, 15%);
+        color: lighten($color-x-dark, 60%);
+      }
+    }
+
+    // Disabled and checked state
+    &--input:disabled:checked + &--mask {
+      &::before {
+        background: lighten($color-information, 30%);
+        color: $color-x-light;
+      }
+    }
+  }
+}

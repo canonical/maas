@@ -27,7 +27,7 @@ TokenWidget.ATTRS = {
     nb_tokens: {
         readOnly: true,
         getter: function() {
-            return this.get('srcNode').all('.bundle').size();
+            return this.get('srcNode').all('.js-bundle').size();
         }
     }
 };
@@ -42,8 +42,7 @@ Y.extend(TokenWidget, Y.Widget, {
         this.create_link = Y.Node.create('<a />')
             .set('href', '#')
             .set('id','create_token')
-            .addClass('button--secondary')
-            .addClass('button--inline')
+            .addClass('p-button--neutral')
             .addClass('u-float--right')
             .set('text', "Generate MAAS key");
         this.status_node = Y.Node.create('<div />')
@@ -63,7 +62,7 @@ Y.extend(TokenWidget, Y.Widget, {
 
     bindDeleteRow: function(row) {
         var self = this;
-        var delete_link = row.one('a.delete-link');
+        var delete_link = row.one('a.js-delete-link');
         delete_link.on('click', function(e) {
             e.preventDefault();
             if (self.confirm("Are you sure you want to delete this key?")) {
@@ -78,7 +77,7 @@ Y.extend(TokenWidget, Y.Widget, {
             e.preventDefault();
             self.requestKeys();
         });
-        Y.each(this.get('srcNode').all('.bundle'), function(row) {
+        Y.each(this.get('srcNode').all('.js-bundle'), function(row) {
             self.bindDeleteRow(row);
         });
     },
@@ -150,18 +149,22 @@ Y.extend(TokenWidget, Y.Widget, {
     addToken: function(token, token_key) {
         var list = this.get('srcNode').one('ul');
         var row = Y.Node.create('<li />')
-            .addClass('bundle')
-            .append(Y.Node.create('<a />')
-                .set('href', '#')
-                .addClass('delete-link')
-                .addClass('right')
-                .addClass('icon')
-                .addClass('icon--delete'))
-            .append(Y.Node.create('<input />')
-                .set('type', 'text')
-                .addClass('disabled')
-                .set('id', token_key)
-                .set('value', token));
+            .addClass('js-bundle')
+            .addClass('u-equal-height')
+            .append(Y.Node.create('<div />')
+                .addClass('col-8')
+                .addClass('p-code-snippet')
+                    .append(Y.Node.create('<input />')
+                        .set('type', 'text')
+                        .addClass('p-code-snippet__input')
+                        .set('id', token_key)
+                        .set('value', token)))
+            .append(Y.Node.create(
+                '<div class="col-1 u-vertically-center">' +
+                '<a class="p-tooltip p-tooltip--top-center js-delete-link">' +
+                '<i class="p-icon--delete"></i>' +
+                '<span class="p-tooltip__message" role="tooltip">' +
+                'Delete API key</span></a></div>'))
        list.append(row);
        this.bindDeleteRow(row);
     },

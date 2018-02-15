@@ -1,0 +1,7 @@
+@mixin maas-cards {
+  .p-card--highlighted {
+    &.is-error {
+      border-top: 3px solid $color-negative;
+    }
+  }
+}

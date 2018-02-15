@@ -126,7 +126,7 @@ angular.module('MAAS').directive('maasControllerImageStatus',
             systemId: "="
         },
         template: [
-            '<i class="icon icon--loading u-animation--spin"',
+            '<i class="p-icon--loading u-animation--spin"',
                 'data-ng-if="showSpinner()"></i> ',
             '{$ getImageStatus() $}'].join(''),
         link: function(scope, element, attrs) {

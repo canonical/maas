@@ -36,55 +36,55 @@ describe("maasScriptStatus", function() {
     it("SCRIPT_STATUS.PENDING", function() {
         var directive = compileDirective("0");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--pending");
+        expect(select.attr("class")).toBe("p-icon--pending");
     });
 
     it("SCRIPT_STATUS.RUNNING", function() {
         var directive = compileDirective("1");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--running");
+        expect(select.attr("class")).toBe("p-icon--running");
     });
 
     it("SCRIPT_STATUS.INSTALLING", function() {
         var directive = compileDirective("7");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--running");
+        expect(select.attr("class")).toBe("p-icon--running");
     });
 
     it("SCRIPT_STATUS.PASSED", function() {
         var directive = compileDirective("2");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--pass");
+        expect(select.attr("class")).toBe("p-icon--pass");
     });
 
     it("SCRIPT_STATUS.FAILED", function() {
         var directive = compileDirective("3");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--power-error");
+        expect(select.attr("class")).toBe("p-icon--power-error");
     });
 
     it("SCRIPT_STATUS.ABORTED", function() {
         var directive = compileDirective("5");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--power-error");
+        expect(select.attr("class")).toBe("p-icon--power-error");
     });
 
     it("SCRIPT_STATUS.DEGRADED", function() {
         var directive = compileDirective("6");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--power-error");
+        expect(select.attr("class")).toBe("p-icon--power-error");
     });
 
     it("SCRIPT_STATUS.FAILED_INSTALLING", function() {
         var directive = compileDirective("8");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--power-error");
+        expect(select.attr("class")).toBe("p-icon--power-error");
     });
 
     it("SCRIPT_STATUS.TIMEDOUT", function() {
         var directive = compileDirective("4");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--timed-out");
+        expect(select.attr("class")).toBe("p-icon--timed-out");
     });
 
     it("NONE", function() {
@@ -96,6 +96,6 @@ describe("maasScriptStatus", function() {
     it("UNKNOWN", function() {
         var directive = compileDirective("99");
         var select = directive.find("span");
-        expect(select.attr("class")).toBe("icon icon--help");
+        expect(select.attr("class")).toBe("p-icon--help");
     });
 });

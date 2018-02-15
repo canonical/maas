@@ -88,11 +88,11 @@ describe("maasNotifications", function() {
             theNotificationsManager._items = exampleNotifications;
             var directive = compileDirective();
             // The directive renders an outer div for each notification.
-            expect(directive.find("div > div").length).toBe(
+            expect(directive.find("div > span").length).toBe(
                 exampleNotifications.length, directive.html());
             // Messages are rendered in the nested tree.
             var messages = directive.find(
-                "div > div > p > span:nth-child(1)").map(
+                "div > span > ul > li > p > span:nth-child(1)").map(
                     function() { return $(this).text(); }).get();
             expect(messages).toEqual(exampleNotifications.map(
                 function(notification) { return notification.message; }));
@@ -103,14 +103,14 @@ describe("maasNotifications", function() {
             theNotificationsManager._items = [notification];
             var dismiss = spyOn(theNotificationsManager, "dismiss");
             var directive = compileDirective();
-            directive.find("div > div > p > button").click();
+            directive.find("div > span > ul > li > p > a").click();
             expect(dismiss).toHaveBeenCalledWith(notification);
         });
 
         it("adjusts class according to category", function() {
             theNotificationsManager._items = exampleNotifications;
             var directive = compileDirective();
-            var classes = directive.find("div > div").map(
+            var classes = directive.find("div > span > ul > li").map(
                 function() { return $(this).attr("class"); }).get();
             expect(classes.length).toBe(3);
             var p_classes = [];
@@ -120,9 +120,9 @@ describe("maasNotifications", function() {
                 p_classes = p_classes.concat(matches);
             });
             expect(p_classes).toEqual([
-                "p-notification--error",
-                "p-notification--warning",
-                "p-notification"
+                "p-notification ng-scope p-notification--negative",
+                "p-notification ng-scope p-notification--caution",
+                "p-notification ng-scope"
             ]);
         });
 
@@ -134,7 +134,7 @@ describe("maasNotifications", function() {
             // Find message texts rendered into the DOM.
             var findRenderedMessages = function() {
                 return directive.find(
-                    "div > div > p > span:nth-child(1)").map(
+                    "div > span > ul > li > p > span:nth-child(1)").map(
                         function() { return $(this).text(); }).get();
             };
             // Find grouped message texts rendered into the DOM.
@@ -160,8 +160,7 @@ describe("maasNotifications", function() {
             // previously found the "info" message.
             var messagesExpected2 = angular.copy(messagesExpected1);
             messagesExpected2.splice(
-                messagesExpected2.length - 1, 1, $scope.categoryTitles[
-                    exampleAdditionalNotification.category]);
+                messagesExpected2.length - 1, 1);
             expect(findRenderedMessages())
                 .toEqual(messagesExpected2);
 
@@ -180,7 +179,7 @@ describe("maasNotifications", function() {
                 "Hello <script>alert('Gotcha');</script><em>World</em>!";
             theNotificationsManager._items = [harmfulNotification];
             var directive = compileDirective();
-            var messages = directive.find("div > p");
+            var messages = directive.find("div > span > ul > li > p");
             expect(messages.html()).not.toContain("<script>");
             expect(messages.html()).not.toContain("Gotcha");
             expect(messages.html()).toContain("<em>World</em>");

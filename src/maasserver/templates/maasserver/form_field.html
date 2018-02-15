@@ -1,5 +1,6 @@
 {% load field_type %}
-<li class="{{ field.html_name }}{% if css_class %} {{ css_class }}{% endif %}{% if field.errors %} error{% endif %}{% if field.help_text %} help-msg{% endif %}">
+<li class="p-list__item">
+<div class="p-form-validation {{ field.html_name }}{% if css_class %} {{ css_class }}{% endif %}{% if field.errors %} is-error{% endif %}">
     {% if not field.is_hidden %}
     {% ifequal field|field_type "CheckboxInput" %}
         {{ field }}
@@ -17,7 +18,10 @@
     {{ field }}
     {% endifnotequal %}
     {% if field.errors %}
-    <span class="u-text--error u-margin--top-tiny">{{ field.errors }}</span>
+    <span class="p-form-validation__message">
+        <strong>Error:</strong> {{ field.errors }}
+    </span>
     {% endif %}
-    <span class="help u-display--block"><small>{% if field.help_text %}{{ field.help_text }}{% endif %}</small></span>
+    <p>{% if field.help_text %}{{ field.help_text }}{% endif %}</p>
+</div>
 </li>

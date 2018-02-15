@@ -338,8 +338,8 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             transclude: true,
             template: (
                 '<form class="form" data-ng-class="{saving: saving, ' +
-                '\'form--inline\': inline, ' +
-                '\'form--stack\': tableForm}" ' +
+                '\'p-form--inline\': inline, ' +
+                '\'p-form--stacked\': tableForm}" ' +
                 'ng-transclude></form>'),
             controller: ['$scope', MAASFormController]
         };
@@ -536,7 +536,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 // Set ngDisabled from the parent controller.
                 scope.ngDisabled = controller.scope.ngDisabled;
 
-                element.addClass("form__group");
+                element.addClass("p-form__group");
                 if(attrs.subtle !== "false") {
                     element.addClass("form__group--subtle");
                 }
@@ -565,9 +565,9 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     var labelElement = angular.element('<label/>');
                     labelElement.attr('for', attrs.key);
                     labelElement.text(label);
-                    labelElement.addClass('form__group-label');
+                    labelElement.addClass('p-form__label');
                     if(attrs.labelWidth) {
-                        labelElement.addClass(attrs.labelWidth + "-col");
+                        labelElement.addClass("col-" + attrs.labelWidth);
                     } else {
                         labelElement.addClass("u-margin--right");
                     }
@@ -579,36 +579,39 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Add a label info icon with tooltip.
                     if(angular.isString(attrs.labelInfo)
-                        && attrs.labelInfo.length > 0) {
-                        var infoElement = angular.element('<i/>');
-                        infoElement.addClass('icon');
-                        infoElement.addClass('icon--info');
-                        infoElement.addClass('tooltip tooltip--left');
-                        infoElement.addClass('u-margin--left-tiny');
-                        if(attrs.labelLeft === "true") {
-                          infoElement.addClass('icon--left');
-                          infoElement.removeClass('u-margin--left-tiny');
-                        }
-                        infoElement.attr('aria-label', attrs.labelInfo);
-                        labelElement.text(labelElement.text() + ' ');
-                        labelElement.append(infoElement);
+                            && attrs.labelInfo.length > 0) {
+                        var infoWrapper = angular.element(
+                            '<span>&nbsp;</span>');
+                        infoWrapper.addClass('p-tooltip p-tooltip--btm-right');
+
+                        var infoIcon = angular.element('<i/>');
+                        infoIcon.addClass('p-icon--information');
+                        infoIcon.attr(
+                            'aria-describedby', attrs.key + '-tooptip');
+
+                        var infoTooltip = angular.element('<p></p>');
+                        infoTooltip.addClass('p-tooltip__message');
+                        infoTooltip.text(attrs.labelInfo);
+                        infoTooltip.attr('id', attrs.key + '-tooptip');
+
+                        infoWrapper.append(infoIcon);
+                        infoWrapper.append(infoTooltip);
+
+                        labelElement.append(infoWrapper);
 
                         // prevents the icon from being clickable
-                        infoElement.bind('click', function (evt) {
+                        infoIcon.bind('click', function (evt) {
                             evt.preventDefault();
                         });
                     }
-
-
                 }
 
                 // Add the wrapper for the input.
                 var inputWrapper = angular.element('<div></div>');
-                inputWrapper.addClass("form__group-input");
+                inputWrapper.addClass("p-form__control");
 
                 if(attrs.inputWidth) {
-                    inputWrapper.addClass(attrs.inputWidth + "-col");
-                    inputWrapper.addClass("last-col");
+                    inputWrapper.addClass("col-" + attrs.inputWidth);
                 }
 
                 // Render the input based on the type.
@@ -836,18 +839,14 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Construct the on and off toggle.
                     inputElement = angular.element([
-                        '<div class="onoffswitch">',
-                            '<input type="checkbox" name="' + attrs.key + '" ',
-                                'class="onoffswitch-checkbox" ',
-                                'id="' + attrs.key + '" ',
-                                'data-ng-model="_toggle" ',
-                                'data-ng-change="_changed()">',
-                            '<label class="onoffswitch-label" ',
-                                'for="' + attrs.key + '">',
-                                '<span class="onoffswitch-inner"></span>',
-                                '<span class="onoffswitch-switch"></span>',
-                            '</label>',
-                        '</div>'
+                      '<div class="maas-p-switch">',
+                        '<input type="checkbox" name="' + attrs.key + '" ',
+                          'class="maas-p-switch--input" ',
+                          'id="' + attrs.key + '" ',
+                          'data-ng-model="_toggle" ',
+                          'data-ng-change="_changed()">',
+                        '<div class="maas-p-switch--mask"></div>',
+                      '</div>'
                     ].join(''));
                     inputElement = $compile(inputElement)(switchScope);
 
@@ -916,27 +915,42 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                 // Errors element.
                 var errorsElement = angular.element(
-                    '<ul class="form__error"></ul>');
+                    '<ul class="p-list u-no-margin--top"></ul>');
                 if(!controller.isTableForm()) {
                     errorsElement.addClass("form__error");
                 }
                 inputWrapper.append(errorsElement);
 
+                // Help text elements
+                if (attrs.helpText) {
+                    var helpTextElement = angular.element(
+                        '<p>' + attrs.helpText + '</p>');
+                    helpTextElement.addClass("p-form-help-text");
+                    inputWrapper.append(helpTextElement);
+                }
+
                 // Called by controller to clear all errors.
                 scope.clearErrors = function() {
-                    inputElement.removeClass("has-error");
                     inputElement.removeClass("ng-dirty");
+                    inputElement.removeClass("p-form-validation__input");
+                    inputWrapper.removeClass("p-form-validation");
+                    inputWrapper.removeClass("is-error");
+                    inputWrapper.removeClass("u-no-margin--top");
                     errorsElement.empty();
                 };
 
                 // Called by controller to set errors.
                 scope.setErrors = function(errors) {
                     if(errors.length > 0) {
-                        inputElement.addClass("has-error");
+                        inputWrapper.addClass("p-form-validation");
+                        inputWrapper.addClass("is-error");
+                        inputWrapper.addClass("u-no-margin--top");
                         inputElement.addClass("ng-dirty");
+                        inputElement.addClass("p-form-validation__input");
                         angular.forEach(errors, function(error) {
                             errorsElement.append(
-                              '<li class="form__error-item">' + error + '</li>'
+                              '<li class="p-form-validation__message">' +
+                              '<strong>Error:</strong> ' + error + '</li>'
                             );
                         });
                         // Set the input in focus but outside of the current
@@ -956,7 +970,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 if(attrs.subtleText) {
                     var subtleTextElement = $compile(
                         angular.element(
-                            '<span class="u-text--subtle" ' +
+                            '<span class="p-form-help-text" ' +
                             'data-ng-bind="subtleText"></span>'))(scope);
                     inputWrapper.append(subtleTextElement);
                 }
@@ -972,16 +986,16 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             ':first').addClass('u-border--information');
                         inputWrapper.append(
                             '<i class="obj-saving icon ' +
-                            'icon--loading u-animation--spin"></i>');
-                        inputWrapper.addClass('tooltip');
-                        inputWrapper.addClass('tooltip--bottom');
+                            'p-icon--spinner u-animation--spin"></i>');
+                        inputWrapper.addClass('p-tooltip');
+                        inputWrapper.addClass('p-tooltip--bottom');
                         inputWrapper.attr('aria-label', 'Saving');
                     } else {
                       inputWrapper.children(
                           ':first').removeClass('u-border--information');
                         inputWrapper.find('i.obj-saving').remove();
-                        inputWrapper.removeClass('tooltip');
-                        inputWrapper.removeClass('tooltip--right');
+                        inputWrapper.removeClass('p-tooltip');
+                        inputWrapper.removeClass('p-tooltip--right');
                         inputWrapper.removeAttr('aria-label');
                     }
                 });
@@ -1022,7 +1036,7 @@ angular.module('MAAS').directive('maasObjErrors', function() {
             restrict: "E",
             require: ["^^maasObjForm"],
             scope: {},
-            template: '<ul class="form__error"></ul>',
+            template: '<ul class="p-list u-no-margin--top"></ul>',
             link: function(scope, element, attrs, controllers) {
                 // Set on the controller the global error handler.
                 controllers[0].errorScope = scope;
@@ -1038,7 +1052,9 @@ angular.module('MAAS').directive('maasObjErrors', function() {
                     if(errors.length > 0) {
                         angular.forEach(errors, function(error) {
                             ul.append(
-                              '<li class="form__error-item">' + error + '</li>'
+                              '<li class="p-list__item">' +
+                              '<i class="p-icon--error"></i> ' +
+                              error + '</li>'
                             );
                         });
                     }
@@ -1061,7 +1077,7 @@ angular.module('MAAS').directive('maasObjSaving', function() {
             transclude: true,
             template: [
               '<span data-ng-if="saving">',
-                '<i class="icon icon--loading u-animation--spin"></i>',
+                '<i class="p-icon--loading u-animation--spin"></i>',
                 '<span data-ng-transclude></span>',
               '</span>'].join(''),
             link: function(scope, element, attrs, controller) {

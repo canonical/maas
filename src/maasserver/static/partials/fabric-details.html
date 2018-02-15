@@ -1,124 +1,152 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
-            <h1 class="page-header__title">{$ fabric.name $}</h1>
-            <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
-                <button class="button--destructive button--inline"
-                    data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete fabric</button>
+<div class="ng-hide u-no-margin--top" data-ng-show="loaded">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
+            <div class="col-8">
+                <h1 class="page-header__title">{$ fabric.name $}</h1>
             </div>
-            <div class="page-header__dropdown" data-ng-class="{ 'is-open': confirmingDelete }">
-                <section class="page-header__section ng-hide" data-ng-hide="canBeDeleted()">
-                    <p class="page-header__message page-header__message--error">
-                        Fabric cannot be deleted because it is the default fabric.
-                    </p>
-                    <div class="page-header__controls">
-                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                    </div>
-                </section>
-                <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
-                    <p class="page-header__message page-header__message--error">
-                        Are you sure you want to delete this fabric?
-                    </p>
-                    <div class="page-header__controls">
-                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete fabric</button>
-                    </div>
-                </section>
-                <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && error">
-                    <p class="page-header__message page-header__message--error">{$ error $}</p>
-                    <div class="page-header__controls">
-                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
-                    </div>
-                </section>
+            <div class="col-4">
+                <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
+                    <button class="p-button--negative"
+                        data-ng-click="deleteButton()"
+                        data-ng-hide="confirmingDelete">Delete fabric</button>
+                </div>
+                <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !confirmingDelete }">
+                    <section class="page-header__section ng-hide u-align--right" data-ng-hide="canBeDeleted()">
+                        <p class="page-header__message page-header__message--error">
+                            Fabric cannot be deleted because it is the default fabric.
+                        </p>
+                        <div class="page-header__controls">
+                            <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        </div>
+                    </section>
+                    <section class="page-header__section ng-hide  u-align--right" data-ng-show="canBeDeleted() && !error">
+                        <p class="page-header__message page-header__message--error">
+                            <i class="p-icon--warning"></i> Are you sure you want to delete this fabric?
+                        </p>
+                        <div class="page-header__controls">
+                            <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                            <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete fabric</button>
+                        </div>
+                    </section>
+                    <section class="page-header__section ng-hide u-align--right" data-ng-show="canBeDeleted() && error">
+                        <p class="page-header__message page-header__message--error">{$ error $}</p>
+                        <div class="page-header__controls">
+                            <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                            <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </header>
     <div data-ng-show="!loading">
-        <section class="row">
-            <div class="wrapper--inner">
-                <div class="twelve-col">
-                    <h2 class="u-float--left">Fabric summary</h2>
-                    <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
+        <section class="p-strip">
+            <div class="row">
+                <div class="col-6">
+                    <h2>Fabric summary</h2>
                 </div>
-                <div class="twelve-col" data-ng-if="editSummary != true">
-                    <dl class="six-col">
-                        <dt class="two-col">Name</dt>
-                        <dd class="four-col last-col">{$ fabric.name $}</dd>
-                        <dt class="two-col">Description</dt>
-                        <dd class="four-col last-col">{$ fabric.description $}</dd>
-                    </dl>
-                    <dl class="six-col last-col">
-                        <dt class="two-col">Rack controllers</dt>
-                        <dd class="four-col last-col">
-                            <span class="u-margin--right-small" data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                <a href="#/node/controller/{$ rack.system_id $}" class="link--alt">{$ rack.hostname $}</a>
+                <div class="col-6">
+                    <button type="p-button" name="p-button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
+                </div>
+            </div>
+            <div class="form p-form--stacked row" data-ng-if="editSummary != true">
+                <div class="col-6">
+                    <div class="p-form__group">
+                        <div class="p-form__label">
+                            <p><strong>Name:</strong></p>
+                        </div>
+                        <div class="p-form__control">
+                            <p>{$ fabric.name $}</p>
+                        </div>
+                    </div>
+                    <div class="p-form__group">
+                        <div class="p-form__label">
+                            <p><strong>Description:</strong></p>
+                        </div>
+                        <div class="p-form__control">
+                            <p>{$ fabric.description $}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-form__group">
+                        <div class="p-form__label">
+                            <p><strong>Rack controllers</strong></p>
+                        </div>
+                        <div class="p-form__control">
+                            <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
+                                <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>, 
                             </span>
-                        </dd>
-                    </dl>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            <div class="row">
                 <maas-obj-form obj="fabric" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="fabricManager" data-ng-disabled="!isSuperUser()">
-                    <fieldset class="form__fieldset six-col">
-                        <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name"
-                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
-                        <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description"
-                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
-                    </fieldset>
-                    <fieldset class="form__fieldset six-col last-col">
-                        <dl>
-                            <dt class="two-col">Rack controllers</dt>
-                            <dd class="four-col last-col">
-                                <span class="u-margin--right-small" data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                    <a href="#/node/controller/{$ rack.system_id $}" class="link--alt">{$ rack.hostname $}</a>
-                                </span>
-                            </dd>
-                        </dl>
-                    </fieldset>
-                    <div class="twelve-col u-align--right">
-                        <button class="button--base button--inline" type="button"
-                           data-ng-click="exitEditSummary()">Cancel</button>
-                        <button class="button--positive button--inline" maas-obj-save>Save summary</button>
+                    <div class="row">
+                        <div class="col-6">
+                            <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name"
+                                label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                            <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description"
+                                label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-form__group">
+                                <div class="p-form__label">
+                                    <p><strong>Rack controllers</strong></p>
+                                </div>
+                                <div class="p-form__control">
+                                    <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
+                                        <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>, 
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row u-no-margin--top">
+                        <div class="row u-align--right">
+                            <button class="p-button--base" type="button"
+                            data-ng-click="exitEditSummary()">Cancel</button>
+                            <button class="p-button--positive" maas-obj-save>Save summary</button>
+                        </div>
                     </div>
                 </maas-obj-form>
             </div>
         </section>
-        <section class="row">
-            <div class="wrapper--inner">
-                <div class="twelve-col">
+        <section class="p-strip">
+            <div class="row">
+                <div class="col-12">
                     <h2>VLANs on this fabric</h2>
-                </div>
-                <div class="twelve-col">
-                    <table>
+                    <table class="p-table--mobile-card p-table-expanding">
                         <thead>
                             <tr>
-                                <th class="table__header table__column--15" data-ng-click="predicate='vlan_name'; reverse = !reverse"
+                                <th class="col-3" data-ng-click="predicate='vlan_name'; reverse = !reverse"
                                      data-ng-class="{'is-sorted': predicate === 'vlan_name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">VLAN</th>
-                                <th class="table__header table__column--50" data-ng-click="predicate='subnet_name'; reverse = !reverse"
+                                <th class="col-5" data-ng-click="predicate='subnet_name'; reverse = !reverse"
                                      data-ng-class="{'is-sorted': predicate === 'subnet_name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Subnet</th>
-                                <th class="table__header table__column--10" data-ng-click="predicate='subnet.statistics.available_string'; reverse = !reverse"
+                                <th class="col-2" data-ng-click="predicate='subnet.statistics.available_string'; reverse = !reverse"
                                      data-ng-class="{'is-sorted': predicate === 'subnet.statistics.available_string', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Available</th>
-                                <th class="table__header table__column--25" data-ng-click="predicate='space_name'; reverse = !reverse"
+                                <th class="col-2" data-ng-click="predicate='space_name'; reverse = !reverse"
                                      data-ng-class="{'is-sorted': predicate === 'space_name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Space</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="table__row table__row--no-hover" data-ng-repeat="row in rows | orderBy:predicate:reverse track by $index">
-                                <td class="table__column--15" aria-label="VLAN">
+                            <tr data-ng-repeat="row in rows | orderBy:predicate:reverse track by $index">
+                                <td class="col-3" aria-label="VLAN">
                                     <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                                 </td>
-                                <td class="table__column--50" aria-label="Subnet">
+                                <td class="col-5" aria-label="Subnet">
                                     <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                                 </td>
-                                <td class="table__column--10" aria-label="Available">{$ row.subnet.statistics.available_string $}</td>
-                                <td class="table__column--25" aria-label="Space">
+                                <td class="col-2" aria-label="Available">{$ row.subnet.statistics.available_string $}</td>
+                                <td class="col-2" aria-label="Space">
                                     <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                                 </td>
                             </tr>

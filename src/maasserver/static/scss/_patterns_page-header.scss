@@ -1,0 +1,26 @@
+@mixin maas-page-header {
+  .page-header {
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    &__title {
+      @include vf-heading-2;
+      display: inline-block;
+    }
+
+    &__status {
+      @include vf-heading-5;
+      width: auto;
+      display: inline-grid;
+      position: relative;
+      margin-left: 1rem;
+      color: $color-mid-dark;
+    }
+
+    &__controls {
+      float: right;
+    }
+  }
+}

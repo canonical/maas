@@ -1,0 +1,197 @@
+@mixin maas {
+  // sticky-header - temporary fix
+  // Issue: https://github.com/ubuntudesign/MAAS-design-squad/issues/98
+  .p-sticky-header {
+    background-color: $color-x-light;
+    border-bottom: 1px solid $color-mid-light;
+  }
+
+  // XXX Footer link fix
+  // Issue: https://github.com/vanilla-framework/vanilla-framework/issues/1500
+  .p-footer__link {
+    color: $color-link;
+
+    &::after {
+      color: $color-dark;
+    }
+  }
+
+  body {
+    background-color: $color-light;
+  }
+
+  maas-obj-field[type="text"],
+  maas-obj-field[type="password"] {
+    background-color: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  textarea {
+    min-height: 175px;
+  }
+
+  .p-table-expanding__panel {
+    background-color: $color-x-light;
+    margin-left: 0 !important;
+  }
+
+  table {
+    input[type="radio"],
+    input[type="checkbox"] {
+      float: none;
+    }
+
+    form {
+      input[type="radio"],
+      input[type="checkbox"] {
+        float: left;
+      }
+    }
+
+    th,
+    td {
+      display: table-cell !important;
+      flex-basis: auto !important;
+      flex-grow: 0;
+      margin-left: 3.2877% !important;
+
+      &:first-child {
+        margin-left: 0 !important;
+      }
+    }
+
+    tr.is-active {
+      background-color: $color-x-light;
+    }
+  }
+
+  .u-float-none {
+    float: none !important;
+  }
+
+  .p-form--inline,
+  .p-form--inline .p-form__group {
+    width: 100%;
+  }
+
+  p:empty,
+  ul:empty,
+  label:empty {
+    margin: 0;
+    padding: 0;
+  }
+
+  .tags .input {
+    width: 100% !important;
+  }
+
+  .row ~ .row,
+  * + * {
+    margin-top: $sp-large;
+  }
+
+  th, td {
+    padding: .5rem 0;
+  }
+
+  dl dt:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .p-navigation--sidebar {
+    background: $color-x-light;
+
+    .sidebar__content {
+      top: 0;
+      padding: 1rem;
+    }
+  }
+
+  .u-float--none {
+    float: none !important;
+  }
+
+  .u-remove-max-width {
+    max-width: none;
+  }
+
+  // XXX Ant: 25.01.18 Can be removed when this issue is resolved
+  // https://github.com/vanilla-framework/vanilla-framework/issues/1542
+  .p-navigation--sidebar .sidebar__content {
+    position: relative;
+  }
+
+  .p-contextual-menu__dropdown {
+    display: block;
+  }
+
+  .p-form__controls {
+    margin-top: 0;
+  }
+
+  select {
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.3rem;
+  }
+
+  maas-obj-field[type="password"] {
+    background: transparent;
+    border: 0;
+  }
+
+
+  .p-list-tree .p-list-tree::after {
+    display: none !important;
+  }
+
+  .editable {
+    padding: .5rem 1rem;
+    border: 1px solid transparent;
+
+    &:hover,
+    &.editmode {
+      border: 1px solid $color-mid-light;
+    }
+  }
+
+  .page-header__title-domain {
+    display: inline-block;
+    width: auto;
+    font-size: 2.25rem;
+    line-height: 1.167;
+  }
+
+  //Fix for action buttons in headers
+  .p-inline-list__item div {
+    display: inline-block;
+  }
+
+  .col-12 {
+    width: 100%;
+  }
+
+  // Can be removed when the settings section is updated
+  .errorlist {
+    list-style: none;
+    display: inline-block;
+    margin-left: 0;
+  }
+
+  // Sidebar selected state
+  .sidebar__second-level .is-active {
+    background: transparent url('../assets/images/89c10794-remove.svg') top $sp-small right $sp-large no-repeat;
+    background-size: 12px;
+  }
+
+  // Checkbox height is not needed
+  .p-form__control [type='checkbox'] {
+    height: auto;
+    min-height: auto;
+  }
+}

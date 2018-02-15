@@ -1,0 +1,29 @@
+@mixin maas-table-expanding {
+  .p-table-expanding  {
+    td.p-table-expanding__panel {
+      background-color: $color-x-light;
+      border-top: 0;
+
+      &.is-active {
+        flex-grow: 1;
+      }
+    }
+
+    td {
+      display: table-cell;
+
+      &[colspan='2'] {
+        flex: 2;
+      }
+    }
+
+    td,
+    th {
+      flex-grow: 0;
+    }
+
+    tr.is-active {
+      background-color: $color-x-light;
+    }
+  }
+}

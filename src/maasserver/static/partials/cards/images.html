@@ -1,12 +1,12 @@
-<header>
-  <h3>Images</h3>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">
+<header class="p-card__header">
+  <h2 class="p-heading--four">Images</h3>
+  <h3 class="p-heading--three">
     <maas-controller-image-status system-id="node.system_id"></maas-controller-image-status>
-  </h2>
+  </h3>
 </header>
-<div class="u-padding--bottom">
+<div>
   <p>Last image sync: {$ node.last_image_sync || 'never' $}</p>
 </div>
-<div class="action-card__position-bottom">
+<footer class="p-card__footer">
   <p><a href="#/images">Go to images &rsaquo;</a></p>
-</div>
+</footer>

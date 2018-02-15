@@ -1,0 +1,18 @@
+@mixin maas-p-forms {
+  @include maas-p-form-stacked;
+}
+
+@mixin maas-p-form-stacked {
+  // Give the label a little more room from Vanilla's default
+  .p-form--stacked {
+    .p-form__label {
+      max-width: 30%;
+      flex-basis: 30%;
+    }
+
+    .p-form__control {
+      max-width: 70%;
+      flex-basis: 70%;
+    }
+  }
+}

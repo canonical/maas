@@ -1,14 +1,41 @@
-// import required files
-@import 'base.cloud-vanilla';
-@import 'base.maas-gui-vanilla-theme';
-@import 'pages.scratch';
-@import 'utilities.equal-height';
-@import 'action-card';
-@import 'lock-icon';
+// Import MAAS-specific Vanilla configuration
+@import 'settings';
+@import 'utils';
 
-// Config overrides
-$use-local-fonts: true;
+// Import Vanilla framework
+@import '../../../../include/nodejs/node_modules/vanilla-framework/scss/vanilla';
+@include vanilla;
 
-// Build the MAAS theme
-@include maas-gui-vanilla-theme;
-@include maas-pages;
+// Import local patterns
+@import 'maas';
+@import 'base_tables';
+@import 'patterns_icons';
+@import 'patterns_navigation';
+@import 'patterns_page-header';
+@import 'patterns_tabs';
+@import 'patterns_switch';
+@import 'patterns_table-expanding';
+@import 'patterns_card';
+@import 'patterns_meter';
+@import 'patterns_strips';
+@import 'patterns_tag-input';
+@import 'patterns_forms';
+@import 'patterns_notification';
+@import 'patterns_footer';
+
+// Include local patterns
+@include maas;
+@include maas-tables;
+@include maas-icons;
+@include maas-navigation;
+@include maas-page-header;
+@include maas-tabs;
+@include maas-switch;
+@include maas-table-expanding;
+@include maas-cards;
+@include maas-meter;
+@include maas-p-strip;
+@include maas-tag-input;
+@include maas-p-forms;
+@include maas-p-notifications;
+@include maas-p-sticky-footer;

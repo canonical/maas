@@ -270,8 +270,7 @@
                 .css('top', initialCSS.top)
                 .css('position', initialCSS.position)
                 .css('left', initialCSS.cssLeft)
-                .css('margin-top', initialCSS.marginTop)
-                .css('height', initialCSS.height);
+                .css('margin-top', initialCSS.marginTop);
             } else if (fromDirection === 'bottom' && confine === true) {
               $elem.addClass(bottomClass);
 
@@ -287,8 +286,7 @@
                 .css('position', 'absolute')
                 .css('left', initialCSS.cssLeft)
                 .css('margin-top', initialCSS.marginTop)
-                .css('margin-bottom', initialCSS.marginBottom)
-                .css('height', initialCSS.height);
+                .css('margin-bottom', initialCSS.marginBottom);
             }
 
             if (placeholder && fromDirection === anchor) {

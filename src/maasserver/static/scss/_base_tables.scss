@@ -1,0 +1,9 @@
+@mixin maas-tables {
+  table {
+    overflow-x: visible;
+
+    tr {
+      padding: 0 1rem;
+    }
+  }
+}

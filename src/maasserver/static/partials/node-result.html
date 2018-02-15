@@ -1,75 +1,98 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
-            <h1 class="page-header__title">{$ node.fqdn $}</h1>
-            <p class="page-header__status">{$ result.name $}</p>
-            <div class="page-header__controls u-float--right">
-                <a href="#/node/{$ type_name $}/{$ node.system_id $}?area={$ result.result_type == 0 ? 'commissioning' : 'testing' $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
+<div class="ng-hide u-no-margin--top" data-ng-show="loaded">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
+            <div class="col-8">
+                <h1 class="page-header__title">{$ node.fqdn $}</h1>
+                <p class="page-header__status">{$ result.name $}</p>
+            </div>
+            <div class-"col-4">
+                <div class="page-header__controls u-float--right">
+                    <a href="#/node/{$ type_name $}/{$ node.system_id $}?area={$ result.result_type == 0 ? 'commissioning' : 'testing' $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
+                </div>
             </div>
         </div>
     </header>
-    <div class="row">
-        <div class="wrapper--inner">
-            <div class="six-col last-col">
+    <div class="p-strip">
+        <div class="row">
+            <div class="col-6">
                 <dl>
-                    <dt class="two-col">Status</dt>
-                        <dd class="four-col last-col ng-binding">
+                    <dt>Status</dt>
+                        <dd class="ng-binding">
                             <span data-maas-script-status="script-status" data-script-status="result.status" class="ng-isolate-scope"></span> {$ result.status_name $}
                         </dd>
-                    <dt class="two-col">Exit Status</dt>
-                        <dd class="four-col last-col ng-binding" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</dd>
-                        <dd class="four-col last-col ng-binding" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</dd>
+                    <dt>Exit Status</dt>
+                        <dd class="ng-binding" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</dd>
+                        <dd class="ng-binding" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</dd>
                     <dt class="two-col">Tags</dt>
-                        <dd class="four-col last-col ng-binding" data-ng-if="result.tags">{$ result.tags $}</dd>
-                        <dd class="four-col last-col ng-binding" data-ng-if="!result.tags">&nbsp;</dd>
+                        <dd class="ng-binding" data-ng-if="result.tags">{$ result.tags $}</dd>
+                        <dd class="ng-binding" data-ng-if="!result.tags">&nbsp;</dd>
                 </dl>
             </div>
-            <div class="six-col">
+            <div class="col-6">
                 <dl>
-                    <dt class="two-col">Start Time</dt>
-                        <dd class="four-col last-col ng-binding" data-ng-if="result.started">{$ result.started $}</dd>
-                        <dd class="four-col last-col ng-binding" data-ng-if="!result.started">&nbsp;</dd>
+                    <dt>Start Time</dt>
+                        <dd class="ng-binding" data-ng-if="result.started">{$ result.started $}</dd>
+                        <dd class="ng-binding" data-ng-if="!result.started">&nbsp;</dd>
                     <dt class="two-col">End Time</dt>
-                        <dd class="four-col last-col ng-binding" data-ng-if="result.ended">{$ result.ended $}</dd>
-                        <dd class="four-col last-col ng-binding" data-ng-if="!result.ended">&nbsp;</dd>
+                        <dd class="ng-binding" data-ng-if="result.ended">{$ result.ended $}</dd>
+                        <dd class="ng-binding" data-ng-if="!result.ended">&nbsp;</dd>
                     <dt class="two-col">Runtime</dt>
-                        <dd class="four-col last-col ng-binding" data-ng-if="result.runtime">{$ result.runtime $}</dd>
-                        <dd class="four-col last-col ng-binding" data-ng-if="!result.runtime">&nbsp;</dd>
+                        <dd class="ng-binding" data-ng-if="result.runtime">{$ result.runtime $}</dd>
+                        <dd class="ng-binding" data-ng-if="!result.runtime">&nbsp;</dd>
                 </dl>
             </div>
-            <div class="twelve-col" data-ng-if="result.results.length !== 0">
+        </div>
+        <div class="row" data-ng-if="result.results.length !== 0">
+            <div class="col-6">
                 <h2>Metrics</h2>
-                <div class="six-col last-col u-margin--none" data-ng-repeat="item in result.results">
-                    <span class="tooltip two-col" aria-label="{$ item.description $}">{$ item.title $}</span>
+                <dl data-ng-repeat="item in result.results">
+                    <dt class="p-tooltip p-tooltip--top-center">
+                        {$ item.title $}
+                        <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
+                    </dt>
                     <span class="four-col last-col">{$ item.value $}</span>
                 </div>
             </div>
-            <div class="six-col">
-                <h2 class="u-display--inline-block ng-binding">Output</h2>
-                <ul class="tabs">
-                    <li class="tabs__tab" data-ng-class="{ 'is-active': output === 'combined' }">
-                        <button class="tabs__tab-link" data-ng-click="get_result_data('combined')">combined</button>
-                    </li>
-                    <li class="tabs__tab" data-ng-class="{ 'is-active': output === 'stdout' }">
-                        <button class="tabs__tab-link" data-ng-click="get_result_data('stdout')">stdout</button>
-                    </li>
-                    <li class="tabs__tab" data-ng-class="{ 'is-active': output === 'stderr' }">
-                        <button class="tabs__tab-link" data-ng-click="get_result_data('stderr')">stderr</button>
-                    </li>
-                    <li class="tabs__tab" data-ng-class="{ 'is-active': output === 'result' }">
-                        <button class="tabs__tab-link" data-ng-click="get_result_data('result')">yaml</button>
-                    </li>
-                </ul>
+        </div>
+        <div class="row">
+            <div class="col-6">
+                <h2 class="ng-binding">Output</h2>
+                <nav class="p-tabs">
+                    <ul class="p-tabs__list">
+                        <li class="p-tabs__item">
+                            <a href="" class="p-tabs__link"
+                                data-ng-class="{ 'is-active': output === 'combined' }"
+                                data-ng-click="get_result_data('combined')">combined</a>
+                        </li>
+                        <li class="p-tabs__item">
+                            <a href="" class="p-tabs__link" 
+                                data-ng-class="{ 'is-active': output === 'stdout' }"
+                                data-ng-click="get_result_data('stdout')">stdout</a>
+                        </li>
+                        <li class="p-tabs__item">
+                            <a href="" class="p-tabs__link" 
+                                data-ng-class="{ 'is-active': output === 'stderr' }"
+                                data-ng-click="get_result_data('stderr')">stderr</a>
+                        </li>
+                        <li class="p-tabs__item">
+                            <a href="" class="p-tabs__link" 
+                                data-ng-class="{ 'is-active': output === 'result' }"
+                                data-ng-click="get_result_data('result')">yaml</a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
-            <div class="twelve-col">
-                <pre class="code-block code-block--numbering code-block--terminal" data-maas-code-lines="data"></pre>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <pre class="p-code-numbered" data-maas-code-lines="data"></pre>
             </div>
         </div>
     </div>

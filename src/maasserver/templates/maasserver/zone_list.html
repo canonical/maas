@@ -7,7 +7,7 @@
 
 {% block content %}
 <div id="zones">
-    <h2>Physical zones <span class="icon icon--help tooltip tooltip--right"
+    <h2>Physical zones <span class="p-icon--help tooltip tooltip--right"
           aria-label="A representation of a grouping of nodes, typically by physical location.">
     </span></h2>
     <table>
@@ -36,8 +36,8 @@
                 {% if user.is_superuser %}
                 <td class="u-align--right table--mobile-controls">
                     {% if not zone_item.is_default %}
-                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="icon icon--edit u-margin--right-small">edit</a>
-                    <a title="Delete zone {{ zone_item.name }}" class="icon icon--delete" href="{% url 'zone-del' zone_item.name %}">delete</a>
+                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="p-icon--edit u-margin--right-small">edit</a>
+                    <a title="Delete zone {{ zone_item.name }}" class="p-icon--delete" href="{% url 'zone-del' zone_item.name %}">delete</a>
                     <form method="POST" action="{% url 'zone-del' zone_item.name %}">
                         {% csrf_token %}
                         <input type="hidden" name="name" value="{{ zone_item.name }}" />

@@ -13,18 +13,16 @@ angular.module('MAAS').directive('maasBootImagesStatus', [
             template: [
                 '<p class="page-header__status" ',
                     'data-ng-if="data.region_import_running">',
-                    '<span class="u-text--loading u-margin--left-small">',
-                        '<i class="icon icon--loading u-animation--spin ',
-                            'u-margin--right-tiny"></i>',
+                    '<span class="u-text--loading">',
+                        '<i class="p-icon--loading u-animation--spin"></i>',
                         'Step 1/2: Region controller importing',
                     '</span>',
                 '</p>',
                 '<p class="page-header__status" ',
                     'data-ng-if="!data.region_import_running && ',
                     'data.rack_import_running">',
-                    '<span class="u-text--loading u-margin--left-small">',
-                        '<i class="icon icon--loading u-animation--spin ',
-                            'u-margin--right-tiny"></i>',
+                    '<span class="u-text--loading">',
+                        '<i class="p-icon--loading u-animation--spin"></i>',
                         'Step 2/2: Rack controller(s) importing',
                     '</span>',
                 '</p>'
@@ -99,9 +97,9 @@ angular.module('MAAS').directive('maasBootImages', [
                 // Return the overall title icon.
                 $scope.getTitleIcon = function() {
                     if($scope.bootResources.resources.length === 0) {
-                        return 'icon--success-grey';
+                        return 'p-icon--success-muted';
                     } else {
-                        return 'icon--success';
+                        return 'p-icon--success';
                     }
                 };
 
@@ -380,7 +378,7 @@ angular.module('MAAS').directive('maasBootImages', [
                             angular.forEach($scope.source.selections.arches,
                                 function(arch) {
                                     var image = {
-                                        icon: 'icon--status-queued',
+                                        icon: 'p-icon--status-queued',
                                         title: release.title,
                                         arch: arch.title,
                                         size: '-',
@@ -393,7 +391,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                     if(angular.isObject(resource)) {
                                         image.resourceId = resource.id;
                                         image.icon = (
-                                            'icon--status-' + resource.icon);
+                                            'p-icon--status-' + resource.icon);
                                         image.size = resource.size;
                                         image.status = resource.status;
                                         if(resource.downloading) {
@@ -410,7 +408,7 @@ angular.module('MAAS').directive('maasBootImages', [
                         angular.forEach(resources, function(resource) {
                             var name_split = resource.name.split('/');
                             var image = {
-                                icon: 'icon--status-failed',
+                                icon: 'p-icon--status-failed',
                                 title: resource.title,
                                 arch: resource.arch,
                                 size: resource.size,
@@ -459,7 +457,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                 var name_split = ubuntuCoreImage.name.split(
                                     '/');
                                 var image = {
-                                    icon: 'icon--status-queued',
+                                    icon: 'p-icon--status-queued',
                                     title: ubuntuCoreImage.title,
                                     arch: name_split[1],
                                     size: '-',
@@ -470,7 +468,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                     name_split[3], name_split[1]);
                                 if(angular.isObject(resource)) {
                                     image.icon = (
-                                        'icon--status-' + resource.icon);
+                                        'p-icon--status-' + resource.icon);
                                     image.size = resource.size;
                                     image.status = resource.status;
                                     if(resource.downloading) {
@@ -485,7 +483,7 @@ angular.module('MAAS').directive('maasBootImages', [
                     // those are set to be deleted.
                     angular.forEach(resources, function(resource) {
                         var image = {
-                            icon: 'icon--status-failed',
+                            icon: 'p-icon--status-failed',
                             title: resource.title,
                             arch: resource.arch,
                             size: resource.size,
@@ -533,7 +531,7 @@ angular.module('MAAS').directive('maasBootImages', [
                             if(otherImage.checked) {
                                 var name_split = otherImage.name.split('/');
                                 var image = {
-                                    icon: 'icon--status-queued',
+                                    icon: 'p-icon--status-queued',
                                     title: otherImage.title,
                                     arch: name_split[1],
                                     size: '-',
@@ -544,7 +542,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                     name_split[3], name_split[1]);
                                 if(angular.isObject(resource)) {
                                     image.icon = (
-                                        'icon--status-' + resource.icon);
+                                        'p-icon--status-' + resource.icon);
                                     image.size = resource.size;
                                     image.status = resource.status;
                                     if(resource.downloading) {
@@ -559,7 +557,7 @@ angular.module('MAAS').directive('maasBootImages', [
                     // those are set to be deleted.
                     angular.forEach(resources, function(resource) {
                         var image = {
-                            icon: 'icon--status-failed',
+                            icon: 'p-icon--status-failed',
                             title: resource.title,
                             arch: resource.arch,
                             size: resource.size,
@@ -578,7 +576,7 @@ angular.module('MAAS').directive('maasBootImages', [
                         function(resource) {
                             if(resource.rtype === rtype) {
                                 var image = {
-                                    icon: 'icon--status-' + resource.icon,
+                                    icon: 'p-icon--status-' + resource.icon,
                                     title: resource.title,
                                     arch: resource.arch,
                                     image_id: resource.id,

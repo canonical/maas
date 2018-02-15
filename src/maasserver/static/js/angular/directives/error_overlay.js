@@ -11,9 +11,9 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the error_overlay.html into the template cache.
     $templateCache.put('directive/templates/error_overlay.html', [
         '<header id="error-header" class="page-header" data-ng-show="show()">',
-            '<div class="wrapper--inner">',
+            '<div class="row">',
                 '<h1 class="page-header__title">',
-                    '<span class="icon icon--loading u-animation--spin ',
+                    '<span class="p-icon--loading u-animation--spin ',
                         'u-margin--right-small"',
                         'data-ng-hide="clientError"></span>',
                     '{$ getTitle() $}',
@@ -35,7 +35,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                 '</div>',
             '</div>',
         '</header>',
-        '<div class="ng-hide" data-ng-hide="show()">',
+        '<div class="ng-hide u-no-margin--top" data-ng-hide="show()">',
             '<div data-ng-transclude></div>',
         '</div>'
     ].join(''));

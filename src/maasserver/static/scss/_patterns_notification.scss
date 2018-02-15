@@ -1,0 +1,16 @@
+@mixin maas-p-notifications {
+  @include maas-notification-group;
+}
+
+@mixin maas-notification-group {
+  .p-notification--group {
+    > [class^="p-notification"] {
+      flex-direction: column;
+    }
+    
+    .p-list--divided {
+      margin-top: $sp-small;
+      border-top: 1px dotted $color-mid-light;
+    }
+  }
+}

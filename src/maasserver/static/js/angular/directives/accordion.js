@@ -19,11 +19,7 @@ angular.module('MAAS').directive('maasAccordion', function() {
             // all other tabs except to the tab that was clicked.
             var clickHandler = function(evt) {
                 var tab = evt.data.tab;
-                var tabs = evt.data.tabs;
-                angular.forEach(tabs, function(innerTab) {
-                    angular.element(innerTab).removeClass("is-active");
-                });
-                angular.element(tab).addClass("is-active");
+                angular.element(tab).toggleClass("is-selected");
             };
 
             // Listen for the click event on all tabs in the accordion.
@@ -31,8 +27,7 @@ angular.module('MAAS').directive('maasAccordion', function() {
             angular.forEach(tabs, function(tab) {
                 tab = angular.element(tab);
                 tab.on("click", {
-                    tab: tab,
-                    tabs: tabs
+                    tab: tab
                 }, clickHandler);
             });
 

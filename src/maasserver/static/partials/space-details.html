@@ -1,82 +1,106 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
-            <h1 class="page-header__title">{$ space.name $}</h1>
-            <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultSpace() && !loading">
-                <button class="button--destructive button--inline"
-                    data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete space</button>
+<div class="ng-hide u-no-margin--top" data-ng-show="loaded">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
+            <div class="col-8">
+                <h1 class="page-header__title">{$ space.name $}</h1>
             </div>
-            <div class="page-header__dropdown" data-ng-class="{ 'is-open': confirmingDelete }">
-                <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="canBeDeleted()">
-                    <p class="page-header__message page-header__message--error">
-                        Space cannot be deleted because it has subnets attached. Remove all subnets from the space to allow deletion.
-                    </p>
-                    <div class="page-header__controls">
-                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                    </div>
+            <div class="col-4">
+                <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultSpace() && !loading">
+                    <button class="p-button--negative"
+                        data-ng-click="deleteButton()"
+                        data-ng-hide="confirmingDelete">Delete space</button>
                 </div>
-                <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="canBeDeleted() && !error">
-                    <p class="page-header__message page-header__message--warning">
-                        Are you sure you want to delete this space?
-                    </p>
-                    <div class="page-header__controls">
-                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete space</button>
-                    </div>
+            </div>
+        </div>
+        <div class="u-no-margin--top page-header__dropdown row" data-ng-if="confirmingDelete">
+            <hr />
+            <div class="page-header__section ng-hide" data-ng-hide="canBeDeleted()">
+                <p class="page-header__message col-6">
+                    <i class="p-icon--error">Error:</i> Space cannot be deleted because it has subnets attached. Remove all subnets from the space to allow deletion.
+                </p>
+                <div class="page-header__controls col-6 u-align--right">
+                    <button class="p-button--neutral" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                 </div>
-                <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="canBeDeleted() && error">
-                    <p class="page-header__message page-header__message--error">{$ error $}</p>
-                    <div class="page-header__controls">
-                        <button class="button--base button--inline" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
-                    </div>
+            </div>
+            <div class="page-header__section row ng-hide" data-ng-show="canBeDeleted() && !error">
+                <p class="page-header__message col-6">
+                    <i class="p-icon--warning">Warning:</i> Are you sure you want to delete this space?
+                </p>
+                <div class="page-header__controls col-6 u-align--right">
+                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete space</button>
+                </div>
+            </div>
+            <div class="page-header__section row ng-hide" data-ng-show="canBeDeleted() && error">
+                <p class="page-header__message col-6">
+                    <i class="p-icon--error">Error:</i> {$ error $}</p>
+                <div class="page-header__controls col-6 u-align--right">
+                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
         </div>
     </header>
-    <section class="row">
-        <div class="wrapper--inner">
-            <div class="twelve-col">
+    <section class="p-strip">
+        <div class="row">
+            <div class="col-12">
               <h2 class="u-float--left">Space summary</h2>
-              <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="enterEditSummary()" data-ng-if="!editSummary">Edit</button>
+              <button type="button" name="button" class="button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="!editSummary">Edit</button>
             </div>
-            <div class="twelve-col" data-ng-if="!editSummary">
-                <dl class="six-col">
-                    <dt class="two-col">Name</dt>
-                    <dd class="four-col last-col">{$ space.name $}</dd>
-                    <dt class="two-col">Description</dt>
-                    <dd class="four-col last-col">{$ space.description $}</dd>
-                </dl>
+        </div>
+        <div class="form p-form--stacked row" data-ng-if="!editSummary">
+            <div class="col-6">
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Name</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p>{$ space.name $}</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Description</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p>{$ space.description $}</p>
+                    </div>
+                </div>
             </div>
+        </div>
+        <div class="row">
             <maas-obj-form obj="space" table-form="true" manager="spaceManager" data-ng-disabled="!isSuperUser()" data-ng-if="editSummary" table-form="true" save-on-blur="false" after-save="exitEditSummary">
-                <fieldset class="form__fieldset six-col">
-                    <maas-obj-field type="text" key="name" label="Name" placeholder="Space name"
-                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
-                    <maas-obj-field type="textarea" key="description" label="Description" placeholder="Space description"
-                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
-                </fieldset>
-                <div class="twelve-col u-align--right">
-                    <button class="button--base button--inline" type="button"
-                       data-ng-click="exitEditSummary()">Cancel</button>
-                    <button class="button--positive button--inline" maas-obj-save>Save summary</button>
+                <div class="row">
+                    <div class="col-6">
+                        <maas-obj-field type="text" key="name" label="Name" placeholder="Space name"
+                            label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                        <maas-obj-field type="textarea" key="description" label="Description" placeholder="Space description"
+                            label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 u-align--right">
+                        <button class="p-button--base"
+                        data-ng-click="exitEditSummary()" type="button">Cancel</button>
+                        <button class="p-button--positive" maas-obj-save>Save summary</button>
+                    </div>
                 </div>
             </maas-obj-form>
         </div>
     </section>
     <section class="row">
         <div class="wrapper--inner">
-            <div class="twelve-col">
+            <div class="col-12">
                 <h2>Subnets on this space</h2>
             </div>
-            <div class="twelve-col">
+            <div class="col-12">
                 <table>
                     <thead>
                         <tr>

@@ -1,396 +1,343 @@
+<form class="form">
+    <div data-ng-if="!loading" data-ng-class="{'p-strip is-bordered': design === 'page', 'p-card--highlighted col-12': design === 'card'}">
+        <div class="row">
+            <div class="col-8">
+                <h2 class="u-vertically-center"><span data-ng-if="design === 'card'"><i class="{$ getTitleIcon() $}"></i>&nbsp;</span>Ubuntu</h2>
+                <p data-ng-if="isSuperUser() && !source.tooMany">
+                    Select images and architecture to be imported and kept in sync daily. Images will be available for deploying to machines managed by MAAS.
+                </p>
+            </div>
+        </div>
+        <div class="row" data-ng-if="isSuperUser() && !source.tooMany">
+            <h3>Choose source</h3>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <input type="radio" data-ng-model="source.source_type" id="source_maas" value="maas.io" data-ng-change="sourceChanged()" data-ng-disabled="saving">
+                <label class="u-no-margin--top" for="source_maas">maas.io</label>
+            </div>
+            <div class="col-2">
+                <input type="radio" data-ng-model="source.source_type" id="source_custom" value="custom" data-ng-change="sourceChanged()" data-ng-disabled="saving">
+                <label for="source_custom" class="u-no-margin--top">Custom</label>
+            </div>
+        </div>
+        <div class="row" data-ng-if="isSuperUser() && !source.tooMany && showMirrorPath()">
+            <div class="col-8">
+                <h3>Mirror URL</h3>
+                <p>Add the URL you want to use to select your images from.</p>
+            </div>
+        </div>
+        <div class="row" data-ng-if="isSuperUser() && !source.tooMany && showMirrorPath()">
+            <div class="col-8">
+                <div class="row">
+                    <div class="col-5  p-form-validation u-no-margin--top" data-ng-class="{ 'is-error': !source.connecting && source.errorMessage }">
+                        <input class="p-form-validation__input" type="text" name="mirrorUrl" placeholder="e.g. http:// or https://" data-ng-model="source.url" data-ng-change="sourceChanged()">
+                        <div class="p-form-validation__message" data-ng-if="!source.connecting && source.errorMessage">
+                              <p class="p-notification__response">
+                                  <span class="p-notification__status">Error:</span>{$ source.errorMessage $}
+                                  <a class="p-notification__action" data-ng-if="source.source_type === 'maas.io'" data-ng-click="connect()">Retry</a>
+                              </p>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <button class="p-button--neutral" aria-label="Toggle advanced URL controls" data-ng-click="toggleAdvancedOptions()" >
+                            <span data-ng-if="!isShowingAdvancedOptions()">
+                                Show advanced options <i class="p-icon--plus"></i>
+                            </span>
+                            <span data-ng-if="isShowingAdvancedOptions()">
+                                Hide advanced options <i class="p-icon--minus"></i>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                <div class="row" data-ng-if="isShowingAdvancedOptions()">
+                    <div class="col-5">
+                        <div class="p-form-validation" data-ng-class="{ 'is-error': bothKeyringOptionsSet() }">
+                            <label for="keyring_filename">Path to the keyring to validate the mirror path.</label>
+                            <input type="text" name="keyring_filename" placeholder="e.g. /usr/share/keyrings/ubuntu-cloudimage-keyring.gpg" data-ng-model="source.keyring_filename" class="p-form-validation__input">
+                            <p class="p-form-validation__message" data-ng-if="bothKeyringOptionsSet()">
+                                <strong>Error: </strong>Cannot set both keyring path and keyring contents.
+                            </p>
+                        </div>
+                        <div class="p-form-validation" data-ng-class="{ 'is-error': bothKeyringOptionsSet() }">
+                            <label for="keyring_data">Contents of the keyring to validate the mirror path.</label>
+                            <textarea name="keyring_data" placeholder="Contents of GPG key" data-ng-model="source.keyring_data" class="p-form-validation__input"></textarea>
+                            <p class="p-form-validation__message" data-ng-if="bothKeyringOptionsSet()">
+                                <strong>Error: </strong>Cannot set both keyring path and keyring contents.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <button class="p-button--positive" data-ng-if="showConnectButton()" data-ng-disabled="isConnectButtonDisabled()" data-ng-click="connect()">Connect</button>
+            </div>
+        </div>
 
-<div data-ng-class="{ 'action-card': design === 'action-card', 'row u-padding--top-large': design === 'page' }" data-ng-if="!loading">
-    <div data-ng-class="{ 'wrapper--inner': design === 'page' }">
-        <h2 data-ng-class="{ 'action-card__title': design === 'action-card' }">
-            <i data-ng-if="design === 'action-card'" class="icon icon--large u-margin--right-tiny {$ getTitleIcon() $}"></i> Ubuntu
-        </h2>
-        <div data-ng-class="{ 'action-card__controls': design === 'action-card' }">
-            <p class="u-margin--top-small u-margin--bottom-small" data-ng-if="isSuperUser() && !source.tooMany">
-                Select images and architecture to be imported and kept in sync daily. Images will be available for deploying to machines managed by MAAS.
-            </p>
-            <form class="form">
-                <div data-ng-if="isSuperUser() && !source.tooMany">
-                    <h3>Choose source</h3>
-                    <div class="form__group">
-                        <input type="radio" data-ng-model="source.source_type" id="source_maas" value="maas.io"
-                            data-ng-change="sourceChanged()" data-ng-disabled="saving">
-                        <label for="source_maas" class="u-margin--right">maas.io</label>
-                        <input type="radio" data-ng-model="source.source_type" id="source_custom" value="custom"
-                            data-ng-change="sourceChanged()" data-ng-disabled="saving">
-                        <label for="source_custom">Custom</label>
-                    </div>
-                    <div data-ng-if="showMirrorPath()">
-                        <h3>Mirror URL</h3>
-                        <p>Add the URL you want to use to select your images from.</p>
-                        <div class="u-width--two-thirds u-display--inline-block u-float--left">
-                            <div class="form__group eight-col">
-                                <input type="text" name="mirrorUrl" placeholder="e.g. http:// or https://"
-                                    data-ng-model="source.url" data-ng-change="sourceChanged()">
-                            </div>
-                            <div class="u-display--inline-block u-float--left four-col last-col">
-                                <button class="button--base button--inline" aria-label="Toggle advanced URL controls" data-ng-click="toggleAdvancedOptions()" >
-                                    <i class="icon" data-ng-class="{ 'icon--close': !isShowingAdvancedOptions(), 'icon--open': isShowingAdvancedOptions() }"></i>
-                                    <span data-ng-if="!isShowingAdvancedOptions()">Show advanced options</span>
-                                    <span data-ng-if="isShowingAdvancedOptions()">Hide advanced options</span>
-                                </button>
-                            </div>
-                            <div data-ng-if="isShowingAdvancedOptions()">
-                                <div class="form__group">
-                                    <label for="keyring_filename" class="form__group--label">Path to the keyring to validate the mirror path.</label>
-                                    <input type="text" name="keyring_filename" placeholder="e.g. /usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-                                        data-ng-model="source.keyring_filename"
-                                        data-ng-class="{ 'has-error': bothKeyringOptionsSet() }">
-                                    <ul class="form__error" data-ng-if="bothKeyringOptionsSet()">
-                                        <li class="form__error-item">Cannot set both keyring path and keyring contents.</li>
-                                    </ul>
-                                </div>
-                                <div class="form__group">
-                                    <label for="keyring_data" class="form__group--label">Contents of the keyring to validate the mirror path.</label>
-                                    <textarea name="keyring_data" placeholder="Contents of GPG key"
-                                        data-ng-model="source.keyring_data"
-                                        data-ng-class="{ 'has-error': bothKeyringOptionsSet() }"></textarea>
-                                    <ul class="form__error" data-ng-if="bothKeyringOptionsSet()">
-                                        <li class="form__error-item">Cannot set both keyring path and keyring contents.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="u-width--third u-display--inline-block u-float--left">
-                            <button class="button--secondary button--inline u-float--right"
-                                data-ng-if="showConnectButton()"
-                                data-ng-disabled="isConnectButtonDisabled()"
-                                data-ng-click="connect()">Connect</button>
-                            <div class="u-clear"></div>
-                        </div>
-                        <div class="u-clear"></div>
-                    </div>
+        <div class="row" data-ng-if="showConnectBlock()">
+            <div class="col-8">
+                <p data-ng-if="source.connecting">
+                    <i class="p-icon--spinner u-animation--spin"></i> Connecting
+                </p>
+            </div>
+        </div>
+
+        <div class="row p-divider" data-ng-if="isSuperUser() && !source.tooMany && showSelections()">
+            <div class="col-6 p-divider__block">
+                <h3>Images</h3>
+                <div class="row">
+                    <ul class="col-3 p-list">
+                        <li  class="p-list__item" data-ng-repeat="release in getUbuntuLTSReleases() | orderBy:'-title'">
+                            <input type="checkbox" id="{$ release.name $}" data-ng-checked="isSelected('releases', release)" data-ng-click="toggleSelection('releases', release)" data-ng-disabled="saving">
+                            <label for="{$ release.name $}" class="u-no-margin--top">{$ release.title $}</label>
+                        </li>
+                    </ul>
+                    <ul class="col-3 p-list">
+                        <li class="p-list__item" data-ng-repeat="release in getUbuntuNonLTSReleases() | orderBy:'-title'">
+                            <input type="checkbox" id="{$ release.name $}" data-ng-checked="isSelected('releases', release)" data-ng-click="toggleSelection('releases', release)" data-ng-disabled="saving">
+                            <label for="{$ release.name $}" class="u-no-margin--top">{$ release.title $}</label>
+                        </li>
+                    </ul>
                 </div>
-                <div data-ng-if="showConnectBlock()">
-                    <div class="u-clear"></div>
-                    <div class="u-margin--top-large u-margin--bottom-large u-padding--top-large u-padding--bottom-large">
-                        <p class="text-center" data-ng-if="!source.connecting && source.errorMessage">
-                            <i class="icon icon--warning"></i> {$ source.errorMessage $}
-                            <a data-ng-if="source.source_type === 'maas.io'" data-ng-click="connect()">Retry</a>
-                        </p>
-                        <p class="text-center" data-ng-if="source.connecting">
-                            <i class="icon icon--loading u-animation--spin"></i> Connecting
-                        </p>
-                    </div>
-                </div>
-                <div data-ng-if="isSuperUser() && !source.tooMany && showSelections()">
-                    <div class="u-width--half u-display--inline-block u-float--left">
-                        <h3>Images</h3>
-                        <div class="u-width--half u-display--inline-block u-float--left">
-                            <div class="form__group" data-ng-repeat="release in getUbuntuLTSReleases() | orderBy:'-title'">
-                                <input type="checkbox" id="{$ release.name $}"
-                                    data-ng-checked="isSelected('releases', release)"
-                                    data-ng-click="toggleSelection('releases', release)"
-                                    data-ng-disabled="saving">
-                                <label for="{$ release.name $}">{$ release.title $}</label>
-                            </div>
-                        </div>
-                        <div class="u-width--half u-display--inline-block u-float--left">
-                            <div class="form__group" data-ng-repeat="release in getUbuntuNonLTSReleases() | orderBy:'-title'">
-                                <input type="checkbox" id="{$ release.name $}"
-                                    data-ng-checked="isSelected('releases', release)"
-                                    data-ng-click="toggleSelection('releases', release)"
-                                    data-ng-disabled="saving">
-                                <label for="{$ release.name $}">{$ release.title $}</label>
-                            </div>
-                        </div>
-                        <div class="u-clear"></div>
-                    </div>
-                    <div class="u-width--half u-display--inline-block u-float--left">
-                        <h3>Architectures</h3>
-                        <div class="form__group" data-ng-repeat="arch in getArchitectures() | orderBy:'title'">
-                            <input type="checkbox" id="{$ arch.name $}"
-                                data-ng-checked="isSelected('arches', arch)"
-                                data-ng-click="toggleSelection('arches', arch)"
-                                data-ng-disabled="saving">
-                            <label for="{$ arch.name $}">{$ arch.title $}</label>
-                        </div>
-                    </div>
-                    <div class="u-clear"></div>
-                </div>
-                <section class="table u-margin--top" data-ng-if="showImagesTable()">
-                    <header class="table__head">
-                        <div class="table__row">
-                            <div class="table__header table-col--25">Release</div>
-                            <div class="table__header table-col--15">Architecture</div>
-                            <div class="table__header table-col--20">Size</div>
-                            <div class="table__header table-col--37">Status</div>
-                            <div class="table__header table-col--3 u-align--right">Actions</div>
-                        </div>
-                    </header>
-                    <main class="table__body">
-                        <div class="table__row table--error" data-ng-if="!ltsIsSelected()">
-                            <div class="table__data table-col--100" aria-label="Error">
-                                <i class="icon icon--error"></i> Select at least one 14.04+ LTS release and one architecture.
-                            </div>
-                        </div>
-                        <div class="table__row table--error" data-ng-if="!commissioningSeriesSelected()">
-                            <div class="table__data table-col--100" aria-label="Error">
-                                <i class="icon icon--error"></i> Ubuntu {$ bootResources.ubuntu.commissioning_series $} must be selected as it is the operating system used for commissioning.
-                            </div>
-                        </div>
-                        <div class="table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']"
-                            data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
-                            <div class="table__data table-col--2">
-                                <i class="icon {$ image.icon $}"></i>
-                            </div>
-                            <div class="table__data table-col--23" aria-label="Release">
-                                {$ image.title $} <i class="icon icon--warning tooltip"
-                                    aria-label="Image no longer exists at the source."
-                                    data-ng-if="canBeRemoved(image)"></i>
-                            </div>
-                            <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
-                            <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                            <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
-                            <div class="table__data table-col--3 table--mobile-controls">
-                                <div class="table__controls" toggle-ctrl data-ng-if="isSuperUser() && canBeRemoved(image)">
-                                    <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
-                                    <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
-                                      <button class="table__controls-action u-text--error" aria-label="Remove"
-                                          data-ng-click="deleteImage(image)">Remove&hellip;</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__dropdown" data-ng-if="canBeRemoved(image) && ubuntuDeleteId === image.resourceId">
-                                <div class="table__row is-active">
-                                    <div class="table__data u-float--left u-margin--top-tiny">
-                                          <p><span class="icon icon--warning u-margin--right-small"></span>Are you sure you want to remove this image?</p>
-                                    </div>
-                                    <div class="table__data u-float--right">
-                                          <button class="button--base button--inline" type="button" data-ng-click="deleteImage()">Cancel</button>
-                                          <button class="button--destructive button--inline" data-ng-click="confirmDeleteImage()">Remove</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </main>
-                </section>
-                <div class="twelve-col" data-ng-if="!source.tooMany">
-                    <div class="u-align--right">
-                        <button class="button--base button--inline"
-                            data-ng-if="showStopImportButton()"
-                            data-ng-disabled="!canStopImport()"
-                            data-ng-click="stopImport()">{$ getStopImportText() $}</button>
-                        <button type="submit" class="button--positive button--inline"
-                            data-ng-if="isSuperUser() && showSaveSelection()"
-                            data-ng-disabled="!canSaveSelection()"
-                            data-ng-click="saveSelection()">{$ getSaveSelectionText() $}</button>
-                    </div>
-                </div>
-            </form>
-            <div data-ng-if="ubuntu_core.images.length">
-                <h2>Ubuntu Core</h2>
-                <div data-ng-if="isSuperUser() && !source.tooMany">
-                    <span class="u-margin--right" data-ng-repeat="image in ubuntu_core.images | orderBy:['-title']">
-                        <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleUbuntuCoreSelection(image)" data-ng-disabled="saving">
-                        <label for="{$ image.name $}">{$ image.title $}</label>
-                    <span>
-                </div>
-                <section class="table u-margin--top">
-                    <header class="table__head">
-                        <div class="table__row">
-                            <div class="table__header table-col--25">Name</div>
-                            <div class="table__header table-col--15">Architecture</div>
-                            <div class="table__header table-col--20">Size</div>
-                            <div class="table__header table-col--40">Status</div>
-                        </div>
-                    </header>
-                    <main class="table__body">
-                        <div class="table__row" data-ng-if="!ubuntuCoreImages.length">
-                            <div class="table__data table-col--100">No images have been selected for syncing.</div>
-                        </div>
-                        <div class="table__row" data-ng-repeat="image in ubuntuCoreImages | orderBy:['-title', 'arch']">
-                            <div class="table__data table-col--2">
-                                <i class="icon {$ image.icon $}"></i>
-                            </div>
-                            <div class="table__data table-col--23" aria-label="Name">{$ image.title $}</div>
-                            <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
-                            <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                            <div class="table__data table-col--40" aria-label="Status">{$ image.status $}</div>
-                        </div>
-                    </main>
-                </section>
-                <div class="twelve-col" data-ng-if="!source.tooMany">
-                    <div class="u-align--right">
-                        <button class="button--positive button--inline" data-ng-if="isSuperUser()" data-ng-disabled="saving" data-ng-click="saveUbuntuCoreSelection()">{$ getSaveSelectionText() $}</button>
-                    </div>
-                </div>
+            </div>
+            <div class="col-6 p-divider__block">
+                <h3>Architectures</h3>
+                <ul class="p-list is-split">
+                    <li class="p-list__item" data-ng-repeat="arch in getArchitectures() | orderBy:'title'">
+                        <input type="checkbox" id="{$ arch.name $}" data-ng-checked="isSelected('arches', arch)" data-ng-click="toggleSelection('arches', arch)" data-ng-disabled="saving">
+                        <label for="{$ arch.name $}" class="u-no-margin--top">{$ arch.title $}</label>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="row">
+            <table data-ng-if="showImagesTable()">
+                <thead>
+                    <tr>
+                        <th>Release</th>
+                        <th>Architecture</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                        <th class="u-align--right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-ng-if="!ltsIsSelected()">
+                        <td colspan="5" aria-label="Error">
+                            <i class="p-icon--error">Error: </i> Select at least one 14.04+ LTS release and one architecture.
+                        </td>
+                    </tr>
+                    <tr data-ng-if="!commissioningSeriesSelected()">
+                        <td colspan="5" aria-label="Error">
+                            <i class="p-icon--error">Error: </i> Ubuntu {$ bootResources.ubuntu.commissioning_series $} must be selected as it is the operating system used for commissioning.
+                        </td>
+                    </tr>
+                    <tr data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']" data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
+                        <td aria-label="Release">
+                            <i class="{$ image.icon $}"></i>
+                            {$ image.title $} <span class="p-tooltip__message" role="tooltip" id="tooltip-{$ image.resourceId}" data-ng-if="canBeRemoved(image)"><i class="p-icon--warning p-tooltip p-tooltip--top-right"  aria-describedby="tooltip-{$ image.resourceId}">Image no longer exists at the source.</span></i>
+                        </td>
+                        <td aria-label="Architecture">{$ image.arch $}</td>
+                        <td aria-label="Size">{$ image.size $}</td>
+                        <td aria-label="Status">{$ image.status $}</td>
+                        <td class="u-align--right">
+                            <button data-ng-if="(isSuperUser() && canBeRemoved(image))" class="p-button--negative" aria-label="Remove" data-ng-click="deleteImage(image)">Remove</button>
+                        </td>
+                        <td colspan="6" class="p-table-expanding__panel col-12" data-ng-if="canBeRemoved(image) && ubuntuDeleteId === image.resourceId">
+                            <p><i class="p-icon--warning">Warning:</i> Are you sure you want to remove this image?</p>
+                            <button class="p-button--neutral is-inline" data-ng-click="deleteImage()">Cancel</button>
+                            <button class="p-button--negative" data-ng-click="confirmDeleteImage()">Remove</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="row" data-ng-if="!source.tooMany">
+            <div class="col-12 u-align--right">
+                <button class="p-button--neutral is-inline" data-ng-if="showStopImportButton()" data-ng-disabled="!canStopImport()" data-ng-click="stopImport()">{$ getStopImportText() $}</button>
+                <button type="submit" class="p-button--positive" data-ng-if="isSuperUser() && showSaveSelection()" data-ng-disabled="!canSaveSelection()" data-ng-click="saveSelection()">{$ getSaveSelectionText() $}</button>
             </div>
         </div>
     </div>
-</div>
-<div class="row" data-ng-if="design === 'page' && other.images.length && !source.isNew">
-    <div class="wrapper--inner">
-        <h2>Other Images</h2>
-        <div data-ng-if="isSuperUser() && !source.tooMany">
-            <span class="u-margin--right" data-ng-repeat="image in other.images | orderBy:['-title']">
-                <input type="checkbox" id="{$ image.name $}"
-                    data-ng-checked="image.checked"
-                    data-ng-click="toggleOtherSelection(image)"
-                    data-ng-disabled="saving">
-                <label for="{$ image.name $}">{$ image.title $}</label>
-            <span>
-        </div>
-        <section class="table u-margin--top">
-            <header class="table__head">
-                <div class="table__row">
-                    <div class="table__header table-col--25">Release</div>
-                    <div class="table__header table-col--15">Architecture</div>
-                    <div class="table__header table-col--20">Size</div>
-                    <div class="table__header table-col--37">Status</div>
-                    <div class="table__header table-col--3 u-align--right">Actions</div>
-                </div>
-            </header>
-            <main class="table__body">
-                <div class="table__row" data-ng-if="!otherImages.length">
-                    <div class="table__data table-col--100">
-                        No images have been selected for syncing.
-                    </div>
-                </div>
-                <div class="table__row" data-ng-repeat="image in otherImages | orderBy:['-title', 'arch']">
-                    <div class="table__data table-col--2">
-                        <i class="icon {$ image.icon $}"></i>
-                    </div>
-                    <div class="table__data table-col--23" aria-label="Release">
-                        {$ image.title $}
-                    </div>
-                    <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
-                    <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                    <div class="table__data table-col--40" aria-label="Status">{$ image.status $}</div>
-                </div>
-            </main>
-        </section>
-        <div class="twelve-col" data-ng-if="!source.tooMany">
-            <div class="u-align--right">
-                <button class="button--positive button--inline"
-                    data-ng-if="isSuperUser()"
-                    data-ng-disabled="saving"
-                    data-ng-click="saveOtherSelection()">{$ getSaveSelectionText() $}</button>
+</form>
+
+<div data-ng-if="ubuntu_core.images.length" data-ng-class="{'p-strip': design === 'page'}">
+    <div class="row">
+        <div class="col-8">
+            <h2>Ubuntu Core</h2>
+            <div data-ng-if="isSuperUser() && !source.tooMany">
+                <span data-ng-repeat="image in ubuntu_core.images | orderBy:['-title']">
+                    <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleUbuntuCoreSelection(image)" data-ng-disabled="saving">
+                    <label for="{$ image.name $}">{$ image.title $}</label>
+                </span>
             </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <table class="p-table-expanding">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Architecture</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-ng-if="!ubuntuCoreImages.length">
+                        <td colspan="4">No images have been selected for syncing.</td>
+                    </tr>
+                    <tr data-ng-repeat="image in ubuntuCoreImages | orderBy:['-title', 'arch']">
+                        <td aria-label="Name"><i class="{$ image.icon $}"></i>{$ image.title $}</td>
+                        <td aria-label="Architecture">{$ image.arch $}</td>
+                        <td aria-label="Size">{$ image.size $}</td>
+                        <td aria-label="Status">{$ image.status $}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row" data-ng-if="!source.tooMany">
+        <div class="col-12 u-align--right">
+            <button class="p-button--positive" data-ng-if="isSuperUser()" data-ng-disabled="saving" data-ng-click="saveUbuntuCoreSelection()">{$ getSaveSelectionText() $}</button>
+        </div>
+    </div>
+</div>
+
+<div data-ng-if="design === 'page' && other.images.length && !source.isNew" data-ng-class="{'p-strip': design === 'page'}">
+    <div class="row">
+        <div class="col-6">
+            <h2>Other Images</h2>
+            <ul class="p-list is-split" data-ng-if="isSuperUser() && !source.tooMany">
+                <li class="p-list__item" data-ng-repeat="image in other.images | orderBy:['-title']">
+                    <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleOtherSelection(image)" data-ng-disabled="saving">
+                    <label for="{$ image.name $}" class="u-no-margin--top">{$ image.title $}</label>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Release</th>
+                        <th>Architecture</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-ng-if="!otherImages.length">
+                        <td colspan="4">
+                            No images have been selected for syncing.
+                        </td>
+                    </tr>
+                    <tr data-ng-repeat="image in otherImages | orderBy:['-title', 'arch']">
+                        <td aria-label="Release">
+                            <i class="{$ image.icon $}"></i>
+                            {$ image.title $}
+                        </td>
+                        <td aria-label="Architecture">{$ image.arch $}</td>
+                        <td aria-label="Size">{$ image.size $}</td>
+                        <td aria-label="Status">{$ image.status $}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row" data-ng-if="!source.tooMany">
+        <div class="col-12 u-align--right">
+            <button class="p-button--positive" data-ng-if="isSuperUser()" data-ng-disabled="saving" data-ng-click="saveOtherSelection()">{$ getSaveSelectionText() $}</button>
         </div>
     </div>
 </div>
 <div class="row" data-ng-if="design === 'page' && generatedImages.length">
     <div class="wrapper--inner">
         <h2>Generated Images</h2>
-        <section class="table u-margin--top">
-            <header class="table__head">
-                <div class="table__row">
-                    <div class="table__header table-col--25">Release</div>
-                    <div class="table__header table-col--15">Architecture</div>
-                    <div class="table__header table-col--20">Size</div>
-                    <div class="table__header table-col--37">Status</div>
-                    <div class="table__header table-col--3 u-align--right">Actions</div>
-                </div>
-            </header>
-            <main class="table__body">
-                <div class="table__row" data-ng-if="!generatedImages.length">
-                    <div class="table__data table-col--100">
+        <table class="p-table-expanding">
+            <thead>
+                <tr>
+                    <th colspan="2">Release</th>
+                    <th>Architecture</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th class="u-align--right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-ng-if="!generatedImages.length">
+                    <td colspan="6">
                         No images have been uploaded.
-                    </div>
-                </div>
-                <div class="table__row" data-ng-repeat="image in generatedImages | orderBy:['-title', 'arch']" data-ng-class="{ 'is-active': isShowingDeleteConfirm(image)}">
-                    <div class="table__data table-col--2">
-                        <i class="icon {$ image.icon $}"></i>
-                    </div>
-                    <div class="table__data table-col--23" aria-label="Release">
+                    </td>
+                </tr>
+                <tr data-ng-repeat="image in generatedImages | orderBy:['-title', 'arch']" data-ng-class="{ 'is-active': isShowingDeleteConfirm(image)}">
+                    <td>
+                        <i class="{$ image.icon $}"></i>
+                    </td>
+                    <td aria-label="Release">
                         {$ image.title $}
-                    </div>
-                    <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
-                    <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                    <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
-                    <div class="table__data table--mobile-controls  table-col--3">
-                        <div class="table__controls" toggle-ctrl>
-                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
-                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
-                                <button class="table__controls-action u-text--error"
-                                    aria-label="Remove"
-                                    data-ng-click="toggleMenu(); quickRemove(image)">Remove image</button>
-                            </div>
+                    </td>
+                    <td aria-label="Architecture">{$ image.arch $}</td>
+                    <td aria-label="Size">{$ image.size $}</td>
+                    <td aria-label="Status">{$ image.status $}</td>
+                    <td class="u-align--right">
+                        <button class="p-button--negative" aria-label="Remove" data-ng-click="quickRemove(image)">Remove image</button>
+                    </td>
+                    <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
+                        <h2 data-ng-click="cancelRemove()" class="u-float--left">Remove image</h2>
+                        <p><i class="p-icon--warning">Warning: </i> Are you sure you want to remove this image?</p>
+                        <div class="u-float--right">
+                            <a class="p-button--neutral is-inline" type="button" data-ng-click="cancelRemove()">Cancel</a>
+                            <button class="p-button--negative" data-ng-click="confirmRemove(image)">Remove</button>
                         </div>
-                    </div>
-                    <div>
-                        <div class="table__dropdown" data-ng-if="isShowingDeleteConfirm(image)">
-                            <div class="table__dropdown-title">
-                                <h2 data-ng-click="cancelRemove()" class="u-float--left">Remove image</h2>
-                                <button data-ng-click="cancelRemove()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
-                            </div>
-                            <div class="table__row is-active">
-                                <div class="table__data u-float--left">
-                                      <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this image?</p>
-                                </div>
-                                <div class="table__data u-float--right">
-                                      <button class="button--base button--inline" type="button" data-ng-click="cancelRemove()">Cancel</a>
-                                      <button class="button--destructive button--inline" data-ng-click="confirmRemove(image)">Remove</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </section>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
-<div class="row" data-ng-if="design === 'page' && customImages.length">
-    <div class="wrapper--inner">
+<div data-ng-if="design === 'page' && customImages.length" data-ng-class="{'p-strip': design === 'page'}">
+    <div class="row">
         <h2>Custom Images</h2>
-        <section class="table u-margin--top">
-            <header class="table__head">
-                <div class="table__row">
-                    <div class="table__header table-col--25">Release</div>
-                    <div class="table__header table-col--15">Architecture</div>
-                    <div class="table__header table-col--20">Size</div>
-                    <div class="table__header table-col--37">Status</div>
-                    <div class="table__header table-col--3 u-align--right">Actions</div>
-                </div>
-            </header>
-            <main class="table__body">
-                <div class="table__row" data-ng-if="!customImages.length">
-                    <div class="table__data table-col--100">
+        <table class="p-table-expanding">
+            <thead>
+                <tr>
+                    <th colspan="2">Release</th>
+                    <th>Architecture</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-ng-if="!customImages.length">
+                    <td colspan="6">
                         No images have been uploaded.
-                    </div>
-                </div>
-                <div class="table__row" data-ng-repeat="image in customImages | orderBy:['-title', 'arch']" data-ng-class="{ 'is-active': isShowingDeleteConfirm(image)}">
-                    <div class="table__data table-col--2">
-                        <i class="icon {$ image.icon $}"></i>
-                    </div>
-                    <div class="table__data table-col--23" aria-label="Release">
+                    </td>
+                </tr>
+                <tr data-ng-repeat="image in customImages | orderBy:['-title', 'arch']" data-ng-class="{ 'is-active': isShowingDeleteConfirm(image)}">
+                    <td>
+                        <i class="{$ image.icon $}"></i>
+                    </td>
+                    <td aria-label="Release">
                         {$ image.title $}
-                    </div>
-                    <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
-                    <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                    <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
-                    <div class="table__data table--mobile-controls  table-col--3">
-                        <div class="table__controls" toggle-ctrl>
-                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
-                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
-                                <a class="table__controls-action u-text--error"
-                                    aria-label="Remove"
-                                    data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="table__dropdown" data-ng-if="isShowingDeleteConfirm(image)">
-                        <div class="table__dropdown-title">
-                            <h2 data-ng-click="cancelRemove()" class="u-float--left">Remove image</h2>
-                            <button data-ng-click="cancelRemove()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
-                        </div>
-                        <div class="table__row is-active">
-                            <div class="table__data u-float--left">
-                                  <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this image?</p>
-                            </div>
-                            <div class="table__data u-float--right">
-                                  <button class="button--base button--inline" type="button" data-ng-click="cancelRemove()">Cancel</a>
-                                  <button class="button--destructive button--inline" data-ng-click="confirmRemove(image)">Remove</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </section>
+                    </td>
+                    <td aria-label="Architecture">{$ image.arch $}</td>
+                    <td aria-label="Size">{$ image.size $}</td>
+                    <td aria-label="Status">{$ image.status $}</td>
+                    <td class="u-align--right">
+                        <a aria-label="Remove" data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
+                    </td>
+                    <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
+                        <h2 data-ng-click="cancelRemove()">Remove image</h2>
+                        <p><i class="p-icon--warning">Warning: </i> Are you sure you want to remove this image?</p>
+                        <button class="p-button--neutral is-inline" type="button" data-ng-click="cancelRemove()">Cancel</button>
+                        <button class="p-button--negative is-inline" data-ng-click="confirmRemove(image)">Remove</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>

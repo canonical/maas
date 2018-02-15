@@ -1,0 +1,7 @@
+@mixin maas-onoffswitch {
+  .onoffswitch {
+    &-label {
+      margin-top: 0;
+    }
+  }
+}

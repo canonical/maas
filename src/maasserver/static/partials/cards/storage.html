@@ -1,18 +1,18 @@
-<header>
-  <h3>Storage</h3>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h2>
-  <h2 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom" data-ng-if="node.storage == 0"><strong>Unknown</strong></h2>
+<header class="p-card__header">
+  <h2 class="p-heading--four">Storage</h2>
+  <h3 class="p-heading--three" data-ng-if="node.storage > 0"><strong>{$ node.storage $} GB over {$ node.physical_disk_count $} disks</strong></h3>
+  <h3 class="p-heading--three" data-ng-if="node.storage == 0"><strong>Unknown</strong></h3>
 </header>
-<div class="u-padding--bottom">
+<div>
   <div data-ng-repeat="gs in node.grouped_storages">
     <p data-ng-if="gs.count > 0">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $})</p>
   </div>
 </div>
-<div class="action-card__position-bottom">
+<footer class="p-card__footer">
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0">
     <span data-maas-script-status="script-status" data-script-status="node.storage_test_status"></span>
     {$ node.storage_test_status_tooltip $}
   </p>
   <p><a href="" data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0" data-ng-click="section.area = 'storage'">See storage &rsaquo;</a></p>
-  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage == 0"><i class="icon icon--info"></i> No data recieved</p>
-</div>
+  <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage == 0"><i class="p-icon--information">Information:</i> No data recieved</p>
+</footer>

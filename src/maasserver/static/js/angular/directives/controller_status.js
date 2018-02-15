@@ -8,7 +8,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the controller-status.html into the template cache.
     $templateCache.put('directive/templates/controller-status.html', [
         '<span>',
-          '<span class="icon icon--{$ serviceClass $}" data-ng-if="!textOnly">',
+          '<span class="p-icon--{$ serviceClass $}" data-ng-if="!textOnly">',
           '</span>',
           '<span data-ng-if="textOnly" data-ng-bind="serviceText"></span>',
         '</span>'

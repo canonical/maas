@@ -1,50 +1,59 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky media-query="min-width: 769px">
-        <div class="wrapper--inner">
+    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+        <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky>
-        <div class="wrapper--inner">
-            <h1 class="page-header__title">{$ node.fqdn $}</h1>
-            <p class="page-header__status">
-                {$ events.length $} {$ type_name $} events in the past {$ days $} days
-                <button href="" class="page-header__status-check" data-ng-click="loadMore()">load 1 more day</button>
-            </p>
-            <div class="page-header__controls u-float--right">
-                <a href="#/node/{$ type_name $}/{$ node.system_id $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
+<div class="ng-hide u-no-margin--top" data-ng-show="loaded">
+    <header class="p-strip--light is-shallow is-bordered page-header" sticky>
+        <div class="row">
+            <div class="col-8">
+                <ul class="p-inline-list u-no-margin--top">
+                    <li class="p-inline-list__item">
+                        <h1 class="page-header__title">{$ node.fqdn $}</h1>
+                    </li>
+                    <li class="p-inline-list__item">
+                        <p class="page-header__status">
+                            {$ node.events.length $} {$ type_name $} events in the past {$ days $} days
+                        </p>
+                    </li>
+                    <li class="p-inline-list__item">
+                        <button class="p-button--base" data-ng-click="loadMore()">load 1 more day</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-4">
+                <div class="page-header__controls u-float--right">
+                    <a href="#/node/{$ type_name $}/{$ node.system_id $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
+                </div>
             </div>
         </div>
     </header>
-    <div class="row">
-        <div class="wrapper--inner">
+    <div class="p-strip">
+        <div class="row">
             <form>
-                <div id="search-bar" class="search twelve-col">
+                <div id="search-bar" class="p-search-box">
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                     <input type="search" placeholder="Search {$ type_name $} events in the past {$ days $} days"
-                        class="search__input" data-ng-model="search" />
-                    <input type="submit" class="search__submit" />
+                        class="p-search-box__input" data-ng-model="search" />
+                    <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
                 </div>
+
                 <table id="events-listing" window-width>
-                    <thead data-ng-if="windowWidth >= 769" sticky sticky-class="table__head--sticky" offset="88" media-query="min-width: 768px">
+                    <thead data-ng-if="windowWidth >= 769" offset="88" media-query="min-width: 768px">
                         <tr>
-                            <th class="table-col--1"></th>
-                            <th class="table-col--79">Event</th>
-                            <th class="table-col--20">Time</th>
+                            <th class="col-9">Event</th>
+                            <th class="col-3">Time</th>
                         </tr>
                     </thead>
                     <tbody vs-repeat vs-scroll-parent="window">
-                        <tr
-                            data-ng-repeat="event in events | filter:search | orderByDate:'created':'id' track by event.id">
-                            <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                                <span class="icon icon--{$ event.type.level $}"></span>
-                            </td>
-                            <td class="table-col--79">
+                        <tr data-ng-repeat="event in node.events | filter:search | orderByDate:'created':'id' track by event.id">
+                            <td class="col-9">
+                                <span class="p-icon--{$ event.type.level $}"></span>
                                 {$ getEventText(event) $}
                             </td>
-                            <td class="table-col--20">
+                            <td class="col-3">
                                 {$ event.created $}
                             </td>
                         </tr>
