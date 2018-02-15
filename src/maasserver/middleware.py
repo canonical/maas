@@ -67,6 +67,7 @@ PUBLIC_URL_PREFIXES = [
     reverse('login'),
     # Authentication: must be visible to anonymous users.
     reverse('authenticate'),
+    reverse('discharge-request'),
     # The combo loaders are publicly accessible.
     reverse('combo-yui'),
     reverse('robots'),

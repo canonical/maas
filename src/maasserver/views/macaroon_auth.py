@@ -7,19 +7,37 @@ __all__ = [
     'MacaroonAuthenticationBackend',
 ]
 
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta,
+)
 import os
 
+from django.contrib.auth import (
+    authenticate,
+    login,
+)
 from django.contrib.auth.models import User
+from django.http import (
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseNotFound,
+    JsonResponse,
+)
 from maasserver.models import (
     Config,
     MAASAuthorizationBackend,
     RootKey,
 )
+from maasserver.utils.views import request_headers
 from macaroonbakery import (
     bakery,
     checkers,
+    httpbakery,
 )
+
+
+MACAROON_LIFESPAN = timedelta(days=1)
 
 
 class IDClient(bakery.IdentityClient):
@@ -115,6 +133,64 @@ class KeyStore:
             expiration=expiration)
         key.save()
         return key
+
+
+class MacaroonDischargeRequest:
+    """Return a Macaroon authentication request."""
+
+    def __call__(self, request):
+        auth_endpoint = Config.objects.get_config('external_auth_url')
+        if not auth_endpoint:
+            return HttpResponseNotFound('Not found')
+
+        macaroon_bakery = self._setup_bakery(auth_endpoint, request)
+        req_headers = request_headers(request)
+        auth_checker = macaroon_bakery.checker.auth(
+            httpbakery.extract_macaroons(req_headers))
+        try:
+            auth_info = auth_checker.allow(
+                checkers.AuthContext(), [bakery.LOGIN_OP])
+        except bakery.DischargeRequiredError as err:
+            return self._authorization_request(
+                request, req_headers, macaroon_bakery, err)
+        except bakery.PermissionDenied:
+            return HttpResponseForbidden()
+
+        user = authenticate(identity=auth_info.identity)
+        if user:
+            login(request, user)
+            data = {'id': user.id, 'username': user.username}
+        else:
+            data = {'id': None, 'username': auth_info.identity.id()}
+        return JsonResponse(data)
+
+    def _setup_bakery(self, auth_endpoint, request):
+        return bakery.Bakery(
+            key=_get_macaroon_oven_key(),
+            root_key_store=KeyStore(MACAROON_LIFESPAN),
+            location=request.build_absolute_uri('/'),
+            locator=httpbakery.ThirdPartyLocator(
+                allow_insecure=not auth_endpoint.startswith('https:')),
+            identity_client=IDClient(auth_endpoint),
+            authorizer=bakery.ACLAuthorizer(
+                get_acl=lambda ctx, op: [bakery.EVERYONE]))
+
+    def _authorization_request(self, request, req_headers, bakery, err):
+        """Return a 401 response with a macaroon discharge request."""
+        expiry_duration = min(
+            MACAROON_LIFESPAN,
+            timedelta(seconds=request.session.get_expiry_age()))
+        expiration = datetime.utcnow() + expiry_duration
+        macaroon = bakery.oven.macaroon(
+            httpbakery.request_version(req_headers),
+            expiration, err.cavs(), err.ops())
+        content, headers = httpbakery.discharge_required_response(
+            macaroon, '/', 'authz')
+        response = HttpResponse(
+            status=401, reason='Unauthorized', content=content)
+        for key, value in headers.items():
+            response[key] = value
+        return response
 
 
 def _get_macaroon_oven_key():

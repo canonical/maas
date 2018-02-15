@@ -27,6 +27,7 @@ from maasserver.views.account import (
     logout,
 )
 from maasserver.views.index import IndexView
+from maasserver.views.macaroon_auth import MacaroonDischargeRequest
 from maasserver.views.prefs import (
     SSLKeyCreateView,
     SSLKeyDeleteView,
@@ -70,6 +71,9 @@ urlpatterns = [
 urlpatterns += [
     url(r'^accounts/login/$', login, name='login'),
     url(r'^accounts/authenticate/$', authenticate, name='authenticate'),
+    url(
+        r'^accounts/discharge-request/$', MacaroonDischargeRequest(),
+        name='discharge-request'),
     url(
         r'^images-stream/streams/v1/(?P<filename>.*)$',
         simplestreams_stream_handler, name='simplestreams_stream_handler'),

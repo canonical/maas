@@ -5,7 +5,10 @@ from datetime import (
     datetime,
     timedelta,
 )
-from unittest import TestCase
+from unittest import (
+    mock,
+    TestCase,
+)
 
 from maasserver.models import (
     Config,
@@ -18,11 +21,13 @@ from maasserver.views.macaroon_auth import (
     IDClient,
     KeyStore,
     MacaroonAuthenticationBackend,
+    MacaroonDischargeRequest,
 )
 from macaroonbakery.bakery import (
     IdentityError,
     SimpleIdentity,
 )
+import requests
 
 
 class TestIDClient(TestCase):
@@ -150,3 +155,71 @@ class TestKeyStore(MAASServerTestCase):
 
     def test_get_not_found_id_not_numeric(self):
         self.assertIsNone(self.store.get(b'invalid'))
+
+
+class TestMacaroonDischargeRequest(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        Config.objects.set_config(
+            'external_auth_url', 'https://auth.example.com')
+        self._mock_service_key_request()
+
+    def _mock_service_key_request(self):
+        """Mock request to get the key from the external service.
+
+        Bakery internally performs this request.
+        """
+        mock_result = mock.Mock()
+        mock_result.status_code = 200
+        mock_result.json.return_value = {
+            "PublicKey": "CIdWcEUN+0OZnKW9KwruRQnQDY/qqzVdD30CijwiWCk=",
+            "Version": 3}
+        mock_get = self.patch(requests, 'get')
+        mock_get.return_value = mock_result
+
+    def _mock_auth_info(self, username):
+        """Mock bakery authentication, returning an identity.
+
+        A SimpleIdentity for the specified username is returned.
+
+        """
+        mock_auth_checker = mock.Mock()
+        mock_auth_checker.allow.return_value = mock.Mock(
+            identity=SimpleIdentity(user=username))
+        mock_bakery = mock.Mock()
+        mock_bakery.checker.auth.return_value = mock_auth_checker
+        mock_setup = self.patch(MacaroonDischargeRequest, '_setup_bakery')
+        mock_setup.return_value = mock_bakery
+
+    def test_discharge_request(self):
+        response = self.client.get('/accounts/discharge-request/')
+        self.assertEqual(response.status_code, 401)
+        payload = response.json()
+        self.assertEqual(payload['Code'], 'macaroon discharge required')
+        macaroon = payload['Info']['Macaroon']
+        # macaroon is requested for this service
+        self.assertEqual(macaroon['location'], 'http://testserver/')
+        # a third party caveat is added for the external authentication service
+        third_party_urls = [
+            caveat['cl'] for caveat in macaroon['caveats'] if 'cl' in caveat]
+        self.assertEqual(third_party_urls, ['https://auth.example.com'])
+
+    def test_discharge_request_no_external_auth(self):
+        Config.objects.set_config('external_auth_url', '')
+        response = self.client.get('/accounts/discharge-request/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_authenticated_user(self):
+        user = factory.make_User()
+        self._mock_auth_info(user.username)
+        response = self.client.get('/accounts/discharge-request/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(), {'id': user.id, 'username': user.username})
+
+    def test_authenticated_user_unknown(self):
+        self._mock_auth_info('unknown')
+        response = self.client.get('/accounts/discharge-request/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'id': None, 'username': 'unknown'})
