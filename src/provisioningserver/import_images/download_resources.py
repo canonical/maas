@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Simplestreams code to download boot resources."""
@@ -302,8 +302,10 @@ class RepoWriter(BasicMirrorWriter):
         if 'subarch' in item:
             # MAAS uses the 'generic' subarch when it doesn't know which
             # subarch to use. This happens during enlistment and commissioning.
-            # Allow the 'generic' kflavor to own the 'generic' hardlink.
-            if item.get('kflavor') == 'generic':
+            # Allow the 'generic' kflavor to own the 'generic' hardlink. The
+            # generic kernel should always be the ga kernel.
+            if (item['subarch'].startswith('ga-') and
+                    item.get('kflavor') == 'generic'):
                 subarches = {item['subarch'], 'generic'}
             else:
                 subarches = {item['subarch']}
