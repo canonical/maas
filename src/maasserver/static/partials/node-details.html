@@ -328,18 +328,18 @@
             <div maas-card-loader="tags"></div>
           </div>
         </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 2">
+        <div class="row u-equal-height" data-ng-if="node.node_type == 3">
           <div class="col-4 p-card--highlighted action-card u-border--solid">
             <div maas-card-loader="services"></div>
           </div>
           <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
-            <div maas-card-loader="images"></div>
-          </div>
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
             <div maas-card-loader="controller"></div>
           </div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
+            <div maas-card-loader="hardware_info"></div>
+          </div>
         </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 2">
+        <div class="row u-equal-height" data-ng-if="node.node_type == 3">
           <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
             <div maas-card-loader="cpu"></div>
           </div>
@@ -350,34 +350,12 @@
             <div maas-card-loader="storage"></div>
           </div>
         </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 2">
+        <div class="row u-equal-height" data-ng-if="node.node_type == 3">
           <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
             <div maas-card-loader="tags"></div>
           </div>
         </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 3">
-          <div class="col-4 p-card--highlighted action-card u-border--solid">
-            <div maas-card-loader="services"></div>
-          </div>
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
-            <div maas-card-loader="controller"></div>
-          </div>
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
-            <div maas-card-loader="cpu"></div>
-          </div>
-        </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 3">
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
-            <div maas-card-loader="memory"></div>
-          </div>
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
-            <div maas-card-loader="storage"></div>
-          </div>
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
-            <div maas-card-loader="tags"></div>
-          </div>
-        </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 4">
+        <div class="row u-equal-height" data-ng-if="node.node_type == 2 || node.node_type == 4">
           <div class="col-4 p-card--highlighted action-card u-border--solid">
             <div maas-card-loader="services"></div>
           </div>
@@ -391,37 +369,43 @@
               </div>
             </div>
             <div class="row u-equal-height">
-              <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
-                <div maas-card-loader="cpu"></div>
+              <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
+                <div maas-card-loader="hardware_info"></div>
               </div>
-              <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
-                <div maas-card-loader="memory"></div>
+              <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
+                <div maas-card-loader="tags"></div>
               </div>
             </div>
           </div>
         </div>
-        <div class="row u-equal-height" data-ng-if="node.node_type == 4">
-          <div class="col-4 p-card--highlighted action-card u-border--solid" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
-            <div maas-card-loader="storage"></div>
+        <div class="row u-equal-height" data-ng-if="node.node_type == 2 || node.node_type == 4">
+          <div class="col-4 p-card--highlighted action-card u-border--solid" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+            <div maas-card-loader="cpu"></div>
           </div>
-          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid">
-            <div maas-card-loader="tags"></div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
+            <div maas-card-loader="memory"></div>
+          </div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
+            <div maas-card-loader="storage"></div>
           </div>
         </div>
         <div class="row u-equal-height" data-ng-if="!isDevice && !isController">
-            <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
-              <div maas-card-loader="cpu"></div>
-            </div>
-            <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
-              <div maas-card-loader="memory"></div>
-                </div>
-            <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="node.node_type != 3" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
-              <div maas-card-loader="storage"></div>
-            </div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.cpu_test_status === 3 }">
+            <div maas-card-loader="cpu"></div>
+          </div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController" data-ng-class="{ 'is-error': node.memory_test_status === 3 }">
+            <div maas-card-loader="memory"></div>
+          </div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="node.node_type != 3" data-ng-class="{ 'is-error': node.storage_test_status === 3 }">
+            <div maas-card-loader="storage"></div>
+          </div>
         </div>
         <div class="row u-equal-height" data-ng-if="!isDevice && !isController">
           <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController">
             <div maas-card-loader="machine"></div>
+          </div>
+          <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController">
+            <div maas-card-loader="hardware_info"></div>
           </div>
           <div class="col-4 p-card--highlighted action-card action-card--positionable u-border--solid" data-ng-if="!isController">
             <div maas-card-loader="tags"></div>

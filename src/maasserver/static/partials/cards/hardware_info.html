@@ -1,0 +1,14 @@
+<header class="p-card__header">
+  <h3 class="u-border--bottom u-border--solid u-padding--bottom u-margin--bottom">Hardware Information</h3>
+</header>
+<div>
+  <p>System vendor: {$ node.metadata.system_vendor || "Unknown" $}</p>
+  <p>System product: {$ node.metadata.system_product || "Unknown" $}</p>
+  <p>System version: {$ node.metadata.system_version || "Unknown" $}</p>
+  <p>System serial: {$ node.metadata.system_serial || "Unknown" $}</p>
+  <p>Mainboard vendor: {$ node.metadata.mainboard_vendor || "Unknown" $}</p>
+  <p>Mainboard product: {$ node.metadata.mainboard_product || "Unknown" $}</p>
+  <p>Mainboard firmware version: {$ node.metadata.mainboard_firmware_version || "Unknown" $}</p>
+  <p>Mainboard firmware date: {$ node.metadata.mainboard_firmware_date || "Unknown" $}</p>
+  <p>CPU model: {$ node.metadata.cpu_model || "Unknown" $}</p>
+</div>
