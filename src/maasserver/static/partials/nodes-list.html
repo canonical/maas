@@ -794,6 +794,14 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                     </li>
                                 </ul>
                             </li>
+                            <li class="ng-hide" data-ng-show="tabs.nodes.metadata.pod.length">
+                                <a href="" class="sidebar__link maas-accordion-tab">Pods <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
+                                <ul class="sidebar__second-level">
+                                    <li data-ng-repeat="pod in tabs.nodes.metadata.pod | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('pod', pod.name, 'nodes') }">
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('pod', pod.name, 'nodes')">{$ pod.name $} ({$ pod.count $})</a>
+                                    </li>
+                                </ul>
+                            </li>
                             <li class="ng-hide" data-ng-show="tabs.nodes.metadata.subnets.length">
                                 <a href="" class="sidebar__link maas-accordion-tab">Subnets <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
