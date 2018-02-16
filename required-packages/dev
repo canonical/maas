@@ -6,6 +6,7 @@ bzr
 chromium-browser
 chromium-chromedriver
 curl
+dos2unix
 firefox
 git
 gjs

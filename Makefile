@@ -302,6 +302,10 @@ coverage/index.html: bin/coverage .coverage
 lint: \
     lint-py lint-py-complexity lint-py-imports \
     lint-js lint-doc lint-rst
+        # Only Unix line ends should be accepted
+	@find src/ -type f -exec file "{}" ";" | \
+	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
+	    (echo "Lint check failed; run make format to fix DOS linefeeds."; false)
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -354,6 +358,7 @@ lint-js:
 format: sources = $(wildcard *.py contrib/*.py) src utilities etc
 format:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
+	@find src/ -type f -exec file "{}" ";" | grep CRLF | cut -d ':' -f1 | xargs dos2unix
 
 check: clean test
 
