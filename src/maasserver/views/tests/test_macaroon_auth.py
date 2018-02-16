@@ -10,6 +10,7 @@ from unittest import (
     TestCase,
 )
 
+from django.contrib.auth.models import User
 from maasserver.models import (
     Config,
     RootKey,
@@ -53,16 +54,27 @@ class TestIDClient(TestCase):
 
 class TestMacaroonAuthenticationBackend(MAASServerTestCase):
 
+    def setUp(self):
+        super().setUp()
+        self.request = factory.make_fake_request('/')
+        self.backend = MacaroonAuthenticationBackend()
+
     def test_authenticate(self):
         user = factory.make_User()
-        backend = MacaroonAuthenticationBackend()
         identity = SimpleIdentity(user=user.username)
-        self.assertEqual(backend.authenticate(identity), user)
+        self.assertEqual(
+            self.backend.authenticate(self.request, identity=identity), user)
 
-    def test_authenticate_unknown_user(self):
-        backend = MacaroonAuthenticationBackend()
-        identity = SimpleIdentity(user='unknown')
-        self.assertIsNone(backend.authenticate(identity))
+    def test_authenticate_create_user(self):
+        username = factory.make_string()
+        identity = SimpleIdentity(user=username)
+        user = self.backend.authenticate(self.request, identity=identity)
+        self.assertIsNotNone(user.id)
+        self.assertEqual(user.username, username)
+
+    def test_authenticate_no_identity(self):
+        self.assertIsNone(
+            self.backend.authenticate(self.request, identity=None))
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):
@@ -218,8 +230,11 @@ class TestMacaroonDischargeRequest(MAASServerTestCase):
         self.assertEqual(
             response.json(), {'id': user.id, 'username': user.username})
 
-    def test_authenticated_user_unknown(self):
-        self._mock_auth_info('unknown')
+    def test_authenticated_user_created(self):
+        username = factory.make_string()
+        self._mock_auth_info(username)
         response = self.client.get('/accounts/discharge-request/')
+        user = User.objects.get(username=username)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'id': None, 'username': 'unknown'})
+        self.assertEqual(
+            response.json(), {'id': user.id, 'username': user.username})

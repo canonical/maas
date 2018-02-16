@@ -9,6 +9,8 @@ from apiclient.creds import (
     convert_string_to_tuple,
     convert_tuple_to_string,
 )
+from django.contrib.auth.models import User
+from django.db import IntegrityError
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -20,6 +22,26 @@ from piston3.models import (
     KEY_SIZE,
     SECRET_SIZE,
 )
+
+
+class UserTest(MAASServerTestCase):
+
+    def test_user_email_null(self):
+        user = User.objects.create_user(username=factory.make_string())
+        self.assertIsNone(user.email)
+
+    def test_user_email_blank(self):
+        user = User.objects.create_user(
+            username=factory.make_string(), email='')
+        self.assertIsNone(user.email)
+
+    def test_user_email_unique(self):
+        email = factory.make_email()
+        User.objects.create_user(
+            username=factory.make_string(), email=email)
+        self.assertRaises(
+            IntegrityError, User.objects.create_user,
+            username=factory.make_string(), email=email)
 
 
 class AuthTokensTest(MAASServerTestCase):

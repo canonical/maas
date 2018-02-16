@@ -90,7 +90,10 @@ __all__ = [
 ]
 
 from django.contrib.auth.backends import ModelBackend
-from django.contrib.auth.models import User
+from django.contrib.auth.models import (
+    User,
+    UserManager,
+)
 from django.core.exceptions import ViewDoesNotExist
 from django.db.models.signals import post_save
 from maasserver import logger
@@ -208,8 +211,21 @@ post_save.connect(create_user, sender=User)
 post_save.connect(create_resource_pool, sender=ResourcePool)
 
 
-# Monkey patch django.contrib.auth.models.User to force email to be unique.
+# Monkey patch django.contrib.auth.models.User to force email to be unique and
+# allow null.
 User._meta.get_field('email')._unique = True
+User._meta.get_field('email').blank = False
+User._meta.get_field('email').null = True
+
+_normalize_email = UserManager.normalize_email
+
+
+def normalize_email(cls, email):
+    if not email:
+        return None
+    return _normalize_email(email)
+
+UserManager.normalize_email = classmethod(normalize_email)
 
 
 # Monkey patch piston's usage of Django's get_resolver to be compatible

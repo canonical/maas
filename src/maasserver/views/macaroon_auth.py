@@ -61,11 +61,11 @@ class IDClient(bakery.IdentityClient):
 class MacaroonAuthenticationBackend(MAASAuthorizationBackend):
     """An authentication backend getting the user from macaroon identity."""
 
-    def authenticate(self, identity):
-        try:
-            return User.objects.get(username=identity.id())
-        except User.DoesNotExist:
+    def authenticate(self, request, identity=None):
+        if not identity:
             return None
+        user, _ = User.objects.get_or_create(username=identity.id())
+        return user
 
 
 class KeyStore:
@@ -156,13 +156,13 @@ class MacaroonDischargeRequest:
         except bakery.PermissionDenied:
             return HttpResponseForbidden()
 
-        user = authenticate(identity=auth_info.identity)
-        if user:
-            login(request, user)
-            data = {'id': user.id, 'username': user.username}
-        else:
-            data = {'id': None, 'username': auth_info.identity.id()}
-        return JsonResponse(data)
+        # a user is always returned since the authentication middleware creates
+        # one if not found
+        user = authenticate(request, identity=auth_info.identity)
+        backend = (
+            'maasserver.views.macaroon_auth.MacaroonAuthenticationBackend')
+        login(request, user, backend=backend)
+        return JsonResponse({'id': user.id, 'username': user.username})
 
     def _setup_bakery(self, auth_endpoint, request):
         return bakery.Bakery(
