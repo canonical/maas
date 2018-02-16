@@ -17,6 +17,7 @@ from lxml.html import (
     fromstring,
     tostring,
 )
+from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.user import (
     create_auth_token,
@@ -134,6 +135,22 @@ class TestLogin(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEquals(
             event.description, "User '%(username)s' logged in.")
+
+    def test_login_external_auth(self):
+        self.patch(settings, 'DEBUG', False)
+        Config.objects.set_config(
+            'external_auth_url', 'http://idm.example.com')
+        factory.make_User()
+        response = self.client.get('/accounts/login/')
+        doc = fromstring(response.content)
+        form = doc.cssselect("form")[0]
+        non_hidden_inputs = [
+            input_element.name for input_element in form.cssselect('input')
+            if input_element.type != 'hidden']
+        self.assertEqual([], non_hidden_inputs)
+        self.assertEqual(
+            'Login through http://idm.example.com',
+            form.cssselect('button')[0].text)
 
 
 class TestLogout(MAASServerTestCase):

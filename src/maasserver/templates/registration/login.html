@@ -39,6 +39,13 @@
                     <h1 class="p-heading--three">Welcome</h1>
                     <p>Login to continue to {% include "maasserver/site_title.html" %}</p>
                 </header>
+                {% if external_auth_url %}
+                <form method="post" action="{% url 'login' %}" class="u-no-margin--top">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next }}" />
+                    <button type="submit" class="p-button--positive" onclick="alert('Sorry, external authentication is still under development.')">Login through {{ external_auth_url }}</button>
+                </form>
+                {% else %}
                 {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}
                 <form method="post" {% if not debug %}autocomplete="off" {% endif %} action="{% url 'login' %}" class="u-no-margin--top">
                     {% csrf_token %}
@@ -56,4 +63,7 @@
                 {% endif %}
             </div>
         </div>
+    {% endif %}
+        </div>
+    </div>
 {% endblock %}

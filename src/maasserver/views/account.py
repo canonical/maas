@@ -29,6 +29,7 @@ from django.shortcuts import render
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models import UserProfile
+from maasserver.models.config import Config
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -41,6 +42,7 @@ def login(request):
     extra_context = {
         'no_users': UserProfile.objects.all_users().count() == 0,
         'create_command': django_settings.MAAS_CLI,
+        'external_auth_url': Config.objects.get_config('external_auth_url'),
         }
     if request.user.is_authenticated:
         return HttpResponseRedirect(reverse('index'))
