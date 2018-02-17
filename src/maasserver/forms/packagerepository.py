@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Package Repositories form."""
@@ -9,12 +9,14 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
+from maasserver.audit import create_audit_event
 from maasserver.fields import URLOrPPAFormField
 from maasserver.forms import (
     MAASModelForm,
     UnconstrainedMultipleChoiceField,
 )
 from maasserver.models import PackageRepository
+from provisioningserver.events import EVENT_TYPES
 
 
 class PackageRepositoryForm(MAASModelForm):
@@ -154,3 +156,12 @@ class PackageRepositoryForm(MAASModelForm):
                 "This is a default Ubuntu repository. Please update "
                 "'disabled_components' instead.")
         return values
+
+    def save(self, endpoint, request):
+        package_repository = super(PackageRepositoryForm, self).save()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, endpoint, request, None, description=(
+                "Package repository '%s'" % package_repository.name +
+                " %s" % ('updated' if self.is_update else 'created') +
+                " by '%(username)s'."))
+        return package_repository

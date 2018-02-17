@@ -420,6 +420,7 @@ class MAASModelForm(APIEditMixin, forms.ModelForm):
 
     def __init__(self, data=None, files=None, ui_submission=False, **kwargs):
         super(MAASModelForm, self).__init__(data=data, files=files, **kwargs)
+        self.is_update = bool(kwargs.get('instance', None))
         if ui_submission:
             # Add the ui_submission field.  Insert it before the other fields,
             # so that the field validators will have access to it regardless of

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -10,10 +10,13 @@ from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
@@ -91,7 +94,7 @@ class PackageRepositoryHandler(OperationsHandler):
         form = PackageRepositoryForm(
             instance=package_repository, data=request.data)
         if form.is_valid():
-            return form.save()
+            return form.save(ENDPOINT.API, request)
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -103,6 +106,10 @@ class PackageRepositoryHandler(OperationsHandler):
         """
         package_repository = PackageRepository.objects.get_object_or_404(id)
         package_repository.delete()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
+                "Package repository '%s'" % package_repository.name +
+                " deleted by '%(username)s.'"))
         return rc.DELETED
 
 
@@ -150,6 +157,6 @@ class PackageRepositoriesHandler(OperationsHandler):
         """
         form = PackageRepositoryForm(data=request.data)
         if form.is_valid():
-            return form.save()
+            return form.save(ENDPOINT.API, request)
         else:
             raise MAASAPIValidationError(form.errors)

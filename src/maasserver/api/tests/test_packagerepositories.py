@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Package Repositories API."""
@@ -12,11 +12,15 @@ import random
 from maasserver.api.packagerepositories import (
     DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
 )
-from maasserver.models import PackageRepository
+from maasserver.models import (
+    Event,
+    PackageRepository,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
+from provisioningserver.events import AUDIT
 
 
 class TestPackageRepositoryAPI(APITestCase.ForUser):
@@ -226,6 +230,12 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(package_repository))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "Package repository '%s'" % package_repository.name +
+            " deleted by '%(username)s.'")
 
     def test_delete_admin_only(self):
         package_repository = factory.make_PackageRepository()

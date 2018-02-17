@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The PackageRepository handler for the WebSocket connection."""
@@ -7,10 +7,16 @@ __all__ = [
     "PackageRepositoryHandler",
     ]
 
+from django.core.exceptions import ValidationError
+from django.http import HttpRequest
+from maasserver.enum import ENDPOINT
 from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import HandlerPermissionError
+from maasserver.websockets.base import (
+    HandlerPermissionError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -35,13 +41,53 @@ class PackageRepositoryHandler(TimestampedModelHandler):
         """Create the object from params iff admin."""
         if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
-        return super().create(params)
+
+        request = HttpRequest()
+        request.user = self.user
+        # Create by using form.
+        form = PackageRepositoryForm(request=request, data=params)
+        if form.is_valid():
+            try:
+                obj = form.save(ENDPOINT.UI, request)
+            except ValidationError as e:
+                try:
+                    raise HandlerValidationError(e.message_dict)
+                except AttributeError:
+                    raise HandlerValidationError({"__all__": e.message})
+            return self.full_dehydrate(obj)
+        else:
+            raise HandlerValidationError(form.errors)
+
+        # Create by updating the fields on the object.
+        obj = self._meta.object_class()
+        obj = self.full_hydrate(obj, params)
+        obj.save()
+        return self.full_dehydrate(obj)
 
     def update(self, params):
         """Update the object from params iff admin."""
         if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
-        return super().update(params)
+
+        obj = self.get_object(params)
+        request = HttpRequest()
+        request.user = self.user
+        # Update by using form.
+        form = PackageRepositoryForm(
+            instance=obj, request=request, data=params)
+        if form.is_valid():
+            try:
+                obj = form.save(ENDPOINT.UI, request)
+            except ValidationError as e:
+                raise HandlerValidationError(e.error_dict)
+            return self.full_dehydrate(obj)
+        else:
+            raise HandlerValidationError(form.errors)
+
+        # Update by updating the fields on the object.
+        obj = self.full_hydrate(obj, params)
+        obj.save()
+        return self.full_dehydrate(obj)
 
     def delete(self, params):
         """Delete the object from params iff admin."""

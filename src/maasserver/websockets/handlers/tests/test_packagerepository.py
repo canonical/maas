@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.packagerepository`"""
@@ -6,7 +6,10 @@
 __all__ = []
 
 import maasserver.forms.packagerepository as forms_packagerepository_module
-from maasserver.models import PackageRepository
+from maasserver.models import (
+    Event,
+    PackageRepository,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -17,6 +20,7 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
 )
+from provisioningserver.events import AUDIT
 
 
 class TestPackageRepositoryHandler(MAASServerTestCase):
@@ -71,6 +75,12 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         })
         self.assertIsNotNone(
             PackageRepository.objects.get(name=package_repository_name))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "Package repository '%s'" % package_repository_name +
+            " created by '%(username)s'.")
 
     def test_update_is_admin_only(self):
         user = factory.make_User()
@@ -90,6 +100,12 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         })
         package_repository = reload_object(package_repository)
         self.assertEquals(url, package_repository.url)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "Package repository '%s'" % package_repository.name +
+            " updated by '%(username)s'.")
 
     def test_delete_is_admin_only(self):
         user = factory.make_User()
