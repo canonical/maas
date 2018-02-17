@@ -92,6 +92,20 @@
                                                 data-ng-model="commissionOptions.skipStorage">
                                         </div>
                                     </div>
+                                    <div class="p-form__group">
+                                        <label class="p-form__label" for="updateFirmware">Update firmware</label>
+                                        <div class="p-form__control u-clearfix">
+                                            <input id="updateFirmware" type="checkbox"
+                                                data-ng-model="commissionOptions.updateFirmware">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label class="p-form__label" for="configureHBA">Configure HBA</label>
+                                        <div class="p-form__control u-clearfix">
+                                            <input id="configureHBA" type="checkbox"
+                                                data-ng-model="commissionOptions.configureHBA">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="ng-hide" data-ng-show="action.option.name === 'deploy'">
                                     <div class="p-form__group">

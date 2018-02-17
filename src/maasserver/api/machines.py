@@ -643,7 +643,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         :param commissioning_scripts: A comma seperated list of commissioning
             script names and tags to be run. By default all custom
             commissioning scripts are run. Builtin commissioning scripts always
-            run.
+            run. Selecting 'update_firmware' or 'configure_hba' will run
+            firmware updates or configure HBA's on matching machines.
         :type commissioning_scripts: string
         :param testing_scripts: A comma seperated list of testing script names
             and tags to be run. By default all tests tagged 'commissioning'

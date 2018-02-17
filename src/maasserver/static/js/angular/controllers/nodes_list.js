@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Nodes List Controller
@@ -68,7 +68,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.commissionOptions = {
             enableSSH: false,
             skipNetworking: false,
-            skipStorage: false
+            skipStorage: false,
+            updateFirmware: false,
+            configureHBA: false
         };
         $scope.tabs.nodes.releaseOptions = {};
         $scope.tabs.nodes.commissioningSelection = [];
@@ -166,7 +168,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.switches.commissionOptions = {
             enableSSH: false,
             skipNetworking: false,
-            skipStorage: false
+            skipStorage: false,
+            updateFirmware: false,
+            configureHBA: false
         };
         $scope.tabs.switches.releaseOptions = {};
 
@@ -255,6 +259,8 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].commissionOptions.enableSSH = false;
                 $scope.tabs[tab].commissionOptions.skipNetworking = false;
                 $scope.tabs[tab].commissionOptions.skipStorage = false;
+                $scope.tabs[tab].commissionOptions.updateFirmware = false;
+                $scope.tabs[tab].commissionOptions.configureHBA = false;
             }
             $scope.tabs[tab].commissioningSelection = [];
             $scope.tabs[tab].testSelection = [];
@@ -571,6 +577,12 @@ angular.module('MAAS').controller('NodesListController', [
                 for(i=0;i<$scope.tabs[tab].commissioningSelection.length;i++) {
                     extra.commissioning_scripts.push(
                         $scope.tabs[tab].commissioningSelection[i].id);
+                }
+                if($scope.tabs[tab].commissionOptions.updateFirmware) {
+                    extra.commissioning_scripts.push('update_firmware')
+                }
+                if($scope.tabs[tab].commissionOptions.configureHBA) {
+                    extra.commissioning_scripts.push('configure_hba')
                 }
                 if(extra.commissioning_scripts.length === 0) {
                     // Tell the region not to run any custom commissioning

@@ -49,7 +49,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.commissionOptions = {
             enableSSH: false,
             skipNetworking: false,
-            skipStorage: false
+            skipStorage: false,
+            updateFirmware: false,
+            configureHBA: false
         };
         $scope.commissioningSelection = [];
         $scope.testSelection = [];
@@ -564,6 +566,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     extra.commissioning_scripts.push(
                         $scope.commissioningSelection[i].id);
                 }
+                if($scope.commissionOptions.updateFirmware) {
+                    extra.commissioning_scripts.push('update_firmware')
+                }
+                if($scope.commissionOptions.configureHBA) {
+                    extra.commissioning_scripts.push('configure_hba')
+                }
                 if(extra.commissioning_scripts.length === 0) {
                     // Tell the region not to run any custom commissioning
                     // scripts.
@@ -607,6 +615,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.commissionOptions.enableSSH = false;
                     $scope.commissionOptions.skipNetworking = false;
                     $scope.commissionOptions.skipStorage = false;
+                    $scope.commissionOptions.updateFirmware = false;
+                    $scope.commissionOptions.configureHBA = false;
                     $scope.commissioningSelection = [];
                     $scope.testSelection = [];
                 }, function(error) {

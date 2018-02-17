@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodesListController.
@@ -386,7 +386,9 @@ describe("NodesListController", function() {
                     expect(tabScope.commissionOptions).toEqual({
                         enableSSH: false,
                         skipNetworking: false,
-                        skipStorage: false
+                        skipStorage: false,
+                        updateFirmware: false,
+                        configureHBA: false
                     });
                     expect(tabScope.commissioningSelection).toEqual([]);
                     expect(tabScope.releaseOptions).toEqual({});
@@ -1497,25 +1499,27 @@ describe("NodesListController", function() {
                         $scope.tabs.nodes.manager,
                         "performAction").and.returnValue(
                             $q.defer().promise);
-                    var commissioning_script_ids = [
+                    var commissioning_scripts_ids = [
                         makeInteger(0, 100), makeInteger(0, 100)];
-                    var testing_script_ids = [
+                    var testing_scripts_ids = [
                         makeInteger(0, 100), makeInteger(0, 100)];
                     $scope.tabs.nodes.actionOption = { name: "commission" };
                     $scope.tabs.nodes.selectedItems = [object];
                     $scope.tabs.nodes.commissionOptions.enableSSH = true;
                     $scope.tabs.nodes.commissionOptions.skipNetworking = false;
                     $scope.tabs.nodes.commissionOptions.skipStorage = false;
+                    $scope.tabs.nodes.commissionOptions.updateFirmware = true;
+                    $scope.tabs.nodes.commissionOptions.configureHBA = true;
                     $scope.tabs.nodes.commissioningSelection = [];
                     angular.forEach(
-                            commissioning_script_ids, function(script_id) {
+                            commissioning_scripts_ids, function(script_id) {
                         $scope.tabs.nodes.commissioningSelection.push({
                             id: script_id,
                             name: makeName("script_name")
                         });
                     });
                     $scope.tabs.nodes.testSelection = [];
-                    angular.forEach(testing_script_ids, function(script_id) {
+                    angular.forEach(testing_scripts_ids, function(script_id) {
                         $scope.tabs.nodes.testSelection.push({
                             id: script_id,
                             name: makeName("script_name")
@@ -1527,8 +1531,10 @@ describe("NodesListController", function() {
                             enable_ssh: true,
                             skip_networking: false,
                             skip_storage: false,
-                            commissioning_scripts: commissioning_script_ids,
-                            testing_scripts: testing_script_ids
+                            commissioning_scripts:
+                                commissioning_scripts_ids.concat([
+                                    'update_firmware', 'configure_hba']),
+                            testing_scripts: testing_scripts_ids
                         });
             });
 
@@ -1602,6 +1608,8 @@ describe("NodesListController", function() {
                 $scope.tabs.nodes.commissionOptions.enableSSH = true;
                 $scope.tabs.nodes.commissionOptions.skipNetworking = true;
                 $scope.tabs.nodes.commissionOptions.skipStorage = true;
+                $scope.tabs.nodes.commissionOptions.updateFirmware = true;
+                $scope.tabs.nodes.commissionOptions.configureHBA = true;
                 $scope.tabs.nodes.commissioningSelection = [{
                     id: makeInteger(0, 100),
                     name: makeName("script_name")
@@ -1617,7 +1625,9 @@ describe("NodesListController", function() {
                 expect($scope.tabs.nodes.commissionOptions).toEqual({
                     enableSSH: false,
                     skipNetworking: false,
-                    skipStorage: false
+                    skipStorage: false,
+                    updateFirmware: false,
+                    configureHBA: false
                 });
                 expect($scope.tabs.nodes.commissioningSelection).toEqual([]);
                 expect($scope.tabs.nodes.testSelection).toEqual([]);

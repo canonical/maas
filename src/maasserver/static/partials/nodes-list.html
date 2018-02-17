@@ -92,6 +92,13 @@
             <section class="page-header__section row u-no-margin--top" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)">
                 <div class="col-12">
                     <form class="p-form p-form--inline">
+                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test'">
+                            <div class="p-form__control u-clearfix">
+                                <input id="{$ tab $}-enableSSH" type="checkbox"
+                                    data-ng-model="tabs[tab].commissionOptions.enableSSH">
+                            </div>
+                            <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
+                        </div>
                         <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
                             <div class="p-form__control u-clearfix">
                                 <input id="{$ tab $}-skipNetworking" type="checkbox"
@@ -106,12 +113,19 @@
                             </div>
                             <label class="p-form__label" for="{$ tab $}-skipStorage">Retain storage configuration</label>
                         </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test'">
+                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
                             <div class="p-form__control u-clearfix">
-                                <input id="{$ tab $}-enableSSH" type="checkbox"
-                                    data-ng-model="tabs[tab].commissionOptions.enableSSH">
+                                <input id="{$ tab $}-updateFirmware" type="checkbox"
+                                    data-ng-model="tabs[tab].commissionOptions.updateFirmware">
                             </div>
-                            <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
+                            <label class="p-form__label" for="{$ tab $}-updateFirmware">Update firmware</label>
+                        </div>
+                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                            <div class="p-form__control u-clearfix">
+                                <input id="{$ tab $}-configureHBA" type="checkbox"
+                                    data-ng-model="tabs[tab].commissionOptions.configureHBA">
+                            </div>
+                            <label class="p-form__label" for="{$ tab $}-configureHBA">Configure HBA</label>
                         </div>
                         <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
                             <label for="image" class="p-form__label">Choose your image</label>

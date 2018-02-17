@@ -202,7 +202,9 @@ describe("NodeDetailsController", function() {
         expect($scope.commissionOptions).toEqual({
             enableSSH: false,
             skipNetworking: false,
-            skipStorage: false
+            skipStorage: false,
+            updateFirmware: false,
+            configureHBA: false
         });
         expect($scope.releaseOptions).toEqual({});
         expect($scope.checkingPower).toBe(false);
@@ -1006,6 +1008,8 @@ describe("NodeDetailsController", function() {
             $scope.commissionOptions.enableSSH = true;
             $scope.commissionOptions.skipNetworking = false;
             $scope.commissionOptions.skipStorage = false;
+            $scope.commissionOptions.updateFirmware = true;
+            $scope.commissionOptions.configureHBA = true;
             $scope.commissioningSelection = [];
             angular.forEach(commissioning_script_ids, function(script_id) {
                 $scope.commissioningSelection.push({
@@ -1026,7 +1030,9 @@ describe("NodeDetailsController", function() {
                     enable_ssh: true,
                     skip_networking: false,
                     skip_storage: false,
-                    commissioning_scripts: commissioning_script_ids,
+                    commissioning_scripts:
+                        commissioning_script_ids.concat([
+                            'update_firmware', 'configure_hba']),
                     testing_scripts: testing_script_ids
                 });
         });
@@ -1123,6 +1129,8 @@ describe("NodeDetailsController", function() {
             $scope.commissionOptions.enableSSH = true;
             $scope.commissionOptions.skipNetworking = true;
             $scope.commissionOptions.skipStorage = true;
+            $scope.commissionOptions.updateFirmware = true;
+            $scope.commissionOptions.configureHBA = true;
             $scope.commissioningSelection = [{
                 id: makeInteger(0, 100),
                 name: makeName("script_name")
@@ -1137,7 +1145,9 @@ describe("NodeDetailsController", function() {
             expect($scope.commissionOptions).toEqual({
                 enableSSH: false,
                 skipNetworking: false,
-                skipStorage: false
+                skipStorage: false,
+                updateFirmware: false,
+                configureHBA: false
             });
             expect($scope.commissioningSelection).toEqual([]);
             expect($scope.testSelection).toEqual([]);
