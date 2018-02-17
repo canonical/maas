@@ -4,7 +4,7 @@
  * Unit tests for Call-To-Action dropdown directive.
  */
 
-describe("maasCta", function() {
+xdescribe("maasCta", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));

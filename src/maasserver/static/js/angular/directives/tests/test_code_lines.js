@@ -4,7 +4,7 @@
  * Unit tests for placeholder directive.
  */
 
-describe("maasCodeLines", function() {
+xdescribe("maasCodeLines", function() {
 
 // Load the MAAS module.
 beforeEach(module("MAAS"));

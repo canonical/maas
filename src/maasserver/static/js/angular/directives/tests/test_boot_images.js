@@ -219,7 +219,7 @@ describe("maasBootImages", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             BootResourcesManager._data.resources = [{}];
-            expect(scope.getTitleIcon()).toBe('icon--success');
+            expect(scope.getTitleIcon()).toBe('p-icon--success');
         });
     });
 
@@ -996,7 +996,7 @@ describe("maasBootImages", function() {
             scope.source.selections.arches = [arch];
             scope.regenerateUbuntuImages();
             expect(scope.ubuntuImages).toEqual([{
-                icon: 'icon--status-queued',
+                icon: 'p-icon--status-queued',
                 title: release.title,
                 arch: arch.title,
                 size: '-',
@@ -1035,7 +1035,7 @@ describe("maasBootImages", function() {
             scope.source.selections.arches = [arch];
             scope.regenerateUbuntuImages();
             expect(scope.ubuntuImages).toEqual([{
-                icon: 'icon--status-' + icon + ' u-animation--pulse',
+                icon: 'p-icon--status-' + icon + ' u-animation--pulse',
                 title: release.title,
                 arch: arch.title,
                 size: size,
@@ -1074,7 +1074,7 @@ describe("maasBootImages", function() {
             scope.source.selections.arches = [];
             scope.regenerateUbuntuImages();
             expect(scope.ubuntuImages).toEqual([{
-                icon: 'icon--status-failed',
+                icon: 'p-icon--status-failed',
                 title: release.title,
                 arch: arch.name,
                 size: size,
@@ -1102,7 +1102,7 @@ describe("maasBootImages", function() {
             scope.ubuntu_core.images = [image];
             scope.regenerateUbuntuCoreImages();
             expect(scope.ubuntuCoreImages).toEqual([{
-                icon: 'icon--status-queued',
+                icon: 'p-icon--status-queued',
                 title: image.title,
                 arch: arch,
                 size: '-',
@@ -1137,7 +1137,7 @@ describe("maasBootImages", function() {
             scope.ubuntu_core.images = [image];
             scope.regenerateUbuntuCoreImages();
             expect(scope.ubuntuCoreImages).toEqual([{
-                icon: 'icon--status-' + icon + ' u-animation--pulse',
+                icon: 'p-icon--status-' + icon + ' u-animation--pulse',
                 title: image.title,
                 arch: arch,
                 size: size,
@@ -1173,7 +1173,7 @@ describe("maasBootImages", function() {
             scope.ubuntu_core.images = [image];
             scope.regenerateUbuntuCoreImages();
             expect(scope.ubuntuCoreImages).toEqual([{
-                icon: 'icon--status-failed',
+                icon: 'p-icon--status-failed',
                 title: image.title,
                 arch: arch,
                 size: size,
@@ -1201,7 +1201,7 @@ describe("maasBootImages", function() {
             scope.other.images = [image];
             scope.regenerateOtherImages();
             expect(scope.otherImages).toEqual([{
-                icon: 'icon--status-queued',
+                icon: 'p-icon--status-queued',
                 title: image.title,
                 arch: arch,
                 size: '-',
@@ -1237,7 +1237,7 @@ describe("maasBootImages", function() {
             scope.other.images = [image];
             scope.regenerateOtherImages();
             expect(scope.otherImages).toEqual([{
-                icon: 'icon--status-' + icon + ' u-animation--pulse',
+                icon: 'p-icon--status-' + icon + ' u-animation--pulse',
                 title: image.title,
                 arch: arch,
                 size: size,
@@ -1274,7 +1274,7 @@ describe("maasBootImages", function() {
             scope.other.images = [image];
             scope.regenerateOtherImages();
             expect(scope.otherImages).toEqual([{
-                icon: 'icon--status-failed',
+                icon: 'p-icon--status-failed',
                 title: image.title,
                 arch: arch,
                 size: size,
@@ -1306,7 +1306,7 @@ describe("maasBootImages", function() {
             }];
             scope.regenerateGeneratedImages();
             expect(scope.generatedImages).toEqual([{
-                icon: 'icon--status-' + icon + ' u-animation--pulse',
+                icon: 'p-icon--status-' + icon + ' u-animation--pulse',
                 title: title,
                 arch: arch,
                 image_id: 3,
@@ -1338,7 +1338,7 @@ describe("maasBootImages", function() {
             }];
             scope.regenerateCustomImages();
             expect(scope.customImages).toEqual([{
-                icon: 'icon--status-' + icon + ' u-animation--pulse',
+                icon: 'p-icon--status-' + icon + ' u-animation--pulse',
                 title: title,
                 arch: arch,
                 image_id: 3,

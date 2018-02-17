@@ -2109,7 +2109,7 @@ describe("NodeDetailsController", function() {
             var controller = makeController();
             expect($scope.getServiceClass({
                 status: "dead"
-            })).toBe("power-error");
+            })).toBe("error");
         });
 
         it("returns 'warning' when degraded", function() {

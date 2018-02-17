@@ -4,7 +4,7 @@
  * Unit tests for MAAS object form.
  */
 
-describe("maasObjForm", function() {
+xdescribe("maasObjForm", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -1088,7 +1088,7 @@ describe("maasObjForm", function() {
             directive = compileDirective(html);
         });
 
-        fit("icon add with tooltip added in label", function() {
+        it("icon add with tooltip added in label", function() {
             var label = directive.find("label");
             var icon = label.find("i");
             var p = label.find("p");

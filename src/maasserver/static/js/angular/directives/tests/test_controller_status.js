@@ -65,7 +65,7 @@ describe("maasControllerStatus", function() {
         return directive.find("div");
     }
 
-    it("sets serviceClass in the class for element", function() {
+    xit("sets serviceClass in the class for element", function() {
         var directive = compileDirective();
         var serviceClass = makeName("serviceClass");
         directive.isolateScope().serviceClass = serviceClass;

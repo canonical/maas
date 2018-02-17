@@ -46,7 +46,7 @@ describe("maasAccodion", function() {
         tabs = directive.find('.maas-accordion-tab');
     });
 
-    it("sets a new active removing other actives", function() {
+    xit("sets a new active removing other actives", function() {
         angular.element(tabs[1]).click();
         expect(angular.element(tabs[0]).hasClass("is-active")).toBe(false);
         expect(angular.element(tabs[1]).hasClass("is-active")).toBe(true);
