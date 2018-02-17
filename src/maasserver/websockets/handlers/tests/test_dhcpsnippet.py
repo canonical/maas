@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.dhcpsnippet`"""
@@ -11,6 +11,7 @@ import random
 import maasserver.forms.dhcpsnippet as forms_dhcpsnippet_module
 from maasserver.models import (
     DHCPSnippet,
+    Event,
     VersionedTextFile,
 )
 from maasserver.testing.factory import factory
@@ -22,6 +23,7 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.dhcpsnippet import DHCPSnippetHandler
+from provisioningserver.events import AUDIT
 
 
 class TestDHCPSnippetHandler(MAASServerTestCase):
@@ -108,6 +110,11 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
             'value': factory.make_string(),
         })
         self.assertIsNotNone(DHCPSnippet.objects.get(name=dhcp_snippet_name))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "DHCP snippet '%s'" % dhcp_snippet_name +
+            " created by '%(username)s'.")
 
     def test_update_is_admin_only(self):
         user = factory.make_User()
@@ -127,6 +134,11 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         })
         dhcp_snippet = reload_object(dhcp_snippet)
         self.assertEquals(node, dhcp_snippet.node)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "DHCP snippet '%s'" % dhcp_snippet.name +
+            " updated by '%(username)s'.")
 
     def test_delete_is_admin_only(self):
         user = factory.make_User()

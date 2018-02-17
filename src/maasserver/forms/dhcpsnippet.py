@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DHCP snippets form."""
@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from django import forms
+from maasserver.audit import create_audit_event
 from maasserver.dhcp import validate_dhcp_config
 from maasserver.fields import (
     NodeChoiceField,
@@ -21,6 +22,7 @@ from maasserver.models import (
     Subnet,
 )
 from maasserver.utils.forms import set_form_error
+from provisioningserver.events import EVENT_TYPES
 
 
 class DHCPSnippetForm(MAASModelForm):
@@ -116,3 +118,12 @@ class DHCPSnippetForm(MAASModelForm):
         if not valid and self.initial.get('value') != self.instance.value_id:
             self.instance.value.delete()
         return valid
+
+    def save(self, endpoint, request):
+        dhcp_snippet = super(DHCPSnippetForm, self).save()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, endpoint, request, None, description=(
+                "DHCP snippet '%s'" % dhcp_snippet.name +
+                " %s" % ('updated' if self.is_update else 'created') +
+                " by '%(username)s'."))
+        return dhcp_snippet

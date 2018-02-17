@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the DHCP snippets API."""
@@ -13,12 +13,14 @@ import random
 from maasserver.forms import dhcpsnippet
 from maasserver.models import (
     DHCPSnippet,
+    Event,
     VersionedTextFile,
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
+from provisioningserver.events import AUDIT
 from testtools.matchers import Equals
 
 
@@ -144,6 +146,11 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(dhcp_snippet))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "DHCP snippet '%s'" % dhcp_snippet.name +
+            " deleted by '%(username)s'.")
 
     def test_delete_admin_only(self):
         dhcp_snippet = factory.make_DHCPSnippet()
@@ -191,6 +198,11 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
                 VersionedTextFile.objects.get, id=i)
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "DHCP snippet '%s' reverted to revision '%s'" %
+            (dhcp_snippet.name, revert_to) + " by '%(username)s'.")
 
     def test_revert_admin_only(self):
         dhcp_snippet = factory.make_DHCPSnippet()

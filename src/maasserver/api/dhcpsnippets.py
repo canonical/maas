@@ -1,5 +1,7 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""API handlers: `DHCPSnippet`."""
 
 __all__ = [
     "DHCPSnippetHandler",
@@ -13,10 +15,13 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_DHCP_SNIPPET_FIELDS = (
@@ -111,7 +116,7 @@ class DHCPSnippetHandler(OperationsHandler):
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         form = DHCPSnippetForm(instance=dhcp_snippet, data=request.data)
         if form.is_valid():
-            return form.save()
+            return form.save(ENDPOINT.API, request)
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -123,6 +128,10 @@ class DHCPSnippetHandler(OperationsHandler):
         """
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         dhcp_snippet.delete()
+        create_audit_event(
+            EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
+                "DHCP snippet '%s'" % dhcp_snippet.name +
+                " deleted by '%(username)s'."))
         return rc.DELETED
 
     @admin_method
@@ -152,6 +161,12 @@ class DHCPSnippetHandler(OperationsHandler):
                 dhcp_snippet.value = value
                 dhcp_snippet.save()
             dhcp_snippet.value.revert(revert_to, gc_hook=gc_hook)
+            create_audit_event(
+                EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
+                description=(
+                    "DHCP snippet '%s' reverted to revision '%s'" % (
+                        dhcp_snippet.name, revert_to) +
+                    " by '%(username)s'."))
             return dhcp_snippet
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])
@@ -205,6 +220,6 @@ class DHCPSnippetsHandler(OperationsHandler):
         """
         form = DHCPSnippetForm(data=request.data)
         if form.is_valid():
-            return form.save()
+            return form.save(ENDPOINT.API, request)
         else:
             raise MAASAPIValidationError(form.errors)
