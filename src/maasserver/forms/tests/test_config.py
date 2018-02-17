@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `ConfigForm`."""
@@ -6,6 +6,8 @@
 __all__ = []
 
 from django import forms
+from django.http import HttpRequest
+from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.forms import ConfigForm
 from maasserver.models import Config
 from maasserver.models.config import DEFAULT_CONFIG
@@ -32,9 +34,12 @@ class TestCompositeForm(ConfigForm):
 class ConfigFormTest(MAASServerTestCase):
 
     def test_form_valid_saves_into_db(self):
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        request = HttpRequest()
+        request.user = factory.make_User()
         value = factory.make_string(10)
         form = TestValidOptionForm({'maas_name': value})
-        result = form.save()
+        result = form.save(endpoint, request)
 
         self.assertTrue(result, form._errors)
         self.assertEqual(value, Config.objects.get_config('maas_name'))
@@ -50,9 +55,12 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertIn('field2', form._errors)
 
     def test_form_invalid_does_not_save_into_db(self):
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        request = HttpRequest()
+        request.user = factory.make_User()
         value_too_long = factory.make_string(20)
         form = TestOptionForm({'field1': value_too_long, 'field2': False})
-        result = form.save()
+        result = form.save(endpoint, request)
 
         self.assertFalse(result, form._errors)
         self.assertIn('field1', form._errors)
@@ -77,11 +85,14 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertEqual({'field1': value}, form.initial)
 
     def test_validates_composite_form(self):
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        request = HttpRequest()
+        request.user = factory.make_User()
         value1 = factory.make_string(5)
         value2 = factory.make_string(5)
         form = TestCompositeForm(
             {'maas_name': value1, 'non_config_field': value2})
-        result = form.save()
+        result = form.save(endpoint, request)
 
         self.assertTrue(result, form._errors)
         self.assertEqual(value1, Config.objects.get_config('maas_name'))

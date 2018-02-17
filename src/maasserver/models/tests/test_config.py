@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Config` class and friends."""
@@ -8,15 +8,19 @@ __all__ = []
 from socket import gethostname
 
 from django.db import IntegrityError
+from django.http import HttpRequest
 from fixtures import TestWithFixtures
+from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import (
     Config,
+    Event,
     signals,
 )
 import maasserver.models.config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.events import AUDIT
 from testtools.matchers import Is
 
 
@@ -111,6 +115,18 @@ class ConfigTest(MAASServerTestCase):
         self.assertSequenceEqual(
             ['config2'],
             [config.value for config in Config.objects.filter(name='name')])
+
+    def test_manager_set_config_creates_audit_event(self):
+        user = factory.make_User()
+        request = HttpRequest()
+        request.user = user
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        Config.objects.set_config('name', 'value', endpoint, request)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description,
+            "Config setting 'name' set to 'value' for '%(username)s'.")
 
     def test_manager_config_changed_connect_connects(self):
         recorder = CallRecorder()

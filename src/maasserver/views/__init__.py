@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Views."""
@@ -28,6 +28,8 @@ from django.views.generic import (
     ListView,
     TemplateView,
 )
+from maasserver.enum import ENDPOINT
+from maasserver.forms import ConfigForm
 
 
 class TextTemplateView(TemplateView):
@@ -204,7 +206,10 @@ def process_form(request, form_class, redirect_url, prefix,
         if form.is_valid():
             if success_message is not None:
                 messages.info(request, success_message)
-            form.save()
+            if isinstance(form, ConfigForm):
+                form.save(ENDPOINT.UI, request)
+            else:
+                form.save()
             return form, HttpResponseRedirect(redirect_url)
     else:
         form = form_class(prefix=prefix, **form_kwargs)

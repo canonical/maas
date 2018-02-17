@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler: MAAS."""
@@ -17,6 +17,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import UbuntuForm
 from maasserver.forms.settings import (
@@ -89,7 +90,7 @@ class MaasHandler(OperationsHandler):
         form = get_maas_form(name, value)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
-        form.save()
+        form.save(ENDPOINT.API, request)
         return rc.ALL_OK
 
     # Populate the docstring with the dynamically-generated documentation

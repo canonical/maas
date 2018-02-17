@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The config handler for the WebSocket connection."""
@@ -8,6 +8,8 @@ __all__ = [
     ]
 
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
+from maasserver.enum import ENDPOINT
 from maasserver.forms.settings import (
     CONFIG_ITEMS,
     get_config_field,
@@ -97,7 +99,9 @@ class ConfigHandler(Handler):
         form = get_config_form(name, {name: value})
         if form.is_valid():
             try:
-                form.save()
+                request = HttpRequest()
+                request.user = self.user
+                form.save(ENDPOINT.UI, request)
             except ValidationError as e:
                 self._fix_validation_error(name, e.error_dict)
                 raise HandlerValidationError(e.error_dict)

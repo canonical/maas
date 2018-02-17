@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items."""
@@ -24,6 +24,7 @@ from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.events import EVENT_TYPES
 
 
 DEFAULT_OS = UbuntuOS()
@@ -134,9 +135,9 @@ class ConfigManager(Manager):
 
         :param name: The name of the config item.
         :type name: unicode
-        :param name: The optional default value to return if no such config
+        :param default: The optional default value to return if no such config
             item exists.
-        :type name: object
+        :type default: object
         :return: A config value.
         :raises: Config.MultipleObjectsReturned
         """
@@ -147,19 +148,30 @@ class ConfigManager(Manager):
         except Config.MultipleObjectsReturned as error:
             raise Config.MultipleObjectsReturned("%s (%s)" (error, name))
 
-    def set_config(self, name, value):
+    def set_config(self, name, value, endpoint=None, request=None):
         """Set or overwrite a config value.
 
         :param name: The name of the config item to set.
         :type name: unicode
         :param value: The value of the config item to set.
         :type value: Any jsonizable object
+        :param endpoint: The endpoint of the audit event to be created.
+        :type endpoint: Integer enumeration of ENDPOINT.
+        :param request: The http request of the audit event to be created.
+        :type request: HttpRequest object.
         """
+        # Avoid circular imports.
+        from maasserver.audit import create_audit_event
         config, freshly_created = self.get_or_create(
             name=name, defaults=dict(value=value))
         if not freshly_created:
             config.value = value
             config.save()
+        if endpoint is not None and request is not None:
+            create_audit_event(
+                EVENT_TYPES.SETTINGS, endpoint, request, None, description=(
+                    "Config setting '%s' set to '%s'" % (name, value) +
+                    " for '%(username)s'."))
 
     def config_changed_connect(self, config_name, method):
         """Connect a method to Django's 'update' signal for given config name.

@@ -1415,7 +1415,7 @@ class ConfigForm(Form):
                         INVALID_SETTING_MSG_TEMPLATE % config_name])
         return cleaned_data
 
-    def save(self):
+    def save(self, endpoint, request):
         """Save the content of the fields into the database.
 
         This implementation of `save` does not support the `commit` argument.
@@ -1434,7 +1434,7 @@ class ConfigForm(Form):
                     name in self.config_fields
                 )
                 if consider_field:
-                    Config.objects.set_config(name, value)
+                    Config.objects.set_config(name, value, endpoint, request)
             return True
 
 
