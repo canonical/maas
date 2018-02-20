@@ -38,7 +38,10 @@ dbrun := bin/database --preserve run --
 
 # Path to install local nodejs.
 mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-nodejs_path := $(mkfile_dir)/include/nodejs/bin:$(PATH)
+nodejs_path := $(mkfile_dir)/include/nodejs/bin
+nodejs_modules_path := include/nodejs/node_modules
+
+export PATH := $(nodejs_path):$(PATH)
 
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
@@ -141,10 +144,10 @@ bin/test.e2e: \
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
-# bin/maas-region is needed for South migration tests. bin/flake8 is
-# needed for checking lint and bin/sass is needed for checking css.
+# bin/maas-region is needed for South migration tests. bin/flake8 is needed for
+# checking lint and bin/node-sass is needed for checking css.
 bin/test.testing: \
-  bin/maas-region bin/flake8 bin/sass bin/buildout \
+  bin/maas-region bin/flake8 bin/node-sass bin/buildout \
   buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -187,44 +190,25 @@ include/nodejs/yarn.tar.gz:
 include/nodejs/bin/yarn: include/nodejs/yarn.tar.gz
 	tar -C include/nodejs/ -xf include/nodejs/yarn.tar.gz --strip-components=1
 
-include/nodejs/node_modules: include/nodejs/bin/node  include/nodejs/bin/yarn
-	PATH=$(nodejs_path) yarn --modules-folder include/nodejs/node_modules
+$(nodejs_modules_path): include/nodejs/bin/node  include/nodejs/bin/yarn
+	yarn --modules-folder $@
 
-define BIN_KARMA
-#!/bin/sh
-export PATH=$(mkfile_dir)/include/nodejs/bin:$$PATH
-$(mkfile_dir)/include/nodejs/node_modules/karma/bin/karma $$@
+define js_bins
+	bin/karma
+	bin/protractor
+	bin/node-sass
 endef
 
-bin/karma: export BIN_KARMA:=$(BIN_KARMA)
-bin/karma: include/nodejs/node_modules
-	@mkdir -p bin/
-	@echo "$${BIN_KARMA}" > $@
-	@chmod +x $@
+$(strip $(js_bins)): $(nodejs_modules_path)
+	ln -sf ../node_modules/.bin/$(notdir $@) $@
 
-define BIN_PROTRACTOR
-#!/bin/sh
-export PATH=$(mkfile_dir)/include/nodejs/bin:$$PATH
-$(mkfile_dir)/include/nodejs/node_modules/protractor/bin/protractor $$@
-endef
-
-bin/protractor: export BIN_PROTRACTOR:=$(BIN_PROTRACTOR)
-bin/protractor: include/nodejs/node_modules
-	@mkdir -p bin/
-	@echo "$${BIN_PROTRACTOR}" > $@
-	@chmod +x $@
-
-define BIN_SASS
-#!/bin/sh
-export PATH=$(mkfile_dir)/include/nodejs/bin:$$PATH
-$(mkfile_dir)/include/nodejs/node_modules/node-sass/bin/node-sass $$@
-endef
-
-bin/sass: export BIN_SASS:=$(BIN_SASS)
-bin/sass: include/nodejs/node_modules
-	@mkdir -p bin/
-	@echo "$${BIN_SASS}" > $@
-	@chmod +x $@
+js-update-macaroonbakery:
+	wget -O src/maasserver/static/js/js-macaroon-min.js \
+		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/assets/javascripts/js-macaroon-min.js'
+	wget -O src/maasserver/static/js/bakery.js \
+		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/jujulib/bakery.js'
+	wget -O src/maasserver/static/js/web-handler.js \
+		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/store/env/web-handler.js'
 
 define test-scripts
   bin/test.cli
@@ -350,7 +334,8 @@ lint-doc:
 # doubling the speed, but it may need tuning for slower systems or cold caches.
 lint-js: sources = src/maasserver/static/js
 lint-js:
-	@find $(sources) -type f ! -path '*/angular/3rdparty/*' \
+	@find $(sources) -type f ! -path '*/angular/3rdparty/*' -a \
+		! -path '*-min.js' -a \
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
 
@@ -399,8 +384,8 @@ $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 
 styles: clean-styles $(scss_output)
 
-$(scss_output): bin/sass $(scss_input) $(scss_deps)
-	bin/sass --include-path=src/maasserver/static/scss \
+$(scss_output): bin/node-sass $(scss_input) $(scss_deps)
+	bin/node-sass --include-path=src/maasserver/static/scss \
 	    --output-style compressed $(scss_input) -o $(dir $@)
 
 clean-styles:
@@ -750,15 +735,15 @@ phony := $(sort $(strip $(phony)))
 # that their absense is okay if a rule target is newer than the rule's
 # other prerequisites; i.e. don't build them.
 #
-# For example, converting foo.scss to foo.css might require bin/sass. If
-# foo.css is newer than foo.scss we know that we don't need to perform
-# that conversion, and hence don't need bin/sass. We declare bin/sass as
+# For example, converting foo.scss to foo.css might require bin/node-sass. If
+# foo.css is newer than foo.scss we know that we don't need to perform that
+# conversion, and hence don't need bin/node-sass. We declare bin/node-sass as
 # secondary so that Make knows this too.
 #
 
 define secondary
   bin/py bin/buildout
-  bin/sass
+  bin/node-sass
   bin/sphinx bin/sphinx-build
 endef
 

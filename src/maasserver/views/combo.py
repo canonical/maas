@@ -197,6 +197,14 @@ MERGE_VIEWS = {
             "js/os_distro_select.js",
         ]
     },
+    "macaroons.js": {
+        "content_type": "text/javascript; charset=UTF-8",
+        "files": [
+            "js/js-macaroon-min.js",
+            "js/bakery.js",
+            "js/web-handler.js",
+        ]
+    },
 }
 
 
