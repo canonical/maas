@@ -39,7 +39,6 @@
                         class="p-search-box__input" data-ng-model="search" />
                     <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
                 </div>
-
                 <table id="events-listing" window-width>
                     <thead data-ng-if="windowWidth >= 769" offset="88" media-query="min-width: 768px">
                         <tr>
@@ -48,7 +47,7 @@
                         </tr>
                     </thead>
                     <tbody vs-repeat vs-scroll-parent="window">
-                        <tr data-ng-repeat="event in node.events | filter:search | orderByDate:'created':'id' track by event.id">
+                        <tr data-ng-repeat="event in events | filter:search | orderByDate:'created':'id' track by event.id">
                             <td class="col-9">
                                 <span class="p-icon--{$ event.type.level $}"></span>
                                 {$ getEventText(event) $}
