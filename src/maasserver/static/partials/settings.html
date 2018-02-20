@@ -143,6 +143,7 @@
                                 <h2 data-ng-click="snippetExitRemove(snippet)" class="u-float--left">Removing {$ snippet.name $}</h2>
                                 <button data-ng-click="snippetExitRemove(snippet)" class="p-icon--close u-float--right"></button>
                             </div>
+                            <hr />
                             <div class="row u-no-margin--top u-equal-height">
                                 <div class="col-6 u-vertically-center">
                                     <p><i class="p-icon--warning">Warning:</i> Are you sure you want to remove this snippet?</p>
@@ -374,8 +375,8 @@
                                     data-ng-click="toggleMenu(); repositoryEnterRemove(repository)">Remove</button>
                             </div>
                         </td>
-                        <td class="is-active p-table-expanding__panel col-12" col-span="5" data-ng-if="editRepository === repository">
-                            <maas-obj-form obj="editRepository" manager="packageRepositoriesManager" manager-method="updateItem"
+                        <td class="is-active p-table-expanding__panel col-12" col-span="5" data-ng-if="editRepository === repository || deleteRepository === repository">
+                            <maas-obj-form obj="editRepository" manager="packageRepositoriesManager" manager-method="updateItem" data-ng-if="editRepository === repository"
                                 table-form="true" save-on-blur="false" after-save="repositoryExitEdit">
                                 <div class="row u-equal-height">
                                     <div class="col-3 u-vertically-center">
@@ -460,17 +461,18 @@
                                 </div>
                             </maas-obj-form>
                             <div class="table__dropdown" data-ng-if="deleteRepository === repository">
-                                <div class="table__dropdown-title">
+                                <div class="row u-hide u-show--small">
                                     <h2 data-ng-click="repositoryExitRemove()" class="u-float--left">Removing {$ repository.name $}</h2>
                                     <button data-ng-click="repositoryExitRemove()" class="p-icon--close u-float--right"></button>
                                 </div>
-                                <div class="is-active">
-                                    <div class=" u-float--left">
-                                            <p><span class="p-icon--warning"></span> Are you sure you want to remove this repository?</p>
+                                <hr />
+                                <div class="row u-no-margin--top u-equal-height">
+                                    <div class="col-6 u-vertically-center">
+                                        <p><span class="p-icon--warning"></span> Are you sure you want to remove this repository?</p>
                                     </div>
-                                    <div class=" u-float--right">
-                                            <button class="button--base" type="button" data-ng-click="repositoryExitRemove()">Cancel</button>
-                                            <button class="button--destructive" data-ng-click="repositoryConfirmRemove()">Remove</button>
+                                    <div class="col-6 u-align--right">
+                                        <button class="p-button--base" type="button" data-ng-click="repositoryExitRemove()">Cancel</button>
+                                        <button class="p-button--negative" data-ng-click="repositoryConfirmRemove()">Remove</button>
                                     </div>
                                 </div>
                             </div>
