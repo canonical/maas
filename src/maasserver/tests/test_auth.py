@@ -14,6 +14,7 @@ from maasserver.enum import (
     NODE_STATUS,
 )
 from maasserver.models import (
+    Config,
     MAASAuthorizationBackend,
     Node,
 )
@@ -237,6 +238,26 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         self.assertFalse(
             backend.has_perm(
                 user, NODE_PERMISSION.ADMIN, factory.make_FilesystemGroup()))
+
+    def test_authenticate_username_password(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        backend = MAASAuthorizationBackend()
+        request = factory.make_fake_request('/')
+        self.assertEqual(
+            backend.authenticate(
+                request, username=user.username, password=password),
+            user)
+
+    def test_authenticate_username_password_external_auth(self):
+        Config.objects.set_config('external_auth_url', 'https://example.com')
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        backend = MAASAuthorizationBackend()
+        request = factory.make_fake_request('/')
+        self.assertIsNone(
+            backend.authenticate(
+                request, username=user.username, password=password))
 
 
 class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):

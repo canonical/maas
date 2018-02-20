@@ -314,6 +314,13 @@ class MAASAuthorizationBackend(ModelBackend):
 
     supports_object_permissions = True
 
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        if self.external_auth_enabled():
+            # Don't allow username/password logins with external authentication
+            return
+        return super().authenticate(
+            request, username=username, password=password, **kwargs)
+
     def has_perm(self, user, perm, obj=None):
         # Note that a check for a superuser will never reach this code
         # because Django will return True (as an optimization) for every
@@ -404,6 +411,9 @@ class MAASAuthorizationBackend(ModelBackend):
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
+    def external_auth_enabled(self):
+        """Return whether external authentication is enabled."""
+        return bool(Config.objects.get_config('external_auth_url'))
 
 # Ensure that all signals modules are loaded.
 from maasserver.models import signals

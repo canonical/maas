@@ -4,7 +4,7 @@
 """Backend for Macaroon-based authentication."""
 
 __all__ = [
-    'MacaroonAuthenticationBackend',
+    'MacaroonAuthorizationBackend',
 ]
 
 from datetime import (
@@ -58,12 +58,12 @@ class IDClient(bakery.IdentityClient):
                 location=self.auth_endpoint)]
 
 
-class MacaroonAuthenticationBackend(MAASAuthorizationBackend):
-    """An authentication backend getting the user from macaroon identity."""
+class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
+    """An authorization backend getting the user from macaroon identity."""
 
     def authenticate(self, request, identity=None):
-        if not identity:
-            return None
+        if not self.external_auth_enabled() or not identity:
+            return
         user, _ = User.objects.get_or_create(username=identity.id())
         return user
 
@@ -160,7 +160,7 @@ class MacaroonDischargeRequest:
         # one if not found
         user = authenticate(request, identity=auth_info.identity)
         backend = (
-            'maasserver.views.macaroon_auth.MacaroonAuthenticationBackend')
+            'maasserver.views.macaroon_auth.MacaroonAuthorizationBackend')
         login(request, user, backend=backend)
         return JsonResponse({'id': user.id, 'username': user.username})
 

@@ -21,7 +21,7 @@ from maasserver.views.macaroon_auth import (
     _get_macaroon_oven_key,
     IDClient,
     KeyStore,
-    MacaroonAuthenticationBackend,
+    MacaroonAuthorizationBackend,
     MacaroonDischargeRequest,
 )
 from macaroonbakery.bakery import (
@@ -52,12 +52,14 @@ class TestIDClient(TestCase):
         self.assertEqual(caveat.condition, 'is-authenticated-user')
 
 
-class TestMacaroonAuthenticationBackend(MAASServerTestCase):
+class TestMacaroonAuthorizationBackend(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
+        Config.objects.set_config(
+            'external_auth_url', 'https://auth.example.com')
         self.request = factory.make_fake_request('/')
-        self.backend = MacaroonAuthenticationBackend()
+        self.backend = MacaroonAuthorizationBackend()
 
     def test_authenticate(self):
         user = factory.make_User()
@@ -75,6 +77,13 @@ class TestMacaroonAuthenticationBackend(MAASServerTestCase):
     def test_authenticate_no_identity(self):
         self.assertIsNone(
             self.backend.authenticate(self.request, identity=None))
+
+    def test_authenticate_external_auth_not_enabled(self):
+        Config.objects.set_config('external_auth_url', '')
+        username = factory.make_string()
+        identity = SimpleIdentity(user=username)
+        self.assertIsNone(
+            self.backend.authenticate(self.request, identity=identity))
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):
