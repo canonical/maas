@@ -43,6 +43,7 @@ from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     getRegionID,
     ignoreCancellation,
+    RackClient,
     Region,
     RegionAdvertising,
     RegionAdvertisingService,
@@ -80,7 +81,7 @@ from maastesting.twisted import (
 )
 import netaddr
 from provisioningserver.rpc import (
-    common,
+    cluster,
     exceptions,
 )
 from provisioningserver.rpc.exceptions import (
@@ -600,6 +601,67 @@ class TestRegionServer(MAASTransactionServerTestCase):
             "Connection will be dropped.",), error.args)
 
 
+class TestRackClient(MAASTestCase):
+
+    def test_defined_cache_calls(self):
+        self.assertEquals([
+            cluster.DescribePowerTypes,
+            cluster.DescribeNOSTypes,
+        ], RackClient.cache_calls)
+
+    def test__getCallCache_adds_new_call_cache(self):
+        conn = DummyConnection()
+        cache = {}
+        client = RackClient(conn, cache)
+        call_cache = client._getCallCache()
+        self.assertIs(call_cache, cache['call_cache'])
+
+    def test__getCallCache_returns_existing(self):
+        conn = DummyConnection()
+        cache = {}
+        client = RackClient(conn, cache)
+        call_cache = client._getCallCache()
+        call_cache2 = client._getCallCache()
+        self.assertIs(call_cache, cache['call_cache'])
+        self.assertIs(call_cache2, cache['call_cache'])
+        self.assertIs(call_cache2, call_cache)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__call__returns_cache_value(self):
+        conn = DummyConnection()
+        client = RackClient(conn, {})
+        call_cache = client._getCallCache()
+        call_cache[cluster.DescribePowerTypes] = sentinel.power_types
+        result = yield client(cluster.DescribePowerTypes)
+        self.assertIs(sentinel.power_types, result)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__call__adds_result_to_cache(self):
+        conn = DummyConnection()
+        self.patch(conn, 'callRemote').return_value = (
+            succeed(sentinel.power_types))
+        client = RackClient(conn, {})
+        call_cache = client._getCallCache()
+        result = yield client(cluster.DescribePowerTypes)
+        self.assertIs(sentinel.power_types, result)
+        self.assertIs(
+            sentinel.power_types, call_cache[cluster.DescribePowerTypes])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__call__doesnt_add_result_to_cache_for_not_cache_call(self):
+        conn = DummyConnection()
+        self.patch(conn, 'callRemote').return_value = (
+            succeed(sentinel.boot_images))
+        client = RackClient(conn, {})
+        call_cache = client._getCallCache()
+        result = yield client(cluster.ListBootImages)
+        self.assertIs(sentinel.boot_images, result)
+        self.assertNotIn(cluster.ListBootImages, call_cache)
+
+
 class TestRegionService(MAASTestCase):
 
     def test_init_sets_appropriate_instance_attributes(self):
@@ -906,7 +968,9 @@ class TestRegionService(MAASTestCase):
         self.patch(random, "choice", check_choice)
 
         def check(client):
-            self.assertThat(client, Equals(common.Client(chosen)))
+            self.assertThat(client, Equals(RackClient(chosen, {})))
+            self.assertIs(
+                client.cache, service.connectionsCache[client._conn])
 
         return service.getClientFor(uuid).addCallback(check)
 
@@ -945,13 +1009,13 @@ class TestRegionService(MAASTestCase):
         clients = service.getAllClients()
         self.assertThat(list(clients), MatchesAny(
             MatchesSetwise(
-                Equals(common.Client(c1)), Equals(common.Client(c3))),
+                Equals(RackClient(c1, {})), Equals(RackClient(c3, {}))),
             MatchesSetwise(
-                Equals(common.Client(c1)), Equals(common.Client(c4))),
+                Equals(RackClient(c1, {})), Equals(RackClient(c4, {}))),
             MatchesSetwise(
-                Equals(common.Client(c2)), Equals(common.Client(c3))),
+                Equals(RackClient(c2, {})), Equals(RackClient(c3, {}))),
             MatchesSetwise(
-                Equals(common.Client(c2)), Equals(common.Client(c4))),
+                Equals(RackClient(c2, {})), Equals(RackClient(c4, {}))),
         ))
 
     def test_addConnectionFor_adds_connection(self):

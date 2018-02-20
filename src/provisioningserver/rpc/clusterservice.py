@@ -312,8 +312,12 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
         """
+        # Detection of missing packages is now done reactively instead of
+        # proactively. When a power check is performed it will raise an error
+        # if their are any missing packages.
         return {
-            'power_types': list(PowerDriverRegistry.get_schema()),
+            'power_types': list(
+                PowerDriverRegistry.get_schema(detect_missing_packages=False)),
         }
 
     @cluster.DescribeNOSTypes.responder

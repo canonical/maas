@@ -737,6 +737,58 @@ class RegionServer(Region):
         super(RegionServer, self).connectionLost(reason)
 
 
+class RackClient(common.Client):
+    """A `common.Client` for communication from region to rack."""
+
+    # Currently the only calls that can be cached are the ones that take
+    # no arguments. More work needs to be done to this class to handle
+    # argument matching.
+    cache_calls = [
+        cluster.DescribePowerTypes,
+        cluster.DescribeNOSTypes,
+    ]
+
+    def __init__(self, connection, cache):
+        super(RackClient, self).__init__(connection)
+        self.cache = cache
+
+    def _getCallCache(self):
+        """Return the call cache."""
+        if 'call_cache' not in self.cache:
+            call_cache = {}
+            self.cache['call_cache'] = call_cache
+            return call_cache
+        else:
+            return self.cache['call_cache']
+
+    @asynchronous
+    def __call__(self, cmd, *args, **kwargs):
+        """Call a remote RPC method.
+
+        This caches calls to the rack controller that do not change value,
+        unless the rack controller disconnects and reconnects to the region.
+        """
+        call_cache = self._getCallCache()
+        if cmd not in self.cache_calls:
+            return super(RackClient, self).__call__(cmd, *args, **kwargs)
+        if cmd in call_cache:
+            # Call has already been made over this connection, just return
+            # the original result.
+            return succeed(call_cache[cmd])
+        else:
+            # First time this call has been made so cache the result so
+            # so the next call over this connection will just be returned
+            # from the cache.
+
+            def cb_cache(result):
+                call_cache[cmd] = result
+                return result
+
+            d = super(RackClient, self).__call__(cmd, *args, **kwargs)
+            d.addCallback(cb_cache)
+            return d
+
+
 class RegionService(service.Service, object):
     """A region controller RPC service.
 
@@ -765,6 +817,7 @@ class RegionService(service.Service, object):
              for port in range(5250, 5260)],
         ]
         self.connections = defaultdict(set)
+        self.connectionsCache = defaultdict(dict)
         self.advertiser = advertiser
         self.advertiser.connections = self.connections
         self.waiters = defaultdict(set)
@@ -842,6 +895,7 @@ class RegionService(service.Service, object):
     def _removeConnectionFor(self, ident, connection):
         """Removes `connection` from the set of connections for `ident`."""
         self.connections[ident].discard(connection)
+        self.connectionsCache.pop(connection, None)
         self.events.disconnected.fire(ident)
 
     def _savePorts(self, results):
@@ -955,7 +1009,7 @@ class RegionService(service.Service, object):
 
     @asynchronous(timeout=FOREVER)
     def getClientFor(self, system_id, timeout=30):
-        """Return a :class:`common.Client` for the specified rack controller.
+        """Return a :class:`RackClient` for the specified rack controller.
 
         If more than one connection exists to that rack controller - implying
         that there are multiple rack controllers for the particular
@@ -976,11 +1030,14 @@ class RegionService(service.Service, object):
                 "Unable to connect to rack controller %s; no connections "
                 "available." % system_id, uuid=system_id)
 
-        return d.addCallbacks(common.Client, cancelled)
+        def cb_client(connection):
+            return RackClient(connection, self.connectionsCache[connection])
+
+        return d.addCallbacks(cb_client, cancelled)
 
     @asynchronous(timeout=FOREVER)
     def getClientFromIdentifiers(self, identifiers, timeout=30):
-        """Return a :class:`common.Client` for one of the specified
+        """Return a :class:`RackClient` for one of the specified
         identifiers.
 
         If more than one connection exists to that given `identifiers`, then
@@ -1002,22 +1059,27 @@ class RegionService(service.Service, object):
                 "available." % ','.join(identifiers))
 
         def cb_client(conns):
-            return common.Client(random.choice(conns))
+            connection = random.choice(conns)
+            return RackClient(connection, self.connectionsCache[connection])
 
         return d.addCallbacks(cb_client, cancelled)
 
     @asynchronous(timeout=FOREVER)
     def getAllClients(self):
         """Return a list with one connection per rack controller."""
+
+        def _client(connection):
+            return RackClient(connection, self.connectionsCache[connection])
+
         return [
-            common.Client(random.choice(list(connections)))
+            _client(random.choice(list(connections)))
             for connections in self.connections.values()
             if len(connections) > 0
         ]
 
     @asynchronous(timeout=FOREVER)
     def getRandomClient(self):
-        """Return a random connected :class:`common.Client`."""
+        """Return a random connected :class:`RackClient`."""
         connections = list(self.connections.values())
         if len(connections) == 0:
             raise exceptions.NoConnectionsAvailable(
@@ -1028,7 +1090,8 @@ class RegionService(service.Service, object):
             # The connection object is a set of RegionServer objects.
             # Make sure a sane set was returned.
             assert len(connection) > 0, "Connection set empty."
-            return common.Client(random.choice(list(connection)))
+            connection = random.choice(list(connection))
+            return RackClient(connection, self.connectionsCache[connection])
 
 
 def ignoreCancellation(failure):

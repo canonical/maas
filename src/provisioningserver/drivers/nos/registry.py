@@ -17,7 +17,7 @@ class NOSDriverRegistry(Registry):
     """Registry for NOS drivers."""
 
     @classmethod
-    def get_schema(cls, detect_missing_packages=True):
+    def get_schema(cls):
         """Returns the full schema for the registry."""
         schemas = [
             driver.get_schema()

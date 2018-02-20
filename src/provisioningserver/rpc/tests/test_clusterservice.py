@@ -414,7 +414,8 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
 
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
-            PowerDriverRegistry.get_schema(), response["power_types"])
+            PowerDriverRegistry.get_schema(detect_missing_packages=False),
+            response["power_types"])
 
 
 class TestClusterProtocol_DescribeNOSTypes(MAASTestCase):
