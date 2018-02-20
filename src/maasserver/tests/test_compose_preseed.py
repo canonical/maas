@@ -502,6 +502,46 @@ class TestComposePreseed(MAASServerTestCase):
 
         self.assertNotIn('apt_proxy', preseed)
 
+    # LP: #1743966 - Test for archive key work around
+    def test_compose_preseed_for_curtin_and_trusty_aptsources(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.READY, osystem='ubuntu',
+            distro_series='trusty')
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        self.useFixture(RunningClusterRPCFixture())
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.CURTIN, node))
+
+        self.assertIn('apt_sources', preseed)
+
+    # LP: #1743966 - Test for archive key work around
+    def test_compose_preseed_for_curtin_xenial_not_aptsources(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.READY, osystem='ubuntu',
+            distro_series='xenial')
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        self.useFixture(RunningClusterRPCFixture())
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.CURTIN, node))
+
+        self.assertNotIn('apt_sources', preseed)
+
     def test_compose_preseed_with_osystem_compose_preseed(self):
         os_name = factory.make_name('os')
         osystem = make_osystem(self, os_name, [BOOT_IMAGE_PURPOSE.XINSTALL])
