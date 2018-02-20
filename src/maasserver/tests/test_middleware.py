@@ -18,7 +18,10 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.http import HttpResponse
+from django.http import (
+    Http404,
+    HttpResponse,
+)
 from fixtures import FakeLogger
 from maasserver import middleware as middleware_module
 from maasserver.components import (
@@ -31,7 +34,6 @@ from maasserver.exceptions import (
     MAASAPINotFound,
 )
 from maasserver.middleware import (
-    APIErrorsMiddleware,
     APIRPCErrorsMiddleware,
     CSRFHelperMiddleware,
     DebuggingLoggerMiddleware,
@@ -102,12 +104,6 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request(base_path)
         return middleware.process_exception(request, exception)
 
-    def test_ignores_paths_outside_path_prefix(self):
-        middleware = self.make_middleware(self.make_base_path())
-        request = factory.make_fake_request(self.make_base_path())
-        exception = MAASAPINotFound("Huh?")
-        self.assertIsNone(middleware.process_exception(request, exception))
-
     def test_ignores_serialization_failures(self):
         base_path = self.make_base_path()
         middleware = self.make_middleware(base_path)
@@ -121,6 +117,12 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request(base_path)
         exception = make_deadlock_failure()
         self.assertIsNone(middleware.process_exception(request, exception))
+
+    def test_ignores_404_errors(self):
+        base_path = self.make_base_path()
+        middleware = self.make_middleware(base_path)
+        request = factory.make_fake_request(base_path)
+        self.assertIsNone(middleware.process_exception(request, Http404()))
 
     def test_unknown_exception_generates_internal_server_error(self):
         # An unknown exception generates an internal server error with the
@@ -210,35 +212,19 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             Equals(str(exception)))
         self.expectThat(response['Retry-After'], Equals("%s" % retry_after))
 
-
-class APIErrorsMiddlewareTest(MAASServerTestCase):
-
     def test_handles_error_on_API(self):
-        middleware = APIErrorsMiddleware()
-        api_request = factory.make_fake_request("/api/2.0/hello")
         error_message = factory.make_string()
         exception = MAASAPINotFound(error_message)
-        response = middleware.process_exception(api_request, exception)
+        response = self.process_exception(exception)
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.NOT_FOUND, error_message),
             (response.status_code,
              response.content.decode(settings.DEFAULT_CHARSET)))
 
-    def test_ignores_error_outside_API(self):
-        middleware = APIErrorsMiddleware()
-        non_api_request = factory.make_fake_request("/middleware/api/hello")
-        exception = MAASAPINotFound(factory.make_string())
-        self.assertIsNone(
-            middleware.process_exception(non_api_request, exception))
-
     def test_503_response_includes_retry_after_header(self):
-        middleware = APIErrorsMiddleware()
-        request = factory.make_fake_request(
-            "/api/2.0/" + factory.make_string(), 'POST')
         error = ExternalProcessError(returncode=-1, cmd="foo-bar")
-        response = middleware.process_exception(request, error)
-
+        response = self.process_exception(error)
         self.assertEqual(
             (
                 http.client.SERVICE_UNAVAILABLE,

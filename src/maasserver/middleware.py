@@ -5,14 +5,10 @@
 
 __all__ = [
     "AccessMiddleware",
-    "APIErrorsMiddleware",
     "ExceptionMiddleware",
     ]
 
-from abc import (
-    ABCMeta,
-    abstractproperty,
-)
+from abc import ABCMeta
 import http.client
 import json
 import logging
@@ -28,6 +24,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.http import (
+    Http404,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
@@ -165,25 +162,12 @@ class ExceptionMiddleware(metaclass=ABCMeta):
     based on this class will result in an http 404 response to the client.
     Validation errors become "bad request" responses.
 
-    Use this as a base class for middleware_ classes that apply to
-    sub-trees of the http path tree.  Subclass this class, provide a
-    `path_prefix`, and register your concrete class in
-    settings.MIDDLEWARE_CLASSES.  Exceptions in that sub-tree will then
-    come out as HttpResponses, insofar as they map neatly.
-
     .. middleware: https://docs.djangoproject.com
        /en/dev/topics/http/middleware/
     """
 
-    path_prefix = abstractproperty(
-        "Prefix for the paths that this should apply to.")
-
     def process_exception(self, request, exception):
         """Django middleware callback."""
-        if not request.path_info.startswith(self.path_prefix):
-            # Not a path we're handling exceptions for.
-            return None
-
         if is_retryable_failure(exception):
             # We never handle retryable failures.
             return None
@@ -217,6 +201,9 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             return HttpResponseForbidden(
                 content=str(exception).encode(encoding),
                 content_type="text/plain; charset=%s" % encoding)
+        elif isinstance(exception, Http404):
+            # Don't catch 404 errors
+            return
         elif isinstance(exception, ExternalProcessError):
             # Catch problems interacting with processes that the
             # appserver spawns, e.g. rndc.
@@ -247,12 +234,6 @@ class ExceptionMiddleware(metaclass=ABCMeta):
         exc_info = sys.exc_info()
         logger.error(" Exception: %s ".center(79, "#") % str(exception))
         logger.error(''.join(traceback.format_exception(*exc_info)))
-
-
-class APIErrorsMiddleware(ExceptionMiddleware):
-    """Report exceptions from API requests as HTTP error responses."""
-
-    path_prefix = settings.API_URL_PREFIX
 
 
 class DebuggingLoggerMiddleware:
@@ -379,8 +360,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             # RPCErrorsMiddleware handles non-API requests.
             return None
 
-        handled_exceptions = self.handled_exceptions.keys()
-        if exception.__class__ not in handled_exceptions:
+        if exception.__class__ not in self.handled_exceptions:
             # This isn't something we handle; allow processing to
             # continue.
             return None

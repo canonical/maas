@@ -226,12 +226,12 @@ MIDDLEWARE_CLASSES = (
     # CSRF attacks.
     'maasserver.middleware.CSRFHelperMiddleware',
 
-    # Used for rendering API exceptions for maasserver Web API.
-    'maasserver.middleware.APIErrorsMiddleware',
-
     # Used to display errors about disconnected clusters. FIXME: This should
     # not be done on every request!
     'maasserver.middleware.ExternalComponentsMiddleware',
+
+    # Used for rendering and logging exceptions.
+    'maasserver.middleware.ExceptionMiddleware',
 
     # Handle errors that should really be handled in application code:
     # NoConnectionsAvailable, PowerActionAlreadyInProgress, TimeoutError.
@@ -240,9 +240,6 @@ MIDDLEWARE_CLASSES = (
 
     # Same as RPCErrorsMiddleware but for the Web API. FIXME.
     'maasserver.middleware.APIRPCErrorsMiddleware',
-
-    # Used for rendering API exceptions for metadataserver Web API.
-    'metadataserver.middleware.MetadataErrorsMiddleware',
 
     # Sets X-Frame-Options header to SAMEORIGIN.
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
