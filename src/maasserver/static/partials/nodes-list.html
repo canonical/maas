@@ -262,7 +262,17 @@
                     </p>
                 </div>
             </section>
-
+            <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="tabs[tab].actionProgress.showing_confirmation">
+                <div class="col-12">
+                    <p>
+                        <i class="p-icon--warning">Warning:</i> {$ tabs[tab].actionProgress.affected_nodes $} of {$ tabs[tab].selectedItems.length $} are in a deployed state. Are you sure you want to continue to test hardware?
+                    </p>
+                    <div class="u-align--right">
+                        <button class="p-button--base" data-ng-click="actionCancel(tab)">No</button>
+                        <button class="p-button--neutral" data-ng-click="actionGo(tab)">Yes</button>
+                    </div>
+                </div>
+            </section>
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="hasActionsInProgress(tab) || hasActionsFailed(tab)">
                 <div class="col-12">

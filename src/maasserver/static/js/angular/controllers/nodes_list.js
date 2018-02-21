@@ -57,7 +57,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.actionProgress = {
             total: 0,
             completed: 0,
-            errors: {}
+            errors: {},
+            showing_confirmation: false,
+            affected_nodes: 0
         };
         $scope.tabs.nodes.osSelection = {
             osystem: null,
@@ -98,7 +100,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.actionProgress = {
             total: 0,
             completed: 0,
-            errors: {}
+            errors: {},
+            showing_confirmation: false,
+            affected_nodes: 0
         };
         $scope.tabs.devices.zoneSelection = null;
 
@@ -126,7 +130,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.controllers.actionProgress = {
             total: 0,
             completed: 0,
-            errors: {}
+            errors: {},
+            showing_confirmation: false,
+            affected_nodes: 0
         };
         $scope.tabs.controllers.zoneSelection = null;
         $scope.tabs.controllers.syncStatuses = {};
@@ -156,7 +162,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.switches.actionProgress = {
             total: 0,
             completed: 0,
-            errors: {}
+            errors: {},
+            showing_confirmation: false,
+            affected_nodes: 0
         };
         $scope.tabs.switches.osSelection = {
             osystem: null,
@@ -309,6 +317,8 @@ angular.module('MAAS').controller('NodesListController', [
             var progress = $scope.tabs[tab].actionProgress;
             progress.completed = progress.total = 0;
             progress.errors = {};
+            progress.showing_confirmation = false;
+            progress.affected_nodes = 0;
         }
 
         // Add error to action progress and group error messages by nodes.
@@ -599,6 +609,19 @@ angular.module('MAAS').controller('NodesListController', [
                     extra.testing_scripts.push('none');
                 }
             } else if($scope.tabs[tab].actionOption.name === "test") {
+                if(!$scope.tabs[tab].actionProgress.showing_confirmation) {
+                    var progress = $scope.tabs[tab].actionProgress;
+                    for(i=0;i<$scope.tabs[tab].selectedItems.length;i++) {
+                        if($scope.tabs[tab].selectedItems[i].status_code === 6)
+                        {
+                            progress.showing_confirmation = true;
+                            progress.affected_nodes++;
+                        }
+                    }
+                    if($scope.tabs[tab].actionProgress.affected_nodes != 0) {
+                        return;
+                    }
+                }
                 // Set the test options.
                 extra.enable_ssh = (
                     $scope.tabs[tab].commissionOptions.enableSSH);

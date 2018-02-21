@@ -1182,10 +1182,18 @@ describe("NodesListController", function() {
                         makeInteger(0, 10);
                     $scope.tabs[tab].actionProgress.errors[makeName("error")] =
                         [{}];
+                    $scope.tabs[tab].actionProgress.showing_confirmation =
+                        true;
+                    $scope.tabs[tab].actionProgress.affected_nodes =
+                        makeInteger(0, 10);
                     $scope.actionCancel(tab);
                     expect($scope.tabs[tab].actionProgress.total).toBe(0);
                     expect($scope.tabs[tab].actionProgress.completed).toBe(0);
                     expect($scope.tabs[tab].actionProgress.errors).toEqual({});
+                    expect($scope.tabs[
+                        tab].actionProgress.showing_confirmation).toBe(false);
+                    expect($scope.tabs[
+                        tab].actionProgress.affected_nodes).toBe(0);
                 });
             });
 
@@ -1564,6 +1572,26 @@ describe("NodesListController", function() {
                             enable_ssh: true,
                             testing_scripts: testing_script_ids
                         });
+            });
+
+            it("sets showing_confirmation with testOptions",
+                function() {
+                    var controller = makeController();
+                    var object = makeObject("nodes");
+                    object.status_code = 6;
+                    var spy = spyOn(
+                        $scope.tabs.nodes.manager,
+                        "performAction").and.returnValue(
+                            $q.defer().promise);
+                    $scope.tabs.nodes.actionOption = { name: "test" };
+                    $scope.tabs.nodes.selectedItems = [object];
+                    $scope.actionGo("nodes");
+                    expect($scope.tabs[
+                        "nodes"].actionProgress.showing_confirmation).toBe(
+                            true);
+                    expect($scope.tabs[
+                        "nodes"].actionProgress.affected_nodes).toBe(1);
+                    expect(spy).not.toHaveBeenCalled();
             });
 
             it("calls performAction with releaseOptions",

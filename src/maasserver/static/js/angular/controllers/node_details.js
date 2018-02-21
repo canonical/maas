@@ -33,7 +33,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
           option: null,
           allOptions: null,
           availableOptions: [],
-          error: null
+          error: null,
+          showing_confirmation: false
         };
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.osinfo = GeneralManager.getData("osinfo");
@@ -525,12 +526,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.action.optionChanged = function() {
             // Clear the action error.
             $scope.action.error = null;
+            $scope.action.showing_confirmation = false;
         };
 
         // Cancel the action.
         $scope.actionCancel = function() {
             $scope.action.option = null;
             $scope.action.error = null;
+            $scope.action.showing_confirmation = false;
         };
 
         // Perform the action.
@@ -586,6 +589,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     extra.testing_scripts.push('none');
                 }
             } else if($scope.action.option.name === "test") {
+                if($scope.node.status_code === 6 &&
+                        !$scope.action.showing_confirmation) {
+                    $scope.action.showing_confirmation = true;
+                    return;
+                }
                 // Set the test options.
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
                 extra.testing_scripts = [];
@@ -611,6 +619,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     }
                     $scope.action.option = null;
                     $scope.action.error = null;
+                    $scope.action.showing_confirmation = false;
                     $scope.osSelection.$reset();
                     $scope.commissionOptions.enableSSH = false;
                     $scope.commissionOptions.skipNetworking = false;

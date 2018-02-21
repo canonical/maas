@@ -191,6 +191,17 @@
                     </form>
                 </div>
             </div>
+            <div class="row ng-hide" data-ng-show="action.showing_confirmation && action.option.name === 'test'">
+                <div class="col-12">
+                    <p>
+                        <i class="p-icon--warning">Warning:</i> Node is currently deployed. Are you sure you want to continue to test hardware?
+                    </p>
+                    <div class="u-align--right">
+                        <button class="p-button--base" data-ng-click="actionCancel()">No</button>
+                        <button class="p-button--neutral" data-ng-click="actionGo()">Yes</button>
+                    </div>
+                </div>
+            </div>
             <div class="row ng-hide" data-ng-show="isActionError()">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="col-12">
