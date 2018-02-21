@@ -226,6 +226,15 @@ class TestMacaroonDischargeRequest(MAASServerTestCase):
             caveat['cl'] for caveat in macaroon['caveats'] if 'cl' in caveat]
         self.assertEqual(third_party_urls, ['https://auth.example.com'])
 
+    def test_discharge_request_strip_url_trailing_slash(self):
+        Config.objects.set_config(
+            'external_auth_url', 'https://auth.example.com:1234/')
+        response = self.client.get('/accounts/discharge-request/')
+        macaroon = response.json()['Info']['Macaroon']
+        third_party_urls = [
+            caveat['cl'] for caveat in macaroon['caveats'] if 'cl' in caveat]
+        self.assertEqual(third_party_urls, ['https://auth.example.com:1234'])
+
     def test_discharge_request_no_external_auth(self):
         Config.objects.set_config('external_auth_url', '')
         response = self.client.get('/accounts/discharge-request/')

@@ -143,6 +143,10 @@ class MacaroonDischargeRequest:
         if not auth_endpoint:
             return HttpResponseNotFound('Not found')
 
+        # remove trailing slashes as js-bakery ends up using double slashes in
+        # the url otherwise
+        auth_endpoint = auth_endpoint.rstrip('/')
+
         macaroon_bakery = self._setup_bakery(auth_endpoint, request)
         req_headers = request_headers(request)
         auth_checker = macaroon_bakery.checker.auth(

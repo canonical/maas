@@ -20,11 +20,13 @@
                             {% csrf_token %}
                             <input type="hidden" name="post" value="yes" />
                             <a href="{% url 'index' %}" class="p-button--neutral u-no-margin--top">No</a>
-                            <button type="submit" class="p-button--positive">Yes</button>
+                            <button type="submit" class="p-button--positive"
+                                    onClick="localStorage.clear()">
+                              Yes
+                            </button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
 {% endblock %}
-button--inline

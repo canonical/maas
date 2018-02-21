@@ -8,15 +8,47 @@
 {% endblock %}
 {% block extra-js %}
     {% if not no_users %}
-        <script type="text/javascript">
-        <!--
-        YUI().use('node', function(Y) {
-            Y.on('load', function() {
-                Y.one('input[type=text]').focus();
+        {% if external_auth_url %}
+            <script type="text/javascript" src="/MAAS/combo/macaroons.js"></script>
+            <script type="text/javascript">
+            YUI().use('node', function(Y) {
+                Y.on('load', function() {
+                    Y.one('#login-button').on('click', function(e) {
+                        e.preventDefault();
+                        var params = {
+                            visitPage: (error) => {
+                                Y.one('#login-error').setHTML('');
+                                Y.one('#login-link').setHTML(
+                                    '<a target="_blank" class="p-button--positive" href="' +
+                                        error.Info.VisitURL +
+                                        '">Click to login</a>');
+                            },
+                        };
+                        var bakery = new Bakery(new WebHandler(), new BakeryStorage(localStorage, {}), params);
+                        bakery.get(
+                            '/MAAS/accounts/discharge-request/',
+                            {'Accept': 'application/json', 'Content-Type': 'application/json'},
+                            function(error, response) {
+                                if (response.currentTarget.status != 200) {
+                                    Y.one('#login-error').setHTML(
+                                        '<strong>Error:</strong> failure getting login token');
+                                } else {
+                                    window.location.replace('{{ next }}');
+                                }
+                            });
+                     });
+                });
             });
-        });
-        // -->
-        </script>
+            </script>
+       {% else %}
+            <script type="text/javascript">
+            YUI().use('node', function(Y) {
+                Y.on('load', function() {
+                    Y.one('input[type=text]').focus();
+                });
+            });
+            </script>
+       {% endif %}
     {% endif %}
 {% endblock %}
 
@@ -43,7 +75,12 @@
                 <form method="post" action="{% url 'login' %}" class="u-no-margin--top">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ next }}" />
-                    <button type="submit" class="p-button--positive" onclick="alert('Sorry, external authentication is still under development.')">Login through {{ external_auth_url }}</button>
+                    <div id="login-link">
+                      <button type="button" class="p-button--positive" id="login-button">
+                        Login through {{ external_auth_url }}
+                      </button>
+                      <div id="login-error" class="p-form-validation__message"></div>
+                    </div>
                 </form>
                 {% else %}
                 {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}
@@ -61,9 +98,10 @@
                     <button type="submit" class="p-button--positive">Login</button>
                 </form>
                 {% endif %}
+
             </div>
         </div>
-    {% endif %}
+   {% endif %}
         </div>
     </div>
 {% endblock %}

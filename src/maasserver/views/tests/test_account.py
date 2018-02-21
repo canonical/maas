@@ -150,7 +150,7 @@ class TestLogin(MAASServerTestCase):
         self.assertEqual([], non_hidden_inputs)
         self.assertEqual(
             'Login through http://idm.example.com',
-            form.cssselect('button')[0].text)
+            form.cssselect('button')[0].text.strip())
 
 
 class TestLogout(MAASServerTestCase):
