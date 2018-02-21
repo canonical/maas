@@ -56,6 +56,23 @@ def make_clean_repo_name(repo):
     return repo_name.strip().replace(' ', '_').lower()
 
 
+# LP: #1743966 - If the archive is resigned and has a key, then work around
+# this by creating an apt_source that includes the key.
+def get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node):
+    arch = node.split_arch()[0]
+    archive = PackageRepository.objects.get_default_archive(arch)
+    apt_sources = {}
+    apt_sources['apt_sources'] = []
+
+    if archive.key:
+        apt_sources['apt_sources'].append({
+            'key': archive.key,
+            'source': "deb %s $RELEASE main" % (archive.url),
+            'filename': 'lp1743966.list',
+        })
+    return apt_sources
+
+
 def get_archive_config(node, preserve_sources=False, default_region_ip=None):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
@@ -336,6 +353,11 @@ def _compose_cloud_init_preseed(
             node=node, token=token, base_url=base_url,
             default_region_ip=default_region_ip))
     # Add the system configuration information.
+    # LP: #1743966 - When deploying precise or trusty, if a custom archive
+    # with a custom key is used, create a work around to inject the key.
+    if node.distro_series in ['precise', 'trusty']:
+        cloud_config.update(
+            get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node))
     cloud_config.update(get_system_info())
     apt_proxy = get_apt_proxy(
         node.get_boot_rack_controller(), default_region_ip=default_region_ip)
