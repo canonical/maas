@@ -9,6 +9,7 @@ User=maas
 Group=maas
 Restart=always
 RestartSec=10s
+KillMode=mixed
 Environment="LOGFILE=/var/log/maas/rackd.log"
 # Prevent maas-dhcpd and maas-dhcpd6 from starting until maas-rackd
 # has regenerated the configurations and told the services to start.
