@@ -65,13 +65,14 @@ describe("maasControllerStatus", function() {
         return directive.find("div");
     }
 
-    xit("sets serviceClass in the class for element", function() {
+    it("sets serviceClass in the class for element", function() {
         var directive = compileDirective();
         var serviceClass = makeName("serviceClass");
         directive.isolateScope().serviceClass = serviceClass;
         $scope.$digest();
         expect(
-          directive.find("span").hasClass("icon--" + serviceClass)).toBe(true);
+          directive.find("span").hasClass("p-icon--" + serviceClass)
+        ).toBe(true);
     });
 
     it("services is ServicesManager.getItems()", function() {

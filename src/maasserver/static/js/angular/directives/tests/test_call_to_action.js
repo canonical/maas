@@ -4,7 +4,7 @@
  * Unit tests for Call-To-Action dropdown directive.
  */
 
-xdescribe("maasCta", function() {
+describe("maasCta", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -66,25 +66,26 @@ xdescribe("maasCta", function() {
     it("sets default title to 'Take action'", function() {
         var directive = compileDirective("items", "active");
         expect(
-          directive.find("button.button-group__link").text())
+          directive.find("button.p-contextual-menu__toggle").text())
             .toBe("Take action");
     });
 
     it("sets default title to another name", function() {
         var name = makeName("title");
         var directive = compileDirective("items", "active", null, null, name);
-        expect(directive.find("button.button-group__link").text()).toBe(name);
+        var selector = "button.p-contextual-menu__toggle";
+        expect(directive.find(selector).text()).toBe(name);
     });
 
     it("click link sets shown to true", function() {
         var directive = compileDirective("items", "active");
-        directive.find("button.button-group__link").click();
+        directive.find("button.p-contextual-menu__toggle").click();
         expect(directive.isolateScope().shown).toBe(true);
     });
 
     it("dropdown hidden when shown is false", function() {
         var directive = compileDirective("items", "active");
-        var dropdown = directive.find("ul.button-group__dropdown");
+        var dropdown = directive.find("div.p-contextual-menu__dropdown");
         expect(dropdown.hasClass("ng-hide")).toBe(true);
     });
 
@@ -93,7 +94,7 @@ xdescribe("maasCta", function() {
         directive.isolateScope().shown = true;
         $scope.$digest();
 
-        var dropdown = directive.find("ul.button-group__dropdown");
+        var dropdown = directive.find("div.p-contextual-menu__dropdown");
         expect(dropdown.hasClass("ng-hide")).toBe(false);
     });
 
@@ -107,7 +108,7 @@ xdescribe("maasCta", function() {
 
     it("dropdown list options", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         var listItems = [];
         angular.forEach(links, function(ele, i) {
@@ -123,10 +124,10 @@ xdescribe("maasCta", function() {
 
     it("dropdown select sets shown to false", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         // Open the dropdown.
-        directive.find("button.button-group__link").click();
+        directive.find("button.p-contextual-menu__toggle").click();
         expect(directive.isolateScope().shown).toBe(true);
 
         // Clicking a link should close the dropdown.
@@ -136,7 +137,7 @@ xdescribe("maasCta", function() {
 
     it("dropdown select sets model", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         angular.element(links[0]).click();
         expect(directive.scope().active).toBe($scope.items[0]);
@@ -144,16 +145,16 @@ xdescribe("maasCta", function() {
 
     it("dropdown select sets title", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         angular.element(links[0]).click();
-        var title = directive.find("button.button-group__link").text();
+        var title = directive.find("button.p-contextual-menu__toggle").text();
         expect(title).toBe($scope.items[0].title);
     });
 
     it("dropdown select sets secondary", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         angular.element(links[0]).click();
         expect(directive.isolateScope().secondary).toBe(true);
@@ -162,7 +163,7 @@ xdescribe("maasCta", function() {
     it("dropdown select sets selectedTitle", function() {
         $scope.items[0].selectedTitle = "Different if Selected";
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         var iscope = directive.isolateScope();
         expect(iscope.getTitle()).toBe("Take action");
@@ -173,7 +174,7 @@ xdescribe("maasCta", function() {
     it("dropdown select sets other options' selectedTitle", function() {
         $scope.items[1].selectedTitle = "Different if Selected";
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         var iscope = directive.isolateScope();
         expect(iscope.getTitle()).toBe("Take action");
@@ -184,10 +185,10 @@ xdescribe("maasCta", function() {
 
     it("clicking body will set shown to false", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         // Open the dropdown.
-        directive.find("button.button-group__link").click();
+        directive.find("button.p-contextual-menu__toggle").click();
         expect(directive.isolateScope().shown).toBe(true);
 
         // Click the body.
@@ -203,10 +204,10 @@ xdescribe("maasCta", function() {
     it("clicking button will fire ng-click", function() {
         $scope.clicked = jasmine.createSpy("clicked");
         var directive = compileDirective("items", "active", null, "clicked()");
-        var links = directive.find("li.button-group__item > button");
+        var links = directive.find("div.p-contextual-menu__dropdown > button");
 
         // Open the dropdown.
-        directive.find("button.button-group__link").click();
+        directive.find("button.p-contextual-menu__toggle").click();
         expect($scope.clicked).toHaveBeenCalled();
     });
 });

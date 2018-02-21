@@ -4,7 +4,7 @@
  * Unit tests for MAAS object form.
  */
 
-xdescribe("maasObjForm", function() {
+describe("maasObjForm", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -42,20 +42,10 @@ xdescribe("maasObjForm", function() {
         $scope.$digest();
     }
 
-    // Return the list of rendered errors on the field.
-    function getFieldErrorList(field) {
-        var errors = [];
-        var lis = field.siblings("ul.form__error").children();
-        lis.each(function() {
-            errors.push(angular.element(this).text());
-        });
-        return errors;
-    }
-
     // Return the list of rendered errors in the element.
     function getErrorList(element) {
         var errors = [];
-        var lis = element.find("ul.form__error").children();
+        var lis = element.find("ul.p-list").children();
         lis.each(function() {
             errors.push(angular.element(this).text());
         });
@@ -64,7 +54,7 @@ xdescribe("maasObjForm", function() {
 
     describe("inline form", function() {
 
-        it("adds 'form--inline'", function() {
+        it("adds 'p-form--inline'", function() {
             $scope.obj = {};
             $scope.manager = {};
             var html = [
@@ -73,7 +63,7 @@ xdescribe("maasObjForm", function() {
                 ].join('');
             var directive = compileDirective(html);
             var form = directive.find("form");
-            expect(form.hasClass("form--inline")).toBe(true);
+            expect(form.hasClass("p-form--inline")).toBe(true);
         });
     });
 
@@ -89,8 +79,8 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             directive = compileDirective(html);
@@ -110,14 +100,13 @@ xdescribe("maasObjForm", function() {
         it("adds label with width", function() {
             var labelField = angular.element(directive.find("label"));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
 
         it("adds inputWrapper with width", function() {
             var labelField = angular.element(directive.find("label "));
             var inputWrapper = angular.element(labelField.next("div"));
-            expect(inputWrapper.hasClass("three-col")).toBe(true);
-            expect(inputWrapper.hasClass("last-col")).toBe(true);
+            expect(inputWrapper.hasClass("col-3")).toBe(true);
         });
 
         it("reverts value on esc", function() {
@@ -137,9 +126,9 @@ xdescribe("maasObjForm", function() {
             expect($scope.obj.$maasForm).toBeDefined();
         });
 
-        it("hasErrors returns true if has-error class exists", function() {
-            var inputField = angular.element(directive.find("#key"));
-            inputField.addClass('has-error');
+        it("hasErrors returns true if is-error class exists", function() {
+            var control = angular.element(directive.find('.p-form__control'));
+            control.addClass('is-error');
             expect($scope.obj.$maasForm.hasErrors()).toBe(true);
         });
     });
@@ -153,8 +142,8 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="textarea" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             directive = compileDirective(html);
@@ -173,14 +162,13 @@ xdescribe("maasObjForm", function() {
         it("adds label with width", function() {
             var labelField = angular.element(directive.find("label"));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
 
         it("adds inputWrapper with width", function() {
             var labelField = angular.element(directive.find("label "));
             var inputWrapper = angular.element(labelField.next("div"));
-            expect(inputWrapper.hasClass("three-col")).toBe(true);
-            expect(inputWrapper.hasClass("last-col")).toBe(true);
+            expect(inputWrapper.hasClass("col-3")).toBe(true);
         });
     });
 
@@ -196,8 +184,8 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="password" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             directive = compileDirective(html);
@@ -217,14 +205,13 @@ xdescribe("maasObjForm", function() {
         it("adds label with width", function() {
             var labelField = angular.element(directive.find("label"));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
 
         it("adds inputWrapper with width", function() {
             var labelField = angular.element(directive.find("label "));
             var inputWrapper = angular.element(labelField.next("div"));
-            expect(inputWrapper.hasClass("three-col")).toBe(true);
-            expect(inputWrapper.hasClass("last-col")).toBe(true);
+            expect(inputWrapper.hasClass("col-3")).toBe(true);
         });
 
         it("reverts value on esc", function() {
@@ -245,8 +232,8 @@ xdescribe("maasObjForm", function() {
         });
 
         it("hasErrors returns true if has-error class exists", function() {
-            var inputField = angular.element(directive.find("#key"));
-            inputField.addClass('has-error');
+            var control = angular.element(directive.find('.p-form__control'));
+            control.addClass('is-error');
             expect($scope.obj.$maasForm.hasErrors()).toBe(true);
         });
     });
@@ -265,8 +252,8 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="options" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three" options="' + options + '">',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3" options="' + options + '">',
                     '</maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
@@ -304,14 +291,13 @@ xdescribe("maasObjForm", function() {
         it("adds label with width", function() {
             var labelField = angular.element(directive.find("label"));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
 
         it("adds inputWrapper with width", function() {
             var labelField = angular.element(directive.find("label "));
             var inputWrapper = angular.element(labelField.next("div"));
-            expect(inputWrapper.hasClass("three-col")).toBe(true);
-            expect(inputWrapper.hasClass("last-col")).toBe(true);
+            expect(inputWrapper.hasClass("col-3")).toBe(true);
         });
 
         it("calls on-change function", function() {
@@ -332,13 +318,13 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="options" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
+                        'placeholder="Placeholder" label-width="2" ',
                         'on-change="changeForm" ',
-                        'input-width="three" options="' + options + '">',
+                        'input-width="3" options="' + options + '">',
                     '</maas-obj-field>',
                     '<maas-obj-field type="text" key="key2" label="Key2" ',
-                        'placeholder="" label-width="two" ',
-                        'input-width="three"',
+                        'placeholder="" label-width="2" ',
+                        'input-width="3"',
                     '</maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
@@ -365,7 +351,7 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="checkboxes" key="key" label="Key" ',
-                        'label-width="two" input-width="three" ',
+                        'label-width="2" input-width="3" ',
                         'values="values">',
                     '</maas-obj-field>',
                 '</maas-obj-form>'
@@ -390,7 +376,7 @@ xdescribe("maasObjForm", function() {
             var labelField = angular.element(
                 directive.find('label[for="key"]'));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
     });
 
@@ -405,7 +391,7 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="tags" key="key" label="Key" ',
-                        'label-width="two" input-width="three">',
+                        'label-width="2" input-width="3">',
                     '</maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
@@ -421,7 +407,7 @@ xdescribe("maasObjForm", function() {
             var labelField = angular.element(
                 directive.find('label[for="key"]'));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
     });
 
@@ -436,7 +422,7 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="onoffswitch" key="key" label="Key" ',
-                        'label-width="two" input-width="three">',
+                        'label-width="2" input-width="3">',
                     '</maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
@@ -444,21 +430,15 @@ xdescribe("maasObjForm", function() {
         });
 
         it("creates onoffswitch", function() {
-            var onoff = angular.element(directive.find("div.onoffswitch"));
-            var input = angular.element(
-                onoff.find("input.onoffswitch-checkbox"));
-            var label = angular.element(
-                onoff.find("label.onoffswitch-label u-no-margin--top"));
+            var onoff = angular.element(directive.find("div.maas-p-switch"));
             expect(onoff.length).toBe(1);
-            expect(input.length).toBe(1);
-            expect(label.length).toBe(1);
         });
 
         it("adds label with width", function() {
             var labelField = angular.element(
                 directive.find('label[for="key"]'));
             expect(labelField.text()).toBe("Key");
-            expect(labelField.hasClass("two-col")).toBe(true);
+            expect(labelField.hasClass("col-2")).toBe(true);
         });
     });
 
@@ -478,8 +458,8 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             directive = compileDirective(html);
@@ -558,18 +538,20 @@ xdescribe("maasObjForm", function() {
 
         it("sets string error on field", function() {
             var field = angular.element(directive.find("#key"));
+            var control = angular.element(directive.find('.p-form__control'));
             changeFieldValue(field, makeName("new_key"));
 
             var error = makeName("error");
             saveDefer.reject(error);
             $scope.$digest();
 
-            var errorsList = getFieldErrorList(field);
-            expect(errorsList).toEqual([error]);
+            var errorsList = getErrorList(control);
+            expect(errorsList).toEqual(["Error: " + error]);
         });
 
         it("sets field error on field", function() {
             var field = angular.element(directive.find("#key"));
+            var control = angular.element(directive.find('.p-form__control'));
             changeFieldValue(field, makeName("new_key"));
 
             var error = makeName("error");
@@ -578,13 +560,14 @@ xdescribe("maasObjForm", function() {
             }));
             $scope.$digest();
 
-            var errorsList = getFieldErrorList(field);
-            expect(errorsList).toEqual([error]);
-            expect(field.hasClass("has-error")).toBe(true);
+            var errorsList = getErrorList(control);
+            expect(errorsList).toEqual(["Error: " + error]);
+            expect(control.hasClass("is-error")).toBe(true);
         });
 
         it("sets field error on another field", function() {
             var field = angular.element(directive.find("#key"));
+            var control = angular.element(directive.find('.p-form__control'));
             changeFieldValue(field, makeName("new_key"));
 
             var error = makeName("error");
@@ -593,13 +576,14 @@ xdescribe("maasObjForm", function() {
             }));
             $scope.$digest();
 
-            var errorsList = getFieldErrorList(field);
-            expect(errorsList).toEqual(["otherKey: " + error]);
-            expect(field.hasClass("has-error")).toBe(true);
+            var errorsList = getErrorList(control);
+            expect(errorsList).toEqual(["Error: otherKey: " + error]);
+            expect(control.hasClass("is-error")).toBe(true);
         });
 
         it("sets multiple errors on field", function() {
             var field = angular.element(directive.find("#key"));
+            var control = angular.element(directive.find('.p-form__control'));
             changeFieldValue(field, makeName("new_key"));
 
             var error1 = makeName("error");
@@ -609,9 +593,9 @@ xdescribe("maasObjForm", function() {
             }));
             $scope.$digest();
 
-            var errorsList = getFieldErrorList(field);
-            expect(errorsList).toEqual([error1, error2]);
-            expect(field.hasClass("has-error")).toBe(true);
+            var errList = getErrorList(control);
+            expect(errList).toEqual(["Error: " + error1, "Error: " + error2]);
+            expect(control.hasClass("is-error")).toBe(true);
         });
     });
 
@@ -633,8 +617,8 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager" ',
                     'pre-process="process">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             var directive = compileDirective(html);
@@ -662,11 +646,11 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="text" key="key1" label="Key1" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                     '<maas-obj-field type="text" key="key2" label="Key2" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             directive = compileDirective(html);
@@ -675,6 +659,10 @@ xdescribe("maasObjForm", function() {
         it("sets field error on both fields", function() {
             var field1 = angular.element(directive.find("#key1"));
             var field2 = angular.element(directive.find("#key2"));
+            var selector1 = "label[for='key1'] + .p-form__control";
+            var selector2 = "label[for='key2'] + .p-form__control";
+            var control1 = angular.element(directive.find(selector1));
+            var control2 = angular.element(directive.find(selector2));
             changeFieldValue(field1, makeName("new_key"));
 
             var error1 = makeName("error");
@@ -685,8 +673,8 @@ xdescribe("maasObjForm", function() {
             }));
             $scope.$digest();
 
-            expect(getFieldErrorList(field1)).toEqual([error1]);
-            expect(getFieldErrorList(field2)).toEqual([error2]);
+            expect(getErrorList(control1)).toEqual(["Error: " + error1]);
+            expect(getErrorList(control2)).toEqual(["Error: " + error2]);
         });
     });
 
@@ -708,11 +696,11 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field-group>',
                         '<maas-obj-field type="text" key="key1" label="Key1" ',
-                            'placeholder="Placeholder" label-width="two" ',
-                            'input-width="three"></maas-obj-field>',
+                            'placeholder="Placeholder" label-width="2" ',
+                            'input-width="3"></maas-obj-field>',
                         '<maas-obj-field type="text" key="key2" label="Key2" ',
-                            'placeholder="Placeholder" label-width="two" ',
-                            'input-width="three"></maas-obj-field>',
+                            'placeholder="Placeholder" label-width="2" ',
+                            'input-width="3"></maas-obj-field>',
                     '</maas-obj-field-group>',
                 '</maas-obj-form>'
                 ].join('');
@@ -795,11 +783,11 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager" ' +
                     'data-ng-disabled="disabled">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                     '<maas-obj-field type="options" key="key2" label="Key 2" ',
-                        'placeholder="Placeholder 2" label-width="two" ',
-                        'input-width="three" options="' + options + '">',
+                        'placeholder="Placeholder 2" label-width="2" ',
+                        'input-width="3" options="' + options + '">',
                     '</maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
@@ -839,8 +827,8 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager" ',
                     'after-save="saved">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             var directive = compileDirective(html);
@@ -867,40 +855,17 @@ xdescribe("maasObjForm", function() {
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             var directive = compileDirective(html);
             var group = angular.element(
                 directive.find('maas-obj-field[key="key"]'));
             var field = angular.element(directive.find("#key"));
-            expect(group.hasClass("form__group")).toBe(true);
-            expect(group.hasClass("form__group--subtle")).toBe(true);
+            expect(group.hasClass("p-form__group")).toBe(true);
             expect(
-                field.parent("div").hasClass("form__group-input")).toBe(true);
-        });
-
-        it("adds form__group classes without subtle", function() {
-            $scope.obj = {
-                key: makeName("key")
-            };
-            $scope.manager = {};
-            var html = [
-                '<maas-obj-form obj="obj" manager="manager">',
-                    '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three" subtle="false"></maas-obj-field>',
-                '</maas-obj-form>'
-                ].join('');
-            var directive = compileDirective(html);
-            var group = angular.element(
-                directive.find('maas-obj-field[key="key"]'));
-            var field = angular.element(directive.find("#key"));
-            expect(group.hasClass("form__group")).toBe(true);
-            expect(group.hasClass("form__group--subtle")).toBe(false);
-            expect(
-                field.parent("div").hasClass("form__group-input")).toBe(true);
+                field.parent("div").hasClass("p-form__control")).toBe(true);
         });
     });
 
@@ -920,8 +885,8 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager" ',
                     'save-on-blur="false">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                 '</maas-obj-form>'
                 ].join('');
             var directive = compileDirective(html);
@@ -947,8 +912,8 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager" ',
                     'save-on-blur="false">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                     '<button maas-obj-save></button>',
                 '</maas-obj-form>'
                 ].join('');
@@ -981,14 +946,14 @@ xdescribe("maasObjForm", function() {
                 '<maas-obj-form obj="obj" manager="manager" ',
                     'save-on-blur="false">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
+                        'placeholder="Placeholder" label-width="2" ',
+                        'input-width="3"></maas-obj-field>',
                     '<maas-obj-errors></maas-obj-errors>',
                     '<button maas-obj-save></button>',
                 '</maas-obj-form>'
                 ].join('');
             var directive = compileDirective(html);
-            var field = angular.element(directive.find("#key"));
+            var field = angular.element(directive.find(".p-form__group"));
             var errors = angular.element(directive.find("maas-obj-errors"));
             var button = angular.element(directive.find("button"));
 
@@ -1005,8 +970,8 @@ xdescribe("maasObjForm", function() {
             $scope.$digest();
 
             // Error is placed on the input and in the global section.
-            expect(getFieldErrorList(field)).toEqual([keyError]);
-            expect(getErrorList(errors)).toEqual([error]);
+            expect(getErrorList(field)).toEqual(["Error: " + keyError]);
+            expect(getErrorList(errors)).toEqual([' ' + error]);
 
             // Has error returns true.
             expect($scope.obj.$maasForm.hasErrors()).toBe(true);
@@ -1054,11 +1019,12 @@ xdescribe("maasObjForm", function() {
         it("icon add with tooltip added in label", function() {
             var label = directive.find("label");
             var icon = label.find("i");
-            expect(label.text()).toBe("key ");
-            expect(icon.hasClass("icon")).toBe(true);
-            expect(icon.hasClass("icon--info")).toBe(true);
-            expect(icon.hasClass("tooltip")).toBe(true);
-            expect(icon.attr('aria-label')).toBe("My Info");
+            var tooltip = directive.find("span");
+            var tooltipMessage = directive.find(".p-tooltip__message");
+            expect(label.text()).toContain("key");
+            expect(icon.hasClass("p-icon--information")).toBe(true);
+            expect(tooltip.hasClass("p-tooltip")).toBe(true);
+            expect(tooltipMessage.text()).toBe("My Info");
         });
 
         it('should call preventDefault on click', function() {

@@ -337,7 +337,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             },
             transclude: true,
             template: (
-                '<form class="form" data-ng-class="{saving: saving, ' +
+                '<form class="p-form" data-ng-class="{saving: saving, ' +
                 '\'p-form--inline\': inline, ' +
                 '\'p-form--stacked\': tableForm}" ' +
                 'ng-transclude></form>'),
@@ -963,7 +963,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                 // Called by controller to see if error is set on field.
                 scope.hasErrors = function() {
-                    return inputElement.hasClass("has-error");
+                    return inputWrapper.hasClass("is-error");
                 };
 
                 // Subtle text element.

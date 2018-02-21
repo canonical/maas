@@ -4,7 +4,7 @@
  * Unit tests for placeholder directive.
  */
 
-xdescribe("maasCodeLines", function() {
+describe("maasCodeLines", function() {
 
 // Load the MAAS module.
 beforeEach(module("MAAS"));
@@ -41,6 +41,6 @@ beforeEach(module("MAAS"));
         };
 
         var directive = compileDirective("getText()");
-        expect(directive.find('code').hasClass("code-block__line")).toBe(true);
+        expect(directive.find('code span').hasClass("code-line")).toBe(true);
     });
 });

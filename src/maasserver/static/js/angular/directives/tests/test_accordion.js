@@ -22,7 +22,7 @@ describe("maasAccodion", function() {
         var html = [
             '<div>',
                 '<div class="maas-accordion">',
-                    '<h4 class="maas-accordion-tab is-active">One</h4>',
+                    '<h4 class="maas-accordion-tab is-selected">One</h4>',
                     '<h4 class="maas-accordion-tab">Two</h4>',
                     '<h4 class="maas-accordion-tab">Three</h4>',
                 '</div>',
@@ -46,23 +46,28 @@ describe("maasAccodion", function() {
         tabs = directive.find('.maas-accordion-tab');
     });
 
-    xit("sets a new active removing other actives", function() {
+    it("sets a new selected and leaves others open", function() {
         angular.element(tabs[1]).click();
-        expect(angular.element(tabs[0]).hasClass("is-active")).toBe(false);
-        expect(angular.element(tabs[1]).hasClass("is-active")).toBe(true);
-        expect(angular.element(tabs[2]).hasClass("is-active")).toBe(false);
+        expect(angular.element(tabs[0]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[1]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[2]).hasClass("is-selected")).toBe(false);
 
         angular.element(tabs[2]).click();
-        expect(angular.element(tabs[0]).hasClass("is-active")).toBe(false);
-        expect(angular.element(tabs[1]).hasClass("is-active")).toBe(false);
-        expect(angular.element(tabs[2]).hasClass("is-active")).toBe(true);
+        expect(angular.element(tabs[0]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[1]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[2]).hasClass("is-selected")).toBe(true);
     });
 
-    it("leaves current active if clicked", function() {
+    it("closes a section when clicked and open", function() {
+        angular.element(tabs[1]).click();
+        expect(angular.element(tabs[0]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[1]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[2]).hasClass("is-selected")).toBe(false);
+
         angular.element(tabs[0]).click();
-        expect(angular.element(tabs[0]).hasClass("is-active")).toBe(true);
-        expect(angular.element(tabs[1]).hasClass("is-active")).toBe(false);
-        expect(angular.element(tabs[2]).hasClass("is-active")).toBe(false);
+        expect(angular.element(tabs[0]).hasClass("is-selected")).toBe(false);
+        expect(angular.element(tabs[1]).hasClass("is-selected")).toBe(true);
+        expect(angular.element(tabs[2]).hasClass("is-selected")).toBe(false);
     });
 
     it("removes all click handlers on $destroy", function() {
