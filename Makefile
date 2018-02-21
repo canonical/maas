@@ -202,11 +202,12 @@ $(strip $(js_bins)): node_modules
 	ln -sf ../node_modules/.bin/$(notdir $@) $@
 
 js-update-macaroonbakery:
-	wget -O src/maasserver/static/js/js-macaroon-min.js \
+	mkdir -p src/masserver/static/js/macaroon
+	wget -O src/maasserver/static/js/macaroon/js-macaroon-min.js \
 		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/assets/javascripts/js-macaroon-min.js'
-	wget -O src/maasserver/static/js/bakery.js \
+	wget -O src/maasserver/static/js/macaroon/bakery.js \
 		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/jujulib/bakery.js'
-	wget -O src/maasserver/static/js/web-handler.js \
+	wget -O src/maasserver/static/js/macaroon/web-handler.js \
 		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/store/env/web-handler.js'
 
 define test-scripts
