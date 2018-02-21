@@ -554,6 +554,30 @@ class TestDHCPVLANListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_primary_when_mtu_changed(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+
+        primary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_vlan, vlan.id, {
+                "mtu": 1400,
+            })
+            yield primary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_primary_and_secondary_when_turned_on(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
@@ -836,6 +860,39 @@ class TestDHCPVLANListener(
         try:
             yield deferToDatabase(self.update_vlan, vlan.id, {
                 "relay_vlan": relay_vlan,
+            })
+            yield primary_rack_dv.get(timeout=2)
+            yield secondary_rack_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_messages_when_relay_vlan_mtu_changed(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        relay_vlan = yield deferToDatabase(self.create_vlan, params={
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+            "secondary_rack": secondary_rack,
+        })
+        vlan = yield deferToDatabase(self.create_vlan, params={
+            "relay_vlan": relay_vlan,
+        })
+        primary_rack_dv = DeferredValue()
+        secondary_rack_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_rack_dv.set(args))
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_rack_dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_vlan, vlan.id, {
+                "mtu": 1400,
             })
             yield primary_rack_dv.get(timeout=2)
             yield secondary_rack_dv.get(timeout=2)

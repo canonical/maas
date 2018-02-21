@@ -88,6 +88,9 @@ shared-network {{shared_network["name"]}} {
            {{if dhcp_subnet['ntp_servers_ipv6']}}
            option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
            {{endif}}
+           {{if shared_network['mtu'] and shared_network['mtu'] != 1500}}
+           option interface-mtu {{shared_network['mtu']}};
+           {{endif}}
 
            #
            # Subnet DHCP snippets

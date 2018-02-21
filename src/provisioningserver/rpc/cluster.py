@@ -353,7 +353,8 @@ class _ConfigureDHCP(amp.Command):
                     (b"description", amp.Unicode(optional=True)),
                     (b"value", amp.Unicode()),
                     ], optional=True)),
-            ])),
+                ])),
+            (b"mtu", amp.Integer(optional=True)),
         ])),
         (b"hosts", CompressedAmpList([
             (b"host", amp.Unicode()),
@@ -413,7 +414,8 @@ class _ConfigureDHCP_V2(amp.Command):
                     (b"description", amp.Unicode(optional=True)),
                     (b"value", amp.Unicode()),
                     ], optional=True)),
-            ])),
+                ])),
+            (b"mtu", amp.Integer(optional=True)),
         ])),
         (b"hosts", CompressedAmpList([
             (b"host", amp.Unicode()),

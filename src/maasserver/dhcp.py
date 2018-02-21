@@ -595,6 +595,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 failover_peers_v4.append(failover_peer)
             shared_networks_v4.append({
                 "name": "vlan-%d" % vlan.id,
+                "mtu": vlan.mtu,
                 "subnets": subnets,
             })
             hosts_v4.extend(hosts)
@@ -611,6 +612,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 failover_peers_v6.append(failover_peer)
             shared_networks_v6.append({
                 "name": "vlan-%d" % vlan.id,
+                "mtu": vlan.mtu,
                 "subnets": subnets,
             })
             hosts_v6.extend(hosts)

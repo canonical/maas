@@ -144,6 +144,7 @@ def make_shared_network(name=None, subnets=None, ipv6=False):
         ]
     return {
         "name": name,
+        "mtu": 1500,
         "subnets": subnets,
     }
 

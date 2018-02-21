@@ -283,6 +283,12 @@ DHCP_VLAN_UPDATE = dedent("""\
         IF NEW.secondary_rack_id IS NOT NULL THEN
           PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
         END IF;
+      -- MTU was changed.
+      ELSIF OLD.mtu != NEW.mtu THEN
+        PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
+        IF OLD.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
+        END IF;
       -- DHCP state was not changed but the rack controllers might have been.
       ELSIF NEW.dhcp_on AND (
          OLD.primary_rack_id != NEW.primary_rack_id OR (
@@ -306,8 +312,10 @@ DHCP_VLAN_UPDATE = dedent("""\
         END IF;
       END IF;
 
-      -- Relay VLAN was set when it was previously unset.
-      IF OLD.relay_vlan_id IS NULL AND NEW.relay_vlan_id IS NOT NULL THEN
+      -- Relay VLAN was set when it was previously unset, or
+      -- the MTU has changed for a VLAN with DHCP relay enabled.
+      IF (OLD.relay_vlan_id IS NULL AND NEW.relay_vlan_id IS NOT NULL)
+         OR (OLD.mtu != NEW.mtu AND NEW.relay_vlan_id IS NOT NULL) THEN
         SELECT maasserver_vlan.* INTO relay_vlan
         FROM maasserver_vlan
         WHERE maasserver_vlan.id = NEW.relay_vlan_id;
