@@ -1577,6 +1577,36 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
                 series, boot_image['label'], xinstall_path),
             installer_url)
 
+    # XXX: roaksoax LP: #1739761 - Deploying precise is now done using
+    # the commissioning ephemeral environment.
+    def test_get_curtin_installer_url_returns_fsimage_precise_squashfs(self):
+        osystem = make_usable_osystem(self)
+        series = 'precise'
+        architecture = make_usable_architecture(self)
+        xinstall_path = factory.make_name('xi_path')
+        xinstall_type = factory.make_name('xi_type')
+        cluster_ip = factory.make_ipv4_address()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, osystem=osystem['name'],
+            architecture=architecture, distro_series=series,
+            boot_cluster_ip=cluster_ip)
+        arch, subarch = architecture.split('/')
+        boot_image = make_rpc_boot_image(
+            osystem=osystem['name'], release=series,
+            architecture=arch, subarchitecture=subarch,
+            purpose='xinstall', xinstall_path=xinstall_path,
+            xinstall_type=xinstall_type)
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
+
+        installer_url = get_curtin_installer_url(node)
+        self.assertEqual(
+            '%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s' % (
+                xinstall_type, cluster_ip, osystem['name'], arch, subarch,
+                series, boot_image['label'], xinstall_path),
+            installer_url)
+
     def test_get_curtin_installer_url_returns_cp_for_squashfs(self):
         osystem = make_usable_osystem(self)
         series = osystem['default_release']

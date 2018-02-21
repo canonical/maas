@@ -695,6 +695,27 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual(distro_series, observed_config["release"])
 
+    # XXX: roaksoax LP: #1739761 - Deploying precise is now done using
+    # the commissioning ephemeral environment.
+    def test__returns_commissioning_os_series_for_precise_xinstall(self):
+        self.patch(boot_module, 'get_boot_filenames').return_value = (
+            None, None, None)
+        commissioning_series = "xenial"
+        Config.objects.set_config(
+            "commissioning_distro_series", commissioning_series)
+        distro_series = "precise"
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(
+            status=NODE_STATUS.DEPLOYING, osystem='ubuntu',
+            distro_series=distro_series, primary_rack=rack_controller)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertEqual(observed_config["release"], commissioning_series)
+        self.assertEqual(node.distro_series, distro_series)
+
     def test__returns_commissioning_os_when_erasing_disks(self):
         self.patch(boot_module, 'get_boot_filenames').return_value = (
             None, None, None)

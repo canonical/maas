@@ -251,13 +251,19 @@ def get_config(
 
         # Get the correct operating system and series based on the purpose
         # of the booting machine.
+        precise = False
         if purpose == "commissioning":
             osystem = Config.objects.get_config('commissioning_osystem')
             series = Config.objects.get_config('commissioning_distro_series')
         else:
             osystem = machine.get_osystem()
             series = machine.get_distro_series()
-            if purpose == "xinstall" and osystem != "ubuntu":
+            # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and
+            # drop of iscsi), precise is no longer deployable. To address a
+            # squashfs image is made available allowing it to be deployed in
+            # the commissioning ephemeral environment.
+            precise = True if series == "precise" else False
+            if purpose == "xinstall" and (osystem != "ubuntu" or precise):
                 # Use only the commissioning osystem and series, for operating
                 # systems other than Ubuntu. As Ubuntu supports HWE kernels,
                 # and needs to use that kernel to perform the installation.
@@ -273,7 +279,12 @@ def get_config(
         # subarchitecture. Since Ubuntu does not support architecture specific
         # hardware enablement kernels(i.e a highbank hwe-t kernel on precise)
         # we give precedence to any kernel defined in the subarchitecture field
-        if subarch == "generic" and machine.hwe_kernel:
+
+        # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
+        # the deployment ephemeral env) when deploying precise, provided that
+        # it uses the commissioning distro_series and hwe kernels are not
+        # needed.
+        if subarch == "generic" and machine.hwe_kernel and not precise:
             subarch = machine.hwe_kernel
         elif(subarch == "generic" and
              purpose == "commissioning" and
