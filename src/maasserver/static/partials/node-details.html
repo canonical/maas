@@ -33,17 +33,21 @@
                     data-ng-click="saveEditHeader()">Save</button>
 
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                <div class="page-header__status u-no-margin--top" data-ng-if="!isController && !isDevice && !header.editing">
-                    <ul class="p-inline-list u-no-margin--top">
-                        <li class="p-inline-list__item">{$ node.status $}</li>
-                        <li class="p-inline-list__item">
-                            <i class="p-icon--power-{$ getPowerStateClass() $}"></i> {$ getPowerStateText() $}
-                        </li>
-                        <li class="p-inline-list__item">
-                            <button class="p-button--base" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
-                        </li>
-                    </ul>
-                </div>
+                <ul class="p-inline-list page-header__status u-no-margin--top" data-ng-if="!isController && !isDevice && !header.editing && !header.editing_domain">
+                    <li class="p-inline-list__item">
+                        <span data-ng-if="node.locked" class="p-tooltip p-tooltip--top-left" aria-describedby="header-locked-state">
+                            <i class="p-icon--locked">Locked: </i>
+                            <span class="p-tooltip__message" role="tooltip" id="header-locked-state">This machine is locked. You have to unlock it to perform any actions.</span>
+                        </span>
+                        {$ node.status $}
+                    </li>
+                    <li class="p-inline-list__item">
+                        <i class="p-icon--power-{$ getPowerStateClass() $}"></i> {$ getPowerStateText() $}
+                    </li>
+                    <li class="p-inline-list__item">
+                        <button class="p-button--base" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
+                    </li>
+                </ul>
             </div>
 
             <div class="col-4">

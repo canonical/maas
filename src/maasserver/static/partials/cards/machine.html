@@ -1,9 +1,11 @@
 <header class="p-card__header">
   <h2 class="p-heading--four">Overview</h2>
-  <h3 class="p-heading--three">
-    <i class="p-icon--locked">Locked:</i> 
-    {$ node.status $}
-    <span ng-if="node.show_os_info">(<span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>)</span>
+  <h3 class="p-heading--three u-vertically-center">
+    <i class="p-icon--locked" data-ng-if="node.locked">Locked:</i>
+    <div class="u-no-margin--top">
+      <strong>{$ node.status $} <span data-ng-if="node.locked">(Locked)</span></strong>
+      <span ng-if="node.show_os_info" class="p-heading--six">(<span data-maas-release-name="node.osystem + '/' + node.distro_series"></span>)</span>
+    </div>
   </h3>
   <p data-ng-if="showFailedTestWarning()"><i class="p-icon--warning">Warning:</i> Machine has failed tests; use with caution!</p>
 </header>

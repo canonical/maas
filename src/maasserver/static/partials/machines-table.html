@@ -42,8 +42,9 @@
                 <label class="checkbox-label" for="{$ node.fqdn $}"></label>
             </td>
             <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'" colspan="2">
-                <span data-ng-if="node.locked" class="icon icon--locked tooltip tooltip--bottom u-margin--right-tiny"
-                      aria-label="This machine is locked. You have to unlock it to perform any actions.">
+                <span data-ng-if="node.locked" class="p-tooltip p-tooltip--top-left" aria-describedby="{$ node.fqdn $}-locked-state">
+                    <i class="p-icon--locked">Locked: </i>
+                    <span class="p-tooltip__message" role="tooltip" id="{$ node.fqdn $}-locked-state">This machine is locked. You have to unlock it to perform any actions.</span>
                 </span>
                 <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
             </td>

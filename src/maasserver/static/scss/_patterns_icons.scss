@@ -53,6 +53,11 @@
       @extend %icon;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17'%3E%3Cg transform='translate(1 1)' fill='none' fill-rule='evenodd'%3E%3Ccircle stroke='" + encodecolor($color-mid-light) + "' stroke-width='1.5' fill='" + encodecolor($color-mid-light) + "' cx='7.25001' cy='7.25001' r='7.25001'/%3E%3Cpath fill='%23fff' d='M11.0503 4.17345l-.0659.0577-4.73475 4.14722-2.77557-2.38094-.83906.94888 3.61532 3.80373L11.75 4.96278l-.6997-.7893'/%3E%3C/g%3E%3C/svg%3E");
     }
+
+    &--locked {
+      @extend %icon;
+      background-image: url("data:image/svg+xml,%3Csvg width='16px' height='16px' viewBox='0 0 16 16' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'%3E%3Cdefs%3E%3Cpath d='M8,3e-05 C5.7926,3e-05 4,1.79263 4,4.00003 L4,7.00003 L2,7.00003 L2,15.99953 L14,15.99953 L14,7.00003 L12,7.00003 L12,4.00003 C12,1.79263 10.207,3e-05 8,3e-05 L8,0 L8,3e-05 Z M8,1.00003 C9.6706,1.00003 11,2.32933 11,4.00003 L11,7.00003 L5,7.00003 L5,4.00003 C5,2.32933 6.3293,1.00003 8,1.00003 Z M9,9.50003 L9,13.99953 L7,13.99953 L7,9.99953 L9,9.50003 L9,9.50003 Z' id='padlock-icon'%3E%3C/path%3E%3C/defs%3E%3Cg id='padlock-16'%3E%3Cuse id='lock-icon' fill='" + encodecolor($color-mid-dark) + "' fill-rule='nonzero' xlink:href='%23padlock-icon'%3E%3C/use%3E%3C/g%3E%3C/svg%3E%0A");
+    }
   }
 
   .p-icon--power-error {
@@ -78,9 +83,13 @@
   }
 
   [class^="p-icon"] {
-    margin-right: $sp-x-small;
+    margin-right: 0.25em;
+  }
+
+  // XXX Use ems rather than rems for icon sizing
+  // Issue: https://github.com/vanilla-framework/vanilla-framework/issues/1599
+  [class^="p-icon"] {
+    height: 1em;
+    width: 1em;
   }
 }
-
-
-//TODO: do something about p-icon--none
