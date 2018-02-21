@@ -39,7 +39,6 @@ dbrun := bin/database --preserve run --
 # Path to install local nodejs.
 mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 nodejs_path := $(mkfile_dir)/include/nodejs/bin
-nodejs_modules_path := include/nodejs/node_modules
 
 export PATH := $(nodejs_path):$(PATH)
 
@@ -190,8 +189,8 @@ include/nodejs/yarn.tar.gz:
 include/nodejs/bin/yarn: include/nodejs/yarn.tar.gz
 	tar -C include/nodejs/ -xf include/nodejs/yarn.tar.gz --strip-components=1
 
-$(nodejs_modules_path): include/nodejs/bin/node  include/nodejs/bin/yarn
-	yarn --modules-folder $@
+node_modules: include/nodejs/bin/node include/nodejs/bin/yarn
+	yarn
 
 define js_bins
 	bin/karma
@@ -199,7 +198,7 @@ define js_bins
 	bin/node-sass
 endef
 
-$(strip $(js_bins)): $(nodejs_modules_path)
+$(strip $(js_bins)): node_modules
 	ln -sf ../node_modules/.bin/$(notdir $@) $@
 
 js-update-macaroonbakery:
