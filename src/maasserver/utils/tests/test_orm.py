@@ -40,6 +40,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils import orm
 from maasserver.utils.orm import (
+    count_queries,
     disable_all_database_connections,
     DisabledDatabaseConnection,
     enable_all_database_connections,
@@ -59,6 +60,7 @@ from maasserver.utils.orm import (
     is_retryable_failure,
     is_serialization_failure,
     is_unique_violation,
+    log_sql_calls,
     post_commit,
     post_commit_do,
     post_commit_hooks,
@@ -1465,3 +1467,83 @@ class TestGetModelObjectName(MAASServerTestCase):
     def test__gets_model_object_name_returns_none_if_not_found(self):
         self.assertThat(
             get_model_object_name("crazytalk"), Is(None))
+
+
+class TestCountQueries(MAASServerTestCase):
+
+    def test__logs_all_queries_made_by_func(self):
+
+        def query_func():
+            return list(Node.objects.all())
+
+        mock_print = Mock()
+        wrapped = count_queries(mock_print)(query_func)
+        wrapped()
+
+        query_time = sum([
+            float(query.get('time', 0))
+            for query in connection.queries
+        ])
+        self.assertThat(
+            mock_print,
+            MockCalledOnceWith(
+                '[QUERIES] query_func executed 1 queries in %s seconds' % (
+                    query_time)))
+
+    def test__resets_queries_between_calls(self):
+
+        def query_func():
+            return list(Node.objects.all())
+
+        mock_print = Mock()
+        wrapped = count_queries(mock_print)(query_func)
+
+        # First call.
+        wrapped()
+        query_time_one = sum([
+            float(query.get('time', 0))
+            for query in connection.queries
+        ])
+
+        # Second call.
+        wrapped()
+        query_time_two = sum([
+            float(query.get('time', 0))
+            for query in connection.queries
+        ])
+
+        # Print called twice.
+        self.assertThat(
+            mock_print,
+            MockCallsMatch(
+                call(
+                    '[QUERIES] query_func executed 1 queries in %s seconds' % (
+                        query_time_one)),
+                call(
+                    '[QUERIES] query_func executed 1 queries in %s seconds' % (
+                        query_time_two))))
+
+    def test__logs_all_queries_made(self):
+
+        def query_func():
+            return list(Node.objects.all())
+        log_sql_calls(query_func)
+
+        mock_print = Mock()
+        wrapped = count_queries(mock_print)(query_func)
+        wrapped()
+        query_time = sum([
+            float(query.get('time', 0))
+            for query in connection.queries
+        ])
+
+        # Print called twice.
+        self.assertThat(
+            mock_print,
+            MockCallsMatch(
+                call(
+                    '[QUERIES] query_func executed 1 queries in %s seconds' % (
+                        query_time)),
+                call('[QUERIES] === Start SQL Log: query_func ==='),
+                call('[QUERIES] %s' % connection.queries[0]['sql']),
+                call('[QUERIES] === End SQL Log: query_func ===')))

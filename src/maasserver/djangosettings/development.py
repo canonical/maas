@@ -44,9 +44,15 @@ DHCP_CONNECT = os.environ.get("MAAS_DHCP_CONNECT", "0") == "1"
 # basis. TODO: Use the signals manager instead.
 PROXY_CONNECT = False
 
-# Invalid strings should be visible.
-
+# Debugging: Log all query counts and time when enabled in the ENV. By default
+# the development regiond will enable query logging, the unit tests will have
+# it disabled.
 DEBUG = True
+DEBUG_QUERIES = os.environ.get("MAAS_DEBUG_QUERIES", "0") == "1"
+DEBUG_QUERIES_LOG_ALL = (
+    os.environ.get("MAAS_DEBUG_QUERIES_LOG_ALL", "0") == "1")
+
+# Invalid strings should be visible.
 TEMPLATES[0]['OPTIONS']['string_if_invalid'] = '#### INVALID STRING ####'
 TEMPLATES[0]['OPTIONS']['debug'] = DEBUG
 YUI_DEBUG = DEBUG

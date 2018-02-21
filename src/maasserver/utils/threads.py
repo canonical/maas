@@ -19,11 +19,14 @@ __all__ = [
     "make_default_pool",
 ]
 
+from django.conf import settings
 from maasserver.utils.orm import (
+    count_queries,
     ExclusivelyConnected,
     FullyConnected,
     TotallyDisconnected,
 )
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -35,6 +38,9 @@ from twisted.internet import (
     threads,
 )
 from twisted.internet.defer import DeferredSemaphore
+
+
+log = LegacyLogger()
 
 
 max_threads_for_default_pool = 50
@@ -144,6 +150,8 @@ def install_database_unpool(maxthreads=max_threads_for_database_pool):
 
 def deferToDatabase(func, *args, **kwargs):
     """Call `func` in a thread where database activity is permitted."""
+    if settings.DEBUG and getattr(settings, 'DEBUG_QUERIES', False):
+        func = count_queries(log.msg)(func)
     return threads.deferToThreadPool(
         reactor, reactor.threadpoolForDatabase,
         func, *args, **kwargs)

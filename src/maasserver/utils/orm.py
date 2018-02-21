@@ -51,6 +51,7 @@ from time import sleep
 import types
 from typing import Container
 
+from django.conf import settings
 from django.core.exceptions import (
     MultipleObjectsReturned,
     ValidationError,
@@ -58,6 +59,7 @@ from django.core.exceptions import (
 from django.db import (
     connection,
     connections,
+    reset_queries,
     transaction,
 )
 from django.db.models import Q
@@ -1359,3 +1361,47 @@ def prefetch_queryset(queryset, prefetches):
     for prefetch in prefetches:
         queryset = queryset.prefetch_related(prefetch)
     return queryset
+
+
+def log_sql_calls(func):
+    """Inform the `count_queries` decorated to print all the SQL calls for
+    this function."""
+    func.__log_sql_calls__ = True
+    return func
+
+
+def count_queries(log_func):
+    """Decorator that will count the queries and call `log_func` with the log
+    message.
+    """
+
+    def wrapper(func):
+
+        def inner_wrapper(*args, **kwargs):
+            # Reset the queries count before performing the function.
+            reset_queries()
+
+            # Perform the work that will create queries.
+            result = func(*args, **kwargs)
+
+            # Calculate the query_time and log the number and time.
+            query_time = sum([
+                float(query.get('time', 0))
+                for query in connection.queries
+            ])
+            log_func('[QUERIES] %s executed %s queries in %s seconds' % (
+                func.__name__, len(connection.queries), query_time))
+
+            # Log all the queries if requested.
+            if (getattr(func, '__log_sql_calls__', False) or
+                    getattr(settings, 'DEBUG_QUERIES_LOG_ALL', False)):
+                log_func('[QUERIES] === Start SQL Log: %s ===' % func.__name__)
+                for query in connection.queries:
+                    log_func('[QUERIES] %s' % query.get('sql'))
+                log_func('[QUERIES] === End SQL Log: %s ===' % func.__name__)
+
+            return result
+
+        return inner_wrapper
+
+    return wrapper
