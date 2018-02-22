@@ -9,10 +9,12 @@
                 <div data-ng-if="pods.length > 0 && !selectedItems.length">
                     <button class="p-button--neutral" data-ng-click="add.open = true" data-ng-if="!add.open">Add pod</button>
                 </div>
-                <div data-ng-if="isSuperUser() && selectedItems.length">
-                    <p>{$ selectedItems.length $} Selected</p>
-                    <div data-maas-cta="action.options" data-ng-model="action.option">
-                    </div>
+                <ul class="p-inline-list u-no-margin--top" data-ng-if="isSuperUser() && selectedItems.length">
+                    <li class="p-inline-list__item">{$ selectedItems.length $} Selected</li>
+                    <li class="p-inline-list__item">
+                        <div data-maas-cta="action.options" data-ng-model="action.option">
+                        </div>
+                    </li>
                 </div>
             </div>
         </div>
@@ -114,13 +116,11 @@
             <table class="p-table-expanding" data-ng-if="pods.length > 0">
                 <thead>
                     <tr>
-                        <th class="col-1">
-                            <div data-ng-if="isSuperUser()">
+                        <th class="col-2">
+                            <div data-ng-if="isSuperUser()" class="u-float--left">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                                 <label for="check-all-pods" class="checkbox-label"></label>
                             </div>
-                        </th>
-                        <th class="col-2">
                             <a href="" class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
                                 <span title="Name">Name</span>
                             </a>
@@ -137,7 +137,7 @@
                         <th class="col-1">
                             <a href="" class="table__header-link" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
                         </th>
-                        <th class="col-1">
+                        <th class="col-2">
                             <a href="" class="table__header-link" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
                         </th>
                         <th class="col-2 u-align--right">
@@ -147,27 +147,27 @@
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
                     <tr data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
-                        <td class="col-1" data-ng-if="isSuperUser()" aria-label="Select pod">
-                            <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
-                            <label for="{$ pod.id $}" class="checkbox-label"></label>
-                        </td>
                         <td class="col-2" aria-label="Name">
+                            <div class="u-float--left" data-ng-if="isSuperUser()">
+                                <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
+                                <label for="{$ pod.id $}" class="checkbox-label"></label>
+                            </div>
                             <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
                         </td>
                         <td class="col-1" aria-label="Type">
                             {$ getPowerTypeTitle(pod.type) $}
                         </td>
                         <td class="col-2" aria-label="Local storage (GiB)">
-                            {$ pod.available.local_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.local_storage_gb $}</div>
+                            {$ pod.available.local_storage_gb $} free of {$ pod.total.local_storage_gb $}
                         </td>
                         <td class="col-2" aria-label="iSCSI storage (GiB)">
-                            {$ pod.available.iscsi_storage_gb || '0' $} free <div class="u-text--subtle">of {$ pod.total.iscsi_storage_gb || '0' $}</div>
+                            {$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}
                         </td>
                         <td class="col-1" aria-label="Cores">
-                            {$ pod.available.cores $} free <div class="u-text--subtle">of {$ pod.total.cores $}</div>
+                            {$ pod.available.cores $} free of {$ pod.total.cores $}
                         </td>
-                        <td class="col-1" aria-label="RAM (GiB)">
-                            {$ pod.available.memory_gb $} free <div class="u-text--subtle">of {$ pod.total.memory_gb $}</div>
+                        <td class="col-2" aria-label="RAM (GiB)">
+                            {$ pod.available.memory_gb $} free of {$ pod.total.memory_gb $}
                         </td>
                         <td class="col-2 u-align--right" aria-label="Composed machines">
                             {$ pod.composed_machines_count $}
