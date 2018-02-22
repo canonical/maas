@@ -55,7 +55,6 @@
 /tags
 /twisted
 /xunit.*.xml
-yarn.lock
 __pycache__
 *.orig
 *~

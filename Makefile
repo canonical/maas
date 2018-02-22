@@ -188,18 +188,26 @@ include/nodejs/yarn.tar.gz:
 
 include/nodejs/bin/yarn: include/nodejs/yarn.tar.gz
 	tar -C include/nodejs/ -xf include/nodejs/yarn.tar.gz --strip-components=1
+	@touch --no-create $@
 
-node_modules: include/nodejs/bin/node include/nodejs/bin/yarn
-	yarn
+bin/yarn: include/nodejs/bin/yarn
+	ln -sf ../include/nodejs/bin/yarn $@
+	@touch --no-create $@
+
+node_modules: include/nodejs/bin/node bin/yarn
+	bin/yarn
+	@touch --no-create $@
 
 define js_bins
-	bin/karma
-	bin/protractor
-	bin/node-sass
+  bin/karma
+  bin/protractor
+  bin/node-sass
+  bin/webpack
 endef
 
 $(strip $(js_bins)): node_modules
 	ln -sf ../node_modules/.bin/$(notdir $@) $@
+	@touch --no-create $@
 
 js-update-macaroonbakery:
 	mkdir -p src/masserver/static/js/macaroon
@@ -209,6 +217,36 @@ js-update-macaroonbakery:
 		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/jujulib/bakery.js'
 	wget -O src/maasserver/static/js/macaroon/web-handler.js \
 		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/store/env/web-handler.js'
+
+define node_packages
+  @types/prop-types
+  @types/react
+  @types/react-dom
+  glob
+  jasmine-core
+  karma
+  karma-chrome-launcher
+  karma-failed-reporter
+  karma-firefox-launcher
+  karma-jasmine
+  karma-ng-html2js-preprocessor
+  karma-opera-launcher
+  karma-phantomjs-launcher
+  node-sass
+  phantomjs-prebuilt
+  prop-types
+  protractor
+  react
+  react-dom
+  react2angular
+  vanilla-framework
+  vanilla-framework-react
+  webpack
+endef
+
+package.json: bin/yarn
+	$(RM) package.json yarn.lock
+	bin/yarn add -D $(strip $(node_packages))
 
 define test-scripts
   bin/test.cli
@@ -405,7 +443,7 @@ clean: stop clean-failed
 	$(RM) .coverage .coverage.* coverage.xml
 	$(RM) -r coverage
 	$(RM) -r .hypothesis
-	$(RM) -r bin include lib local
+	$(RM) -r bin include lib local node_modules
 	$(RM) -r eggs develop-eggs
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
@@ -744,6 +782,7 @@ phony := $(sort $(strip $(phony)))
 define secondary
   bin/py bin/buildout
   bin/node-sass
+  bin/webpack
   bin/sphinx bin/sphinx-build
 endef
 
