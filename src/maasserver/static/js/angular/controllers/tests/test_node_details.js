@@ -194,6 +194,7 @@ describe("NodeDetailsController", function() {
         expect($scope.action.allOptions).toBeNull();
         expect($scope.action.availableOptions).toEqual([]);
         expect($scope.action.error).toBeNull();
+        expect($scope.action.showing_confirmation).toBe(false);
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.power_types).toBe(GeneralManager.getData("power_types"));
         expect($scope.osSelection.osystem).toBeNull();
@@ -995,6 +996,13 @@ describe("NodeDetailsController", function() {
             $scope.actionCancel();
             expect($scope.action.error).toBeNull();
         });
+
+        it("resets showing_confirmation", function() {
+            var controller = makeController();
+            $scope.action.showing_confirmation = true;
+            $scope.actionCancel();
+            expect($scope.action.showing_confirmation).toBe(false);
+        });
     });
 
     describe("actionGo", function() {
@@ -1134,6 +1142,20 @@ describe("NodeDetailsController", function() {
                     enable_ssh: true,
                     testing_scripts: testing_script_ids
                 });
+        });
+
+        it("sets showing_confirmation with testOptions", function() {
+            var controller = makeController();
+            spyOn(MachinesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            node.status_code = 6;
+            $scope.node = node;
+            $scope.action.option = {
+                name: "test"
+            };
+            $scope.actionGo();
+            expect($scope.action.showing_confirmation).toBe(true);
+            expect(MachinesManager.performAction).not.toHaveBeenCalled();
         });
 
         it("calls performAction with releaseOptions", function() {

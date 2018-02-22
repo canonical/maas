@@ -137,7 +137,15 @@
                          </div>
                      </form>
                  </div>
-
+		 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="action.showing_confirmation && action.option.name === 'test'">
+                     <p class="page-header__message page-header__message--warning">
+                         Node is currently deployed. Are you sure you want to continue to test hardware?
+                     </p>
+                     <div class="page-header__controls">
+                         <button class="button--base button--inline" data-ng-click="actionCancel()">No</button>
+                         <button class="button--secondary button--inline" data-ng-click="actionGo()">Yes</button>
+                     </div>
+                 </div>
                  <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                  <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isActionError()">
                      <p class="page-header__message page-header__message--error">

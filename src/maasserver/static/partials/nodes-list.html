@@ -220,7 +220,15 @@
                     cannot be {$ tabs[tab].actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
                 </p>
             </section>
-
+	    <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="tabs[tab].actionProgress.showing_confirmation">
+	        <p class="page-header__message page-header__message--warning">
+		  {$ tabs[tab].actionProgress.affected_nodes $} of {$ tabs[tab].selectedItems.length $} are in a deployed state. Are you sure you want to continue to test hardware?
+                </p>
+		<div class="page-header__controls">
+		  <button class="button--base button--inline" data-ng-click="actionCancel(tab)">No</button>
+		  <button class="button--secondary button--inline" data-ng-click="actionGo(tab)">Yes</button>
+		</div>
+            </section>
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="hasActionsInProgress(tab) || hasActionsFailed(tab)">
                 <p class="page-header__message" data-ng-show="hasActionsInProgress(tab)">
