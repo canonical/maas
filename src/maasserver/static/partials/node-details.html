@@ -297,9 +297,9 @@
                         data-ng-click="section.area = 'testing'"><span data-maas-script-status="script-status" data-script-status="node.testing_status"></span> Hardware tests</a>
                 </li>
                 <li class="p-tabs__item" role="presentation">
-                    <a role="tab" class="p-tabs__link" data-ng-if="machine_output.viewable"
+                    <a role="tab" class="p-tabs__link" data-ng-if="node.has_logs"
                         data-ng-class="{ 'is-active': section.area === 'logs'}"
-                        data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_results.length > 0"></span> Logs</a>
+                        data-ng-click="section.area = 'logs'"><span data-maas-script-status="script-status" data-script-status="node.installation_status" data-ng-if="node.installation_status !== -1"></span> Logs</a>
                 </li>
                 <li class="p-tabs__item" role="presentation">
                     <a role="tab" class="p-tabs__link" data-ng-if="!isDevice"
@@ -2682,28 +2682,23 @@
         </div>
     </section>
     <section class="p-strip" data-ng-if="section.area === 'logs'">
-        <div class="row">
-            <div class="col-12">
-                <div data-maas-cta="machine_output.views"
-                    data-ng-model="machine_output.selectedView">
+        <div data-ng-controller="NodeResultsController">
+            <div class="row" data-ng-if="!resultsLoaded">
+                <div class="col-12">
+                    <p class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
                 </div>
             </div>
-        </div>
-        <div class="row" data-ng-if="machine_output.selectedView.name == 'summary_yaml'">
-            <div class="col-12">
-                <pre class="p-code-numbered" data-maas-code-lines="getSummaryData('yaml')">
-                </pre>
-            </div>
-        </div>
-        <div class="row" data-ng-if="machine_output.selectedView.name == 'summary_xml'">
-            <div class="col-12">
-                <pre class="p-code-numbered" data-maas-code-lines="getSummaryData('xml')">
-                </pre>
-            </div>
-        </div>
-        <div class="row" data-ng-if="machine_output.selectedView.name == 'installation'">
-            <div class="col-12">
-                <pre class="p-code-numbered" data-maas-code-lines="getInstallationData()"></pre>
+            <div data-ng-if="resultsLoaded">
+                <div class="row">
+                    <div class="col-12">
+                        <div data-maas-cta="logs.availableOptions" data-ng-model="logs.option" data-ng-change="updateLogOutput()"></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <pre class="p-code-numbered" data-maas-code-lines="logOutput"></pre>
+                    </div>
+                </div>
             </div>
         </div>
     </section>

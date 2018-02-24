@@ -7,7 +7,7 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the cta.html into the template cache.
     $templateCache.put('directive/templates/cta.html', [
-      '<div>',
+      '<div class="p-contextual-menu">',
         '<button ',
           'class="p-button p-contextual-menu__toggle" ',
           'aria-controls="#cta-menu" ',
