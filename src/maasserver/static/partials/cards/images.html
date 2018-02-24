@@ -4,9 +4,9 @@
     <maas-controller-image-status system-id="node.system_id"></maas-controller-image-status>
   </h3>
 </header>
-<div>
-  <p>Last image sync: {$ node.last_image_sync || 'never' $}</p>
-</div>
+<ul class="p-list">
+  <li class="p-list__item">Last image sync: {$ node.last_image_sync || 'never' $}</li>
+</ul>
 <footer class="p-card__footer">
   <p><a href="#/images">Go to images &rsaquo;</a></p>
 </footer>

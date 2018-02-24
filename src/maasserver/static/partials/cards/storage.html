@@ -4,9 +4,11 @@
   <h3 class="p-heading--three" data-ng-if="node.storage == 0"><strong>Unknown</strong></h3>
 </header>
 <div>
-  <div data-ng-repeat="gs in node.grouped_storages">
-    <p data-ng-if="gs.count > 0">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $})</p>
-  </div>
+  <ul class="p-list">
+    <li class="p-list__item" data-ng-repeat="gs in node.grouped_storages">
+      <span data-ng-if="gs.count > 0">{$ gs.count $}x{$ (gs.size / 1000 / 1000 / 1000).toFixed(0) $}GB ({$ gs.disk_type $})</span>
+    </li>
+  </ul>
 </div>
 <footer class="p-card__footer">
   <p data-ng-if="!isDevice && !(isController && node.status === 'New') && node.storage > 0">

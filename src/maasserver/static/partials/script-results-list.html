@@ -17,8 +17,8 @@
                                 <th class="col-2">Tags</th>
                                 <th class="col-1">Runtime</th>
                                 <th class="col-3">Date</th>
-                                <th class="col-1">Result</th>
-                                <th class="col-1"><div class="u-align--center">Actions</div></th>
+                                <th class="col-2">Result</th>
+                                <th class="col-1"><div class="u-align--right">Actions</div></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -30,7 +30,7 @@
                                 <td class="col-2" aria-label="Tags"><span data-ng-hide="result.showing_history">{$ result.tags $}</span></td>
                                 <td class="col-1" aria-label="Runtime"><span data-ng-hide="result.showing_history" data-maas-script-run-time="script-runtime" data-start-time="result.starttime" data-run-time="{{result.runtime}}" data-estimated-run-time="{{result.estimated_runtime}}" data-script-status="result.status"></span></td>
                                 <td class="col-3" aria-label="Date"><span data-ng-hide="result.showing_history">{$ result.updated $}</span></td>
-                                <td class="col-1" aria-label="Result">
+                                <td class="col-2" aria-label="Result">
                                     <span data-ng-hide="result.showing_history">
                                         <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
                                         {$ result.status_name $} <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ result.id $}">View log</a>
@@ -60,7 +60,7 @@
                                                 {$ item.title $}
                                                 <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
                                             </dt>
-                                            <dd class="table-col--50 u-text--subtle">{$ item.value $}</dd>
+                                            <dd>{$ item.value $}</dd>
                                         </dl>
                                     </div>
                                 </td>
@@ -77,7 +77,7 @@
                                                         </td>
                                                         <td class="col-2" aria-label="Tags">{$ result.tags $}</td>
                                                         <td class="col-1" aria-label="Runtime"><span data-maas-script-run-time="script-runtime" data-start-time="item.starttime" data-run-time="{{item.runtime}}" data-estimated-run-time="{{item.estimated_runtime}}" data-script-status="item.status"></span></td>
-                                                        <td class="col-2" aria-label="Date">{$ item.updated $}</td>
+                                                        <td class="col-3" aria-label="Date">{$ item.updated $}</td>
                                                         <td class="col-2" aria-label="Status">
                                                             <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing)-->
                                                             {$ item.status_name $} <a data-ng-if="item.status === 2 || item.status === 3 || item.status === 4 || item.status === 6 || item.status === 8" href="#/node/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ item.id $}">View log</a>

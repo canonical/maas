@@ -468,8 +468,8 @@
                 <h2 data-ng-if="!isController">{$ node.node_type_display $} configuration</h2>
                 <h2 data-ng-if="isController">Controller configuration</h2>
             </div>
-            <div class="col-2 u-align--right">
-                <button class="p-button--neutral"
+            <div class="col-2">
+                <button class="p-button--neutral u-float--right"
                     data-ng-if="canEdit()"
                     data-ng-click="editSummary()">Edit</button>
             </div>
@@ -539,8 +539,8 @@
             <div class="col-10" data-ng-if="!isDevice">
                 <h2>Power configuration</h2>
             </div>
-            <div class="col-2 u-align--right">
-                <button class="p-button--neutral"
+            <div class="col-2">
+                <button class="p-button--neutral u-float--right"
                     data-ng-show="canEdit() && power_types.length"
                     data-ng-click="editPower()"
                     data-ng-if="!power.editing">Edit</button>
@@ -809,7 +809,7 @@
                                 <th class="col-1"><span data-ng-if="!isDevice">VLAN</span></th>
                                 <th class="col-3">Subnet</th>
                                 <th class="col-2">IP Address</th>
-                                <th class="col-1 u-align--center">Actions</th>
+                                <th class="col-1"><div class="u-align--right">Actions</div></th>
                             </tr>
                         </thead>
                         <tbody data-selected-rows>
@@ -1850,8 +1850,8 @@
                                         <span data-ng-if="item.test_status === 6">Degraded</span>
                                         <span data-ng-if="item.test_status === -1">Unknown</span>
                                     </td>
-                                    <td class="col-1 u-align--right">
-                                        <div class="p-contextual-menu" toggle-ctrl
+                                    <td class="col-1">
+                                        <div class="p-contextual-menu u-align--right" toggle-ctrl
                                             data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
                                             <button class="p-contextual-menu__toggle p-button--base" aria-controls="#{$ item.name $}-menu"
                                                 data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
