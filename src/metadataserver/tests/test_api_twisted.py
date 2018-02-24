@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the twisted metadata API."""
@@ -467,6 +467,30 @@ class TestStatusWorkerService(MAASServerTestCase):
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
         for script_result in node.get_latest_script_results:
             self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
+
+    def test_status_commissioning_failure_ignored_when_rebooting(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING, owner=user,
+            with_empty_script_sets=True)
+        script = factory.make_Script(may_reboot=True)
+        script_result = factory.make_ScriptResult(
+            script=script, script_set=node.current_commissioning_script_set,
+            status=SCRIPT_STATUS.RUNNING)
+        payload = {
+            'event_type': 'finish',
+            'result': 'FAILURE',
+            'origin': 'curtin',
+            'name': 'commissioning',
+            'description': 'Commissioning',
+            'timestamp': datetime.utcnow(),
+        }
+        self.assertEqual(user, node.owner)  # Node has an owner
+        self.processMessage(node, payload)
+        self.assertEqual(
+            NODE_STATUS.COMMISSIONING, reload_object(node).status)
+        self.assertEqual(
+            SCRIPT_STATUS.RUNNING, reload_object(script_result).status)
 
     def test_status_installation_failure_leaves_node_failed(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)

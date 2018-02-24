@@ -94,6 +94,11 @@ class TestScriptForm(MAASServerTestCase):
                     random.randint(0, 9999), random.randint(0, 9999)),
                 'usb:%04x:%04X' % (
                     random.randint(0, 9999), random.randint(0, 9999)),
+                'system_vendor:%s' % factory.make_name('system_name'),
+                'system_product:%s' % factory.make_name('system_product'),
+                'system_version:%s' % factory.make_name('system_version'),
+                'mainboard_vendor:%s' % factory.make_name('mobo_vendor'),
+                'mainboard_product:%s' % factory.make_name('mobo_product'),
                 ]
             recommission = factory.pick_bool()
         else:
@@ -173,6 +178,11 @@ class TestScriptForm(MAASServerTestCase):
                     random.randint(0, 9999), random.randint(0, 9999)),
                 'usb:%04x:%04X' % (
                     random.randint(0, 9999), random.randint(0, 9999)),
+                'system_vendor:%s' % factory.make_name('system_name'),
+                'system_product:%s' % factory.make_name('system_product'),
+                'system_version:%s' % factory.make_name('system_version'),
+                'mainboard_vendor:%s' % factory.make_name('mobo_vendor'),
+                'mainboard_product:%s' % factory.make_name('mobo_product'),
                 ]
             recommission = factory.pick_bool()
         else:
@@ -554,6 +564,11 @@ class TestScriptForm(MAASServerTestCase):
                     random.randint(0, 9999), random.randint(0, 9999)),
                 'usb:%04X:%04x' % (
                     random.randint(0, 9999), random.randint(0, 9999)),
+                'system_vendor:%s' % factory.make_name('system_name'),
+                'system_product:%s' % factory.make_name('system_product'),
+                'system_version:%s' % factory.make_name('system_version'),
+                'mainboard_vendor:%s' % factory.make_name('mobo_vendor'),
+                'mainboard_product:%s' % factory.make_name('mobo_product'),
                 ]
             embedded_yaml['recommission'] = factory.pick_bool()
         script_content = factory.make_script_content(embedded_yaml)
@@ -894,7 +909,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertDictEqual(
             {'for_hardware': [
                 "Hardware identifier '%s' must be a modalias, PCI ID, "
-                "or USB ID." % hw_id]},
+                "USB ID, system vendor, system product, system version, "
+                "mainboard vendor, or mainboard product." % hw_id]},
             form.errors)
         self.assertItemsEqual([], VersionedTextFile.objects.all())
 

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -8,6 +8,8 @@ __all__ = [
 ]
 
 from datetime import timedelta
+import fnmatch
+import re
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
@@ -219,12 +221,29 @@ class ScriptSetManager(Manager):
             Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
             script_type=script_type)
         modaliases = script_set.node.modaliases
+        regexes = []
+        for nmd in script_set.node.nodemetadata_set.all():
+            if nmd.key in [
+                    'system_vendor', 'system_product', 'system_version',
+                    'mainboard_vendor', 'mainboard_product']:
+                regexes.append(
+                    '%s:%s' % (nmd.key, fnmatch.translate(nmd.value)))
+        if len(regexes) > 0:
+            node_hw_regex = re.compile('^%s$' % '|'.join(regexes), re.I)
+        else:
+            node_hw_regex = None
         for script in qs:
             # If a script with the for_hardware field is selected by tag only
             # add it if matching hardware is found.
-            if script.for_hardware and script.name not in scripts:
+            if script.for_hardware:
+                found_hw_match = False
+                if node_hw_regex is not None:
+                    for hardware in script.for_hardware:
+                        if node_hw_regex.search(hardware) is not None:
+                            found_hw_match = True
+                            break
                 matches = filter_modaliases(modaliases, *script.ForHardware)
-                if len(matches) == 0:
+                if len(matches) == 0 and not found_hw_match:
                     continue
             try:
                 script_set.add_pending_script(script, input)
@@ -393,19 +412,35 @@ class ScriptSet(CleanSave, Model):
         if modaliases is None:
             modaliases = self.node.modaliases
 
+        regexes = []
+        for nmd in self.node.nodemetadata_set.all():
+            if nmd.key in [
+                    'system_vendor', 'system_product', 'system_version',
+                    'mainboard_vendor', 'mainboard_product']:
+                regexes.append(
+                    '%s:%s' % (nmd.key, fnmatch.translate(nmd.value)))
+        if len(regexes) > 0:
+            node_hw_regex = re.compile('^%s$' % '|'.join(regexes), re.I)
+        else:
+            node_hw_regex = None
+
         # Remove scripts autoselected at the start of commissioning but updated
         # commissioning data shows the Script is no longer applicable.
         script_results = self.scriptresult_set.exclude(script=None)
         script_results = script_results.filter(status=SCRIPT_STATUS.PENDING)
         script_results = script_results.exclude(script__for_hardware=[])
         for script_result in script_results:
-            # User selected the specific script, always do what the user says.
-            if (script_result.name in self.requested_scripts or
-                    str(script_result.script.id) in self.requested_scripts):
-                continue
             matches = filter_modaliases(
                 modaliases, *script_result.script.ForHardware)
-            if len(matches) == 0:
+            found_hw_match = False
+            if node_hw_regex is not None:
+                for hardware in script_result.script.for_hardware:
+                    if node_hw_regex.search(hardware) is not None:
+                        found_hw_match = True
+                        break
+            matches = filter_modaliases(
+                modaliases, *script_result.script.ForHardware)
+            if len(matches) == 0 and not found_hw_match:
                 script_result.delete()
 
         # Add Scripts which match the node with current commissioning data.
@@ -418,8 +453,14 @@ class ScriptSet(CleanSave, Model):
         scripts = scripts.exclude(for_hardware=[])
         scripts = scripts.exclude(name__in=[s.name for s in self])
         for script in scripts:
+            found_hw_match = False
+            if node_hw_regex is not None:
+                for hardware in script.for_hardware:
+                    if node_hw_regex.search(hardware) is not None:
+                        found_hw_match = True
+                        break
             matches = filter_modaliases(modaliases, *script.ForHardware)
-            if len(matches) != 0:
+            if len(matches) != 0 or found_hw_match:
                 try:
                     self.add_pending_script(script)
                 except ValidationError as e:

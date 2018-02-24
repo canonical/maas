@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = []
@@ -173,14 +173,29 @@ class TestScriptSetManager(MAASServerTestCase):
 
     def test_create_commissioning_script_set_adds_for_hardware_matches_tag(
             self):
+        node = factory.make_Node()
+        system_vendor = factory.make_NodeMetadata(
+            node=node, key='system_vendor')
+        system_product = factory.make_NodeMetadata(
+            node=node, key='system_product')
+        system_version = factory.make_NodeMetadata(
+            node=node, key='system_version')
+        mainboard_vendor = factory.make_NodeMetadata(
+            node=node, key='mainboard_vendor')
+        mainboard_product = factory.make_NodeMetadata(
+            node=node, key='mainboard_product')
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=[random.choice([
                 "usb:174c:07d1",
                 "pci:8086:1918",
-                "modalias:pci:v00001A03d00001150sv000015D9*"
+                "modalias:pci:v00001A03d00001150sv000015D9*",
+                "system_vendor:%s" % system_vendor.value,
+                "system_product:%s" % system_product.value,
+                "system_version:%s" % system_version.value,
+                "mainboard_vendor:%s" % mainboard_vendor.value,
+                "mainboard_product:%s" % mainboard_product.value,
             ])])
-        node = factory.make_Node()
         to_mock = (
             node.__module__ + "." +
             node.__class__.__qualname__ +
@@ -208,14 +223,29 @@ class TestScriptSetManager(MAASServerTestCase):
 
     def test_create_commissioning_scripts_with_for_hardware_ignores_wo_tag(
             self):
+        node = factory.make_Node()
+        system_vendor = factory.make_NodeMetadata(
+            node=node, key='system_vendor')
+        system_product = factory.make_NodeMetadata(
+            node=node, key='system_product')
+        system_version = factory.make_NodeMetadata(
+            node=node, key='system_version')
+        mainboard_vendor = factory.make_NodeMetadata(
+            node=node, key='mainboard_vendor')
+        mainboard_product = factory.make_NodeMetadata(
+            node=node, key='mainboard_product')
         factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=[random.choice([
                 "usb:174c:07d1",
                 "pci:8086:1918",
-                "modalias:pci:v00001A03d00001150sv000015D9*"
+                "modalias:pci:v00001A03d00001150sv000015D9*",
+                "system_vendor:%s" % system_vendor.value,
+                "system_product:%s" % system_product.value,
+                "system_version:%s" % system_version.value,
+                "mainboard_vendor:%s" % mainboard_vendor.value,
+                "mainboard_product:%s" % mainboard_product.value,
             ])])
-        node = factory.make_Node()
         to_mock = (
             node.__module__ + "." +
             node.__class__.__qualname__ +
@@ -858,33 +888,30 @@ class TestScriptSet(MAASServerTestCase):
             list(NODE_INFO_SCRIPTS),
             [script_result.name for script_result in script_set])
 
-    def test_select_for_hardware_scripts_doesnt_remove_if_selected(self):
+    def test_select_for_hardware_scripts_adds_modalias(self):
+        node = factory.make_Node()
+        system_vendor = factory.make_NodeMetadata(
+            node=node, key='system_vendor')
+        system_product = factory.make_NodeMetadata(
+            node=node, key='system_product')
+        system_version = factory.make_NodeMetadata(
+            node=node, key='system_version')
+        mainboard_vendor = factory.make_NodeMetadata(
+            node=node, key='mainboard_vendor')
+        mainboard_product = factory.make_NodeMetadata(
+            node=node, key='mainboard_product')
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=[random.choice([
                 "usb:174c:07d1",
                 "pci:8086:1918",
-                "modalias:pci:v00001A03d00001150sv000015D9*"
+                "modalias:pci:v00001A03d00001150sv000015D9*",
+                "system_vendor:%s" % system_vendor.value,
+                "system_product:%s" % system_product.value,
+                "system_version:%s" % system_version.value,
+                "mainboard_vendor:%s" % mainboard_vendor.value,
+                "mainboard_product:%s" % mainboard_product.value,
             ])])
-        node = factory.make_Node()
-        script_set = ScriptSet.objects.create_commissioning_script_set(
-            node, [script.name])
-
-        script_set.select_for_hardware_scripts()
-
-        self.assertItemsEqual(
-            list(NODE_INFO_SCRIPTS) + [script.name],
-            [script_result.name for script_result in script_set])
-
-    def test_select_for_hardware_scripts_adds(self):
-        script = factory.make_Script(
-            script_type=SCRIPT_TYPE.COMMISSIONING,
-            for_hardware=[random.choice([
-                "usb:174c:07d1",
-                "pci:8086:1918",
-                "modalias:pci:v00001A03d00001150sv000015D9*"
-            ])])
-        node = factory.make_Node()
         script_set = ScriptSet.objects.create_commissioning_script_set(
             node, [random.choice(script.tags)])
 
@@ -900,6 +927,36 @@ class TestScriptSet(MAASServerTestCase):
                 'pci:v00001A03d00001150sv000015D9sd00000888bc06sc04i00',
             ]
             script_set.select_for_hardware_scripts()
+
+        self.assertItemsEqual(
+            list(NODE_INFO_SCRIPTS) + [script.name],
+            [script_result.name for script_result in script_set])
+
+    def test_select_for_hardware_scripts_adds_system_mainboard(self):
+        node = factory.make_Node()
+        system_vendor = factory.make_NodeMetadata(
+            node=node, key='system_vendor')
+        system_product = factory.make_NodeMetadata(
+            node=node, key='system_product')
+        system_version = factory.make_NodeMetadata(
+            node=node, key='system_version')
+        mainboard_vendor = factory.make_NodeMetadata(
+            node=node, key='mainboard_vendor')
+        mainboard_product = factory.make_NodeMetadata(
+            node=node, key='mainboard_product')
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            for_hardware=[random.choice([
+                "system_vendor:%s" % system_vendor.value,
+                "system_product:%s" % system_product.value,
+                "system_version:%s" % system_version.value,
+                "mainboard_vendor:%s" % mainboard_vendor.value,
+                "mainboard_product:%s" % mainboard_product.value,
+            ])])
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, [random.choice(script.tags)])
+
+        script_set.select_for_hardware_scripts()
 
         self.assertItemsEqual(
             list(NODE_INFO_SCRIPTS) + [script.name],

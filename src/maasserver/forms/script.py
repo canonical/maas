@@ -330,13 +330,19 @@ class ScriptForm(ModelForm):
             return
         regex = re.compile(
             '^modalias:.+|pci:[\da-f]{4}:[\da-f]{4}|'
-            'usb:[\da-f]{4}:[\da-f]{4}$', re.I)
+            'usb:[\da-f]{4}:[\da-f]{4}|'
+            'system_vendor:.*|'
+            'system_product:.*|'
+            'system_version:.*|'
+            'mainboard_vendor:.*|'
+            'mainboard_product:.*$', re.I)
         for hw_id in for_hardware:
             if regex.search(hw_id) is None:
                 set_form_error(
                     self, 'for_hardware',
-                    "Hardware identifier '%s' must be a modalias, PCI ID, or "
-                    "USB ID." % hw_id)
+                    "Hardware identifier '%s' must be a modalias, PCI ID, "
+                    "USB ID, system vendor, system product, system version, "
+                    "mainboard vendor, or mainboard product." % hw_id)
         return for_hardware
 
     def clean(self):

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API that runs in the Twisted reactor."""
@@ -345,13 +345,21 @@ class StatusWorkerService(TimerService, object):
         save_node = False
         if self._is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:
+                # cloud-init may send a failure message if a script reboots
+                # the system. If a script is running which may_reboot ignore
+                # the signal.
                 if result in ['FAIL', 'FAILURE']:
-                    node.mark_failed(
-                        comment="Commissioning failed, cloud-init reported "
-                        "a failure (refer to the event log for more "
-                        "information)", commit=False,
-                        script_result_status=SCRIPT_STATUS.ABORTED)
-                    save_node = True
+                    script_set = node.current_commissioning_script_set
+                    if (script_set is None or not
+                            script_set.scriptresult_set.filter(
+                                status=SCRIPT_STATUS.RUNNING,
+                                script__may_reboot=True).exists()):
+                        node.mark_failed(
+                            comment="Commissioning failed, cloud-init "
+                            "reported a failure (refer to the event log for "
+                            "more information)", commit=False,
+                            script_result_status=SCRIPT_STATUS.ABORTED)
+                        save_node = True
             elif node.status == NODE_STATUS.DEPLOYING:
                 if result in ['FAIL', 'FAILURE']:
                     node.mark_failed(
