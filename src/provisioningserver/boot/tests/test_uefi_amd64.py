@@ -132,7 +132,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
                 purpose="local", arch="amd64"),
             }
         output = method.get_reader(**options).read(10000).decode("utf-8")
-        self.assertIn("chainloader /efi/ubuntu/shimx64.efi", output)
+        self.assertIn("chainloader /efi/ubuntu/grubx64.efi", output)
 
     def test_get_reader_with_enlist_purpose(self):
         # If purpose is "enlist", the config.enlist.template should be
