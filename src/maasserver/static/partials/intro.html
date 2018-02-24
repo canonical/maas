@@ -1,6 +1,6 @@
 <section class="p-strip" data-ng-if="!loading">
     <div class="row">
-        <div class="col-10">
+        <div class="col-12">
             <div class="p-card--highlighted">
                 <h2 class="p-card__title">
                     <i data-ng-class="{ 'p-icon--success': !welcomeInError(), 'p-icon--error': welcomeInError() }"></i>
@@ -19,7 +19,7 @@
         </div>
     </div>
     <div class="row">
-        <div class="col-10">
+        <div class="col-12">
             <div class="p-card--highlighted">
                 <h2 class="p-card__title u-vertically-center">
                     <i data-ng-class="{ 'p-icon--success': !networkInError(), 'p-icon--error': networkInError() }"></i>&nbsp;Connectivity
@@ -61,7 +61,7 @@
         <maas-boot-images design="'card'"></maas-boot-images>
     </div>
     <div class="row">
-        <div class="col-10">
+        <div class="col-12">
             <button class="p-button--positive" data-ng-disabled="!canContinue()" data-ng-click="clickContinue()">Continue</button>
         </div>
     </div>
