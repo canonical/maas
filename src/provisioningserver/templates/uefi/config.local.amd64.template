@@ -7,7 +7,7 @@ menuentry 'Local' {
     search --set=root --file /efi/Microsoft/Boot/bootmgfw.efi
     chainloader /efi/Microsoft/Boot/bootmgfw.efi
     {{else}}
-    search --set=root --file /efi/ubuntu/shimx64.efi
-    chainloader /efi/ubuntu/shimx64.efi
+    search --set=root --file /efi/ubuntu/grubx64.efi
+    chainloader /efi/ubuntu/grubx64.efi
     {{endif}}
 }
