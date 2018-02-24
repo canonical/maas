@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The base class that all handlers must extend."""
@@ -336,6 +336,11 @@ class Handler(metaclass=HandlerMetaclass):
         else:
             raise HandlerNoSuchMethodError(method_name)
 
+    def _cache_pks(self, objs):
+        """Cache all loaded object pks."""
+        getpk = attrgetter(self._meta.pk)
+        self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
+
     def list(self, params):
         """List objects.
 
@@ -354,9 +359,7 @@ class Handler(metaclass=HandlerMetaclass):
         if "limit" in params:
             queryset = queryset[:params["limit"]]
         objs = list(queryset)
-
-        getpk = attrgetter(self._meta.pk)
-        self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
+        self._cache_pks(objs)
         return [
             self.full_dehydrate(obj, for_list=True)
             for obj in objs
@@ -368,8 +371,7 @@ class Handler(metaclass=HandlerMetaclass):
         :param pk: Object with primary key to return.
         """
         obj = self.get_object(params)
-        getpk = attrgetter(self._meta.pk)
-        self.cache["loaded_pks"].add(getpk(obj))
+        self._cache_pks([obj])
         return self.full_dehydrate(obj)
 
     def create(self, params):

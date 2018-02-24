@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The device handler for the WebSocket connection."""
@@ -6,6 +6,8 @@
 __all__ = [
     "DeviceHandler",
     ]
+
+from operator import attrgetter
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
@@ -135,6 +137,12 @@ class DeviceHandler(NodeHandler):
         listen_channels = [
             "device",
             ]
+
+    def _cache_pks(self, objs):
+        """Cache all loaded object pks."""
+        # Copy from base.py as devices don't have ScriptResults
+        getpk = attrgetter(self._meta.pk)
+        self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
 
     def get_queryset(self):
         """Return `QuerySet` for devices only viewable by `user`."""
