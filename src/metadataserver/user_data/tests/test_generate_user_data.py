@@ -93,9 +93,9 @@ class TestGenerateUserData(MAASServerTestCase):
         self.assertThat(
             base64.b64decode(user_data_script.get_payload()), ContainsAll({
                 b'export DEBIAN_FRONTEND=noninteractive',
-                b'signal OK',
+                b'maas-run-remote-scripts',
                 b'def signal',
-                b'VALID_STATUS =',
+                b'def download_and_extract_tar',
             }))
 
     def test_generate_user_data_produces_poweroff_script(self):

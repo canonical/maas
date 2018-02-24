@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata API."""
@@ -1283,6 +1283,83 @@ class TestMAASScripts(MAASServerTestCase):
                         'name', 'script_result_id')),
             }}, meta_data)
 
+    def test__returns_commissioning_scripts_when_entering_rescue_mode(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.ENTERING_RESCUE_MODE,
+            with_empty_script_sets=True)
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEquals(
+            node.current_commissioning_script_set.scriptresult_set.count() +
+            node.current_testing_script_set.scriptresult_set.count() + 1,
+            len(tar.getmembers()))
+
+        commissioning_meta_data = self.validate_scripts(
+            node.current_commissioning_script_set, 'commissioning',
+            tar, start_time, end_time)
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set, 'testing',
+            tar, start_time, end_time)
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
+                'commissioning_scripts': sorted(
+                    commissioning_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
+    def test__returns_commissioning_scripts_when_in_rescue_mode(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE, with_empty_script_sets=True)
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEquals(
+            node.current_commissioning_script_set.scriptresult_set.count() +
+            node.current_testing_script_set.scriptresult_set.count() + 1,
+            len(tar.getmembers()))
+
+        commissioning_meta_data = self.validate_scripts(
+            node.current_commissioning_script_set, 'commissioning',
+            tar, start_time, end_time)
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set, 'testing',
+            tar, start_time, end_time)
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
+                'commissioning_scripts': sorted(
+                    commissioning_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
     def test__removes_scriptless_script_result(self):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
@@ -2395,7 +2472,8 @@ class TestRescueModeAPI(MAASServerTestCase):
 
     def test_signaling_rescue_mode_failure_makes_failed_status(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
+            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
@@ -2406,7 +2484,8 @@ class TestRescueModeAPI(MAASServerTestCase):
     def test_signaling_entering_rescue_mode_ok_changes_status(self):
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
-            power_state=POWER_STATE.ON, power_type="virsh")
+            power_state=POWER_STATE.ON, power_type="virsh",
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
@@ -2415,11 +2494,36 @@ class TestRescueModeAPI(MAASServerTestCase):
 
     def test_signaling_entering_rescue_mode_does_not_set_owner_to_None(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
+            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNotNone(reload_object(node).owner)
+
+    def test_rescue_mode_accepts_commissioning_results(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = random.choice(
+            list(node.current_commissioning_script_set))
+        exit_status = random.randint(0, 255)
+        out = factory.make_string().encode()
+
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.WORKING, script_result=exit_status,
+            script_result_id=script_result.id,
+            files={script_result.name: out})
+
+        script_result = reload_object(script_result)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(out, script_result.output)
+        if exit_status == 0:
+            self.assertEqual(SCRIPT_STATUS.PASSED, script_result.status)
+        else:
+            self.assertEqual(SCRIPT_STATUS.FAILED, script_result.status)
 
 
 class TestByMACMetadataAPI(MAASServerTestCase):

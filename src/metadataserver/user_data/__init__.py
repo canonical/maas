@@ -1,10 +1,10 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Generate commissioning user-data from template and code snippets.
+"""Generate ephemeral user-data from template and code snippets.
 
 This combines the snippets of code in the `snippets` directory into
-the main commissioning script.
+the ephemeral script.
 
 Its contents are not customizable.  To inject custom code, use the
 :class:`Script` model.
@@ -74,9 +74,9 @@ def generate_user_data_for_status(node, status=None, extra_content=None):
     """Produce a user_data script based on the node's status."""
     templates = {
         NODE_STATUS.COMMISSIONING: 'commissioning.template',
-        NODE_STATUS.TESTING: 'testing.template',
+        NODE_STATUS.TESTING: 'script_runner.template',
         NODE_STATUS.DISK_ERASING: 'disk_erasing.template',
-        NODE_STATUS.RESCUE_MODE: 'rescue_mode.template',
+        NODE_STATUS.RESCUE_MODE: 'script_runner.template',
     }
     if status is None:
         status = node.status

@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -421,8 +421,8 @@ class VersionIndexHandler(MetadataViewHandler):
 
     # States in which a node is allowed to signal
     # commissioning/installing/entering-rescue-mode status.
-    # (Only in Commissioning/Deploying/EnteringRescueMode state, however,
-    # will it have any effect.)
+    # (Only in Commissioning/Deploying/EnteringRescueMode/RescueMode state,
+    # however, will it have any effect.)
     signalable_states = [
         NODE_STATUS.BROKEN,
         NODE_STATUS.COMMISSIONING,
@@ -432,6 +432,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.READY,
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
+        NODE_STATUS.RESCUE_MODE,
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
         NODE_STATUS.FAILED_TESTING,
@@ -442,6 +443,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
+        NODE_STATUS.RESCUE_MODE,
         NODE_STATUS.TESTING,
     ]
 
@@ -611,11 +613,16 @@ class VersionIndexHandler(MetadataViewHandler):
         return None
 
     def _process_entering_rescue_mode(self, node, request, status):
-        if status == SIGNAL_STATUS.OK:
+        if status in (SIGNAL_STATUS.OK, SIGNAL_STATUS.WORKING):
             # entering rescue mode completed, set status
             return NODE_STATUS.RESCUE_MODE
         elif status == SIGNAL_STATUS.FAILED:
             node.mark_failed(comment="Failed to enter rescue mode.")
+        return None
+
+    def _process_rescue_mode(self, node, request, status):
+        self._store_results(
+            node, node.current_commissioning_script_set, request, status)
         return None
 
     @operation(idempotent=False)
@@ -675,6 +682,7 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_STATUS.DISK_ERASING: self._process_disk_erasing,
                 NODE_STATUS.ENTERING_RESCUE_MODE:
                     self._process_entering_rescue_mode,
+                NODE_STATUS.RESCUE_MODE: self._process_rescue_mode,
             }
             process = process_status_dict[node.status]
         else:
@@ -999,9 +1007,13 @@ class MAASScriptsHandler(OperationsHandler):
         # Responses are currently gzip compressed using
         # django.middleware.gzip.GZipMiddleware.
         with tarfile.open(mode='w', fileobj=binary) as tar:
-            # Commissioning scripts should only be run during commissioning.
-            if (node.status == NODE_STATUS.COMMISSIONING and
-                    node.current_commissioning_script_set is not None):
+            # Commissioning scripts should only be run during commissioning or
+            # in rescue mode.
+            if (node.status in (
+                    NODE_STATUS.COMMISSIONING,
+                    NODE_STATUS.ENTERING_RESCUE_MODE,
+                    NODE_STATUS.RESCUE_MODE,
+                    ) and node.current_commissioning_script_set is not None):
                 # Prefetch all the data we need.
                 qs = node.current_commissioning_script_set.scriptresult_set
                 qs = qs.select_related('script', 'script__script')
