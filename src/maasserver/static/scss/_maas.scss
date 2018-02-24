@@ -194,4 +194,21 @@
     height: auto;
     min-height: auto;
   }
+
+  // Bespoke styling for script reveal functionality
+  .p-script-expander {
+    border-color: $color-mid-light;
+    border-bottom-style: dotted;
+    border-bottom-width: 1px;
+
+    &__content {
+      overflow: hidden;
+      width: 100%;
+      margin-top: 0;
+    }
+
+    &__controls {
+      vertical-align: top;
+    }
+  }
 }

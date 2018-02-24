@@ -267,10 +267,10 @@ module.Reveal = Reveal;
 
 YUI().use('maas.reveal', function (Y) {
   Y.on('domready', function() {
-    Y.all('.script-expander').each(function (script_entry) {
+    Y.all('.p-script-expander').each(function (script_entry) {
       var script_expander = new Y.maas.reveal.Reveal({
-        targetNode: script_entry.one('.script-content'),
-        linkNode: script_entry.one('.script-trigger')
+        targetNode: script_entry.one('.p-script-expander__content'),
+        linkNode: script_entry.one('.p-script-expander__trigger')
         });
       script_expander.render();
     });

@@ -83,7 +83,13 @@
   }
 
   [class^="p-icon"] {
-    margin-right: 0.25em;
+    margin-right: .25em;
+    top: 0;
+
+    &.on-right {
+      margin-left: .25em;
+      margin-right: 0;
+    }
   }
 
   // XXX Use ems rather than rems for icon sizing

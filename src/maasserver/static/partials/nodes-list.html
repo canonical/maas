@@ -914,9 +914,11 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
 
                 </div>
-                <maas-machines-table id="nodes-listing" search="tabs.nodes.search" ng-disabled="hasActionsInProgress('nodes')"
-                  machine-has-error="!supportsAction($machine, 'nodes')" on-listing-change="onNodeListingChanged($machines, 'nodes')"
-                  on-check-all="toggleCheckAll('nodes')" on-check="toggleChecked($machine, 'nodes')"></maas-machines-table>
+                <div>
+                    <maas-machines-table id="nodes-listing" search="tabs.nodes.search" ng-disabled="hasActionsInProgress('nodes')"
+                    machine-has-error="!supportsAction($machine, 'nodes')" on-listing-change="onNodeListingChanged($machines, 'nodes')"
+                    on-check-all="toggleCheckAll('nodes')" on-check="toggleChecked($machine, 'nodes')"></maas-machines-table>
+                </div>
             </form>
         </div>
         <div class="col-9" class="ng-hide" data-ng-show="currentpage === 'devices'">

@@ -3,13 +3,13 @@
     <tbody>
     {% for script in test_scripts %}
         <tr id="{{ script.name }}">
-            <td class="script-expander">
-                <a href="#" class="script-trigger">{{ script.name }}</a>
-                <div class="script-content">
+            <td class="p-script-expander">
+                <a href="#" class="p-script-expander__trigger">{{ script.name }}</a>
+                <div class="p-script-expander__content">
                     <pre>{{ script.script.data }}</pre>
                 </div>
             </td>
-            <td class="icon-controls u-align--right">
+            <td class="p-script-expander__controls u-align--right">
                 <a title="Delete test script {{ script.name }}" class="p-icon--delete" href="{% url 'test-script-delete' script.id %}">Delete</a>
             </td>
         </tr>

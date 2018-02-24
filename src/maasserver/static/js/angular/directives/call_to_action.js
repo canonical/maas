@@ -16,7 +16,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
           'data-ng-click="shown=!shown"',
         '>',
           '{$ getTitle() $}',
-          '<i class="p-icon--chevron"></i>',
+          '<i class="p-icon--chevron on-right"></i>',
         '</button>',
         '<div class="p-contextual-menu__dropdown" ',
           'id="cta-menu" ',
