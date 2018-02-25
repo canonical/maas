@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """BMC objects."""
@@ -23,6 +23,7 @@ from django.db.models import (
     Manager,
     ManyToManyField,
     PROTECT,
+    SET_DEFAULT,
     SET_NULL,
     TextField,
 )
@@ -48,6 +49,7 @@ from maasserver.models.iscsiblockdevice import (
     ISCSIBlockDevice,
 )
 from maasserver.models.node import (
+    get_default_zone,
     Machine,
     Node,
 )
@@ -59,6 +61,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.vlan import VLAN
+from maasserver.models.zone import Zone
 from maasserver.rpc import (
     getAllClients,
     getClientFromIdentifiers,
@@ -154,6 +157,7 @@ class BMC(CleanSave, TimestampedModel):
     #  7. Total about in bytes of local storage available in the Pod.
     #  8. Total number of available local disks in the Pod.
     #  9. The resource pool machines in the pod should belong to by default.
+    #  10. The zone of the Pod.
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
     architectures = ArrayField(
@@ -171,6 +175,9 @@ class BMC(CleanSave, TimestampedModel):
     default_pool = ForeignKey(
         ResourcePool, default=None, null=True, blank=True, editable=True,
         on_delete=PROTECT)
+    zone = ForeignKey(
+        Zone, verbose_name="Physical zone", default=get_default_zone,
+        editable=True, db_index=True, on_delete=SET_DEFAULT)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -584,6 +591,13 @@ class Pod(BMC):
                     discovered_machine.hostname):
                 discovered_machine.hostname = None
 
+        # Set the zone for the machine.
+        # This allows machines to be created in the Pod
+        # with a zone other than the zone of the Pod.
+        zone = kwargs.pop('zone', None)
+        if zone is None:
+            zone = self.zone
+
         # Create the machine.
         machine = Machine(
             hostname=discovered_machine.hostname,
@@ -594,7 +608,8 @@ class Pod(BMC):
             memory=discovered_machine.memory,
             power_state=discovered_machine.power_state,
             creation_type=creation_type,
-            pool=self.default_pool, **kwargs)
+            pool=self.default_pool,
+            zone=zone, **kwargs)
         machine.bmc = self
         machine.instance_power_parameters = discovered_machine.power_parameters
         if not machine.hostname:

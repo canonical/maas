@@ -1579,6 +1579,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
             request.POST, 'verbose', default=False, validator=StringBool)
         dry_run = get_optional_param(
             request.POST, 'dry_run', default=False, validator=StringBool)
+        zone = get_optional_param(request.POST, 'zone', default=None)
 
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -1612,8 +1613,14 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "architecture": architecture,
                     "storage": storage,
                 }
-                pods = Pod.objects.filter(
-                    default_pool__role__users=request.user)
+                # Only match allocation if Pod's zone matches.
+                if zone is not None:
+                    pods = Pod.objects.filter(
+                        default_pool__role__users=request.user,
+                        zone__name=zone)
+                else:
+                    pods = Pod.objects.filter(
+                        default_pool__role__users=request.user)
                 # We don't want to compose a machine from a pod if the
                 # constraints contain tags.
                 if pods and not any(

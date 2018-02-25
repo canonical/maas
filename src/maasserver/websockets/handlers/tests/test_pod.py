@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.pod`"""
@@ -152,7 +152,8 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 'iscsi_storage': pod.hints.iscsi_storage,
                 'iscsi_storage_gb': '%.1f' % (
                     pod.hints.iscsi_storage / (1024 ** 3)),
-                }
+                },
+            "zone": pod.zone.id
             }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
             data['total']['local_disks'] = pod.local_disks

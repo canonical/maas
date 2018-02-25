@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -862,6 +862,20 @@ class TestPod(MAASServerTestCase):
         pod = factory.make_Pod(default_pool=pool)
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertEqual(pool, machine.pool)
+
+    def test_create_machine_sets_zone(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        zone = factory.make_Zone()
+        pod = factory.make_Pod(zone=zone)
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertEqual(zone, machine.zone)
 
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()
