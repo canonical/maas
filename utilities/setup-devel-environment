@@ -4,7 +4,7 @@ ROOT_DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd)"
 RUN_DIR=$ROOT_DIR=/.run
 
 sudo add-apt-repository -u ppa:maas/next-proposed
-sudo apt install authbind maas-dhcp ntp squid-deb-proxy
+sudo apt install authbind maas-dhcp chrony squid-deb-proxy
 if grep -q "^BindsTo=maas" /lib/systemd/system/maas-dhcpd.service
 then
     # Since we'll run the rackd service manuall, without using systemd,

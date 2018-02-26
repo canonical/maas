@@ -7,9 +7,9 @@ maas ALL= NOPASSWD: /usr/lib/maas/beacon-monitor
 
 # Control of the NTP server: MAAS needs to reconfigure it after editing
 # its configuration file, and start it again if stopped manually.
-maas ALL= NOPASSWD: /bin/systemctl restart ntp
-maas ALL= NOPASSWD: /bin/systemctl start ntp
-maas ALL= NOPASSWD: /bin/systemctl status ntp
+maas ALL= NOPASSWD: /bin/systemctl restart chrony
+maas ALL= NOPASSWD: /bin/systemctl start chrony
+maas ALL= NOPASSWD: /bin/systemctl status chrony
 
 # Writing and deleting files as root.
 maas ALL= NOPASSWD: /usr/lib/maas/maas-delete-file
