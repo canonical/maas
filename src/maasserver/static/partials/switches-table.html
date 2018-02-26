@@ -1,4 +1,4 @@
-<table>
+<table class="p-table--sortable">
     <thead>
         <tr>
             <th class="u-display--block-mobile" aria-label="Select all" data-ng-if="!hideCheckboxes">
@@ -6,31 +6,20 @@
                 <label class="checkbox-label" for="check-all"></label>
             </th>
             <th class="u-align--left" colspan="2">
-                <a href=""
+                <span role="columnheader"
                     data-ng-click="selectColumnOrSort('fqdn')"
-                    data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Fully Qualified Domain Name">FQDN</span></a>
+                    data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><abbr title="Fully Qualified Domain Name">FQDN</abbr></span>
                 <span class="divide"></span>
-                <a href=""
+                <span role="columnheader"
                     data-ng-click="selectColumnOrSort('pxe_mac')"
-                    data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Media Access Control addresses">MAC</span></a>
+                    data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><abbr title="Media Access Control addresses">MAC</abbr></span>
             </th>
-            <th>
-                <a href="" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</a>
-            </th>
-            <th>
-            </th>
-            <th>
-                <a href="" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Status</a>
-            </th>
-            <th>
-                <a href="" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('model')" data-ng-class="{'is-sorted': table.predicate=== 'model', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Model</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('serial')" data-ng-class="{'is-sorted': table.predicate === 'serial', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Serial</a>
-            </th>
+            <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</th>
+            <th></th>
+            <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Status</th>
+            <th role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner</th>
+            <th class="u-align--right" role="columnheader" data-ng-click="sortTable('model')" data-ng-class="{'is-sorted': table.predicate=== 'model', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Model</th>
+            <th class="u-align--right" role="columnheader" data-ng-click="sortTable('serial')" data-ng-class="{'is-sorted': table.predicate === 'serial', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Serial</th>
         </tr>
     </thead>
     <tbody vs-repeat vs-scroll-parent="window">

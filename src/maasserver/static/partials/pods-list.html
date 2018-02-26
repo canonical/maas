@@ -113,7 +113,7 @@
             </div>
         </div>
         <div class="row">
-            <table class="p-table-expanding" data-ng-if="pods.length > 0">
+            <table class="p-table-expanding p-table--sortable" data-ng-if="pods.length > 0">
                 <thead>
                     <tr>
                         <th class="col-2">
@@ -121,28 +121,14 @@
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                                 <label for="check-all-pods" class="checkbox-label"></label>
                             </div>
-                            <a href="" class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
-                                <span title="Name">Name</span>
-                            </a>
                         </th>
-                        <th class="col-1">
-                            <a href="" class="table__header-link" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
-                        </th>
-                        <th class="col-2">
-                            <a href="" class="table__header-link" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
-                        </th>
-                        <th class="col-2">
-                            <a href="" class="table__header-link" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">iSCSI storage (GiB)</a>
-                        </th>
-                        <th class="col-1">
-                            <a href="" class="table__header-link" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
-                        </th>
-                        <th class="col-2">
-                            <a href="" class="table__header-link" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
-                        </th>
-                        <th class="col-2 u-align--right">
-                            <a href="" class="table__header-link" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</a>
-                        </th>
+                        <th class="col-2" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</th>
+                        <th class="col-1" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</th>
+                        <th class="col-2" role="columnheader" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</th>
+                        <th class="col-2" role="columnheader" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">iSCSI storage (GiB)</th>
+                        <th class="col-1" role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</th>
+                        <th class="col-1" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</th>
+                        <th class="col-2 u-align--right" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</th>
                     </tr>
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
