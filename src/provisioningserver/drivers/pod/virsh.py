@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Virsh pod driver."""
@@ -771,9 +771,11 @@ class VirshSSH(pexpect.spawn):
         # Ensure that its destroyed first.
         self.run(['destroy', domain])
         # Undefine the domains and remove all storage and snapshots.
+        # XXX newell 2018-02-25 bug=1741165
+        # Removed the --delete-snapshots flag to workaround the volumes not
+        # being deleted.  See the bug for more details.
         self.run([
-            'undefine', domain,
-            '--remove-all-storage', '--delete-snapshots', '--managed-save'])
+            'undefine', domain, '--remove-all-storage', '--managed-save'])
 
 
 class VirshPodDriver(PodDriver):
