@@ -64,7 +64,7 @@ class MAASAPIAuthentication(OAuthAuthentication):
 
         return False
 
-    def challenge(self):
+    def challenge(self, request):
         # Beware: this returns 401: Unauthorized, not 403: Forbidden
         # as the name implies.
         return rc.FORBIDDEN
