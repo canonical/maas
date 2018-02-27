@@ -3406,6 +3406,7 @@ class TestNode(MAASServerTestCase):
         # Regression test for LP:1603563
         node = factory.make_Node(status=NODE_STATUS.RELEASING)
         Node._set_status_expires(node.system_id, 60)
+        node = reload_object(node)
         node.status = NODE_STATUS.READY
         node.save()
         node = reload_object(node)

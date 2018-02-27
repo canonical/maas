@@ -1438,7 +1438,7 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
             notification_exists, Equals(self.expected_notification))
         Config.objects.set_config(
             'subnet_ip_exhaustion_threshold_count', 0)
-        range.save()
+        range.save(force_update=True)
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
         self.assertThat(notification_exists, Equals(False))
