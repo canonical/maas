@@ -6,6 +6,7 @@
 __all__ = []
 
 from crochet import wait_for
+from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -45,7 +46,7 @@ class TestSwitch(MAASServerTestCase):
         # and nos_driver.
         switch1 = factory.make_Switch()
         self.assertRaises(
-            ValidationError, factory.make_Switch, node=switch1.node)
+            IntegrityError, factory.make_Switch, node=switch1.node)
 
     def test_nos_parameters(self):
         # A Switch object can have nos_parameters set to an object

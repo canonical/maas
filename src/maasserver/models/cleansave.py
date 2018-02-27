@@ -175,35 +175,80 @@ class CleanSave:
 
     def save(self, *args, **kwargs):
         """Perform `full_clean` before save and only save changed fields."""
-        # Exclude the related fields in the validation because postgresql will
-        # do this for us, we don't need Django doing this. Don't
-        related_fields = [
+        exclude_clean_fields = {self._meta.pk.name} | set(
             field.name
             for field in self._meta.fields
             if field.is_relation
-        ]
-        self.full_clean(
-            exclude=[self._meta.pk.name] + related_fields,
-            validate_unique=False)
-        #print('%s - [SAVE] changed %s' % (type(self).__name__, self._state._changed_fields))
-        #import pdb; pdb.set_trace()
+        )
         if self._state._changed_fields:
             if ('update_fields' not in kwargs and
                     not kwargs.get('force_insert', False) and
                     not kwargs.get('force_update', False) and
                     self.pk is not None and
                     self._meta.pk.attname not in self._state._changed_fields):
+                # This is the new path where saving only updates the fields
+                # that have actually changed.
                 kwargs['update_fields'] = [
                     key
                     for key, value in self._state._changed_fields.items()
                     if value is not FieldUnset
                 ]
-                #print('%s - [SAVE] update_fields %s' % (type(self).__name__, kwargs['update_fields']))
+
+                # Exclude the related fields and fields that didn't change
+                # in the validation.
+                exclude_clean_fields |= set(
+                    field.name
+                    for field in self._meta.fields
+                    if field.attname not in kwargs['update_fields']
+                )
+                self.full_clean(
+                    exclude=list(exclude_clean_fields),
+                    validate_unique=False)
+
+                # Validate uniqueness only for fields that have changed and
+                # never the primary key.
+                exclude_unique_fields = {self._meta.pk.name} | set(
+                    field.name
+                    for field in self._meta.fields
+                    if field.attname not in kwargs['update_fields']
+                )
+                self.validate_unique(exclude=list(exclude_unique_fields))
+
+                # Re-create the update_fields from `_changed_fields` after
+                # performing clean because some clean methods will modify
+                # fields on the model.
+                kwargs['update_fields'] = [
+                    key
+                    for key, value in self._state._changed_fields.items()
+                    if value is not FieldUnset
+                ]
                 obj = super(CleanSave, self).save(*args, **kwargs)
             else:
+                # This is the original path built-in to Django. We modify the
+                # full_clean so validation of related fields will not be
+                # performed (as it causes a query to check existence which
+                # postgres already does). We manually call validate_unique for
+                # all fields except the primary key which postgres will also
+                # do for us.
+                self.full_clean(
+                    exclude=list(exclude_clean_fields),
+                    validate_unique=False)
+                self.validate_unique(exclude=[self._meta.pk.name])
                 obj = super(CleanSave, self).save(*args, **kwargs)
             self._state._changed_fields = {}
             return obj
+        elif ('update_fields' in kwargs or
+                kwargs.get('force_insert', False) or
+                kwargs.get('force_update', False) or
+                self.pk is None):
+            # Nothing has changed, but parameters passed requires a save to
+            # occur. Perform the same validation as above for the default
+            # Django path, with the exceptions.
+            self.full_clean(
+                exclude=list(exclude_clean_fields),
+                validate_unique=False)
+            self.validate_unique(exclude=[self._meta.pk.name])
+            return super(CleanSave, self).save(*args, **kwargs)
         else:
             # Nothing changed so nothing needs to be saved.
             return self

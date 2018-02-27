@@ -875,7 +875,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 re.escape(
                     "{'__all__': ['At least one filesystem must have "
                     "been added.']}")):
-            fsgroup.save()
+            fsgroup.save(force_update=True)
 
     def test_cannot_save_without_filesystems_from_different_nodes(self):
         filesystems = [

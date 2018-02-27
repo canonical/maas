@@ -559,9 +559,7 @@ class Factory(maastesting.factory.Factory):
             node = self.make_Node(
                 owner=owner, node_type=NODE_TYPE.MACHINE, **kwargs)
             node.save()
-        switch = Switch(node=node, **nos_kwargs)
-        switch.save()
-        return switch
+        return Switch.objects.create(node=node, **nos_kwargs)
 
     def make_RegionRackController(self, *args, **kwargs):
         region_rack = self.make_RackController(*args, **kwargs)
@@ -1379,7 +1377,7 @@ class Factory(maastesting.factory.Factory):
         if parents:
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
-        interface.save()
+        interface.save(force_update=True)
         return reload_object(interface)
 
     def make_IPRange(
@@ -2198,7 +2196,7 @@ class Factory(maastesting.factory.Factory):
             for filesystem in filesystems:
                 group.filesystems.add(filesystem)
         # Save again to make sure that the added filesystems are correct.
-        group.save()
+        group.save(force_update=True)
         return group
 
     def make_VolumeGroup(self, *args, **kwargs):

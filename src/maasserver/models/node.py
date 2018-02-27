@@ -35,10 +35,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db import (
-    connection,
-    transaction,
-)
+from django.db import connection
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -59,7 +56,6 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
-from django.db.utils import IntegrityError
 from django.shortcuts import get_object_or_404
 from maasserver import (
     DefaultMeta,
@@ -230,7 +226,6 @@ from provisioningserver.utils.twisted import (
     deferWithTimeout,
     synchronous,
 )
-from psycopg2.errorcodes import UNIQUE_VIOLATION
 from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
@@ -2408,20 +2403,12 @@ class Node(CleanSave, TimestampedModel):
         """Set a random `hostname`."""
         while True:
             self.hostname = petname.Generate(2, "-")
-            with transaction.atomic():
-                try:
-                    self.save()
-                except IntegrityError as exc:
-                    if (exc.__cause__.pgcode == UNIQUE_VIOLATION and
-                            exc.__cause__.diag.constraint_name == (
-                                'maasserver_node_hostname_key')):
-                        # Database caught the unique error on hostname.
-                        pass
-                    else:
-                        # Unknown IntegrityError, raise!
-                        raise
-                else:
-                    break
+            try:
+                self.save()
+            except ValidationError:
+                pass
+            else:
+                break
 
     def get_effective_power_type(self):
         """Get power-type to use for this node.
