@@ -5,7 +5,7 @@
 
 from copy import copy
 
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
 
 
 __all__ = [
@@ -15,6 +15,9 @@ __all__ = [
 
 # Used to track that the field was unset.
 FieldUnset = object()
+
+# Used to track when the original object was deleted.
+ObjectDeleted = object()
 
 
 class CleanSaveState:
@@ -114,7 +117,10 @@ class CleanSave:
                     super(CleanSave, self).__setattr__(name, value)
                     self.__marked_changed(name, None, value)
                 else:
-                    old = getattr(self, name, FieldUnset)
+                    try:
+                        old = getattr(self, name, FieldUnset)
+                    except ObjectDoesNotExist:
+                        old = ObjectDeleted
                     super(CleanSave, self).__setattr__(name, value)
                     new = getattr(self, name, FieldUnset)
                     self.__marked_changed(name, old, new)
@@ -169,10 +175,8 @@ class CleanSave:
 
     def save(self, *args, **kwargs):
         """Perform `full_clean` before save and only save changed fields."""
-        # Validating relations will ensure that the objects exist in the
-        # database, why? That is what relational database are for! Skip
-        # validating relations postgresql will do that for us, because its an
-        # actual database!
+        # Exclude the related fields in the validation because postgresql will
+        # do this for us, we don't need Django doing this. Don't
         related_fields = [
             field.name
             for field in self._meta.fields
@@ -182,7 +186,7 @@ class CleanSave:
             exclude=[self._meta.pk.name] + related_fields,
             validate_unique=False)
         #print('%s - [SAVE] changed %s' % (type(self).__name__, self._state._changed_fields))
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         if self._state._changed_fields:
             if ('update_fields' not in kwargs and
                     not kwargs.get('force_insert', False) and
@@ -200,8 +204,6 @@ class CleanSave:
                 obj = super(CleanSave, self).save(*args, **kwargs)
             self._state._changed_fields = {}
             return obj
-        elif self.pk is None:
-            return super(CleanSave, self).save(*args, **kwargs)
         else:
             # Nothing changed so nothing needs to be saved.
             return self

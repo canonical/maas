@@ -9,7 +9,6 @@ from collections import Iterable
 from datetime import datetime
 import random
 
-from django.core.exceptions import ValidationError
 from maasserver.clusterrpc import osystems
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
@@ -295,7 +294,9 @@ class TestBootResourceManager(MAASServerTestCase):
         resource = resources.pop()
         subarches = [factory.make_name('subarch') for _ in range(3)]
         subarch = random.choice(subarches)
-        resource.extra['subarches'] = ','.join(subarches)
+        extra = resource.extra.copy()
+        extra['subarches'] = ','.join(subarches)
+        resource.extra = extra
         resource.save()
         osystem, series = resource.name.split('/')
         arch, _ = resource.split_arch()

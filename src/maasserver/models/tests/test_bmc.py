@@ -83,7 +83,7 @@ class TestBMC(MAASServerTestCase):
 
     def make_machine_and_bmc_with_shared_ip(self):
         machine = factory.make_Node(interface=False)
-        machine.interface_set = []
+        machine.interface_set.clear()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         interface = factory.make_Interface(
@@ -107,7 +107,7 @@ class TestBMC(MAASServerTestCase):
 
     def make_machine_and_bmc_differing_ips(self):
         machine = factory.make_Node(interface=False)
-        machine.interface_set = []
+        machine.interface_set.clear()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         interface = factory.make_Interface(
