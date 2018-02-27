@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.pod.virsh`."""
@@ -1032,7 +1032,6 @@ class TestVirshSSH(MAASTestCase):
             call([
                 'undefine', domain,
                 '--remove-all-storage',
-                '--delete-snapshots',
                 '--managed-save'])))
 
 
