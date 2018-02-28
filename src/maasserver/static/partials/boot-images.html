@@ -1,15 +1,16 @@
 <form class="form">
     <div data-ng-if="!loading" data-ng-class="{'p-strip is-bordered': design === 'page', 'p-card--highlighted col-12': design === 'card'}">
         <div class="row">
-            <div class="col-8">
-                <h2 class="u-vertically-center"><span data-ng-if="design === 'card'"><i class="{$ getTitleIcon() $}"></i>&nbsp;</span>Ubuntu</h2>
+            <div class="col-12">
+                <h2 class="p-heading--four"><span data-ng-if="design === 'card'"><i class="{$ getTitleIcon() $}"></i>&nbsp;</span>Ubuntu</h2>
+                <hr />
                 <p data-ng-if="isSuperUser() && !source.tooMany">
                     Select images and architecture to be imported and kept in sync daily. Images will be available for deploying to machines managed by MAAS.
                 </p>
             </div>
         </div>
         <div class="row" data-ng-if="isSuperUser() && !source.tooMany">
-            <h3>Choose source</h3>
+            <h3 class="p-heading--five">Choose source</h3>
         </div>
         <div class="row">
             <div class="col-2">
@@ -23,7 +24,7 @@
         </div>
         <div class="row" data-ng-if="isSuperUser() && !source.tooMany && showMirrorPath()">
             <div class="col-8">
-                <h3>Mirror URL</h3>
+                <h3 class="p-heading--five">Mirror URL</h3>
                 <p>Add the URL you want to use to select your images from.</p>
             </div>
         </div>
