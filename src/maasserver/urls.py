@@ -20,6 +20,7 @@ from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
 )
+from maasserver.macaroon_auth import MacaroonDischargeRequest
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     authenticate,
@@ -27,7 +28,6 @@ from maasserver.views.account import (
     logout,
 )
 from maasserver.views.index import IndexView
-from maasserver.views.macaroon_auth import MacaroonDischargeRequest
 from maasserver.views.prefs import (
     SSLKeyCreateView,
     SSLKeyDeleteView,

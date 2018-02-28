@@ -348,7 +348,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # Because of fields `status_action`, `status_message`,
         # `default_gateways`, and `health_status` the number of queries is not
         # the same but it is proportional to the number of machines.
-        DEFAULT_NUM = 58
+        DEFAULT_NUM = 59
         self.assertEqual(DEFAULT_NUM + (10 * 4), num_queries1)
         self.assertEqual(DEFAULT_NUM + (20 * 4), num_queries2)
 
