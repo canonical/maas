@@ -154,6 +154,30 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test__with_prefer_v4_proxy_False(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "prefer_v4_proxy", False)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertNotIn('dns_v4_first on', lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__with_prefer_v4_proxy_True(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "prefer_v4_proxy", True)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn('dns_v4_first on', lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__calls_reloadService(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)

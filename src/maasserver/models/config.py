@@ -69,11 +69,15 @@ def get_default_config():
         'maas_name': gethostname(),
         'default_osystem': DEFAULT_OS.name,
         'default_distro_series': DEFAULT_OS.get_default_release(),
+        # Proxy settings
         'enable_http_proxy': True,
         'use_peer_proxy': False,
         'http_proxy': None,
+        'prefer_v4_proxy': False,
+        # DNS settings
         'upstream_dns': None,
         'dnssec_validation': "auto",
+        # NTP settings
         'ntp_servers': 'ntp.ubuntu.com',
         'ntp_external_only': False,
         'omapi_key': '',
