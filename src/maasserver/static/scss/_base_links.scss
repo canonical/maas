@@ -1,0 +1,6 @@
+@mixin maas-b-links {
+  // Override the visited link style as its unnecessary
+  a:visited {
+    color: $color-link;
+  }
+}
