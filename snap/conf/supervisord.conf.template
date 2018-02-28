@@ -92,9 +92,9 @@ stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd6.log
 {{if rackd or regiond}}
 [program:ntp]
 process_name=ntp
-command=%(ENV_SNAP)s/bin/run-ntpd
+command=%(ENV_SNAP)s/bin/run-chronyd
 stopasgroup=true
 killasgroup=true
 redirect_stderr=true
-stdout_logfile=%(ENV_SNAP_COMMON)s/log/ntp.log
+stdout_logfile=%(ENV_SNAP_COMMON)s/log/chrony.log
 {{endif}}

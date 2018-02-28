@@ -73,6 +73,7 @@ def proxy_update_config(reload_proxy=True):
         http_proxy = Config.objects.get_config("http_proxy")
         upstream_proxy_enabled = (
             Config.objects.get_config("use_peer_proxy") and http_proxy)
+        dns_v4_first = Config.objects.get_config("prefer_v4_proxy")
         context = {
             'allowed': allowed_subnets,
             'modified': str(datetime.date.today()),
@@ -83,6 +84,7 @@ def proxy_update_config(reload_proxy=True):
             'snap_data_path': snappy.get_snap_data_path(),
             'snap_common_path': snappy.get_snap_common_path(),
             'upstream_peer_proxy': upstream_proxy_enabled,
+            'dns_v4_first': dns_v4_first,
         }
 
         proxy_enabled = Config.objects.get_config("enable_http_proxy")

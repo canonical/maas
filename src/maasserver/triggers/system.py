@@ -1599,7 +1599,8 @@ PEER_PROXY_CONFIG_INSERT = dedent("""\
     BEGIN
       IF (NEW.name = 'enable_proxy' OR
           NEW.name = 'use_peer_proxy' OR
-          NEW.name = 'http_proxy') THEN
+          NEW.name = 'http_proxy' OR
+          NEW.name = 'prefer_v4_proxy') THEN
         PERFORM pg_notify('sys_proxy', '');
       END IF;
       RETURN NEW;
@@ -1615,7 +1616,8 @@ PEER_PROXY_CONFIG_UPDATE = dedent("""\
     BEGIN
       IF (NEW.name = 'enable_proxy' OR
           NEW.name = 'use_peer_proxy' OR
-          NEW.name = 'http_proxy') THEN
+          NEW.name = 'http_proxy' OR
+          NEW.name = 'prefer_v4_proxy') THEN
         PERFORM pg_notify('sys_proxy', '');
       END IF;
       RETURN NEW;

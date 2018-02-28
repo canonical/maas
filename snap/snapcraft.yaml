@@ -52,7 +52,7 @@ parts:
       - libjs-yui3-full
       - libjs-yui3-min
       - lshw
-      - ntp
+      - chrony
       - openssh-client
       - postgresql
       - python3-bson
@@ -136,7 +136,7 @@ parts:
     source: snap
     organize:
       bind: usr/share/maas/bind
-      conf/ntp.conf: usr/share/maas/ntp.conf
+      conf/chrony.conf: usr/share/maas/chrony.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
     stage:
       - -conf

@@ -26,7 +26,7 @@ from testtools.matchers import (
 
 
 def read_configuration(path):
-    with open(path, "r", encoding="ascii") as fd:
+    with open(path, "r", encoding="utf-8") as fd:
         return fd.read()
 
 
@@ -58,7 +58,7 @@ def extract_peers_full(configuration):
 
 def extract_included_files(configuration):
     return re.findall(
-        r" ^ \s* includefile \s+ (\S*) $ ", configuration,
+        r" ^ \s* include \s+ (\S*) $ ", configuration,
         re.VERBOSE | re.MULTILINE)
 
 
@@ -97,7 +97,7 @@ class TestConfigure(MAASTestCase):
             extract_peers(ntp_maas_conf), Equals(peers))
         self.assertThat(
             extract_tos_options(ntp_maas_conf),
-            Equals(["orphan", str(offset + 8)]))
+            Equals([str(offset + 8), "orphan"]))
 
     def test_configure_region_is_alias(self):
         self.assertThat(config.configure_region, IsInstance(partial))
@@ -144,7 +144,8 @@ class TestNormaliseAddress(MAASTestCase):
 
 
 def extract_tos_options(configuration):
-    commands = re.findall(r"^ *tos +([^\r\n]+)$", configuration, re.MULTILINE)
+    commands = re.findall(
+        r"^ *local stratum +([^\r\n]+)$", configuration, re.MULTILINE)
     return list(chain.from_iterable(map(str.split, commands)))
 
 
@@ -176,7 +177,7 @@ class TestRenderNTPConfFromSource(MAASTestCase):
 
     def test_cleans_up_whitespace(self):
         ntp_conf_lines = [
-            "# ntp.conf\n",
+            "# chrony.conf\n",
             "\n",
             "   \n",
             "\t\r\n",
@@ -190,12 +191,12 @@ class TestRenderNTPConfFromSource(MAASTestCase):
             ntp_conf_lines, ntp_maas_conf_path)
         self.assertThat(
             list(ntp_conf_lines), Equals([
-                "# ntp.conf\n",
+                "# chrony.conf\n",
                 "\n",
                 "foo",
                 "bar",
                 "\n",
-                "includefile %s\n" % ntp_maas_conf_path,
+                "include %s\n" % ntp_maas_conf_path,
             ]))
 
 
@@ -266,23 +267,12 @@ class TestRenderNTPMAASConf(MAASTestCase):
         ntp_maas_conf = config._render_ntp_maas_conf([], [], offset)
         self.assertThat(
             extract_tos_options(ntp_maas_conf),
-            Equals(["orphan", str(offset + 8)]))
+            Equals([str(offset + 8), "orphan"]))
 
 
 example_ntp_conf = """\
-# /etc/ntp.conf, configuration for ntpd; see ntp.conf(5) for help
-
-driftfile /var/lib/ntp/ntp.drift
-
-# Enable this if you want statistics to be logged.
-#statsdir /var/log/ntpstats/
-
-statistics loopstats peerstats clockstats
-filegen loopstats file loopstats type day enable
-filegen peerstats file peerstats type day enable
-filegen clockstats file clockstats type day enable
-
-# Specify one or more NTP servers.
+# Welcome to the chrony configuration file. See chrony.conf(5) for more
+# information about usuable directives.
 
 # Use servers from the NTP Pool Project. Approved by Ubuntu Technical Board
 # on 2011-02-08 (LP: #104525). See http://www.pool.ntp.org/join.html for
@@ -295,44 +285,29 @@ pool 3.ubuntu.pool.ntp.org iburst
 # Use Ubuntu's ntp server as a fallback.
 pool ntp.ubuntu.com
 
-# Access control configuration; see /usr/share/doc/ntp-doc/html/accopt.html
-# for details. The web page <...> might also be helpful.
-#
-# Note that "restrict" applies to both servers and clients, so a configuration
-# that might be intended to block requests from certain clients could also end
-# up blocking replies from your own upstream servers.
+# This directive specify the location of the file containing ID/key pairs for
+# NTP authentication.
+keyfile /etc/chrony/chrony.keys
 
-# By default, exchange time with everybody, but don't allow configuration.
-restrict -4 default kod notrap nomodify nopeer noquery limited
-restrict -6 default kod notrap nomodify nopeer noquery limited
+# This directive specify the file into which chronyd will store the rate
+# information.
+driftfile /var/lib/chrony/chrony.drift
 
-# Local users may interrogate the ntp server more closely.
-restrict 127.0.0.1
-restrict ::1
+# Uncomment the following line to turn logging on.
+#log tracking measurements statistics
 
-# Needed for adding pool entries
-restrict source notrap nomodify noquery
+# Log files location.
+logdir /var/log/chrony
 
-# Clients from this (example!) subnet have unlimited access, but only if
-# cryptographically authenticated.
-#restrict 192.168.123.0 mask 255.255.255.0 notrust
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
 
+# This directive enables kernel synchronisation (every 11 minutes) of the
+# real-time clock. Note that it can’t be used along with the 'rtcfile'
+# directive.
+rtcsync
 
-# If you want to provide time to your local subnet, change the next line.
-# (Again, the address is an example only.)
-#broadcast 192.168.123.255
-
-# If you want to listen to time broadcasts on your local subnet, de-comment the
-# next lines.  Please do this only if you trust everybody on the network!
-#disable auth
-#broadcastclient
-
-#Changes recquired to use pps synchonisation as explained in documentation:
-#http://www.ntp.org/ntpfaq/NTP-s-config-adv.htm#AEN3918
-
-#server 127.127.8.1 mode 135 prefer    # Meinberg GPS167 with PPS
-#fudge 127.127.8.1 time1 0.0042        # relative to PPS for my hardware
-
-#server 127.127.22.1                   # ATOM(PPS)
-#fudge 127.127.22.1 flag3 1            # enable PPS API
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
 """

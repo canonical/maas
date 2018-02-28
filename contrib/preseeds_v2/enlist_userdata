@@ -92,6 +92,13 @@ misc_bucket:
       msg="already registered on '$url'; skipping enlistment"
       echo
       echo "== $(date -R): $msg"
+      maas-enlist --serverurl "$url" --in-action
+      if [ $? -eq 1 ]; then
+         msg="rebooting the machine to resume action"
+         echo
+         echo "=== $(date -R): $msg"
+         reboot
+      fi
       sleep 10
       exit 0
    fi

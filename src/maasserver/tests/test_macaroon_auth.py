@@ -5,25 +5,27 @@ from datetime import (
     datetime,
     timedelta,
 )
+import json
 from unittest import (
     mock,
     TestCase,
 )
 
 from django.contrib.auth.models import User
+import maasserver.macaroon_auth
+from maasserver.macaroon_auth import (
+    _get_macaroon_oven_key,
+    IDClient,
+    KeyStore,
+    MacaroonAPIAuthentication,
+    MacaroonAuthorizationBackend,
+)
 from maasserver.models import (
     Config,
     RootKey,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views.macaroon_auth import (
-    _get_macaroon_oven_key,
-    IDClient,
-    KeyStore,
-    MacaroonAuthorizationBackend,
-    MacaroonDischargeRequest,
-)
 from macaroonbakery.bakery import (
     IdentityError,
     SimpleIdentity,
@@ -50,6 +52,89 @@ class TestIDClient(TestCase):
         _, [caveat] = self.client.identity_from_context(None)
         self.assertEqual(caveat.location, 'https://example.com')
         self.assertEqual(caveat.condition, 'is-authenticated-user')
+
+
+class MacaroonBakeryMockMixin:
+    """Mixin providing mock helpers for tests involving macaroonbakery."""
+
+    def _mock_service_key_request(self):
+        """Mock request to get the key from the external service.
+
+        Bakery internally performs this request.
+        """
+        mock_result = mock.Mock()
+        mock_result.status_code = 200
+        mock_result.json.return_value = {
+            "PublicKey": "CIdWcEUN+0OZnKW9KwruRQnQDY/qqzVdD30CijwiWCk=",
+            "Version": 3}
+        mock_get = self.patch(requests, 'get')
+        mock_get.return_value = mock_result
+
+    def _mock_auth_info(self, username):
+        """Mock bakery authentication, returning an identity.
+
+        A SimpleIdentity for the specified username is returned.
+
+        """
+        mock_auth_checker = mock.Mock()
+        mock_auth_checker.allow.return_value = mock.Mock(
+            identity=SimpleIdentity(user=username))
+        mock_bakery = mock.Mock()
+        mock_bakery.checker.auth.return_value = mock_auth_checker
+        mock_get_bakery = self.patch(maasserver.macaroon_auth, '_get_bakery')
+        mock_get_bakery.return_value = mock_bakery
+
+
+class TestMacaroonAPIAuthentication(MAASServerTestCase,
+                                    MacaroonBakeryMockMixin):
+
+    def setUp(self):
+        super().setUp()
+        Config.objects.set_config(
+            'external_auth_url', 'https://auth.example.com')
+        self.request = factory.make_fake_request('/')
+        self.auth = MacaroonAPIAuthentication()
+        self._mock_service_key_request()
+
+    def test_is_authenticated_no_external_auth(self):
+        # authentication details are provided
+        self._mock_auth_info(factory.make_string())
+        # ... but external auth is disabled
+        Config.objects.set_config('external_auth_url', '')
+        self.assertFalse(self.auth.is_authenticated(self.request))
+
+    def test_is_authenticated_no_auth_details(self):
+        self.assertFalse(self.auth.is_authenticated(self.request))
+
+    def test_is_authenticated_with_auth(self):
+        user = factory.make_User()
+        self._mock_auth_info(user.username)
+        self.assertTrue(self.auth.is_authenticated(self.request))
+
+    def test_is_authenticated_with_auth_creates_user(self):
+        username = factory.make_string()
+        self._mock_auth_info(username)
+        self.assertTrue(self.auth.is_authenticated(self.request))
+        user = User.objects.get(username=username)
+        self.assertIsNotNone(user.id)
+
+    def test_challenge_no_external_auth(self):
+        Config.objects.set_config('external_auth_url', '')
+        response = self.auth.challenge(self.request)
+        self.assertEqual(response.status_code, 401)
+
+    def test_challenge(self):
+        response = self.auth.challenge(self.request)
+        self.assertEqual(response.status_code, 401)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['Code'], 'macaroon discharge required')
+        macaroon = payload['Info']['Macaroon']
+        # macaroon is requested for this service
+        self.assertEqual(macaroon['location'], 'http://testserver/')
+        # a third party caveat is added for the external authentication service
+        third_party_urls = [
+            caveat['cl'] for caveat in macaroon['caveats'] if 'cl' in caveat]
+        self.assertEqual(third_party_urls, ['https://auth.example.com'])
 
 
 class TestMacaroonAuthorizationBackend(MAASServerTestCase):
@@ -178,40 +263,14 @@ class TestKeyStore(MAASServerTestCase):
         self.assertIsNone(self.store.get(b'invalid'))
 
 
-class TestMacaroonDischargeRequest(MAASServerTestCase):
+class TestMacaroonDischargeRequest(MAASServerTestCase,
+                                   MacaroonBakeryMockMixin):
 
     def setUp(self):
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
         self._mock_service_key_request()
-
-    def _mock_service_key_request(self):
-        """Mock request to get the key from the external service.
-
-        Bakery internally performs this request.
-        """
-        mock_result = mock.Mock()
-        mock_result.status_code = 200
-        mock_result.json.return_value = {
-            "PublicKey": "CIdWcEUN+0OZnKW9KwruRQnQDY/qqzVdD30CijwiWCk=",
-            "Version": 3}
-        mock_get = self.patch(requests, 'get')
-        mock_get.return_value = mock_result
-
-    def _mock_auth_info(self, username):
-        """Mock bakery authentication, returning an identity.
-
-        A SimpleIdentity for the specified username is returned.
-
-        """
-        mock_auth_checker = mock.Mock()
-        mock_auth_checker.allow.return_value = mock.Mock(
-            identity=SimpleIdentity(user=username))
-        mock_bakery = mock.Mock()
-        mock_bakery.checker.auth.return_value = mock_auth_checker
-        mock_setup = self.patch(MacaroonDischargeRequest, '_setup_bakery')
-        mock_setup.return_value = mock_bakery
 
     def test_discharge_request(self):
         response = self.client.get('/accounts/discharge-request/')

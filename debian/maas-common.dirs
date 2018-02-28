@@ -1,3 +1,2 @@
 var/log/maas
 var/lib/maas
-etc/ntp

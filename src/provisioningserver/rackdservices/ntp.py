@@ -80,7 +80,7 @@ class RackNetworkTimeProtocolService(TimerService):
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the NTP server if the configuration changes.
 
-        Reconfigure and restart `ntpd` if the current configuration differs
+        Reconfigure and restart `chrony` if the current configuration differs
         from a previously applied configuration, otherwise do nothing.
 
         :param configuration: The configuration object obtained from

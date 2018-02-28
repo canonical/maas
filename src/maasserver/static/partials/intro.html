@@ -2,10 +2,11 @@
     <div class="row">
         <div class="col-12">
             <div class="p-card--highlighted">
-                <h2 class="p-card__title">
+                <h2 class="p-card__title p-heading--four">
                     <i data-ng-class="{ 'p-icon--success': !welcomeInError(), 'p-icon--error': welcomeInError() }"></i>
                     Welcome to MAAS
                 </h2>
+                <hr />
                 <div class="p-card__content">
                     <div class="u-margin--top">
                         <maas-obj-form obj="maasName" manager="configManager" class="p-form p-form--stacked">
@@ -21,9 +22,10 @@
     <div class="row">
         <div class="col-12">
             <div class="p-card--highlighted">
-                <h2 class="p-card__title u-vertically-center">
+                <h2 class="p-card__title p-heading--four">
                     <i data-ng-class="{ 'p-icon--success': !networkInError(), 'p-icon--error': networkInError() }"></i>&nbsp;Connectivity
                 </h2>
+                <hr />
                 <ul class="p-card__content p-list">
                     <li>
                         <maas-obj-form obj="upstreamDNS" manager="configManager" class="p-form p-form--stacked">
@@ -58,11 +60,13 @@
         </div>
     </div>
     <div class="row">
-        <maas-boot-images design="'card'"></maas-boot-images>
+        <div class="col-12">
+            <maas-boot-images design="'card'"></maas-boot-images>
+        </div>
     </div>
     <div class="row">
         <div class="col-12">
-            <button class="p-button--positive" data-ng-disabled="!canContinue()" data-ng-click="clickContinue()">Continue</button>
+            <button class="col-12 p-button--positive" data-ng-disabled="!canContinue()" data-ng-click="clickContinue()">Continue</button>
         </div>
     </div>
 </section>

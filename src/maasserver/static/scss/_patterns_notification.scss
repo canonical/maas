@@ -1,4 +1,5 @@
 @mixin maas-p-notifications {
+  @include maas-notification;
   @include maas-notification-group;
 }
 
@@ -7,10 +8,18 @@
     > [class^="p-notification"] {
       flex-direction: column;
     }
-    
+
     .p-list--divided {
       margin-top: $sp-small;
       border-top: 1px dotted $color-mid-light;
+    }
+  }
+}
+
+@mixin maas-notification {
+  .p-notification {
+    &__response {
+      max-width: none;
     }
   }
 }

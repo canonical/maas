@@ -8,6 +8,8 @@ __all__ = [
     ]
 
 from maasserver.exceptions import Unauthorized
+from maasserver.macaroon_auth import MacaroonAPIAuthentication
+from maasserver.models import Config
 from piston3.authentication import (
     OAuthAuthentication,
     send_oauth_error,
@@ -44,6 +46,9 @@ class MAASAPIAuthentication(OAuthAuthentication):
     """
 
     def is_authenticated(self, request):
+        if Config.objects.get_config('external_auth_url'):
+            return False
+
         if request.user.is_authenticated:
             return request.user
 
@@ -64,11 +69,13 @@ class MAASAPIAuthentication(OAuthAuthentication):
 
         return False
 
-    def challenge(self):
+    def challenge(self, request):
         # Beware: this returns 401: Unauthorized, not 403: Forbidden
         # as the name implies.
         return rc.FORBIDDEN
 
 
-# OAuth authentication for the APIs.
-api_auth = MAASAPIAuthentication(realm="MAAS API")
+# OAuth and macaroon-based authentication for the APIs.
+api_auth = (
+    MAASAPIAuthentication(realm="MAAS API"),
+    MacaroonAPIAuthentication())

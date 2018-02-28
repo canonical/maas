@@ -22,6 +22,7 @@
 @import 'patterns_forms';
 @import 'patterns_notification';
 @import 'patterns_footer';
+@import 'patterns_table-sortable';
 
 // Include local patterns
 @include maas;
@@ -39,3 +40,4 @@
 @include maas-p-forms;
 @include maas-p-notifications;
 @include maas-p-sticky-footer;
+@include maas-table-sortable;

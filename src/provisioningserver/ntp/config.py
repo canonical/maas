@@ -24,15 +24,15 @@ from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import sudo_write_file
 
 
-_ntp_conf_name = "ntp.conf"
-_ntp_maas_conf_name = "ntp/maas.conf"
+_ntp_conf_name = "chrony/chrony.conf"
+_ntp_maas_conf_name = "chrony/maas.conf"
 
 
 def configure(servers, peers, offset):
     """Configure the local NTP server with the given time references.
 
-    This writes new ``ntp.conf`` and ``ntp.maas.conf`` files, using ``sudo``
-    in production.
+    This writes new ``chrony.chrony.conf`` and ``chrony.maas.conf`` files,
+    using ``sudo`` in production.
 
     :param servers: An iterable of server addresses -- IPv4, IPv6, hostnames
         -- to use as time references.
@@ -45,13 +45,13 @@ def configure(servers, peers, offset):
     ntp_maas_conf_path = get_tentative_data_path("etc", _ntp_maas_conf_name)
     sudo_write_file(
         ntp_maas_conf_path,
-        ntp_maas_conf.encode("ascii"),
+        ntp_maas_conf.encode("utf-8"),
         mode=0o644)
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path)
     ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
     sudo_write_file(
         ntp_conf_path,
-        ntp_conf.encode("ascii"),
+        ntp_conf.encode("utf-8"),
         mode=0o644)
 
 
@@ -82,7 +82,7 @@ def _render_ntp_conf(includefile):
     This configuration includes the file named by `includefile`.
     """
     ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
-    with open(ntp_conf_path, "r", encoding="ascii") as fd:
+    with open(ntp_conf_path, "r", encoding="utf-8") as fd:
         lines = _render_ntp_conf_from_source(fd, includefile)
         return "".join(lines)
 
@@ -97,7 +97,7 @@ def _render_ntp_conf_from_source(lines, includefile):
     lines = _remove_maas_includefile_option(lines)
     lines = _clean_whitespace(lines)
     yield from lines  # Has trailing blank line.
-    yield "includefile %s\n" % includefile
+    yield "include %s\n" % includefile
 
 
 def _render_ntp_maas_conf(servers, peers, offset):
@@ -108,7 +108,7 @@ def _render_ntp_maas_conf(servers, peers, offset):
     :param peers: An iterable of peer addresses -- IPv4, IPv6, hostnames -- to
         use as time references.
     :param offset: A relative stratum used when calculating the stratum for
-        orphan mode (see http://support.ntp.org/bin/view/Support/OrphanMode).
+        orphan mode (https://chrony.tuxfamily.org/doc/3.2/chrony.conf.html).
     """
     lines = ["# MAAS NTP configuration."]
     servers = map(normalise_address, servers)
@@ -118,7 +118,16 @@ def _render_ntp_maas_conf(servers, peers, offset):
         for server in servers)
     peers = map(normalise_address, peers)
     lines.extend("peer %s" % peer for peer in peers)
-    lines.append("tos orphan {:d}".format(offset + 8))
+    # Chrony provides a special 'orphan' mode that is compatible
+    # with ntpd's 'tos orphan' mode. (see
+    # https://chrony.tuxfamily.org/doc/devel/chrony.conf.html)
+    lines.append("local stratum {:d} orphan".format(offset + 8))
+    # Chrony requires 'allow' option to specify which client IPs
+    # or Networks can use it as a time source. For now, allow all
+    # clients to be compatible to 'ntpd'. In the future, it would
+    # be nice to limit this similarly to how we do proxy. (see
+    # https://chrony.tuxfamily.org/doc/3.2/chrony.conf.html)
+    lines.append("allow")
     lines.append("")  # Add newline at end.
     return "\n".join(lines)
 
@@ -150,7 +159,7 @@ def _disable_existing_pools_and_servers(lines):
 
 
 _re_maas_includefile = re.compile(
-    r" ^ \s* includefile \s+ .* \b %s \b " % re.escape(_ntp_maas_conf_name),
+    r" ^ \s* include \s+ .* \b %s \b " % re.escape(_ntp_maas_conf_name),
     re.VERBOSE)
 
 

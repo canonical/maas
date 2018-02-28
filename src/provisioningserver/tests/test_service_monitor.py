@@ -101,7 +101,7 @@ class TestNTPServiceOnRack(MAASTestCase):
 
     def test_name_and_service_name(self):
         ntp = NTPServiceOnRack()
-        self.assertEqual("ntp", ntp.service_name)
+        self.assertEqual("chrony", ntp.service_name)
         self.assertEqual("ntp_rack", ntp.name)
 
 

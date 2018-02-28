@@ -18,8 +18,8 @@ from provisioningserver.utils.fs import atomic_write
 
 
 whitelist = {
-    "/etc/ntp.conf",
-    "/etc/ntp/maas.conf",
+    "/etc/chrony/chrony.conf",
+    "/etc/chrony/maas.conf",
     "/var/lib/maas/dhcpd-interfaces",
     "/var/lib/maas/dhcpd.conf",
     "/var/lib/maas/dhcpd6-interfaces",

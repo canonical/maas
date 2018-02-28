@@ -1,0 +1,17 @@
+@mixin maas-table-sortable {
+  .p-table--sortable {
+    table-layout: auto;
+
+    [role="columnheader"] {
+      @extend th[role="columnheader"][aria-sort];
+
+      &.is-sorted.sort-asc::after {
+        @extend th[role="columnheader"][aria-sort="ascending"]::after;
+      }
+
+      &.is-sorted.sort-desc::after {
+        @extend th[role="columnheader"][aria-sort="descending"]::after;
+      }
+    }
+  }
+}

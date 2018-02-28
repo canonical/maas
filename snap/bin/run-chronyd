@@ -5,13 +5,13 @@
 set -e
 
 # Create the required directories.
-mkdir -p $SNAP_DATA/etc/ntp
+mkdir -p $SNAP_DATA/etc/chrony
 mkdir -p $SNAP_COMMON/log/ntpstats
 
 # Copy the initial ntp.conf if it doesn't exist.
-if [ ! -e "$SNAP_DATA/etc/ntp.conf" ]; then
-    cp "$SNAP/usr/share/maas/ntp.conf" "$SNAP_DATA/etc/ntp.conf"
+if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
+    cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"
 fi
 
 # Run ntpd.
-exec $SNAP/usr/sbin/ntpd -n -d -c "$SNAP_DATA/etc/ntp.conf"
+exec $SNAP/usr/sbin/chronyd -d -f "$SNAP_DATA/etc/chrony/chrony.conf"

@@ -1,4 +1,4 @@
-<table class="p-table--mobile-card" role="grid">
+<table class="p-table--mobile-card p-table--sortable" role="grid">
     <thead>
         <tr>
             <th data-ng-if="!hideCheckboxes">
@@ -6,33 +6,18 @@
                 <label class="checkbox-label u-no-margin--top" for="check-all"></label>
             </th>
             <th class="u-align--left" colspan="2">
-                <a href="" data-ng-click="selectColumnOrSort('fqdn')" data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Fully Qualified Domain Name">FQDN</span></a>
+                <span role="columnheader" data-ng-click="selectColumnOrSort('fqdn')" data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><abbr title="Fully Qualified Domain Name">FQDN</abbr></span>
                 /
-                <a href="" data-ng-click="selectColumnOrSort('pxe_mac')" data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Media Access Control addresses">MAC</span></a>
+                <span role="columnheader" data-ng-click="selectColumnOrSort('pxe_mac')" data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><abbr title="Media Access Control addresses">MAC</abbr></span>
             </th>
-            <th>
-                <a href="" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</a>
-            </th>
-            <th>
-            </th>
-            <th>
-                <a href="" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Status</a>
-            </th>
-            <th>
-                <a href="" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Cores</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">RAM (GiB)</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('disks')" data-ng-class="{'is-sorted': table.predicate === 'disks', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Disks</a>
-            </th>
-            <th class="u-align--right">
-                <a href="" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Storage (GB)</a>
-            </th>
+            <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</th>
+            <th></th>
+            <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Status</th>
+            <th role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner</th>
+            <th role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right">Cores</th>
+            <th role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right">RAM (GiB)</th>
+            <th role="columnheader" data-ng-click="sortTable('disks')" data-ng-class="{'is-sorted': table.predicate === 'disks', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right">Disks</th>
+            <th role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right">Storage (GB)</th>
         </tr>
     </thead>
     <tbody vs-repeat vs-scroll-parent="window">

@@ -61,3 +61,6 @@ cache_store_log /var/log/maas/proxy/store.log
 cache_peer {{upstream_proxy_address}} parent {{upstream_proxy_port}} 0 no-query default
 never_direct allow all
 {{endif}}
+{{if dns_v4_first}}
+dns_v4_first on
+{{endif}}

@@ -26,7 +26,7 @@
                         <h3 class="page-header__dropdown-title">Provide DHCP</h3>
                         <form class="p-form p-form--stacked">
                             <!-- This is just for visual reasons, since we need an additional border to begin the form if there is no error. -->
-                            <fieldset class="p-form__fieldset col-6">
+                            <div class="p-form__fieldset col-6">
                                 <div class="p-form__group" data-ng-hide="vlanDetails.relatedSubnets.length === 0">
                                     <label for="primary-rack" class="p-form__group-label col-2">{$ vlanDetails.relatedControllers.length <= 1 ? "Rack controller" : "Primary controller" $}</label>
                                     <div class="p-form__group-input col-3">
@@ -68,9 +68,9 @@
                                             <option value="" data-ng-if=""></option>
                                         </select>
                                     </div>
+                                </div>
                             </div>
-                            </fieldset>
-                            <fieldset class="p-form__fieldset col-6" data-ng-if="vlanDetails.actionOption.name === 'enable_dhcp'">
+                            <div class="p-form__fieldset col-6" data-ng-if="vlanDetails.actionOption.name === 'enable_dhcp'">
                                 <div class="p-form__group"
                                     data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
                                     <label for="start-ip" class="p-form__group-label col-2">Dynamic range start IP</label>
@@ -116,16 +116,16 @@
                                         <input type="text" class="col-3" name="number-of-ips" data-ng-model="vlanDetails.provideDHCPAction.numIPs" data-ng-disabled="true" data-ng-change="vlanDetails.updateNumAddresses()">
                                     </div>
                                     -->
-                            </fieldset>
+                            </div>
                         </form>
                     </section>
                 </div>
                 <div class="row">
                     <section class="page-header__section" data-ng-if="vlanDetails.actionOption.name === 'relay_dhcp'">
                         <h3 class="page-header__dropdown-title">Relay DHCP</h3>
-                        <form class="form form--stack">
+                        <form class="p-form p-form--stacked">
                             <!-- This is just for visual reasons, since we need an additional border to begin the form if there is no error. -->
-                            <fieldset class="p-form__fieldset col-6">
+                            <div class="p-form__fieldset col-6">
                                 <div class="p-form__group">
                                     <label for="relay_vlan" class="p-form__group-label col-2">Relay VLAN</label>
                                     <div class="p-form__group-input col-3">
@@ -148,9 +148,9 @@
                                             <option value="" data-ng-if=""></option>
                                         </select>
                                     </div>
+                                </div>
                             </div>
-                            </fieldset>
-                            <fieldset class="p-form__fieldset col-6">
+                            <div class="p-form__fieldset col-6">
                                 <div class="p-form__group"
                                     data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
                                     <label for="start-ip" class="p-form__group-label col-2">Dynamic range start IP</label>
@@ -189,7 +189,7 @@
                                             data-ng-change="vlanDetails.updatendIP()">
                                     </div>
                                 </div>
-                            </fieldset>
+                            </div>
                         </form>
                     </section>
                 </div>
@@ -294,7 +294,7 @@
                 </div>
                 <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
                     <div class="p-form__label">
-                        <p><strong>Rack controllers</strong> 
+                        <p><strong>Rack controllers</strong>
                         <span class="p-tooltip p-tooltip--top-center">
                             <i class="p-icon--information">Help:</i>
                             <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
@@ -311,7 +311,7 @@
         <div class="row">
             <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!vlanDetails.isSuperUser()" data-ng-if="vlanDetails.editSummary"
             table-form="true" save-on-blur="false" after-save="vlanDetails.exitEditSummary">
-                <div class="row">    
+                <div class="row">
                     <div class="col-6">
                         <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
                             label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
@@ -336,7 +336,7 @@
                         </div>
                         <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
                             <div class="p-form__label">
-                                <p><strong>Rack controllers</strong> 
+                                <p><strong>Rack controllers</strong>
                                 <span class="p-tooltip p-tooltip--top-center">
                                     <i class="p-icon--information">Help:</i>
                                     <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>

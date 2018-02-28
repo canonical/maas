@@ -62,7 +62,7 @@ class NTPServiceOnRack(Service):
     """Monitored NTP service on a rack controller host."""
 
     name = "ntp_rack"
-    service_name = "ntp"
+    service_name = "chrony"
     snap_service_name = "ntp"
 
     def getExpectedState(self):

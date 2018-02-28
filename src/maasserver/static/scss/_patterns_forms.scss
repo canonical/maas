@@ -1,5 +1,6 @@
 @mixin maas-p-forms {
   @include maas-p-form-stacked;
+  @include maas-p-form-inline;
 }
 
 @mixin maas-p-form-stacked {
@@ -14,5 +15,11 @@
       max-width: 70%;
       flex-basis: 70%;
     }
+  }
+}
+
+@mixin maas-p-form-inline {
+  .p-form--inline .p-form__group .p-form__label {
+    flex-shrink: 1;
   }
 }

@@ -415,14 +415,15 @@ class MAASRootFixture(fixtures.Fixture):
             self.path = self.useFixture(TempDirectory()).join("run")
             # Work only in `run`; reference the old $MAAS_ROOT.
             etc = Path(self.path).joinpath("etc")
-            # Create and populate $MAAS_ROOT/run/etc/{ntp,ntp.conf}. The
-            # `.keep` file is not strictly necessary, but it's created for
+            # Create and populate $MAAS_ROOT/run/etc/{chrony,c/chrony.conf}.
+            # The `.keep` file is not strictly necessary, but it's created for
             # consistency with the source tree's `run` directory.
-            ntp = etc.joinpath("ntp")
+            ntp = etc.joinpath("chrony")
             ntp.mkdir(parents=True)
             ntp.joinpath(".keep").touch()
-            ntp_conf = etc.joinpath("ntp.conf")
-            ntp_conf.write_bytes(skel.joinpath("etc", "ntp.conf").read_bytes())
+            ntp_conf = ntp.joinpath("chrony.conf")
+            ntp_conf.write_bytes(
+                skel.joinpath("etc", "chrony", "chrony.conf").read_bytes())
             # Create and populate $MAAS_ROOT/run/etc/maas.
             maas = etc.joinpath("maas")
             maas.mkdir(parents=True)

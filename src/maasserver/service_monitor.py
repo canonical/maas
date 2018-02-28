@@ -34,7 +34,7 @@ class NTPServiceOnRegion(AlwaysOnService):
     """Monitored NTP service on a region controller host."""
 
     name = "ntp_region"
-    service_name = "ntp"
+    service_name = "chrony"
     snap_service_name = "ntp"
 
 

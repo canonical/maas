@@ -237,6 +237,18 @@ CONFIG_ITEMS = {
                 "machines will be configured to use the built-in proxy.")
         }
     },
+    'prefer_v4_proxy': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': "Sets IPv4 DNS resolution before IPv6",
+            'required': False,
+            'help_text': (
+                "If prefer_v4_proxy is set, the proxy will be set to prefer "
+                "IPv4 DNS resolution before it attempts to perform IPv6 DNS "
+                "resolution.")
+        }
+    },
     'http_proxy': {
         'default': None,
         'form': forms.URLField,
