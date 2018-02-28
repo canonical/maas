@@ -849,21 +849,16 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         super(StaticIPAddress, self).clean(*args, **kwargs)
         self.clean_subnet_and_ip_consistent()
 
-    def full_clean(self, exclude=None, validate_unique=False):
+    def validate_unique(self, exclude=None):
         """Overrides Django's default for validating unique columns.
 
-        Django's ORM has a misfeature: `Model.full_clean` -- which our
+        Django's ORM has a misfeature: `Model.validate_unique` -- which our
         CleanSave mix-in calls -- checks every unique key against the database
         before actually saving the row. Django runs READ COMMITTED by default,
         which means there's a racey period between the uniqueness validation
         check and the actual insert.
-
-        Here we disable this misfeature so that we will get `IntegrityError`
-        alone from trying to insert a duplicate key. We also save a query or
-        two. We could consider disabling this misfeature globally.
         """
-        return super(StaticIPAddress, self).full_clean(
-            exclude=exclude, validate_unique=validate_unique)
+        pass
 
     def _set_subnet(self, subnet, interfaces=None):
         """Resets the Subnet for this StaticIPAddress, making sure to update

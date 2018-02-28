@@ -209,7 +209,6 @@ class IPRange(CleanSave, TimestampedModel):
         """Make sure the new or updated range isn't going to cause a conflict.
         If it will, raise ValidationError.
         """
-
         # Check against the valid types before going further, since whether
         # or not the range overlaps anything that could cause an error heavily
         # depends on its type.
@@ -221,37 +220,19 @@ class IPRange(CleanSave, TimestampedModel):
                 self.type not in valid_types):
             return
 
-        # The _state.adding flag is False if this instance exists in the DB.
-        # See https://docs.djangoproject.com/en/1.9/ref/models/instances/.
-        if not self._state.adding:
-            try:
-                orig = IPRange.objects.get(pk=self.id)
-            except IPRange.DoesNotExist:
-                # The code deletes itself and then tries to add it again to
-                # check that it fits. One the second pass of this function
-                # call the IPRange does not exist.
-                return
-            else:
-                if orig.type == self.type and (
-                    orig.start_ip == self.start_ip) and (
-                        orig.end_ip == self.end_ip):
-                    # Range not materially modified, no range dupe check
-                    # required.
-                    return
-
-                # Remove existing, check, then re-create.
-                self_id = self.id
-                # Delete will be rolled back if imminent range checks raise.
-                self.delete()
-                # Simulate update by setting the ID back to what it was.
-                self.id = self_id
+        # No dupe checking is required if the object hasn't been materially
+        # modified.
+        if not self._state.has_any_changed(['type', 'start_ip', 'end_ip']):
+            return
 
         # Reserved ranges can overlap allocated IPs but not other ranges.
         # Dynamic ranges cannot overlap anything (no ranges or IPs).
         if self.type == IPRANGE_TYPE.RESERVED:
-            unused = self.subnet.get_ipranges_available_for_reserved_range()
+            unused = self.subnet.get_ipranges_available_for_reserved_range(
+                exclude_ip_ranges=[self])
         else:
-            unused = self.subnet.get_ipranges_available_for_dynamic_range()
+            unused = self.subnet.get_ipranges_available_for_dynamic_range(
+                exclude_ip_ranges=[self])
 
         if len(unused) == 0:
             self._raise_validation_error(

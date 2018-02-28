@@ -48,7 +48,7 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         connection.save()
         self.assertThat(
             mock_create_for,
-            MockCallsMatch(call(rack_controller), call(rack_controller)))
+            MockCalledOnceWith(rack_controller))
 
     def test__calls_update_rackd_status_on_update(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
@@ -59,7 +59,7 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
             endpoint=endpoint, rack_controller=rack_controller)
         connection.save()
         self.assertThat(
-            mock_update_rackd_status, MockCallsMatch(call(), call()))
+            mock_update_rackd_status, MockCalledOnceWith())
 
     def test__calls_create_services_for_on_delete(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()

@@ -6,6 +6,7 @@
 from copy import copy
 
 from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
+from django.db.models.base import ModelState
 
 
 __all__ = [
@@ -20,24 +21,25 @@ FieldUnset = object()
 ObjectDeleted = object()
 
 
-class CleanSaveState:
-    """Provides provide state info for a models fields."""
+class CleanSaveModelState(ModelState):
+    """Provides helpers on `_state` attribute on a model."""
 
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, db=None):
+        super(CleanSaveModelState, self).__init__(db=db)
+        self._changed_fields = {}
 
     def get_changed(self):
         """Return set of all fields that have changed."""
-        return set(self._obj._state._changed_fields)
+        return set(self._changed_fields)
 
     def has_changed(self, name):
         """Return `True` if field with `name` has changed."""
-        return name in self._obj._state._changed_fields
+        return name in self._changed_fields
 
     def has_any_changed(self, names):
         """Return `True` if any of the provided field names have changed."""
         return max([
-            name in self._obj._state._changed_fields
+            name in self._changed_fields
             for name in names
         ])
 
@@ -46,11 +48,10 @@ class CleanSaveState:
         Return the old value for the field with `name`.
 
         This is the value that was in the database when this object was loaded.
-        If the field has not changed it returns the fields current value.
+        If the field has not changed it returns None.
         """
         if self.has_changed(name):
-            return self._obj._state._changed_fields[name]
-        return getattr(self._obj, name)
+            return self._changed_fields[name]
 
 
 class CleanSave:
@@ -73,7 +74,6 @@ class CleanSave:
 
     def __marked_changed(self, name, old_value, new_value):
         """Marks the field changed or not depending on the values."""
-        #print('%s - %s = %s -> %s' % (type(self).__name__, name, old_value, new_value))
         if old_value != new_value:
             if name in self._state._changed_fields:
                 if self._state._changed_fields[name] == new_value:
@@ -83,21 +83,24 @@ class CleanSave:
                 try:
                     self._state._changed_fields[name] = copy(old_value)
                 except TypeError:
-                    # Object cannot be copied so just set it to the old value.
+                    # Object cannot be copied so we assume the object is
+                    # immutable and set the old value to the object.
                     self._state._changed_fields[name] = old_value
-        #print('%s - changed %s' % (type(self).__name__, self._state._changed_fields))
 
     def __setattr__(self, name, value):
         """Track the fields that have changed."""
         # Prepare the field tracking inside the `_state`. Don't track until
         # the `_state` is set on the model.
         if name == '_state':
+            # Override the class of the `_state` attribute to be the
+            # `CleanSaveModelState`. This provides the helpers for determining
+            # if a field has changed.
+            value.__class__ = CleanSaveModelState
             value._changed_fields = {}
             return super(CleanSave, self).__setattr__(name, value)
         if not hasattr(self, '_state'):
             return super(CleanSave, self).__setattr__(name, value)
 
-        #print('%s - %s:%s' % (type(self).__name__, name, value))
         try:
             field = self._meta.get_field(name)
         except FieldDoesNotExist:
@@ -180,67 +183,11 @@ class CleanSave:
             for field in self._meta.fields
             if field.is_relation
         )
-        if self._state._changed_fields:
-            if ('update_fields' not in kwargs and
-                    not kwargs.get('force_insert', False) and
-                    not kwargs.get('force_update', False) and
-                    self.pk is not None and
-                    self._meta.pk.attname not in self._state._changed_fields):
-                # This is the new path where saving only updates the fields
-                # that have actually changed.
-                kwargs['update_fields'] = [
-                    key
-                    for key, value in self._state._changed_fields.items()
-                    if value is not FieldUnset
-                ]
-
-                # Exclude the related fields and fields that didn't change
-                # in the validation.
-                exclude_clean_fields |= set(
-                    field.name
-                    for field in self._meta.fields
-                    if field.attname not in kwargs['update_fields']
-                )
-                self.full_clean(
-                    exclude=list(exclude_clean_fields),
-                    validate_unique=False)
-
-                # Validate uniqueness only for fields that have changed and
-                # never the primary key.
-                exclude_unique_fields = {self._meta.pk.name} | set(
-                    field.name
-                    for field in self._meta.fields
-                    if field.attname not in kwargs['update_fields']
-                )
-                self.validate_unique(exclude=list(exclude_unique_fields))
-
-                # Re-create the update_fields from `_changed_fields` after
-                # performing clean because some clean methods will modify
-                # fields on the model.
-                kwargs['update_fields'] = [
-                    key
-                    for key, value in self._state._changed_fields.items()
-                    if value is not FieldUnset
-                ]
-                obj = super(CleanSave, self).save(*args, **kwargs)
-            else:
-                # This is the original path built-in to Django. We modify the
-                # full_clean so validation of related fields will not be
-                # performed (as it causes a query to check existence which
-                # postgres already does). We manually call validate_unique for
-                # all fields except the primary key which postgres will also
-                # do for us.
-                self.full_clean(
-                    exclude=list(exclude_clean_fields),
-                    validate_unique=False)
-                self.validate_unique(exclude=[self._meta.pk.name])
-                obj = super(CleanSave, self).save(*args, **kwargs)
-            self._state._changed_fields = {}
-            return obj
-        elif ('update_fields' in kwargs or
+        if ('update_fields' in kwargs or
                 kwargs.get('force_insert', False) or
                 kwargs.get('force_update', False) or
-                self.pk is None):
+                self.pk is None or self._state.adding or
+                self._meta.pk.attname in self._state._changed_fields):
             # Nothing has changed, but parameters passed requires a save to
             # occur. Perform the same validation as above for the default
             # Django path, with the exceptions.
@@ -248,7 +195,49 @@ class CleanSave:
                 exclude=list(exclude_clean_fields),
                 validate_unique=False)
             self.validate_unique(exclude=[self._meta.pk.name])
-            return super(CleanSave, self).save(*args, **kwargs)
+            obj = super(CleanSave, self).save(*args, **kwargs)
+            self._state._changed_fields = {}
+            return obj
+        elif self._state._changed_fields:
+            # This is the new path where saving only updates the fields
+            # that have actually changed.
+            kwargs['update_fields'] = [
+                key
+                for key, value in self._state._changed_fields.items()
+                if value is not FieldUnset
+            ]
+
+            # Exclude the related fields and fields that didn't change
+            # in the validation.
+            exclude_clean_fields |= set(
+                field.name
+                for field in self._meta.fields
+                if field.attname not in kwargs['update_fields']
+            )
+            self.full_clean(
+                exclude=list(exclude_clean_fields),
+                validate_unique=False)
+
+            # Validate uniqueness only for fields that have changed and
+            # never the primary key.
+            exclude_unique_fields = {self._meta.pk.name} | set(
+                field.name
+                for field in self._meta.fields
+                if field.attname not in kwargs['update_fields']
+            )
+            self.validate_unique(exclude=list(exclude_unique_fields))
+
+            # Re-create the update_fields from `_changed_fields` after
+            # performing clean because some clean methods will modify
+            # fields on the model.
+            kwargs['update_fields'] = [
+                key
+                for key, value in self._state._changed_fields.items()
+                if value is not FieldUnset
+            ]
+            obj = super(CleanSave, self).save(*args, **kwargs)
+            self._state._changed_fields = {}
+            return obj
         else:
             # Nothing changed so nothing needs to be saved.
             return self

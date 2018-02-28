@@ -724,7 +724,7 @@ class Factory(maastesting.factory.Factory):
         dnsrr.save()
         if ip_addresses:
             dnsrr.ip_addresses.set(ip_addresses)
-            dnsrr.save()
+            dnsrr.save(force_update=True)
         return dnsrr
 
     def make_Script(
