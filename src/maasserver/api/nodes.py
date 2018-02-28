@@ -534,6 +534,23 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         """
         return is_registered(request)
 
+    @operation(idempotent=True)
+    def is_action_in_progress(self, request):
+        """Returns whether or not the given MAC address is a machine
+        that's either 'deploying' or 'commissioning'.
+
+        :param mac_address: The mac address to be checked.
+        :type mac_address: unicode
+        :return: 'true' or 'false'.
+        :rtype: unicode
+        """
+        mac_address = get_mandatory_param(request.GET, 'mac_address')
+        interfaces = Interface.objects.filter(mac_address=mac_address)
+        interfaces = interfaces.filter(
+            node__status__in=[
+                NODE_STATUS.COMMISSIONING, NODE_STATUS.DEPLOYING])
+        return interfaces.exists()
+
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('nodes_handler', [])

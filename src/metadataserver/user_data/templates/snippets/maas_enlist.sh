@@ -126,6 +126,7 @@ enlist_node() {
 
 check_node() {
 	serverurl="${1}"
+	op="${3}"
 
 	local exists="false" mac="${2}"
 	OIFS=$IFS; IFS=","; set -- $mac; IFS=$OIFS
@@ -137,7 +138,7 @@ check_node() {
 				--silent \
 				--get \
 				--header "Accept: application/json" \
-				--data-urlencode "op=is_registered" \
+				--data-urlencode "op=${op}" \
 				--data-urlencode "mac_address=${i}" \
 				"${serverurl}")
 		if [ "$exists" = "true" ];
@@ -168,6 +169,8 @@ Usage: ${0##*/} [ options ]
       -p | --power-params     power parameters (In JSON format, between single quotes)
                               e.g. --power-params '{"power_address":"192.168.1.10"}'
       -e | --exists           checks if the machine already exists in MAAS
+      -w | --in-action        checks if the machine already exists in MAAS in a 'in-progress'
+                              action like 'deploying' or 'commissioning'.
       --subarch               subarchitecture of the node to register
 
    Example:
@@ -178,8 +181,8 @@ EOF
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || Error "$@"; exit 1; }
 
-short_opts="hs:n:i:a:t:p:e"
-long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists"
+short_opts="hs:n:i:a:t:p:ew"
+long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists,in-action"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -197,6 +200,7 @@ while [ $# -ne 0 ]; do
 		-t|--power-type) power_type=${2}; shift;;
 		-p|--power-params) power_parameters=${2}; shift;;
 		-e|--exists) check_exists=true;;
+		-w|--in-action) check_action_in_progress=true;;
 		--) shift; break;;
 	esac
 	shift;
@@ -259,7 +263,10 @@ if [ -n "$power_type" ]; then
 fi
 
 if [ "$check_exists" = true ]; then
-  check_node "$protocol://$servername/$api_url" "${mac_addrs}"
+  check_node "$protocol://$servername/$api_url" "${mac_addrs}" "is_registered"
+  exit $?
+elif [ "$check_action_in_progress" = true ]; then
+  check_node "$protocol://$servername/$api_url" "${mac_addrs}" "is_action_in_progress"
   exit $?
 else
   enlist_node "$protocol://$servername/$api_url" "${mac_addrs}" "$arch" "$subarch" "$hostname" "$power_type" "$power_parameters"

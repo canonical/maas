@@ -79,6 +79,44 @@ class TestIsRegisteredAPI(APITestCase.ForAnonymousAndUserAndAdmin):
              response.content.decode(settings.DEFAULT_CHARSET)))
 
 
+class TestIsActionInProgressAPI(APITestCase.ForAnonymous):
+    scenarios = (
+        ("commissioning", {
+            "status": NODE_STATUS.COMMISSIONING,
+            "result": "true"
+        }),
+        ("deploying", {
+            "status": NODE_STATUS.DEPLOYING,
+            "result": "true"
+        }),
+        ("deployed", {
+            "status": NODE_STATUS.DEPLOYED,
+            "result": "false"
+        }),
+        ("testing", {
+            "status": NODE_STATUS.TESTING,
+            "result": "false"
+        }),
+        ("ready", {
+            "status": NODE_STATUS.READY,
+            "result": "false"
+        }),
+    )
+
+    def test_is_action_in_progress_returns_correct_result_per_state(self):
+        mac_address = factory.make_mac_address()
+        node = factory.make_Node(status=self.status)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address, node=node)
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {'op': 'is_action_in_progress', 'mac_address': mac_address})
+        self.assertEqual(
+            (http.client.OK.value, self.result),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
+
+
 def extract_system_ids(parsed_result):
     """List the system_ids of the nodes in `parsed_result`."""
     return [node.get('system_id') for node in parsed_result]
