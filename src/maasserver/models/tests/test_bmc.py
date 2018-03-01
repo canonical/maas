@@ -877,6 +877,21 @@ class TestPod(MAASServerTestCase):
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertEqual(zone, machine.zone)
 
+    def test_create_machine_sets_pod_tags_on_machine(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        tag = factory.make_Tag()
+        pod.tags.add(tag)
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertTrue(tag in machine.tags.all())
+
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()
         mock_set_default_storage_layout = self.patch(

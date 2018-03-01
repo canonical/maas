@@ -158,6 +158,7 @@ class BMC(CleanSave, TimestampedModel):
     #  8. Total number of available local disks in the Pod.
     #  9. The resource pool machines in the pod should belong to by default.
     #  10. The zone of the Pod.
+    #  11. The tags of the Pod.
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
     architectures = ArrayField(
@@ -178,6 +179,7 @@ class BMC(CleanSave, TimestampedModel):
     zone = ForeignKey(
         Zone, verbose_name="Physical zone", default=get_default_zone,
         editable=True, db_index=True, on_delete=SET_DEFAULT)
+    tags = ManyToManyField(Tag)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -620,6 +622,13 @@ class Pod(BMC):
         for discovered_tag in discovered_machine.tags:
             tag, _ = Tag.objects.get_or_create(name=discovered_tag)
             machine.tags.add(tag)
+
+        # Assign the Pod's tags.
+        existing_tags = machine.tags.all().values('name')
+        for tag in self.tags.all():
+            # Only if not a duplicate.
+            if tag.name not in existing_tags:
+                machine.tags.add(tag)
 
         # Create the discovered block devices and set the initial storage
         # layout for the machine.
