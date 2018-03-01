@@ -5,10 +5,7 @@
 
 from copy import copy
 
-from django.core.exceptions import (
-    FieldDoesNotExist,
-    ObjectDoesNotExist,
-)
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models.base import ModelState
 
 
@@ -19,9 +16,6 @@ __all__ = [
 
 # Used to track that the field was unset.
 FieldUnset = object()
-
-# Used to track when the original object was deleted.
-ObjectDeleted = object()
 
 
 class CleanSaveModelState(ModelState):
@@ -123,10 +117,7 @@ class CleanSave:
                     super(CleanSave, self).__setattr__(name, value)
                     self.__marked_changed(name, None, value)
                 else:
-                    try:
-                        old = getattr(self, name, FieldUnset)
-                    except ObjectDoesNotExist:
-                        old = ObjectDeleted
+                    old = getattr(self, name, FieldUnset)
                     super(CleanSave, self).__setattr__(name, value)
                     new = getattr(self, name, FieldUnset)
                     self.__marked_changed(name, old, new)
@@ -146,33 +137,29 @@ class CleanSave:
                     # Field that holds the actual referenced objects. This
                     # needs to be handled with more care so that query is
                     # not performed trying to fetch the old value object.
-                    if not isinstance(value, field.related_model):
-                        # The actual type of object being saved to this
-                        # field is different. This is probably bad and
-                        # Django will handle the validation. But to be sure
-                        # we update the changed field just like a normal
-                        # field.
-                        # 
-                        # Note: This will cause a query to get the old
-                        # value that was referenced from this object.
-                        _wrap_setattr()
+                    #
+                    # This path only sets the `field.attname` in the
+                    # `_state._changed_fields` it never sets the actual old
+                    # object, because fetching that will cause a query.
+                    if self._state.adding:
+                        old_id = None
                     else:
-                        # Do the tracking using the `_id` field instead of
-                        # the actual objects. We don't store the old object
-                        # in _changed_fields as that would required a query
-                        # to get that object and that might not be needed.
-                        # Instead we just track the attname value.
-                        if self._state.adding:
-                            old_id = None
-                        else:
-                            old_id = getattr(self, field.attname)
-                        related_pk_field = (
-                            field.related_model._meta.pk.name)
-                        new_id = getattr(value, related_pk_field)
-                        if new_id is None or old_id != new_id:
-                            # Either the object has changed or its a new
-                            # object. So we update
-                            _wrap_setattr()
+                        old_id = getattr(self, field.attname)
+                    related_pk_field = (
+                        field.related_model._meta.pk.name)
+                    new_id = getattr(value, related_pk_field, None)
+                    if new_id is None or old_id != new_id:
+                        # Either the object has changed or its a new
+                        # object. So we update the field and mark the
+                        # `field.attname` as changed.
+                        super(CleanSave, self).__setattr__(name, value)
+                        self.__marked_changed(field.attname, old_id, new_id)
+                    else:
+                        # The ID didn't change but the object is being set
+                        # normally from a `select_related` or a
+                        # `prefetch_related` so the attribute still needs
+                        # to be set. But it is not tracked as changed.
+                        super(CleanSave, self).__setattr__(name, value)
                 else:
                     raise AttributeError(
                         'Unknown field(%s) for: %s' % (name, field))

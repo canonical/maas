@@ -2977,7 +2977,7 @@ class TestMachineFilesystemListener(
         partition = factory.make_Partition(node=node)
         filesystem = factory.make_Filesystem(partition=partition)
         with listenFor(self.channel) as get:
-            filesystem.save()  # A no-op update is enough.
+            filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(('update', '%s' % node.system_id), get())
 
     def test__calls_handler_with_update_on_update_fs_on_block_device(self):
@@ -2985,14 +2985,14 @@ class TestMachineFilesystemListener(
         block_device = factory.make_BlockDevice(node=node)
         filesystem = factory.make_Filesystem(block_device=block_device)
         with listenFor(self.channel) as get:
-            filesystem.save()  # A no-op update is enough.
+            filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(('update', '%s' % node.system_id), get())
 
     def test__calls_handler_with_update_on_update_special_fs(self):
         node = factory.make_Node(**self.params)
         filesystem = factory.make_Filesystem(node=node)
         with listenFor(self.channel) as get:
-            filesystem.save()  # A no-op update is enough.
+            filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(('update', '%s' % node.system_id), get())
 
 

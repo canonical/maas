@@ -227,7 +227,7 @@ class Script(CleanSave, TimestampedModel):
     def remove_tag(self, tag):
         """Remove tag from Script."""
         if tag in self.tags:
-            tags = list(tags)
+            tags = self.tags.copy()
             tags.remove(tag)
             self.tags = tags
 

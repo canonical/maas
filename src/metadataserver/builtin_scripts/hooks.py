@@ -245,7 +245,9 @@ def update_node_network_interface_tags(node, output, exit_status):
     for iface in PhysicalInterface.objects.filter(node=node):
         if str(iface.mac_address) in decoded_output:
             if 'sriov' not in str(iface.tags):
-                iface.tags.append("sriov")
+                tags = iface.tags.copy()
+                tags.append("sriov")
+                iface.tags = tags
                 iface.save()
 
 
