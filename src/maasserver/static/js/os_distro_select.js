@@ -51,6 +51,9 @@ Y.extend(OSReleaseWidget, Y.Widget, {
     */
     bindTo: function(osNode, event_name) {
         var self = this;
+        if (!osNode) {
+            return;
+        }
         Y.one(osNode).on(event_name, function(e) {
             var osValue = e.currentTarget.get('value');
             self.switchTo(osValue);

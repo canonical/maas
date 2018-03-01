@@ -6,8 +6,10 @@
                 <th class="col-2">End IP Address</th>
                 <th class="col-1">Owner</th>
                 <th class="col-1">Type</th>
-                <th class="col-2">Comment</th>
-                <th class="col-2">Actions</th>
+                <th class="col-3">Comment</th>
+                <th class="col-3">
+                    <span class="u-float--right">Actions</span>
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -17,9 +19,9 @@
                 <td class="col-2" aria-label="End IP Address">{$ iprange.end_ip $}</td>
                 <td class="col-1" aria-label="Owner">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user $}</td>
                 <td class="col-1" aria-label="Type">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved" $}</td>
-                <td class="col-2" aria-label="Comment">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</td>
-                <td class="col-2">
-                    <div data-ng-if="!isIPRangeInDeleteMode(iprange) && !isIPRangeInEditMode(iprange)">
+                <td class="col-3" aria-label="Comment">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</td>
+                <td class="col-3">
+                    <div class="u-align--right" data-ng-if="!isIPRangeInDeleteMode(iprange) && !isIPRangeInEditMode(iprange)">
                         <button class="table__controls-action" aria-label="Edit reserved range"
                             data-ng-click="toggleMenu(); ipRangeToggleEditMode(iprange)">Edit</button>
                         <button class="table__controls-action u-text--error" aria-label="Remove range"
@@ -32,9 +34,11 @@
                         <div class="col-6">
                             <p><span class="p-icon--warning">Warning:</span> Ensure all in-use IP addresses are registered in MAAS before releasing this range to avoid potential collisions. Are you sure you want to remove this IP range?</p>
                         </div>
-                        <div class="col-6 u-align--right">
-                            <button class="p-button--base" type="button" data-ng-click="ipRangeCancelDelete()">Cancel</button>
-                            <button class="p-button--negative" data-ng-click="ipRangeConfirmDelete()">Remove</button>
+                        <div class="col-6">
+                            <span class="u-float--right">
+                                <button class="p-button--base" type="button" data-ng-click="ipRangeCancelDelete()">Cancel</button>
+                                <button class="p-button--negative" data-ng-click="ipRangeConfirmDelete()">Remove</button>
+                            </span>
                         </div>
                     </div>
                 </td>
@@ -71,9 +75,11 @@
                             <div class="col-6">
                                 <maas-obj-errors></maas-obj-errors>
                             </div>
-                            <div class="col-6 u-align--right">
-                                <button class="p-button--base" type="button" data-ng-click="ipRangeToggleEditMode(iprange)">Cancel</button>
-                                <button class="p-button--positive u-no-margin--top" maas-obj-save>Save</button>
+                            <div class="col-6">
+                                <span class="u-float--right">
+                                    <button class="p-button--base" type="button" data-ng-click="ipRangeToggleEditMode(iprange)">Cancel</button>
+                                    <button class="p-button--positive u-no-margin--top" maas-obj-save>Save</button>
+                                </span>
                             </div>
                         </maas-obj-form>
                     </div>

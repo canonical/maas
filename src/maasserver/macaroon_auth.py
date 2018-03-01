@@ -47,7 +47,7 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
     """An authorization backend getting the user from macaroon identity."""
 
     def authenticate(self, request, identity=None):
-        if not self.external_auth_enabled() or not identity:
+        if not request.external_auth_info or not identity:
             return
         user, _ = User.objects.get_or_create(username=identity.id())
         return user
@@ -57,12 +57,11 @@ class MacaroonAPIAuthentication:
     """A Piston authentication backend using macaroons."""
 
     def is_authenticated(self, request):
-        auth_endpoint = Config.objects.get_config('external_auth_url')
-        if not auth_endpoint:
+        if not request.external_auth_info:
             return False
 
         req_headers = request_headers(request)
-        macaroon_bakery = _get_bakery(request, auth_endpoint)
+        macaroon_bakery = _get_bakery(request)
         auth_checker = macaroon_bakery.checker.auth(
             httpbakery.extract_macaroons(req_headers))
         try:
@@ -79,13 +78,12 @@ class MacaroonAPIAuthentication:
         return True
 
     def challenge(self, request):
-        auth_endpoint = Config.objects.get_config('external_auth_url')
-        if not auth_endpoint:
+        if not request.external_auth_info:
             # Beware: this returns 401: Unauthorized, not 403: Forbidden
             # as the name implies.
             return rc.FORBIDDEN
 
-        macaroon_bakery = _get_bakery(request, auth_endpoint)
+        macaroon_bakery = _get_bakery(request)
         auth_checker = macaroon_bakery.checker.auth([])
         try:
             auth_checker.allow(
@@ -101,14 +99,10 @@ class MacaroonDischargeRequest:
     """Return a Macaroon authentication request."""
 
     def __call__(self, request):
-        auth_endpoint = Config.objects.get_config('external_auth_url')
-        if not auth_endpoint:
+        if not request.external_auth_info:
             return HttpResponseNotFound('Not found')
 
-        # remove trailing slashes as js-bakery ends up using double slashes in
-        # the url otherwise
-        auth_endpoint = auth_endpoint.rstrip('/')
-        macaroon_bakery = _get_bakery(request, auth_endpoint)
+        macaroon_bakery = _get_bakery(request)
         req_headers = request_headers(request)
         auth_checker = macaroon_bakery.checker.auth(
             httpbakery.extract_macaroons(req_headers))
@@ -219,7 +213,8 @@ class IDClient(bakery.IdentityClient):
                 location=self.auth_endpoint)]
 
 
-def _get_bakery(request, auth_endpoint):
+def _get_bakery(request):
+    auth_endpoint = request.external_auth_info.url
     return bakery.Bakery(
         key=_get_macaroon_oven_key(),
         root_key_store=KeyStore(MACAROON_LIFESPAN),

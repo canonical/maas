@@ -131,12 +131,15 @@ class TestPodForm(MAASTransactionServerTestCase):
             [
                 'name',
                 'type',
+                'zone'
             ], list(form.fields))
 
     def test_creates_pod_with_discovered_information(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
+        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = factory.make_User()
         form = PodForm(data=pod_info, request=request)
@@ -148,6 +151,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -171,7 +175,9 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_creates_pod_with_name(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
+        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = factory.make_User()
         pod_name = factory.make_name('pod')
@@ -185,6 +191,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -200,7 +207,9 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = yield deferToDatabase(factory.make_User)
         form = yield deferToDatabase(PodForm, data=pod_info, request=request)
@@ -213,6 +222,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -244,7 +254,9 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         pod_name = factory.make_name('pod')
         pod_info['name'] = pod_name
         request = MagicMock()
@@ -259,6 +271,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -273,7 +286,9 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = fail(factory.make_exception())
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = yield deferToDatabase(factory.make_User)
         form = yield deferToDatabase(PodForm, data=pod_info, request=request)
@@ -289,7 +304,9 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_prevents_duplicate_pod(self):
         discovered_pod, _, _ = self.fake_pod_discovery()
+        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = factory.make_User()
         form = PodForm(data=pod_info, request=request)
@@ -301,9 +318,12 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_takes_over_bmc_with_pod(self):
         discovered_pod, _, _ = self.fake_pod_discovery()
+        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         bmc = factory.make_BMC(
-            power_type=pod_info['type'], power_parameters={
+            zone=zone, power_type=pod_info['type'],
+            power_parameters={
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
             })
@@ -318,7 +338,9 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_updates_existing_pod(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
+        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         orig_pod = factory.make_Pod(pod_type=pod_info['type'])
         new_name = factory.make_name("pod")
         pod_info['name'] = new_name
@@ -335,6 +357,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -362,7 +385,9 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         orig_pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
         new_name = factory.make_name("pod")
@@ -382,6 +407,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -409,8 +435,9 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_discover_and_sync_existing_pod(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
+        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        orig_pod = factory.make_Pod(pod_type=pod_info['type'])
+        orig_pod = factory.make_Pod(zone=zone, pod_type=pod_info['type'])
         request = MagicMock()
         request.user = factory.make_User()
         form = PodForm(data=pod_info, request=request, instance=orig_pod)
@@ -423,6 +450,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({}),
             ip_address=Is(None),
@@ -447,9 +475,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
         orig_pod = yield deferToDatabase(
-            factory.make_Pod, pod_type=pod_info['type'])
+            factory.make_Pod, zone=zone, pod_type=pod_info['type'])
         request = MagicMock()
         request.user = yield deferToDatabase(factory.make_User)
         form = yield deferToDatabase(
@@ -463,6 +492,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
+            zone=Equals(zone),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({}),
             ip_address=Is(None),
@@ -486,7 +516,10 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_raises_unable_to_discover_because_no_racks(self):
         self.patch(pods_module, "discover_pod").return_value = ({}, {})
-        form = PodForm(data=self.make_pod_info())
+        zone = factory.make_Zone()
+        pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
+        form = PodForm(data=pod_info)
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(
@@ -498,7 +531,10 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_raises_unable_to_discover_because_no_racks_in_twisted(self):
         self.patch(pods_module, "discover_pod").return_value = succeed(
             ({}, {}))
-        form = yield deferToDatabase(PodForm, data=self.make_pod_info())
+        zone = yield deferToDatabase(factory.make_Zone)
+        pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
+        form = yield deferToDatabase(PodForm, data=pod_info)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
 
@@ -519,7 +555,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.patch(pods_module, "discover_pod").return_value = ({}, {
             failed_rack.system_id: exc,
         })
-        form = PodForm(data=self.make_pod_info())
+        zone = factory.make_Zone()
+        pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
+        form = PodForm(data=pod_info)
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(str(exc), str(error))
@@ -532,7 +571,10 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.patch(pods_module, "discover_pod").return_value = succeed(({}, {
             failed_rack.system_id: exc,
         }))
-        form = yield deferToDatabase(PodForm, data=self.make_pod_info())
+        zone = yield deferToDatabase(factory.make_Zone)
+        pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
+        form = yield deferToDatabase(PodForm, data=pod_info)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
 

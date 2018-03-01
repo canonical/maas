@@ -39,16 +39,13 @@ var MAAS_config = {
     src="{% url "merge" filename="angular.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "merge" filename="ng-tags-input.js" %}?v={{files_version}}">
+        src="{% url "merge" filename="yui.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "merge" filename="sticky.js" %}?v={{files_version}}">
+        src="{{STATIC_URL}}/js/bundle/vendor-min.js?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "merge" filename="vs-repeat.js" %}?v={{files_version}}">
-</script>
-<script type="text/javascript"
-    src="{% url "merge" filename="maas-angular.js" %}?v={{files_version}}">
+        src="{{STATIC_URL}}/js/bundle/maas-min.js?v={{files_version}}">
 </script>
 
 {% if global_options.enable_analytics %}

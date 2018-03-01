@@ -222,7 +222,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
     def test_create(self):
         user = yield deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {})
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         yield deferToDatabase(self.fake_pod_discovery)
         created_pod = yield handler.create(pod_info)
         self.assertIsNotNone(created_pod['id'])
@@ -232,7 +234,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
     def test_update(self):
         user = yield deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {})
+        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
+        pod_info['zone'] = zone.id
         pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
         pod_info['id'] = pod.id

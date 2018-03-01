@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodesListController.
@@ -151,13 +151,14 @@ describe("PodDetailsController", function() {
             }]
           }
         });
-        expect($scope.powerTypes).toBe(GeneralManager.getData('power_types'));
+        expect($scope.power_types).toBe(GeneralManager.getData('power_types'));
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
+        expect($scope.editing).toBe(false);
     });
 
-    it("calls loadManagers with PodsManager, UsersManager, GeneralManager",
-        function() {
+    it("calls loadManagers with PodsManager, UsersManager, GeneralManager, \
+        DomainsManager, ZonesManager", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope,
@@ -189,6 +190,78 @@ describe("PodDetailsController", function() {
             spyOn(UsersManager, "getAuthUser").and.returnValue(
                 { is_superuser: false });
             expect($scope.isSuperUser()).toBe(false);
+        });
+    });
+
+    describe("isRackControllerConnected", function() {
+        it("returns false no power_types", function() {
+            var controller = makeController();
+            $scope.power_types = [];
+            expect($scope.isRackControllerConnected()).toBe(false);
+        });
+
+        it("returns true if power_types", function() {
+            var controller = makeController();
+            $scope.power_types = [{}];
+            expect($scope.isRackControllerConnected()).toBe(true);
+        });
+    });
+
+    describe("canEdit", function() {
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns false if rack disconnected", function() {
+            var controller = makeController();
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(false);
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns true if super user, rack connected", function() {
+            var controller = makeController();
+            spyOn($scope, "isSuperUser").and.returnValue(true);
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canEdit()).toBe(true);
+        });
+    });
+
+    describe("editPodConfiguration", function() {
+        it("sets editing to true if can edit",
+           function() {
+            var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(true);
+            $scope.editing = false;
+            $scope.editPodConfiguration();
+            expect($scope.editing).toBe(true);
+        });
+
+        it("doesnt set editing to true if cannot",
+           function() {
+            var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.editing = false;
+            $scope.editPodConfiguration();
+            expect($scope.editing).toBe(false);
+        });
+    });
+
+    describe("exitEditPodConfiguration", function() {
+        it("sets editing to false on exiting pod configuration",
+           function() {
+            var controller = makeController();
+            $scope.editing = true;
+            $scope.exitEditPodConfiguration();
+            expect($scope.editing).toBe(false);
         });
     });
 

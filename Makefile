@@ -31,6 +31,18 @@ scss_input := src/maasserver/static/scss/build.scss
 scss_deps := $(wildcard src/maasserver/static/scss/_*.scss)
 scss_output := src/maasserver/static/css/build.css
 
+javascript_deps := \
+  $(shell find src -name '*.js' -not -path '*/maasserver/static/js/bundle/*') \
+  package.json \
+  webpack.config.js \
+  yarn.lock
+
+javascript_output := \
+  src/maasserver/static/js/bundle/maas-min.js \
+  src/maasserver/static/js/bundle/maas-min.js.map \
+  src/maasserver/static/js/bundle/vendor-min.js \
+  src/maasserver/static/js/bundle/vendor-min.js.map
+
 # Prefix commands with this when they need access to the database.
 # Remember to add a dependency on bin/database from the targets in
 # which those commands appear.
@@ -111,7 +123,7 @@ bin/test.parallel: \
 
 bin/maas-region bin/regiond: \
     bin/buildout buildout.cfg versions.cfg setup.py \
-    $(js_enums) $(scss_output)
+    $(js_enums) $(scss_output) $(javascript_output)
 	$(buildout) install region
 	@touch --no-create $@
 
@@ -191,11 +203,12 @@ include/nodejs/bin/yarn: include/nodejs/yarn.tar.gz
 	@touch --no-create $@
 
 bin/yarn: include/nodejs/bin/yarn
+	@mkdir -p bin
 	ln -sf ../include/nodejs/bin/yarn $@
 	@touch --no-create $@
 
 node_modules: include/nodejs/bin/node bin/yarn
-	bin/yarn
+	bin/yarn --frozen-lockfile
 	@touch --no-create $@
 
 define js_bins
@@ -219,9 +232,12 @@ js-update-macaroonbakery:
 		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/store/env/web-handler.js'
 
 define node_packages
+  @babel/core
+  @babel/preset-react
   @types/prop-types
   @types/react
   @types/react-dom
+  babel-loader@^8.0.0-beta.0
   glob
   jasmine-core
   karma
@@ -239,12 +255,14 @@ define node_packages
   react
   react-dom
   react2angular
+  uglifyjs-webpack-plugin
   vanilla-framework
   vanilla-framework-react
   webpack
+  webpack-merge
 endef
 
-package.json: bin/yarn
+force-yarn-update: bin/yarn
 	$(RM) package.json yarn.lock
 	bin/yarn add -D $(strip $(node_packages))
 
@@ -420,7 +438,9 @@ enums: $(js_enums)
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	bin/py -m maasserver.utils.jsenums $(py_enums) > $@
 
-styles: clean-styles $(scss_output)
+styles: $(scss_output)
+
+force-styles: clean-styles $(scss_output)
 
 $(scss_output): bin/node-sass $(scss_input) $(scss_deps)
 	bin/node-sass --include-path=src/maasserver/static/scss \
@@ -428,6 +448,24 @@ $(scss_output): bin/node-sass $(scss_input) $(scss_deps)
 
 clean-styles:
 	$(RM) $(scss_output)
+
+javascript: $(javascript_output)
+
+force-javascript: clean-javascript $(javascript_output)
+
+lander-javascript: force-javascript
+	@git update-index -q --no-assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
+	@git add -f $(strip $(javascript_output)) 2> /dev/null || true
+
+# The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
+# even if all four output files are out-of-date.
+$(subst .,%,$(javascript_output)): bin/webpack $(javascript_deps)
+	bin/webpack
+	@touch --no-create $@
+	@git update-index -q --assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
+
+clean-javascript:
+	$(RM) -r src/maasserver/static/js/bundle
 
 clean: stop clean-failed
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
@@ -478,6 +516,7 @@ define phony_targets
   clean
   clean+db
   clean-failed
+  clean-javascript
   clean-styles
   configure-buildout
   coverage-report
@@ -486,9 +525,14 @@ define phony_targets
   doc
   doc-browse
   enums
+  force-styles
+  force-javascript
+  force-yarn-update
   format
   harness
   install-dependencies
+  javascript
+  lander-javascript
   lint
   lint-css
   lint-doc
