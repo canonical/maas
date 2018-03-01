@@ -14,4 +14,4 @@ if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
 fi
 
 # Run ntpd.
-exec $SNAP/usr/sbin/chronyd -d -f "$SNAP_DATA/etc/chrony/chrony.conf"
+exec $SNAP/usr/sbin/chronyd -u nobody -d -f "$SNAP_DATA/etc/chrony/chrony.conf"
