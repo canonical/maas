@@ -222,12 +222,14 @@ class Script(CleanSave, TimestampedModel):
     def add_tag(self, tag):
         """Add tag to Script."""
         if tag not in self.tags:
-            self.tags.append(tag)
+            self.tags = self.tags + [tag]
 
     def remove_tag(self, tag):
         """Remove tag from Script."""
         if tag in self.tags:
-            self.tags.remove(tag)
+            tags = list(tags)
+            tags.remove(tag)
+            self.tags = tags
 
     def save(self, *args, **kwargs):
         if self.destructive:

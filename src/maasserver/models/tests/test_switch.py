@@ -6,8 +6,8 @@
 __all__ = []
 
 from crochet import wait_for
-from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
+from django.db.utils import IntegrityError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

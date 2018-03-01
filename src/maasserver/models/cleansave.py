@@ -5,7 +5,10 @@
 
 from copy import copy
 
-from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
+from django.core.exceptions import (
+    FieldDoesNotExist,
+    ObjectDoesNotExist,
+)
 from django.db.models.base import ModelState
 
 

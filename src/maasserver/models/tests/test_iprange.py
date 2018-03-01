@@ -7,8 +7,8 @@ __all__ = []
 
 import random
 
-from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
+from django.db.utils import IntegrityError
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,

@@ -397,7 +397,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             rtype=BOOT_RESOURCE_TYPE.SYNCED)
         arch, subarch = resource.split_arch()
         extra_subarch = factory.make_name('subarch')
-        resource.extra['subarches'] = ','.join([subarch, extra_subarch])
+        extra = resource.extra.copy()
+        extra['subarches'] = ','.join([subarch, extra_subarch])
+        resource.extra = extra
         resource.save()
 
         os_name, series = resource.name.split('/')
