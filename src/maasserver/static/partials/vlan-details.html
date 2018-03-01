@@ -240,7 +240,7 @@
                 <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary">Edit</button>
             </div>
         </div>
-        <div class="form p-form--stacked row" data-ng-if="!vlanDetails.editSummary">
+        <div class="p-form p-form--stacked row" data-ng-if="!vlanDetails.editSummary">
             <div class="col-6">
                 <div class="p-form__group">
                     <div class="p-form__label">
@@ -368,20 +368,31 @@
                 <h4 data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack" class="u-off-screen"> High availability</h4>
             </div>
         </div>
-        <div class="row">
+        <div class="p-form p-form--stacked row">
             <div class="col-6">
-                <dl>
-                    <dt>Status</dt>
-                    <dd>{$ vlanDetails.getDHCPStatus() $}</dd>
-                    <div data-ng-if="vlanDetails.vlan.external_dhcp">
-                        <dt>External DHCP</dt>
-                        <dd>{$ vlanDetails.vlan.external_dhcp $}
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Status</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p>{$ vlanDetails.getDHCPStatus() $}</p>
+                    </div>
+                </div>
+
+                <div class="p-form__group" data-ng-if="vlanDetails.vlan.external_dhcp">
+                    <div class="p-form__label">
+                        <p><strong>External DHCP</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p>
+                            {$ vlanDetails.vlan.external_dhcp $}
                             <span class="p-tooltip p-tooltip--top-center">
                                 <i class="p-icon--warning">Warning:</i>
                                 <span class="p-tooltip__message" role="tooltip">Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended.</span>
                             </span>
-                        </dd>
+                        </p>
                     </div>
+                </div>
                     <div data-ng-if="vlanDetails.primaryRack">
                         <dt>Primary controller
                             <span class="p-tooltip p-tooltip--top-center">
@@ -420,9 +431,9 @@
             <table>
                 <thead>
                     <tr>
-                        <td class="col-6">Subnet</td>
-                        <td class="col-2">Used</td>
-                        <td class="col-4">Space</td>
+                        <th class="col-6">Subnet</th>
+                        <th class="col-2">Used</th>
+                        <th class="col-4">Space</th>
                     </tr>
                 </thead>
                 <tbody>
