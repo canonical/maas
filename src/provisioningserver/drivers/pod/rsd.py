@@ -428,7 +428,7 @@ class RSDPodDriver(PodDriver):
                 discovered_pod.cores += sum(cores)
                 discovered_pod.cpu_speeds.extend(cpu_speeds)
                 # GiB to Bytes.
-                discovered_pod.local_storage += sum(storages) * 1073741824
+                discovered_pod.local_storage += sum(storages) * (1024 ** 3)
                 discovered_pod.local_disks += len(storages)
 
         # Set cpu_speed to max of all found cpu_speeds.
