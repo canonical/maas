@@ -59,6 +59,8 @@
             <div class="row">
                 <div class="col-5">
                     <maas-obj-field type="text" key="name" label="Name" label-width="two" input-width="three" placeholder="Name (optional)"></maas-obj-field>
+		    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
+		        options="zone.id as zone.name for zone in zones"></maas-obj-field>
                 </div>
                 <div class="col-6 prefix-1">
                     <maas-pod-parameters></maas-pod-parameters>

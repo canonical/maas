@@ -1,7 +1,7 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * MAAS Node Details Controller
+ * MAAS Pod Details Controller
  */
 
 angular.module('MAAS').controller('PodDetailsController', [
@@ -54,17 +54,45 @@ angular.module('MAAS').controller('PodDetailsController', [
             }]
           }
         };
-        $scope.powerTypes = GeneralManager.getData("power_types");
+        $scope.power_types = GeneralManager.getData("power_types");
         $scope.domains = DomainsManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.section = {
           area: 'summary'
         };
         $scope.machinesSearch = 'pod-id:=invalid';
+        $scope.editing = false;
 
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
             return UsersManager.isSuperUser();
+        };
+
+        // Return true if at least a rack controller is connected to the
+        // region controller.
+        $scope.isRackControllerConnected = function() {
+            // If power_types exist then a rack controller is connected.
+            return $scope.power_types.length > 0;
+        };
+
+        // Return true when the edit buttons can be clicked.
+        $scope.canEdit = function() {
+            return (
+                $scope.isRackControllerConnected() &&
+                    $scope.isSuperUser());
+        };
+
+        // Called to edit the pod configuration.
+        $scope.editPodConfiguration = function() {
+            if(!$scope.canEdit()) {
+                return;
+            }
+            $scope.editing = true;
+        };
+
+        // Called when the cancel or save button is pressed.
+        $scope.exitEditPodConfiguration = function() {
+            $scope.editing = false;
         };
 
         // Return true if there is an action error.
@@ -104,10 +132,10 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Return the title of the pod type.
         $scope.getPodTypeTitle = function() {
             var i;
-            for(i = 0; i < $scope.powerTypes.length; i++) {
-                var powerType = $scope.powerTypes[i];
-                if(powerType.name === $scope.pod.type) {
-                    return powerType.description;
+            for(i = 0; i < $scope.power_types.length; i++) {
+                var power_type = $scope.power_types[i];
+                if(power_type.name === $scope.pod.type) {
+                    return power_type.description;
                 }
             }
             return $scope.pod.type;

@@ -38,11 +38,13 @@ class PodMixin:
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
         pod_password = factory.make_name('password')
+        zone = factory.make_Zone()
         return {
             'type': pod_type,
             'power_address': pod_power_address,
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
+            'zone': zone.id
         }
 
     def fake_pod_discovery(self):
@@ -234,6 +236,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             'name': new_name,
             'power_address': pod_info['power_address'],
             'power_pass': pod_info['power_pass'],
+            'zone': pod_info['zone'],
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)

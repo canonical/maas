@@ -144,7 +144,7 @@
                         <a href="" role="tab" class="p-tabs__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
                     </li>
                     <li class="p-tabs__item" role="presentation">
-                        <a href="" role="tab" class="p-tabs__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</a>
+                        <a href="" role="tab" class="p-tabs__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'configuration'}" data-ng-click="section.area= 'configuration'">Configuration</a>
                     </li>
                 </nav>
             </nav>
@@ -201,22 +201,43 @@
             </div>
         </div>
     </section>
-    <section class="p-strip" data-ng-if="pod && section.area === 'power'">
-        <div class="row">
+    <section class="p-strip" data-ng-if="pod && section.area === 'configuration'">
+      <div class="row">
+	<div class="col-10">
+          <h2>Pod configuration</h2>
+        </div>
+        <div class="col-2">
+          <button class="p-button--neutral u-float--right"
+                data-ng-if="canEdit()"
+                data-ng-click="editPodConfiguration()">Edit</button>
+        </div>
+      </div>
+      <div class="row">
             <maas-obj-form obj="pod" manager="podManager" manager-method="updateItem"
-                table-form="true" save-on-blur="true">
+                table-form="true" save-on-blur="false" data-ng-disabled="!editing">
                 <div class="col-6">
                     <div class="col-6">
                         <dl>
                             <dt>Type</dt>
                             <dd>{$ getPodTypeTitle() $}</dd>
                         </dl>
+			<maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
+					options="zone.id as zone.name for zone in zones"></maas-obj-field>
                     </div>
                 </div>
                 <div class="col-6">
                     <maas-pod-parameters hide-type="true"></maas-pod-parameters>
                     <maas-obj-errors></maas-obj-errors>
                 </div>
+		<div class="row">
+		  <div class="col-12 u-align--right" data-ng-if="editing">
+		    <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
+		    <p maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
+		    <button class="p-button--base"
+			    data-ng-click="exitEditPodConfiguration()">Cancel</button>
+		    <button class="p-button--positive" data-ng-click="exitEditPodConfiguration()" maas-obj-save>Save changes</button>
+		  </div>
+		</div>
             </maas-obj-form>
         </div>
     </section>

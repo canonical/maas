@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Pods List Controller
@@ -6,9 +6,10 @@
 
 angular.module('MAAS').controller('PodsListController', [
     '$scope', '$rootScope',
-    'PodsManager', 'UsersManager', 'GeneralManager', 'ManagerHelperService',
-    function($scope, $rootScope,
-        PodsManager, UsersManager, GeneralManager, ManagerHelperService) {
+    'PodsManager', 'UsersManager', 'GeneralManager', 'ZonesManager',
+    'ManagerHelperService', function(
+        $scope, $rootScope, PodsManager, UsersManager, GeneralManager,
+        ZonesManager, ManagerHelperService) {
 
         // Set title and page.
         $rootScope.title = "Pods";
@@ -50,6 +51,7 @@ angular.module('MAAS').controller('PodsListController', [
           obj: {}
         };
         $scope.powerTypes = GeneralManager.getData("power_types");
+        $scope.zones = ZonesManager.getItems();
 
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked() {
@@ -223,7 +225,7 @@ angular.module('MAAS').controller('PodsListController', [
 
         // Load the required managers for this controller.
         ManagerHelperService.loadManagers($scope, [
-            PodsManager, UsersManager, GeneralManager]).then(
+            PodsManager, UsersManager, GeneralManager, ZonesManager]).then(
             function() {
                 $scope.loading = false;
             });

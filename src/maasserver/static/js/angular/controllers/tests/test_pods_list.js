@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodesListController.
@@ -33,11 +33,13 @@ describe("PodsListController", function() {
     }));
 
     // Load the required managers.
-    var PodsManager, UsersManager, GeneralManager, ManagerHelperService;
+    var PodsManager, UsersManager, GeneralManager;
+    var ZonesManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         PodsManager = $injector.get("PodsManager");
         UsersManager = $injector.get("UsersManager");
         GeneralManager = $injector.get("GeneralManager");
+        ZonesManager = $injector.get("ZonesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
@@ -104,13 +106,15 @@ describe("PodsListController", function() {
         expect($scope.action.option).toBeNull();
         expect($scope.add.open).toBe(false);
         expect($scope.powerTypes).toBe(GeneralManager.getData('power_types'));
+        expect($scope.zones).toBe(ZonesManager.getItems());
     });
 
-    it("calls loadManagers with PodsManager, UsersManager, GeneralManager",
-        function() {
+    it("calls loadManagers with PodsManager, UsersManager, \
+        GeneralManager, ZonesManager", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                $scope, [PodsManager, UsersManager, GeneralManager]);
+                $scope, [
+                    PodsManager, UsersManager, GeneralManager, ZonesManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
