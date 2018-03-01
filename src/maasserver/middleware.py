@@ -9,6 +9,7 @@ __all__ = [
     ]
 
 from abc import ABCMeta
+from collections import namedtuple
 import http.client
 import json
 import logging
@@ -398,3 +399,27 @@ class CSRFHelperMiddleware:
             # request is OAuth-authenticated).
             request.csrf_processing_done = True
         return None
+
+
+# Hold information about external authentication type and configuration
+ExternalAuthInfo = namedtuple('ExternalAuthInfo', ('type', 'url'))
+
+
+class ExternalAuthInfoMiddleware:
+    """A Middleware adding information about the external authentication.
+
+    This adds an `external_auth_info` attribute to the request, which is an
+    ExternalAuthInfo instance if external authentication is enabled, None
+    otherwise.
+
+    """
+
+    def process_request(self, request):
+        auth_endpoint = Config.objects.get_config('external_auth_url')
+        auth_info = None
+        if auth_endpoint:
+            # strip trailing slashes as js-bakery ends up using double slashes
+            # in the URL otherwise
+            auth_info = ExternalAuthInfo(
+                type='macaroon', url=auth_endpoint.rstrip('/'))
+        request.external_auth_info = auth_info

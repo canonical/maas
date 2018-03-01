@@ -226,6 +226,10 @@ MIDDLEWARE_CLASSES = (
     # CSRF attacks.
     'maasserver.middleware.CSRFHelperMiddleware',
 
+    # Used to add external auth info to the request, to avoid getting the
+    # information in multiple places.
+    'maasserver.middleware.ExternalAuthInfoMiddleware',
+
     # Used to display errors about disconnected clusters. FIXME: This should
     # not be done on every request!
     'maasserver.middleware.ExternalComponentsMiddleware',

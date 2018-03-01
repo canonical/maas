@@ -13,6 +13,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
 )
+from maasserver.middleware import ExternalAuthInfoMiddleware
 from maasserver.models import (
     Config,
     MAASAuthorizationBackend,
@@ -244,6 +245,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         user = factory.make_User(password=password)
         backend = MAASAuthorizationBackend()
         request = factory.make_fake_request('/')
+        ExternalAuthInfoMiddleware().process_request(request)
         self.assertEqual(
             backend.authenticate(
                 request, username=user.username, password=password),
@@ -255,6 +257,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         user = factory.make_User(password=password)
         backend = MAASAuthorizationBackend()
         request = factory.make_fake_request('/')
+        ExternalAuthInfoMiddleware().process_request(request)
         self.assertIsNone(
             backend.authenticate(
                 request, username=user.username, password=password))

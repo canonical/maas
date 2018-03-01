@@ -38,10 +38,12 @@ from maasserver.middleware import (
     CSRFHelperMiddleware,
     DebuggingLoggerMiddleware,
     ExceptionMiddleware,
+    ExternalAuthInfoMiddleware,
     ExternalComponentsMiddleware,
     is_public_path,
     RPCErrorsMiddleware,
 )
+from maasserver.models.config import Config
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -574,3 +576,30 @@ class CSRFHelperMiddlewareTest(MAASServerTestCase):
             factory.make_string(), 'GET', cookies=cookies)
         self.assertIsNone(middleware.process_request(request))
         self.assertIsNone(getattr(request, 'csrf_processing_done', None))
+
+
+class TestExternalAuthInfoMiddleware(MAASServerTestCase):
+
+    def test_without_external_auth(self):
+        request = factory.make_fake_request('/')
+        middleware = ExternalAuthInfoMiddleware()
+        middleware.process_request(request)
+        self.assertIsNone(request.external_auth_info)
+
+    def test_with_external_auth(self):
+        Config.objects.set_config('external_auth_url', 'https://example.com')
+        request = factory.make_fake_request('/')
+        middleware = ExternalAuthInfoMiddleware()
+        middleware.process_request(request)
+        self.assertEqual(request.external_auth_info.type, 'macaroon')
+        self.assertEqual(
+            request.external_auth_info.url, 'https://example.com')
+
+    def test_with_external_auth_strip_trailing_slash(self):
+        Config.objects.set_config('external_auth_url', 'https://example.com/')
+        request = factory.make_fake_request('/')
+        middleware = ExternalAuthInfoMiddleware()
+        middleware.process_request(request)
+        self.assertEqual(request.external_auth_info.type, 'macaroon')
+        self.assertEqual(
+            request.external_auth_info.url, 'https://example.com')

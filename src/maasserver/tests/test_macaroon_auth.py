@@ -20,6 +20,7 @@ from maasserver.macaroon_auth import (
     MacaroonAPIAuthentication,
     MacaroonAuthorizationBackend,
 )
+from maasserver.middleware import ExternalAuthInfoMiddleware
 from maasserver.models import (
     Config,
     RootKey,
@@ -92,39 +93,44 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
-        self.request = factory.make_fake_request('/')
         self.auth = MacaroonAPIAuthentication()
         self._mock_service_key_request()
+
+    def get_request(self):
+        request = factory.make_fake_request('/')
+        # add external_auth_info to the request
+        ExternalAuthInfoMiddleware().process_request(request)
+        return request
 
     def test_is_authenticated_no_external_auth(self):
         # authentication details are provided
         self._mock_auth_info(factory.make_string())
         # ... but external auth is disabled
         Config.objects.set_config('external_auth_url', '')
-        self.assertFalse(self.auth.is_authenticated(self.request))
+        self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_no_auth_details(self):
-        self.assertFalse(self.auth.is_authenticated(self.request))
+        self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_with_auth(self):
         user = factory.make_User()
         self._mock_auth_info(user.username)
-        self.assertTrue(self.auth.is_authenticated(self.request))
+        self.assertTrue(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_with_auth_creates_user(self):
         username = factory.make_string()
         self._mock_auth_info(username)
-        self.assertTrue(self.auth.is_authenticated(self.request))
+        self.assertTrue(self.auth.is_authenticated(self.get_request()))
         user = User.objects.get(username=username)
         self.assertIsNotNone(user.id)
 
     def test_challenge_no_external_auth(self):
         Config.objects.set_config('external_auth_url', '')
-        response = self.auth.challenge(self.request)
+        response = self.auth.challenge(self.get_request())
         self.assertEqual(response.status_code, 401)
 
     def test_challenge(self):
-        response = self.auth.challenge(self.request)
+        response = self.auth.challenge(self.get_request())
         self.assertEqual(response.status_code, 401)
         payload = json.loads(response.content)
         self.assertEqual(payload['Code'], 'macaroon discharge required')
@@ -143,32 +149,39 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
-        self.request = factory.make_fake_request('/')
         self.backend = MacaroonAuthorizationBackend()
+
+    def get_request(self):
+        request = factory.make_fake_request('/')
+        # add external_auth_info to the request
+        ExternalAuthInfoMiddleware().process_request(request)
+        return request
 
     def test_authenticate(self):
         user = factory.make_User()
         identity = SimpleIdentity(user=user.username)
         self.assertEqual(
-            self.backend.authenticate(self.request, identity=identity), user)
+            self.backend.authenticate(
+                self.get_request(), identity=identity),
+            user)
 
     def test_authenticate_create_user(self):
         username = factory.make_string()
         identity = SimpleIdentity(user=username)
-        user = self.backend.authenticate(self.request, identity=identity)
+        user = self.backend.authenticate(self.get_request(), identity=identity)
         self.assertIsNotNone(user.id)
         self.assertEqual(user.username, username)
 
     def test_authenticate_no_identity(self):
         self.assertIsNone(
-            self.backend.authenticate(self.request, identity=None))
+            self.backend.authenticate(self.get_request(), identity=None))
 
     def test_authenticate_external_auth_not_enabled(self):
         Config.objects.set_config('external_auth_url', '')
         username = factory.make_string()
         identity = SimpleIdentity(user=username)
         self.assertIsNone(
-            self.backend.authenticate(self.request, identity=identity))
+            self.backend.authenticate(self.get_request(), identity=identity))
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):

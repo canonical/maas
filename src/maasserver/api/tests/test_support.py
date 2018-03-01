@@ -56,9 +56,15 @@ class TestOperationsResource(APITestCase.ForUser):
         name = 'maas_name'
         value = factory.make_string()
         Config.objects.set_config(name, value)
+
         # Patch ConfigManager.get_config so that it will raise a
         # TypeError exception.
-        self.patch(ConfigManager, "get_config", Mock(side_effect=TypeError))
+        def mock_get_config(config):
+            if config == name:
+                raise TypeError()
+
+        self.patch(
+            ConfigManager, "get_config", Mock(side_effect=mock_get_config))
         self.become_admin()
         response = self.client.get(
             reverse('maas_handler'),
