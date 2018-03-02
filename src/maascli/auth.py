@@ -17,6 +17,7 @@ from maascli.api import (
     Action,
     http_request,
 )
+from macaroonbakery import httpbakery
 
 
 class UnexpectedResponse(Exception):
@@ -31,7 +32,28 @@ def try_getpass(prompt):
         return None
 
 
-def obtain_credentials(credentials):
+def get_apikey_via_macaroon(url):
+    """Try to get an API key using a macaroon.
+
+    httpbakery is used to create a new API token. If the MAAS server
+    supports macaroons, it will reply that a macaroon discharge is
+    required, and bakery will send the user to IDM for authentication,
+    and then call the API again with the acquired macaroon.
+
+    If the MAAS server doesn't support macaroons, None is returned.
+    """
+    url = url.strip('/')
+    client = httpbakery.Client()
+    resp = client.request(
+        'POST', '{}/account/?op=create_authorisation_token'.format(url))
+    if resp.status_code != 200:
+        # Most likely the MAAS server doesn't support macaroons.
+        return None
+    result = resp.json()
+    return '{consumer_key}:{token_key}:{token_secret}'.format(**result)
+
+
+def obtain_credentials(url, credentials):
     """Prompt for credentials if possible.
 
     If the credentials are "-" then read from stdin without interactive
@@ -40,8 +62,10 @@ def obtain_credentials(credentials):
     if credentials == "-":
         credentials = sys.stdin.readline().strip()
     elif credentials is None:
-        credentials = try_getpass(
-            "API key (leave empty for anonymous access): ")
+        credentials = get_apikey_via_macaroon(url)
+        if credentials is None:
+            credentials = try_getpass(
+                "API key (leave empty for anonymous access): ")
     # Ensure that the credentials have a valid form.
     if credentials and not credentials.isspace():
         return convert_string_to_tuple(credentials)
