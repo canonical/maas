@@ -810,6 +810,20 @@ class SubnetIPRangeTest(MAASServerTestCase):
         self.assertThat(s, Contains(static_range_low))
         self.assertThat(s, Contains(static_range_high))
 
+    def test__get_ipranges_not_in_use_excludes_ip_range(self):
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=[], host_bits=8)
+        net = subnet.get_ipnetwork()
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        ip_range = factory.make_IPRange(
+            subnet=subnet, start_ip=static_range_low, end_ip=static_range_high,
+            alloc_type=IPRANGE_TYPE.RESERVED)
+        s = subnet.get_ipranges_not_in_use(
+            ignore_discovered_ips=True, exclude_ip_ranges=[ip_range])
+        self.assertThat(s, Contains(static_range_low))
+        self.assertThat(s, Contains(static_range_high))
+
     def test__get_iprange_usage_includes_used_and_unused_ips(self):
         subnet = factory.make_Subnet(
             gateway_ip='', dns_servers=[], host_bits=8)

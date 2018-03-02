@@ -12,7 +12,6 @@ from copy import copy
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models.base import ModelState
 
-
 # Used to track that the field was unset.
 FieldUnset = object()
 
@@ -133,32 +132,10 @@ class CleanSave:
                     # This is updated just like a non-relational field.
                     _wrap_setattr()
                 elif name == field.name:
-                    # Field that holds the actual referenced objects. This
-                    # needs to be handled with more care so that query is
-                    # not performed trying to fetch the old value object.
-                    #
-                    # This path only sets the `field.attname` in the
-                    # `_state._changed_fields` it never sets the actual old
-                    # object, because fetching that will cause a query.
-                    if self._state.adding:
-                        old_id = None
-                    else:
-                        old_id = getattr(self, field.attname)
-                    related_pk_field = (
-                        field.related_model._meta.pk.name)
-                    new_id = getattr(value, related_pk_field, None)
-                    if new_id is None or old_id != new_id:
-                        # Either the object has changed or its a new
-                        # object. So we update the field and mark the
-                        # `field.attname` as changed.
-                        super(CleanSave, self).__setattr__(name, value)
-                        self.__marked_changed(field.attname, old_id, new_id)
-                    else:
-                        # The ID didn't change but the object is being set
-                        # normally from a `select_related` or a
-                        # `prefetch_related` so the attribute still needs
-                        # to be set. But it is not tracked as changed.
-                        super(CleanSave, self).__setattr__(name, value)
+                    # Field that holds the actual referenced objects. Ignore
+                    # tracking because the related descriptor will set the
+                    # related primary key for the field.
+                    super(CleanSave, self).__setattr__(name, value)
                 else:
                     raise AttributeError(
                         'Unknown field(%s) for: %s' % (name, field))
@@ -181,7 +158,7 @@ class CleanSave:
             # occur. Perform the same validation as above for the default
             # Django path, with the exceptions.
             self.full_clean(
-                exclude=list(exclude_clean_fields),
+                exclude=exclude_clean_fields,
                 validate_unique=False)
             self.validate_unique(exclude=[self._meta.pk.name])
             obj = super(CleanSave, self).save(*args, **kwargs)
@@ -190,11 +167,11 @@ class CleanSave:
         elif self._state._changed_fields:
             # This is the new path where saving only updates the fields
             # that have actually changed.
-            kwargs['update_fields'] = [
+            kwargs['update_fields'] = {
                 key
                 for key, value in self._state._changed_fields.items()
                 if value is not FieldUnset
-            ]
+            }
 
             # Exclude the related fields and fields that didn't change
             # in the validation.
@@ -204,7 +181,7 @@ class CleanSave:
                 if field.attname not in kwargs['update_fields']
             )
             self.full_clean(
-                exclude=list(exclude_clean_fields),
+                exclude=exclude_clean_fields,
                 validate_unique=False)
 
             # Validate uniqueness only for fields that have changed and
@@ -214,16 +191,16 @@ class CleanSave:
                 for field in self._meta.fields
                 if field.attname not in kwargs['update_fields']
             )
-            self.validate_unique(exclude=list(exclude_unique_fields))
+            self.validate_unique(exclude=exclude_unique_fields)
 
             # Re-create the update_fields from `_changed_fields` after
             # performing clean because some clean methods will modify
             # fields on the model.
-            kwargs['update_fields'] = [
+            kwargs['update_fields'] = {
                 key
                 for key, value in self._state._changed_fields.items()
                 if value is not FieldUnset
-            ]
+            }
             obj = super(CleanSave, self).save(*args, **kwargs)
             self._state._changed_fields = {}
             return obj
