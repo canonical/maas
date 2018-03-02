@@ -4,6 +4,10 @@ const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 
 module.exports = {
     entry: {
+        vendor: [].concat(
+            glob.sync('./src/maasserver/static/js/angular/3rdparty/*.js'),
+            ['react', 'react-dom']
+        ),
         maas: [].concat(
             glob.sync('./src/maasserver/static/js/*.js'),
             glob.sync('./src/maasserver/static/js/ui/*.js'),
@@ -13,12 +17,9 @@ module.exports = {
             glob.sync('./src/maasserver/static/js/angular/filters/*.js'),
             glob.sync('./src/maasserver/static/js/angular/services/*.js'),
             glob.sync('./src/maasserver/static/js/angular/factories/*.js')
-        ),
-        vendor: [].concat(
-            glob.sync('./src/maasserver/static/js/angular/3rdparty/*.js'),
-            ['react', 'react-dom']
         )
     },
+    mode: 'development',
     // This creates a .map file for debugging each bundle.
     devtool: 'source-map',
     plugins: [
@@ -32,15 +33,13 @@ module.exports = {
         })
     ],
     module: {
-        loaders: [{
+        rules: [{
             test: /\.js$/,
-            use: [{
-                loader: 'babel-loader',
-                options: {
-                    presets: ['@babel/preset-react'],
-                    ignore: ['/node_modules/']
-                }
-            }]
+            loader: 'babel-loader',
+            exclude: /node_modules/,
+            query: {
+                presets: ['@babel/preset-es2015', '@babel/preset-react']
+            }
         }]
     },
     output: {

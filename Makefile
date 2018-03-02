@@ -234,12 +234,13 @@ js-update-macaroonbakery:
 define node_packages
   @babel/core
   @babel/preset-react
+  @babel/preset-es2015
   @types/prop-types
   @types/react
   @types/react-dom
   babel-loader@^8.0.0-beta.0
   glob
-  jasmine-core
+  jasmine-core@=2.99.1
   karma
   karma-chrome-launcher
   karma-failed-reporter
@@ -259,6 +260,7 @@ define node_packages
   vanilla-framework
   vanilla-framework-react
   webpack
+  webpack-cli
   webpack-merge
 endef
 
@@ -454,14 +456,14 @@ javascript: $(javascript_output)
 force-javascript: clean-javascript $(javascript_output)
 
 lander-javascript: force-javascript
-	@git update-index -q --no-assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
-	@git add -f $(strip $(javascript_output)) 2> /dev/null || true
+	git update-index -q --no-assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
+	git add -f $(strip $(javascript_output)) 2> /dev/null || true
 
 # The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
 # even if all four output files are out-of-date.
 $(subst .,%,$(javascript_output)): bin/webpack $(javascript_deps)
 	bin/webpack
-	@touch --no-create $@
+	@touch --no-create $(strip $(javascript_output))
 	@git update-index -q --assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
 
 clean-javascript:
