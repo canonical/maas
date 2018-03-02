@@ -9,7 +9,6 @@ __all__ = [
 
 from maasserver.exceptions import Unauthorized
 from maasserver.macaroon_auth import MacaroonAPIAuthentication
-from maasserver.models import Config
 from piston3.authentication import (
     OAuthAuthentication,
     send_oauth_error,
@@ -46,9 +45,6 @@ class MAASAPIAuthentication(OAuthAuthentication):
     """
 
     def is_authenticated(self, request):
-        if Config.objects.get_config('external_auth_url'):
-            return False
-
         if request.user.is_authenticated:
             return request.user
 
