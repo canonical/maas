@@ -253,6 +253,7 @@ class ScriptSetManager(Manager):
         # it is not associated with any disk. Check for this case and clean it
         # up when trying commissioning again.
         for script_result in ScriptResult.objects.filter(
+                script_set__result_type=new_script_set.result_type,
                 script_set__node=node).exclude(parameters={}).exclude(
                     script_set=new_script_set):
             for param in script_result.parameters.values():

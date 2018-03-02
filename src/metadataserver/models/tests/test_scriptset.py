@@ -16,6 +16,7 @@ from maasserver.models import (
     Config,
     Event,
     EventType,
+    Node,
 )
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
@@ -245,6 +246,28 @@ class TestScriptSetManager(MAASServerTestCase):
             self.assertEqual(
                 1,
                 ScriptResult.objects.filter(script_name=script_name).count())
+
+    def test_create_commissioning_script_set_only_cleans_same_type(self):
+        # Regression test for LP:1751946
+        node = Node.objects.create()
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node=node)
+        script_set.scriptresult_set.update(status=SCRIPT_STATUS.ABORTED)
+        node.current_commissioning_script_set = script_set
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={'storage': {'type': 'storage'}})
+        testing_script_set = ScriptSet.objects.create_testing_script_set(
+            node=node, scripts=[script.id])
+        testing_script_set.scriptresult_set.update(
+            status=SCRIPT_STATUS.ABORTED)
+        node.current_testing_script_set = testing_script_set
+        node.save()
+        new_script_set = ScriptSet.objects.create_commissioning_script_set(
+            node=node)
+        node.current_commissioning_script_set = new_script_set
+        node.save()
+        self.assertIsNotNone(ScriptSet.objects.get(id=testing_script_set.id))
 
     def test_create_commissioning_script_set_removes_previous_placeholder(
             self):
