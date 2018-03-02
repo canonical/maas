@@ -1302,12 +1302,14 @@ class Interface(CleanSave, TimestampedModel):
     def add_tag(self, tag):
         """Add tag to interface."""
         if tag not in self.tags:
-            self.tags.append(tag)
+            self.tags = self.tags + [tag]
 
     def remove_tag(self, tag):
         """Remove tag from interface."""
         if tag in self.tags:
-            self.tags.remove(tag)
+            tags = self.tags.copy()
+            tags.remove(tag)
+            self.tags = tags
 
     def report_vid(self, vid):
         """Report that the specified VID was seen on this interface.

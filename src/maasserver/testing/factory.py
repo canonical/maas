@@ -984,10 +984,10 @@ class Factory(maastesting.factory.Factory):
         ipaddress.save()
         if interface is not None:
             interface.ip_addresses.add(ipaddress)
-            interface.save()
+            interface.save(force_update=True)
         if dnsresource is not None:
             dnsresource.ip_addresses.add(ipaddress)
-            dnsresource.save()
+            dnsresource.save(force_update=True)
         if hostname is not None:
             if not isinstance(hostname, (tuple, list)):
                 hostname = [hostname]

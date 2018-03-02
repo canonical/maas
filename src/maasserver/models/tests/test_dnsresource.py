@@ -315,7 +315,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         # Create a date object for one week ago.
         before = datetime.fromtimestamp(
             datetime.now().timestamp() - timedelta(days=7).total_seconds())
-        dnsrr.save(_created=before, _updated=before)
+        dnsrr.save(_created=before, _updated=before, force_update=True)
         dnsrr = DNSResource.objects.get(name=hostname)
         self.assertThat(dnsrr.updated, Equals(before))
         self.assertThat(dnsrr.created, Equals(before))

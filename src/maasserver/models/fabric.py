@@ -213,7 +213,7 @@ class Fabric(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         # Name will get set by clean_name() if None or empty, and there is an
         # id. We just need to handle names here for creation.
-        created = self._state.adding
+        created = self.id is None
         super(Fabric, self).save(*args, **kwargs)
         if self.name is None or self.name == '':
             # If we got here, then we have a newly created fabric that needs a

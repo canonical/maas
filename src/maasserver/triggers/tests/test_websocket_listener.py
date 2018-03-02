@@ -2832,7 +2832,8 @@ class TestMachinePartitionTableListener(
         try:
             # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
-                self.update_partitiontable, partitiontable.id, {})
+                self.update_partitiontable, partitiontable.id, {},
+                force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -3065,7 +3066,8 @@ class TestMachineFilesystemgroupListener(
         try:
             # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
-                self.update_filesystemgroup, filesystemgroup.id, {})
+                self.update_filesystemgroup,
+                filesystemgroup.id, {}, force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -3141,7 +3143,8 @@ class TestMachineCachesetListener(
         yield listener.startService()
         try:
             # No changes to apply, but trigger a save nonetheless.
-            yield deferToDatabase(self.update_cacheset, cacheset.id, {})
+            yield deferToDatabase(
+                self.update_cacheset, cacheset.id, {}, force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -3227,8 +3230,10 @@ class TestSSHKeyListener(
         listener.register("sshkey", lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            # Force the update because the key contents could be the same.
             yield deferToDatabase(
-                self.update_sshkey, sshkey.id, {'key': contents})
+                self.update_sshkey, sshkey.id, {'key': contents},
+                force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % sshkey.id), dv.value)
         finally:

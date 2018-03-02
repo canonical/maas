@@ -167,9 +167,7 @@ class CleanSave:
                 exclude=exclude_clean_fields,
                 validate_unique=False)
             self.validate_unique(exclude=[self._meta.pk.name])
-            obj = super(CleanSave, self).save(*args, **kwargs)
-            self._state._changed_fields = {}
-            return obj
+            return super(CleanSave, self).save(*args, **kwargs)
         elif self._state._changed_fields:
             # This is the new path where saving only updates the fields
             # that have actually changed.
@@ -207,9 +205,24 @@ class CleanSave:
                 for key, value in self._state._changed_fields.items()
                 if value is not FieldUnset
             }
-            obj = super(CleanSave, self).save(*args, **kwargs)
-            self._state._changed_fields = {}
-            return obj
+            return super(CleanSave, self).save(*args, **kwargs)
         else:
             # Nothing changed so nothing needs to be saved.
             return self
+
+    def _save_table(
+            self, raw=False, cls=None, force_insert=False,
+            force_update=False, using=None, update_fields=None):
+        """
+        Do the heavy-lifting involved in saving. Update or insert the data
+        for a single table.
+
+        This is overridden to only clear the `_changed_fields` this must
+        be done before the `post_save` signal is fired.
+        """
+        res = super(CleanSave, self)._save_table(
+            raw=raw, cls=cls, force_insert=force_insert,
+            force_update=force_update, using=using,
+            update_fields=update_fields)
+        self._state._changed_fields = {}
+        return res

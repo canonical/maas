@@ -223,12 +223,14 @@ class BlockDevice(CleanSave, TimestampedModel):
     def add_tag(self, tag):
         """Add tag to block device."""
         if tag not in self.tags:
-            self.tags.append(tag)
+            self.tags = self.tags + [tag]
 
     def remove_tag(self, tag):
         """Remove tag from block device."""
         if tag in self.tags:
-            self.tags.remove(tag)
+            tags = self.tags.copy()
+            tags.remove(tag)
+            self.tags = tags
 
     @property
     def used_size(self):

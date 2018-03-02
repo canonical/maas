@@ -174,8 +174,7 @@ class Space(CleanSave, TimestampedModel):
             # If we got here, then we have a newly created space that needs a
             # default name.
             self.name = "space-%d" % self.id
-            space = Space.objects.get(id=self.id)
-            space.save()
+            self.save()
 
     def clean(self, *args, **kwargs):
         super(Space, self).clean(*args, **kwargs)

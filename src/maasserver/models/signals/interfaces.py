@@ -90,7 +90,9 @@ for klass in INTERFACE_CLASSES:
 def _update_mtu(interface, mtu, instance):
     log.msg("%s: MTU updated to %d (for consistency with %s)." % (
         interface.get_log_string(), mtu, instance.get_log_string()))
-    interface.params['mtu'] = mtu
+    params = interface.params.copy()
+    params['mtu'] = mtu
+    interface.params = params
     interface.save()
 
 

@@ -3348,13 +3348,14 @@ class TestNode(MAASServerTestCase):
             node.start_testing, admin, testing_scripts=[script.name])
         self.assertFalse(ScriptSet.objects.filter(node=node).exists())
 
-    def test_full_clean_logs_node_status_transition(self):
+    def test_save_logs_node_status_transition(self):
+        self.disable_node_query()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         node.status = NODE_STATUS.DEPLOYED
 
         with LoggerFixture("maas") as logger:
-            node.full_clean()
+            node.save()
 
         stat = map_enum_reverse(NODE_STATUS)
         self.assertThat(logger.output.strip(), Equals(
@@ -3364,7 +3365,8 @@ class TestNode(MAASServerTestCase):
             )
         )
 
-    def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
+    def test_save_checks_status_transition_and_raises_if_invalid(self):
+        self.disable_node_query()
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_Node(
             status=NODE_STATUS.RETIRED, owner=factory.make_User())
@@ -3372,23 +3374,25 @@ class TestNode(MAASServerTestCase):
         self.assertRaisesRegex(
             NodeStateViolation,
             "Invalid transition: Retired -> Allocated.",
-            node.full_clean)
+            node.save)
 
-    def test_full_clean_passes_if_status_unchanged(self):
+    def test_save_passes_if_status_unchanged(self):
+        self.disable_node_query()
         status = factory.pick_choice(NODE_STATUS_CHOICES)
         node = factory.make_Node(status=status)
         node.status = status
-        node.full_clean()
+        node.save()
         # The test is that this does not raise an error.
         pass
 
-    def test_full_clean_passes_if_status_valid_transition(self):
+    def test_save_passes_if_status_valid_transition(self):
+        self.disable_node_query()
         # NODE_STATUS.READY -> NODE_STATUS.ALLOCATED is a valid
         # transition.
         status = NODE_STATUS.READY
         node = factory.make_Node(status=status)
         node.status = NODE_STATUS.ALLOCATED
-        node.full_clean()
+        node.save()
         # The test is that this does not raise an error.
         pass
 
@@ -3412,12 +3416,13 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
         self.assertIsNone(node.status_expires)
 
-    def test_full_clean_checks_architecture_for_installable_nodes(self):
+    def test_save_checks_architecture_for_installable_nodes(self):
         device = factory.make_Device(architecture='')
         device.node_type = factory.pick_enum(
             NODE_TYPE, but_not=[NODE_TYPE.DEVICE])
+        device._state._changed_fields['architecture'] = None
         exception = self.assertRaises(
-            ValidationError, device.as_node().full_clean)
+            ValidationError, device.as_node().save)
         self.assertEqual(
             exception.message_dict,
             {'architecture':
