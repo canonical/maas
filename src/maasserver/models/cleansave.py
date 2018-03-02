@@ -3,15 +3,14 @@
 
 """Model mixin: track field states and `full_clean` on every `save`."""
 
+__all__ = [
+    'CleanSave',
+]
+
 from copy import copy
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models.base import ModelState
-
-
-__all__ = [
-    'CleanSave',
-    ]
 
 
 # Used to track that the field was unset.
