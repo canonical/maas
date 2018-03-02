@@ -3353,8 +3353,10 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         node.status = NODE_STATUS.DEPLOYED
 
+        import pdb; pdb.set_trace()
+
         with LoggerFixture("maas") as logger:
-            node.full_clean()
+            node.save()
 
         stat = map_enum_reverse(NODE_STATUS)
         self.assertThat(logger.output.strip(), Equals(

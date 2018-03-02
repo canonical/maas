@@ -67,6 +67,12 @@ class CleanSave:
     .. _compatibility: https://code.djangoproject.com/ticket/13100#comment:2
     """
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        new = super(CleanSave, cls).from_db(db, field_names, values)
+        new._state._changed_fields = {}
+        return new
+
     def __marked_changed(self, name, old_value, new_value):
         """Marks the field changed or not depending on the values."""
         if old_value != new_value:
