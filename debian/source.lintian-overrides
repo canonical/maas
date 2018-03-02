@@ -1,0 +1,3 @@
+source: source-is-missing src/maasserver/static/js/bundle/maas-min.js
+source: source-is-missing src/maasserver/static/js/bundle/vendor-min.js
+source: source-is-missing src/maasserver/static/js/macaroon/js-macaroon-min.js
