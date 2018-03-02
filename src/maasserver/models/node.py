@@ -1485,7 +1485,7 @@ class Node(CleanSave, TimestampedModel):
         # take advantage of the cache.
         return [tag.name for tag in self.tags.all()]
 
-    def clean_boot_disk(self):
+    def clean_boot_disk(self, prev):
         """Check that the boot disk is either un-used or has a partition
         table.
 
@@ -1519,7 +1519,7 @@ class Node(CleanSave, TimestampedModel):
                                 )]
                         })
 
-    def clean_boot_interface(self):
+    def clean_boot_interface(self, prev):
         """Check that this Node's boot interface (if present) belongs to this
         Node.
 
@@ -1534,8 +1534,9 @@ class Node(CleanSave, TimestampedModel):
                         "Must be one of the node's interfaces."],
                     })
 
-    def clean_status(self, old_status):
+    def clean_status(self, prev):
         """Check a node's status transition against the node-status FSM."""
+        old_status = None if prev is None else prev.status
         if self.status == old_status:
             # No transition is always a safe transition.
             pass
@@ -1556,13 +1557,13 @@ class Node(CleanSave, TimestampedModel):
                 )
             raise NodeStateViolation(error_text)
 
-    def clean_architecture(self):
+    def clean_architecture(self, prev):
         if self.architecture == '':
             raise ValidationError(
                 {'architecture':
                     ["Architecture must be defined for installable nodes."]})
 
-    def clean_hostname_domain(self):
+    def clean_hostname_domain(self, prev):
         # If you set the hostname to a name with dots, that you mean for that
         # to be the FQDN of the host. Se we check that a domain exists for
         # the remaining portion of the hostname.
@@ -1580,7 +1581,7 @@ class Node(CleanSave, TimestampedModel):
         elif self.domain is None:
             self.domain = Domain.objects.get_default_domain()
 
-    def clean_pool(self):
+    def clean_pool(self, prev):
         # Only machines can be in resource pools.
         if self.is_machine:
             if not self.pool:
@@ -1595,19 +1596,14 @@ class Node(CleanSave, TimestampedModel):
 
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
-        self.prev_bmc_id = self._state.get_old_value('bmc_id')
-        if self._state.has_changed('hostname'):
-            self.clean_hostname_domain()
-        if self._state.has_changed('pool_id'):
-            self.clean_pool()
-        if self._state.has_changed('status'):
-            self.clean_status(self._state.get_old_value('status'))
-        if self._state.has_changed('architecture'):
-            self.clean_architecture()
-        if self._state.has_changed('boot_disk_id'):
-            self.clean_boot_disk()
-        if self._state.has_changed('boot_interface_id'):
-            self.clean_boot_interface()
+        prev = get_one(Node.objects.filter(pk=self.pk))
+        self.prev_bmc_id = prev.bmc_id if prev else None
+        self.clean_hostname_domain(prev)
+        self.clean_pool(prev)
+        self.clean_status(prev)
+        self.clean_architecture(prev)
+        self.clean_boot_disk(prev)
+        self.clean_boot_interface(prev)
 
     def remove_orphaned_bmcs(self):
         # If bmc has changed post-save, clean up any potentially orphaned BMC.
@@ -5397,7 +5393,7 @@ class Device(Node):
         super(Device, self).__init__(
             node_type=NODE_TYPE.DEVICE, *args, **kwargs)
 
-    def clean_architecture(self):
+    def clean_architecture(self, prev):
         # Devices aren't required to have a defined architecture
         pass
 
