@@ -61,7 +61,7 @@ dch -a "" --release-heuristic log --nomultimaint
 PKG=$(head -n1 debian/changelog | awk '{print $1}')
 MAJOR_VER=$(head -n 1 debian/changelog | sed 's/^.*(//' | sed 's/).*//' | sed 's/-.*//')
 REV_COUNT=$(git rev-list --count $COMMIT)
-REV_SHORT=$(git rev-parse --short $COMMIT)
+REV_SHORT=$(git rev-parse --short=7 $COMMIT)
 FULL_VER="$MAJOR_VER-$REV_COUNT-g$REV_SHORT"
 TARBALL="maas_$FULL_VER.orig.tar.gz"
 
