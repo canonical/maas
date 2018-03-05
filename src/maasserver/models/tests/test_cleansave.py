@@ -172,12 +172,13 @@ class TestCleanSave(MAASLegacyServerTestCase):
     def test_save_called_when_changed_fields(self):
         related = GenericTestModel.objects.create(field='')
         obj = CleanSaveTestModel.objects.create()
-        mock_save = self.patch(Model, 'save')
+        mock_save = self.patch(Model, '_save_table')
         obj.field = 'test'
         obj.related = related
         obj.save()
         self.assertThat(mock_save, MockCalledOnceWith(
-            update_fields={'field', 'related_id'}))
+            cls=CleanSaveTestModel, force_insert=False, force_update=False,
+            raw=False, update_fields={'field', 'related_id'}, using='default'))
         self.assertEquals({}, obj._state._changed_fields)
 
     def test_full_clean_excludes_unchanged_fields(self):

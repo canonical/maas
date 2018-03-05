@@ -67,9 +67,12 @@ Later, after another failure:
 
   >>> ii_warning = Notification.objects.get(
   ...     ident="import:http://foobar.example.com/")
-  >>> ii_warning.context["failures"].append("2016-02-14 16:58:02")
-  >>> ii_warning.context["count"] = len(ii_warning.context["failures"])
-  >>> ii_warning.context["hours"] = 3  # Calculate this.
+  >>> ii_warning.context = {
+  ...      "url": "http://foobar.example.com/",
+  ...      "failures": ["2016-02-14 13:58:37", "2016-02-14 16:58:02"],
+  ...      "count": 2,
+  ...      "hours": 3,
+  ... }
   >>> ii_warning.message = (
   ...     "Image import from {url} has failed {count} times "
   ...     "in the last {hours} hours.")

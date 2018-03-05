@@ -110,7 +110,8 @@ class IPv4CIDRTestModel(Model):
 
 class CleanSaveTestModel(CleanSave, Model):
     field = CharField(max_length=20, null=True, blank=True)
-    related = ForeignKey(GenericTestModel, null=True, blank=True)
+    related = ForeignKey(
+        GenericTestModel, null=True, blank=True, on_delete=CASCADE)
 
     def __test_prop_get(self):
         return self.__inner

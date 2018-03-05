@@ -1140,6 +1140,8 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             product, resource = make_boot_resource_group_from_product(product)
             squashfs = factory.make_LargeFile()
         product['ftype'] = BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+        product['itemname'] = 'squashfs'
+        product['path'] = '/path/to/squashfs'
         product['sha256'] = squashfs.sha256
         product['size'] = squashfs.total_size
         store = BootResourceStore()

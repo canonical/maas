@@ -3057,7 +3057,7 @@ class TestMachineFilesystemgroupListener(
         yield deferToDatabase(self.create_partitiontable, {'node': node})
         filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {
-                "node": node, "group_type": "raid-5"})
+                "node": node, "group_type": "bcache"})
 
         listener = PostgresListenerService()
         dv = DeferredValue()
