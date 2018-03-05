@@ -266,8 +266,6 @@ angular.module('MAAS').controller('PodDetailsController', [
         ManagerHelperService.loadManagers($scope, [
             PodsManager, GeneralManager, UsersManager,
             DomainsManager, ZonesManager]).then(function() {
-            // Start polling from the general manager.
-            GeneralManager.startPolling($scope, "power_types");
 
             // Possibly redirected from another controller that already had
             // this pod set to active. Only call setActiveItem if not already

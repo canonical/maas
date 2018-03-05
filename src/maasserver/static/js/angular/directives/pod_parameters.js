@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Pod parameters directive.
@@ -99,18 +99,8 @@ angular.module('MAAS').directive(
                 updateFields(getType());
             });
 
-            // When destroyed stop polling the power types.
-            scope.$on("$destroy", function() {
-                if(GeneralManager.isPolling("power_types")) {
-                    GeneralManager.stopPolling($scope, "power_types");
-                }
-            });
-
-            // Load the general manager and start polling.
-            ManagerHelperService.loadManager(scope, GeneralManager).then(
-                function() {
-                  GeneralManager.startPolling($scope, "power_types");
-                });
+            // Load the general manager.
+            ManagerHelperService.loadManager(scope, GeneralManager);
         }
     };
 }]);
