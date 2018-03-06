@@ -1118,7 +1118,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager.startPolling($scope, "architectures");
             GeneralManager.startPolling($scope, "hwe_kernels");
             GeneralManager.startPolling($scope, "osinfo");
-            GeneralManager.startPolling($scope, "power_types");
         });
 
         // Stop polling for architectures, hwe_kernels, and osinfo when the
@@ -1127,6 +1126,5 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager.stopPolling($scope, "architectures");
             GeneralManager.stopPolling($scope, "hwe_kernels");
             GeneralManager.stopPolling($scope, "osinfo");
-            GeneralManager.stopPolling($scope, "power_types");
         });
     }]);

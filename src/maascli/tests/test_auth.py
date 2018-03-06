@@ -23,6 +23,8 @@ from maascli import auth
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from macaroonbakery import httpbakery
+import requests
 
 
 def make_credentials():
@@ -44,6 +46,20 @@ def make_options():
 
 class TestAuth(MAASTestCase):
 
+    def setUp(self):
+        super().setUp()
+        # Mock out httpbakery for all tests. This ensures that no
+        # outgoing http requests will be made in the tests. We return a
+        # basic 401 error, which indicates that the server doesn't
+        # support macaroon authentication.
+        self.bakery_response = requests.Response()
+        self.bakery_response.status_code = 401
+        self.bakery_response.encoding = 'utf-8'
+        self.bakery_response._content = b''
+
+        self.bakery_request = self.patch(httpbakery.Client, 'request')
+        self.bakery_request.return_value = self.bakery_response
+
     def test_try_getpass(self):
         getpass = self.patch(auth, "getpass")
         getpass.return_value = sentinel.credentials
@@ -63,7 +79,8 @@ class TestAuth(MAASTestCase):
         stdin = self.patch(sys, "stdin")
         stdin.readline.return_value = (
             convert_tuple_to_string(credentials) + "\n")
-        self.assertEqual(credentials, auth.obtain_credentials("-"))
+        self.assertEqual(
+            credentials, auth.obtain_credentials("http://example.com/", "-"))
         self.assertThat(stdin.readline, MockCalledOnceWith())
 
     def test_obtain_credentials_via_getpass(self):
@@ -72,7 +89,8 @@ class TestAuth(MAASTestCase):
         credentials = make_credentials()
         getpass = self.patch(auth, "getpass")
         getpass.return_value = convert_tuple_to_string(credentials)
-        self.assertEqual(credentials, auth.obtain_credentials(None))
+        self.assertEqual(
+            credentials, auth.obtain_credentials("http://example.com/", None))
         self.assertThat(getpass, MockCalledOnceWith(ANY))
 
     def test_obtain_credentials_empty(self):
@@ -80,8 +98,28 @@ class TestAuth(MAASTestCase):
         # obtain_credentials returns None.
         getpass = self.patch(auth, "getpass")
         getpass.return_value = None
-        self.assertEqual(None, auth.obtain_credentials(None))
+        self.assertEqual(
+            None, auth.obtain_credentials("http://example.com/", None))
         self.assertThat(getpass, MockCalledOnceWith(ANY))
+
+    def test_obtain_credentials_macaroon(self):
+        # If no credentials are passed, the client will use httpbakery
+        # to get a macroon and create a new api key.
+
+        # The .request method will send the user to IDM and get the
+        # macaroon that way. Ideally we should test this better by
+        # faking the http responses that httpbakery expects, but it's
+        # not trivial to do so.
+        token = {
+            'token_key': 'token-key', 'token_secret': 'token-secret',
+            'consumer_key': 'consumer-key', 'name': 'MAAS consumer'}
+        self.bakery_response.status_code = 200
+        self.bakery_response._content = json.dumps(token).encode('utf-8')
+
+        credentials = auth.obtain_credentials(
+            'http://example.com/MAAS', None)
+        self.assertEqual(
+            ('consumer-key', 'token-key', 'token-secret'), credentials)
 
     def test_check_valid_apikey_passes_valid_key(self):
         options = make_options()

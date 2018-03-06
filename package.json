@@ -1,13 +1,14 @@
 {
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.40",
+    "@babel/preset-es2015": "^7.0.0-beta.40",
     "@babel/preset-react": "^7.0.0-beta.40",
     "@types/prop-types": "^15.5.2",
-    "@types/react": "^16.0.38",
+    "@types/react": "^16.0.40",
     "@types/react-dom": "^16.0.4",
     "babel-loader": "^8.0.0-beta.0",
     "glob": "^7.1.2",
-    "jasmine-core": "^2.99.1",
+    "jasmine-core": "=2.99.1",
     "karma": "^2.0.0",
     "karma-chrome-launcher": "^2.2.0",
     "karma-failed-reporter": "^0.0.3",
@@ -18,15 +19,16 @@
     "karma-phantomjs-launcher": "^1.0.4",
     "node-sass": "^4.7.2",
     "phantomjs-prebuilt": "^2.1.16",
-    "prop-types": "^15.6.0",
+    "prop-types": "^15.6.1",
     "protractor": "^5.3.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react2angular": "^3.2.1",
-    "uglifyjs-webpack-plugin": "^1.2.0",
+    "uglifyjs-webpack-plugin": "^1.2.2",
     "vanilla-framework": "^1.6.6",
     "vanilla-framework-react": "^0.1.2",
-    "webpack": "^3.11.0",
-    "webpack-merge": "^4.1.1"
+    "webpack": "^4.0.1",
+    "webpack-cli": "^2.0.10",
+    "webpack-merge": "^4.1.2"
   }
 }

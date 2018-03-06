@@ -12,6 +12,7 @@ from unittest import (
 )
 
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
     _get_macaroon_oven_key,
@@ -30,6 +31,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from macaroonbakery.bakery import (
     IdentityError,
     SimpleIdentity,
+    VerificationError,
 )
 import requests
 
@@ -58,7 +60,7 @@ class TestIDClient(TestCase):
 class MacaroonBakeryMockMixin:
     """Mixin providing mock helpers for tests involving macaroonbakery."""
 
-    def _mock_service_key_request(self):
+    def mock_service_key_request(self):
         """Mock request to get the key from the external service.
 
         Bakery internally performs this request.
@@ -71,19 +73,28 @@ class MacaroonBakeryMockMixin:
         mock_get = self.patch(requests, 'get')
         mock_get.return_value = mock_result
 
-    def _mock_auth_info(self, username):
+    def mock_auth_info(self, username=None, exception=None):
         """Mock bakery authentication, returning an identity.
 
-        A SimpleIdentity for the specified username is returned.
+        If a username is specified, a SimpleIdentity is returned.
+        If an exception is specified, it's raised by the checker allow()
+        method.
+
+        Return the mocked bakery object.
 
         """
         mock_auth_checker = mock.Mock()
-        mock_auth_checker.allow.return_value = mock.Mock(
-            identity=SimpleIdentity(user=username))
+        if username:
+            mock_auth_checker.allow.return_value = mock.Mock(
+                identity=SimpleIdentity(user=username))
+        if exception:
+            mock_auth_checker.allow.side_effect = exception
+
         mock_bakery = mock.Mock()
         mock_bakery.checker.auth.return_value = mock_auth_checker
         mock_get_bakery = self.patch(maasserver.macaroon_auth, '_get_bakery')
         mock_get_bakery.return_value = mock_bakery
+        return mock_bakery
 
 
 class TestMacaroonAPIAuthentication(MAASServerTestCase,
@@ -94,7 +105,7 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
         self.auth = MacaroonAPIAuthentication()
-        self._mock_service_key_request()
+        self.mock_service_key_request()
 
     def get_request(self):
         request = factory.make_fake_request('/')
@@ -104,7 +115,7 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
 
     def test_is_authenticated_no_external_auth(self):
         # authentication details are provided
-        self._mock_auth_info(factory.make_string())
+        self.mock_auth_info(username=factory.make_string())
         # ... but external auth is disabled
         Config.objects.set_config('external_auth_url', '')
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
@@ -114,12 +125,12 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
 
     def test_is_authenticated_with_auth(self):
         user = factory.make_User()
-        self._mock_auth_info(user.username)
+        self.mock_auth_info(username=user.username)
         self.assertTrue(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_with_auth_creates_user(self):
         username = factory.make_string()
-        self._mock_auth_info(username)
+        self.mock_auth_info(username=username)
         self.assertTrue(self.auth.is_authenticated(self.get_request()))
         user = User.objects.get(username=username)
         self.assertIsNotNone(user.id)
@@ -283,7 +294,7 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
-        self._mock_service_key_request()
+        self.mock_service_key_request()
 
     def test_discharge_request(self):
         response = self.client.get('/accounts/discharge-request/')
@@ -297,6 +308,19 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
         third_party_urls = [
             caveat['cl'] for caveat in macaroon['caveats'] if 'cl' in caveat]
         self.assertEqual(third_party_urls, ['https://auth.example.com'])
+
+    def test_discharge_request_validation_failed(self):
+        mock_bakery = self.mock_auth_info(
+            exception=VerificationError('expired!'))
+        mock_auth_request = self.patch(
+            maasserver.macaroon_auth, '_authorization_request')
+        response = HttpResponse()  # to check that the same object is returned
+        mock_auth_request.return_value = response
+        self.assertIs(
+            self.client.get('/accounts/discharge-request/'), response)
+        mock_auth_request.assert_called_with(
+            mock_bakery, auth_endpoint='https://auth.example.com',
+            req_headers={'cookie': ''})
 
     def test_discharge_request_strip_url_trailing_slash(self):
         Config.objects.set_config(
@@ -314,7 +338,7 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
 
     def test_authenticated_user(self):
         user = factory.make_User()
-        self._mock_auth_info(user.username)
+        self.mock_auth_info(username=user.username)
         response = self.client.get('/accounts/discharge-request/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -322,7 +346,7 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
 
     def test_authenticated_user_created(self):
         username = factory.make_string()
-        self._mock_auth_info(username)
+        self.mock_auth_info(username=username)
         response = self.client.get('/accounts/discharge-request/')
         user = User.objects.get(username=username)
         self.assertEqual(response.status_code, 200)

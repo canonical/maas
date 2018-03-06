@@ -8,8 +8,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")"/..
 # The --porcelain option is used to ensure that the output of 'git status' is
 # expected to be formatted for use by scripts, and is consistent over time.
 
-git status --porcelain=v2 \
-    | cut -d' ' -f9- \
+git status -z \
+    | xargs -0 -n 1 echo | cut -c 4- \
     | egrep -q '\.js$|package\.json$|yarn\.lock$'
 
 exit $?

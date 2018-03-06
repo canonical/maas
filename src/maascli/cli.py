@@ -64,7 +64,7 @@ class cmd_login(Command):
     def __call__(self, options):
         # Try and obtain credentials interactively if they're not given, or
         # read them from stdin if they're specified as "-".
-        credentials = obtain_credentials(options.credentials)
+        credentials = obtain_credentials(options.url, options.credentials)
         # Check for bogus credentials. Do this early so that the user is not
         # surprised when next invoking the MAAS CLI.
         if credentials is not None:

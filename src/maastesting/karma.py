@@ -61,7 +61,8 @@ def run_karma():
         extra.update(env)
 
     command = (
-        'bin/karma', 'start', '--single-run', '--no-colors', '--browsers',
+        'include/nodejs/bin/node', 'bin/karma', 'start', '--single-run',
+        '--no-colors', '--browsers',
         ','.join(browsers), 'src/maastesting/karma.conf.js')
 
     with DisplayFixture():

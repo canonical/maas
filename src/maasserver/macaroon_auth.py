@@ -84,15 +84,8 @@ class MacaroonAPIAuthentication:
             return rc.FORBIDDEN
 
         macaroon_bakery = _get_bakery(request)
-        auth_checker = macaroon_bakery.checker.auth([])
-        try:
-            auth_checker.allow(
-                checkers.AuthContext(), [bakery.LOGIN_OP])
-        except bakery.DischargeRequiredError as err:
-            expiration = datetime.utcnow() + MACAROON_LIFESPAN
-            return _authorization_request(expiration, macaroon_bakery, err)
-
-        raise RuntimeError('DischargeRequeredError not raised')
+        return _authorization_request(
+            macaroon_bakery, auth_endpoint=request.external_auth_info.url)
 
 
 class MacaroonDischargeRequest:
@@ -110,12 +103,12 @@ class MacaroonDischargeRequest:
             auth_info = auth_checker.allow(
                 checkers.AuthContext(), [bakery.LOGIN_OP])
         except bakery.DischargeRequiredError as err:
-            expiry_duration = min(
-                MACAROON_LIFESPAN,
-                timedelta(seconds=request.session.get_expiry_age()))
-            expiration = datetime.utcnow() + expiry_duration
             return _authorization_request(
-                expiration, macaroon_bakery, err, req_headers=req_headers)
+                macaroon_bakery, derr=err, req_headers=req_headers)
+        except bakery.VerificationError:
+            return _authorization_request(
+                macaroon_bakery, req_headers=req_headers,
+                auth_endpoint=request.external_auth_info.url)
         except bakery.PermissionDenied:
             return HttpResponseForbidden()
 
@@ -226,11 +219,16 @@ def _get_bakery(request):
             get_acl=lambda ctx, op: [bakery.EVERYONE]))
 
 
-def _authorization_request(expiration, bakery, err, req_headers=None):
+def _authorization_request(bakery, derr=None, auth_endpoint=None,
+                           req_headers=None):
     """Return a 401 response with a macaroon discharge request."""
     bakery_version = httpbakery.request_version(req_headers or {})
-    macaroon = bakery.oven.macaroon(
-        bakery_version, expiration, err.cavs(), err.ops())
+    if derr:
+        caveats, ops = derr.cavs(), derr.ops()
+    else:
+        caveats, ops = _get_macaroon_caveats_ops(auth_endpoint)
+    expiration = datetime.utcnow() + MACAROON_LIFESPAN
+    macaroon = bakery.oven.macaroon(bakery_version, expiration, caveats, ops)
     content, headers = httpbakery.discharge_required_response(
         macaroon, '/', 'maas')
     response = HttpResponse(
@@ -255,3 +253,11 @@ def _get_macaroon_oven_key():
     Config.objects.set_config(
         'macaroon_private_key', key.serialize().decode('ascii'))
     return key
+
+
+def _get_macaroon_caveats_ops(auth_endpoint):
+    """Return a 2-tuple with lists of caveats and operations for a macaroon."""
+    caveats = [
+        checkers.Caveat('is-authenticated-user', location=auth_endpoint)]
+    ops = [bakery.LOGIN_OP]
+    return caveats, ops

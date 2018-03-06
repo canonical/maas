@@ -502,7 +502,7 @@ describe("NodeDetailsController", function() {
 
         expect(GeneralManager.startPolling.calls.allArgs()).toEqual([
           [$scope, "architectures"], [$scope, "hwe_kernels"],
-          [$scope, "osinfo"], [$scope, "power_types"]]);
+          [$scope, "osinfo"]]);
     });
 
     it("calls stopPolling when the $scope is destroyed", function() {
@@ -511,7 +511,7 @@ describe("NodeDetailsController", function() {
         $scope.$destroy();
         expect(GeneralManager.stopPolling.calls.allArgs()).toEqual([
           [$scope, "architectures"], [$scope, "hwe_kernels"],
-          [$scope, "osinfo"], [$scope, "power_types"]]);
+          [$scope, "osinfo"]]);
     });
 
     it("updates $scope.devices", function() {

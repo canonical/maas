@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Add Hardware Controller
@@ -410,9 +410,6 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Start the polling of hwe_kernels.
             GeneralManager.startPolling($scope, "hwe_kernels");
-
-            // Start the polling of power_types.
-            GeneralManager.startPolling($scope, "power_types");
         };
 
         // Called by the parent scope when this controller is hidden.
@@ -424,9 +421,6 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Stop the polling of hwe_kernels.
             GeneralManager.stopPolling($scope, "hwe_kernels");
-
-            // Stop the polling of power_types.
-            GeneralManager.stopPolling($scope, "power_types");
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');
@@ -637,6 +631,5 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.$on("$destroy", function() {
             GeneralManager.stopPolling($scope, "architectures");
             GeneralManager.stopPolling($scope, "hwe_kernels");
-            GeneralManager.stopPolling($scope, "power_types");
         });
     }]);
