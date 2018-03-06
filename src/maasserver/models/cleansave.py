@@ -217,9 +217,17 @@ class CleanSave:
         Do the heavy-lifting involved in saving. Update or insert the data
         for a single table.
 
-        This is overridden to only clear the `_changed_fields` this must
-        be done before the `post_save` signal is fired.
+        This is overridden to update `update_fields` with `_changed_fields`
+        because some `pre_save` signals can modify fields on a model. Also
+        it clears the `_changed_fields` before `post_save` signal is fired.
         """
+        if update_fields is not None:
+            update_fields = update_fields.union({
+                key
+                for key, value in self._state._changed_fields.items()
+                if value is not FieldUnset
+            })
+            update_fields = frozenset(update_fields)
         res = super(CleanSave, self)._save_table(
             raw=raw, cls=cls, force_insert=force_insert,
             force_update=force_update, using=using,
