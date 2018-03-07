@@ -13,10 +13,7 @@ from maasserver.models import User
 from maasserver.models.notification import NotificationDismissal
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import (
-    dehydrate_datetime,
-    Handler,
-)
+from maasserver.websockets.base import Handler
 from maasserver.websockets.handlers.notification import NotificationHandler
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -44,8 +41,8 @@ def MatchesRenderedNotification(ntfn):
         "user": Is(None) if ntfn.user_id is None else Equals(ntfn.user_id),
         "users": Is(ntfn.users),
         "admins": Is(ntfn.admins),
-        "updated": Equals(dehydrate_datetime(ntfn.updated)),
-        "created": Equals(dehydrate_datetime(ntfn.created)),
+        "created": Not(Is(None)),
+        "updated": Not(Is(None)),
         "message": Equals(ntfn.render()),
         "category": Equals(ntfn.category),
     })

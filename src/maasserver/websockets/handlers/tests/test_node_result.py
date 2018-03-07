@@ -6,7 +6,10 @@
 __all__ = []
 
 import random
-from unittest.mock import sentinel
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -31,7 +34,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         results = script_result.read_results().get("results", {})
         data = {
             "id": script_result.id,
-            "updated": dehydrate_datetime(script_result.updated),
+            "updated": ANY,
             "script": script_result.script_id,
             "parameters": script_result.parameters,
             "physical_blockdevice": script_result.physical_blockdevice_id,
@@ -51,7 +54,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             "tags": ", ".join(script_result.script.tags),
             "history_list": [{
                 "id": history.id,
-                "updated": dehydrate_datetime(history.updated),
+                "updated": ANY,
                 "status": history.status,
                 "status_name": history.status_name,
                 "runtime": history.runtime,

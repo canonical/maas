@@ -5,11 +5,12 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.iprange import IPRangeHandler
 from testtools.matchers import MatchesStructure
 
@@ -19,8 +20,8 @@ class TestIPRangeHandler(MAASServerTestCase):
     def dehydrate_iprange(self, iprange, for_list=False):
         data = {
             "id": iprange.id,
-            "created": dehydrate_datetime(iprange.created),
-            "updated": dehydrate_datetime(iprange.updated),
+            "created": ANY,
+            "updated": ANY,
             "subnet": iprange.subnet_id,
             "start_ip": iprange.start_ip,
             "end_ip": iprange.end_ip,

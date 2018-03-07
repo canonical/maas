@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 import maasserver.forms.packagerepository as forms_packagerepository_module
 from maasserver.models import (
     Event,
@@ -13,10 +15,7 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import (
-    dehydrate_datetime,
-    HandlerPermissionError,
-)
+from maasserver.websockets.base import HandlerPermissionError
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
 )
@@ -44,8 +43,8 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
             'key': package_repository.key,
             'default': package_repository.default,
             'enabled': package_repository.enabled,
-            'updated': dehydrate_datetime(package_repository.updated),
-            'created': dehydrate_datetime(package_repository.created),
+            'updated': ANY,
+            'created': ANY,
         }
 
     def test_list(self):

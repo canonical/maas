@@ -6,13 +6,13 @@
 __all__ = []
 
 import random
+from unittest.mock import ANY
 
 from django.core.exceptions import PermissionDenied
 from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.staticroute import StaticRouteHandler
 from testtools.matchers import MatchesStructure
 
@@ -22,8 +22,8 @@ class TestStaticRouteHandler(MAASServerTestCase):
     def dehydrate_staticroute(self, staticroute, for_list=False):
         data = {
             "id": staticroute.id,
-            "created": dehydrate_datetime(staticroute.created),
-            "updated": dehydrate_datetime(staticroute.updated),
+            "created": ANY,
+            "updated": ANY,
             "source": staticroute.source_id,
             "destination": staticroute.destination_id,
             "gateway_ip": staticroute.gateway_ip,

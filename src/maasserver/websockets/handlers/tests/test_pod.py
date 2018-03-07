@@ -6,7 +6,10 @@
 __all__ = []
 
 import random
-from unittest.mock import MagicMock
+from unittest.mock import (
+    ANY,
+    MagicMock,
+)
 
 from crochet import wait_for
 from maasserver.enum import NODE_TYPE
@@ -16,7 +19,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.pod import (
     ComposeMachineForm,
     PodHandler,
@@ -112,8 +114,8 @@ class TestPodHandler(MAASTransactionServerTestCase):
             "cpu_speed": pod.cpu_speed,
             "type": pod.power_type,
             "ip_address": pod.ip_address,
-            "updated": dehydrate_datetime(pod.updated),
-            "created": dehydrate_datetime(pod.created),
+            "updated": ANY,
+            "created": ANY,
             "composed_machines_count": pod.node_set.filter(
                 node_type=NODE_TYPE.MACHINE).count(),
             "total": {

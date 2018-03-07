@@ -5,10 +5,11 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 from maasserver.models.fabric import Fabric
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.fabric import FabricHandler
 
 
@@ -20,8 +21,8 @@ class TestFabricHandler(MAASServerTestCase):
             "name": fabric.get_name(),
             "description": fabric.description,
             "class_type": fabric.class_type,
-            "updated": dehydrate_datetime(fabric.updated),
-            "created": dehydrate_datetime(fabric.created),
+            "updated": ANY,
+            "created": ANY,
             "vlan_ids": sorted([
                 vlan.id
                 for vlan in fabric.vlan_set.all()

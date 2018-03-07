@@ -5,10 +5,11 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.tag import TagHandler
 
 
@@ -21,8 +22,8 @@ class TestTagHandler(MAASServerTestCase):
             "definition": tag.definition,
             "comment": tag.comment,
             "kernel_opts": tag.kernel_opts,
-            "updated": dehydrate_datetime(tag.updated),
-            "created": dehydrate_datetime(tag.created),
+            "updated": ANY,
+            "created": ANY,
             }
         return data
 
