@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
     CASCADE,
+    DateTimeField,
     Manager,
     Model,
     OneToOneField,
@@ -65,6 +66,7 @@ class UserProfile(CleanSave, Model):
 
     # Set to true when the user has completed the intro page of the Web UI.
     completed_intro = BooleanField(default=False)
+    auth_last_check = DateTimeField(null=True, auto_now_add=True)
 
     def delete(self):
         # check owned resources
