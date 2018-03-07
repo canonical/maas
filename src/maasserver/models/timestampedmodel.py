@@ -84,8 +84,9 @@ class TimestampedModel(Model, object):
                 self.created = self.updated
                 update_created = True
         if 'update_fields' in kwargs:
+            kwargs['update_fields'] = set(kwargs['update_fields'])
             if update_created:
-                kwargs['update_fields'].append('created')
+                kwargs['update_fields'].add('created')
             if update_updated:
-                kwargs['update_fields'].append('updated')
+                kwargs['update_fields'].add('updated')
         return super(TimestampedModel, self).save(*args, **kwargs)

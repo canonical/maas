@@ -491,7 +491,8 @@ class Subnet(CleanSave, TimestampedModel):
             self, exclude_addresses: IPAddressExcludeList=None,
             ranges_only: bool=False, include_reserved: bool=True,
             with_neighbours: bool=False,
-            ignore_discovered_ips: bool=False) -> MAASIPSet:
+            ignore_discovered_ips: bool=False,
+            exclude_ip_ranges: list=None) -> MAASIPSet:
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
 
@@ -550,23 +551,30 @@ class Subnet(CleanSave, TimestampedModel):
                 if address in network
             )
         if include_reserved:
-            ranges |= self.get_reserved_maasipset()
-        ranges |= self.get_dynamic_maasipset()
+            ranges |= self.get_reserved_maasipset(
+                exclude_ip_ranges=exclude_ip_ranges)
+        ranges |= self.get_dynamic_maasipset(
+            exclude_ip_ranges=exclude_ip_ranges)
         if with_neighbours:
             ranges |= self.get_maasipset_for_neighbours()
         return MAASIPSet(ranges)
 
-    def get_ipranges_available_for_reserved_range(self):
-        return self.get_ipranges_not_in_use(ranges_only=True)
-
-    def get_ipranges_available_for_dynamic_range(self):
+    def get_ipranges_available_for_reserved_range(
+            self, exclude_ip_ranges: list=None):
         return self.get_ipranges_not_in_use(
-            ranges_only=False, ignore_discovered_ips=True)
+            ranges_only=True, exclude_ip_ranges=exclude_ip_ranges)
+
+    def get_ipranges_available_for_dynamic_range(
+            self, exclude_ip_ranges: list=None):
+        return self.get_ipranges_not_in_use(
+            ranges_only=False, ignore_discovered_ips=True,
+            exclude_ip_ranges=exclude_ip_ranges)
 
     def get_ipranges_not_in_use(
             self, exclude_addresses: IPAddressExcludeList=None,
             ranges_only: bool=False, ignore_discovered_ips: bool=False,
-            with_neighbours: bool=False) -> MAASIPSet:
+            with_neighbours: bool=False,
+            exclude_ip_ranges: list=None) -> MAASIPSet:
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
 
@@ -583,7 +591,8 @@ class Subnet(CleanSave, TimestampedModel):
             exclude_addresses=exclude_addresses,
             ranges_only=ranges_only,
             with_neighbours=with_neighbours,
-            ignore_discovered_ips=ignore_discovered_ips)
+            ignore_discovered_ips=ignore_discovered_ips,
+            exclude_ip_ranges=exclude_ip_ranges)
         if self.managed or ranges_only:
             not_in_use = in_use.get_unused_ranges(self.get_ipnetwork())
         else:
@@ -630,7 +639,8 @@ class Subnet(CleanSave, TimestampedModel):
                 ranges_only=ranges_only,
                 include_reserved=False,
                 with_neighbours=with_neighbours,
-                ignore_discovered_ips=ignore_discovered_ips)
+                ignore_discovered_ips=ignore_discovered_ips,
+                exclude_ip_ranges=exclude_ip_ranges)
             unmanaged_in_use |= unused
             not_in_use = unmanaged_in_use.get_unused_ranges(
                 self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNUSED)
@@ -807,17 +817,23 @@ class Subnet(CleanSave, TimestampedModel):
                     "%s is within the dynamic range from %s to %s" % (
                         ip, IPAddress(iprange.first), IPAddress(iprange.last)))
 
-    def get_reserved_maasipset(self):
+    def get_reserved_maasipset(self, exclude_ip_ranges: list=None):
+        if exclude_ip_ranges is None:
+            exclude_ip_ranges = []
         reserved_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
             for iprange in self.get_reserved_ranges()
+            if iprange not in exclude_ip_ranges
         )
         return reserved_ranges
 
-    def get_dynamic_maasipset(self):
+    def get_dynamic_maasipset(self, exclude_ip_ranges: list=None):
+        if exclude_ip_ranges is None:
+            exclude_ip_ranges = []
         dynamic_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
             for iprange in self.get_dynamic_ranges()
+            if iprange not in exclude_ip_ranges
         )
         return dynamic_ranges
 

@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
+from django.db.utils import IntegrityError
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -88,7 +89,7 @@ class IPRangeTest(MAASServerTestCase):
             start_ip='192.168.0.1', end_ip='192.168.0.254',
             type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
             comment="The quick brown weasel jumps over the lazy elephant.")
-        with ExpectedException(ValidationError):
+        with ExpectedException(IntegrityError):
             iprange.save()
 
     def test__requires_start_ip_and_end_ip(self):
@@ -652,5 +653,6 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             end_ip="192.168.0.5",
         )
         iprange.save()
+
         iprange.end_ip = "192.168.0.10"
         iprange.save()

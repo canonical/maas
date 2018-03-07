@@ -559,9 +559,7 @@ class Factory(maastesting.factory.Factory):
             node = self.make_Node(
                 owner=owner, node_type=NODE_TYPE.MACHINE, **kwargs)
             node.save()
-        switch = Switch(node=node, **nos_kwargs)
-        switch.save()
-        return switch
+        return Switch.objects.create(node=node, **nos_kwargs)
 
     def make_RegionRackController(self, *args, **kwargs):
         region_rack = self.make_RackController(*args, **kwargs)
@@ -726,7 +724,7 @@ class Factory(maastesting.factory.Factory):
         dnsrr.save()
         if ip_addresses:
             dnsrr.ip_addresses.set(ip_addresses)
-            dnsrr.save()
+            dnsrr.save(force_update=True)
         return dnsrr
 
     def make_Script(
@@ -986,10 +984,10 @@ class Factory(maastesting.factory.Factory):
         ipaddress.save()
         if interface is not None:
             interface.ip_addresses.add(ipaddress)
-            interface.save()
+            interface.save(force_update=True)
         if dnsresource is not None:
             dnsresource.ip_addresses.add(ipaddress)
-            dnsresource.save()
+            dnsresource.save(force_update=True)
         if hostname is not None:
             if not isinstance(hostname, (tuple, list)):
                 hostname = [hostname]
@@ -1379,7 +1377,7 @@ class Factory(maastesting.factory.Factory):
         if parents:
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
-        interface.save()
+        interface.save(force_update=True)
         return reload_object(interface)
 
     def make_IPRange(
@@ -2198,7 +2196,7 @@ class Factory(maastesting.factory.Factory):
             for filesystem in filesystems:
                 group.filesystems.add(filesystem)
         # Save again to make sure that the added filesystems are correct.
-        group.save()
+        group.save(force_update=True)
         return group
 
     def make_VolumeGroup(self, *args, **kwargs):

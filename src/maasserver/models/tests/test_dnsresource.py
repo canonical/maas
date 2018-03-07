@@ -200,7 +200,7 @@ class DNSResourceTest(MAASServerTestCase):
                     "{'__all__': ['Invalid dnsresource name: %s." % (
                         name,
                     ))):
-            dnsresource.save()
+            dnsresource.save(force_update=True)
 
     def test_rejects_multiple_dnsresource_with_same_name(self):
         name = factory.make_name('name')
@@ -213,7 +213,7 @@ class DNSResourceTest(MAASServerTestCase):
                 re.escape(
                     "{'__all__': "
                     "['Labels must be unique within their zone.']")):
-            dnsresource2.save()
+            dnsresource2.save(force_update=True)
 
     def test_invalid_name_raises_exception(self):
         with ExpectedException(
@@ -236,7 +236,7 @@ class DNSResourceTest(MAASServerTestCase):
                 re.escape(
                     "{'__all__': "
                     "['Cannot add address: CNAME present.']")):
-            dnsrr.save()
+            dnsrr.save(force_update=True)
 
     def test_get_addresses_returns_addresses(self):
         # Verify that the return includes node addresses, and
@@ -315,7 +315,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         # Create a date object for one week ago.
         before = datetime.fromtimestamp(
             datetime.now().timestamp() - timedelta(days=7).total_seconds())
-        dnsrr.save(_created=before, _updated=before)
+        dnsrr.save(_created=before, _updated=before, force_update=True)
         dnsrr = DNSResource.objects.get(name=hostname)
         self.assertThat(dnsrr.updated, Equals(before))
         self.assertThat(dnsrr.created, Equals(before))

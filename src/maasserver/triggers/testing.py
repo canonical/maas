@@ -101,7 +101,7 @@ def apply_update(record, params):
         setattr(record, key, value)
 
 
-def apply_update_to_model(model, id, params):
+def apply_update_to_model(model, id, params, **kwargs):
     """Apply updates from `params` to `model` with ID `id`.
 
     See `apply_update`.
@@ -112,7 +112,7 @@ def apply_update_to_model(model, id, params):
     """
     record = model.objects.get(id=id)
     apply_update(record, params)
-    return record.save()
+    return record.save(**kwargs)
 
 
 class TransactionalHelpersMixin:
@@ -181,8 +181,8 @@ class TransactionalHelpersMixin:
         return factory.make_Domain(**params)
 
     @transactional
-    def update_domain(self, id, params):
-        return apply_update_to_model(Domain, id, params)
+    def update_domain(self, id, params, **kwargs):
+        return apply_update_to_model(Domain, id, params, **kwargs)
 
     @transactional
     def delete_domain(self, id):
@@ -196,8 +196,8 @@ class TransactionalHelpersMixin:
         return factory.make_DNSResource(**params)
 
     @transactional
-    def update_dnsresource(self, id, params):
-        return apply_update_to_model(DNSResource, id, params)
+    def update_dnsresource(self, id, params, **kwargs):
+        return apply_update_to_model(DNSResource, id, params, **kwargs)
 
     @transactional
     def delete_dnsresource(self, id):
@@ -215,8 +215,8 @@ class TransactionalHelpersMixin:
         return factory.make_DNSData(**params)
 
     @transactional
-    def update_dnsdata(self, id, params):
-        return apply_update_to_model(DNSData, id, params)
+    def update_dnsdata(self, id, params, **kwargs):
+        return apply_update_to_model(DNSData, id, params, **kwargs)
 
     @transactional
     def delete_dnsdata(self, id):
@@ -230,8 +230,8 @@ class TransactionalHelpersMixin:
         return factory.make_Fabric(**params)
 
     @transactional
-    def update_fabric(self, id, params):
-        return apply_update_to_model(Fabric, id, params)
+    def update_fabric(self, id, params, **kwargs):
+        return apply_update_to_model(Fabric, id, params, **kwargs)
 
     @transactional
     def delete_fabric(self, id):
@@ -245,8 +245,8 @@ class TransactionalHelpersMixin:
         return factory.make_BMC(**params)
 
     @transactional
-    def update_bmc(self, id, params):
-        return apply_update_to_model(BMC, id, params)
+    def update_bmc(self, id, params, **kwargs):
+        return apply_update_to_model(BMC, id, params, **kwargs)
 
     @transactional
     def delete_bmc(self, id):
@@ -260,8 +260,8 @@ class TransactionalHelpersMixin:
         return factory.make_Pod(**params)
 
     @transactional
-    def update_pod(self, id, params):
-        return apply_update_to_model(Pod, id, params)
+    def update_pod(self, id, params, **kwargs):
+        return apply_update_to_model(Pod, id, params, **kwargs)
 
     @transactional
     def delete_pod(self, id):
@@ -275,8 +275,8 @@ class TransactionalHelpersMixin:
         return factory.make_Space(**params)
 
     @transactional
-    def update_space(self, id, params):
-        return apply_update_to_model(Space, id, params)
+    def update_space(self, id, params, **kwargs):
+        return apply_update_to_model(Space, id, params, **kwargs)
 
     @transactional
     def delete_space(self, id):
@@ -290,8 +290,8 @@ class TransactionalHelpersMixin:
         return factory.make_Subnet(**params, space=RANDOM)
 
     @transactional
-    def update_subnet(self, id, params):
-        return apply_update_to_model(Subnet, id, params)
+    def update_subnet(self, id, params, **kwargs):
+        return apply_update_to_model(Subnet, id, params, **kwargs)
 
     @transactional
     def delete_subnet(self, id):
@@ -305,8 +305,8 @@ class TransactionalHelpersMixin:
         return factory.make_VLAN(**params, space=RANDOM)
 
     @transactional
-    def update_vlan(self, id, params):
-        return apply_update_to_model(VLAN, id, params)
+    def update_vlan(self, id, params, **kwargs):
+        return apply_update_to_model(VLAN, id, params, **kwargs)
 
     @transactional
     def delete_vlan(self, id):
@@ -320,8 +320,8 @@ class TransactionalHelpersMixin:
         return factory.make_Zone(**params)
 
     @transactional
-    def update_zone(self, id, params):
-        return apply_update_to_model(Zone, id, params)
+    def update_zone(self, id, params, **kwargs):
+        return apply_update_to_model(Zone, id, params, **kwargs)
 
     @transactional
     def delete_zone(self, id):
@@ -337,6 +337,7 @@ class TransactionalHelpersMixin:
     @transactional
     def add_node_to_tag(self, node, tag):
         node.tags.add(tag)
+        node.save(force_update=True)
 
     @transactional
     def set_node_metadata(self, node, key, value):
@@ -350,10 +351,11 @@ class TransactionalHelpersMixin:
     @transactional
     def remove_node_from_tag(self, node, tag):
         node.tags.remove(tag)
+        node.save(force_update=True)
 
     @transactional
-    def update_tag(self, id, params):
-        return apply_update_to_model(Tag, id, params)
+    def update_tag(self, id, params, **kwargs):
+        return apply_update_to_model(Tag, id, params, **kwargs)
 
     @transactional
     def delete_tag(self, id):
@@ -367,8 +369,8 @@ class TransactionalHelpersMixin:
         return factory.make_User(**params)
 
     @transactional
-    def update_user(self, id, params):
-        return apply_update_to_model(User, id, params)
+    def update_user(self, id, params, **kwargs):
+        return apply_update_to_model(User, id, params, **kwargs)
 
     @transactional
     def delete_user(self, id):
@@ -383,8 +385,8 @@ class TransactionalHelpersMixin:
         return factory.make_Event(**params)
 
     @transactional
-    def update_event(self, id, params):
-        return apply_update_to_model(Event, id, params)
+    def update_event(self, id, params, **kwargs):
+        return apply_update_to_model(Event, id, params, **kwargs)
 
     @transactional
     def delete_event(self, id):
@@ -400,8 +402,8 @@ class TransactionalHelpersMixin:
         return factory.make_StaticIPAddress(**params)
 
     @transactional
-    def update_staticipaddress(self, id, params):
-        return apply_update_to_model(StaticIPAddress, id, params)
+    def update_staticipaddress(self, id, params, **kwargs):
+        return apply_update_to_model(StaticIPAddress, id, params, **kwargs)
 
     @transactional
     def delete_staticipaddress(self, id):
@@ -467,8 +469,8 @@ class TransactionalHelpersMixin:
         interface.delete()
 
     @transactional
-    def update_interface(self, id, params):
-        return apply_update_to_model(Interface, id, params)
+    def update_interface(self, id, params, **kwargs):
+        return apply_update_to_model(Interface, id, params, **kwargs)
 
     @transactional
     def get_interface_vlan(self, id):
@@ -504,16 +506,16 @@ class TransactionalHelpersMixin:
         blockdevice.delete()
 
     @transactional
-    def update_blockdevice(self, id, params):
-        return apply_update_to_model(BlockDevice, id, params)
+    def update_blockdevice(self, id, params, **kwargs):
+        return apply_update_to_model(BlockDevice, id, params, **kwargs)
 
     @transactional
-    def update_physicalblockdevice(self, id, params):
-        return apply_update_to_model(PhysicalBlockDevice, id, params)
+    def update_physicalblockdevice(self, id, params, **kwargs):
+        return apply_update_to_model(PhysicalBlockDevice, id, params, **kwargs)
 
     @transactional
-    def update_virtualblockdevice(self, id, params):
-        return apply_update_to_model(VirtualBlockDevice, id, params)
+    def update_virtualblockdevice(self, id, params, **kwargs):
+        return apply_update_to_model(VirtualBlockDevice, id, params, **kwargs)
 
     @transactional
     def create_partitiontable(self, params=None):
@@ -527,8 +529,8 @@ class TransactionalHelpersMixin:
         partitiontable.delete()
 
     @transactional
-    def update_partitiontable(self, id, params):
-        return apply_update_to_model(PartitionTable, id, params)
+    def update_partitiontable(self, id, params, **kwargs):
+        return apply_update_to_model(PartitionTable, id, params, **kwargs)
 
     @transactional
     def create_partition(self, params=None):
@@ -542,8 +544,8 @@ class TransactionalHelpersMixin:
         partition.delete()
 
     @transactional
-    def update_partition(self, id, params):
-        return apply_update_to_model(Partition, id, params)
+    def update_partition(self, id, params, **kwargs):
+        return apply_update_to_model(Partition, id, params, **kwargs)
 
     @transactional
     def create_filesystem(self, params=None):
@@ -557,8 +559,8 @@ class TransactionalHelpersMixin:
         filesystem.delete()
 
     @transactional
-    def update_filesystem(self, id, params):
-        return apply_update_to_model(Filesystem, id, params)
+    def update_filesystem(self, id, params, **kwargs):
+        return apply_update_to_model(Filesystem, id, params, **kwargs)
 
     @transactional
     def create_filesystemgroup(self, params=None):
@@ -572,8 +574,8 @@ class TransactionalHelpersMixin:
         filesystemgroup.delete()
 
     @transactional
-    def update_filesystemgroup(self, id, params):
-        return apply_update_to_model(FilesystemGroup, id, params)
+    def update_filesystemgroup(self, id, params, **kwargs):
+        return apply_update_to_model(FilesystemGroup, id, params, **kwargs)
 
     @transactional
     def create_cacheset(self, params=None):
@@ -587,8 +589,8 @@ class TransactionalHelpersMixin:
         cacheset.delete()
 
     @transactional
-    def update_cacheset(self, id, params):
-        return apply_update_to_model(CacheSet, id, params)
+    def update_cacheset(self, id, params, **kwargs):
+        return apply_update_to_model(CacheSet, id, params, **kwargs)
 
     @transactional
     def create_sshkey(self, params=None):
@@ -597,8 +599,8 @@ class TransactionalHelpersMixin:
         return factory.make_SSHKey(**params)
 
     @transactional
-    def update_sshkey(self, id, params):
-        return apply_update_to_model(SSHKey, id, params)
+    def update_sshkey(self, id, params, **kwargs):
+        return apply_update_to_model(SSHKey, id, params, **kwargs)
 
     @transactional
     def delete_sshkey(self, id):
@@ -623,8 +625,8 @@ class TransactionalHelpersMixin:
         return factory.make_RackController(**params)
 
     @transactional
-    def update_rack_controller(self, id, params):
-        return apply_update_to_model(RackController, id, params)
+    def update_rack_controller(self, id, params, **kwargs):
+        return apply_update_to_model(RackController, id, params, **kwargs)
 
     @transactional
     def delete_rack_controller(self, id):
@@ -638,8 +640,8 @@ class TransactionalHelpersMixin:
         return factory.make_IPRange(**params)
 
     @transactional
-    def update_iprange(self, id, params):
-        return apply_update_to_model(IPRange, id, params)
+    def update_iprange(self, id, params, **kwargs):
+        return apply_update_to_model(IPRange, id, params, **kwargs)
 
     @transactional
     def delete_iprange(self, id):
@@ -653,8 +655,8 @@ class TransactionalHelpersMixin:
         return factory.make_StaticRoute(**params)
 
     @transactional
-    def update_staticroute(self, id, params):
-        return apply_update_to_model(StaticRoute, id, params)
+    def update_staticroute(self, id, params, **kwargs):
+        return apply_update_to_model(StaticRoute, id, params, **kwargs)
 
     @transactional
     def delete_staticroute(self, id):
@@ -668,8 +670,8 @@ class TransactionalHelpersMixin:
         return factory.make_RegionController(**params)
 
     @transactional
-    def update_region_controller(self, id, params):
-        return apply_update_to_model(RegionController, id, params)
+    def update_region_controller(self, id, params, **kwargs):
+        return apply_update_to_model(RegionController, id, params, **kwargs)
 
     @transactional
     def delete_region_controller(self, id):
@@ -683,8 +685,8 @@ class TransactionalHelpersMixin:
         return factory.make_DHCPSnippet(**params)
 
     @transactional
-    def update_dhcp_snippet(self, id, params):
-        return apply_update_to_model(DHCPSnippet, id, params)
+    def update_dhcp_snippet(self, id, params, **kwargs):
+        return apply_update_to_model(DHCPSnippet, id, params, **kwargs)
 
     @transactional
     def delete_dhcp_snippet(self, id):
@@ -698,8 +700,8 @@ class TransactionalHelpersMixin:
         return factory.make_PackageRepository(**params)
 
     @transactional
-    def update_package_repository(self, id, params):
-        return apply_update_to_model(PackageRepository, id, params)
+    def update_package_repository(self, id, params, **kwargs):
+        return apply_update_to_model(PackageRepository, id, params, **kwargs)
 
     @transactional
     def delete_package_repository(self, id):
@@ -713,8 +715,9 @@ class TransactionalHelpersMixin:
         return factory.make_RegionControllerProcess(**params)
 
     @transactional
-    def update_region_controller_process(self, id, params):
-        return apply_update_to_model(RegionControllerProcess, id, params)
+    def update_region_controller_process(self, id, params, **kwargs):
+        return apply_update_to_model(
+            RegionControllerProcess, id, params, **kwargs)
 
     @transactional
     def delete_region_controller_process(self, id):
@@ -728,9 +731,9 @@ class TransactionalHelpersMixin:
         return factory.make_RegionControllerProcessEndpoint(**params)
 
     @transactional
-    def update_region_controller_process_endpoint(self, id, params):
+    def update_region_controller_process_endpoint(self, id, params, **kwargs):
         return apply_update_to_model(
-            RegionControllerProcessEndpoint, id, params)
+            RegionControllerProcessEndpoint, id, params, **kwargs)
 
     @transactional
     def delete_region_controller_process_endpoint(self, id):
@@ -744,8 +747,9 @@ class TransactionalHelpersMixin:
         return factory.make_RegionRackRPCConnection(**params)
 
     @transactional
-    def update_region_rack_rpc_connection(self, id, params):
-        return apply_update_to_model(RegionRackRPCConnection, id, params)
+    def update_region_rack_rpc_connection(self, id, params, **kwargs):
+        return apply_update_to_model(
+            RegionRackRPCConnection, id, params, **kwargs)
 
     @transactional
     def delete_region_rack_rpc_connection(self, id):
@@ -759,8 +763,8 @@ class TransactionalHelpersMixin:
         return factory.make_Script(**params)
 
     @transactional
-    def update_script(self, id, params):
-        return apply_update_to_model(Script, id, params)
+    def update_script(self, id, params, **kwargs):
+        return apply_update_to_model(Script, id, params, **kwargs)
 
     @transactional
     def delete_script(self, id):

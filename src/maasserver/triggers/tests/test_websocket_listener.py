@@ -2845,7 +2845,8 @@ class TestMachinePartitionTableListener(
         try:
             # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
-                self.update_partitiontable, partitiontable.id, {})
+                self.update_partitiontable, partitiontable.id, {},
+                force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2990,7 +2991,7 @@ class TestMachineFilesystemListener(
         partition = factory.make_Partition(node=node)
         filesystem = factory.make_Filesystem(partition=partition)
         with listenFor(self.channel) as get:
-            filesystem.save()  # A no-op update is enough.
+            filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(('update', '%s' % node.system_id), get())
 
     def test__calls_handler_with_update_on_update_fs_on_block_device(self):
@@ -2998,14 +2999,14 @@ class TestMachineFilesystemListener(
         block_device = factory.make_BlockDevice(node=node)
         filesystem = factory.make_Filesystem(block_device=block_device)
         with listenFor(self.channel) as get:
-            filesystem.save()  # A no-op update is enough.
+            filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(('update', '%s' % node.system_id), get())
 
     def test__calls_handler_with_update_on_update_special_fs(self):
         node = factory.make_Node(**self.params)
         filesystem = factory.make_Filesystem(node=node)
         with listenFor(self.channel) as get:
-            filesystem.save()  # A no-op update is enough.
+            filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(('update', '%s' % node.system_id), get())
 
 
@@ -3069,7 +3070,7 @@ class TestMachineFilesystemgroupListener(
         yield deferToDatabase(self.create_partitiontable, {'node': node})
         filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {
-                "node": node, "group_type": "raid-5"})
+                "node": node, "group_type": "bcache"})
 
         listener = PostgresListenerService()
         dv = DeferredValue()
@@ -3078,7 +3079,8 @@ class TestMachineFilesystemgroupListener(
         try:
             # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
-                self.update_filesystemgroup, filesystemgroup.id, {})
+                self.update_filesystemgroup,
+                filesystemgroup.id, {}, force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -3154,7 +3156,8 @@ class TestMachineCachesetListener(
         yield listener.startService()
         try:
             # No changes to apply, but trigger a save nonetheless.
-            yield deferToDatabase(self.update_cacheset, cacheset.id, {})
+            yield deferToDatabase(
+                self.update_cacheset, cacheset.id, {}, force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -3240,8 +3243,10 @@ class TestSSHKeyListener(
         listener.register("sshkey", lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            # Force the update because the key contents could be the same.
             yield deferToDatabase(
-                self.update_sshkey, sshkey.id, {'key': contents})
+                self.update_sshkey, sshkey.id, {'key': contents},
+                force_update=True)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % sshkey.id), dv.value)
         finally:

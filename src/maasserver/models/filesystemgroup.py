@@ -164,7 +164,7 @@ class VolumeGroupManager(BaseFilesystemGroupManager):
             Filesystem.objects.create(
                 fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition,
                 filesystem_group=volume_group)
-        volume_group.save()
+        volume_group.save(force_update=True)
         return volume_group
 
 
@@ -204,7 +204,7 @@ class RAIDManager(BaseFilesystemGroupManager):
                 fstype=FILESYSTEM_TYPE.RAID_SPARE,
                 partition=partition,
                 filesystem_group=raid)
-        raid.save()
+        raid.save(force_update=True)
         return raid
 
 
@@ -266,7 +266,7 @@ class BcacheManager(BaseFilesystemGroupManager):
             cache_set=cache_set)
         backing_filesystem.filesystem_group = bcache_filesystem_group
         backing_filesystem.save()
-        bcache_filesystem_group.save()
+        bcache_filesystem_group.save(force_update=True)
         return bcache_filesystem_group
 
 
@@ -624,9 +624,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         # Prevent the group_type from changing. This is not supported and will
         # break the linked filesystems and the created virtual block device(s).
-        if self.pk is not None:
-            orig = FilesystemGroup.objects.get(pk=self.pk)
-            if orig.group_type != self.group_type:
+        if self.pk is not None and self._state.has_changed('group_type'):
+            orig_type = self._state.get_old_value('group_type')
+            if orig_type != self.group_type:
                 raise ValidationError(
                     "Cannot change the group_type of a FilesystemGroup.")
 
@@ -747,7 +747,7 @@ class VolumeGroup(FilesystemGroup):
         """
         self._update_block_devices(block_devices)
         self._update_partitions(partitions)
-        self.save()
+        self.save(force_update=True)
 
     def _update_block_devices(self, block_devices):
         """Update the block devices that are in this volume group."""
@@ -855,7 +855,7 @@ class RAID(FilesystemGroup):
             self.filesystems.remove(filesystem)
 
         try:
-            self.save()  # Force validation.
+            self.save(force_update=True)  # Force validation.
         except ValidationError:
             # If we had a ValidationError, we need to reattach the Filesystem
             # to the FilesystemGroup.
@@ -881,7 +881,7 @@ class RAID(FilesystemGroup):
             self.filesystems.remove(filesystem)
 
         try:
-            self.save()  # Force validation.
+            self.save(force_update=True)  # Force validation.
         except ValidationError:
             # If we had a ValidationError, we need to reattach the Filesystem
             # to the FilesystemGroup.

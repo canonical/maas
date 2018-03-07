@@ -295,7 +295,9 @@ class TestBootResourceManager(MAASServerTestCase):
         resource = resources.pop()
         subarches = [factory.make_name('subarch') for _ in range(3)]
         subarch = random.choice(subarches)
-        resource.extra['subarches'] = ','.join(subarches)
+        extra = resource.extra.copy()
+        extra['subarches'] = ','.join(subarches)
+        resource.extra = extra
         resource.save()
         osystem, series = resource.name.split('/')
         arch, _ = resource.split_arch()

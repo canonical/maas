@@ -33,6 +33,7 @@ from maasserver.fields import (
     MAASIPAddressField,
     XMLField,
 )
+from maasserver.models.cleansave import CleanSave
 from maasserver.models.managers import BulkManager
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -105,3 +106,17 @@ class CIDRTestModel(Model):
 
 class IPv4CIDRTestModel(Model):
     cidr = IPv4CIDRField()
+
+
+class CleanSaveTestModel(CleanSave, Model):
+    field = CharField(max_length=20, null=True, blank=True)
+    related = ForeignKey(
+        GenericTestModel, null=True, blank=True, on_delete=CASCADE)
+
+    def __test_prop_get(self):
+        return self.__inner
+
+    def __test_prop_set(self, value):
+        self.__inner = value
+
+    test_prop = property(__test_prop_get, __test_prop_set)

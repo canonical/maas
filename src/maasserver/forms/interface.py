@@ -176,10 +176,12 @@ class InterfaceForm(MAASModelForm):
     def _set_param(self, interface, key):
         """Helper to set parameters on an interface."""
         value = self.cleaned_data.get(key, None)
+        params = interface.params.copy()
         if value is not None:
-            interface.params[key] = value
+            params[key] = value
         elif self.data.get(key) == '':
-            interface.params.pop(key, None)
+            params.pop(key, None)
+        interface.params = params
 
     def set_extra_parameters(self, interface, created):
         """Sets the extra parameters on the `interface`'s params property."""
@@ -486,15 +488,17 @@ class BondInterfaceForm(ChildInterfaceForm):
         ]
         for bond_field in bond_fields:
             value = self.cleaned_data.get(bond_field)
+            params = interface.params.copy()
             if (value is not None and
                     isinstance(value, str) and
                     len(value) > 0 and not value.isspace()):
-                interface.params[bond_field] = value
+                params[bond_field] = value
             elif (value is not None and
                     not isinstance(value, str)):
-                interface.params[bond_field] = value
+                params[bond_field] = value
             elif created:
-                interface.params[bond_field] = self.fields[bond_field].initial
+                params[bond_field] = self.fields[bond_field].initial
+            interface.params = params
 
 
 class BridgeInterfaceForm(ChildInterfaceForm):
@@ -570,16 +574,18 @@ class BridgeInterfaceForm(ChildInterfaceForm):
         ]
         for bridge_field in bridge_fields:
             value = self.cleaned_data.get(bridge_field)
+            params = interface.params.copy()
             if (value is not None and
                     isinstance(value, str) and
                     len(value) > 0 and not value.isspace()):
-                interface.params[bridge_field] = value
+                params[bridge_field] = value
             elif (value is not None and
                     not isinstance(value, str)):
-                interface.params[bridge_field] = value
+                params[bridge_field] = value
             elif created:
-                interface.params[bridge_field] = (
+                params[bridge_field] = (
                     self.fields[bridge_field].initial)
+            interface.params = params
 
 
 class AcquiredBridgeInterfaceForm(BridgeInterfaceForm):
