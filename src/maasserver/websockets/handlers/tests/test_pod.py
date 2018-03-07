@@ -47,11 +47,16 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
         pod_password = factory.make_name('password')
+        tags = [
+            factory.make_name('tag')
+            for _ in range(3)
+        ]
         return {
             'type': pod_type,
             'power_address': pod_power_address,
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
+            'tags': tags,
         }
 
     def fake_pod_discovery(self):
@@ -153,6 +158,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 'iscsi_storage_gb': '%.1f' % (
                     pod.hints.iscsi_storage / (1024 ** 3)),
                 },
+            "tags": pod.tags,
             "zone": pod.zone.id
             }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:

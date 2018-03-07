@@ -888,7 +888,7 @@ class TestPod(MAASServerTestCase):
             primary_rack=factory.make_RackController())
         pod = factory.make_Pod()
         tag = factory.make_Tag()
-        pod.tags.add(tag)
+        pod.add_tag(tag)
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertTrue(tag in machine.tags.all())
 

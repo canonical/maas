@@ -803,8 +803,12 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Construct the tags input.
                     inputElement = angular.element([
+                        '<span data-ng-if="ngDisabled()" ',
+                            'data-ng-repeat="tag in _tags">',
+                            '{$ tag.text $} </span>',
                         '<tags-input id="' + attrs.key + '" ',
                             'data-ng-model="_tags" ',
+                            'data-ng-if="!ngDisabled()" ',
                             'placeholder="' + placeholder + '" ',
                             'data-ng-change="_change()" ',
                             'allow-tags-pattern="[\\w-]+"></tags-input>'

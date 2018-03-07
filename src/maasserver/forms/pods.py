@@ -79,7 +79,10 @@ class PodForm(MAASModelForm):
 
     class Meta:
         model = Pod
-        fields = ['name']
+        fields = [
+            'name',
+            'tags',
+        ]
 
     name = forms.CharField(
         label="Name", required=False, help_text=(
@@ -148,7 +151,7 @@ class PodForm(MAASModelForm):
 
     def save(self, *args, **kwargs):
         """Persist the pod into the database."""
-        def check_for_duplicate(zone, power_type, power_parameters):
+        def check_for_duplicate(power_type, power_parameters):
             # When the Pod is new try to get a BMC of the same type and
             # parameters to convert the BMC to a new Pod. When the Pod is not
             # new the form will use the already existing pod instance to update
@@ -156,7 +159,6 @@ class PodForm(MAASModelForm):
             # a validation erorr will be raised from the model level.
             if self.is_new:
                 bmc = BMC.objects.filter(
-                    zone=zone,
                     power_type=power_type,
                     power_parameters=power_parameters).first()
                 if bmc is not None:
@@ -178,11 +180,13 @@ class PodForm(MAASModelForm):
             if existing_obj is not None:
                 self.instance = existing_obj
             self.instance = super(PodForm, self).save(commit=False)
+            self.instance.tags = tags
             self.instance.zone = zone
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
             return self.instance
 
+        tags = self.cleaned_data['tags']
         zone = self.cleaned_data['zone']
         power_type = self.cleaned_data['type']
         # Set power_parameters to the generated param_fields.
@@ -196,14 +200,14 @@ class PodForm(MAASModelForm):
             # Running in twisted reactor, do the work inside the reactor.
             d = deferToDatabase(
                 transactional(check_for_duplicate),
-                zone, power_type, power_parameters)
+                power_type, power_parameters)
             d.addCallback(update_obj)
             d.addCallback(lambda _: self.discover_and_sync_pod())
             return d
         else:
             # Perform the actions inside the executing thread.
             existing_obj = check_for_duplicate(
-                zone, power_type, power_parameters)
+                power_type, power_parameters)
             if existing_obj is not None:
                 self.instance = existing_obj
             self.instance = update_obj(self.instance)

@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for pods API."""
@@ -38,12 +38,17 @@ class PodMixin:
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
         pod_password = factory.make_name('password')
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         zone = factory.make_Zone()
         return {
             'type': pod_type,
             'power_address': pod_power_address,
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
+            'tags': ",".join(tags),
             'zone': zone.id
         }
 
@@ -101,6 +106,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
             [
                 'id',
                 'name',
+                'tags',
                 'type',
                 'resource_uri',
                 'capabilities',
@@ -234,6 +240,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         discovered_pod, _, _ = self.fake_pod_discovery()
         response = self.client.put(get_pod_uri(pod), {
             'name': new_name,
+            'tags': pod_info['tags'],
             'power_address': pod_info['power_address'],
             'power_pass': pod_info['power_pass'],
             'zone': pod_info['zone'],
@@ -371,3 +378,49 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         response = self.client.delete(get_pod_uri(pod))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(pod, reload_object(pod))
+
+    def test_add_tag_requires_admin(self):
+        pod = self.make_pod_with_hints()
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'add_tag', 'tag': factory.make_name('tag')
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_add_tag_to_pod(self):
+        self.become_admin()
+        pod = factory.make_Pod()
+        tag_to_be_added = factory.make_name('tag')
+        response = self.client.post(
+            get_pod_uri(pod), {'op': 'add_tag', 'tag': tag_to_be_added})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertIn(tag_to_be_added, parsed_device['tags'])
+        pod = reload_object(pod)
+        self.assertIn(tag_to_be_added, pod.tags)
+
+    def test_remove_tag_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.post(
+            get_pod_uri(pod),
+            {'op': 'remove_tag', 'tag': factory.make_name('tag')})
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_remove_tag_from_pod(self):
+        self.become_admin()
+        pod = factory.make_Pod(
+            tags=[factory.make_name('tag') for _ in range(3)])
+        tag_to_be_removed = pod.tags[0]
+        response = self.client.post(
+            get_pod_uri(pod), {'op': 'remove_tag', 'tag': tag_to_be_removed})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertNotIn(tag_to_be_removed, parsed_device['tags'])
+        pod = reload_object(pod)
+        self.assertNotIn(tag_to_be_removed, pod.tags)

@@ -94,11 +94,16 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
         pod_password = factory.make_name('password')
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         return {
             'type': pod_type,
             'power_address': pod_power_address,
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
+            'tags': ",".join(tags),
         }
 
     def fake_pod_discovery(self):
@@ -130,6 +135,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertItemsEqual(
             [
                 'name',
+                'tags',
                 'type',
                 'zone'
             ], list(form.fields))
@@ -208,7 +214,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = yield deferToDatabase(factory.make_User)
@@ -255,7 +261,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.id
         pod_name = factory.make_name('pod')
         pod_info['name'] = pod_name
@@ -287,7 +293,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = fail(factory.make_exception())
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.id
         request = MagicMock()
         request.user = yield deferToDatabase(factory.make_User)
@@ -322,7 +328,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = self.make_pod_info()
         pod_info['zone'] = zone.id
         bmc = factory.make_BMC(
-            zone=zone, power_type=pod_info['type'],
+            zone=zone, tags=pod_info['tags'].split(','),
+            power_type=pod_info['type'],
             power_parameters={
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
@@ -386,7 +393,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.id
         orig_pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
@@ -476,7 +483,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         orig_pod = yield deferToDatabase(
             factory.make_Pod, zone=zone, pod_type=pod_info['type'])
         request = MagicMock()
@@ -532,7 +539,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.patch(pods_module, "discover_pod").return_value = succeed(
             ({}, {}))
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.id
         form = yield deferToDatabase(PodForm, data=pod_info)
         is_valid = yield deferToDatabase(form.is_valid)
@@ -572,7 +579,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             failed_rack.system_id: exc,
         }))
         zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = self.make_pod_info()
+        pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.id
         form = yield deferToDatabase(PodForm, data=pod_info)
         is_valid = yield deferToDatabase(form.is_valid)

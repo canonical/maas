@@ -179,7 +179,7 @@ class BMC(CleanSave, TimestampedModel):
     zone = ForeignKey(
         Zone, verbose_name="Physical zone", default=get_default_zone,
         editable=True, db_index=True, on_delete=SET_DEFAULT)
-    tags = ManyToManyField(Tag)
+    tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -481,6 +481,18 @@ class Pod(BMC):
         hints.iscsi_storage = discovered_hints.iscsi_storage
         hints.save()
 
+    def add_tag(self, tag):
+        """Add tag to Pod."""
+        if tag not in self.tags:
+            self.tags = self.tags + [tag]
+
+    def remove_tag(self, tag):
+        """Remove tag from Pod."""
+        if tag in self.tags:
+            tags = self.tags.copy()
+            tags.remove(tag)
+            self.tags = tags
+
     def _find_existing_machine(self, discovered_machine, mac_machine_map):
         """Find a `Machine` in `mac_machine_map` based on the interface MAC
         addresses from `discovered_machine`."""
@@ -625,9 +637,9 @@ class Pod(BMC):
 
         # Assign the Pod's tags.
         existing_tags = machine.tags.all().values('name')
-        for tag in self.tags.all():
+        for tag in self.tags:
             # Only if not a duplicate.
-            if tag.name not in existing_tags:
+            if tag not in existing_tags:
                 machine.tags.add(tag)
 
         # Create the discovered block devices and set the initial storage

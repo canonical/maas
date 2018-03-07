@@ -1,5 +1,7 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""API handlers: `Pod`."""
 
 __all__ = [
     "PodHandler",
@@ -7,11 +9,13 @@ __all__ = [
     ]
 
 from django.shortcuts import get_object_or_404
+from formencode.validators import String
 from maasserver.api.support import (
     admin_method,
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_CREATION_TYPE
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.pods import (
@@ -28,6 +32,7 @@ from provisioningserver.drivers.pod import Capabilities
 DISPLAYED_POD_FIELDS = (
     'id',
     'name',
+    'tags',
     'type',
     'architectures',
     'capabilities',
@@ -192,6 +197,43 @@ class PodHandler(OperationsHandler):
             }
         else:
             raise MAASAPIValidationError(form.errors)
+
+    @admin_method
+    @operation(idempotent=False)
+    def add_tag(self, request, id):
+        """Add a tag to Pod.
+
+        :param tag: The tag being added.
+
+        Returns 404 if the Pod is not found.
+        Returns 403 if the user is not allowed to update the Pod.
+        """
+        tag = get_mandatory_param(request.data, 'tag', String)
+
+        if ',' in tag:
+            raise MAASAPIValidationError('Tag may not contain a ",".')
+
+        pod = get_object_or_404(Pod, id=id)
+        pod.add_tag(tag)
+        pod.save()
+        return pod
+
+    @admin_method
+    @operation(idempotent=False)
+    def remove_tag(self, request, id):
+        """Remove a tag from Pod.
+
+        :param tag: The tag being removed.
+
+        Returns 404 if the Pod is not found.
+        Returns 403 if the user is not allowed to update the Pod.
+        """
+        tag = get_mandatory_param(request.data, 'tag', String)
+
+        pod = get_object_or_404(Pod, id=id)
+        pod.remove_tag(tag)
+        pod.save()
+        return pod
 
     @classmethod
     def resource_uri(cls, pod=None):

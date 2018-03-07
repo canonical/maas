@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The node handler for the WebSocket connection."""
@@ -187,6 +187,7 @@ class PodHandler(TimestampedModelHandler):
             if not form.is_valid():
                 raise HandlerValidationError(form.errors)
             else:
+                form.cleaned_data['tags'] = params['tags']
                 return form
 
         @transactional
