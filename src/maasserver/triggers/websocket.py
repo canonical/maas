@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -212,38 +212,6 @@ NODE_POD_DELETE_NOTIFY = dedent("""\
         END IF;
       END IF;
       RETURN OLD;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-
-# Procedure that is called when a event is created.
-# Sends a notify message for machine_update or device_update depending on if
-# the link node type is a node.
-EVENT_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION event_create_machine_device_notify()
-    RETURNS trigger AS $$
-    DECLARE
-      node RECORD;
-      pnode RECORD;
-    BEGIN
-      SELECT system_id, node_type, parent_id INTO node
-      FROM maasserver_node
-      WHERE id = NEW.node_id;
-
-      IF node.node_type = %d THEN
-        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-      ELSIF node.node_type IN (%d, %d, %d) THEN
-        PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
-      ELSIF node.parent_id IS NOT NULL THEN
-        SELECT system_id INTO pnode
-        FROM maasserver_node
-        WHERE id = node.parent_id;
-        PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
-      ELSE
-        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
-      END IF;
-      RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
     """)
@@ -1170,10 +1138,40 @@ def render_notification_dismissal_notification_procedure(
         """ % (proc_name, event_name))
 
 
+# Only trigger updates to the websocket on the node object for fields
+# the UI cares about.
+node_fields = (
+    'hostname',
+    'pool_id',
+    'domain_id',
+    'status',
+    'owner_id',
+    'osystem',
+    'distro_series',
+    'architecture',
+    'min_hwe_kernel',
+    'hwe_kernel',
+    'parent_id',
+    'zone_id',
+    'cpu_count',
+    'cpu_speed',
+    'swap_size',
+    'bmc_id',
+    'instance_power_parameters',
+    'power_state',
+    'last_image_sync',
+    'error',
+    'license_key',
+    'current_commissioning_script_set_id',
+    'current_installation_script_set_id',
+    'current_testing_script_set_id',
+    'locked',
+)
+
+
 @transactional
 def register_websocket_triggers():
     """Register all websocket triggers into the database."""
-
     for (proc_name_prefix, event_name_prefix, node_type) in (
         ('machine', 'machine', NODE_TYPE.MACHINE),
         ('rack_controller', 'controller', NODE_TYPE.RACK_CONTROLLER),
@@ -1198,7 +1196,8 @@ def register_websocket_triggers():
                 '%s_delete' % event_name_prefix,
                 'OLD.system_id'))
         register_triggers(
-            "maasserver_node", proc_name_prefix, {'node_type': node_type})
+            "maasserver_node", proc_name_prefix, {'node_type': node_type},
+            fields=node_fields)
 
     # ControllerInfo notifications
     register_procedure(
@@ -1270,7 +1269,8 @@ def register_websocket_triggers():
         render_device_notification_procedure(
             'device_delete_notify', 'device_delete', 'OLD'))
     register_triggers(
-        "maasserver_node", "device", {'node_type': NODE_TYPE.DEVICE})
+        "maasserver_node", "device", {'node_type': NODE_TYPE.DEVICE},
+        fields=node_fields)
 
     # VLAN table
     register_procedure(
@@ -1462,7 +1462,8 @@ def register_websocket_triggers():
             'node_pod_update_notify', BMC_TYPE.POD, BMC_TYPE.POD))
     register_procedure(
         NODE_POD_DELETE_NOTIFY % ('node_pod_delete_notify', BMC_TYPE.POD))
-    register_triggers("maasserver_node", "node_pod", events=EVENTS_IUD)
+    register_triggers(
+        "maasserver_node", "node_pod", events=EVENTS_IUD, fields=node_fields)
 
     # DNSData table
     register_procedure(
@@ -1600,13 +1601,6 @@ def register_websocket_triggers():
             'event_create_notify', 'event_create', 'NEW.id'))
     register_trigger(
         "maasserver_event", "event_create_notify", "insert")
-
-    # Events table, update to linked node.
-    register_procedure(EVENT_NODE_NOTIFY % (
-        NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
-        NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
-    register_trigger(
-        "maasserver_event", "event_create_machine_device_notify", "insert")
 
     # MAC static ip address table, update to linked node.
     register_procedure(
@@ -1925,7 +1919,8 @@ def register_websocket_triggers():
     # Node type change.
     register_procedure(node_type_change())
     register_trigger(
-        "maasserver_node", "node_type_change_notify", "update")
+        "maasserver_node", "node_type_change_notify", "update",
+        fields=("node_type",))
 
     # Notification table.
     register_procedure(

@@ -337,7 +337,6 @@ class TransactionalHelpersMixin:
     @transactional
     def add_node_to_tag(self, node, tag):
         node.tags.add(tag)
-        node.save()
 
     @transactional
     def set_node_metadata(self, node, key, value):
@@ -351,7 +350,6 @@ class TransactionalHelpersMixin:
     @transactional
     def remove_node_from_tag(self, node, tag):
         node.tags.remove(tag)
-        node.save()
 
     @transactional
     def update_tag(self, id, params):
