@@ -8,7 +8,10 @@ __all__ = []
 from unittest.mock import sentinel
 
 from django.db.models import Model
-from maasserver.models.cleansave import CleanSaveModelState
+from maasserver.models.cleansave import (
+    CleanSaveModelState,
+    DeferredValueAccessError,
+)
 from maasserver.testing.testcase import MAASLegacyServerTestCase
 from maasserver.tests.models import (
     CleanSaveTestModel,
@@ -32,6 +35,18 @@ class TestCleanSave(MAASLegacyServerTestCase):
         obj = CleanSaveModelState()
         obj.test_prop = sentinel.value
         self.assertEquals(sentinel.value, obj.test_prop)
+
+    def test_handling_deferred_field_getting(self):
+        obj = CleanSaveTestModel.objects.create()
+        obj = CleanSaveTestModel.objects.filter(id=obj.id).only('id').first()
+        self.assertRaises(DeferredValueAccessError, lambda: obj.field)
+
+    def test_handling_deferred_field_setting(self):
+        obj = CleanSaveTestModel.objects.create()
+        obj = CleanSaveTestModel.objects.filter(id=obj.id).only('id').first()
+        obj.field = 'test'
+        self.assertIn('field', obj._state._changed_fields)
+        obj.save()
 
     def test_field_marked_changed_for_new_obj(self):
         obj = CleanSaveTestModel()

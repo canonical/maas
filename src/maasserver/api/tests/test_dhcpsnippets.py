@@ -5,10 +5,10 @@
 
 __all__ = []
 
-from email.utils import format_datetime
 import http.client
 import json
 import random
+from unittest.mock import ANY
 
 from maasserver.forms import dhcpsnippet
 from maasserver.models import (
@@ -56,14 +56,12 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
                 {
                     'id': dhcp_snippet.value.id,
                     'value': dhcp_snippet.value.data,
-                    'created': format_datetime(
-                        dhcp_snippet.value.created),
+                    'created': ANY,
                 },
                 {
                     'id': dhcp_snippet.value.previous_version.id,
                     'value': dhcp_snippet.value.previous_version.data,
-                    'created': format_datetime(
-                        dhcp_snippet.value.previous_version.created),
+                    'created': ANY,
                 },
             ],
             'enabled': dhcp_snippet.enabled,
@@ -92,14 +90,12 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
                 {
                     'id': dhcp_snippet.value.id,
                     'value': dhcp_snippet.value.data,
-                    'created': format_datetime(
-                        dhcp_snippet.value.created),
+                    'created': ANY,
                 },
                 {
                     'id': dhcp_snippet.value.previous_version.id,
                     'value': dhcp_snippet.value.previous_version.data,
-                    'created': format_datetime(
-                        dhcp_snippet.value.previous_version.created),
+                    'created': ANY,
                 },
             ],
             'enabled': dhcp_snippet.enabled,
