@@ -337,12 +337,7 @@ class NodeHandler(TimestampedModelHandler):
         super()._cache_pks(nodes)
         script_results = ScriptResult.objects.filter(
             script_set__node__in=nodes)
-        script_results = script_results.defer(
-            'parameters', 'output', 'stdout', 'stderr', 'result')
         script_results = script_results.select_related('script_set', 'script')
-        script_results = script_results.defer(
-            'script_set__requested_scripts', 'script__results',
-            'script__parameters', 'script__packages')
         script_results = script_results.order_by(
             'script_name', 'physical_blockdevice_id', 'script_set__node_id',
             '-id')
@@ -738,12 +733,11 @@ class NodeHandler(TimestampedModelHandler):
         node = self.get_object(params)
         # Produce a "clean" composite details document.
         details_template = dict.fromkeys(script_output_nsmap.values())
-        for script_result in node.get_latest_script_results.filter(
+        for script_result in ScriptResult.objects.filter(
                 script_name__in=script_output_nsmap.keys(),
-                status=SCRIPT_STATUS.PASSED, script_set__node=node).only(
-                    'script_name', 'updated', 'stdout', 'script__id',
-                    'script_set__node').order_by(
-                        'script_name', '-updated').distinct('script_name'):
+                status=SCRIPT_STATUS.PASSED,
+                script_set__node=node).order_by(
+                    'script_name', '-updated').distinct('script_name'):
             namespace = script_output_nsmap[script_result.name]
             details_template[namespace] = script_result.stdout
         probed_details = merge_details_cleanly(details_template)
@@ -764,10 +758,9 @@ class NodeHandler(TimestampedModelHandler):
         details_template = dict.fromkeys(script_output_nsmap.values())
         for script_result in ScriptResult.objects.filter(
                 script_name__in=script_output_nsmap.keys(),
-                status=SCRIPT_STATUS.PASSED, script_set__node=node).only(
-                    'script_name', 'updated', 'stdout', 'script__id',
-                    'script_set__node').order_by(
-                        'script_name', '-updated').distinct('script_name'):
+                status=SCRIPT_STATUS.PASSED,
+                script_set__node=node).order_by(
+                    'script_name', '-updated').distinct('script_name'):
             namespace = script_output_nsmap[script_result.name]
             details_template[namespace] = script_result.stdout
         probed_details = merge_details_cleanly(details_template)

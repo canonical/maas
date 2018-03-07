@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Status monitoring service."""
@@ -13,7 +13,6 @@ from datetime import (
     timedelta,
 )
 
-from django.db.models import Prefetch
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -27,11 +26,6 @@ from maasserver.node_status import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models import (
-    Script,
-    ScriptResult,
-    ScriptSet,
-)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous
@@ -83,35 +77,17 @@ def mark_nodes_failed_after_missing_script_timeout():
     # has begun it resets status_expires and checks for the heartbeat instead.
     qs = Node.objects.filter(
         status__in=[NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING],
-        status_expires=None)
-    qs = qs.prefetch_related(
-        Prefetch(
-            'current_commissioning_script_set',
-            ScriptSet.objects.prefetch_related(
-                Prefetch('scriptresult_set', ScriptResult.objects.only(
-                    'id', 'script_set_id', 'started', 'status', 'parameters',
-                    'script_name', 'script_id').prefetch_related(
-                        Prefetch('script', Script.objects.only(
-                            'name', 'may_reboot', 'timeout')))))),
-        Prefetch(
-            'current_testing_script_set',
-            ScriptSet.objects.prefetch_related(
-                Prefetch('scriptresult_set', ScriptResult.objects.only(
-                    'id', 'script_set_id', 'started', 'status', 'parameters',
-                    'script_name', 'script_id').prefetch_related(
-                        Prefetch('script', Script.objects.only(
-                            'name', 'may_reboot', 'timeout')))))))
+        status_expires=None).prefetch_related(
+            'current_commissioning_script_set', 'current_testing_script_set')
     for node in qs:
         if node.status == NODE_STATUS.COMMISSIONING:
             script_set = node.current_commissioning_script_set
         elif node.status == NODE_STATUS.TESTING:
             script_set = node.current_testing_script_set
-        script_results = [
-            script_result for script_result in script_set
-            if script_result.status == SCRIPT_STATUS.RUNNING
-        ]
+        qs = script_set.scriptresult_set.filter(
+            status=SCRIPT_STATUS.RUNNING).prefetch_related('script')
         maybe_rebooting = False
-        for script_result in script_results:
+        for script_result in qs:
             if script_result.script and script_result.script.may_reboot:
                 maybe_rebooting = True
                 break
@@ -144,7 +120,7 @@ def mark_nodes_failed_after_missing_script_timeout():
             continue
 
         # Check for scripts which have gone past their timeout.
-        for script_result in script_results:
+        for script_result in qs:
             timeout = None
             for param in script_result.parameters.values():
                 if param.get('type') == 'runtime':

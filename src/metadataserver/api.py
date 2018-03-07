@@ -62,7 +62,6 @@ from maasserver.models import (
 )
 from maasserver.models.event import Event
 from maasserver.models.tag import Tag
-from maasserver.models.timestampedmodel import now
 from maasserver.node_status import NODE_TESTING_RESET_READY_TRANSITIONS
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
@@ -245,10 +244,9 @@ def process_file(results, script_set, script_name, content, request):
     else:
         key = 'output'
 
-    script_result = script_set.scriptresult_set.filter(
-        id=script_result_id).defer(
-            'parameters', 'output', 'stdout', 'stderr', 'result').first()
-    if script_result is None:
+    try:
+        script_result = script_set.scriptresult_set.get(id=script_result_id)
+    except ScriptResult.DoesNotExist:
         # If the script_result_id doesn't exist or wasn't sent try to find the
         # ScriptResult by script_name. Since ScriptResults can get their name
         # from the Script they are linked to or its own script_name field we
@@ -591,7 +589,9 @@ class VersionIndexHandler(MetadataViewHandler):
             # scripts as aborted.
             qs = node.current_testing_script_set.scriptresult_set.filter(
                 status=SCRIPT_STATUS.PENDING)
-            qs.update(status=SCRIPT_STATUS.ABORTED, updated=now())
+            for script_result in qs:
+                script_result.status = SCRIPT_STATUS.ABORTED
+                script_result.save(update_fields=['status'])
 
         return target_status
 
