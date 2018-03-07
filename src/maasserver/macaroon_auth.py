@@ -49,7 +49,8 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
     def authenticate(self, request, identity=None):
         if not request.external_auth_info or not identity:
             return
-        user, _ = User.objects.get_or_create(username=identity.id())
+        user, _ = User.objects.get_or_create(
+            username=identity.id(), defaults={'is_superuser': True})
         return user
 
 
@@ -74,7 +75,7 @@ class MacaroonAPIAuthentication:
         # a user is not found with the username from the identity, it's
         # created.
         request.user, _ = User.objects.get_or_create(
-            username=auth_info.identity.id())
+            username=auth_info.identity.id(), defaults={'is_superuser': True})
         return True
 
     def challenge(self, request):

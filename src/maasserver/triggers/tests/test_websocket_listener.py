@@ -27,7 +27,10 @@ from maasserver.models.switch import Switch
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
-from maasserver.triggers.websocket import register_websocket_triggers
+from maasserver.triggers.websocket import (
+    node_fields,
+    register_websocket_triggers,
+)
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
@@ -222,6 +225,14 @@ class TestNodeListener(
                 {res for (suc, res) in results})
         finally:
             yield listener.stopService()
+
+    def test__expected_number_of_fields_watched(self):
+        self.assertEqual(
+            25, len(node_fields),
+            'Any field listed here will be monitored for changes causing '
+            'the UI on all clients to refresh this node object. This is '
+            'costly! Only fields which are visible in the UI, and not listed '
+            'in other handlers should be listed here.')
 
 
 class TestControllerListener(
@@ -551,6 +562,7 @@ class TestNodeTagListener(
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
+        yield deferToDatabase(self.add_node_to_tag, node, tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -695,6 +707,7 @@ class TestDeviceWithParentTagListener(
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
+        yield deferToDatabase(self.add_node_to_tag, device, tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -3821,16 +3834,21 @@ class TestNodeTypeChange(
             self.assertEqual(
                 ('delete', node.system_id),
                 (yield deferWithTimeout(2, q_from.get)))
-            self.assertEqual(
-                {
+            if NODE_TYPE.MACHINE in (self.from_type, self.to_type):
+                # Changing to and from a node will cause a pool to either
+                # be added or removed. This causes an additional update
+                # trigger.
+                notifications = {}
+                for _ in range(2):
+                    f, system_id = yield deferWithTimeout(2, q_to.get)
+                    notifications[f] = system_id
+                self.assertDictEqual(
+                    {'update': node.system_id, 'create': node.system_id},
+                    notifications)
+            else:
+                self.assertEqual(
                     ('create', node.system_id),
-                    ('update', node.system_id),
-                },
-                {
-                    (yield deferWithTimeout(2, q_to.get)),
-                    (yield deferWithTimeout(2, q_to.get)),
-                }
-            )
+                    (yield deferWithTimeout(2, q_to.get)))
         finally:
             yield listener1.stopService()
             yield listener2.stopService()

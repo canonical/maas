@@ -134,6 +134,7 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         self.assertTrue(self.auth.is_authenticated(self.get_request()))
         user = User.objects.get(username=username)
         self.assertIsNotNone(user.id)
+        self.assertTrue(user.is_superuser)
 
     def test_challenge_no_external_auth(self):
         Config.objects.set_config('external_auth_url', '')
@@ -182,6 +183,7 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         user = self.backend.authenticate(self.get_request(), identity=identity)
         self.assertIsNotNone(user.id)
         self.assertEqual(user.username, username)
+        self.assertTrue(user.is_superuser)
 
     def test_authenticate_no_identity(self):
         self.assertIsNone(
