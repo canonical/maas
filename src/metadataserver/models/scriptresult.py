@@ -24,7 +24,10 @@ from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.event import Event
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.timestampedmodel import (
+    now,
+    TimestampedModel,
+)
 from maasserver.models.versionedtextfile import VersionedTextFile
 from metadataserver import (
     DefaultMeta,
@@ -314,13 +317,10 @@ class ScriptResult(CleanSave, TimestampedModel):
         if (self.status == SCRIPT_STATUS.PASSED and self.script and
                 self.script.script_type == SCRIPT_TYPE.COMMISSIONING and
                 self.script.recommission):
-            for script_result in self.script_set.scriptresult_set.filter(
-                    script_name__in=NODE_INFO_SCRIPTS):
-                script_result.status = SCRIPT_STATUS.PENDING
-                script_result.started = None
-                script_result.ended = None
-                script_result.save(
-                    update_fields=['status', 'started', 'ended'])
+            self.script_set.scriptresult_set.filter(
+                script_name__in=NODE_INFO_SCRIPTS).update(
+                    status=SCRIPT_STATUS.PENDING, started=None, ended=None,
+                    updated=now())
 
         self.save()
 

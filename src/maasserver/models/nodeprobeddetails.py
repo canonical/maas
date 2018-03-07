@@ -48,7 +48,8 @@ def get_single_probed_details(node):
         # which are not stored in the Script table.
         for script_result in script_set.scriptresult_set.filter(
                 status=SCRIPT_STATUS.PASSED,
-                script_name__in=script_output_nsmap):
+                script_name__in=script_output_nsmap).only(
+                    'script_name', 'stdout'):
             namespace = script_output_nsmap[script_result.name]
             details_template[namespace] = script_result.stdout
     return details_template

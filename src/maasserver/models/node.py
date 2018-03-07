@@ -1835,12 +1835,11 @@ class Node(CleanSave, TimestampedModel):
         except ScriptSet.DoesNotExist:
             return
 
-        for script in script_set.scriptresult_set.filter(
-                status__in={
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                    SCRIPT_STATUS.RUNNING}):
-            script.status = SCRIPT_STATUS.ABORTED
-            script.save(update_fields=['status'])
+        qs = script_set.scriptresult_set.filter(
+            status__in={
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.RUNNING})
+        qs.update(status=SCRIPT_STATUS.ABORTED, updated=now())
 
     @transactional
     def start_commissioning(
@@ -1998,13 +1997,11 @@ class Node(CleanSave, TimestampedModel):
         script_set = ScriptSet.objects.create_testing_script_set(
             self, testing_scripts)
         if NODE_STATUS.DEPLOYED in (self.status, self.previous_status):
-            qs = script_set.scriptresult_set.all()
-            qs.prefetch_related('script')
-            for script_result in qs:
-                if script_result.script.destructive:
-                    script_set.delete()
-                    raise ValidationError(
-                        'Unable to run destructive test while deployed!')
+            qs = script_set.scriptresult_set.filter(script__destructive=True)
+            if qs.exists():
+                script_set.delete()
+                raise ValidationError(
+                    'Unable to run destructive test while deployed!')
         self.current_testing_script_set = script_set
 
         self._register_request_event(
@@ -2969,9 +2966,7 @@ class Node(CleanSave, TimestampedModel):
             status__in=[
                 SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
                 SCRIPT_STATUS.RUNNING])
-        for script_result in qs:
-            script_result.status = script_result_status
-            script_result.save(update_fields=['status'])
+        qs.update(status=script_result_status, updated=now())
 
         new_status = get_failed_status(self.status)
         if new_status is not None:
@@ -3734,12 +3729,10 @@ class Node(CleanSave, TimestampedModel):
         self.status = old_status
         self.save()
 
-        for script_result in self.get_latest_script_results.filter(
-                status__in={
-                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
-                    SCRIPT_STATUS.RUNNING}):
-            script_result.status = SCRIPT_STATUS.ABORTED
-            script_result.save(update_fields=['status'])
+        self.get_latest_script_results.filter(status__in={
+            SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+            SCRIPT_STATUS.RUNNING}).update(
+                status=SCRIPT_STATUS.ABORTED, updated=now())
 
     @transactional
     def _start(
@@ -4526,7 +4519,7 @@ class Controller(Node):
         parent_name = config["parents"][0]
         parent_nic = Interface.objects.get(node=self, name=parent_name)
         parent_has_links = parent_nic.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.STICKY).count() > 0
+            alloc_type=IPADDRESS_TYPE.STICKY).exists()
         update_links = True
         if parent_has_links:
             # If the parent interface has links then we assume that is

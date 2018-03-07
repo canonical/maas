@@ -333,7 +333,7 @@ class ScriptSet(CleanSave, Model):
 
     @property
     def status(self):
-        return get_status_from_qs(self.scriptresult_set.all())
+        return get_status_from_qs(self.scriptresult_set.all().only('status'))
 
     @property
     def status_name(self):
@@ -341,21 +341,24 @@ class ScriptSet(CleanSave, Model):
 
     @property
     def started(self):
-        qs = self.scriptresult_set.all()
-        if qs.exists():
-            return qs.earliest('started').started
-        else:
+        try:
+            return self.scriptresult_set.all().only(
+                'started').earliest('started').started
+        except ObjectDoesNotExist:
             return None
 
     @property
     def ended(self):
-        qs = self.scriptresult_set.all()
-        if not qs.exists():
+        try:
+            # A ScriptSet hasn't finished running until all ScriptResults
+            # have finished running.
+            if self.scriptresult_set.filter(ended=None).exists():
+                return None
+            else:
+                return self.scriptresult_set.only('ended').latest(
+                    'ended').ended
+        except ObjectDoesNotExist:
             return None
-        elif qs.filter(ended=None).exists():
-            return None
-        else:
-            return qs.latest('ended').ended
 
     @property
     def runtime(self):
@@ -429,6 +432,8 @@ class ScriptSet(CleanSave, Model):
         script_results = self.scriptresult_set.exclude(script=None)
         script_results = script_results.filter(status=SCRIPT_STATUS.PENDING)
         script_results = script_results.exclude(script__for_hardware=[])
+        script_results = script_results.prefetch_related('script')
+        script_results = script_results.only('script__for_hardware')
         for script_result in script_results:
             matches = filter_modaliases(
                 modaliases, *script_result.script.ForHardware)
@@ -485,7 +490,8 @@ class ScriptSet(CleanSave, Model):
 
         regenerate_scripts = {}
         for script_result in self.scriptresult_set.filter(
-                status=SCRIPT_STATUS.PENDING).exclude(parameters={}):
+                status=SCRIPT_STATUS.PENDING).exclude(parameters={}).defer(
+                    'stdout', 'stderr', 'output', 'result'):
             # If there are multiple storage devices on the system for every
             # script which contains a storage type parameter there will be
             # one ScriptResult per device. If we already know a script must

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The NodeResult handler for the WebSocket connection."""
@@ -26,7 +26,11 @@ from metadataserver.models import ScriptResult
 class NodeResultHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = ScriptResult.objects.all()
+        queryset = ScriptResult.objects.all().defer(
+            'output', 'stdout', 'stderr').prefetch_related(
+            'script', 'script_set').defer(
+                'script__parameters', 'script__packages').defer(
+                    'script_set__requested_scripts')
         pk = 'id'
         allowed_methods = [
             'clear',
@@ -98,7 +102,8 @@ class NodeResultHandler(TimestampedModelHandler):
                 "starttime": history.starttime,
                 "endtime": history.endtime,
                 "estimated_runtime": history.estimated_runtime,
-            } for history in obj.history
+            } for history in obj.history.only(
+                "id", "updated", "status", "started", "ended")
         ]
         try:
             results = obj.read_results()
@@ -168,6 +173,9 @@ class NodeResultHandler(TimestampedModelHandler):
         """
         node = self.get_node(params)
         queryset = node.get_latest_script_results
+        queryset = queryset.defer('output', 'stdout', 'stderr')
+        queryset = queryset.defer('script__parameters', 'script__packages')
+        queryset = queryset.defer('script_set__requested_scripts')
 
         if "result_type" in params:
             queryset = queryset.filter(
@@ -197,21 +205,17 @@ class NodeResultHandler(TimestampedModelHandler):
     def get_result_data(self, params):
         """Return the raw script result data."""
         id = params.get('id')
-        try:
-            script_result = ScriptResult.objects.get(id=id)
-        except ScriptResult.DoesNotExist:
-            return "Unknown ScriptResult id %s" % id
         data_type = params.get('data_type', 'combined')
-        if data_type == 'combined':
-            return script_result.output.decode().strip()
-        elif data_type == 'stdout':
-            return script_result.stdout.decode().strip()
-        elif data_type == 'stderr':
-            return script_result.stderr.decode().strip()
-        elif data_type == 'result':
-            return script_result.result.decode().strip()
-        else:
+        if data_type not in {'combined', 'stdout', 'stderr', 'result'}:
             return "Unknown data_type %s" % data_type
+        if data_type == 'combined':
+            data_type = 'output'
+        script_result = ScriptResult.objects.filter(
+            id=id).only(data_type).first()
+        if script_result is None:
+            return "Unknown ScriptResult id %s" % id
+        data = getattr(script_result, data_type)
+        return data.decode().strip()
 
     def clear(self, params):
         """Clears the current node for events.

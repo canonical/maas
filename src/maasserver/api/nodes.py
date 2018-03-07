@@ -257,7 +257,8 @@ def is_registered(request):
 def get_cached_script_results(node):
     """Load script results into cache and return the cached list."""
     if not hasattr(node, '_cached_script_results'):
-        node._cached_script_results = list(node.get_latest_script_results)
+        node._cached_script_results = list(
+            node.get_latest_script_results.only('status'))
         node._cached_commissioning_script_results = []
         node._cached_testing_script_results = []
         for script_result in node._cached_script_results:

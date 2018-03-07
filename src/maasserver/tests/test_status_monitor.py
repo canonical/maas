@@ -330,8 +330,20 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
     def test_mark_nodes_failed_after_missing_timeout_prefetches(self):
         self.patch(Node, 'mark_failed')
         now = datetime.now()
+        node, script_set = self.make_node()
+        script_set.last_ping = now
+        script_set.save()
+        script = factory.make_Script(timeout=timedelta(seconds=60))
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING,
+            script=script, started=now - timedelta(minutes=3))
+
+        counter_one = CountQueries()
+        with counter_one:
+            mark_nodes_failed_after_missing_script_timeout()
+
         nodes = []
-        for _ in range(3):
+        for _ in range(6):
             node, script_set = self.make_node()
             script_set.last_ping = now
             script_set.save()
@@ -341,13 +353,20 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
                 script=script, started=now - timedelta(minutes=3))
             nodes.append(node)
 
-        counter = CountQueries()
-        with counter:
+        counter_many = CountQueries()
+        with counter_many:
             mark_nodes_failed_after_missing_script_timeout()
-        # Initial lookup and prefetch take three queries. This is done once to
-        # find the nodes which nodes are being tests and on each node which
-        # scripts are currently running.
-        self.assertEquals(3 + len(nodes) * 2, counter.num_queries)
+
+        # Lookup takes 7 queries no matter the amount of Nodes
+        # 1. Get all Nodes in commissioning or testing
+        # 2. Get all commissioning ScriptSets
+        # 3. Get all testing ScriptSets
+        # 4. Get all commissioning ScriptResults
+        # 5. Get all testing ScriptResults
+        # 6. Get all commissioning Scripts
+        # 7. Get all testing Scripts
+        self.assertEquals(7, counter_one.num_queries)
+        self.assertEquals(7, counter_many.num_queries)
 
 
 class TestStatusMonitorService(MAASServerTestCase):
