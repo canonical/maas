@@ -381,7 +381,7 @@ class VirshSSH(pexpect.spawn):
                 # Skip if cannot get more information.
                 continue
             pools[pool] = convert_size_to_bytes(
-                self.get_key_value(output, "Capacity"))
+                self.get_key_value(output, key))
         return pools
 
     def get_pod_local_storage(self):
