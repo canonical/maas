@@ -644,10 +644,17 @@ class TestMachinesAPI(APITestCase.ForUser):
             "amd64/generic", "i386/generic",
             "armhf/generic", "arm64/generic"
         ]
+        tags = [
+            factory.make_Tag(name=factory.make_name('tag'))
+            for _ in range(3)
+        ]
+        tag_names = [tag.name for tag in tags]
         pod = factory.make_Pod(architectures=architectures)
+        pod.tags = tag_names
         pod.hints.cores = random.randint(8, 16)
         pod.hints.memory = random.randint(4096, 8192)
         pod.hints.save()
+        pod.save()
         machine = factory.make_Node(
             status=available_status, owner=None, with_boot_disk=True)
         mock_list_all_usable_architectures = self.patch(
@@ -663,7 +670,8 @@ class TestMachinesAPI(APITestCase.ForUser):
                 'op': 'allocate',
                 'cpu_count': pod.hints.cores,
                 'mem': pod.hints.memory,
-                'arch': pod.architectures[0]
+                'arch': pod.architectures[0],
+                'tags': tag_names,
                 })
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(

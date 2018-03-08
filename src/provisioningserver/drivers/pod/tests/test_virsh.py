@@ -1434,7 +1434,7 @@ class TestVirshPodDriver(MAASTestCase):
             virsh.VirshSSH, 'get_discovered_machine')
         mock_list_machines.return_value = machines
 
-        yield driver.discover(system_id, context)
+        discovered_pod = yield driver.discover(system_id, context)
         self.expectThat(
             mock_get_pod_resources, MockCalledOnceWith())
         self.expectThat(
@@ -1446,6 +1446,7 @@ class TestVirshPodDriver(MAASTestCase):
                 call(machines[0]),
                 call(machines[1]),
                 call(machines[2])))
+        self.expectThat(['virtual'], Equals(discovered_pod.tags))
 
     @inlineCallbacks
     def test_compose(self):

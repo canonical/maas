@@ -258,6 +258,7 @@ class DiscoveredPod(AttrHelperMixin):
     machines = attr.ib(
         converter=converter_list(DiscoveredMachine),
         default=attr.Factory(list))
+    tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
 
 
 @attr.s

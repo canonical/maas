@@ -482,7 +482,7 @@ class VirshSSH(pexpect.spawn):
         # Discovered machine.
         discovered_machine = DiscoveredMachine(
             architecture="", cores=0, cpu_speed=0, memory=0,
-            interfaces=[], block_devices=[], tags=['virtual'])
+            interfaces=[], block_devices=[], tags=[])
         discovered_machine.hostname = machine
         discovered_machine.architecture = self.get_machine_arch(machine)
         discovered_machine.cores = self.get_machine_cpu_count(machine)
@@ -908,6 +908,9 @@ class VirshPodDriver(PodDriver):
                 discovered_machine.cpu_speed = discovered_pod.cpu_speed
                 machines.append(discovered_machine)
         discovered_pod.machines = machines
+
+        # Set KVM Pod tags to 'virtual'.
+        discovered_pod.tags = ['virtual']
 
         # Return the DiscoveredPod
         return discovered_pod

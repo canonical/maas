@@ -1621,18 +1621,22 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 else:
                     pods = Pod.objects.filter(
                         default_pool__role__users=request.user)
-                # We don't want to compose a machine from a pod if the
-                # constraints contain tags.
-                if pods and not any(
-                        'tags' in constraint
-                        for constraint in input_constraints):
+
+                # Gather constraint tags.
+                constraint_tags = None
+                for constraint in input_constraints:
+                    if 'tags' in constraint:
+                        constraint_tags = constraint[1]
+
+                if pods:
                     if form.cleaned_data.get('pod'):
                         pods = pods.filter(name=form.cleaned_data.get('pod'))
                     elif form.cleaned_data.get('pod_type'):
                         pods = pods.filter(
                             power_type=form.cleaned_data.get('pod_type'))
                     compose_form = ComposeMachineForPodsForm(
-                        request=request, data=data, pods=pods)
+                        request=request, data=data,
+                        pods=pods, tags=constraint_tags)
                     if compose_form.is_valid():
                         machine = compose_form.compose()
                         if machine is not None:

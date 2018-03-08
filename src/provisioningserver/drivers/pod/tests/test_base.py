@@ -274,6 +274,10 @@ class TestDiscoveredClasses(MAASTestCase):
             local_disks=random.randint(1, 8),
             iscsi_storage=random.randint(4096, 8192))
         machines = []
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         for _ in range(3):
             cores = random.randint(1, 8)
             cpu_speed = random.randint(1000, 2000)
@@ -317,7 +321,8 @@ class TestDiscoveredClasses(MAASTestCase):
             architectures=['amd64/generic'],
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, local_disks=local_disks,
-            iscsi_storage=iscsi_storage, hints=hints, machines=machines)
+            iscsi_storage=iscsi_storage, hints=hints,
+            machines=machines, tags=tags)
         self.assertThat(pod.asdict(), MatchesDict({
             "architectures": Equals(["amd64/generic"]),
             "cores": Equals(cores),
@@ -370,6 +375,7 @@ class TestDiscoveredClasses(MAASTestCase):
                 })
                 for machine in machines
             ]),
+            "tags": Equals(tags),
         }))
 
     def test_pod_fromdict(self):
