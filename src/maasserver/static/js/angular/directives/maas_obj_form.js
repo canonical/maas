@@ -543,10 +543,10 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                 // type and key required.
                 var missingAttrs = [];
-                if(!angular.isString(attrs.type) && attrs.type.length === 0) {
+                if(!angular.isString(attrs.type) || attrs.type.length === 0) {
                     missingAttrs.push("type");
                 }
-                if(!angular.isString(attrs.key) && attrs.key.length === 0) {
+                if(!angular.isString(attrs.key) || attrs.key.length === 0) {
                     missingAttrs.push("key");
                 }
                 if(missingAttrs.length > 0) {
@@ -561,7 +561,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 // Render the label.
                 var label = attrs.label || attrs.key;
 
-                if(attrs.disableLabel !== "true") {
+                if(attrs.disableLabel !== "true" &&
+                        !(attrs.type === "hidden")) {
                     var labelElement = angular.element('<label/>');
                     labelElement.attr('for', attrs.key);
                     labelElement.text(label);
@@ -830,6 +831,19 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                                 return val.text;
                             });
                     };
+                } else if(attrs.type === "hidden") {
+                    var hiddenScope = scope.$new();
+                    hiddenScope._toggle = controller.registerField(
+                        attrs.key, scope);
+                    inputElement = angular.element([
+                        '<input type="hidden" name="' + attrs.key + '" ',
+                        'id="' + attrs.key + '" ',
+                        'value="' + attrs.value + '">',
+                        '</input>'
+                    ].join(''));
+                    inputElement = $compile(inputElement)(hiddenScope);
+                    scope.getValue = () => attrs.value;
+                    scope.updateValue = () => null;
                 } else if(attrs.type === "onoffswitch") {
                     var switchScope = scope.$new();
                     switchScope._toggle = controller.registerField(

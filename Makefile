@@ -23,7 +23,7 @@ endif
 # Python enum modules.
 py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
-js_enums := src/maasserver/static/js/enums.js
+js_enums := src/maasserver/static/js/yui/enums.js
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
@@ -40,6 +40,8 @@ javascript_deps := \
 javascript_output := \
   src/maasserver/static/js/bundle/maas-min.js \
   src/maasserver/static/js/bundle/maas-min.js.map \
+  src/maasserver/static/js/bundle/maas-yui-min.js \
+  src/maasserver/static/js/bundle/maas-yui-min.js.map \
   src/maasserver/static/js/bundle/vendor-min.js \
   src/maasserver/static/js/bundle/vendor-min.js.map
 
@@ -249,6 +251,7 @@ define node_packages
   karma-ng-html2js-preprocessor
   karma-opera-launcher
   karma-phantomjs-launcher
+  karma-sourcemap-loader
   node-sass
   phantomjs-prebuilt
   prop-types
@@ -285,6 +288,9 @@ test: bin/test.parallel bin/coverage
 	@$(RM) .coverage .coverage.*
 	@bin/test.parallel --with-coverage --subprocess-per-core
 	@bin/coverage combine
+
+test-js: bin/test.js javascript
+	@bin/test.js
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:

@@ -56,7 +56,7 @@ class EnumJSCommand(Command):
         py_files = glob('src/*/enum.py')
         jsenums = import_jsenums()
         js_content = jsenums.dump(py_files)
-        with open('src/maasserver/static/js/enums.js', 'w') as fp:
+        with open('src/maasserver/static/js/yui/enums.js', 'w') as fp:
             fp.write(js_content)
 
 

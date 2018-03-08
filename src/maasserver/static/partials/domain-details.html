@@ -13,14 +13,17 @@
             </p>
         </div>
         <div class="col-4">
-            <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultDomain() && !loading">
+            <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !loading">
                 <button class="p-button--negative"
                     data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete domain</button>
+                    data-ng-hide="actionInProgress || isDefaultDomain()">Delete domain</button>
+                <button class="p-button"
+                        data-ng-click="addRecordButton()"
+                        data-ng-hide="actionInProgress">Add record</button>
             </div>
         </div>
     </div>
-    <div data-ng-if="confirmingDelete">
+    <div data-ng-if="actionInProgress && action === 'delete'">
         <div class="row u-no-margin--top ng-hide" data-ng-hide="canBeDeleted()">
             <hr />
             <div class="row">
@@ -30,7 +33,7 @@
                     </p>
                 </div>
                 <div class="col-4 u-align--right">
-                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="p-button--base" type="button" data-ng-click="cancelAction()">Cancel</button>
                 </div>
             </div>
         </div>
@@ -43,7 +46,7 @@
                     </p>
                 </div>
                 <div class="col-4 u-align--right">
-                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="p-button--base" type="button" data-ng-click="cancelAction()">Cancel</button>
                     <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete domain</button>
                 </div>
             </div>
@@ -57,11 +60,50 @@
                     </p>
                 </div>
                 <div class="col-4 u-align--right">
-                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <button class="p-button--base" type="button" data-ng-click="cancelAction()">Cancel</button>
                     <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
         </div>
+    </div>
+    <div data-ng-if="actionInProgress && action === 'add_record'">
+        <maas-obj-form obj="newObject" manager="domainsManager" manager-method="createDNSRecord" class="p-form--stacked"
+            table-form="true" save-on-blur="false" after-save="cancelAction">
+            <!-- pre-process="actionDNSRecordPreSave" -->
+            <section class="row">
+              <div class="col-6">
+                <maas-obj-field
+                    subtle="false" type="text" key="name" label="Name" placeholder="Name"
+                    label-width="two" input-width="three"></maas-obj-field>
+                <maas-obj-field
+                    subtle="false" type="options" key="rrtype" label="Type"
+                    options="type as type for type in supportedRecordTypes"
+                    label-width="two" input-width="three"></maas-obj-field>
+              </div>
+              <div class="col-6">
+                <maas-obj-field
+                    subtle="false" type="text" key="rrdata" label="Data"
+                    placeholder="Data"
+                    label-width="two" input-width="three"></maas-obj-field>
+                <maas-obj-field
+                    subtle="false" type="text" key="ttl" label="TTL"
+                    placeholder="TTL in seconds (optional)"
+                    label-width="two" input-width="three"></maas-obj-field>
+                <maas-obj-field type="hidden" key="domain" value="{$ domain.id $}" />
+              </div>
+            </section>
+            <section class="row">
+                <div class="col-8">
+                    <maas-obj-errors class="page-header__message page-header__message--error"></maas-obj-errors>
+                </div>
+                <div class="col-4">
+                    <div class="u-align--right">
+                        <button class="p-button" data-ng-click="cancelAction()">Cancel</button>
+                        <button class="p-button--positive" maas-obj-save>Add record</button>
+                    </div>
+                </div>
+            </div>
+        </maas-obj-form>
     </div>
 </header>
 <div class="p-strip" data-ng-show="!loading">

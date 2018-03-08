@@ -21,10 +21,9 @@ module.exports = function(config) {
       '/usr/share/javascript/angular.js/angular-mocks.js',
       '/usr/share/javascript/angular.js/angular-cookies.js',
       '/usr/share/javascript/angular.js/angular-sanitize.js',
-      '../../src/maasserver/static/js/ui/maas-ui.js',
-      '../../src/maasserver/static/js/angular/maas.js',
+      '../../src/maasserver/static/js/bundle/vendor-min.js',
+      '../../src/maasserver/static/js/bundle/maas-min.js',
       '../../src/maasserver/static/js/angular/testing/*.js',
-      '../../src/maasserver/static/js/angular/*/*.js',
       '../../src/maasserver/static/js/angular/*/tests/test_*.js',
       '../../src/maasserver/static/partials/*.html'
     ],
@@ -38,7 +37,8 @@ module.exports = function(config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
-        '../../src/maasserver/static/partials/*.html': ['ng-html2js']
+        '../../src/maasserver/static/partials/*.html': ['ng-html2js'],
+        '**/*.js': ['sourcemap']
     },
 
     ngHtml2JsPreprocessor: {
@@ -91,7 +91,8 @@ module.exports = function(config) {
       'karma-opera-launcher',
       'karma-phantomjs-launcher',
       'karma-failed-reporter',
-      'karma-ng-html2js-preprocessor'
+      'karma-ng-html2js-preprocessor',
+      'karma-sourcemap-loader'
     ]
   });
 };

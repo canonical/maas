@@ -14,6 +14,7 @@ describe("DomainsManager", function() {
     var DomainsManager;
     beforeEach(inject(function($injector) {
         DomainsManager = $injector.get("DomainsManager");
+        RegionConnection = $injector.get("RegionConnection");
     }));
 
     // Make a random domain.
@@ -57,6 +58,52 @@ describe("DomainsManager", function() {
             }
             expect(DomainsManager.getDefaultDomain()).toBe(
                 DomainsManager._items[0]);
+        });
+    });
+
+    describe("createDNSRecord", function() {
+        it("calls create_dnsresource for A record", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'A',
+                'rrdata': '192.168.0.1'
+            };
+            DomainsManager.createDNSRecord(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.create_dnsresource", record);
+        });
+
+        it("calls create_dnsresource for AAAA record", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'AAAA',
+                'rrdata': '2001:db8:1'
+            };
+            DomainsManager.createDNSRecord(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.create_dnsresource", record);
+        });
+
+        it("converts rrdata into list for A and AAAA", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'AAAA',
+                'rrdata': '2001:db8::1, 10.0.0.1 127.0.0.1'
+            };
+            DomainsManager.createDNSRecord(record);
+            expect(record.ip_addresses).toEqual([
+                '2001:db8::1', '10.0.0.1', '127.0.0.1'
+            ]);
+        });
+
+        it("calls create_dnsdata for other types", function() {
+            spyOn(RegionConnection, "callMethod");
+            var record = {
+                'rrtype': 'SRV'
+            };
+            DomainsManager.createDNSRecord(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.create_dnsdata", record);
         });
     });
 

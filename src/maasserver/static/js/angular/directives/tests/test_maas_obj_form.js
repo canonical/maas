@@ -442,6 +442,31 @@ describe("maasObjForm", function() {
         });
     });
 
+    describe("hidden", function() {
+
+        var directive, options;
+        beforeEach(function() {
+            $scope.obj = {
+                key: false
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="hidden" key="key" label="Key" ',
+                        'value="value">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("creates hidden input field", function() {
+            var onoff = angular.element(directive.find("input"));
+            expect(onoff.length).toBe(1);
+        });
+    });
+
+
     describe("single field", function() {
 
         var directive, updateItemMethod, saveDefer;

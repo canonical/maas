@@ -42,6 +42,18 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod("domain.delete", domain);
         };
 
+        // Create a DNS record.
+        DomainsManager.prototype.createDNSRecord = function(record) {
+            if(record.rrtype === 'A' || record.rrtype === 'AAAA') {
+                record.ip_addresses = record.rrdata.split(/[ ,]+/);
+                return RegionConnection.callMethod(
+                    "domain.create_dnsresource", record);
+            } else {
+                return RegionConnection.callMethod(
+                    "domain.create_dnsdata", record);
+            }
+        };
+
         DomainsManager.prototype.getDefaultDomain = function() {
             if(this._items.length === 0) {
                 return null;

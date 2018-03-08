@@ -23,6 +23,14 @@ angular.module('MAAS').controller('DomainDetailsController', [
         $scope.domain = null;
         $scope.predicate = "name";
         $scope.reverse = false;
+        $scope.action = null;
+
+        $scope.domainsManager = DomainsManager;
+        $scope.newObject = {};
+
+        $scope.supportedRecordTypes = [
+            'A', 'AAAA', 'CNAME', 'MX', 'NS', 'SRV', 'SSHFP', 'TXT'
+        ];
 
         // Updates the page title.
         function updateTitle() {
@@ -61,18 +69,26 @@ angular.module('MAAS').controller('DomainDetailsController', [
         // Called when the delete domain button is pressed.
         $scope.deleteButton = function() {
             $scope.error = null;
-            $scope.confirmingDelete = true;
+            $scope.actionInProgress = true;
+            $scope.action = 'delete';
+        };
+
+        // Called when the add record button is pressed.
+        $scope.addRecordButton = function() {
+            $scope.error = null;
+            $scope.actionInProgress = true;
+            $scope.action = 'add_record';
         };
 
         // Called when the cancel delete domain button is pressed.
-        $scope.cancelDeleteButton = function() {
-            $scope.confirmingDelete = false;
+        $scope.cancelAction = function() {
+            $scope.actionInProgress = false;
         };
 
         // Called when the confirm delete domain button is pressed.
         $scope.deleteConfirmButton = function() {
             DomainsManager.deleteDomain($scope.domain).then(function() {
-                $scope.confirmingDelete = false;
+                $scope.actionInProgress = false;
                 $location.path("/domains");
             }, function(error) {
                 $scope.error =

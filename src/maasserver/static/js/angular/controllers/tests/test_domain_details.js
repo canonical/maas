@@ -186,7 +186,7 @@ describe("DomainDetailsController", function() {
         it("confirms delete", function() {
             var controller = makeControllerResolveSetActiveItem();
             $scope.deleteButton();
-            expect($scope.confirmingDelete).toBe(true);
+            expect($scope.actionInProgress).toBe(true);
         });
 
         it("clears error", function() {
@@ -197,13 +197,13 @@ describe("DomainDetailsController", function() {
         });
     });
 
-    describe("cancelDeleteButton", function() {
+    describe("cancelAction", function() {
 
         it("cancels delete", function() {
             var controller = makeControllerResolveSetActiveItem();
             $scope.deleteButton();
-            $scope.cancelDeleteButton();
-            expect($scope.confirmingDelete).toBe(false);
+            $scope.cancelAction();
+            expect($scope.actionInProgress).toBe(false);
         });
     });
 

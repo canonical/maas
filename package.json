@@ -5,7 +5,7 @@
     "@babel/preset-react": "^7.0.0-beta.40",
     "@types/prop-types": "^15.5.2",
     "@types/react": "^16.0.40",
-    "@types/react-dom": "^16.0.4",
+    "@types/react-dom": "^15.5.7",
     "babel-loader": "^8.0.0-beta.0",
     "glob": "^7.1.2",
     "jasmine-core": "=2.99.1",
@@ -17,6 +17,7 @@
     "karma-ng-html2js-preprocessor": "^1.0.0",
     "karma-opera-launcher": "^1.0.0",
     "karma-phantomjs-launcher": "^1.0.4",
+    "karma-sourcemap-loader": "^0.3.7",
     "node-sass": "^4.7.2",
     "phantomjs-prebuilt": "^2.1.16",
     "prop-types": "^15.6.1",
@@ -27,7 +28,7 @@
     "uglifyjs-webpack-plugin": "^1.2.2",
     "vanilla-framework": "^1.6.6",
     "vanilla-framework-react": "^0.1.2",
-    "webpack": "^4.0.1",
+    "webpack": "^4.1.1",
     "webpack-cli": "^2.0.10",
     "webpack-merge": "^4.1.2"
   }
