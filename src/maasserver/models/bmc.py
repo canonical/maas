@@ -637,9 +637,10 @@ class Pod(BMC):
 
         # Assign the Pod's tags.
         existing_tags = machine.tags.all().values('name')
-        for tag in self.tags:
+        for pod_tag in self.tags:
             # Only if not a duplicate.
-            if tag not in existing_tags:
+            if pod_tag not in existing_tags:
+                tag, _ = Tag.objects.get_or_create(name=pod_tag)
                 machine.tags.add(tag)
 
         # Create the discovered block devices and set the initial storage
