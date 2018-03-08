@@ -3077,10 +3077,9 @@ class TestMachineFilesystemgroupListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
                 self.update_filesystemgroup,
-                filesystemgroup.id, {}, force_update=True)
+                filesystemgroup.id, {'name': factory.make_name('fsgroup')})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
