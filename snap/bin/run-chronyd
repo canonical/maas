@@ -14,4 +14,9 @@ if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
 fi
 
 # Run ntpd.
-exec $SNAP/usr/sbin/chronyd -u nobody -d -f "$SNAP_DATA/etc/chrony/chrony.conf"
+CHRONY_OPTS="-u nobody -d -f $SNAP_DATA/etc/chrony/chrony.conf"
+if [ -f /run/systemd/container ]; then
+    # don't try to set time if running in container
+    CHRONY_OPTS="$CHRONY_OPTS -x"
+fi
+exec $SNAP/usr/sbin/chronyd $CHRONY_OPTS
