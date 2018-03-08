@@ -325,6 +325,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         json_updated = datetime.datetime.strptime(
             json_obj['resources'][0]['lastUpdate'], "%a, %d %b. %Y %H:%M:%S")
+        # Make sure resource.update is the value from the database and
+        # not a CurrentTime instance, since those two can be different.
+        resource.refresh_from_db()
         self.assertEqual(
             resource.updated.timetuple(), json_updated.timetuple())
 
