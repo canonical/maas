@@ -256,6 +256,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.RUNNING)
         exit_status = random.randint(0, 255)
+        stdout = factory.make_name('stdout').encode()
         mock_hook = MagicMock()
         scriptresult_module.NODE_INFO_SCRIPTS[script_result.name] = {
             'hook': mock_hook,
@@ -263,13 +264,12 @@ class TestScriptResult(MAASServerTestCase):
         self.addCleanup(
             scriptresult_module.NODE_INFO_SCRIPTS.pop, script_result.name)
 
-        script_result.store_result(exit_status)
+        script_result.store_result(exit_status, stdout=stdout)
 
         self.assertThat(
             mock_hook,
             MockCalledOnceWith(
-                node=script_set.node, output=script_result.stdout,
-                exit_status=exit_status))
+                node=script_set.node, output=stdout, exit_status=exit_status))
 
     def test_store_result_logs_event_upon_hook_failure(self):
         script_set = factory.make_ScriptSet(
@@ -286,7 +286,7 @@ class TestScriptResult(MAASServerTestCase):
         }
         self.addCleanup(
             scriptresult_module.NODE_INFO_SCRIPTS.pop, script_result.name)
-        script_result.store_result(exit_status)
+        script_result.store_result(exit_status, stdout=b'')
         expected_event = Event.objects.last()
         self.assertThat(
             expected_event.description,

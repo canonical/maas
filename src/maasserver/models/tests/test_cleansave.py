@@ -208,6 +208,14 @@ class TestCleanSave(MAASLegacyServerTestCase):
             raw=False, update_fields={'field', 'related_id'}, using='default'))
         self.assertEquals({}, obj._state._changed_fields)
 
+    def test_save_ignores_clean_on_deferred(self):
+        obj = CleanSaveTestModel.objects.create(field='test')
+        obj = CleanSaveTestModel.objects.filter(id=obj.id).only(
+            'id').first()
+        related = GenericTestModel.objects.create(field='')
+        obj.related = related
+        obj.save(force_update=True)
+
     def test_full_clean_excludes_unchanged_fields(self):
         related = GenericTestModel.objects.create(field='')
         obj = CleanSaveTestModel.objects.create()

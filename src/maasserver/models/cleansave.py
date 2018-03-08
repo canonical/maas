@@ -183,6 +183,10 @@ class CleanSave:
             field.name
             for field in self._meta.fields
             if field.is_relation
+        ) | set(
+            f.attname
+            for f in self._meta.concrete_fields
+            if f.attname not in self.__dict__
         )
         if ('update_fields' in kwargs or
                 kwargs.get('force_insert', False) or
