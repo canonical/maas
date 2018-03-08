@@ -1,4 +1,5 @@
 python := python3
+snapcraft := snapcraft
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
@@ -769,13 +770,13 @@ endef
 #
 
 snap-clean:
-	snapcraft clean
+	$(snapcraft) clean
 
 snap:
-	snapcraft
+	$(snapcraft)
 
 snap-cleanbuild:
-	snapcraft cleanbuild
+	$(snapcraft) cleanbuild
 
 define phony_snap_targets
 	snap
@@ -793,7 +794,7 @@ build/dev-snap: ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix build/dev-snap/
 
 build/dev-snap/prime: build/dev-snap
-	cd build/dev-snap && snapcraft prime
+	cd build/dev-snap && $(snapcraft) prime
 
 sync-dev-snap: build/dev-snap/prime
 	rsync -v --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
