@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from email.utils import format_datetime
 import random
 from unittest.mock import ANY
 
@@ -49,7 +48,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
                 {
                     'id': value.id,
                     'value': value.data,
-                    'created': format_datetime(value.created),
+                    'created': ANY,
                 }
                 for value in dhcp_snippet.value.previous_versions()],
             'enabled': dhcp_snippet.enabled,
