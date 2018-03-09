@@ -189,8 +189,8 @@ class TestAMTPowerDriver(MAASTestCase):
                 join(dirname(dirname(__file__)), "amt.wsman-boot-config.xml"),
                 ('http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
                  'CIM_BootService?SystemCreationClassName='
-                 '"CIM_ComputerSystem",SystemName="Intel(r) AMT"'
-                 ',CreationClassName="CIM_BootService",Name="Intel(r)'
+                 '"CIM_ComputerSystem"&SystemName="Intel(r) AMT"'
+                 '&CreationClassName="CIM_BootService"&Name="Intel(r)'
                  ' AMT Boot Service"')),
         }
         wsman_opts = (
@@ -205,8 +205,9 @@ class TestAMTPowerDriver(MAASTestCase):
         stdins = []
         for method, (schema_file, schema_uri) in wsman_pxe_options.items():
             with open(schema_file, "rb") as fd:
-                command = 'wsman', 'invoke', '--method', method, schema_uri
-                command += wsman_opts + ('--input', '-')
+                wsman_opts += ('--input', '-',)
+                action = ('invoke', '--method', method, schema_uri)
+                command = ('wsman',) + wsman_opts + action
                 commands.append(command)
                 stdins.append(fd.read())
 
@@ -242,8 +243,8 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_power_schema_uri = (
             'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
             'CIM_PowerManagementService?SystemCreationClassName='
-            '"CIM_ComputerSystem",SystemName="Intel(r) AMT"'
-            ',CreationClassName="CIM_PowerManagementService",Name='
+            '"CIM_ComputerSystem"&SystemName="Intel(r) AMT"'
+            '&CreationClassName="CIM_PowerManagementService"&Name='
             '"Intel(r) AMT Power Management Service"'
         )
         wsman_opts = (
@@ -254,11 +255,13 @@ class TestAMTPowerDriver(MAASTestCase):
         _render_wsman_state_xml_mock = self.patch(
             amt_power_driver, '_render_wsman_state_xml')
         _render_wsman_state_xml_mock.return_value = b'stdin'
-        command = (
-            'wsman', 'invoke', '--method',
+        action = (
+            'invoke', '--method',
             'RequestPowerStateChange',
             wsman_power_schema_uri
-        ) + wsman_opts + ('--input', '-')
+        )
+        wsman_opts += ('--input', '-')
+        command = ('wsman',) + wsman_opts + action
         _run_mock = self.patch(amt_power_driver, '_run')
         _run_mock.return_value = b'output'
 
@@ -283,9 +286,8 @@ class TestAMTPowerDriver(MAASTestCase):
             '--noverifypeer', '--noverifyhost'
         )
         wsman_query_opts = wsman_opts + ('--optimize', '--encoding', 'utf-8')
-        command = (
-            'wsman', 'enumerate', wsman_query_schema_uri
-        ) + wsman_query_opts
+        action = ('enumerate', wsman_query_schema_uri)
+        command = ('wsman',) + wsman_query_opts + action
         _run_mock = self.patch(amt_power_driver, '_run')
         _run_mock.return_value = b'ignored'
 

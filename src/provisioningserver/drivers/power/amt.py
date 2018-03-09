@@ -138,8 +138,8 @@ class AMTPowerDriver(PowerDriver):
                 join(dirname(__file__), "amt.wsman-boot-config.xml"),
                 ('http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
                  'CIM_BootService?SystemCreationClassName='
-                 '"CIM_ComputerSystem",SystemName="Intel(r) AMT"'
-                 ',CreationClassName="CIM_BootService",Name="Intel(r)'
+                 '"CIM_ComputerSystem"&SystemName="Intel(r) AMT"'
+                 '&CreationClassName="CIM_BootService"&Name="Intel(r)'
                  ' AMT Boot Service"')),
         }
         wsman_opts = (
@@ -150,8 +150,9 @@ class AMTPowerDriver(PowerDriver):
         # Change boot order to PXE and enable boot config request
         for method, (schema_file, schema_uri) in wsman_pxe_options.items():
             with open(schema_file, "rb") as fd:
-                command = 'wsman', 'invoke', '--method', method, schema_uri
-                command += wsman_opts + ('--input', '-')
+                wsman_opts += ('--input', '-')
+                action = ('invoke', '--method', method, schema_uri)
+                command = ('wsman',) + wsman_opts + action
                 self._run(command, power_pass, stdin=fd.read())
 
     @typed
@@ -187,8 +188,8 @@ class AMTPowerDriver(PowerDriver):
         wsman_power_schema_uri = (
             'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
             'CIM_PowerManagementService?SystemCreationClassName='
-            '"CIM_ComputerSystem",SystemName="Intel(r) AMT"'
-            ',CreationClassName="CIM_PowerManagementService",Name='
+            '"CIM_ComputerSystem"&SystemName="Intel(r) AMT"'
+            '&CreationClassName="CIM_PowerManagementService"&Name='
             '"Intel(r) AMT Power Management Service"'
         )
         wsman_query_schema_uri = (
@@ -202,15 +203,16 @@ class AMTPowerDriver(PowerDriver):
         )
         if power_change in ('on', 'off', 'restart'):
             stdin = self._render_wsman_state_xml(power_change)
-            command = (
-                'wsman', 'invoke', '--method', 'RequestPowerStateChange',
-                wsman_power_schema_uri
-            ) + wsman_opts + ('--input', '-')
+            wsman_opts += ('--input', '-',)
+            action = (
+                'invoke', '--method', 'RequestPowerStateChange',
+                wsman_power_schema_uri)
+            command = ('wsman',) + wsman_opts + action
         elif power_change == 'query':
             stdin = None  # No input for query
-            command = (
-                'wsman', 'enumerate', wsman_query_schema_uri
-            ) + wsman_opts + ('--optimize', '--encoding', 'utf-8')
+            wsman_opts += ('--optimize', '--encoding', 'utf-8',)
+            action = ('enumerate', wsman_query_schema_uri)
+            command = ('wsman',) + wsman_opts + action
         return self._run(command, power_pass, stdin=stdin)
 
     def amttool_query_state(self, ip_address, power_pass):

@@ -219,7 +219,7 @@ Depends: authbind,
          ${misc:Depends},
          ${python3:Depends}
 Recommends: libvirt-clients
-Suggests: amtterm, ipmitool, nmap, wsmancli
+Suggests: amtterm, ipmitool, nmap, wsmancli (>= 2.6.0-0ubuntu1)
 Conflicts: tftpd-hpa, ntp
 Breaks: python-maas-provisioningserver,
         maas-cluster-controller
