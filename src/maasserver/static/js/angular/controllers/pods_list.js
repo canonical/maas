@@ -198,6 +198,7 @@ angular.module('MAAS').controller('PodsListController', [
         // Called when the add pod button is pressed.
         $scope.addPod = function() {
             $scope.add.open = true;
+            $scope.add.obj.zone = ZonesManager.getDefaultZone().id;
         };
 
         // Called when the cancel add pod button is pressed.

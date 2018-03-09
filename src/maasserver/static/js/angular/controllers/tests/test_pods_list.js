@@ -71,6 +71,7 @@ describe("PodsListController", function() {
             $rootScope: $rootScope,
             PodsManager: PodsManager,
             UsersManager: UsersManager,
+            ZonesManager: ZonesManager,
             ManagerHelperService: ManagerHelperService
         });
 
@@ -442,10 +443,26 @@ describe("PodsListController", function() {
 
     describe("addPod", function() {
 
+        function makeZone(id) {
+            var zone = {
+                name: makeName("name")
+            };
+            if(angular.isDefined(id)) {
+                zone.id = id;
+            } else {
+                zone.id = makeInteger(1, 100);
+            }
+            return zone;
+        }
+
         it("sets add.open to true", function() {
             var controller = makeController();
+            var zero = makeZone(0);
+            ZonesManager._items.push(makeZone());
+            ZonesManager._items.push(zero);
             $scope.addPod();
             expect($scope.add.open).toBe(true);
+            expect(ZonesManager.getDefaultZone()).toBe(zero);
         });
     });
 
