@@ -20,6 +20,16 @@ describe("maasScriptRunTime", function() {
         $scope.scriptStatus = null;
     }));
 
+    beforeEach(function() {
+        // The directive uses Date.now() to determine how long the script has
+        // run for already.
+        var now = Date.now();
+        spyOn(Date, 'now').and.callFake(function() {
+            return now;
+        })
+    });
+
+
     // Return the compiled directive.
     function compileDirective(
         startTime, runTime, estimatedRunTime, scriptStatus) {
