@@ -11,7 +11,7 @@ from io import BytesIO
 import os
 import random
 import tarfile
-from unittest.mock import ANY
+import time
 
 from maasserver.api.scriptresults import fmt_time
 from maasserver.testing.api import APITestCase
@@ -261,8 +261,8 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.assertDictEqual({
                 'id': script_result.id,
                 'name': script_result.name,
-                'created': ANY,
-                'updated': ANY,
+                'created': fmt_time(script_result.created),
+                'updated': fmt_time(script_result.updated),
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'exit_status': script_result.exit_status,
@@ -310,8 +310,8 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.assertDictEqual({
                 'id': script_result.id,
                 'name': script_result.name,
-                'created': ANY,
-                'updated': ANY,
+                'created': fmt_time(script_result.created),
+                'updated': fmt_time(script_result.updated),
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'exit_status': script_result.exit_status,
@@ -376,8 +376,8 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.assertDictEqual({
                 'id': script_result.id,
                 'name': script_result.name,
-                'created': ANY,
-                'updated': ANY,
+                'created': fmt_time(script_result.created),
+                'updated': fmt_time(script_result.updated),
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'exit_status': script_result.exit_status,
@@ -507,6 +507,9 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             for script_result in script_results:
                 path = os.path.join(root_dir, script_result.name)
                 member = tar.getmember(path)
+                self.assertEqual(
+                    time.mktime(script_result.updated.timetuple()),
+                    member.mtime)
                 self.assertEqual(0o644, member.mode)
                 self.assertEqual(
                     script_result.output, tar.extractfile(path).read())
@@ -650,6 +653,9 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             for script_result in filtered_results:
                 path = os.path.join(root_dir, script_result.name)
                 member = tar.getmember(path)
+                self.assertEqual(
+                    time.mktime(script_result.updated.timetuple()),
+                    member.mtime)
                 self.assertEqual(0o644, member.mode)
                 self.assertEqual(
                     script_result.output, tar.extractfile(path).read())

@@ -37,6 +37,7 @@ from maasserver.models.subnet import (
     create_cidr,
     Subnet,
 )
+from maasserver.models.timestampedmodel import now
 from maasserver.testing.factory import (
     factory,
     RANDOM,
@@ -1186,10 +1187,10 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
         rackif = factory.make_Interface(vlan=subnet.vlan)
-        now = datetime.now()
-        yesterday = now - timedelta(days=1)
+        dt_now = now()
+        yesterday = dt_now - timedelta(days=1)
         factory.make_Discovery(
-            ip="10.0.0.1", interface=rackif, updated=now)
+            ip="10.0.0.1", interface=rackif, updated=dt_now)
         factory.make_Discovery(
             ip="10.0.0.2", interface=rackif, updated=yesterday)
         logger = self.useFixture(FakeLogger("maas"))

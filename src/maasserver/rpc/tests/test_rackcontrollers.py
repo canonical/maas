@@ -496,7 +496,10 @@ class TestUpdateLastImageSync(MAASServerTestCase):
 
     def test__updates_last_image_sync(self):
         rack = factory.make_RackController()
+        previous_sync = rack.last_image_sync = now()
+        rack.save()
 
         update_last_image_sync(rack.system_id)
 
-        self.assertEqual(now(), reload_object(rack).last_image_sync)
+        self.assertNotEqual(
+            previous_sync, reload_object(rack).last_image_sync)

@@ -5,12 +5,11 @@
 
 __all__ = []
 
-from unittest.mock import ANY
-
 from maasserver.models.space import Space
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.space import SpaceHandler
 from testtools import ExpectedException
 from testtools.matchers import Equals
@@ -23,8 +22,8 @@ class TestSpaceHandler(MAASServerTestCase):
             "id": space.id,
             "name": space.get_name(),
             "description": space.description,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(space.updated),
+            "created": dehydrate_datetime(space.created),
             "subnet_ids": sorted(
                 subnet.id for subnet in space.subnet_set.all()),
             "vlan_ids": sorted(

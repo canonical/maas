@@ -5,11 +5,10 @@
 
 __all__ = []
 
-from unittest.mock import ANY
-
 from maasserver.models.service import Service
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.service import ServiceHandler
 
 
@@ -22,8 +21,8 @@ class TestServiceHandler(MAASServerTestCase):
             "name": service.name,
             "status": service.status,
             "status_info": service.status_info,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(service.updated),
+            "created": dehydrate_datetime(service.created),
         }
         if for_list:
             del data["node"]

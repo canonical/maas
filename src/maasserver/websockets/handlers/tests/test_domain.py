@@ -9,7 +9,6 @@ from random import (
     choice,
     randint,
 )
-from unittest.mock import ANY
 
 from django.core.exceptions import ValidationError
 from maasserver.models import (
@@ -21,7 +20,10 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import HandlerPermissionError
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.domain import DomainHandler
 from netaddr import IPAddress
 from testtools import ExpectedException
@@ -46,8 +48,8 @@ class TestDomainHandler(MAASServerTestCase):
             "displayname": displayname,
             "authoritative": domain.authoritative,
             "ttl": domain.ttl,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(domain.updated),
+            "created": dehydrate_datetime(domain.created),
             }
         ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
             domain, raw_ttl=True)

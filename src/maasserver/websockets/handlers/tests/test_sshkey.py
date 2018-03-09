@@ -5,8 +5,6 @@
 
 __all__ = []
 
-from unittest.mock import ANY
-
 from maasserver.models.event import Event
 from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
@@ -20,6 +18,7 @@ from maasserver.websockets.base import (
     HandlerError,
 )
 from maasserver.websockets.handlers.sshkey import SSHKeyHandler
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import AUDIT
 from testtools.matchers import (
@@ -43,8 +42,8 @@ class TestSSHKeyHandler(MAASServerTestCase):
             "user": sshkey.user.id,
             "key": sshkey.key,
             "keysource": keysource,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(sshkey.updated),
+            "created": dehydrate_datetime(sshkey.created),
             }
         return data
 

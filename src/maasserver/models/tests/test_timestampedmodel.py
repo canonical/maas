@@ -12,7 +12,6 @@ from datetime import (
 from random import randint
 
 from django.db import transaction
-from django.db.models import Model
 from maasserver.models.timestampedmodel import now
 from maasserver.testing.testcase import (
     MAASLegacyTransactionServerTestCase,
@@ -23,7 +22,6 @@ from maasserver.tests.models import (
     TimestampedModelTestModel,
     TimestampedOneToOneTestModel,
 )
-from maastesting.djangotestcase import count_queries
 
 
 def make_time_in_the_recent_past():
@@ -45,25 +43,6 @@ class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
         obj = TimestampedModelTestModel()
         obj.save()
         self.assertIsNotNone(obj.updated)
-
-    def test_save_is_only_one_query(self):
-        obj = TimestampedModelTestModel()
-        count, _ = count_queries(obj.save)
-        self.assertIsNotNone(obj.updated)
-
-    def test_created_is_datetime_with_as_sql(self):
-        obj = TimestampedModelTestModel()
-        self.patch(Model, 'save')
-        obj.save()
-        self.assertIsInstance(obj.created, datetime)
-        self.assertTrue(hasattr(obj.created, 'as_sql'))
-
-    def test_updated_is_datetime_with_as_sql(self):
-        obj = TimestampedModelTestModel()
-        self.patch(Model, 'save')
-        obj.save()
-        self.assertIsInstance(obj.updated, datetime)
-        self.assertTrue(hasattr(obj.updated, 'as_sql'))
 
     def test_updated_and_created_are_the_same_after_first_save(self):
         obj = TimestampedModelTestModel()
@@ -115,14 +94,6 @@ class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
         obj.save()
         self.assertLessEqual(old_updated, obj.updated)
 
-    def test_now_returns_transaction_time(self):
-        date_now = now()
-        # Perform a write database operation.
-        obj = TimestampedModelTestModel()
-        obj.save()
-        transaction.commit()
-        self.assertLessEqual(date_now, now())
-
     def test_updated_allows_override(self):
         last_year = datetime.now() - timedelta(days=365)
         # Perform a write database operation.
@@ -158,7 +129,3 @@ class UtilitiesTest(MAASServerTestCase):
 
     def test_now_returns_datetime(self):
         self.assertIsInstance(now(), datetime)
-
-    def test_now_returns_same_datetime_inside_transaction(self):
-        date_now = now()
-        self.assertEqual(date_now, now())

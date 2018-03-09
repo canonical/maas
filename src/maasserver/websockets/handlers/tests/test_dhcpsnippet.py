@@ -5,8 +5,8 @@
 
 __all__ = []
 
+from email.utils import format_datetime
 import random
-from unittest.mock import ANY
 
 import maasserver.forms.dhcpsnippet as forms_dhcpsnippet_module
 from maasserver.models import (
@@ -18,6 +18,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerPermissionError,
     HandlerValidationError,
 )
@@ -48,14 +49,14 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
                 {
                     'id': value.id,
                     'value': value.data,
-                    'created': ANY,
+                    'created': format_datetime(value.created),
                 }
                 for value in dhcp_snippet.value.previous_versions()],
             'enabled': dhcp_snippet.enabled,
             'node': node_system_id,
             'subnet': subnet_id,
-            'updated': ANY,
-            'created': ANY,
+            'updated': dehydrate_datetime(dhcp_snippet.updated),
+            'created': dehydrate_datetime(dhcp_snippet.created),
         }
 
     def test_get_global(self):

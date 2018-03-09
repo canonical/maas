@@ -1256,7 +1256,8 @@ class Factory(maastesting.factory.Factory):
                 # Need a way to have a non-None hostname *and* specify that
                 # no MDNS entry should be randomly created.
                 self.make_MDNS(
-                    hostname=hostname, ip=neighbour.ip, interface=interface)
+                    hostname=hostname, ip=neighbour.ip, interface=interface,
+                    updated=kwargs.get('updated', None))
         # By using filter here, we guarantee that an object is returned.
         # If we search by the Neighbour ID we think we just created, there
         # might be no results, since the view might filter it.

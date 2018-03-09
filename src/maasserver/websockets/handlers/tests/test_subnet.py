@@ -6,10 +6,7 @@
 __all__ = []
 
 import re
-from unittest.mock import (
-    ANY,
-    sentinel,
-)
+from unittest.mock import sentinel
 
 from fixtures import FakeLogger
 from maasserver.api import discoveries as discoveries_module
@@ -17,6 +14,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
@@ -33,8 +31,8 @@ class TestSubnetHandler(MAASServerTestCase):
     def dehydrate_subnet(self, subnet, for_list=False):
         data = {
             "id": subnet.id,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(subnet.updated),
+            "created": dehydrate_datetime(subnet.created),
             "name": subnet.name,
             "description": subnet.description,
             "dns_servers": (

@@ -7,14 +7,12 @@ __all__ = []
 
 import datetime
 import random
-from unittest.mock import (
-    ANY,
-    sentinel,
-)
+from unittest.mock import sentinel
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerPKError,
 )
@@ -51,8 +49,8 @@ class TestEventHandler(MAASServerTestCase):
                 "name": event.type.name,
                 "description": event.type.description,
                 },
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(event.updated),
+            "created": dehydrate_datetime(event.created),
             }
         return data
 

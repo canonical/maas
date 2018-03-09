@@ -6,14 +6,16 @@
 __all__ = []
 
 import random
-from unittest.mock import ANY
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import HandlerValidationError
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers.vlan import VLANHandler
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -35,8 +37,8 @@ class TestVLANHandler(MAASServerTestCase):
             "mtu": vlan.mtu,
             "fabric": vlan.fabric_id,
             "space": vlan.space_id,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(vlan.updated),
+            "created": dehydrate_datetime(vlan.created),
             "dhcp_on": vlan.dhcp_on,
             "external_dhcp": vlan.external_dhcp,
             "primary_rack": vlan.primary_rack,

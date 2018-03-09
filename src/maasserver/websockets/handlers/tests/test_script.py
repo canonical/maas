@@ -6,10 +6,10 @@
 __all__ = []
 
 import json
-from unittest.mock import ANY
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.script import ScriptHandler
 
 
@@ -35,8 +35,8 @@ class TestScriptHandler(MAASServerTestCase):
             'for_hardware': script.for_hardware,
             'may_reboot': script.may_reboot,
             'recommission': script.recommission,
-            'created': ANY,
-            'updated': ANY,
+            'created': dehydrate_datetime(script.created),
+            'updated': dehydrate_datetime(script.updated),
             }
 
     def test_list(self):

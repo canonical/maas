@@ -8,41 +8,18 @@ __all__ = [
     'TimestampedModel',
     ]
 
-import datetime
 
-from django.conf import settings
-from django.db import connection
 from django.db.models import (
     DateTimeField,
     Model,
 )
-from django.utils.timezone import utc
+from django.utils import timezone
 from maasserver import DefaultMeta
 
 
 def now():
-    """Current database time (as per start of current transaction)."""
-    cursor = connection.cursor()
-    cursor.execute("select now()")
-    return cursor.fetchone()[0]
-
-
-class CurrentTimestamp(datetime.datetime):
-    """Object that represents the current timestamp."""
-
-    def as_sql(self, qn, val):
-        return 'CURRENT_TIMESTAMP', {}
-
-
-def current_timestamp():
-    """
-    Returns an aware or naive datetime.datetime, depending on settings.USE_TZ.
-    """
-    if settings.USE_TZ:
-        # timeit shows that datetime.now(tz=utc) is 24% slower
-        return CurrentTimestamp.utcnow().replace(tzinfo=utc)
-    else:
-        return CurrentTimestamp.now()
+    """Current time."""
+    return timezone.now()
 
 
 # Having 'object' here should not be required, but it is a workaround for the
@@ -83,14 +60,14 @@ class TimestampedModel(Model, object):
         if self.pk is None or (_created is None and self.created is None):
             # New record; set created if not set.
             if self.created is None:
-                self.created = current_timestamp()
+                self.created = now()
             # Set updated to same as created.
             self.updated = self.created
             update_created = True
             update_updated = True
         else:
             # Existing record; set updated always.
-            self.updated = current_timestamp()
+            self.updated = now()
             update_updated = True
         # Allow overriding the values before saving, so that these values can
         # be changed in sample data, unit tests, etc.

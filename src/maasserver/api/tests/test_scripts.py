@@ -9,10 +9,10 @@ from base64 import (
     b64decode,
     b64encode,
 )
+from email.utils import format_datetime
 import http.client
 import json
 import random
-from unittest.mock import ANY
 
 from maasserver.models import (
     Event,
@@ -289,7 +289,7 @@ class TestScriptAPI(APITestCase.ForUser):
                     self.assertEquals({
                         'id': rev.id,
                         'comment': rev.comment,
-                        'created': ANY,
+                        'created': format_datetime(rev.created),
                         }, result_rev)
 
     def test_GET_include_script(self):
@@ -335,7 +335,7 @@ class TestScriptAPI(APITestCase.ForUser):
                     self.assertEquals({
                         'id': rev.id,
                         'comment': rev.comment,
-                        'created': ANY,
+                        'created': format_datetime(rev.created),
                         'data': b64encode(rev.data.encode()).decode(),
                         }, result_rev)
 

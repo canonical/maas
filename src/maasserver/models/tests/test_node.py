@@ -3682,9 +3682,12 @@ class TestNode(MAASServerTestCase):
     def test_update_power_state_sets_last_updated_field(self):
         node = factory.make_Node(power_state_updated=None)
         self.assertIsNone(node.power_state_updated)
+        previous_updated = node.power_state_updated = now()
+        node.save()
         state = factory.pick_enum(POWER_STATE)
         node.update_power_state(state)
-        self.assertEqual(now(), reload_object(node).power_state_updated)
+        self.assertNotEqual(
+            previous_updated, reload_object(node).power_state_updated)
 
     def test_update_power_state_readies_node_if_releasing(self):
         node = factory.make_Node(

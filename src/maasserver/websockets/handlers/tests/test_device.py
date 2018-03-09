@@ -31,6 +31,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerError,
     HandlerPermissionError,
@@ -137,7 +138,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         data = {
             "actions": list(compile_node_actions(node, user).keys()),
             "bmc": node.bmc_id,
-            "created": ANY,
+            "created": dehydrate_datetime(node.created),
             "domain": {
                 "id": node.domain.id,
                 "name": node.domain.name,
@@ -177,7 +178,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 for tag in node.tags.all()
                 ],
             "node_type": node.node_type,
-            "updated": ANY,
+            "updated": dehydrate_datetime(node.updated),
             "zone": {
                 "id": node.zone.id,
                 "name": node.zone.name,

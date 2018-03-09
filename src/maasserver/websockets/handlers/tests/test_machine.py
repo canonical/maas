@@ -80,6 +80,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerError,
     HandlerPermissionError,
@@ -206,7 +207,7 @@ class TestMachineHandler(MAASServerTestCase):
             "locked": node.locked,
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
-            "created": ANY,
+            "created": dehydrate_datetime(node.created),
             "devices": sorted([
                 {
                     "fqdn": device.fqdn,
@@ -286,7 +287,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "comment": driver["comment"] if "comment" in driver else "",
             },
             "node_type": node.node_type,
-            "updated": ANY,
+            "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
             "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
@@ -1400,7 +1401,7 @@ class TestMachineHandler(MAASServerTestCase):
                     "level": dehydrate_event_type_level(event_type.level),
                 },
                 "description": event.description,
-                "created": ANY,
+                "created": dehydrate_datetime(event.created),
             }
             for event in list(reversed(events))[:50]
         ]

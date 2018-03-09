@@ -19,6 +19,7 @@
 /.noseids
 /.run
 /.run-e2e
+/.vscode
 /*.orig.tar.gz
 /bin
 /build
@@ -49,7 +50,7 @@
 /prime
 /services/*/supervise
 /snap/.snapcraft
-/src/maasserver/static/js/enums.js
+/src/maasserver/static/js/yui/enums.js
 /src/maasserver/static/js/bundle/
 /stage
 /TAGS

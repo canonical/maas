@@ -5,14 +5,13 @@
 
 __all__ = []
 
-from unittest.mock import ANY
-
 from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.zone import ZoneHandler
 from testtools import ExpectedException
 from testtools.matchers import Equals
@@ -25,8 +24,8 @@ class TestZoneHandler(MAASServerTestCase):
             "id": zone.id,
             "name": zone.name,
             "description": zone.description,
-            "updated": ANY,
-            "created": ANY,
+            "updated": dehydrate_datetime(zone.updated),
+            "created": dehydrate_datetime(zone.created),
             "devices_count": len([
                 node
                 for node in zone.node_set.all()
