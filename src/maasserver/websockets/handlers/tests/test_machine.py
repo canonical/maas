@@ -36,6 +36,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
 )
 from maasserver.forms import AdminMachineWithMACAddressesForm
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.filesystem import Filesystem
@@ -3166,7 +3167,7 @@ class TestMachineHandler(MAASServerTestCase):
     def test_get_grouped_storages_parses_blockdevices(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
-        size = random.randint(1000, 1000 ** 3)
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 ** 3)
         ssd = factory.make_PhysicalBlockDevice(node, tags=['ssd'])
         hdd = factory.make_PhysicalBlockDevice(node, tags=['hdd'], size=size)
         rotary = factory.make_PhysicalBlockDevice(
