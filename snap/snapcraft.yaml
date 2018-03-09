@@ -20,6 +20,7 @@ parts:
     plugin: python
     source: .
     requirements: requirements.txt
+    build-attributes: [no-system-libraries]
     build-packages:
       - build-essential
       - bzr
