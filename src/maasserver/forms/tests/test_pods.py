@@ -998,27 +998,6 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
             for pod in pods
             ]))
 
-    def test__sets_up_pod_forms_based_on_pods_and_tags(self):
-        request = MagicMock()
-        pods = self.make_pods()
-        data = self.make_data(pods)
-        tags = [
-            factory.make_name('tag')
-            for _ in range(3)
-        ]
-        pods[0].tags = tags
-        pods[0].save()
-        form = ComposeMachineForPodsForm(
-            request=request, data=data, pods=pods, tags=tags)
-        self.assertTrue(form.is_valid())
-        self.assertThat(form.pod_forms, MatchesListwise([
-            MatchesAll(
-                IsInstance(ComposeMachineForm),
-                MatchesStructure(
-                    request=Equals(request), data=Equals(data),
-                    pod=Equals(pods[0])))
-            ]))
-
     def test__save_raises_AttributeError(self):
         request = MagicMock()
         pods = self.make_pods()

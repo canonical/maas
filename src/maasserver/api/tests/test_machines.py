@@ -784,6 +784,152 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(machine.zone.name, parsed_result['zone']['name'])
         self.assertThat(mock_compose, MockCalledOnceWith())
 
+    def test_POST_allocate_returns_a_composed_machine_with_pod(self):
+        # The "allocate" operation returns a composed machine for pod
+        # when constraint 'pod' is used.
+        available_status = NODE_STATUS.READY
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod_name = factory.make_name('pod')
+        pod = factory.make_Pod(name=pod_name, architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0],
+                'pod': pod_name,
+                })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
+
+    def test_POST_allocate_returns_a_composed_machine_with_not_pod(self):
+        # The "allocate" operation returns a composed machine for pod
+        # when constraint 'not_pod' is used.
+        available_status = NODE_STATUS.READY
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod_name = factory.make_name('pod')
+        pod = factory.make_Pod(name=pod_name, architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0],
+                'pod': pod_name,
+                })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
+
+    def test_POST_allocate_returns_a_composed_machine_with_pod_type(self):
+        # The "allocate" operation returns a composed machine for pod
+        # when constraint 'pod_type' is used.
+        available_status = NODE_STATUS.READY
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod = factory.make_Pod(pod_type='virsh', architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0],
+                'pod_type': 'virsh',
+                })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
+
+    def test_POST_allocate_returns_a_composed_machine_with_not_pod_type(self):
+        # The "allocate" operation returns a composed machine for pod
+        # when constraint 'not_pod_type' is used.
+        available_status = NODE_STATUS.READY
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod = factory.make_Pod(pod_type='virsh', architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0],
+                'not_pod_type': 'rsd',
+                })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
+
     def test_POST_allocate_returns_a_composed_machine_wildcard_arch(self):
         # The "allocate" operation returns a composed machine.
         available_status = NODE_STATUS.READY

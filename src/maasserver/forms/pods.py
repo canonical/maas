@@ -452,23 +452,12 @@ class ComposeMachineForPodsForm(forms.Form):
         self.pods = kwargs.pop('pods', None)
         if self.pods is None:
             raise ValueError("'pods' kwargs is required.")
-        self.tags = kwargs.pop('tags', None)
         super(ComposeMachineForPodsForm, self).__init__(*args, **kwargs)
-        # Check to see if tag constraints are
-        # a subset of the Pod's tags if set.
-        if self.tags:
-            self.pod_forms = [
-                ComposeMachineForm(
-                    request=self.request, data=self.data, pod=pod)
-                for pod in self.pods
-                if set(self.tags).issubset(set(pod.tags))
-            ]
-        else:
-            self.pod_forms = [
-                ComposeMachineForm(
-                    request=self.request, data=self.data, pod=pod)
-                for pod in self.pods
-            ]
+        self.pod_forms = [
+            ComposeMachineForm(
+                request=self.request, data=self.data, pod=pod)
+            for pod in self.pods
+        ]
 
     def save(self):
         """Prevent from usage."""

@@ -1,4 +1,4 @@
-# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -592,8 +592,14 @@ class AcquireNodeForm(RenamableFieldsForm):
     pod = forms.CharField(
         label="The name of the desired pod", required=False)
 
+    not_pod = forms.CharField(
+        label="The name of the undesired pod", required=False)
+
     pod_type = forms.CharField(
         label="The power_type of the desired pod", required=False)
+
+    not_pod_type = forms.CharField(
+        label="The power_type of the undesired pod", required=False)
 
     @classmethod
     def Strict(cls, *args, **kwargs):
@@ -928,17 +934,23 @@ class AcquireNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_pod_or_pod_type(self, filtered_nodes):
-        # Filter by pod or pod type.
-        # We are filtering for both pod and pod_type to keep
-        # the query count down.
+        # Filter by pod, pod type, not_pod or not_pod_type.
+        # We are filtering for all of these to keep the query count down.
         pod = self.cleaned_data.get(self.get_field_name('pod'))
+        not_pod = self.cleaned_data.get(self.get_field_name('not_pod'))
         pod_type = self.cleaned_data.get(self.get_field_name('pod_type'))
-        if pod or pod_type:
+        not_pod_type = self.cleaned_data.get(
+            self.get_field_name('not_pod_type'))
+        if pod or pod_type or not_pod or not_pod_type:
             pods = Pod.objects.all()
             if pod:
                 pods = pods.filter(name=pod)
+            if not pod:
+                pods = pods.exclude(name=not_pod)
             if pod_type:
                 pods = pods.filter(power_type=pod_type)
+            if not_pod_type:
+                pods = pods.exclude(power_type=not_pod_type)
             filtered_nodes = filtered_nodes.filter(
                 bmc_id__in=pods.values_list('id', flat=True))
         return filtered_nodes

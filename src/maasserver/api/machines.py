@@ -221,6 +221,48 @@ def get_allocation_parameters(request):
     return agent_name, bridge_all, bridge_fd, bridge_stp, comment
 
 
+def get_allocated_composed_machine(
+        request, data, storage, pods, form, input_constraints):
+    """Return composed machine if input constraints are matched."""
+    machine = None
+    # Gather tags and not_tags.
+    tags = None
+    not_tags = None
+    for name, value in input_constraints:
+        if name == 'tags':
+            tags = value
+        elif name == 'not_tags':
+            not_tags = value
+
+    if tags:
+        pods = pods.filter(tags__contains=tags)
+    if not_tags:
+        pods = pods.exclude(tags__contains=not_tags)
+    if form.cleaned_data.get('pod'):
+        pods = pods.filter(name=form.cleaned_data.get('pod'))
+    if form.cleaned_data.get('pod_type'):
+        pods = pods.filter(
+            power_type=form.cleaned_data.get('pod_type'))
+    if form.cleaned_data.get('not_pod'):
+        pods = pods.exclude(
+            name=form.cleaned_data.get('not_pod'))
+    if form.cleaned_data.get('not_pod_type'):
+        pods = pods.exclude(
+            power_type=form.cleaned_data.get('not_pod_type'))
+    compose_form = ComposeMachineForPodsForm(
+        request=request, data=data, pods=pods)
+    if compose_form.is_valid():
+        machine = compose_form.compose()
+        if machine is not None:
+            # Set the storage variable so the constraint_map is
+            # set correct for the composed machine.
+            storage = nodes_by_storage(
+                storage, node_ids=[machine.id])
+            if storage is None:
+                storage = {}
+    return machine, storage
+
+
 class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     """Manage an individual Machine.
 
@@ -1419,8 +1461,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         :type not_in_zone: unicode (accepts multiple)
         :param pod: Pod the machine must be located in.
         :type pod: unicode
+        :param not_pod: Pod the machine must not be located in.
+        :type not_pod: unicode
         :param pod_type: Pod type the machine must be located in.
         :type pod_type: unicode
+        :param not_pod_type: Pod type the machine must not be located in.
+        :type not_pod_type: unicode
         :param subnets: Subnets that must be linked to the machine.
 
             "Linked to" means the node must be configured to acquire an address
@@ -1622,30 +1668,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     pods = Pod.objects.filter(
                         default_pool__role__users=request.user)
 
-                # Gather constraint tags.
-                constraint_tags = None
-                for constraint in input_constraints:
-                    if 'tags' in constraint:
-                        constraint_tags = constraint[1]
-
                 if pods:
-                    if form.cleaned_data.get('pod'):
-                        pods = pods.filter(name=form.cleaned_data.get('pod'))
-                    elif form.cleaned_data.get('pod_type'):
-                        pods = pods.filter(
-                            power_type=form.cleaned_data.get('pod_type'))
-                    compose_form = ComposeMachineForPodsForm(
-                        request=request, data=data,
-                        pods=pods, tags=constraint_tags)
-                    if compose_form.is_valid():
-                        machine = compose_form.compose()
-                        if machine is not None:
-                            # Set the storage variable so the constraint_map is
-                            # set correct for the composed machine.
-                            storage = nodes_by_storage(
-                                storage, node_ids=[machine.id])
-                            if storage is None:
-                                storage = {}
+                    machine, storage = get_allocated_composed_machine(
+                        request, data, storage, pods, form, input_constraints)
+
             if machine is None:
                 constraints = form.describe_constraints()
                 if constraints == '':
