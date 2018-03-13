@@ -34,7 +34,8 @@ def prompt_for_external_auth_url(existing_url):
 
 
 def read_agent_file(agent_file):
-    details = json.load(agent_file)
+    with open(agent_file) as fh:
+        details = json.load(fh)
     try:
         agent_details = details.get('agents', []).pop(0)
     except IndexError:
@@ -86,13 +87,13 @@ class Command(BaseCommand):
 
         auth_url, auth_user, auth_key = None, '', ''
 
-        agent_file = options.get('external_auth_agent_file')
+        agent_file = options.get('idm_agent_file')
         if agent_file:
             auth_url, auth_user, auth_key = read_agent_file(agent_file)
             config_auth(config_manager, auth_url, auth_user, auth_key)
             return
 
-        auth_url = options.get('external_auth_url')
+        auth_url = options.get('idm_url')
         if auth_url is None:
             existing_url = config_manager.get_config('external_auth_url')
             auth_url = prompt_for_external_auth_url(existing_url)
@@ -102,8 +103,8 @@ class Command(BaseCommand):
             if not is_valid_auth_url(auth_url):
                 raise InvalidURLError(
                     "Please enter a valid http or https URL.")
-            auth_user = options.get('external_auth_user')
-            auth_key = options.get('external_auth_key')
+            auth_user = options.get('idm_user')
+            auth_key = options.get('idm_key')
             if not auth_user:
                 auth_user = read_input("Username for IDM API access: ")
             if not auth_key:

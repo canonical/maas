@@ -23,7 +23,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_changes_external_auth_url_local_empty_string(self):
         Config.objects.set_config(
             'external_auth_url', 'http://example.com/idm')
-        call_command('configauth', external_auth_url='')
+        call_command('configauth', idm_url='')
 
         self.assertEqual(
             '', Config.objects.get_config('external_auth_url'))
@@ -31,13 +31,13 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_changes_external_auth_url_local_none(self):
         Config.objects.set_config(
             'external_auth_url', 'http://example.com/idm')
-        call_command('configauth', external_auth_url='none')
+        call_command('configauth', idm_url='none')
 
         self.assertEqual(
             '', Config.objects.get_config('external_auth_url'))
 
     def test_configauth_changes_external_auth_url_url(self):
-        call_command('configauth', external_auth_url='http://example.com/idm')
+        call_command('configauth', idm_url='http://example.com/idm')
 
         self.assertEqual(
             'http://example.com/idm',
@@ -71,7 +71,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_changes_auth_invalid_url(self):
         self.assertRaises(
             configauth.InvalidURLError,
-            call_command, 'configauth', external_auth_url='example.com')
+            call_command, 'configauth', idm_url='example.com')
 
     def test_read_agent_file(self):
         config = {
@@ -80,9 +80,9 @@ class TestChangeAuthCommand(MAASServerTestCase):
                 {'url': 'http://example.com:1234', 'username': 'user@admin'}]}
         with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
             json.dump(config, agent_file)
-            agent_file.seek(0)
+            agent_file.flush()
             auth_url, auth_user, auth_key = configauth.read_agent_file(
-                agent_file)
+                agent_file.name)
             self.assertEqual(auth_url, 'http://example.com:1234')
             self.assertEqual(auth_user, 'user@admin')
             self.assertEqual(auth_key, 'private-key')
@@ -102,8 +102,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_interactive_user(self):
         self.read_input.return_value = 'user@admin'
         call_command(
-            'configauth', external_auth_url='http://example.com:1234',
-            external_auth_key='private-key')
+            'configauth', idm_url='http://example.com:1234',
+            idm_key='private-key')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -115,8 +115,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_interactive_key(self):
         self.read_input.return_value = 'private-key'
         call_command(
-            'configauth', external_auth_url='http://example.com:1234',
-            external_auth_user='user@admin')
+            'configauth', idm_url='http://example.com:1234',
+            idm_user='user@admin')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -124,6 +124,24 @@ class TestChangeAuthCommand(MAASServerTestCase):
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
+
+    def test_configauth_not_interactive_with_agent_file(self):
+        config = {
+            'key': {'public': 'public-key', 'private': 'private-key'},
+            'agents': [
+                {'url': 'http://example.com:1234', 'username': 'user@admin'}]}
+        with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
+            json.dump(config, agent_file)
+            agent_file.flush()
+            call_command('configauth', idm_agent_file=agent_file.name)
+        self.assertEqual(
+            'http://example.com:1234',
+            Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'user@admin', Config.objects.get_config('external_auth_user'))
+        self.assertEqual(
+            'private-key', Config.objects.get_config('external_auth_key'))
+        self.read_input.assert_not_called()
 
 
 class TestIsValidAuthSource(unittest.TestCase):
