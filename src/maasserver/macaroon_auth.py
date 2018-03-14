@@ -14,6 +14,7 @@ from datetime import (
     timedelta,
 )
 import os
+from urllib.parse import quote
 
 from django.contrib.auth import (
     authenticate,
@@ -37,7 +38,13 @@ from macaroonbakery import (
     checkers,
     httpbakery,
 )
+from macaroonbakery.httpbakery.agent import (
+    Agent,
+    AgentInteractor,
+    AuthInfo,
+)
 from piston3.utils import rc
+import requests
 
 
 MACAROON_LIFESPAN = timedelta(days=1)
@@ -189,7 +196,57 @@ class KeyStore:
         return key
 
 
-class IDClient(bakery.IdentityClient):
+class APIError(Exception):
+    """IDMClient API error."""
+
+    def __init__(self, status_code, message):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class IDMClient:
+    """A client for IDM agent API."""
+
+    _url = None
+
+    def __init__(self):
+        auth_info = self._get_auth_info()
+        self._client = httpbakery.Client(
+            interaction_methods=[AgentInteractor(auth_info)])
+
+    def get_groups(self, username):
+        """Return a list of names fro groups a user belongs to."""
+        url = self._get_url() + quote('/v1/u/{}/groups'.format(username))
+        return self._request('GET', url)
+
+    def _request(self, method, url):
+        cookiejar = self._client.cookies
+        resp = requests.request(
+            method, url, cookies=cookiejar, auth=self._client.auth())
+        # update cookies from the response
+        for cookie in resp.cookies:
+            cookiejar.set_cookie(cookie)
+
+        content = resp.json()
+        if resp.status_code != 200:
+            raise APIError(resp.status_code, content.get('message'))
+        return content
+
+    def _get_auth_info(self):
+        key = bakery.PrivateKey.deserialize(
+            Config.objects.get_config('external_auth_key'))
+        agent = Agent(
+            url=self._get_url(),
+            username=Config.objects.get_config('external_auth_user'))
+        return AuthInfo(key=key, agents=[agent])
+
+    def _get_url(self):
+        if not self._url:
+            self._url = Config.objects.get_config('external_auth_url')
+        return self._url
+
+
+class _IDClient(bakery.IdentityClient):
 
     def __init__(self, auth_endpoint):
         self.auth_endpoint = auth_endpoint
@@ -215,7 +272,7 @@ def _get_bakery(request):
         location=request.build_absolute_uri('/'),
         locator=httpbakery.ThirdPartyLocator(
             allow_insecure=not auth_endpoint.startswith('https:')),
-        identity_client=IDClient(auth_endpoint),
+        identity_client=_IDClient(auth_endpoint),
         authorizer=bakery.ACLAuthorizer(
             get_acl=lambda ctx, op: [bakery.EVERYONE]))
 

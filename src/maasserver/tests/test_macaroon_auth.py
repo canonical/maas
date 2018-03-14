@@ -16,7 +16,9 @@ from django.http import HttpResponse
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
     _get_macaroon_oven_key,
-    IDClient,
+    _IDClient,
+    APIError,
+    IDMClient,
     KeyStore,
     MacaroonAPIAuthentication,
     MacaroonAuthorizationBackend,
@@ -40,7 +42,7 @@ class TestIDClient(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.client = IDClient('https://example.com')
+        self.client = _IDClient('https://example.com')
 
     def test_declared_entity(self):
         identity = self.client.declared_identity(None, {'username': 'user'})
@@ -55,6 +57,40 @@ class TestIDClient(TestCase):
         _, [caveat] = self.client.identity_from_context(None)
         self.assertEqual(caveat.location, 'https://example.com')
         self.assertEqual(caveat.condition, 'is-authenticated-user')
+
+
+class TestIDMClient(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        Config.objects.set_config(
+            'external_auth_url', 'https://auth.example.com')
+        Config.objects.set_config('external_auth_user', 'user@idm')
+        Config.objects.set_config(
+            'external_auth_key',
+            'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
+
+    @mock.patch('requests.request')
+    def test_get_groups(self, mock_request):
+        groups = ['group1', 'group2']
+        response = mock.MagicMock(status_code=200)
+        response.json.return_value = groups
+        mock_request.return_value = response
+        client = IDMClient()
+        self.assertEqual(client.get_groups('foo'), groups)
+        mock_request.assert_called_with(
+            'GET', 'https://auth.example.com/v1/u/foo/groups',
+            auth=mock.ANY, cookies=mock.ANY)
+
+    @mock.patch('requests.request')
+    def test_get_groups_user_not_found(self, mock_request):
+        response = mock.MagicMock(status_code=404)
+        response.json.return_value = {
+            'code': 'not found',
+            'messsage': 'user foo not found'}
+        mock_request.return_value = response
+        client = IDMClient()
+        self.assertRaises(APIError, client.get_groups, 'foo')
 
 
 class MacaroonBakeryMockMixin:
