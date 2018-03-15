@@ -143,14 +143,8 @@ class TestLogin(MAASServerTestCase):
         factory.make_User()
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
-        form = doc.cssselect("form")[0]
-        non_hidden_inputs = [
-            input_element.name for input_element in form.cssselect('input')
-            if input_element.type != 'hidden']
-        self.assertEqual([], non_hidden_inputs)
-        self.assertEqual(
-            'Login through http://idm.example.com',
-            form.cssselect('button')[0].text.strip())
+        # no login form is presented (as login button is js-based)
+        self.assertEqual(len(doc.cssselect("form")), 0)
 
 
 class TestLogout(MAASServerTestCase):
