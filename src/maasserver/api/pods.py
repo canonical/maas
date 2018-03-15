@@ -39,6 +39,7 @@ DISPLAYED_POD_FIELDS = (
     'total',
     'used',
     'available',
+    'zone',
     )
 
 
@@ -270,6 +271,8 @@ class PodsHandler(OperationsHandler):
 
         :param type: Type of pod to create (rsd, virsh).
         :param name: Name for the pod (optional).
+        :param zone: Name of the zone for the pod (optional).
+        :param tags: A tag or tags (separated by comma) for the pod.
 
         Returns 503 if the pod could not be discovered.
         Returns 404 if the pod is not found.

@@ -49,7 +49,7 @@ class PodMixin:
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
             'tags': ",".join(tags),
-            'zone': zone.id
+            'zone': zone.name
         }
 
     def fake_pod_discovery(self):
@@ -113,6 +113,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'architectures',
                 'total',
                 'used',
+                'zone',
                 'available',
             ],
             list(parsed_result[0]))

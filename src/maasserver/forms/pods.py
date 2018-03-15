@@ -82,11 +82,17 @@ class PodForm(MAASModelForm):
         fields = [
             'name',
             'tags',
+            'zone',
         ]
 
     name = forms.CharField(
         label="Name", required=False, help_text=(
             "The name of the pod"))
+
+    zone = forms.ModelChoiceField(
+        label="Physical zone", required=False,
+        initial=Zone.objects.get_default_zone,
+        queryset=Zone.objects.all(), to_field_name='name')
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         self.is_new = instance is None
@@ -116,9 +122,8 @@ class PodForm(MAASModelForm):
         if not self.is_new:
             if self.instance.power_type != '':
                 self.initial['type'] = self.instance.power_type
-        self.fields['zone'] = ModelChoiceField(
-            required=False, queryset=Zone.objects.all())
-        self.initial['zone'] = Zone.objects.get_default_zone()
+        if instance is not None:
+            self.initial['zone'] = instance.zone.name
 
     def _clean_fields(self):
         """Override to dynamically add fields based on the value of `type`
@@ -180,14 +185,16 @@ class PodForm(MAASModelForm):
             if existing_obj is not None:
                 self.instance = existing_obj
             self.instance = super(PodForm, self).save(commit=False)
-            self.instance.tags = tags
-            self.instance.zone = zone
+            if tags:
+                self.instance.tags = tags
+            if zone:
+                self.instance.zone = zone
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
             return self.instance
 
-        tags = self.cleaned_data['tags']
-        zone = self.cleaned_data['zone']
+        tags = self.cleaned_data.get('tags')
+        zone = self.cleaned_data.get('zone')
         power_type = self.cleaned_data['type']
         # Set power_parameters to the generated param_fields.
         power_parameters = {

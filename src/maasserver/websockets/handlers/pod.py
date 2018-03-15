@@ -17,6 +17,7 @@ from maasserver.forms.pods import (
     PodForm,
 )
 from maasserver.models.bmc import Pod
+from maasserver.models.zone import Zone
 from maasserver.utils.orm import (
     reload_object,
     transactional,
@@ -60,6 +61,22 @@ class PodHandler(TimestampedModelHandler):
         listen_channels = [
             "pod",
         ]
+
+    def preprocess_form(self, action, params):
+        """Process the `params` before passing the data to the form."""
+        new_params = params
+
+        if "zone" in params:
+            zone = Zone.objects.get(id=params['zone'])
+            new_params["zone"] = zone.name
+
+        # Cleanup any fields that have a None value.
+        new_params = {
+            key: value
+            for key, value in new_params.items()
+            if value is not None
+        }
+        return super(PodHandler, self).preprocess_form(action, new_params)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
@@ -158,7 +175,8 @@ class PodHandler(TimestampedModelHandler):
         def get_form(params):
             request = HttpRequest()
             request.user = self.user
-            form = PodForm(data=params, request=request)
+            form = PodForm(
+                data=self.preprocess_form("create", params), request=request)
             if not form.is_valid():
                 raise HandlerValidationError(form.errors)
             else:
@@ -183,7 +201,9 @@ class PodHandler(TimestampedModelHandler):
             obj = self.get_object(params)
             request = HttpRequest()
             request.user = self.user
-            form = PodForm(instance=obj, data=params, request=request)
+            form = PodForm(
+                instance=obj, data=self.preprocess_form("update", params),
+                request=request)
             if not form.is_valid():
                 raise HandlerValidationError(form.errors)
             else:
@@ -221,7 +241,9 @@ class PodHandler(TimestampedModelHandler):
         def get_form(obj, params):
             request = HttpRequest()
             request.user = self.user
-            return PodForm(instance=obj, data=params, request=request)
+            return PodForm(
+                instance=obj, data=self.preprocess_form("refresh", params),
+                request=request)
 
         @transactional
         def render_obj(obj):
