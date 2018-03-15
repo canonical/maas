@@ -332,9 +332,8 @@ class NodeHandler(TimestampedModelHandler):
 
         return data
 
-    def _cache_pks(self, nodes):
+    def _cache_script_results(self, nodes):
         """Refresh the ScriptResult cache from the given node."""
-        super()._cache_pks(nodes)
         script_results = ScriptResult.objects.filter(
             script_set__node__in=nodes)
         script_results = script_results.defer(
@@ -348,6 +347,7 @@ class NodeHandler(TimestampedModelHandler):
             '-id')
         script_results = script_results.distinct(
             'script_name', 'physical_blockdevice_id', 'script_set__node_id')
+        nodes_reset = set()
         for script_result in script_results:
             node_id = script_result.script_set.node_id
             if script_result.script is not None:
@@ -355,8 +355,14 @@ class NodeHandler(TimestampedModelHandler):
             else:
                 hardware_type = HARDWARE_TYPE.NODE
 
-            if node_id not in self._script_results:
+            # _cache_script_results is only called once per list(), get()
+            # Postgres trigger update. Make sure the cache is cleared for the
+            # node so if list(), get(), or a trigger is called multiple times
+            # with the same instance of NodesHandler() only one set of results
+            # is stored.
+            if node_id not in nodes_reset:
                 self._script_results[node_id] = {}
+                nodes_reset.add(node_id)
 
             if hardware_type not in self._script_results[node_id]:
                 self._script_results[node_id][hardware_type] = []
@@ -375,6 +381,14 @@ class NodeHandler(TimestampedModelHandler):
             else:
                 self._script_results[node_id][hardware_type].append(
                     script_result)
+
+    def _cache_pks(self, nodes):
+        super()._cache_pks(nodes)
+        self._cache_script_results(nodes)
+
+    def on_listen_for_active_pk(self, action, pk, obj):
+        self._cache_script_results([obj])
+        return super().on_listen_for_active_pk(action, pk, obj)
 
     def dehydrate_blockdevice(self, blockdevice, obj):
         """Return `BlockDevice` formatted for JSON encoding."""
