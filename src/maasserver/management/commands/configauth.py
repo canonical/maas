@@ -34,8 +34,9 @@ def prompt_for_external_auth_url(existing_url):
 
 
 def read_agent_file(agent_file):
-    with open(agent_file) as fh:
-        details = json.load(fh)
+    """Read a .agent file with external auth details."""
+    details = json.load(agent_file)
+    agent_file.close()
     try:
         agent_details = details.get('agents', []).pop(0)
     except IndexError:

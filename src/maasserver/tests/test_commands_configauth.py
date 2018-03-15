@@ -81,8 +81,9 @@ class TestChangeAuthCommand(MAASServerTestCase):
         with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
             json.dump(config, agent_file)
             agent_file.flush()
+            agent_file.seek(0)
             auth_url, auth_user, auth_key = configauth.read_agent_file(
-                agent_file.name)
+                agent_file)
             self.assertEqual(auth_url, 'http://example.com:1234')
             self.assertEqual(auth_user, 'user@admin')
             self.assertEqual(auth_key, 'private-key')
@@ -133,7 +134,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
         with tempfile.NamedTemporaryFile(mode='w+') as agent_file:
             json.dump(config, agent_file)
             agent_file.flush()
-            call_command('configauth', idm_agent_file=agent_file.name)
+            agent_file.seek(0)
+            call_command('configauth', idm_agent_file=agent_file)
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
