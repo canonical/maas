@@ -700,6 +700,8 @@ class TestPod(MAASServerTestCase):
                 memory=Equals(discovered.memory),
                 local_storage=Equals(discovered.local_storage),
                 local_disks=Equals(discovered.local_disks),
+                iscsi_storage=Equals(discovered.iscsi_storage),
+                tags=Equals(discovered.tags),
                 capabilities=Equals(discovered.capabilities),
                 hints=MatchesStructure(
                     cores=Equals(discovered.hints.cores),
