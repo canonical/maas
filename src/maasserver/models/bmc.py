@@ -915,7 +915,7 @@ class Pod(BMC):
         self.local_storage = discovered_pod.local_storage
         self.local_disks = discovered_pod.local_disks
         self.iscsi_storage = discovered_pod.iscsi_storage
-        self.tags = discovered_pod.tags
+        self.tags = list(set(self.tags).union(discovered_pod.tags))
         self.save()
         self.sync_hints(discovered_pod.hints)
         self.sync_machines(discovered_pod.machines, commissioning_user)

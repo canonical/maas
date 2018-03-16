@@ -689,7 +689,13 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_pod_properties_and_hints(self):
         discovered = self.make_discovered_pod()
-        pod = factory.make_Pod()
+        discovered.tags = [
+            factory.make_name('tag')
+            for _ in range(3)
+        ]
+        # Create a subset of the discovered pod's tags
+        # to make sure no duplicates are added on sync.
+        pod = factory.make_Pod(tags=[discovered.tags[0]])
         self.patch(pod, 'sync_machines')
         pod.sync(discovered, factory.make_User())
         self.assertThat(
@@ -701,8 +707,11 @@ class TestPod(MAASServerTestCase):
                 local_storage=Equals(discovered.local_storage),
                 local_disks=Equals(discovered.local_disks),
                 iscsi_storage=Equals(discovered.iscsi_storage),
-                tags=Equals(discovered.tags),
                 capabilities=Equals(discovered.capabilities),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in discovered.tags
+                ]),
                 hints=MatchesStructure(
                     cores=Equals(discovered.hints.cores),
                     cpu_speed=Equals(discovered.hints.cpu_speed),
