@@ -10,6 +10,7 @@ __all__ = [
     "get_os_info_from_boot_sources",
 ]
 
+import datetime
 import html
 import os
 
@@ -25,6 +26,7 @@ from maasserver.models import (
     Config,
     Notification,
 )
+from maasserver.models.timestampedmodel import now
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -136,6 +138,88 @@ def get_product_title(item):
         return None
 
 
+@transactional
+def _update_cache(source, descriptions):
+    try:
+        bootsource = BootSource.objects.get(url=source["url"])
+    except BootSource.DoesNotExist:
+        # The record was deleted while we were fetching the description.
+        maaslog.debug(
+            "Image descriptions at %s are no longer needed; discarding.",
+            source["url"])
+    else:
+        if bootsource.compare_dict_without_selections(source):
+            if descriptions.is_empty():
+                # No images for this source, so clear the cache.
+                BootSourceCache.objects.filter(boot_source=bootsource).delete()
+            else:
+                def make_image_tuple(image):
+                    return (
+                        image.os, image.arch, image.subarch,
+                        image.release, image.kflavor, image.label)
+
+                # Get current images for the source.
+                current_images = {
+                    make_image_tuple(image): image
+                    for image in BootSourceCache.objects.filter(
+                        boot_source=bootsource)
+                }
+                bulk_create = []
+                for spec, item in descriptions.mapping.items():
+                    title = get_product_title(item)
+                    if title is None:
+                        extra = {}
+                    else:
+                        extra = {'title': title}
+                    current = current_images.pop(make_image_tuple(spec), None)
+                    if current is not None:
+                        current.release_codename = item.get('release_codename')
+                        current.release_title = item.get('release_title')
+                        current.support_eol = item.get('support_eol')
+                        current.bootloader_type = item.get('bootloader-type')
+                        current.extra = extra
+
+                        # Support EOL needs to be a datetime so it will only
+                        # be marked updated if actually different.
+                        support_eol = item.get('support_eol')
+                        if support_eol:
+                            current.support_eol = datetime.datetime.strptime(
+                                support_eol, '%Y-%m-%d').date()
+                        else:
+                            current.support_eol = support_eol
+
+                        # Will do nothing if nothing has changed.
+                        current.save()
+                    else:
+                        created = now()
+                        bulk_create.append(BootSourceCache(
+                            boot_source=bootsource, os=spec.os,
+                            arch=spec.arch, subarch=spec.subarch,
+                            kflavor=spec.kflavor,
+                            release=spec.release, label=spec.label,
+                            release_codename=item.get('release_codename'),
+                            release_title=item.get('release_title'),
+                            support_eol=item.get('support_eol'),
+                            bootloader_type=item.get('bootloader-type'),
+                            extra=extra,
+                            created=created,
+                            updated=created))
+                if bulk_create:
+                    # Insert all cache items in 1 query.
+                    BootSourceCache.objects.bulk_create(bulk_create)
+                if current_images:
+                    image_ids = {
+                        image.id for _, image in current_images.items()}
+                    BootSourceCache.objects.filter(id__in=image_ids).delete()
+            maaslog.debug(
+                "Image descriptions for %s have been updated.",
+                source["url"])
+        else:
+            maaslog.debug(
+                "Image descriptions for %s are outdated; discarding.",
+                source["url"])
+
+
 @asynchronous(timeout=FOREVER)
 @inlineCallbacks
 def cache_boot_sources():
@@ -169,45 +253,6 @@ def cache_boot_sources():
             # records or the BootSource's updated timestamp is later than any
             # of the BootSourceCache records' timestamps.
         )
-
-    @transactional
-    def update_cache(source, descriptions):
-        try:
-            bootsource = BootSource.objects.get(url=source["url"])
-        except BootSource.DoesNotExist:
-            # The record was deleted while we were fetching the description.
-            maaslog.debug(
-                "Image descriptions at %s are no longer needed; discarding.",
-                source["url"])
-        else:
-            if bootsource.compare_dict_without_selections(source):
-                # Only delete from the cache once we have the descriptions.
-                BootSourceCache.objects.filter(boot_source=bootsource).delete()
-                if not descriptions.is_empty():
-                    for spec, item in descriptions.mapping.items():
-                        title = get_product_title(item)
-                        if title is None:
-                            extra = {}
-                        else:
-                            extra = {'title': title}
-                        BootSourceCache.objects.create(
-                            boot_source=bootsource, os=spec.os,
-                            arch=spec.arch, subarch=spec.subarch,
-                            kflavor=spec.kflavor,
-                            release=spec.release, label=spec.label,
-                            release_codename=item.get('release_codename'),
-                            release_title=item.get('release_title'),
-                            support_eol=item.get('support_eol'),
-                            bootloader_type=item.get('bootloader-type'),
-                            extra=extra,
-                            )
-                maaslog.debug(
-                    "Image descriptions for %s have been updated.",
-                    source["url"])
-            else:
-                maaslog.debug(
-                    "Image descriptions for %s are outdated; discarding.",
-                    source["url"])
 
     @transactional
     def check_commissioning_series_selected():
@@ -255,7 +300,7 @@ def cache_boot_sources():
                     "Failed to import images from boot source "
                     "%s: %s" % (source["url"], error))
             else:
-                yield deferToDatabase(update_cache, source, descriptions)
+                yield deferToDatabase(_update_cache, source, descriptions)
 
     yield deferToDatabase(check_commissioning_series_selected)
 

@@ -7,6 +7,7 @@ __all__ = []
 
 import html
 from os import environ
+import random
 from unittest import skip
 from unittest.mock import (
     ANY,
@@ -43,6 +44,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
 from maasserver.utils import get_maas_user_agent
+from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import (
@@ -225,6 +227,73 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
         self.assertEqual(
             (sources, releases, arches),
             get_os_info_from_boot_sources(os))
+
+
+class TestPrivateUpdateCache(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestPrivateUpdateCache, self).setUp()
+        self.useFixture(SimplestreamsEnvFixture())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources_signals.enable)
+        bootsources_signals.disable()
+
+    def make_release(self, image_mapping):
+        os = factory.make_name('os')
+        release = factory.make_name('release')
+        release_codename = factory.make_name('codename')
+        release_title = factory.make_name('title')
+        support_eol = factory.make_date().strftime("%Y-%m-%d")
+        image_spec = make_image_spec(os=os, release=release)
+        image_mapping.setdefault(image_spec, {
+            "release_codename": release_codename,
+            "release_title": release_title,
+            "support_eol": support_eol,
+        })
+
+    def test__adds_release_to_cache(self):
+        source = factory.make_BootSource(keyring_data=b'1234')
+        os = factory.make_name('os')
+        release = factory.make_name('release')
+        release_codename = factory.make_name('codename')
+        release_title = factory.make_name('title')
+        support_eol = factory.make_date().strftime("%Y-%m-%d")
+        image_spec = make_image_spec(os=os, release=release)
+        image_mapping = BootImageMapping()
+        image_mapping.setdefault(image_spec, {
+            "release_codename": release_codename,
+            "release_title": release_title,
+            "support_eol": support_eol,
+        })
+        bootsources._update_cache(
+            source.to_dict_without_selections(), image_mapping)
+        cached = BootSourceCache.objects.filter(boot_source=source).first()
+        self.assertEqual(release_codename, cached.release_codename)
+        self.assertEqual(release_title, cached.release_title)
+        self.assertEqual(support_eol, cached.support_eol.strftime("%Y-%m-%d"))
+
+    def test__consistent_query_count(self):
+        source = factory.make_BootSource(keyring_data=b'1234')
+        image_mapping = BootImageMapping()
+        for _ in range(random.randint(20, 50)):
+            self.make_release(image_mapping)
+        # Add all the items to the cache, always 5.
+        queries, _ = count_queries(
+            bootsources._update_cache,
+            source.to_dict_without_selections(), image_mapping)
+        self.assertEquals(5, queries)
+
+        # Now that they all already exist, it should only be 4 queries.
+        queries, _ = count_queries(
+            bootsources._update_cache,
+            source.to_dict_without_selections(), image_mapping)
+        self.assertEquals(4, queries)
+
+        # Do it again just to be sure.
+        queries, _ = count_queries(
+            bootsources._update_cache,
+            source.to_dict_without_selections(), image_mapping)
+        self.assertEquals(4, queries)
 
 
 class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
