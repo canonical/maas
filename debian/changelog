@@ -1,9 +1,15 @@
-maas (2.4.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.4.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 16 Mar 2018 12:40:47 -0400
+
+maas (2.4.0~alpha2-6717-gffaddd526-0ubuntu1~18.04.1) bionic; urgency=medium
 
   * New upstream release. (LP: #1754697)
   * debian/*: Replace ntp in favor of chrony.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 09 Feb 2018 18:58:32 -0500
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 09 Mar 2018 11:01:52 -0500
 
 maas (2.4.0~alpha1-6573-g12ee2331b-0ubuntu1) bionic; urgency=medium
 
