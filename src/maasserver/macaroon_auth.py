@@ -7,6 +7,7 @@ __all__ = [
     'MacaroonAPIAuthentication',
     'MacaroonAuthorizationBackend',
     'MacaroonDischargeRequest',
+    'validate_user_external_auth',
 ]
 
 from datetime import (
@@ -49,6 +50,8 @@ import requests
 
 MACAROON_LIFESPAN = timedelta(days=1)
 
+IDM_USER_CHECK_INTERVAL = timedelta(hours=1)
+
 
 class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
     """An authorization backend getting the user from macaroon identity."""
@@ -78,11 +81,17 @@ class MacaroonAPIAuthentication:
         except (bakery.DischargeRequiredError, bakery.PermissionDenied):
             return False
 
-        # set the user in the request so that it's considered authenticated If
+        # set the user in the request so that it's considered authenticated. If
         # a user is not found with the username from the identity, it's
         # created.
-        request.user, _ = User.objects.get_or_create(
+        user, created = User.objects.get_or_create(
             username=auth_info.identity.id(), defaults={'is_superuser': True})
+
+        # Only check the user with IDM again if it wasn't just created
+        if not created and not validate_user_external_auth(user):
+            return False
+
+        request.user = user
         return True
 
     def challenge(self, request):
@@ -244,6 +253,38 @@ class IDMClient:
         if not self._url:
             self._url = Config.objects.get_config('external_auth_url')
         return self._url
+
+
+def validate_user_external_auth(user, now=datetime.utcnow, client=None):
+    """Check if a user is authenticated on IDM.
+
+    If the IDM_USER_CHECK_INTERVAL has passed since the last check, the user is
+    checked again.
+    Its is_active status is changed based on the result of the check.
+
+    """
+    now = now()
+    if user.userprofile.auth_last_check + IDM_USER_CHECK_INTERVAL > now:
+        return True
+
+    if client is None:
+        client = IDMClient()
+
+    user.userprofile.auth_last_check = now
+    user.userprofile.save()
+
+    active = True
+    try:
+        # don't look at groups for now, we just care that the user is there
+        # (IOW the call doesn't fail)
+        client.get_groups(user.username)
+    except APIError as error:
+        active = False
+
+    if active ^ user.is_active:
+        user.is_active = active
+        user.save()
+    return active
 
 
 class _IDClient(bakery.IdentityClient):

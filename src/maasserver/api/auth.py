@@ -8,7 +8,10 @@ __all__ = [
     ]
 
 from maasserver.exceptions import Unauthorized
-from maasserver.macaroon_auth import MacaroonAPIAuthentication
+from maasserver.macaroon_auth import (
+    MacaroonAPIAuthentication,
+    validate_user_external_auth,
+)
 from piston3.authentication import (
     OAuthAuthentication,
     send_oauth_error,
@@ -58,6 +61,10 @@ class MAASAPIAuthentication(OAuthAuthentication):
                 raise OAuthUnauthorized(error)
 
             if consumer and token:
+                if request.external_auth_info:
+                    if not validate_user_external_auth(token.user):
+                        return False
+
                 request.user = token.user
                 request.consumer = consumer
                 request.throttle_extra = token.consumer.id

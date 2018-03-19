@@ -19,9 +19,11 @@ from maasserver.macaroon_auth import (
     _IDClient,
     APIError,
     IDMClient,
+    IDM_USER_CHECK_INTERVAL,
     KeyStore,
     MacaroonAPIAuthentication,
     MacaroonAuthorizationBackend,
+    validate_user_external_auth,
 )
 from maasserver.middleware import ExternalAuthInfoMiddleware
 from maasserver.models import (
@@ -91,6 +93,62 @@ class TestIDMClient(MAASServerTestCase):
         mock_request.return_value = response
         client = IDMClient()
         self.assertRaises(APIError, client.get_groups, 'foo')
+
+
+class TestValidateUserExternalAuth(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.client = mock.Mock()
+        self.user = factory.make_User()
+        self.now = datetime.utcnow()
+        # by default, the user has to be checked again
+        self.default_last_check = (
+            self.now - IDM_USER_CHECK_INTERVAL - timedelta(minutes=10))
+        self.user.userprofile.auth_last_check = self.default_last_check
+        self.user.userprofile.save()
+
+    def test_interval_not_expired(self):
+        last_check = self.now - timedelta(minutes=10)
+        self.user.userprofile.auth_last_check = last_check
+        self.user.userprofile.save()
+        valid = validate_user_external_auth(
+            self.user, now=lambda: self.now, client=self.client)
+        self.assertTrue(valid)
+        # user is not checked again, last check time is not updated
+        self.client.get_groups.assert_not_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, last_check)
+
+    def test_valid_user_check(self):
+        # user exists, so group info is returned
+        self.client.get_groups.return_value = ['group1', 'group2']
+        valid = validate_user_external_auth(
+            self.user, now=lambda: self.now, client=self.client)
+        self.assertTrue(valid)
+        # user is checked again, last check time is updated
+        self.client.get_groups.assert_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
+        # user is still enabled
+        self.assertTrue(self.user.is_active)
+
+    def test_valid_inactive_user_is_active(self):
+        self.user.is_active = False
+        self.client.get_groups.return_value = ['group1', 'group2']
+        valid = validate_user_external_auth(
+            self.user, now=lambda: self.now, client=self.client)
+        self.assertTrue(valid)
+        self.assertTrue(self.user.is_active)
+
+    def test_invalid_user_check(self):
+        self.client.get_groups.side_effect = APIError(404, 'user not found')
+        valid = validate_user_external_auth(
+            self.user, now=lambda: self.now, client=self.client)
+        self.assertFalse(valid)
+        # user is checked again, last check time is updated
+        self.client.get_groups.assert_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
+        # user is disabled
+        self.assertFalse(self.user.is_active)
 
 
 class MacaroonBakeryMockMixin:
@@ -171,6 +229,28 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         user = User.objects.get(username=username)
         self.assertIsNotNone(user.id)
         self.assertTrue(user.is_superuser)
+
+    @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
+    def test_is_authenticated_no_validate_if_created(self, mock_validate):
+        username = factory.make_string()
+        self.mock_auth_info(username=username)
+        self.assertTrue(self.auth.is_authenticated(self.get_request()))
+        mock_validate.assert_not_called()
+
+    @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
+    def test_is_authenticated_validate_if_exists(self, mock_validate):
+        mock_validate.return_value = True
+        user = factory.make_User()
+        self.mock_auth_info(username=user.username)
+        self.assertTrue(self.auth.is_authenticated(self.get_request()))
+        mock_validate.assert_called()
+
+    @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
+    def test_is_authenticated_fails_if_not_validated(self, mock_validate):
+        mock_validate.return_value = False
+        user = factory.make_User()
+        self.mock_auth_info(username=user.username)
+        self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_challenge_no_external_auth(self):
         Config.objects.set_config('external_auth_url', '')
