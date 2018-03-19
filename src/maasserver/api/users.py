@@ -73,7 +73,10 @@ class UsersHandler(OperationsHandler):
         """
         username = get_mandatory_param(request.data, 'username')
         email = get_mandatory_param(request.data, 'email')
-        password = get_mandatory_param(request.data, 'password')
+        if request.external_auth_info:
+            password = request.data.get('password')
+        else:
+            password = get_mandatory_param(request.data, 'password')
         is_superuser = extract_bool(
             get_mandatory_param(request.data, 'is_superuser'))
 

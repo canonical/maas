@@ -15,6 +15,7 @@ from maasserver.enum import (
     NODE_STATUS,
 )
 from maasserver.models import (
+    Config,
     Node,
     SSHKey,
     SSLKey,
@@ -137,6 +138,37 @@ class TestUsers(APITestCase.ForUser):
         self.assertEquals(
             event.description,
             "Admin %s" % username + " created by '%(username)s'.")
+
+    def test_POST_password_required_without_external_auth(self):
+        self.become_admin()
+        username = factory.make_name('user')
+        response = self.client.post(
+            reverse('users_handler'),
+            {'username': username,
+             'email': factory.make_email_address(),
+             'is_superuser': '0'})
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            response.content.decode('utf8'), 'No provided password!')
+
+    def test_POST_password_optional_with_external_auth(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+        self.become_admin()
+        username = factory.make_name('user')
+        response = self.client.post(
+            reverse('users_handler'),
+            {
+                'username': username,
+                'email': factory.make_email_address(),
+                'is_superuser': '0',
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+
+        created_user = User.objects.get(username=username)
+        self.assertFalse(created_user.has_usable_password())
 
     def test_GET_lists_users(self):
         users = [factory.make_User() for counter in range(2)]
