@@ -154,6 +154,34 @@ class ConfigManager(Manager):
         except Config.MultipleObjectsReturned as error:
             raise Config.MultipleObjectsReturned("%s (%s)" (error, name))
 
+    def get_configs(self, names, defaults=None):
+        """Return the config values corresponding to the given config names.
+        Return None or the provided default if the config value does not
+        exist.
+
+        :param names: The names of the config item.
+        :type names: list
+        :param defaults: The optional default value to return if no such config
+            item exists. The defaults must be in the same order as names.
+        :type default: list
+        :return: A dictionary of config value mappings.
+        """
+        if defaults is None:
+            defaults = [
+                None
+                for _ in range(len(names))
+            ]
+        configs = {
+            config.name: config
+            for config in self.filter(name__in=names)
+        }
+        return {
+            name: configs.get(name).value
+            if configs.get(name)
+            else DEFAULT_CONFIG.get(name, default)
+            for name, default in zip(names, defaults)
+        }
+
     def set_config(self, name, value, endpoint=None, request=None):
         """Set or overwrite a config value.
 

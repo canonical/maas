@@ -225,6 +225,7 @@ from provisioningserver.utils.twisted import (
     callOut,
     deferWithTimeout,
     synchronous,
+    undefined,
 )
 from twisted.internet.defer import (
     Deferred,
@@ -2427,7 +2428,7 @@ class Node(CleanSave, TimestampedModel):
             raise UnknownPowerType("Node power type is unconfigured")
         return self.bmc.power_type
 
-    def get_effective_kernel_options(self):
+    def get_effective_kernel_options(self, default_kernel_opts=undefined):
         """Determine any special kernel parameters for this node.
 
         :return: (tag, kernel_options)
@@ -2444,20 +2445,21 @@ class Node(CleanSave, TimestampedModel):
         for tag in tags:
             if tag.kernel_opts != '':
                 return tag, tag.kernel_opts
-        global_value = Config.objects.get_config('kernel_opts')
-        return None, global_value
+        if default_kernel_opts is undefined:
+            default_kernel_opts = Config.objects.get_config('kernel_opts')
+        return None, default_kernel_opts
 
-    def get_osystem(self, default=None):
+    def get_osystem(self, default=undefined):
         """Return the operating system to install that node."""
         use_default_osystem = (self.osystem is None or self.osystem == '')
         if use_default_osystem:
-            if default is None:
+            if default is undefined:
                 default = Config.objects.get_config('default_osystem')
             return default
         else:
             return self.osystem
 
-    def get_distro_series(self, default=None):
+    def get_distro_series(self, default=undefined):
         """Return the distro series to install that node."""
         use_default_osystem = (
             self.osystem is None or
@@ -2466,7 +2468,7 @@ class Node(CleanSave, TimestampedModel):
             self.distro_series is None or
             self.distro_series == '')
         if use_default_osystem and use_default_distro_series:
-            if default is None:
+            if default is undefined:
                 default = Config.objects.get_config('default_distro_series')
             return default
         else:

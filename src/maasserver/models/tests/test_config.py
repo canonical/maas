@@ -109,6 +109,37 @@ class ConfigTest(MAASServerTestCase):
 
         self.assertEqual({'key': 'value'}, Config.objects.get_config(name))
 
+    def test_manager_get_configs_returns_configs_dict(self):
+        expected = get_default_config()
+        # Only get a subset of all the configs.
+        expected_names = list(expected)[:5]
+        # Set a config value to test that is over the default.
+        other_value = factory.make_name('value')
+        Config.objects.set_config(expected_names[0], other_value)
+        observed = Config.objects.get_configs(expected_names)
+        expected_dict = {expected_names[0]: other_value}
+        expected_dict.update({
+            name: expected[name]
+            for name in expected_names
+            if name != expected_names[0]
+        })
+        self.assertEquals(expected_dict, observed)
+
+    def test_manager_get_configs_returns_passed_defaults(self):
+        expected = get_default_config()
+        # Only get a subset of all the configs.
+        expected_names = list(expected)[:5]
+        expected_dict = {
+            name: factory.make_name('value')
+            for name in expected_names
+        }
+        defaults = [expected_dict[name] for name in expected_names]
+        for name, value in expected_dict.items():
+            Config.objects.set_config(name, value)
+        self.assertEquals(
+            expected_dict,
+            Config.objects.get_configs(expected_names, defaults))
+
     def test_manager_set_config_creates_config(self):
         Config.objects.set_config('name', 'config1')
         Config.objects.set_config('name', 'config2')

@@ -89,7 +89,10 @@ class EventType(CleanSave, TimestampedModel):
         return "%s (level=%s, description=%s)" % (
             self.name, self.level, self.description)
 
-    def full_clean(self, exclude=None, validate_unique=False):
-        """Up-call, suppressing check for uniqueness before inserting."""
-        return super(EventType, self).full_clean(
-            exclude=exclude, validate_unique=validate_unique)
+    def validate_unique(self, exclude=None):
+        """Override validate unique so nothing is validated.
+
+        Allow Postgresql to perform the unqiue validation, Django doesn't
+        need to perform this work.
+        """
+        pass

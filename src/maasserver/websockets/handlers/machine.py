@@ -184,15 +184,17 @@ class MachineHandler(NodeHandler):
     def list(self, params):
         """List objects.
 
-        Caches default_osystem and default_distro_series so only 2 queries are
+        Caches default_osystem and default_distro_series so only 1 queries are
         made for the whole list of nodes.
 
         Caches the hardware status so only one additional query is needed for
         all nodes.
         """
-        self.default_osystem = Config.objects.get_config('default_osystem')
-        self.default_distro_series = Config.objects.get_config(
-            'default_distro_series')
+        configs = (
+            Config.objects.get_configs(
+                ['default_osystem', 'default_distro_series']))
+        self.default_osystem = configs['default_osystem']
+        self.default_distro_series = configs['default_distro_series']
         return super(MachineHandler, self).list(params)
 
     def dehydrate(self, obj, data, for_list=False):
@@ -204,6 +206,15 @@ class MachineHandler(NodeHandler):
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data['pod'] = self.dehydrate_pod(bmc)
 
+        if (getattr(self, 'default_osystem', None) is not None and
+                getattr(self, 'default_distro_series', None) is not None):
+            data["osystem"] = obj.get_osystem(
+                default=self.default_osystem)
+            data["distro_series"] = obj.get_distro_series(
+                default=self.default_distro_series)
+        else:
+            data["osystem"] = obj.get_osystem()
+            data["distro_series"] = obj.get_distro_series()
         if not for_list:
             # Add info specific to a machine.
             data["show_os_info"] = self.dehydrate_show_os_info(obj)

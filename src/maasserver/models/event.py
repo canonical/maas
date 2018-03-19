@@ -48,15 +48,13 @@ class EventManager(Manager):
             ip_address=None, endpoint=ENDPOINT.API,
             user_agent='', created=None):
         """Register EventType if it does not exist, then register the Event."""
-        node = (Node.objects.get(system_id=system_id)
-                if system_id is not None else None)
-        try:
-            # Be optimistic; try to retrieve the event type first.
-            event_type = EventType.objects.get(name=type_name)
-        except EventType.DoesNotExist:
-            # We didn't find it so register it.
-            event_type = EventType.objects.register(
-                type_name, type_description, type_level)
+        if isinstance(system_id, Node):
+            node = system_id
+        else:
+            node = (Node.objects.get(system_id=system_id)
+                    if system_id is not None else None)
+        event_type = EventType.objects.register(
+            type_name, type_description, type_level)
         return Event.objects.create(
             type=event_type, node=node, user=user, ip_address=ip_address,
             endpoint=endpoint, user_agent=user_agent, action=event_action,
@@ -148,3 +146,11 @@ class Event(CleanSave, TimestampedModel):
     def __str__(self):
         return "%s (node=%s, type=%s, created=%s)" % (
             self.id, self.node, self.type.name, self.created)
+
+    def validate_unique(self, exclude=None):
+        """Override validate unique so nothing is validated.
+
+        Since `Event` is never checked for user validaton let Postgres
+        handle the foreign keys instead of Django pre-checking before save.
+        """
+        pass

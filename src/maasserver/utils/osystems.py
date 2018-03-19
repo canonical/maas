@@ -31,6 +31,7 @@ from maasserver.models import (
     Config,
 )
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.utils.twisted import undefined
 
 
 def list_all_usable_osystems():
@@ -409,10 +410,10 @@ def get_release_version_from_string(string):
         version = [999, 999]
     else:
         # First try to get release info from the SimpleStream
-        ubuntu_release = get_release_from_db(release)
+        ubuntu_release = get_release_from_distro_info(release)
         if ubuntu_release is None:
             # Fall back on using the UbuntuDistroInfo library
-            ubuntu_release = get_release_from_distro_info(release)
+            ubuntu_release = get_release_from_db(release)
         if ubuntu_release is None:
             raise ValueError(
                 "%s not found amoungst the known Ubuntu releases!" % string)
@@ -437,7 +438,9 @@ def release_a_newer_than_b(a, b):
 
 
 def validate_hwe_kernel(
-        hwe_kernel, min_hwe_kernel, architecture, osystem, distro_series):
+        hwe_kernel, min_hwe_kernel, architecture, osystem, distro_series,
+        commissioning_osystem=undefined,
+        commissioning_distro_series=undefined):
     """Validates that hwe_kernel works on the selected os/release/arch.
 
     Checks that the current hwe_kernel is avalible for the selected
@@ -465,9 +468,13 @@ def validate_hwe_kernel(
     # If we're not deploying Ubuntu we are just setting the kernel to be used
     # during deployment
     if osystem != "ubuntu":
-        osystem = Config.objects.get_config('commissioning_osystem')
-        distro_series = Config.objects.get_config(
-            'commissioning_distro_series')
+        osystem = commissioning_osystem
+        if osystem is undefined:
+            osystem = Config.objects.get_config('commissioning_osystem')
+        distro_series = commissioning_distro_series
+        if distro_series is undefined:
+            distro_series = Config.objects.get_config(
+                'commissioning_distro_series')
 
     arch, subarch = architecture.split('/')
 

@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import ANY
 
 from maasserver import server_address
 from maasserver.enum import (
@@ -18,7 +19,6 @@ from maasserver.enum import (
 from maasserver.models import (
     Config,
     Event,
-    Node,
 )
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
@@ -28,7 +28,7 @@ from maasserver.rpc import boot as boot_module
 from maasserver.rpc.boot import (
     event_log_pxe_request,
     get_boot_filenames,
-    get_config,
+    get_config as orig_get_config,
     merge_kparams_with_extra,
 )
 from maasserver.testing.architecture import make_usable_architecture
@@ -37,10 +37,8 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.djangotestcase import count_queries
+from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
@@ -48,6 +46,25 @@ from testtools.matchers import (
     ContainsAll,
     StartsWith,
 )
+
+
+def get_config(*args, **kwargs):
+    explicit_count = kwargs.pop('query_count', None)
+    count, result = count_queries(orig_get_config, *args, **kwargs)
+    if explicit_count is None:
+        # If you need to adjust this value up be sure that 100% you cannot
+        # lower this value. If you want to adjust this value down, big +1!
+        assert count <= 20, (
+            '%d > 20; Query count should remain below 20 queries '
+            'at all times.' % count)
+    else:
+        # This test sets an explicit count. This should *ONLY* be used if
+        # the test is taking a rare path that requires the query count to
+        # some what greater.
+        assert count == explicit_count, (
+            '%d != %d; Query count should remain below %d queries '
+            'at all times.' % (count, explicit_count, explicit_count))
+    return result
 
 
 class TestKparamsMerge(MAASServerTestCase):
@@ -129,6 +146,37 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         # Should not raise BootConfigNoResponse.
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
+
+    def test__purpose_local_does_less_work(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED, netboot=False)
+        node.boot_cluster_ip = local_ip
+        node.save()
+        mac = node.get_boot_interface().mac_address
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=6)
+        self.assertEquals({
+            "system_id": node.system_id,
+            "arch": node.split_arch()[0],
+            "subarch": node.split_arch()[1],
+            "osystem": '',
+            "release": '',
+            "kernel": '',
+            "initrd": '',
+            "boot_dtb": '',
+            "purpose": 'local',
+            "hostname": node.hostname,
+            "domain": node.domain.name,
+            "preseed_url": ANY,
+            "fs_host": local_ip,
+            "log_host": ANY,
+            "extra_opts": '',
+            "http_boot": True,
+        }, config)
 
     def test__returns_kparams_for_known_node(self):
         rack_controller = factory.make_RackController()
@@ -467,7 +515,8 @@ class TestGetConfig(MAASServerTestCase):
         node.save()
         mac = nic.mac_address
         get_config(
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=21)
         self.assertEqual(nic, reload_object(node).boot_interface)
 
     def test__updates_boot_interface_when_changed(self):
@@ -481,23 +530,9 @@ class TestGetConfig(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node, vlan=node.boot_interface.vlan)
         mac = nic.mac_address
         get_config(
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=21)
         self.assertEqual(nic, reload_object(node).boot_interface)
-
-    def test__doesnt_update_boot_interface_when_same(self):
-        rack_controller = factory.make_RackController()
-        local_ip = factory.make_ip_address()
-        remote_ip = factory.make_ip_address()
-        node = self.make_node()
-        node.boot_interface = node.get_boot_interface()
-        node.save()
-        mac = node.boot_interface.mac_address
-        node.boot_cluster_ip = local_ip
-        node.save()
-        mock_save = self.patch(Node, 'save')
-        get_config(
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertThat(mock_save, MockNotCalled())
 
     def test__sets_boot_cluster_ip_when_empty(self):
         rack_controller = factory.make_RackController()
@@ -521,20 +556,6 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual(local_ip, reload_object(node).boot_cluster_ip)
 
-    def test__doesnt_update_boot_cluster_ip_when_same(self):
-        rack_controller = factory.make_RackController()
-        local_ip = factory.make_ip_address()
-        remote_ip = factory.make_ip_address()
-        node = self.make_node()
-        node.boot_interface = node.get_boot_interface()
-        mac = node.boot_interface.mac_address
-        node.boot_cluster_ip = local_ip
-        node.save()
-        mock_save = self.patch(Node, 'save')
-        get_config(
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertThat(mock_save, MockNotCalled())
-
     def test__updates_bios_boot_method(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
@@ -545,22 +566,6 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip,
             mac=mac, bios_boot_method="pxe")
         self.assertEqual('pxe', reload_object(node).bios_boot_method)
-
-    def test__doesnt_update_bios_boot_method_when_same(self):
-        rack_controller = factory.make_RackController()
-        local_ip = factory.make_ip_address()
-        remote_ip = factory.make_ip_address()
-        node = self.make_node(bios_boot_method='uefi')
-        nic = node.get_boot_interface()
-        mac = nic.mac_address
-        node.boot_interface = nic
-        node.boot_cluster_ip = local_ip
-        node.save()
-        mock_save = self.patch(Node, 'save')
-        get_config(
-            rack_controller.system_id, local_ip, remote_ip,
-            mac=mac, bios_boot_method="uefi")
-        self.assertThat(mock_save, MockNotCalled())
 
     def test__sets_boot_interface_vlan_to_match_rack_controller(self):
         rack_controller = factory.make_RackController()
@@ -575,8 +580,10 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         node = self.make_node()
         mac = node.get_boot_interface().mac_address
+
         get_config(
-            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac)
+            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
+            query_count=27)
         self.assertEqual(
             rack_vlan, reload_object(node).get_boot_interface().vlan)
 
@@ -595,7 +602,8 @@ class TestGetConfig(MAASServerTestCase):
         node = self.make_node(vlan=relay_vlan)
         mac = node.get_boot_interface().mac_address
         get_config(
-            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac)
+            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
+            query_count=21)
         self.assertEqual(
             relay_vlan, reload_object(node).get_boot_interface().vlan)
 
@@ -615,11 +623,31 @@ class TestGetConfig(MAASServerTestCase):
         node = self.make_node(vlan=relay_vlan)
         mac = node.get_boot_interface().mac_address
         get_config(
-            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac)
+            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
+            query_count=27)
         self.assertEqual(
             rack_vlan, reload_object(node).get_boot_interface().vlan)
 
     def test__returns_commissioning_os_series_for_other_oses(self):
+        osystem = Config.objects.get_config('default_osystem')
+        release = Config.objects.get_config('default_distro_series')
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        self.make_node(arch_name='amd64')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="centos",
+            distro_series="centos71",
+            architecture="amd64/generic",
+            primary_rack=rack_controller)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertEqual(osystem, observed_config["osystem"])
+        self.assertEqual(release, observed_config["release"])
+
+    def test__query_commissioning_os_series_for_other_oses(self):
         osystem = Config.objects.get_config('default_osystem')
         release = Config.objects.get_config('default_distro_series')
         rack_controller = factory.make_RackController()
@@ -652,7 +680,8 @@ class TestGetConfig(MAASServerTestCase):
             kflavor='generic', rtype=BOOT_RESOURCE_TYPE.SYNCED)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=21)
         self.assertEqual("hwe-16.10", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_converted(self):
@@ -665,7 +694,8 @@ class TestGetConfig(MAASServerTestCase):
         make_usable_architecture(self)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
-            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=21)
         self.assertEqual("hwe-16.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_reports_missing(self):

@@ -7,6 +7,8 @@ __all__ = [
     'BootResource',
     ]
 
+from operator import attrgetter
+
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
@@ -14,6 +16,7 @@ from django.db.models import (
     Count,
     IntegerField,
     Manager,
+    Prefetch,
     Sum,
 )
 from maasserver import DefaultMeta
@@ -24,6 +27,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
 from maasserver.fields import JSONObjectField
+from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import (
@@ -34,6 +38,7 @@ from maasserver.utils.orm import (
     get_first,
     get_one,
 )
+from provisioningserver.utils.twisted import undefined
 
 # Names on boot resources have a specific meaning depending on the type
 # of boot resource. If its a synced or generated image then the name must
@@ -241,9 +246,19 @@ class BootResourceManager(Manager):
             name = ''
         if not architecture:
             architecture = ''
+
+        sets_prefetch = BootResourceSet.objects.annotate(
+            files_count=Count('files__id'),
+            files_size=Sum('files__largefile__size'),
+            files_total_size=Sum('files__largefile__total_size'))
+        sets_prefetch = sets_prefetch.prefetch_related('files')
+        sets_prefetch = sets_prefetch.order_by('id')
+        query = self.filter(
+            architecture__startswith=architecture, name__startswith=name)
+        query = query.prefetch_related(Prefetch('sets', sets_prefetch))
+
         kernels = set()
-        for resource in self.filter(
-                architecture__startswith=architecture, name__startswith=name):
+        for resource in query:
             if kflavor is not None and resource.kflavor != kflavor:
                 continue
             resource_set = resource.get_latest_complete_set()
@@ -336,10 +351,14 @@ class BootResourceManager(Manager):
                     return kernel.extra['kpackage']
         return None
 
-    def get_kparams_for_node(self, node):
+    def get_kparams_for_node(
+            self, node, default_osystem=undefined,
+            default_distro_series=undefined):
         """Return the kernel package name for the kernel specified."""
         arch = node.split_arch()[0]
-        os_release = node.get_osystem() + '/' + node.get_distro_series()
+        os_release = (
+            node.get_osystem(default=default_osystem) + '/' +
+            node.get_distro_series(default=default_distro_series))
 
         # Before hwe_kernel was introduced the subarchitecture was the
         # hwe_kernel simple stream still uses this convention
@@ -493,16 +512,28 @@ class BootResource(CleanSave, TimestampedModel):
 
     def get_latest_set(self):
         """Return latest `BootResourceSet`."""
-        return self.sets.order_by('id').last()
+        if (not hasattr(self, '_prefetched_objects_cache') or
+                'sets' not in self._prefetched_objects_cache):
+            return self.sets.order_by('id').last()
+        elif self.sets.all():
+            return sorted(
+                self.sets.all(), key=attrgetter('id'), reverse=True)[0]
+        else:
+            return None
 
     def get_latest_complete_set(self):
         """Return latest `BootResourceSet` where all `BootResouceFile`'s
         are complete."""
-        resource_sets = self.sets.order_by('id').annotate(
-            files_count=Count('files__id'),
-            files_size=Sum('files__largefile__size'),
-            files_total_size=Sum('files__largefile__total_size'))
-        for resource_set in resource_sets.reverse():
+        if (not hasattr(self, '_prefetched_objects_cache') or
+                'sets' not in self._prefetched_objects_cache):
+            resource_sets = self.sets.order_by('-id').annotate(
+                files_count=Count('files__id'),
+                files_size=Sum('files__largefile__size'),
+                files_total_size=Sum('files__largefile__total_size'))
+        else:
+            resource_sets = sorted(
+                self.sets.all(), key=attrgetter('id'), reverse=True)
+        for resource_set in resource_sets:
             if (resource_set.files_count > 0 and
                     resource_set.files_size == resource_set.files_total_size):
                 return resource_set
