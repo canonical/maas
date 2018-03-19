@@ -1328,6 +1328,21 @@ class NewUserCreationForm(UserCreationForm):
             'is_superuser',
         )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.external_auth_enabled = bool(
+            Config.objects.get_config('external_auth_url'))
+        if self.external_auth_enabled:
+            del self.fields['password1']
+            del self.fields['password2']
+
+    def clean(self):
+        super().clean()
+        if self.external_auth_enabled:
+            # add back data for password fields, as save() needs them
+            self.cleaned_data['password1'] = None
+            self.cleaned_data['password2'] = None
+
     def save(self, commit=True):
         user = super(NewUserCreationForm, self).save(commit=False)
         if self.cleaned_data.get('is_superuser', False):

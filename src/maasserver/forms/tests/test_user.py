@@ -11,6 +11,7 @@ from maasserver.forms import (
     NewUserCreationForm,
     ProfileForm,
 )
+from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import MatchesRegex
@@ -124,3 +125,14 @@ class TestNewUserCreationForm(MAASServerTestCase):
             ['username', 'last_name', 'email', 'password1', 'password2',
                 'is_superuser'],
             list(form.fields))
+
+    def test_password_not_required_with_external_auth(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+        form = NewUserCreationForm()
+        params = {
+            'email': factory.make_email(),
+            'username': factory.make_name('user')}
+        form = NewUserCreationForm(params)
+        user = form.save()
+        self.assertFalse(user.has_usable_password())
