@@ -27,13 +27,13 @@ describe('maasExternalLogin', function() {
         });
 
         // mock Bakery, since we can't use the real one.
-        dischargeResponse = {currentTarget: {status: 200}};
+        dischargeResponse = {status: 200};
         $provide.factory('getBakery', function() {
             return function(visitPage) {
                 visitPageFunc = visitPage;
                 return {
                     get: function(url, headers, callback) {
-                        callback(null, dischargeResponse);
+                        callback(null, {currentTarget: dischargeResponse});
                     }
                 };
             };
@@ -82,9 +82,10 @@ describe('maasExternalLogin', function() {
     });
 
     it('shows an error message if getting the visit URL fails', function() {
-        dischargeResponse = {currentTarget: {status: 500}};
+        dischargeResponse = {status: 500, responseText: 'something broke!'};
         var directive = compileDirective();
         var error = directive.find('#login-error');
-        expect(error.text().trim()).toBe('Error: failure getting login token');
+        expect(error.text().trim()).toBe(
+            'Error getting login link:  something broke!');
     });
 });

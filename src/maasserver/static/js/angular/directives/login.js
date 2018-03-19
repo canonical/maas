@@ -23,7 +23,8 @@ angular.module('MAAS').factory('getBakery', function() {
             '</a>',
             '<div id="login-error" class="p-form-validation__message"',
             '    ng-if="errorMessage">',
-            '    <strong>Error:</strong> {{ errorMessage }}',
+            '  <strong>Error getting login link:</strong><br>',
+            '  {{ errorMessage }}',
             '</div>',
         ].join(''),
         controller: function($scope, $rootScope, $element, $document) {
@@ -45,7 +46,10 @@ angular.module('MAAS').factory('getBakery', function() {
                  'Content-Type': 'application/json'},
                 function(error, response) {
                     if (response.currentTarget.status != 200) {
-                        $scope.errorMessage = 'failure getting login token';
+                        $scope.$apply(function() {
+                            $scope.errorMessage = (
+                                response.currentTarget.responseText);
+                        });
                     } else {
                         $window.location.replace(nextPath);
                     }
