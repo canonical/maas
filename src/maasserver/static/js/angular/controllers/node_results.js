@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Results Controller
@@ -135,17 +135,12 @@ angular.module('MAAS').controller('NodeResultsController', [
                     });
             } else {
                 var result = null;
-                var i, j;
+                var i;
                 // Find the installation result to be displayed.
                 for(i = 0; i < $scope.installation_results.length; i++) {
-                    var hlist = $scope.installation_results[i].history_list;
-                    for(j = 0; j < hlist.length; j++) {
-                        if(hlist[j].id === $scope.logs.option.id) {
-                            result = hlist[j];
-                            break;
-                        }
-                    }
-                    if(result) {
+                    if($scope.installation_results[i].id ===
+                       $scope.logs.option.id) {
+                        result = $scope.installation_results[i];
                         break;
                     }
                 }
@@ -193,6 +188,22 @@ angular.module('MAAS').controller('NodeResultsController', [
                         break;
                 }
             }
+        };
+
+        $scope.loadHistory = function(result) {
+            result.showing_results = false;
+            // History has already been loaded, no need to request it.
+            if(angular.isArray(result.history_list)) {
+                result.showing_history = true;
+                return;
+            }
+            result.loading_history = true;
+            $scope.nodeResultsManager.get_history(result.id).then(
+                function(history) {
+                    result.history_list = history;
+                    result.loading_history = false;
+                    result.showing_history = true;
+                });
         };
 
         // Destroy the NodeResultsManager when the scope is destroyed. This is

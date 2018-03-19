@@ -44,12 +44,11 @@
                                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
                                             <button class="p-contextual-menu__link" aria-label="View metrics" data-ng-if="!result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
                                             <button class="p-contextual-menu__link" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
-                                            <button class="p-contextual-menu__link" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = true">View previous {$ result.result_section $}</button>
+                                            <button class="p-contextual-menu__link" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); loadHistory(result)">View previous {$ result.result_section $}</button>
                                             <button class="p-contextual-menu__link" aria-label="Hide previous {$ result.result_section $}" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous {$ result.result_section $}</button>
                                         </div>
                                     </div>
                                 </td>
-
                                 <td class="p-table-expanding__panel col-12" aria-label="results" data-ng-if="result.showing_results && !result.showing_history">
                                     <div class="row">
                                         <div class="col-12" data-ng-if="result.results.length === 0">No metrics provided</div>
@@ -64,7 +63,11 @@
                                         </dl>
                                     </div>
                                 </td>
-
+                                <td class="p-table-expanding__panel col-12" aria-label="loading history" data-ng-if="result.loading_history">
+                                    <div class="col-12">
+                                        <p class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
+                                    </div>
+                                </div>
                                 <td class="p-table-expanding__panel col-12" aria-label="history" data-ng-if="result.showing_history">
                                     <div class="row">
                                         <div class="col-12">

@@ -433,4 +433,50 @@ describe("NodeResultsController", function() {
                 "BUG: Unknown log status " + installation_result.status);
         });
     });
+
+    describe("loadHistory", function() {
+        it("loads results", function() {
+            var defer = $q.defer();
+            var controller = makeController();
+            var result = {
+                id: makeInteger(0, 100)
+            };
+            var history_list = [
+                {id: makeInteger(0, 100)},
+                {id: makeInteger(0, 100)},
+                {id: makeInteger(0, 100)}
+            ];
+            $scope.node = node;
+            $scope.nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node);
+            spyOn($scope.nodeResultsManager, "get_history").and.returnValue(
+                defer.promise);
+
+            $scope.loadHistory(result);
+            defer.resolve(history_list);
+            $rootScope.$digest();
+
+            expect(result.history_list).toBe(history_list);
+            expect(result.loading_history).toBe(false);
+            expect(result.showing_history).toBe(true);
+        });
+
+        it("doesnt reload", function() {
+            var controller = makeController();
+            var result = {
+                id: makeInteger(0, 100),
+                history_list: [{id: makeInteger(0, 100)}]
+            };
+            $scope.node = node;
+            $scope.nodeResultsManager = NodeResultsManagerFactory.getManager(
+                $scope.node);
+            spyOn($scope.nodeResultsManager, "get_history");
+
+            $scope.loadHistory(result);
+
+            expect(result.showing_history).toBe(true);
+            expect(
+                $scope.nodeResultsManager.get_history).not.toHaveBeenCalled();
+        });
+    });
 });

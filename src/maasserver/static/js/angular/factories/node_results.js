@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS NodeResultsManager Manager
@@ -262,6 +262,15 @@ angular.module('MAAS').factory(
             var params = {
                 id: script_id,
                 data_type: data_type
+            };
+            return RegionConnection.callMethod(method, params);
+        };
+
+        // Get historic data.
+        NodeResultsManager.prototype.get_history = function(script_id) {
+            var method = this._handler + ".get_history";
+            var params = {
+                id: script_id,
             };
             return RegionConnection.callMethod(method, params);
         };

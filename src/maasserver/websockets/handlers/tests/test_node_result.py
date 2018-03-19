@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node_result`"""
@@ -16,6 +16,7 @@ from maasserver.websockets.base import (
     HandlerPKError,
 )
 from maasserver.websockets.handlers.node_result import NodeResultHandler
+from maastesting.djangotestcase import CountQueries
 from metadataserver.enum import (
     HARDWARE_TYPE,
     HARDWARE_TYPE_CHOICES,
@@ -49,16 +50,6 @@ class TestNodeResultHandler(MAASServerTestCase):
             "result_type": script_result.script_set.result_type,
             "hardware_type": script_result.script.hardware_type,
             "tags": ", ".join(script_result.script.tags),
-            "history_list": [{
-                "id": history.id,
-                "updated": dehydrate_datetime(history.updated),
-                "status": history.status,
-                "status_name": history.status_name,
-                "runtime": history.runtime,
-                "starttime": history.starttime,
-                "endtime": history.endtime,
-                "estimated_runtime": history.estimated_runtime,
-                } for history in script_result.history],
             "results": [{
                 "name": key,
                 "title": key,
@@ -332,6 +323,36 @@ class TestNodeResultHandler(MAASServerTestCase):
                 'id': script_result.id,
                 'data_type': unknown_data_type,
                 }))
+
+    def test_get_history(self):
+        user = factory.make_User()
+        handler = NodeResultHandler(user, {})
+        node = factory.make_Node(owner=user)
+        script = factory.make_Script()
+        script_results = []
+        for _ in range(10):
+            script_set = factory.make_ScriptSet(node=node)
+            script_results.append(factory.make_ScriptResult(
+                script=script, script_set=script_set,
+                status=SCRIPT_STATUS.PASSED))
+        latest_script_result = script_results[-1]
+        script_results = sorted(
+            script_results, key=lambda i: i.id, reverse=True)
+        queries = CountQueries()
+        with queries:
+            ret = handler.get_history({'id': latest_script_result.id})
+        self.assertEqual(4, queries.num_queries)
+        for script_result, out in zip(script_results, ret):
+            self.assertDictEqual({
+                'id': script_result.id,
+                'updated': dehydrate_datetime(script_result.updated),
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'runtime': script_result.runtime,
+                'starttime': script_result.starttime,
+                'endtime': script_result.endtime,
+                'estimated_runtime': script_result.estimated_runtime,
+            }, out)
 
     def test_clear_removes_system_id_from_cache(self):
         user = factory.make_User()

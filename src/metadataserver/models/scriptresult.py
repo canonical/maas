@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 __all__ = [
     'ScriptResult',
@@ -143,7 +143,9 @@ class ScriptResult(CleanSave, TimestampedModel):
             return self.runtime
         runtime = None
         # Get an estimated runtime from previous runs.
-        for script_result in self.history:
+        for script_result in self.history.only(
+                'status', 'started', 'ended', 'script_id', 'script_name',
+                'script_set_id', 'physical_blockdevice_id'):
             # Only look at passed results when calculating an estimated
             # runtime. Failed results may take longer or shorter than
             # average. Don't use self.history.filter for this as the now
