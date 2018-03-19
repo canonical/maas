@@ -23,6 +23,7 @@ from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerPermissionError,
+    HandlerValidationError,
 )
 from maasserver.websockets.handlers.domain import DomainHandler
 from netaddr import IPAddress
@@ -129,6 +130,16 @@ class TestDomainHandler(MAASServerTestCase):
         with ExpectedException(HandlerPermissionError):
             handler.update({"id": domain.id, "name": new_name})
 
+    def test_update_returns_model_object(self):
+        user = factory.make_admin()
+        domain = Domain.objects.get_default_domain()
+        new_name = factory.make_hostname()
+        handler = DomainHandler(user, {})
+        returned_domain = handler.update({"id": domain.id, "name": new_name})
+        domain = reload_object(domain)
+        self.assertThat(
+            self.dehydrate_domain(domain), Equals(returned_domain))
+
     def test_update_allows_domain_name_change(self):
         user = factory.make_admin()
         domain = Domain.objects.get_default_domain()
@@ -163,7 +174,7 @@ class TestDomainHandler(MAASServerTestCase):
         user = factory.make_admin()
         domain = factory.make_Domain(authoritative=choice([True, False]))
         handler = DomainHandler(user, {})
-        with ExpectedException(ValidationError):
+        with ExpectedException(HandlerValidationError):
             handler.update({
                 "id": domain.id,
                 "name": "",
@@ -176,9 +187,9 @@ class TestDomainHandler(MAASServerTestCase):
             "name": ""
             }
         error = self.assertRaises(
-            ValidationError, handler.create, params)
+            HandlerValidationError, handler.create, params)
         self.assertThat(error.message_dict, Equals(
-            {'name': ['This field cannot be blank.']}))
+            {'name': ['This field is required.']}))
 
 
 class TestDomainHandlerDelete(MAASServerTestCase):

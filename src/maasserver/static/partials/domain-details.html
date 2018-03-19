@@ -106,42 +106,114 @@
         </maas-obj-form>
     </div>
 </header>
-<div class="p-strip" data-ng-show="!loading">
-    <section class="row">
-        <table>
-            <thead>
+<section class="p-strip" data-ng-show="!loading">
+    <div class="row">
+        <div class="col-12">
+            <div class="col-8">
+                <h2 class="u-float--left">Domain summary</h2>
+            </div>
+            <div class="col-4 u-align--right">
+                <button type="button" name="button" class="p-button--neutral" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
+            </div>
+        </div>
+    </div>
+    <div class="form p-form--stacked row" data-ng-if="editSummary != true">
+        <div class="col-6">
+            <div class="p-form__group">
+                <div class="p-form__label">
+                    <p><strong>Name</strong></p>
+                </div>
+                <div class="p-form__control">
+                    <p>{$ domain.name $}</p>
+                </div>
+            </div>
+            <div class="p-form__group">
+                <div class="p-form__label">
+                    <p><strong>TTL</strong></p>
+                </div>
+                <div class="p-form__control">
+                    <p data-ng-if="domain.ttl">{$ domain.ttl $}</p>
+                    <p data-ng-if="!domain.ttl">(default)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="p-form__group">
+                <div class="p-form__label">
+                    <p><strong>Authoritative</strong></p>
+                </div>
+                <div class="p-form__control">
+                    <span data-ng-if="domain.authoritative == false">No</span>
+                    <span data-ng-if="domain.authoritative == true">Yes</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <maas-obj-form data-ng-if="editSummary == true" obj="domain" manager="domainsManager" table-form="true" save-on-blur="false" after-save="exitEditSummary" data-ng-disabled="!isSuperUser()">
+            <div class="row">
+                <div class="col-6">
+                    <maas-obj-field type="text" key="name" label="Name" placeholder="Domain name"
+                            label-width="2" input-width="4"></maas-obj-field>
+                    <maas-obj-field type="text" key="ttl" label="TTL" placeholder="Default TTL"
+                                    label-width="2" input-width="4"></maas-obj-field>
+                </div>
+                <div class="col-6">
+                    <maas-obj-field type="onoffswitch" key="authoritative" label="Authoritative"
+                                    label-width="3" input-width="3"></maas-obj-field>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6">
+                    <maas-obj-errors></maas-obj-errors>
+                </div>
+                <div class="col-6 u-align--right">
+                    <button class="p-button--base" type="button"
+                    data-ng-click="exitEditSummary()">Cancel</button>
+                    <button class="p-button--positive" maas-obj-save>Save summary</button>
+                </div>
+            </div>
+        </maas-obj-form>
+    </div>
+</section>
+<section class="p-strip" window-width>
+    <div class="row">
+        <h2 class="col-12">Resource records</h2>
+    </div>
+    <div class="row">
+        <table class="p-table-expanding p-table--sortable u-no-margin--top" style="overflow: visible;">
+            <thead data-ng-if="windowWidth >= 769" offset="88" media-query="min-width: 768px">
                 <tr>
-                    <td class="table__header table-col--25" data-ng-click="predicate='name'; reverse = !reverse"
-                            data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</td>
-                    <td class="table__header table-col--25" data-ng-click="predicate='rrtype'; reverse = !reverse"
-                            data-ng-class="{'is-sorted': predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</td>
-                    <td class="table__header table-col--50" data-ng-click="predicate='rrdata'; reverse = !reverse"
-                            data-ng-class="{'is-sorted': predicate === 'rrdata', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</td>
+                    <th class="col-3" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</th>
+                    <th class="col-2" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</th>
+                    <th class="col-2" role="columnheader" data-ng-click="sortTable('ttl')" data-ng-class="{'is-sorted': predicate === 'ttl', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">TTL</thdiv>
+                    <th class="col-3" role="columnheader" data-ng-click="sortTable('data')" data-ng-class="{'is-sorted': predicate === 'data', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr data-ng-repeat="row in domain.rrsets | orderBy:predicate:reverse track by $index">
-                    <td class="table__data table-col--25" aria-label="Name">
-                        <span data-ng-if="row.system_id == null">{$ row.name $}</span>
-                        <span data-ng-if="row.system_id !== null">
-                            <div data-ng-switch="row.node_type">
-                                <!--
-                                    XXX lamont 2016-02-10
-                                    Node type is an enum (see node-details.html) and the comment therein.
-                                -->
-                                <span data-ng-switch-when="0"><a href="#/node/machine/{$ row.system_id $}">{$ row.name $}</a></span>
-                                <span data-ng-switch-when="1"><a href="#/node/device/{$ row.system_id $}">{$ row.name $}</a></span>
-                                <span data-ng-switch-when="2"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
-                                <span data-ng-switch-when="3"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
-                                <span data-ng-switch-when="4"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
-                                <span data-ng-switch-default>{$ row.name $}</span>
-                            </div>
-                        </span>
-                    </td>
-                    <td class="table__data table-col--25" aria-label="Type">{$ row.rrtype $}</td>
-                    <td class="table__data table-col--50" aria-label="Data">{$ row.rrdata $}</td>
-                </tr>
-            </tbody>
-        </table>
-    </section>
-</div>
+        <tbody>
+            <tr data-ng-repeat="row in domain.rrsets | orderBy:predicate:reverse track by $index">
+                <td class="col-3" aria-label="Name">
+                    <span data-ng-if="row.system_id == null">{$ row.name $}</span>
+                    <span data-ng-if="row.system_id !== null">
+                        <div data-ng-switch="row.node_type">
+                            <!--
+                                Node type is an enum (see node-details.html and the comment therein).
+                            -->
+                            <span data-ng-switch-when="0"><a href="#/node/machine/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="1"><a href="#/node/device/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="2"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="3"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="4"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-default>{$ row.name $}</span>
+                        </div>
+                    </span>
+                </td>
+                <td class="col-2" aria-label="Type">{$ row.rrtype $}</td>
+                <td class="col-2" aria-label="TTL" data-ng-if="row.ttl">{$ row.ttl $}</td>
+                <td class="col-2" aria-label="TTL" data-ng-if="!row.ttl">(default)</td>
+                <td class="col-3" aria-label="Data">{$ row.rrdata $}</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+</section>

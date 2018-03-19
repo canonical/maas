@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_PERMISSION
 from maasserver.forms.dnsdata import DNSDataForm
 from maasserver.forms.dnsresource import DNSResourceForm
+from maasserver.forms.domain import DomainForm
 from maasserver.models import (
     DNSData,
     DNSResource,
@@ -31,6 +32,8 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
     class Meta:
         queryset = Domain.objects.all()
         pk = 'id'
+        form = DomainForm
+        form_requires_request = False
         allowed_methods = [
             'list',
             'get',

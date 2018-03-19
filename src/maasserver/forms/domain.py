@@ -7,6 +7,7 @@ __all__ = [
     "DomainForm",
 ]
 
+from django import forms
 from maasserver.forms import (
     APIEditMixin,
     MAASModelForm,
@@ -24,6 +25,10 @@ class DomainForm(MAASModelForm):
             'authoritative',
             'ttl',
             )
+
+    ttl = forms.IntegerField(min_value=1, max_value=604800, required=False)
+
+    authoritative = forms.NullBooleanField(required=False)
 
     def _post_clean(self):
         # ttl=None needs to make it through.  See also APIEditMixin

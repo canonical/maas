@@ -18,7 +18,7 @@ class TestDomainForm(MAASServerTestCase):
     def test__creates_domain(self):
         domain_name = factory.make_name("domain")
         domain_authoritative = factory.pick_bool()
-        ttl = random.randint(0, 10000000)
+        ttl = random.randint(1, 604800)
         form = DomainForm({
             "name": domain_name,
             "authoritative": domain_authoritative,
@@ -40,7 +40,7 @@ class TestDomainForm(MAASServerTestCase):
         old_authoritative = factory.pick_bool()
         domain = factory.make_Domain(authoritative=old_authoritative)
         new_authoritative = not old_authoritative
-        new_ttl = random.randint(0, 10000000)
+        new_ttl = random.randint(1, 604800)
         form = DomainForm(instance=domain, data={
             "name": new_name,
             "authoritative": new_authoritative,
@@ -55,7 +55,7 @@ class TestDomainForm(MAASServerTestCase):
 
     def test_accepts_ttl(self):
         name = factory.make_name("domain")
-        ttl = random.randint(0, 10000000)
+        ttl = random.randint(1, 604800)
         authoritative = factory.pick_bool()
         form = DomainForm({
             "name": name,
@@ -70,7 +70,7 @@ class TestDomainForm(MAASServerTestCase):
 
     def test_accepts_ttl_equals_none(self):
         name = factory.make_name("domain")
-        ttl = random.randint(0, 10000000)
+        ttl = random.randint(1, 604800)
         authoritative = factory.pick_bool()
         form = DomainForm({
             "name": name,

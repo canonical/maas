@@ -540,18 +540,18 @@ class AdminOnlyMixin(Handler):
         if not self.user.has_perm(
                 NODE_PERMISSION.ADMIN, self._meta.object_class):
             raise HandlerPermissionError()
-        super().create(parameters)
+        return super().create(parameters)
 
     def update(self, parameters):
         """Only allow an administrator to update this object."""
         obj = self.get_object(parameters)
         if not self.user.has_perm(NODE_PERMISSION.ADMIN, obj):
             raise HandlerPermissionError()
-        super().update(parameters)
+        return super().update(parameters)
 
     def delete(self, parameters):
         """Only allow an administrator to delete this object."""
         obj = self.get_object(parameters)
         if not self.user.has_perm(NODE_PERMISSION.ADMIN, obj):
             raise HandlerPermissionError()
-        super().delete(parameters)
+        return super().delete(parameters)

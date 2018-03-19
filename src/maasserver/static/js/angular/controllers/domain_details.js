@@ -21,6 +21,7 @@ angular.module('MAAS').controller('DomainDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.domain = null;
+        $scope.editSummary = false;
         $scope.predicate = "name";
         $scope.reverse = false;
         $scope.action = null;
@@ -31,6 +32,24 @@ angular.module('MAAS').controller('DomainDetailsController', [
         $scope.supportedRecordTypes = [
             'A', 'AAAA', 'CNAME', 'MX', 'NS', 'SRV', 'SSHFP', 'TXT'
         ];
+
+        // Set default predicate to name.
+        $scope.predicate = 'name';
+
+        // Sorts the table by predicate.
+        $scope.sortTable = function(predicate) {
+            $scope.predicate = predicate;
+            $scope.reverse = !$scope.reverse;
+        };
+
+        $scope.enterEditSummary = function() {
+            $scope.editSummary = true;
+        };
+
+        // Called when the "cancel" button is clicked in the domain summary.
+        $scope.exitEditSummary = function() {
+            $scope.editSummary = false;
+        };
 
         // Updates the page title.
         function updateTitle() {

@@ -2568,7 +2568,7 @@
                             <span class="p-tooltip__message" role="tooltip">Select one device to create a cache set</span>
                         </button>
                         <button class="p-button--neutral p-tooltip--top-center"
-                            data-ng-class="{ p-tooltip: !canCreateBcache() }"
+                            data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
                             data-ng-disabled="!canCreateBcache()"
                             data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                             data-ng-click="createBcache()">
