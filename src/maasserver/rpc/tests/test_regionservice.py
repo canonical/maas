@@ -24,7 +24,10 @@ from unittest.mock import (
 
 from crochet import wait_for
 from django.db import IntegrityError
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    workers,
+)
 from maasserver.enum import (
     NODE_TYPE,
     SERVICE_STATUS,
@@ -1653,7 +1656,7 @@ class TestRegionAdvertising(MAASServerTestCase):
         self.assertEqual(
             addresses_two, self.get_endpoints(advertising.region_id))
 
-    def test_update_sets_regiond_degraded_with_less_than_4_processes(self):
+    def test_update_sets_regiond_degraded_with_less_than_workers(self):
         advertising = RegionAdvertising.promote()
         advertising.update(self.make_addresses())
 
@@ -1662,17 +1665,18 @@ class TestRegionAdvertising(MAASServerTestCase):
         regiond_service = ServiceModel.objects.get(node=region, name="regiond")
         self.assertThat(regiond_service, MatchesStructure.byEquality(
             status=SERVICE_STATUS.DEGRADED,
-            status_info="1 process running but 4 were expected."))
+            status_info="1 process running but %s were expected." % (
+                workers.MAX_WORKERS_COUNT)))
 
-    def test_update_sets_regiond_running_with_4_processes(self):
+    def test_update_sets_regiond_running_with_all_workers(self):
         advertising = RegionAdvertising.promote()
 
         region = RegionController.objects.get(system_id=advertising.region_id)
         [process] = region.processes.all()
         self.patch(regionservice, "is_pid_running").return_value = True
 
-        # Make 3 more processes.
-        for _ in range(3):
+        # Make the required extra processes.
+        for _ in range(workers.MAX_WORKERS_COUNT - 1):
             factory.make_RegionControllerProcess(region=region)
 
         advertising.update(self.make_addresses())

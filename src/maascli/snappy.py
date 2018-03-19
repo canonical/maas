@@ -85,6 +85,31 @@ ARGUMENTS = OrderedDict([
             'Secret token required for the rack controller to talk '
             'to the region controller(s). Only used when in \'rack\' mode.'),
     }),
+    ('num-workers', {
+        'type': int,
+        'help': (
+            'Number of regiond worker process to run.'),
+    }),
+    ('enable-debug', {
+        'action': 'store_true',
+        'help': (
+            'Enable debug mode for detailed error and log reporting.'),
+    }),
+    ('disable-debug', {
+        'action': 'store_true',
+        'help': 'Disable debug mode.',
+    }),
+    ('enable-debug-queries', {
+        'action': 'store_true',
+        'help': (
+            'Enable query debugging. Reports number of queries and time for '
+            'all actions performed. Requires debug to also be True. mode for '
+            'detailed error and log reporting.'),
+    }),
+    ('disable-debug-queries', {
+        'action': 'store_true',
+        'help': 'Disable query debugging.',
+    }),
 ])
 
 
@@ -309,6 +334,13 @@ def print_config(
             if show_secret:
                 secret = get_rpc_secret()
             print_msg('secret=%s' % secret)
+        if current_mode != 'rack':
+            if get_config_value('num_workers'):
+                print_config_value('num_workers')
+            if get_config_value('debug'):
+                print_config_value('debug')
+            if get_config_value('debug_queries'):
+                print_config_value('debug_queries')
 
 
 def drop_privileges():
@@ -801,11 +833,39 @@ class cmd_config(SnappyCommand):
         'none': [],
     }
 
-    # Setting flags that are in .conf.
+    # Requried flags that are in .conf.
     setting_flags = (
         'maas_url',
         'database_host', 'database_name',
         'database_user', 'database_pass')
+
+    # Optional flags that are in .conf.
+    optional_flags = {
+        'num_workers': {
+            'type': 'int',
+            'config': 'num_workers',
+        },
+        'enable_debug': {
+            'type': 'bool',
+            'set_value': True,
+            'config': 'debug',
+        },
+        'disable_debug': {
+            'type': 'bool',
+            'set_value': False,
+            'config': 'debug',
+        },
+        'enable_debug_queries': {
+            'type': 'bool',
+            'set_value': True,
+            'config': 'debug_queries',
+        },
+        'disable_debug_queries': {
+            'type': 'bool',
+            'set_value': False,
+            'config': 'debug_queries',
+        },
+    }
 
     def __init__(self, parser):
         super(cmd_config, self).__init__(parser)
@@ -880,8 +940,11 @@ class cmd_config(SnappyCommand):
         in_config_mode = options.show
         if not in_config_mode:
             in_config_mode = not any(
-                getattr(options, flag) is not None
-                for flag in ('mode', 'secret') + self.setting_flags
+                (getattr(options, flag) is not None and
+                 getattr(options, flag) is not False)
+                for flag in (
+                    ('mode', 'secret') + self.setting_flags +
+                    tuple(self.optional_flags.keys()))
             )
 
         # Config mode returns the current config of the snap.
@@ -963,6 +1026,21 @@ class cmd_config(SnappyCommand):
                         restart_required = True
                 if options.secret is not None:
                     set_rpc_secret(options.secret)
+
+            # Update any optional settings.
+            for flag, flag_info in self.optional_flags.items():
+                flag_value = getattr(options, flag)
+                if flag_info['type'] != 'store_true':
+                    if (flag_value is not None and
+                            get_config_value(flag_info['config']) != (
+                                flag_value)):
+                        update_config_value(flag_info['config'], flag_value)
+                        restart_required = True
+                elif flag_value:
+                    flag_value = flag_info['set_value']
+                    if get_config_value(flag_info['config']) != flag_value:
+                        update_config_value(flag_info['config'], flag_value)
+                        restart_required = True
 
             # Restart the supervisor as its required.
             if restart_required:

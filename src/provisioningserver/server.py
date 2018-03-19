@@ -8,6 +8,7 @@
 import asyncio
 import sys
 
+import twisted.internet
 from twisted.internet import asyncioreactor
 
 
@@ -16,7 +17,12 @@ try:
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except ImportError:
     pass
-asyncioreactor.install()
+
+# Force install the reactor. In some cases some pre-initialization code will
+# create the wrong reactor. This ensures that its always the asyncio reactor.
+reactor = asyncioreactor.AsyncioSelectorReactor()
+twisted.internet.reactor = reactor
+sys.modules['twisted.internet.reactor'] = reactor
 
 
 from twisted.python import usage

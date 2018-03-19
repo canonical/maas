@@ -14,7 +14,8 @@ from twisted.internet.process import ProcessExitedAlready
 
 log = LegacyLogger()
 
-MAX_WORKERS_COUNT = os.cpu_count()
+MAX_WORKERS_COUNT = int(
+    os.environ.get('MAAS_REGIOND_WORKER_COUNT', os.cpu_count()))
 
 
 def set_max_workers_count(worker_count):
@@ -113,6 +114,7 @@ class WorkersService(service.Service, object):
         worker = WorkerProcess(self)
         env = os.environ.copy()
         env['MAAS_REGIOND_PROCESS_MODE'] = 'worker'
+        env['MAAS_REGIOND_WORKER_COUNT'] = str(MAX_WORKERS_COUNT)
         self.reactor.spawnProcess(
             worker, self.worker_cmd, [self.worker_cmd],
             env=env, childFDs={0: 0, 1: 1, 2: 2})

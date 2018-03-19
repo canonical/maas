@@ -26,6 +26,7 @@ import threading
 from maasserver import (
     eventloop,
     locks,
+    workers,
 )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import SERVICE_STATUS
@@ -124,12 +125,6 @@ from zope.interface import implementer
 
 
 log = LegacyLogger()
-
-
-# Number of regiond processes that should be running for a regiond.
-# XXX blake_r 2016-03-10 bug=1555901: It would be better to determine this
-# value from systemd or other means instead of hard coding the number.
-NUMBER_OF_REGIOND_PROCESSES = 4
 
 
 class Region(RPCProtocol):
@@ -1526,7 +1521,7 @@ class RegionAdvertising:
         Service.objects.create_services_for(region_obj)
         number_of_processes = RegionControllerProcess.objects.filter(
             region=region_obj).count()
-        not_running_count = NUMBER_OF_REGIOND_PROCESSES - number_of_processes
+        not_running_count = workers.MAX_WORKERS_COUNT - number_of_processes
         if not_running_count > 0:
             if number_of_processes == 1:
                 process_text = "process"
@@ -1536,7 +1531,7 @@ class RegionAdvertising:
                 region_obj, "regiond", SERVICE_STATUS.DEGRADED,
                 "%d %s running but %d were expected." % (
                     number_of_processes, process_text,
-                    NUMBER_OF_REGIOND_PROCESSES))
+                    workers.MAX_WORKERS_COUNT))
         else:
             Service.objects.update_service_for(
                 region_obj, "regiond", SERVICE_STATUS.RUNNING, "")

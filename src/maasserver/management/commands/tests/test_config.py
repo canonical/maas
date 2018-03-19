@@ -118,6 +118,10 @@ class TestConfigurationSet(MAASTestCase):
             value = factory.pick_port()
         elif self.option == "database_conn_max_age":
             value = random.randint(0, 60)
+        elif self.option == "num_workers":
+            value = random.randint(1, 16)
+        elif self.option in ["debug", "debug_queries"]:
+            value = random.choice(['true', 'false'])
         else:
             value = factory.make_name("foobar")
 

@@ -7,7 +7,10 @@ __all__ = [
     "RegionConfiguration",
 ]
 
-from formencode.validators import Int
+from formencode.validators import (
+    Int,
+    StringBool,
+)
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,
@@ -55,3 +58,19 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "database_conn_max_age",
         "The lifetime of a database connection, in seconds.",
         Int(if_missing=(5 * 60), accept_python=False, min=0))
+
+    # Worker options.
+    num_workers = ConfigurationOption(
+        "num_workers", "The number of regiond worker process to run.",
+        Int(if_missing=4, accept_python=False, min=1))
+
+    # Debug options.
+    debug = ConfigurationOption(
+        "debug", "Enable debug mode for detailed error and log reporting.",
+        StringBool(if_missing=False))
+    debug_queries = ConfigurationOption(
+        "debug_queries",
+        "Enable query debugging. Reports number of queries and time for all "
+        "actions performed. Requires debug to also be True. mode for detailed "
+        "error and log reporting.",
+        StringBool(if_missing=False))

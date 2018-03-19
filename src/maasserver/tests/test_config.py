@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 import formencode.api
 from maasserver.config import RegionConfiguration
 from maastesting.factory import factory
@@ -95,3 +97,47 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
         self.assertEqual({self.option: example_value}, config.store)
+
+
+class TestRegionConfigurationWorkerOptions(MAASTestCase):
+    """Tests for the worker options in `RegionConfiguration`."""
+
+    def test__default(self):
+        config = RegionConfiguration({})
+        self.assertEqual(4, config.num_workers)
+
+    def test__set_and_get(self):
+        config = RegionConfiguration({})
+        workers = random.randint(8, 12)
+        config.num_workers = workers
+        self.assertEqual(workers, config.num_workers)
+        # It's also stored in the configuration database.
+        self.assertEqual({'num_workers': workers}, config.store)
+
+
+class TestRegionConfigurationDebugOptions(MAASTestCase):
+    """Tests for the debug options in `RegionConfiguration`."""
+
+    options_and_defaults = {
+        "debug": False,
+        "debug_queries": False,
+    }
+
+    scenarios = tuple(
+        (name, {"option": name, "default": default})
+        for name, default in options_and_defaults.items()
+    )
+
+    def test__default(self):
+        config = RegionConfiguration({})
+        self.assertEqual(self.default, getattr(config, self.option))
+
+    def test__set_and_get(self):
+        config = RegionConfiguration({})
+        example_value = random.choice(['true', 'yes', 'True'])
+        # Argument values will most often be passed in from the command-line,
+        # so convert to a string before use to reflect that usage.
+        setattr(config, self.option, example_value)
+        self.assertTrue(getattr(config, self.option))
+        # It's also stored in the configuration database.
+        self.assertEqual({self.option: True}, config.store)

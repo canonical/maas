@@ -72,13 +72,11 @@ def run():
     # Calculate the number of workers.
     worker_count = args.workers
     if not worker_count:
-        worker_count = os.cpu_count() or 4
-        if worker_count < 4:
-            worker_count = 4
-        # At the moment is is capped at 4 to keep it the same as 2.3. Once
-        # the work is done to move the postgres listener and the RPC this
-        # should be bumped to 8 workers.
-        if worker_count > 4:
+        from maasserver.config import RegionConfiguration
+        try:
+            with RegionConfiguration.open() as config:
+                worker_count = config.num_workers
+        except:
             worker_count = 4
     if worker_count <= 0:
         raise ValueError('Number of workers must be greater than zero.')
