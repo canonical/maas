@@ -272,20 +272,29 @@ class TestImportBootImages(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
-    def test__does_not_run_if_lock_taken(self):
+    def test__add_to_waiting_if_lock_already_held(self):
         yield concurrency.boot_images.acquire()
-        self.addCleanup(concurrency.boot_images.release)
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
-        yield import_boot_images(sentinel.sources)
+        d = import_boot_images(sentinel.sources)
+        self.assertEqual(1, len(concurrency.boot_images.waiting))
+        concurrency.boot_images.release()
+        yield d
         self.assertThat(
-            deferToThread, MockNotCalled())
+            deferToThread, MockCalledOnceWith(
+                _run_import, sentinel.sources,
+                http_proxy=None, https_proxy=None))
 
     @defer.inlineCallbacks
-    def test__calls__run_import_using_deferToThread(self):
+    def test__never_more_than_one_waiting(self):
+        yield concurrency.boot_images.acquire()
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
-        yield import_boot_images(sentinel.sources)
+        d = import_boot_images(sentinel.sources)
+        self.assertIsNone(import_boot_images(sentinel.sources))
+        self.assertEqual(1, len(concurrency.boot_images.waiting))
+        concurrency.boot_images.release()
+        yield d
         self.assertThat(
             deferToThread, MockCalledOnceWith(
                 _run_import, sentinel.sources,

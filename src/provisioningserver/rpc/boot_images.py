@@ -129,7 +129,13 @@ def _run_import(sources, http_proxy=None, https_proxy=None):
 def import_boot_images(sources, http_proxy=None, https_proxy=None):
     """Imports the boot images from the given sources."""
     lock = concurrency.boot_images
-    if not lock.locked:
+    # This checks if any other defer is already waiting. If nothing is waiting
+    # then add the _import again. If its already waiting nothing is added.
+    #
+    # This is important to how this functions. If the rackd is already
+    # importing images and the regiond triggers another import then after the
+    # original import another will be fired.
+    if not lock.waiting:
         return lock.run(
             _import_boot_images, sources, http_proxy=http_proxy,
             https_proxy=https_proxy)
