@@ -680,13 +680,6 @@
                             <span data-ng-if="services.dhcpd6.status_info"> &mdash; {$ services.dhcpd6.status_info $}</span>
                         </span>
                     </li>
-                    <li class="p-list-tree__item">
-                        <span>
-                            <span class="p-icon--{$ getServiceClass(services.tgt) $}"></span>
-                            &nbsp;tgt
-                            <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>
-                        </span>
-                    </li>
                     <li class="p-list-tree__item" data-ng-if="services.ntp_rack">
                         <span>
                             <span class="p-icon--{$ getServiceClass(services.ntp_rack) $}"></span>
