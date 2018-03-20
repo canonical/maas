@@ -58,10 +58,16 @@ def is_valid_auth_url(auth_url):
     return True
 
 
-def config_auth(config_manager, auth_url, auth_user, auth_key):
-        config_manager.set_config('external_auth_url', auth_url)
-        config_manager.set_config('external_auth_user', auth_user)
-        config_manager.set_config('external_auth_key', auth_key)
+def get_auth_config(config_manager):
+    config_keys = [
+        'external_auth_url', 'external_auth_user', 'external_auth_key']
+    return {key: config_manager.get_config(key) for key in config_keys}
+
+
+def set_auth_config(config_manager, auth_url, auth_user, auth_key):
+    config_manager.set_config('external_auth_url', auth_url)
+    config_manager.set_config('external_auth_user', auth_user)
+    config_manager.set_config('external_auth_key', auth_key)
 
 
 class Command(BaseCommand):
@@ -82,16 +88,23 @@ class Command(BaseCommand):
         parser.add_argument(
             '--idm-agent-file', type=argparse.FileType('r'),
             help="Agent file containing IDM authentication information")
+        parser.add_argument(
+            '--json', action='store_true', default=False,
+            help="Return the current authentication configuration as JSON")
 
     def handle(self, *args, **options):
         config_manager = Config.objects.db_manager(DEFAULT_DB_ALIAS)
+
+        if options.get('json'):
+            print(json.dumps(get_auth_config(config_manager)))
+            return
 
         auth_url, auth_user, auth_key = None, '', ''
 
         agent_file = options.get('idm_agent_file')
         if agent_file:
             auth_url, auth_user, auth_key = read_agent_file(agent_file)
-            config_auth(config_manager, auth_url, auth_user, auth_key)
+            set_auth_config(config_manager, auth_url, auth_user, auth_key)
             return
 
         auth_url = options.get('idm_url')
@@ -111,4 +124,4 @@ class Command(BaseCommand):
             if not auth_key:
                 auth_key = read_input("Private key for IDM API access: ")
 
-        config_auth(config_manager, auth_url, auth_user, auth_key)
+        set_auth_config(config_manager, auth_url, auth_user, auth_key)

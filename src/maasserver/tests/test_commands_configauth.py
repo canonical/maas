@@ -145,6 +145,35 @@ class TestChangeAuthCommand(MAASServerTestCase):
             'private-key', Config.objects.get_config('external_auth_key'))
         self.read_input.assert_not_called()
 
+    def test_configauth_json_empty(self):
+        mock_print = self.patch(configauth, 'print')
+        call_command('configauth', json=True)
+        self.read_input.assert_not_called()
+        [print_call] = mock_print.mock_calls
+        _, [output], kwargs = print_call
+        self.assertEqual({}, kwargs)
+        self.assertEqual(
+            {'external_auth_url': '', 'external_auth_user': '',
+             'external_auth_key': ''},
+            json.loads(output))
+
+    def test_configauth_json_full(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://idm.example.com/')
+        Config.objects.set_config('external_auth_user', 'maas')
+        Config.objects.set_config('external_auth_key', 'secret maas key')
+        mock_print = self.patch(configauth, 'print')
+        call_command('configauth', json=True)
+        self.read_input.assert_not_called()
+        [print_call] = mock_print.mock_calls
+        _, [output], kwargs = print_call
+        self.assertEqual({}, kwargs)
+        self.assertEqual(
+            {'external_auth_url': 'http://idm.example.com/',
+             'external_auth_user': 'maas',
+             'external_auth_key': 'secret maas key'},
+            json.loads(output))
+
 
 class TestIsValidAuthSource(unittest.TestCase):
 

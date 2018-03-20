@@ -145,7 +145,7 @@ class ScriptResult(CleanSave, TimestampedModel):
         # Get an estimated runtime from previous runs.
         for script_result in self.history.only(
                 'status', 'started', 'ended', 'script_id', 'script_name',
-                'script_set_id', 'physical_blockdevice_id'):
+                'script_set_id', 'physical_blockdevice_id', 'created'):
             # Only look at passed results when calculating an estimated
             # runtime. Failed results may take longer or shorter than
             # average. Don't use self.history.filter for this as the now

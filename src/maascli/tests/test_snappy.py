@@ -9,11 +9,16 @@ import os
 import random
 import signal
 import subprocess
+import tempfile
 from textwrap import dedent
 import time
-from unittest.mock import MagicMock
+from unittest.mock import (
+    MagicMock,
+    patch,
+)
 
 from maascli import snappy
+from maascli.parser import ArgumentParser
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -136,6 +141,96 @@ class TestHelpers(MAASTestCase):
         snappy.set_current_mode('all')
         snappy.set_current_mode('none')
         self.assertEqual('none', snappy.get_current_mode())
+
+
+class TestConfigureAuthentication(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.maas_bin_path = 'snap-path/bin/maas-region'
+        self.mock_subprocess = self.patch(snappy, 'subprocess')
+        self.mock_environ = patch.dict(
+            snappy.os.environ, {'SNAP': 'snap-path'}, clear=True)
+        self.mock_environ.start()
+        self.parser = ArgumentParser()
+        snappy.cmd_init(self.parser)
+
+    def tearDown(self):
+        self.mock_subprocess.stop()
+        self.mock_environ.stop()
+        super().tearDown()
+
+    def test_no_options(self):
+        options = self.parser.parse_args([])
+        snappy.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(([self.maas_bin_path, 'configauth'],), args)
+        self.assertEqual({}, kwargs)
+
+    def test_idm_url(self):
+        config_auth_args = ['--idm-url', 'http://idm.example.com/']
+        options = self.parser.parse_args(config_auth_args)
+        snappy.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
+        self.assertEqual({}, kwargs)
+
+    def test_idm_user(self):
+        config_auth_args = ['--idm-user', 'some-user']
+        options = self.parser.parse_args(config_auth_args)
+        snappy.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
+        self.assertEqual({}, kwargs)
+
+    def test_idm_key(self):
+        config_auth_args = ['--idm-key', 'some-key']
+        options = self.parser.parse_args(config_auth_args)
+        snappy.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
+        self.assertEqual({}, kwargs)
+
+    def test_idm_agent_file(self):
+        _, agent_file_path = tempfile.mkstemp()
+        self.addCleanup(os.remove, agent_file_path)
+        config_auth_args = ['--idm-agent-file', agent_file_path]
+        options = self.parser.parse_args(config_auth_args)
+        snappy.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
+        self.assertEqual({}, kwargs)
+
+    def test_full(self):
+        _, agent_file = tempfile.mkstemp()
+        self.addCleanup(os.remove, agent_file)
+        config_auth_args = [
+            '--idm-url', 'http://idm.example.com/',
+            '--idm-user', 'idm-user',
+            '--idm-key', 'idm-key',
+            '--idm-agent-file', agent_file]
+        options = self.parser.parse_args(config_auth_args)
+        snappy.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
+        self.assertEqual({}, kwargs)
 
 
 class TestRenderSupervisord(MAASTestCase):

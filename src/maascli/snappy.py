@@ -15,6 +15,7 @@ import argparse
 from collections import OrderedDict
 from contextlib import contextmanager
 import grp
+import json
 import os
 import pwd
 import random
@@ -631,6 +632,25 @@ class cmd_init(SnappyCommand):
             help=(
                 "Skip the admin creation when initializing in 'all' mode."))
         parser.add_argument(
+            '--enable-idm', default=False, action="store_true",
+            help=("Enable configuring the use of an external IDM server. "
+                  "This feature is currently experimental. "
+                  "If this isn't enabled, all --idm-* arguments "
+                  "will be ignored."))
+        parser.add_argument(
+            '--idm-url', default=None, metavar='IDM_URL',
+            help=("The URL to the external IDM server to use for "
+                  "authentication."))
+        parser.add_argument(
+            '--idm-user', default=None,
+            help="The username to access the IDM server API.")
+        parser.add_argument(
+            '--idm-key', default=None,
+            help="The private key to access the IDM server API.")
+        parser.add_argument(
+            '--idm-agent-file', type=argparse.FileType('r'),
+            help="Agent file containing IDM authentication information")
+        parser.add_argument(
             '--admin-username', default=None, metavar='USERNAME',
             help="Username for the admin account.")
         parser.add_argument(
@@ -773,7 +793,13 @@ class cmd_init(SnappyCommand):
                 "Performing database migrations",
                 migrate_db, capture=sys.stdout.isatty())
             clear_line()
-            if not options.skip_admin:
+            if options.enable_idm:
+                print_msg('Configuring authentication')
+                configure_authentication(options)
+            auth_config = self._get_current_auth_config()
+            skip_create_admin = (
+                options.skip_admin or auth_config['external_auth_url'])
+            if not skip_create_admin:
                 self._create_admin_account(options)
         elif mode in ['region', 'region+rack']:
             # When in 'region' or 'region+rack' the migrations for the database
@@ -804,6 +830,28 @@ class cmd_init(SnappyCommand):
         if options.admin_ssh_import:
             cmd.extend(['--ssh-import', options.admin_ssh_import])
         subprocess.call(cmd)
+
+    def _get_current_auth_config(self):
+        cmd = [
+            os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
+            'configauth', '--json']
+        output = subprocess.check_output(cmd)
+        return json.loads(output)
+
+
+def configure_authentication(options):
+    cmd = [
+        os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
+        'configauth']
+    if options.idm_url is not None:
+        cmd.extend(['--idm-url', options.idm_url])
+    if options.idm_user is not None:
+        cmd.extend(['--idm-user', options.idm_user])
+    if options.idm_key is not None:
+        cmd.extend(['--idm-key', options.idm_key])
+    if options.idm_agent_file is not None:
+        cmd.extend(['--idm-agent-file', options.idm_agent_file.name])
+    subprocess.call(cmd)
 
 
 class cmd_config(SnappyCommand):
