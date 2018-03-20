@@ -211,4 +211,10 @@
       vertical-align: top;
     }
   }
+
+  // The contextual menu action dropdown list should not be smaller than the
+  // button
+  .p-contextual-menu__dropdown {
+    width: 100%;
+  }
 }
