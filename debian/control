@@ -201,6 +201,7 @@ Depends: authbind,
          freeipmi-tools,
          grub-common,
          iputils-ping,
+         libvirt-clients,
          maas-cli (=${binary:Version}),
          maas-common (=${binary:Version}),
          maas-dhcp (=${binary:Version}),
@@ -218,7 +219,6 @@ Depends: authbind,
          wget,
          ${misc:Depends},
          ${python3:Depends}
-Recommends: libvirt-clients
 Suggests: amtterm, ipmitool, nmap, wsmancli (>= 2.6.0-0ubuntu1)
 Conflicts: tftpd-hpa, ntp
 Breaks: python-maas-provisioningserver,
