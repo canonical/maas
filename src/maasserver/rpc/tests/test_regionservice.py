@@ -635,9 +635,22 @@ class TestRackClient(MAASTestCase):
         conn = DummyConnection()
         client = RackClient(conn, {})
         call_cache = client._getCallCache()
-        call_cache[cluster.DescribePowerTypes] = sentinel.power_types
+        power_types = {
+            "power_types": [
+                {
+                    'name': 'ipmi',
+                },
+                {
+                    'name': 'wedge',
+                },
+            ]
+        }
+        call_cache[cluster.DescribePowerTypes] = power_types
         result = yield client(cluster.DescribePowerTypes)
-        self.assertIs(sentinel.power_types, result)
+        # The result is a copy. It should equal the result but not be
+        # the same object.
+        self.assertEquals(power_types, result)
+        self.assertIsNot(power_types, result)
 
     @wait_for_reactor
     @inlineCallbacks

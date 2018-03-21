@@ -133,7 +133,7 @@ describe("maasPowerParameters", function() {
             var directive = compileDirective("field", "value");
             var select = directive.find("select");
             expect(select.attr("name")).toBe("test");
-            expect($scope.value).toBe(choice2);
+            expect($scope.value).toBe("name2");
         });
 
         it("creates input with ng-disabled", function() {

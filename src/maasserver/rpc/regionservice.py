@@ -9,6 +9,7 @@ __all__ = [
 ]
 
 from collections import defaultdict
+import copy
 from datetime import (
     datetime,
     timedelta,
@@ -769,7 +770,7 @@ class RackClient(common.Client):
         if cmd in call_cache:
             # Call has already been made over this connection, just return
             # the original result.
-            return succeed(call_cache[cmd])
+            return succeed(copy.deepcopy(call_cache[cmd]))
         else:
             # First time this call has been made so cache the result so
             # so the next call over this connection will just be returned

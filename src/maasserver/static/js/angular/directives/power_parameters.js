@@ -93,13 +93,8 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
 
                     // Set the default choice on the model.
                     if(angular.isUndefined(scope.ngModel)) {
-                        var i;
-                        for(i = 0; i < scope.field.choices.length; i++) {
-                            var choice = scope.field.choices[i];
-                            if(scope.field["default"] === choice[0]) {
-                                scope.ngModel = choice;
-                                break;
-                            }
+                        if(scope.field["default"]) {
+                            scope.ngModel = scope.field["default"];
                         }
                     }
                 } else {
