@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 * GNU Affero General Public License version 3 (see the file LICENSE).
 *
 * Machines listing directive.
@@ -193,17 +193,6 @@ angular.module('MAAS').directive('maasMachinesTable', [
         scope.$watchCollection("table.filteredMachines", function() {
           scope.updateAllChecked();
           scope.onListingChange({$machines: scope.table.filteredMachines});
-        });
-
-        // Load the required managers and start polling for osinfo.
-        ManagerHelperService.loadManagers(
-          scope, [MachinesManager, GeneralManager]).then(function() {
-            GeneralManager.startPolling(scope, "osinfo");
-          });
-
-        // Stop polling when the scope is destroyed.
-        scope.$on("$destroy", function() {
-          GeneralManager.stopPolling(scope, "osinfo");
         });
       }
     };

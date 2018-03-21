@@ -715,6 +715,13 @@ angular.module('MAAS').controller('NodesListController', [
             return false;
         };
 
+        // Reload osinfo when the page reloads
+        $scope.$on("$routeChangeSuccess", function () {
+            GeneralManager.loadItems(["osinfo"]).then(function() {
+                $scope.osinfo = GeneralManager.getData("osinfo");
+            });
+        });
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
@@ -725,13 +732,10 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.loading = false;
             });
 
-        // Start polling for the os information.
-        GeneralManager.startPolling($scope, "osinfo");
 
         // Stop polling and save the current filter when the scope is destroyed.
         $scope.$on("$destroy", function() {
             $interval.cancel($scope.statusPoll);
-            GeneralManager.stopPolling($scope, "osinfo");
             SearchService.storeFilters("nodes", $scope.tabs.nodes.filters);
             SearchService.storeFilters("devices", $scope.tabs.devices.filters);
             SearchService.storeFilters(

@@ -194,21 +194,6 @@ describe("NodesListController", function() {
         expect($scope.loading).toBe(true);
     });
 
-    it("calls startPolling when scope created", function() {
-        spyOn(GeneralManager, "startPolling");
-        var controller = makeController();
-        expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-            $scope, "osinfo");
-    });
-
-    it("calls stopPolling when scope destroyed", function() {
-        var controller = makeController();
-        spyOn(GeneralManager, "stopPolling");
-        $scope.$destroy();
-        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            $scope, "osinfo");
-    });
-
     it("saves current filters for nodes and devices when scope destroyed",
         function() {
             var controller = makeController();
@@ -299,6 +284,14 @@ describe("NodesListController", function() {
             var controller = makeController();
             expect($scope.tabs.nodes.filters._).toEqual([query]);
         });
+
+    it("reloads osinfo on route change", function() {
+        var controller = makeController();
+        spyOn(GeneralManager, "loadItems").and.returnValue(
+            $q.defer().promise);
+        $scope.$emit("$routeChangeSuccess");
+        expect(GeneralManager.loadItems).toHaveBeenCalledWith(["osinfo"]);
+    });
 
     describe("toggleTab", function() {
 

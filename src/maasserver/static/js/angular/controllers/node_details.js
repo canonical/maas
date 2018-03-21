@@ -1058,6 +1058,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         }
 
+        // Reload osinfo when the page reloads
+        $scope.$on("$routeChangeSuccess", function () {
+            GeneralManager.loadItems(["osinfo"]).then(function() {
+                $scope.osinfo = GeneralManager.getData("osinfo");
+            });
+        });
+
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
             MachinesManager,
@@ -1110,21 +1117,5 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if($scope.isDevice) {
                 $scope.ip_assignment = activeNode.ip_assignment;
             }
-
-            // Poll for architectures, hwe_kernels, and osinfo the whole
-            // time. This is because the user can always see the architecture
-            // and operating system. Need to keep this information up-to-date
-            // so the user is viewing current data.
-            GeneralManager.startPolling($scope, "architectures");
-            GeneralManager.startPolling($scope, "hwe_kernels");
-            GeneralManager.startPolling($scope, "osinfo");
-        });
-
-        // Stop polling for architectures, hwe_kernels, and osinfo when the
-        // scope is destroyed.
-        $scope.$on("$destroy", function() {
-            GeneralManager.stopPolling($scope, "architectures");
-            GeneralManager.stopPolling($scope, "hwe_kernels");
-            GeneralManager.stopPolling($scope, "osinfo");
         });
     }]);

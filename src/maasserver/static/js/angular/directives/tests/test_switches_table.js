@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for switches table directive.
@@ -78,31 +78,6 @@ describe("maasSwitchesTable", function() {
           osinfo: GeneralManager.getData("osinfo")
         });
         expect(scope.table.switches).toBe(SwitchesManager.getItems());
-    });
-
-    it("polls for osinfo once loaded", function() {
-        spyOn(GeneralManager, "startPolling");
-        var managerDefer = $q.defer();
-        spyOn(ManagerHelperService, "loadManager").and.returnValue(
-            managerDefer.promise);
-
-        var directive = compileDirective();
-        var scope = directive.isolateScope();
-
-        managerDefer.resolve();
-        $scope.$digest();
-        expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-            scope, "osinfo");
-    });
-
-    it("stops polling on scope destroy", function() {
-        spyOn(GeneralManager, "stopPolling");
-        var directive = compileDirective();
-        var scope = directive.isolateScope();
-
-        $scope.$destroy();
-        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            scope, "osinfo");
     });
 
     describe("updateAllChecked", function() {

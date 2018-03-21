@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for GeneralManager.
@@ -608,6 +608,13 @@ describe("GeneralManager", function() {
                 $q.defer().promise);
             GeneralManager.loadItems();
             expect(GeneralManager._loadData.calls.count()).toBe(17);
+        });
+
+        it("calls _loadData for specified data only", function() {
+            spyOn(GeneralManager, "_loadData").and.returnValue(
+                $q.defer().promise);
+            GeneralManager.loadItems(["osinfo"]);
+            expect(GeneralManager._loadData.calls.count()).toBe(1);
         });
 
         it("resolve defer once all resolve", function(done) {

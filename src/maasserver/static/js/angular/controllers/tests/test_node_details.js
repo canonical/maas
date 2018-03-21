@@ -490,30 +490,6 @@ describe("NodeDetailsController", function() {
         ]);
     });
 
-    it("calls startPolling once managers loaded", function() {
-        spyOn(MachinesManager, "setActiveItem").and.returnValue(
-            $q.defer().promise);
-        spyOn(GeneralManager, "startPolling");
-        var defer = $q.defer();
-        var controller = makeController(defer);
-
-        defer.resolve();
-        $rootScope.$digest();
-
-        expect(GeneralManager.startPolling.calls.allArgs()).toEqual([
-          [$scope, "architectures"], [$scope, "hwe_kernels"],
-          [$scope, "osinfo"]]);
-    });
-
-    it("calls stopPolling when the $scope is destroyed", function() {
-        spyOn(GeneralManager, "stopPolling");
-        var controller = makeController();
-        $scope.$destroy();
-        expect(GeneralManager.stopPolling.calls.allArgs()).toEqual([
-          [$scope, "architectures"], [$scope, "hwe_kernels"],
-          [$scope, "osinfo"]]);
-    });
-
     it("updates $scope.devices", function() {
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
@@ -593,6 +569,14 @@ describe("NodeDetailsController", function() {
                 ip_address: "192.168.122.3"
             }
         ]);
+    });
+
+    it("reloads osinfo on route change", function() {
+        var controller = makeController();
+        spyOn(GeneralManager, "loadItems").and.returnValue(
+            $q.defer().promise);
+        $scope.$emit("$routeChangeSuccess");
+        expect(GeneralManager.loadItems).toHaveBeenCalledWith(["osinfo"]);
     });
 
     describe("tagsAutocomplete", function() {

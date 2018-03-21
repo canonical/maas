@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for AddHardwareController.
@@ -196,38 +196,18 @@ describe("AddHardwareController", function() {
         expect($scope.machine.min_hwe_kernel).toEqual("hwe-t");
     });
 
-    it("calls stopPolling when scope destroyed", function() {
-        var controller = makeController();
-        spyOn(GeneralManager, "stopPolling");
-        $scope.$destroy();
-        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            $scope, "architectures");
-        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            $scope, "hwe_kernels");
-    });
-
     describe("show", function() {
 
         it("sets viewable to true", function() {
-            var controller = makeController();
+            var defer = $q.defer();
+            var controller = makeController(null, defer);
+            spyOn(GeneralManager, "loadItems").and.returnValue(
+                defer.promise);
             $scope.show();
+
+            defer.resolve();
+            $rootScope.$digest();
             expect($scope.viewable).toBe(true);
-        });
-
-        it("calls startPolling for architectures", function() {
-            var controller = makeController();
-            spyOn(GeneralManager, "startPolling");
-            $scope.show();
-            expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-                $scope, "architectures");
-        });
-
-        it("calls startPolling for hwe_kernels", function() {
-            var controller = makeController();
-            spyOn(GeneralManager, "startPolling");
-            $scope.show();
-            expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-                $scope, "hwe_kernels");
         });
     });
 
@@ -238,22 +218,6 @@ describe("AddHardwareController", function() {
             $scope.viewable = true;
             $scope.hide();
             expect($scope.viewable).toBe(false);
-        });
-
-        it("calls stopPolling for architectures", function() {
-            var controller = makeController();
-            spyOn(GeneralManager, "stopPolling");
-            $scope.hide();
-            expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-                $scope, "architectures");
-        });
-
-        it("calls stopPolling for hwe_kernels", function() {
-            var controller = makeController();
-            spyOn(GeneralManager, "stopPolling");
-            $scope.hide();
-            expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-                $scope, "hwe_kernels");
         });
 
         it("emits addHardwareHidden event", function(done) {

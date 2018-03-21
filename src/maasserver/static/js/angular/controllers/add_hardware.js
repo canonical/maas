@@ -388,6 +388,11 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Called by the parent scope when this controller is viewable.
         $scope.show = function(mode) {
+            // Exit early if already viewable.
+            if($scope.viewable) {
+                return;
+            }
+
             // Change the mode.
             if($scope.mode !== mode) {
                 if($scope.mode === "machine") {
@@ -399,28 +404,21 @@ angular.module('MAAS').controller('AddHardwareController', [
                 $scope.mode = mode;
             }
 
-            // Exit early if alreayd viewable.
-            if($scope.viewable) {
-                return;
-            }
-            $scope.viewable = true;
-
-            // Start the polling of architectures.
-            GeneralManager.startPolling($scope, "architectures");
-
-            // Start the polling of hwe_kernels.
-            GeneralManager.startPolling($scope, "hwe_kernels");
+            GeneralManager.loadItems([
+                "architectures", "hwe_kernels", "default_min_hwe_kernel"
+                ]).then(function() {
+                    $scope.architectures = GeneralManager.getData(
+                        "architectures");
+                    $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
+                    $scope.default_min_hwe_kernel = GeneralManager.getData(
+                        "default_min_hwe_kernel");
+                    $scope.viewable = true;
+                });
         };
 
         // Called by the parent scope when this controller is hidden.
         $scope.hide = function() {
             $scope.viewable = false;
-
-            // Stop the polling of architectures.
-            GeneralManager.stopPolling($scope, "architectures");
-
-            // Stop the polling of hwe_kernels.
-            GeneralManager.stopPolling($scope, "hwe_kernels");
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');
@@ -625,11 +623,5 @@ angular.module('MAAS').controller('AddHardwareController', [
                     $scope.machine.architecture = defaultArchitecture();
                 }
             }
-        });
-
-        // Stop polling when the scope is destroyed.
-        $scope.$on("$destroy", function() {
-            GeneralManager.stopPolling($scope, "architectures");
-            GeneralManager.stopPolling($scope, "hwe_kernels");
         });
     }]);

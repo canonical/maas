@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 * GNU Affero General Public License version 3 (see the file LICENSE).
 *
 * Switches listing directive.
@@ -151,17 +151,6 @@ angular.module('MAAS').directive('maasSwitchesTable', [
         scope.$watchCollection("table.filteredSwitches", function() {
           scope.updateAllChecked();
           scope.onListingChange({$switches: scope.table.filteredSwitches});
-        });
-
-        // Load the required managers and start polling for osinfo.
-        ManagerHelperService.loadManagers(
-          scope, [SwitchesManager, GeneralManager]).then(function() {
-            GeneralManager.startPolling(scope, "osinfo");
-          });
-
-        // Stop polling when the scope is destroyed.
-        scope.$on("$destroy", function() {
-          GeneralManager.stopPolling(scope, "osinfo");
         });
       }
     };

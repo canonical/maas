@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS General Manager
@@ -367,11 +367,17 @@ angular.module('MAAS').factory(
         };
 
         // Loads all the items. This implemented so the ManagerHelperService
-        // can work on this manager just like all the rest.
-        GeneralManager.prototype.loadItems = function() {
+        // can work on this manager just like all the rest. Optionally pass a
+        // list of specific items to load. Useful when reloading data.
+        GeneralManager.prototype.loadItems = function(items) {
             var self = this;
             var defer = $q.defer();
-            var waitingCount = Object.keys(this._data).length;
+            var waitingCount;
+            if(angular.isArray(items)) {
+                waitingCount = items.length;
+            }else{
+                waitingCount = Object.keys(this._data).length;
+            }
             var done = function() {
                 waitingCount -= 1;
                 if(waitingCount === 0) {
@@ -379,7 +385,10 @@ angular.module('MAAS').factory(
                 }
             };
 
-            angular.forEach(this._data, function(data) {
+            angular.forEach(this._data, function(data, name) {
+                if(angular.isArray(items) && items.indexOf(name) === -1) {
+                    return;
+                }
                 self._loadData(data, true).then(function() {
                     done();
                 });

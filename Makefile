@@ -702,7 +702,7 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 	tail -n +2 debian/changelog >> $(tmp_changelog)
 	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
 
-package: -packaging-clean -package-tree
+package: javascript -packaging-clean -package-tree
 	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
 	@echo Binary packages built, see $(packaging-build-area).
 

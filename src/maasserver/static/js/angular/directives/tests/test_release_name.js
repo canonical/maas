@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for release name directive.
@@ -65,28 +65,5 @@ describe("maasReleaseName", function() {
         $scope.release = os + '/' + release;
         $scope.$digest();
         expect(directive.text()).toBe(title);
-    });
-
-    it("loads GeneralManager and starts polling", function() {
-        var defer = $q.defer();
-        spyOn(ManagerHelperService, 'loadManager').and.returnValue(
-            defer.promise);
-        spyOn(GeneralManager, 'startPolling');
-        var directive = compileDirective();
-
-        expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            directive.isolateScope(), GeneralManager);
-        defer.resolve();
-        $scope.$digest();
-        expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-            directive.isolateScope(), 'osinfo');
-    });
-
-    it("stops polling when scope is destroyed", function() {
-        spyOn(GeneralManager, 'stopPolling');
-        var directive = compileDirective();
-        $scope.$destroy();
-        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            directive.isolateScope(), 'osinfo');
     });
 });
