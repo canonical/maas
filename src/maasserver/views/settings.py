@@ -339,4 +339,5 @@ def settings(request):
             'ubuntu_form': ubuntu_form,
             'windows_form': windows_form,
             'kernelopts_form': kernelopts_form,
+            'external_auth_enabled': bool(request.external_auth_info),
         })

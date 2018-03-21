@@ -90,6 +90,23 @@ class SettingsTest(MAASServerTestCase):
                 self.assertNotIn(
                     reverse('accounts-del', args=[user.username]), links)
 
+    def test_settings_external_auth_include_users_message(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+        self.client_log_in(as_admin=True)
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        [notification] = doc.cssselect('.p-notification__response')
+        self.assertIn(
+            'MAAS is configured with external authentication',
+            notification.text)
+
+    def test_settings_no_users_message_without_external_auth(self):
+        self.client_log_in(as_admin=True)
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        self.assertEqual(doc.cssselect('.p-notification__response'), [])
+
     @skip("XXX: GavinPanella 2016-07-07 bug=1599931: Fails spuriously.")
     def test_settings_maas_POST(self):
         # Disable boot source cache signals.

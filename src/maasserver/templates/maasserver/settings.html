@@ -34,6 +34,15 @@
 {% block content %}
 <div id="settings">
     <div class="p-strip is-bordered">
+        {% if external_auth_enabled %}
+        <div class="row p-notification">
+          <p class="p-notification__response">
+            MAAS is configured with external authentication. Make sure that
+            usernames of created users match the one on your external
+            authentication source.
+          </p>
+        </div>
+        {% endif %}
         <div class="row">
             <div id="users" class="col-8">
                 <h2>Users and Keys</h2>
@@ -51,7 +60,7 @@
                         {% for user_item in user_list %}
                         <tr id="{{ user_item.username }}">
                             <td aria-label="User">
-                                <a class="user" href="{% url 'accounts-view' user_item.username %}">{{ user_item.username }}</a>
+                                <a class="user" href="{% url 'accounts-view' user_item.username %}">{{ user_item.username }}</a>
                             </td>
                             <td aria-label="Number of nodes in use">{{ user_item.node_set.count }}</td>
                             <td aria-label="Last seen">{{ user_item.last_login }}</td>
@@ -59,20 +68,20 @@
                                 {% if user_item.is_superuser %} Yes {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-icon--edit u-hide u-show--large u-float--left">
+                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-icon--edit u-hide u-show--large u-float--left">
                                     Edit
                                 </a>
-                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-button--neutral u-hide--large">
+                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-button--neutral u-hide--large">
                                     Edit
                                 </a>
                                 {% if user != user_item %}
-                                <a title="Delete user {{ user_item.username }}" class="p-icon--delete u-hide u-show--large u-float--left" href="{% url 'accounts-del' user_item.username %}">
+                                <a title="Delete user {{ user_item.username }}" class="p-icon--delete u-hide u-show--large u-float--left" href="{% url 'accounts-del' user_item.username %}">
                                     delete
                                 </a>
-                                <a title="Delete user {{ user_item.username }}" class="p-button--neutral u-hide--large u-margin--top-small" href="{% url 'accounts-del' user_item.username %}">
+                                <a title="Delete user {{ user_item.username }}" class="p-button--neutral u-hide--large u-margin--top-small" href="{% url 'accounts-del' user_item.username %}">
                                     Delete
                                 </a>
-                                <form method="POST" action="{% url 'accounts-del' user_item.username %}">
+                                <form method="POST" action="{% url 'accounts-del' user_item.username %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="username" value="{{ user_item.username }}" />
                                 </form>
@@ -82,7 +91,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                <a class="p-button--neutral u-float--right" href="{% url 'accounts-add' %}">Add user</a>
+                <a class="p-button--neutral u-float--right" href="{% url 'accounts-add' %}">Add user</a>
             </div>
         </div>
     </div>
