@@ -159,7 +159,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     pod.hints.iscsi_storage / (1024 ** 3)),
                 },
             "tags": pod.tags,
-            "zone": pod.zone.id
+            "zone": pod.zone.id,
+            "cpu_over_commit_ratio": pod.cpu_over_commit_ratio,
+            "memory_over_commit_ratio": pod.memory_over_commit_ratio
             }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
             data['total']['local_disks'] = pod.local_disks

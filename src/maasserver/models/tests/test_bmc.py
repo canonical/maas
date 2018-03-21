@@ -687,6 +687,41 @@ class TestPod(MAASServerTestCase):
         pod.save()
         self.assertRaises(ProtectedError, pool.delete)
 
+    def test_create_with_over_commit_ratios(self):
+        cpu_over_commit_ratio = random.uniform(0.1, 2.0)
+        memory_over_commit_ratio = random.uniform(0.1, 2.0)
+        pod = Pod(
+            power_type='virsh', power_parameters={},
+            cpu_over_commit_ratio=cpu_over_commit_ratio,
+            memory_over_commit_ratio=memory_over_commit_ratio)
+        pod.save()
+        self.assertEqual(cpu_over_commit_ratio, pod.cpu_over_commit_ratio)
+        self.assertEqual(
+            memory_over_commit_ratio, pod.memory_over_commit_ratio)
+
+    def test_create_with_no_over_commit_ratios(self):
+        pod = Pod(power_type='virsh', power_parameters={})
+        pod.save()
+        self.assertEqual(1, pod.cpu_over_commit_ratio)
+        self.assertEqual(1, pod.memory_over_commit_ratio)
+
+    def test__over_commit_ratio_percentages(self):
+        cpu_over_commit_ratio = random.uniform(0.1, 2.0)
+        memory_over_commit_ratio = random.uniform(0.1, 2.0)
+        pod = Pod(
+            power_type='virsh', power_parameters={},
+            cores=random.randint(8, 120),
+            memory=random.randint(8192, 8192 * 8),
+            cpu_over_commit_ratio=cpu_over_commit_ratio,
+            memory_over_commit_ratio=memory_over_commit_ratio)
+        pod.save()
+        self.assertEqual(
+            ((pod.cores * cpu_over_commit_ratio) / pod.cores) * 100,
+            pod.cpu_over_commit_ratio_percentage)
+        self.assertEqual(
+            ((pod.memory * memory_over_commit_ratio) / pod.memory) * 100,
+            pod.memory_over_commit_ratio_percentage)
+
     def test_sync_pod_properties_and_hints(self):
         discovered = self.make_discovered_pod()
         discovered.tags = [

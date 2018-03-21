@@ -18,6 +18,7 @@ from django.db.models import (
     BooleanField,
     CASCADE,
     CharField,
+    FloatField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -159,6 +160,8 @@ class BMC(CleanSave, TimestampedModel):
     #  9. The resource pool machines in the pod should belong to by default.
     #  10. The zone of the Pod.
     #  11. The tags of the Pod.
+    #  12. CPU over commit ratio multiplier ('over_commit' capabilities).
+    #  13. Memory over commit ratio multiplier ('over_commit' capabilities).
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
     architectures = ArrayField(
@@ -180,6 +183,8 @@ class BMC(CleanSave, TimestampedModel):
         Zone, verbose_name="Physical zone", default=get_default_zone,
         editable=True, db_index=True, on_delete=SET_DEFAULT)
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
+    cpu_over_commit_ratio = FloatField(default=1)
+    memory_over_commit_ratio = FloatField(default=1)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -492,6 +497,17 @@ class Pod(BMC):
             tags = self.tags.copy()
             tags.remove(tag)
             self.tags = tags
+
+    @property
+    def cpu_over_commit_ratio_percentage(self):
+        """Return the CPU over commit percentage."""
+        return ((self.cores * self.cpu_over_commit_ratio) / self.cores) * 100
+
+    @property
+    def memory_over_commit_ratio_percentage(self):
+        """Return the memory over commit percentage."""
+        return (
+            (self.memory * self.memory_over_commit_ratio) / self.memory) * 100
 
     def _find_existing_machine(self, discovered_machine, mac_machine_map):
         """Find a `Machine` in `mac_machine_map` based on the interface MAC
