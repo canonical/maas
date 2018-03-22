@@ -51,7 +51,7 @@ MERGE_VIEWS = {
     "macaroons.js": {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [
-            "js/macaroon/js-macaroon-min.js",
+            "js/macaroon/js-macaroon.js",
             "js/macaroon/bakery.js",
             "js/macaroon/web-handler.js",
         ]
