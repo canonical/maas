@@ -12,6 +12,7 @@ import re
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.db.models import (
     BigIntegerField,
@@ -183,8 +184,10 @@ class BMC(CleanSave, TimestampedModel):
         Zone, verbose_name="Physical zone", default=get_default_zone,
         editable=True, db_index=True, on_delete=SET_DEFAULT)
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
-    cpu_over_commit_ratio = FloatField(default=1)
-    memory_over_commit_ratio = FloatField(default=1)
+    cpu_over_commit_ratio = FloatField(
+        default=1, validators=[MinValueValidator(0)])
+    memory_over_commit_ratio = FloatField(
+        default=1, validators=[MinValueValidator(0)])
 
     def __str__(self):
         return "%s (%s)" % (
