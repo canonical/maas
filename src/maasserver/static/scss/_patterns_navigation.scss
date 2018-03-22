@@ -1,5 +1,8 @@
 //Local overrides to the navigation pattern
 @mixin maas-navigation {
+  $nav-threshold-small: 870px;
+  $nav-threshold-medium: 1030px;
+
   .p-dropdown.active {
     .p-navigation__toggle--open {
       display: none;
@@ -17,17 +20,26 @@
   }
 
   .p-navigation {
-    border-bottom: 0;
-    
+    border-bottom: 1px solid lighten($color-navigation-background, 20);
+
+    @media (min-width: $breakpoint-navigation-threshold) {
+      border-bottom: 0;
+    }
+
     &__banner {
       @media (max-width: $breakpoint-navigation-threshold) {
         overflow: hidden;
         position: relative;
       }
     }
-    
 
     .p-navigation__links {
+      z-index: 6;
+
+      @media (max-width: $breakpoint-navigation-threshold) {
+        border-bottom: 1px solid lighten($color-navigation-background, 20);
+      }
+
       &:last-of-type {
         border-right-color: lighten($color-navigation-background, 20);
       }
@@ -44,8 +56,20 @@
       .p-navigation__link {
         border-color: lighten($color-navigation-background, 20);
 
+        &:hover {
+          @media (min-width: $breakpoint-navigation-threshold) {
+            background-color: $color-navigation-background;
+          }
+        }
+
         &.is-selected > a {
-          border-bottom-color: $color-brand;
+          @media (min-width: $breakpoint-navigation-threshold) {
+            border-bottom-color: $color-brand;
+          }
+
+          @media (max-width: $breakpoint-navigation-threshold) {
+            border-bottom: 0;
+          }
         }
 
         &:first-child {
@@ -53,14 +77,69 @@
         }
 
         a {
-          &:hover {
-            background-color: lighten($color-navigation-background, 20);
-          }
-  
-          &.active {
-            box-shadow: inset 0 -3px $color-brand;
+          @media (min-width: $breakpoint-navigation-threshold) {
+            &:hover {
+              background-color: lighten($color-navigation-background, 20);
+            }
+
+            &.active {
+              box-shadow: inset 0 -3px $color-brand;
+            }
           }
         }
+      }
+    }
+  }
+
+  .p-dropdown {
+    height: 3rem; //TODO ?variable
+
+    &__toggle {
+      background-color: $color-x-dark;
+    }
+
+    .p-icon--chevron {
+      margin-bottom: -2px; //TODO: Use Vanilla variable / find better positioning solution
+      margin-left: 10px; //TODO: Use Vanilla variable
+    }
+
+    .active {
+      background-color: $color-x-dark;
+
+      .p-icon--chevron {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .p-navigation .p-navigation__links .p-dropdown__menu {
+    background-color: $color-x-dark;
+    margin: 0;
+    padding: 0;
+
+    .p-navigation__link {
+      border-left: 0;
+      width: 100%;
+      float: none;
+    }
+  }
+
+  .u-hide-nav-viewport {
+    &--large {
+      @media (min-width: $nav-threshold-medium + 1px) {
+        display: none !important;
+      }
+    }
+
+    &--medium {
+      @media (max-width: $nav-threshold-medium) and (min-width: $nav-threshold-small + 1px) {
+        display: none !important;
+      }
+    }
+
+    &--small {
+      @media (max-width: $nav-threshold-small) {
+        display: none !important;
       }
     }
   }

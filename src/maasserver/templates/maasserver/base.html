@@ -65,13 +65,13 @@
                     <a class="{% block nav-active-settings %}{% endblock %}" href="{% url 'settings' %}">Settings</a>
                 </li>
                 {% endif %}
-                <li class="p-navigation__link" role="menuitem">
-                    <a class="{% block nav-active-prefs %}{% endblock %}" role="menuitem" href="{% url 'prefs' %}">{{ user.username }}</a>
-                </li>
                 {% endif %}
             </ul>
             {% if user.is_authenticated %}
             <ul class="p-navigation__links--right" role="menu" id="user-options">
+                <li class="p-navigation__link" role="menuitem">
+                    <a class="{% block nav-active-prefs %}{% endblock %}" role="menuitem" href="{% url 'prefs' %}">{{ user.username }}</a>
+                </li>
                 <li class="p-navigation__link" role="menuitem">
                     <a class="{% block nav-active-logout %}{% endblock %}" href="{% url 'logout' %}">Logout</a>
                 </li>

@@ -1,3 +1,9 @@
+/*
+TODO:
+ - Keyboard navigation
+*/
+
+
 var MAASUI = MAASUI || {};
 
 /**
@@ -19,6 +25,7 @@ MAASUI.utils = (function() {
     } else {
       document.addEventListener('DOMContentLoaded', fn);
     }
+    return true;
   };
 
   /**
@@ -109,104 +116,24 @@ MAASUI.utils = (function() {
     }
   };
 
+  /**
+   * Find an element's closest ancestor with a specific class
+   * @namespace MAASUI.utils
+   * @method findAncestor
+   * @param {Object} el - a DOM element
+   * @param {String} className - the class name of the ancestor to find
+   */
+  var findAncestor = function(el, className) {
+    while ((el = el.parentElement) && !el.classList.contains(className));
+    return el;
+  }
+
   return {
     ready: ready,
     toggleClass: toggleClass,
     removeClass: removeClass,
     hasClass: hasClass,
-    addClass: addClass
+    addClass: addClass,
+    findAncestor: findAncestor
   };
 })();
-
-/**
- * A handler for toggleable menus
- * @namespace MAASUI.dropdown
- */
-MAASUI.dropdown = (function() {
-  var wrapperClassname = "p-dropdown";
-  var toggleClassName = "p-dropdown__toggle";
-  var menuClassName = "p-dropdown__menu";
-  var menuItemClassName ="p-dropdown__item";
-  var activeClassName = "active"
-  var dropdowns;
-
-  /**
-   * Initialise the menu and toggle events
-   * @namespace MAASUI.dropdown
-   * @method init
-   */
-  var init = function() {
-    dropdowns = document.querySelectorAll('.' + wrapperClassname);
-
-    Array.prototype.forEach.call(dropdowns, function(dropdown, i) {
-      // Add click event for dropdown toggling.
-      dropdown.addEventListener("click", click);
-
-      // Add click event to all dropdown links to close menus.
-      var sublinks = dropdown.querySelectorAll('.' + menuItemClassName);
-      Array.prototype.forEach.call(sublinks, function(link, i) {
-        link.addEventListener("click", closeAllMenus);
-      });
-
-      // Add click event for whole document to close all menus when
-      // anything else is clicked.
-      document.addEventListener('click', function(event) {
-        var isClickInside = dropdown.contains(event.target);
-        if (!isClickInside) {
-          closeAllMenus();
-        }
-      });
-    });
-
-    return true;
-  }
-
-  /**
-   * A handler for a toggle menu click (intended for use on click events)
-   * @namespace MAASUI.dropdown
-   * @method click
-   * @param {Object} event - a click event
-   */
-  var click = function(event) {
-    if (MAASUI.utils.hasClass(this, activeClassName)) {
-      closeAllMenus();
-    } else {
-      openMenu(this);
-    }
-    event.stopPropagation();
-  }
-
-  /**
-   * Opens the menu for the provided dropdown element
-   * @namespace MAASUI.dropdown
-   * @method openMenu
-   * @param {Object} el - the dropdown element
-   */
-  var openMenu = function(el) {
-    closeAllMenus();
-    MAASUI.utils.addClass(el, activeClassName);
-  }
-
-  /**
-   * Closes all open menus and deactivates all toggles
-   * @namespace MAASUI.dropdown
-   * @method closeAllMenus
-   * @param {Object} event - a click event (optional)
-   */
-  var closeAllMenus = function(event) {
-    Array.prototype.forEach.call(dropdowns, function(dropdown, i) {
-      //Deactive all toggle buttons
-      MAASUI.utils.removeClass(dropdown, activeClassName);
-    });
-
-    if (typeof event != 'undefined') {
-      event.stopPropagation();
-    }
-  }
-
-  return {
-    init: init
-  };
-})();
-
-MAASUI.utils.ready(MAASUI.dropdown.init);
