@@ -34,22 +34,22 @@
 {% block content %}
 <div id="settings">
     <div class="p-strip is-bordered">
-        {% if external_auth_enabled %}
-        <div class="row p-notification">
-          <p class="p-notification__response">
-            MAAS is configured with external authentication. Make sure that
-            usernames of created users match the one on your external
-            authentication source.
-          </p>
-        </div>
-        {% endif %}
         <div class="row">
             <div id="users" class="col-8">
                 <h2>Users and Keys</h2>
+                {% if external_auth_enabled %}
+                <div class="p-notification">
+                  <p class="p-notification__response">
+                    MAAS is configured with external authentication. Make sure
+                    that usernames of created users match the one on your
+                    external authentication source.
+                  </p>
+                </div>
+                {% endif %}
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Username</th>
                             <th>Number of nodes in use</th>
                             <th>Last seen</th>
                             <th>MAAS Admin</th>
