@@ -59,8 +59,13 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
     def authenticate(self, request, identity=None):
         if not request.external_auth_info or not identity:
             return
-        user, _ = User.objects.get_or_create(
+        user, created = User.objects.get_or_create(
             username=identity.id(), defaults={'is_superuser': True})
+        if not created and not user.is_active:
+            # the user was previously marked as inactive, but is now
+            # authenticated from external source, so it should be reactivated
+            user.is_active = True
+            user.save()
         return user
 
 

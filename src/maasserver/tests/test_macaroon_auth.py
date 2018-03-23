@@ -303,6 +303,15 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         self.assertTrue(user.is_superuser)
         self.assertFalse(user.userprofile.is_local)
 
+    def test_authenticate_deactived_user_activate(self):
+        user = factory.make_User()
+        user.is_active = False
+        user.save()
+        identity = SimpleIdentity(user=user.username)
+        authenticated_user = self.backend.authenticate(
+            self.get_request(), identity=identity)
+        self.assertTrue(authenticated_user.is_active)
+
     def test_authenticate_no_identity(self):
         self.assertIsNone(
             self.backend.authenticate(self.get_request(), identity=None))
