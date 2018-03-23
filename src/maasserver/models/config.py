@@ -253,6 +253,10 @@ class ConfigManager(Manager):
         return self.get_network_discovery_config_from_value(
             self.get_config('network_discovery'))
 
+    def is_external_auth_enabled(self):
+        """Return whether external authentication is enabled."""
+        return bool(self.get_config('external_auth_url'))
+
 
 class Config(Model):
     """Configuration settings item.

@@ -13,6 +13,7 @@ __all__ = [
 
 from maasserver import worker_user
 from maasserver.models import (
+    Config,
     ResourcePool,
     Role,
 )
@@ -82,8 +83,10 @@ def create_user(sender, instance, created, **kwargs):
 
     # System users do not have profiles.
     if created and instance.username not in SYSTEM_USERS:
+        is_local = not Config.objects.is_external_auth_enabled()
         # Create related UserProfile.
-        profile = UserProfile.objects.create(user=instance)
+        profile = UserProfile.objects.create(
+            user=instance, is_local=is_local)
 
         # Create initial authorisation token.
         profile.create_authorisation_token()

@@ -413,6 +413,23 @@ class UserManagementTest(MAASServerTestCase):
         user = User.objects.get(username=params['username'])
         self.assertAttributes(user, subset_dict(params, user_attributes))
         self.assertTrue(user.check_password(password))
+        self.assertTrue(user.userprofile.is_local)
+
+    def test_add_user_with_external_auth_not_local(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+        self.client_log_in(as_admin=True)
+        params = {
+            'username': factory.make_string(),
+            'last_name': factory.make_string(30),
+            'email': factory.make_email_address(),
+            'is_superuser': factory.pick_bool(),
+        }
+        password = factory.make_string()
+        params.update(make_password_params(password))
+        self.client.post(reverse('accounts-add'), params)
+        user = User.objects.get(username=params['username'])
+        self.assertFalse(user.userprofile.is_local)
 
     def test_add_user_POST_creates_audit_event(self):
         self.client_log_in(as_admin=True)

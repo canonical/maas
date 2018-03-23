@@ -1330,8 +1330,8 @@ class NewUserCreationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.external_auth_enabled = bool(
-            Config.objects.get_config('external_auth_url'))
+        self.external_auth_enabled = (
+            Config.objects.is_external_auth_enabled())
         if self.external_auth_enabled:
             del self.fields['password1']
             del self.fields['password2']

@@ -67,6 +67,25 @@ class TestUsers(APITestCase.ForUser):
         self.assertEqual(
             (email, False),
             (created_user.email, created_user.is_superuser))
+        self.assertTrue(created_user.userprofile.is_local)
+
+    def test_POST_creates_user_external_auth_not_local(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+        self.become_admin()
+        username = factory.make_name('user')
+        email = factory.make_email_address()
+        password = factory.make_string()
+        self.client.post(
+            reverse('users_handler'),
+            {
+                'username': username,
+                'email': email,
+                'password': password,
+                'is_superuser': '0',
+            })
+        created_user = User.objects.get(username=username)
+        self.assertFalse(created_user.userprofile.is_local)
 
     def test_POST_creates_admin(self):
         self.become_admin()

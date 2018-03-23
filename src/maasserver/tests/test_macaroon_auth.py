@@ -229,6 +229,7 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         user = User.objects.get(username=username)
         self.assertIsNotNone(user.id)
         self.assertTrue(user.is_superuser)
+        self.assertFalse(user.userprofile.is_local)
 
     @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
     def test_is_authenticated_no_validate_if_created(self, mock_validate):
@@ -300,6 +301,7 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         self.assertIsNotNone(user.id)
         self.assertEqual(user.username, username)
         self.assertTrue(user.is_superuser)
+        self.assertFalse(user.userprofile.is_local)
 
     def test_authenticate_no_identity(self):
         self.assertIsNone(
