@@ -1,33 +1,37 @@
 <div class="row">
-    <div class="col-12">
+    <div class="col-8">
         <table class="p-table-expanding" data-ng-if="groupedKeys.length">
             <thead>
                 <tr>
-                    <th class="col-4">Source</th>
-                    <th class="col-4">ID</th>
-                    <th class="col-3">Number of keys</th>
-                    <td class="col-1">&nbsp;</td>
+                    <th class="table-col--20">Source</th>
+                    <th class="table-col--25">ID</th>
+                    <th class="table-col--25"><div class="u-align--right">Number of keys</div></th>
+                    <th class="table-col--30"></th>
                 </tr>
             </thead>
             <tbody>
                 <tr data-ng-repeat="group in groupedKeys | orderBy:['source', 'authId']" data-ng-class="{ 'is-active': group.id === openRow }">
-                    <td aria-label="Source" class="col-4">{$ sourceTitles[group.source] $}</td>
-                    <td data-ng-if="group.source === 'upload'" data-ng-bind-html="trustAsHtml(group.keys[0].display)" colspan="2" class="col-7">&nbsp;</td>
-                    <td data-ng-if="group.source !== 'upload'" aria-label="ID" class="col-4">{$ group.authId $}</td>
-                    <td data-ng-if="group.source !== 'upload'" aria-label="Number of keys" class="col-1">
-                        {$ group.keys.length $}
+                    <td aria-label="Source" class="table-col--20">{$ sourceTitles[group.source] $}</td>
+                    <td data-ng-if="group.source === 'upload'" data-ng-bind-html="trustAsHtml(group.keys[0].display)" colspan="2" class="table-col--50">&nbsp;</td>
+                    <td data-ng-if="group.source !== 'upload'" aria-label="ID" class="table-col--25">{$ group.authId $}</td>
+                    <td data-ng-if="group.source !== 'upload'" aria-label="Number of keys" class="table-col--25">
+                        <div class="u-align--right">{$ group.keys.length $}</div>
                     </td>
-                    <td class="u-align--right" class="col-3 u-align--right">
-                        <a class="p-button u-no-margin--top" data-ng-click="open(group, 'view')" aria-label="Show keys" data-ng-if="group.source !== 'upload' && (openRow !== group.id || rowMode === 'delete')">Show keys</a>
-                        <a class="p-button u-no-margin--top" data-ng-click="close()" aria-label="Hide keys" data-ng-if="group.source !== 'upload' && openRow === group.id && rowMode === 'view'">Hide keys</a>
-                        <a class="p-button u-no-margin--top js-delete-link" data-ng-click="open(group, 'delete')">Delete SSH key</a>
+                    <td class="table-col--30">
+                        <div class="u-align--right">
+                            <a class="p-tooltip p-tooltip--top-center js-delete-link" data-ng-click="open(group, 'delete')" title="delete SSH key source"><i class="p-icon--delete"></i></a>
+                            <a class="p-button--base u-no-margin--top" style="min-width: 5.2rem;" data-ng-click="open(group, 'view')" aria-label="Show keys" title="Show keys" data-ng-if="group.source !== 'upload' && (openRow !== group.id || rowMode === 'delete')"><i class="p-icon--chevron u-no-margin--right">Open</i></a>
+                            <a class="p-button u-no-margin--top" data-ng-click="close()" aria-label="Hide keys" title="Show keys" data-ng-if="group.source !== 'upload' && openRow === group.id && rowMode === 'view'">Hide</a>
+                        </div>
                     </td>
-                    <td class="p-table-expanding__panel col-12 u-no-margin--left" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'view' }">
-                        <ul class="p-list">
+                    <td class="p-table-expanding__panel u-no-margin--left table-col--100" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'view' }">
+                        <hr />
+                        <ul class="p-list u-no-margin--top">
                             <li data-ng-repeat="key in group.keys" data-ng-bind-html="trustAsHtml(key.display)"></li>
                         </ul>
                     </td>
-                    <td class="p-table-expanding__panel col-12" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'delete' }">
+                    <td class="p-table-expanding__panel table-col--100" data-ng-class="{ 'u-hide': group.id !== openRow || rowMode !== 'delete' }">
+                        <hr />
                         <div class="row u-equal-height">
                             <div class="col-8 u-vertically-center">
                                 <span data-ng-if="group.source !== 'upload'"><span class="p-icon p-icon--warning">Warning:</span> Are you sure you want to remove this key source?</span>

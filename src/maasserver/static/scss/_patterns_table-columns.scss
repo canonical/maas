@@ -1,0 +1,12 @@
+// Generates column classes use for tables
+// the column class generated will look like '.table-column--1'
+// Number value at the end signifies the width percentage
+@mixin maas-table-columns($table-columns) {
+
+  @for $i from 1 through $table-columns {
+    .table-col--#{$i} {
+      $width: percentage($i / 100);
+      width: $width - 3.2877%;
+    }
+  }
+}
