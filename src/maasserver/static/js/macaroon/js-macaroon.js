@@ -2871,6 +2871,7 @@ const generateMacaroons = function(obj) {
   Gathers discharge macaroons for all third party caveats in the supplied
   macaroon (and any subsequent caveats required by those) calling getDischarge
   to acquire each discharge macaroon.
+  It never invokes more than one getDischarge operation at the same time.
   @param {Macaroon} macaroon
   @param {Function} getDischarge is called with 5 arguments.
     macaroon.location {String}
@@ -2886,47 +2887,48 @@ const generateMacaroons = function(obj) {
 const dischargeMacaroon = function (macaroon, getDischarge, onOk, onError) {
   const primarySig = macaroon.signature;
   const discharges = [macaroon];
-  let pendingCount = 0;
-  let errorCalled = false;
   const firstPartyLocation = macaroon.location;
-  let dischargeCaveats;
-  const dischargedCallback = dm => {
-    if (errorCalled) {
+  // dischargeCaveats discharges all the caveats in m from caveatIndex onwards,
+  // calling onOk when they are all discharged (and the discharge macaroons added
+  // to discharges), or onError if anything fails.
+  const dischargeCaveats = (m, caveatIndex, onOk) => {
+    if (caveatIndex >= m._caveats.length) {
+      // We've finished processing all the caveats in m,
+      // so done for now.
+      onOk();
       return;
     }
-    dm.bind(primarySig);
-    discharges.push(dm);
-    pendingCount--;
-    dischargeCaveats(dm);
-  };
-  const dischargedErrorCallback = err => {
-    if (!errorCalled) {
-      onError(err);
-      errorCalled = true;
-    }
-  };
-  dischargeCaveats = m => {
-    let cav, i;
-    for (i = 0; i < m._caveats.length; i++) {
-      cav = m._caveats[i];
-      if (cav._vid === null) {
-        continue;
-      }
-      getDischarge(
-        firstPartyLocation,
-        cav._location,
-        cav._identifier,
-        dischargedCallback,
-        dischargedErrorCallback
-      );
-      pendingCount++;
-    }
-    if (pendingCount === 0) {
-      onOk(discharges);
+    const cav = m._caveats[caveatIndex];
+    if (cav._vid === null) {
+      // It's a first party caveat, so just continue with the next
+      // caveat without any need to discharge anything right now.
+      dischargeCaveats(m, caveatIndex+1, onOk);
       return;
     }
-  };
-  dischargeCaveats(macaroon);
+    // Get a discharge for the current third party caveat.
+    getDischarge(
+      firstPartyLocation,
+      cav._location,
+      cav._identifier,
+      dm => {
+        // Success: push the obtained discharge macaroon to discharges
+        // (so we can finally pass it to the outermost onOk),
+        // and continue by discharging the next caveat in m,
+        // after which we'll discharge any subsidiary third party caveats
+        // in the discharge macaroon.
+        dm.bind(primarySig);
+        discharges.push(dm)
+        dischargeCaveats(m, caveatIndex+1, () => {
+          dischargeCaveats(dm, 0, onOk)
+        });
+      },
+      // When any error happens, we forget about anything we might've
+      // stacked up to do in onOk and just call the original onError
+      // callback.
+      onError,
+    )
+  }
+  dischargeCaveats(macaroon, 0, () => onOk(discharges));
 };
 
 
