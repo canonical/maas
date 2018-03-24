@@ -15,7 +15,6 @@ import argparse
 from collections import OrderedDict
 from contextlib import contextmanager
 import grp
-import json
 import os
 import pwd
 import random
@@ -28,6 +27,12 @@ import threading
 import time
 
 from maascli.command import Command
+from maascli.init import (
+    add_create_admin_options,
+    add_idm_options,
+    init_maas,
+    print_msg,
+)
 import netifaces
 import tempita
 import yaml
@@ -112,14 +117,6 @@ ARGUMENTS = OrderedDict([
         'help': 'Disable query debugging.',
     }),
 ])
-
-
-def print_msg(msg='', newline=True):
-    """Print a message to stdout.
-
-    Flushes the message to ensure its written immediately.
-    """
-    print(msg, end=('\n' if newline else ''), flush=True)
 
 
 def get_default_gateway_ip():
@@ -628,42 +625,17 @@ class cmd_init(SnappyCommand):
                 "Skip confirmation questions when initialization has "
                 "already been performed."))
         parser.add_argument(
-            '--skip-admin', action='store_true',
-            help=(
-                "Skip the admin creation when initializing in 'all' mode."))
-        parser.add_argument(
             '--enable-idm', default=False, action="store_true",
             help=("Enable configuring the use of an external IDM server. "
                   "This feature is currently experimental. "
                   "If this isn't enabled, all --idm-* arguments "
                   "will be ignored."))
+        add_idm_options(parser)
         parser.add_argument(
-            '--idm-url', default=None, metavar='IDM_URL',
-            help=("The URL to the external IDM server to use for "
-                  "authentication."))
-        parser.add_argument(
-            '--idm-user', default=None,
-            help="The username to access the IDM server API.")
-        parser.add_argument(
-            '--idm-key', default=None,
-            help="The private key to access the IDM server API.")
-        parser.add_argument(
-            '--idm-agent-file', type=argparse.FileType('r'),
-            help="Agent file containing IDM authentication information")
-        parser.add_argument(
-            '--admin-username', default=None, metavar='USERNAME',
-            help="Username for the admin account.")
-        parser.add_argument(
-            '--admin-password', default=None, metavar='PASSWORD',
-            help="Force a given admin password instead of prompting.")
-        parser.add_argument(
-            '--admin-email', default=None, metavar='EMAIL',
-            help="Email address for the admin.")
-        parser.add_argument(
-            '--admin-ssh-import', default=None, metavar='LP_GH_USERNAME',
+            '--skip-admin', action='store_true',
             help=(
-                "Import SSH keys from Launchpad (lp:user-id) or "
-                "Github (gh:user-id) for the admin."))
+                "Skip the admin creation when initializing in 'all' mode."))
+        add_create_admin_options(parser)
 
     def handle(self, options):
         if os.getuid() != 0:
@@ -793,14 +765,7 @@ class cmd_init(SnappyCommand):
                 "Performing database migrations",
                 migrate_db, capture=sys.stdout.isatty())
             clear_line()
-            if options.enable_idm:
-                print_msg('Configuring authentication')
-                configure_authentication(options)
-            auth_config = self._get_current_auth_config()
-            skip_create_admin = (
-                options.skip_admin or auth_config['external_auth_url'])
-            if not skip_create_admin:
-                self._create_admin_account(options)
+            init_maas(options)
         elif mode in ['region', 'region+rack']:
             # When in 'region' or 'region+rack' the migrations for the database
             # must be at the same level as this controller.
@@ -809,49 +774,6 @@ class cmd_init(SnappyCommand):
                 migrate_db, capture=sys.stdout.isatty())
         else:
             clear_line()
-
-    def _create_admin_account(self, options):
-        """Create the first admin account."""
-        print_create_header = (
-            not options.admin_username or
-            not options.admin_password or
-            not options.admin_email)
-        if print_create_header:
-            print_msg('Create first admin account:')
-        cmd = [
-            os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
-            'createadmin']
-        if options.admin_username:
-            cmd.extend(['--username', options.admin_username])
-        if options.admin_password:
-            cmd.extend(['--password', options.admin_password])
-        if options.admin_email:
-            cmd.extend(['--email', options.admin_email])
-        if options.admin_ssh_import:
-            cmd.extend(['--ssh-import', options.admin_ssh_import])
-        subprocess.call(cmd)
-
-    def _get_current_auth_config(self):
-        cmd = [
-            os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
-            'configauth', '--json']
-        output = subprocess.check_output(cmd)
-        return json.loads(output)
-
-
-def configure_authentication(options):
-    cmd = [
-        os.path.join(os.environ['SNAP'], 'bin', 'maas-region'),
-        'configauth']
-    if options.idm_url is not None:
-        cmd.extend(['--idm-url', options.idm_url])
-    if options.idm_user is not None:
-        cmd.extend(['--idm-user', options.idm_user])
-    if options.idm_key is not None:
-        cmd.extend(['--idm-key', options.idm_key])
-    if options.idm_agent_file is not None:
-        cmd.extend(['--idm-agent-file', options.idm_agent_file.name])
-    subprocess.call(cmd)
 
 
 class cmd_config(SnappyCommand):

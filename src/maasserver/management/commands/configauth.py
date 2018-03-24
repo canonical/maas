@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import argparse
 import json
 
 from django.core.exceptions import ValidationError
@@ -15,6 +14,7 @@ from django.core.management.base import (
 )
 from django.core.validators import URLValidator
 from django.db import DEFAULT_DB_ALIAS
+from maascli.init import add_idm_options
 from maasserver.management.commands.createadmin import read_input
 from maasserver.models import Config
 
@@ -74,20 +74,7 @@ class Command(BaseCommand):
     help = "Configure external authentication."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--idm-url', default=None,
-            help=(
-                "The URL to the external IDM server to use for "
-                "authentication. Specify '' or 'none' to unset it."))
-        parser.add_argument(
-            '--idm-user', default=None,
-            help="The username to access the IDM server API.")
-        parser.add_argument(
-            '--idm-key', default=None,
-            help="The private key to access the IDM server API.")
-        parser.add_argument(
-            '--idm-agent-file', type=argparse.FileType('r'),
-            help="Agent file containing IDM authentication information")
+        add_idm_options(parser)
         parser.add_argument(
             '--json', action='store_true', default=False,
             help="Return the current authentication configuration as JSON")
