@@ -96,7 +96,6 @@ describe("NodeResultController", function() {
     it("sets title to loading and page to nodes", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Loading...");
-        expect($rootScope.page).toBe("nodes");
     });
 
     it("sets the initial $scope values", function() {
@@ -111,7 +110,7 @@ describe("NodeResultController", function() {
     });
 
     it("sets the initial $scope values when controller", function() {
-        $routeParams.type = 'controller';
+        $location.path('/controller');
         var controller = makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.resultLoaded).toBe(false);

@@ -199,11 +199,11 @@
                             <!--
                                 Node type is an enum (see node-details.html and the comment therein).
                             -->
-                            <span data-ng-switch-when="0"><a href="#/node/machine/{$ row.system_id $}">{$ row.name $}</a></span>
-                            <span data-ng-switch-when="1"><a href="#/node/device/{$ row.system_id $}">{$ row.name $}</a></span>
-                            <span data-ng-switch-when="2"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
-                            <span data-ng-switch-when="3"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
-                            <span data-ng-switch-when="4"><a href="#/node/controller/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="0"><a href="#/machine/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="1"><a href="#/device/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="2"><a href="#/controller/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="3"><a href="#/controller/{$ row.system_id $}">{$ row.name $}</a></span>
+                            <span data-ng-switch-when="4"><a href="#/controller/{$ row.system_id $}">{$ row.name $}</a></span>
                             <span data-ng-switch-default>{$ row.name $}</span>
                         </div>
                     </span>

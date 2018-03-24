@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeEventsController.
@@ -14,6 +14,7 @@ describe("NodeEventsController", function() {
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
+        $location = $injector.get("$location");
         $scope = $rootScope.$new();
         $q = $injector.get("$q");
     }));
@@ -92,10 +93,9 @@ describe("NodeEventsController", function() {
         });
     }
 
-    it("sets title to loading and page to nodes", function() {
+    it("sets title to loading", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Loading...");
-        expect($rootScope.page).toBe("nodes");
     });
 
     it("sets the initial $scope values", function() {
@@ -110,7 +110,7 @@ describe("NodeEventsController", function() {
     });
 
     it("sets the initial $scope values when controller", function() {
-        $routeParams.type = 'controller';
+        $location.path('/controller');
         var controller = makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.node).toBeNull();

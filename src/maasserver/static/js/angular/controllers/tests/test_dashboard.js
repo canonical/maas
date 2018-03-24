@@ -1,4 +1,4 @@
-/* Copyright 2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for DashboardController.
@@ -420,16 +420,15 @@ describe("DashboardController", function() {
                 goTo: true
             };
             spyOn(DiscoveriesManager, "_removeItem");
+            spyOn($location, "path");
             var path = {
                 search: jasmine.createSpy("search")
             };
-            spyOn($location, "path").and.returnValue(path);
             $scope.afterSave({
                 hostname: makeName("hostname"),
                 parent: null
             });
-            expect($location.path).toHaveBeenCalledWith("/nodes");
-            expect(path.search).toHaveBeenCalledWith({ tab: "devices" });
+            expect($location.path).toHaveBeenCalledWith("/devices/");
         });
 
         it("calls $location.path if goTo with parent", function() {
@@ -446,7 +445,7 @@ describe("DashboardController", function() {
                 hostname: makeName("hostname"),
                 parent: parent
             });
-            expect($location.path).toHaveBeenCalledWith("/node/" + parent);
+            expect($location.path).toHaveBeenCalledWith("/device/" + parent);
         });
     });
 });

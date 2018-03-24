@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.switch`"""
@@ -154,7 +154,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         machine = factory.make_Machine(owner=owner)
         factory.make_Switch(node=machine)
         self.assertItemsEqual(
-            ['node'],
+            ['machine'],
             [result['link_type'] for result in handler.list({})])
 
     @transactional

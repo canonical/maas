@@ -31,11 +31,11 @@
                     <i class="p-icon--locked">Locked: </i>
                     <span class="p-tooltip__message" role="tooltip" id="{$ node.fqdn $}-locked-state">This machine is locked. You have to unlock it to perform any actions.</span>
                 </span>
-                <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
+                <a href="#/{$ node.link_type $}/{$ node.system_id $}">{$ node.fqdn $}</a>
             </td>
             <td class="u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'" colspan="2">
-                <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
             <td class="powerstate u-upper-case--first" aria-label="Power state">
                 <span data-ng-if="node.power_state != 'unknown'" class="p-icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}

@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Module
@@ -45,35 +45,95 @@ angular.module('MAAS',
                         'static/partials/intro-user.html'),
                     controller: 'IntroUserController'
                 }).
-                when('/nodes', {
+                when('/machines', {
                     templateUrl: versionedPath(
                         'static/partials/nodes-list.html'),
                     controller: 'NodesListController'
                 }).
-                when('/node/:type/:system_id/:result_type/:id', {
+                when('/machine/:system_id/:result_type/:id', {
                     templateUrl: versionedPath(
                         'static/partials/node-result.html'),
                     controller: 'NodeResultController'
                 }).
-                when('/node/:type/:system_id/events', {
+                when('/machine/:system_id/events', {
                     templateUrl: versionedPath(
                         'static/partials/node-events.html'),
                     controller: 'NodeEventsController'
                 }).
-                when('/node/:system_id/events', {
+                when('/machine/:system_id', {
+                    templateUrl: versionedPath(
+                        'static/partials/node-details.html'),
+                    controller: 'NodeDetailsController'
+                }).
+                when('/devices', {
+                    templateUrl: versionedPath(
+                        'static/partials/nodes-list.html'),
+                    controller: 'NodesListController'
+                }).
+                when('/device/:system_id/:result_type/:id', {
+                    templateUrl: versionedPath(
+                        'static/partials/node-result.html'),
+                    controller: 'NodeResultController'
+                }).
+                when('/device/:system_id/events', {
                     templateUrl: versionedPath(
                         'static/partials/node-events.html'),
                     controller: 'NodeEventsController'
                 }).
-                when('/node/:type/:system_id', {
+                when('/device/:system_id', {
                     templateUrl: versionedPath(
                         'static/partials/node-details.html'),
                     controller: 'NodeDetailsController'
                 }).
-                when('/node/:system_id', {
+                when('/controllers', {
+                    templateUrl: versionedPath(
+                        'static/partials/nodes-list.html'),
+                    controller: 'NodesListController'
+                }).
+                when('/controller/:system_id/:result_type/:id', {
+                    templateUrl: versionedPath(
+                        'static/partials/node-result.html'),
+                    controller: 'NodeResultController'
+                }).
+                when('/controller/:system_id/events', {
+                    templateUrl: versionedPath(
+                        'static/partials/node-events.html'),
+                    controller: 'NodeEventsController'
+                }).
+                when('/controller/:system_id', {
                     templateUrl: versionedPath(
                         'static/partials/node-details.html'),
                     controller: 'NodeDetailsController'
+                }).
+                when('/nodes', {
+                    redirectTo: '/machines'
+                }).
+                when('/node/machine/:system_id', {
+                    redirectTo: '/machine/:system_id'
+                }).
+                when('/node/machine/:system_id/:result_type/:id', {
+                    redirectTo: '/machine/:system_id/:result_type/:id'
+                }).
+                when('/node/machine/:system_id/events', {
+                    redirectTo: '/machine/:system_id/events'
+                }).
+                when('/node/device/:system_id', {
+                    redirectTo: '/device/:system_id'
+                }).
+                when('/node/device/:system_id/:result_type/:id', {
+                    redirectTo: '/device/:system_id/:result_type/:id'
+                }).
+                when('/node/device/:system_id/events', {
+                    redirectTo: '/device/:system_id/events'
+                }).
+                when('/node/controller/:system_id', {
+                    redirectTo: '/controller/:system_id'
+                }).
+                when('/node/controller/:system_id/:result_type/:id', {
+                    redirectTo: '/controller/:system_id/:result_type/:id'
+                }).
+                when('/node/controller/:system_id/events', {
+                    redirectTo: '/controller/:system_id/events'
                 }).
                 when('/pods', {
                     templateUrl: versionedPath(
@@ -158,7 +218,7 @@ angular.module('MAAS',
                 });
             } else {
                 routes = routes.otherwise({
-                    redirectTo: '/nodes'
+                    redirectTo: '/machines'
                 });
             }
         }

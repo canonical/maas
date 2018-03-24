@@ -23,60 +23,60 @@ angular.module('MAAS').controller('NodesListController', [
         };
 
         // Set title and page.
-        $rootScope.title = "Nodes";
-        $rootScope.page = "nodes";
+        $rootScope.title = "Machines";
+        $rootScope.page = "machines";
 
         // Set initial values.
-        $scope.nodes = MachinesManager.getItems();
+        $scope.machines = MachinesManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.controllers = ControllersManager.getItems();
         $scope.switches = SwitchesManager.getItems();
         $scope.showswitches = $routeParams.switches === 'on';
-        $scope.currentpage = "nodes";
+        $scope.currentpage = "machines";
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.scripts = ScriptsManager.getItems();
         $scope.loading = true;
 
         $scope.tabs = {};
-        // Nodes tab.
-        $scope.tabs.nodes = {};
-        $scope.tabs.nodes.pagetitle = "Machines";
-        $scope.tabs.nodes.currentpage = "nodes";
-        $scope.tabs.nodes.manager = MachinesManager;
-        $scope.tabs.nodes.previous_search = "";
-        $scope.tabs.nodes.search = "";
-        $scope.tabs.nodes.searchValid = true;
-        $scope.tabs.nodes.selectedItems = MachinesManager.getSelectedItems();
-        $scope.tabs.nodes.metadata = MachinesManager.getMetadata();
-        $scope.tabs.nodes.filters = SearchService.getEmptyFilter();
-        $scope.tabs.nodes.actionOption = null;
-        $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
+        // Machines tab.
+        $scope.tabs.machines = {};
+        $scope.tabs.machines.pagetitle = "Machines";
+        $scope.tabs.machines.currentpage = "machines";
+        $scope.tabs.machines.manager = MachinesManager;
+        $scope.tabs.machines.previous_search = "";
+        $scope.tabs.machines.search = "";
+        $scope.tabs.machines.searchValid = true;
+        $scope.tabs.machines.selectedItems = MachinesManager.getSelectedItems();
+        $scope.tabs.machines.metadata = MachinesManager.getMetadata();
+        $scope.tabs.machines.filters = SearchService.getEmptyFilter();
+        $scope.tabs.machines.actionOption = null;
+        $scope.tabs.machines.takeActionOptions = GeneralManager.getData(
             "machine_actions");
-        $scope.tabs.nodes.actionErrorCount = 0;
-        $scope.tabs.nodes.actionProgress = {
+        $scope.tabs.machines.actionErrorCount = 0;
+        $scope.tabs.machines.actionProgress = {
             total: 0,
             completed: 0,
             errors: {},
             showing_confirmation: false,
             affected_nodes: 0
         };
-        $scope.tabs.nodes.osSelection = {
+        $scope.tabs.machines.osSelection = {
             osystem: null,
             release: null,
             hwe_kernel: null
         };
-        $scope.tabs.nodes.zoneSelection = null;
-        $scope.tabs.nodes.commissionOptions = {
+        $scope.tabs.machines.zoneSelection = null;
+        $scope.tabs.machines.commissionOptions = {
             enableSSH: false,
             skipNetworking: false,
             skipStorage: false,
             updateFirmware: false,
             configureHBA: false
         };
-        $scope.tabs.nodes.releaseOptions = {};
-        $scope.tabs.nodes.commissioningSelection = [];
-        $scope.tabs.nodes.testSelection = [];
+        $scope.tabs.machines.releaseOptions = {};
+        $scope.tabs.machines.commissioningSelection = [];
+        $scope.tabs.machines.testSelection = [];
 
         // Device tab.
         $scope.tabs.devices = {};
@@ -256,7 +256,7 @@ angular.module('MAAS').controller('NodesListController', [
             leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
             $scope.tabs[tab].zoneSelection = null;
-            if(tab === "nodes" || tab === "switches") {
+            if(tab === "machines" || tab === "switches") {
                 // Possible for this to be called before the osSelect
                 // direction is initialized. In that case it has not
                 // created the $reset function on the model object.
@@ -355,8 +355,8 @@ angular.module('MAAS').controller('NodesListController', [
         // Toggles between the current tab.
         $scope.toggleTab = function(tab) {
             $rootScope.title = $scope.tabs[tab].pagetitle;
+            $rootScope.page = tab;
             $scope.currentpage = tab;
-            $location.search('tab', tab);
         };
 
         // Clear the search bar.
@@ -367,7 +367,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node, tab) {
-            if(tab !== 'nodes' && tab !== 'switches') {
+            if(tab !== 'machines' && tab !== 'switches') {
                 if($scope.tabs[tab].manager.isSelected(node.system_id)) {
                     $scope.tabs[tab].manager.unselectItem(node.system_id);
                 } else {
@@ -381,7 +381,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Select all viewable nodes or deselect all viewable nodes.
         $scope.toggleCheckAll = function(tab) {
-            if(tab !== 'nodes' && tab !== 'switches') {
+            if(tab !== 'machines' && tab !== 'switches') {
                 if($scope.tabs[tab].allViewableChecked) {
                     angular.forEach(
                         $scope.tabs[tab].filtered_items, function(node) {
@@ -490,7 +490,7 @@ angular.module('MAAS').controller('NodesListController', [
             enterViewSelected(tab);
 
             // Hide the add hardware/device section.
-            if (tab === 'nodes') {
+            if (tab === 'machines') {
                 if(angular.isObject($scope.addHardwareScope)) {
                     $scope.addHardwareScope.hide();
                 }
@@ -722,13 +722,22 @@ angular.module('MAAS').controller('NodesListController', [
             });
         });
 
+        // Switch to the specified tab, if specified.
+        angular.forEach(
+            ["machines", "devices", "controllers", "switches"],
+            function(node_type) {
+                if($location.path().indexOf("/" + node_type) !== -1) {
+                    $scope.toggleTab(node_type);
+                }
+            });
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
         ManagerHelperService.loadManagers($scope, [
-            MachinesManager, DevicesManager, ControllersManager,
+            $scope.tabs[$scope.currentpage].manager,
             GeneralManager, ZonesManager, UsersManager, ServicesManager,
-            ScriptsManager, SwitchesManager]).then(function() {
+            ScriptsManager]).then(function() {
                 $scope.loading = false;
             });
 
@@ -736,7 +745,8 @@ angular.module('MAAS').controller('NodesListController', [
         // Stop polling and save the current filter when the scope is destroyed.
         $scope.$on("$destroy", function() {
             $interval.cancel($scope.statusPoll);
-            SearchService.storeFilters("nodes", $scope.tabs.nodes.filters);
+            SearchService.storeFilters(
+                "machines", $scope.tabs.machines.filters);
             SearchService.storeFilters("devices", $scope.tabs.devices.filters);
             SearchService.storeFilters(
                 "controllers", $scope.tabs.controllers.filters);
@@ -745,11 +755,11 @@ angular.module('MAAS').controller('NodesListController', [
         });
 
         // Restore the filters if any saved.
-        var nodesFilter = SearchService.retrieveFilters("nodes");
-        if(angular.isObject(nodesFilter)) {
-            $scope.tabs.nodes.search = SearchService.filtersToString(
-                nodesFilter);
-            $scope.updateFilters("nodes");
+        var machinesFilter = SearchService.retrieveFilters("machines");
+        if(angular.isObject(machinesFilter)) {
+            $scope.tabs.machines.search = SearchService.filtersToString(
+                machinesFilter);
+            $scope.updateFilters("machines");
         }
         var devicesFilter = SearchService.retrieveFilters("devices");
         if(angular.isObject(devicesFilter)) {
@@ -768,14 +778,6 @@ angular.module('MAAS').controller('NodesListController', [
             $scope.tabs.switches.search = SearchService.filtersToString(
                 switchesFilter);
             $scope.updateFilters("switches");
-        }
-
-
-        // Switch to the specified tab, if specified.
-        if($routeParams.tab === "nodes" || $routeParams.tab === "devices" ||
-                $routeParams.tab === "controllers" ||
-                $routeParams.tab === "switches") {
-            $scope.toggleTab($routeParams.tab);
         }
 
         // Set the query if the present in $routeParams.

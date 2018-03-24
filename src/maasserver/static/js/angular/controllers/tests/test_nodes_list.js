@@ -82,6 +82,10 @@ describe("NodesListController", function() {
             defaultConnect.and.returnValue($q.defer().promise);
         }
 
+        if($location.path() === '') {
+            $location.path("/machines");
+        }
+
         // Start the connection so a valid websocket is created in the
         // RegionConnection.
         RegionConnection.connect("");
@@ -108,14 +112,14 @@ describe("NodesListController", function() {
         // Since the osSelection directive is not used in this test the
         // osSelection item on the model needs to have $reset function added
         // because it will be called throughout many of the tests.
-        $scope.tabs.nodes.osSelection.$reset = jasmine.createSpy("$reset");
+        $scope.tabs.machines.osSelection.$reset = jasmine.createSpy("$reset");
 
         return controller;
     }
 
     // Makes a fake node/device.
     function makeObject(tab) {
-        if (tab === 'nodes') {
+        if (tab === 'machines') {
             var node = {
                 system_id: makeName("system_id"),
                 $selected: false
@@ -168,14 +172,14 @@ describe("NodesListController", function() {
 
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
-        expect($rootScope.title).toBe("Nodes");
-        expect($rootScope.page).toBe("nodes");
+        expect($rootScope.title).toBe("Machines");
+        expect($rootScope.page).toBe("machines");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
         var controller = makeController();
-        expect($scope.nodes).toBe(MachinesManager.getItems());
+        expect($scope.machines).toBe(MachinesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
         expect($scope.controllers).toBe(ControllersManager.getItems());
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
@@ -201,12 +205,13 @@ describe("NodesListController", function() {
             var devicesFilters = {};
             var controllersFilters = {};
             var switchesFilters = {};
-            $scope.tabs.nodes.filters = nodesFilters;
+            $scope.tabs.machines.filters = nodesFilters;
             $scope.tabs.devices.filters = devicesFilters;
             $scope.tabs.controllers.filters = controllersFilters;
             $scope.tabs.switches.filters = switchesFilters;
             $scope.$destroy();
-            expect(SearchService.retrieveFilters("nodes")).toBe(nodesFilters);
+            expect(SearchService.retrieveFilters("machines")).toBe(
+                nodesFilters);
             expect(SearchService.retrieveFilters("devices")).toBe(
                 devicesFilters);
             expect(SearchService.retrieveFilters("controllers")).toBe(
@@ -215,14 +220,19 @@ describe("NodesListController", function() {
                 switchesFilters);
         });
 
-    it("calls loadManagers with MachinesManager, DevicesManager," +
-        "ControllersManager, GeneralManager, UsersManager",
-        function() {
-            var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                $scope, [MachinesManager, DevicesManager, ControllersManager,
-                GeneralManager, ZonesManager, UsersManager, ServicesManager,
-                ScriptsManager, SwitchesManager]);
+    angular.forEach(
+        ["machines", "devices", "controllers", "switches"],
+        function(node_type) {
+            it("calls loadManagers for " + node_type, function() {
+                $location.path("/" + node_type);
+                var controller = makeController();
+                expect(
+                    ManagerHelperService.loadManagers
+                ).toHaveBeenCalledWith(
+                    $scope, [$scope.tabs[node_type].manager,
+                    GeneralManager, ZonesManager, UsersManager,
+                    ServicesManager, ScriptsManager]);
+            });
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -237,9 +247,9 @@ describe("NodesListController", function() {
         function() {
             var query = makeName("query");
             SearchService.storeFilters(
-                "nodes", SearchService.getCurrentFilters(query));
+                "machines", SearchService.getCurrentFilters(query));
             var controller = makeController();
-            expect($scope.tabs.nodes.search).toBe(query);
+            expect($scope.tabs.machines.search).toBe(query);
         });
 
     it("sets devices search from SearchService",
@@ -274,7 +284,7 @@ describe("NodesListController", function() {
             var query = makeName("query");
             $routeParams.query = query;
             var controller = makeController();
-            expect($scope.tabs.nodes.search).toBe(query);
+            expect($scope.tabs.machines.search).toBe(query);
         });
 
     it("calls updateFilters for nodes if search from $routeParams.query",
@@ -282,7 +292,7 @@ describe("NodesListController", function() {
             var query = makeName("query");
             $routeParams.query = query;
             var controller = makeController();
-            expect($scope.tabs.nodes.filters._).toEqual([query]);
+            expect($scope.tabs.machines.filters._).toEqual([query]);
         });
 
     it("reloads osinfo on route change", function() {
@@ -299,31 +309,27 @@ describe("NodesListController", function() {
             var controller = makeController();
             $scope.toggleTab('devices');
             expect($rootScope.title).toBe($scope.tabs.devices.pagetitle);
-            $scope.toggleTab('nodes');
-            expect($rootScope.title).toBe($scope.tabs.nodes.pagetitle);
+            $scope.toggleTab('machines');
+            expect($rootScope.title).toBe($scope.tabs.machines.pagetitle);
             $scope.toggleTab('switches');
             expect($rootScope.title).toBe($scope.tabs.switches.pagetitle);
         });
 
-        it("sets currentpage", function() {
+        it("sets currentpage and $rootScope.page", function() {
             var controller = makeController();
             $scope.toggleTab('devices');
             expect($scope.currentpage).toBe('devices');
-            $scope.toggleTab('nodes');
-            expect($scope.currentpage).toBe('nodes');
+            expect($rootScope.page).toBe('devices');
+            $scope.toggleTab('machines');
+            expect($scope.currentpage).toBe('machines');
+            expect($rootScope.page).toBe('machines');
             $scope.toggleTab('switches');
             expect($scope.currentpage).toBe('switches');
-        });
-
-        it("calls $location search", function() {
-            var controller = makeController();
-            spyOn($location, "search");
-            $scope.toggleTab('nodes');
-            expect($location.search).toHaveBeenCalledWith('tab', 'nodes');
+            expect($rootScope.page).toBe('switches');
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers", "switches"],
+    angular.forEach(["machines", "devices", "controllers", "switches"],
                     function(tab) {
 
         describe("tab(" + tab + ")", function() {
@@ -356,7 +362,7 @@ describe("NodesListController", function() {
 
                 // Only devices and controllers use the sorting and column
                 // as the nodes tab uses the maas-machines-table directive.
-                if(tab !== "nodes" && tab !== "switches") {
+                if(tab !== "machines" && tab !== "switches") {
                     expect(tabScope.filtered_items).toEqual([]);
                     expect(tabScope.predicate).toBe("fqdn");
                     expect(tabScope.allViewableChecked).toBe(false);
@@ -373,7 +379,7 @@ describe("NodesListController", function() {
 
                 // Only the nodes tab uses the osSelection and
                 // commissionOptions fields.
-                if(tab === "nodes" || tab === "switches") {
+                if(tab === "machines" || tab === "switches") {
                     expect(tabScope.osSelection.osystem).toBeNull();
                     expect(tabScope.osSelection.release).toBeNull();
                     expect(tabScope.commissionOptions).toEqual({
@@ -397,7 +403,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers", "switches"],
+    angular.forEach(["machines", "devices", "controllers", "switches"],
                     function(tab) {
 
         describe("tab(" + tab + ")", function() {
@@ -408,7 +414,7 @@ describe("NodesListController", function() {
                     var tabScope = $scope.tabs[tab];
                     var search = makeName("search");
 
-                    if(tab === 'nodes' || tab === 'switches') {
+                    if(tab === 'machines' || tab === 'switches') {
                         // Nodes uses the maas-machines-table directive, so
                         // the interaction is a little different.
                         tabScope.search = "in:(Selected)";
@@ -442,7 +448,7 @@ describe("NodesListController", function() {
                     var search = makeName("search");
                     var nodes = [makeObject(tab), makeObject(tab)];
 
-                    if(tab === 'nodes' || tab === 'switches') {
+                    if(tab === 'machines' || tab === 'switches') {
                         $scope.onNodeListingChanged(nodes, tab);
                     } else {
                         // Add item to filtered_items.
@@ -454,7 +460,7 @@ describe("NodesListController", function() {
 
                     // Remove one item from filtered_items, which should not
                     // clear the search.
-                    if(tab === 'nodes' || tab === 'switches') {
+                    if(tab === 'machines' || tab === 'switches') {
                         $scope.onNodeListingChanged([nodes[1]], tab);
                     } else {
                         tabScope.filtered_items.splice(0, 1);
@@ -470,7 +476,7 @@ describe("NodesListController", function() {
                     var tabScope = $scope.tabs[tab];
                     var nodes = [makeObject(tab), makeObject(tab)];
 
-                    if(tab === 'nodes' || tab === 'switches') {
+                    if(tab === 'machines' || tab === 'switches') {
                         $scope.onNodeListingChanged(nodes, tab);
                     } else {
                         // Add item to filtered_items.
@@ -483,7 +489,7 @@ describe("NodesListController", function() {
 
                     // Empty the filtered_items, but change the search which
                     // should stop the search from being reset.
-                    if(tab === 'nodes' || tab === 'switches') {
+                    if(tab === 'machines' || tab === 'switches') {
                         $scope.onNodeListingChanged([nodes[1]], tab);
                     } else {
                         tabScope.filtered_items.splice(0, 1);
@@ -496,7 +502,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers", "switches"],
+    angular.forEach(["machines", "devices", "controllers", "switches"],
                      function(tab) {
 
         describe("tab(" + tab + ")", function() {
@@ -520,7 +526,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "switches"], function(tab) {
+    angular.forEach(["machines", "switches"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -799,7 +805,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers", "switches"],
+    angular.forEach(["machines", "devices", "controllers", "switches"],
                     function(tab) {
 
         describe("tab(" + tab + ")", function() {
@@ -926,7 +932,7 @@ describe("NodesListController", function() {
                     var controller = makeController();
                     var object = makeObject(tab);
                     object.actions = ["start", "stop"];
-                    $scope.tabs.nodes.actionOption = { name: "start" };
+                    $scope.tabs.machines.actionOption = { name: "start" };
                     expect($scope.supportsAction(object, tab)).toBe(true);
                 });
 
@@ -942,7 +948,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices", "controllers", "switches"],
+    angular.forEach(["machines", "devices", "controllers", "switches"],
                     function(tab) {
 
         describe("tab(" + tab + ")", function() {
@@ -985,7 +991,7 @@ describe("NodesListController", function() {
 
                 it("calls hide on addHardwareScope", function() {
                     var controller;
-                    if (tab === 'nodes') {
+                    if (tab === 'machines') {
                         controller = makeController();
                         $scope.addHardwareScope = {
                             hide: jasmine.createSpy("hide")
@@ -1452,16 +1458,16 @@ describe("NodesListController", function() {
             it("calls performAction with osystem and distro_series",
                 function() {
                     var controller = makeController();
-                    var object = makeObject("nodes");
+                    var object = makeObject("machines");
                     var spy = spyOn(
-                        $scope.tabs.nodes.manager,
+                        $scope.tabs.machines.manager,
                         "performAction").and.returnValue(
                         $q.defer().promise);
-                    $scope.tabs.nodes.actionOption = { name: "deploy" };
-                    $scope.tabs.nodes.selectedItems = [object];
-                    $scope.tabs.nodes.osSelection.osystem = "ubuntu";
-                    $scope.tabs.nodes.osSelection.release = "ubuntu/trusty";
-                    $scope.actionGo("nodes");
+                    $scope.tabs.machines.actionOption = { name: "deploy" };
+                    $scope.tabs.machines.selectedItems = [object];
+                    $scope.tabs.machines.osSelection.osystem = "ubuntu";
+                    $scope.tabs.machines.osSelection.release = "ubuntu/trusty";
+                    $scope.actionGo("machines");
                     expect(spy).toHaveBeenCalledWith(
                         object, "deploy", {
                             osystem: "ubuntu",
@@ -1480,53 +1486,57 @@ describe("NodesListController", function() {
                     $scope, 'hasActionsFailed').and.returnValue(false);
                 spyOn(
                     $scope, 'hasActionsInProgress').and.returnValue(false);
-                var object = makeObject("nodes");
+                var object = makeObject("machines");
                 MachinesManager._items.push(object);
                 MachinesManager._selectedItems.push(object);
-                $scope.tabs.nodes.actionOption = { name: "deploy" };
-                $scope.tabs.nodes.osSelection.osystem = "ubuntu";
-                $scope.tabs.nodes.osSelection.release = "ubuntu/trusty";
-                $scope.actionGo("nodes");
+                $scope.tabs.machines.actionOption = { name: "deploy" };
+                $scope.tabs.machines.osSelection.osystem = "ubuntu";
+                $scope.tabs.machines.osSelection.release = "ubuntu/trusty";
+                $scope.actionGo("machines");
                 defer.resolve();
                 $scope.$digest();
-                expect($scope.tabs.nodes.osSelection.$reset).toHaveBeenCalled();
+                expect(
+                    $scope.tabs.machines.osSelection.$reset
+                ).toHaveBeenCalled();
             });
 
             it("calls performAction with commissionOptions",
                 function() {
                     var controller = makeController();
-                    var object = makeObject("nodes");
+                    var object = makeObject("machines");
                     var spy = spyOn(
-                        $scope.tabs.nodes.manager,
+                        $scope.tabs.machines.manager,
                         "performAction").and.returnValue(
                             $q.defer().promise);
                     var commissioning_scripts_ids = [
                         makeInteger(0, 100), makeInteger(0, 100)];
                     var testing_scripts_ids = [
                         makeInteger(0, 100), makeInteger(0, 100)];
-                    $scope.tabs.nodes.actionOption = { name: "commission" };
-                    $scope.tabs.nodes.selectedItems = [object];
-                    $scope.tabs.nodes.commissionOptions.enableSSH = true;
-                    $scope.tabs.nodes.commissionOptions.skipNetworking = false;
-                    $scope.tabs.nodes.commissionOptions.skipStorage = false;
-                    $scope.tabs.nodes.commissionOptions.updateFirmware = true;
-                    $scope.tabs.nodes.commissionOptions.configureHBA = true;
-                    $scope.tabs.nodes.commissioningSelection = [];
+                    $scope.tabs.machines.actionOption = { name: "commission" };
+                    $scope.tabs.machines.selectedItems = [object];
+                    $scope.tabs.machines.commissionOptions.enableSSH = true;
+                    $scope.tabs.machines.commissionOptions.skipNetworking =
+                        false;
+                    $scope.tabs.machines.commissionOptions.skipStorage = false;
+                    $scope.tabs.machines.commissionOptions.updateFirmware =
+                        true;
+                    $scope.tabs.machines.commissionOptions.configureHBA = true;
+                    $scope.tabs.machines.commissioningSelection = [];
                     angular.forEach(
                             commissioning_scripts_ids, function(script_id) {
-                        $scope.tabs.nodes.commissioningSelection.push({
+                        $scope.tabs.machines.commissioningSelection.push({
                             id: script_id,
                             name: makeName("script_name")
                         });
                     });
-                    $scope.tabs.nodes.testSelection = [];
+                    $scope.tabs.machines.testSelection = [];
                     angular.forEach(testing_scripts_ids, function(script_id) {
-                        $scope.tabs.nodes.testSelection.push({
+                        $scope.tabs.machines.testSelection.push({
                             id: script_id,
                             name: makeName("script_name")
                         });
                     });
-                    $scope.actionGo("nodes");
+                    $scope.actionGo("machines");
                     expect(spy).toHaveBeenCalledWith(
                         object, "commission", {
                             enable_ssh: true,
@@ -1542,24 +1552,24 @@ describe("NodesListController", function() {
             it("calls performAction with testOptions",
                 function() {
                     var controller = makeController();
-                    var object = makeObject("nodes");
+                    var object = makeObject("machines");
                     var spy = spyOn(
-                        $scope.tabs.nodes.manager,
+                        $scope.tabs.machines.manager,
                         "performAction").and.returnValue(
                             $q.defer().promise);
                     var testing_script_ids = [
                         makeInteger(0, 100), makeInteger(0, 100)];
-                    $scope.tabs.nodes.actionOption = { name: "test" };
-                    $scope.tabs.nodes.selectedItems = [object];
-                    $scope.tabs.nodes.commissionOptions.enableSSH = true;
-                    $scope.tabs.nodes.testSelection = [];
+                    $scope.tabs.machines.actionOption = { name: "test" };
+                    $scope.tabs.machines.selectedItems = [object];
+                    $scope.tabs.machines.commissionOptions.enableSSH = true;
+                    $scope.tabs.machines.testSelection = [];
                     angular.forEach(testing_script_ids, function(script_id) {
-                        $scope.tabs.nodes.testSelection.push({
+                        $scope.tabs.machines.testSelection.push({
                             id: script_id,
                             name: makeName("script_name")
                         });
                     });
-                    $scope.actionGo("nodes");
+                    $scope.actionGo("machines");
                     expect(spy).toHaveBeenCalledWith(
                         object, "test", {
                             enable_ssh: true,
@@ -1570,39 +1580,41 @@ describe("NodesListController", function() {
             it("sets showing_confirmation with testOptions",
                 function() {
                     var controller = makeController();
-                    var object = makeObject("nodes");
+                    var object = makeObject("machines");
                     object.status_code = 6;
                     var spy = spyOn(
-                        $scope.tabs.nodes.manager,
+                        $scope.tabs.machines.manager,
                         "performAction").and.returnValue(
                             $q.defer().promise);
-                    $scope.tabs.nodes.actionOption = { name: "test" };
-                    $scope.tabs.nodes.selectedItems = [object];
-                    $scope.actionGo("nodes");
+                    $scope.tabs.machines.actionOption = { name: "test" };
+                    $scope.tabs.machines.selectedItems = [object];
+                    $scope.actionGo("machines");
                     expect($scope.tabs[
-                        "nodes"].actionProgress.showing_confirmation).toBe(
+                        "machines"].actionProgress.showing_confirmation).toBe(
                             true);
                     expect($scope.tabs[
-                        "nodes"].actionProgress.affected_nodes).toBe(1);
+                        "machines"].actionProgress.affected_nodes).toBe(1);
                     expect(spy).not.toHaveBeenCalled();
             });
 
             it("calls performAction with releaseOptions",
                 function() {
                     var controller = makeController();
-                    var object = makeObject("nodes");
+                    var object = makeObject("machines");
                     var spy = spyOn(
-                        $scope.tabs.nodes.manager,
+                        $scope.tabs.machines.manager,
                         "performAction").and.returnValue(
                         $q.defer().promise);
                     var secureErase = makeName("secureErase");
                     var quickErase = makeName("quickErase");
-                    $scope.tabs.nodes.actionOption = { name: "release" };
-                    $scope.tabs.nodes.selectedItems = [object];
-                    $scope.tabs.nodes.releaseOptions.erase = true;
-                    $scope.tabs.nodes.releaseOptions.secureErase = secureErase;
-                    $scope.tabs.nodes.releaseOptions.quickErase = quickErase;
-                    $scope.actionGo("nodes");
+                    $scope.tabs.machines.actionOption = { name: "release" };
+                    $scope.tabs.machines.selectedItems = [object];
+                    $scope.tabs.machines.releaseOptions.erase = true;
+                    $scope.tabs.machines.releaseOptions.secureErase =
+                        secureErase;
+                    $scope.tabs.machines.releaseOptions.quickErase =
+                        quickErase;
+                    $scope.actionGo("machines");
                     expect(spy).toHaveBeenCalledWith(
                         object, "release", {
                             erase: true,
@@ -1622,36 +1634,36 @@ describe("NodesListController", function() {
                     $scope, 'hasActionsFailed').and.returnValue(false);
                 spyOn(
                     $scope, 'hasActionsInProgress').and.returnValue(false);
-                var object = makeObject("nodes");
+                var object = makeObject("machines");
                 MachinesManager._items.push(object);
                 MachinesManager._selectedItems.push(object);
-                $scope.tabs.nodes.actionOption = { name: "commission" };
-                $scope.tabs.nodes.commissionOptions.enableSSH = true;
-                $scope.tabs.nodes.commissionOptions.skipNetworking = true;
-                $scope.tabs.nodes.commissionOptions.skipStorage = true;
-                $scope.tabs.nodes.commissionOptions.updateFirmware = true;
-                $scope.tabs.nodes.commissionOptions.configureHBA = true;
-                $scope.tabs.nodes.commissioningSelection = [{
+                $scope.tabs.machines.actionOption = { name: "commission" };
+                $scope.tabs.machines.commissionOptions.enableSSH = true;
+                $scope.tabs.machines.commissionOptions.skipNetworking = true;
+                $scope.tabs.machines.commissionOptions.skipStorage = true;
+                $scope.tabs.machines.commissionOptions.updateFirmware = true;
+                $scope.tabs.machines.commissionOptions.configureHBA = true;
+                $scope.tabs.machines.commissioningSelection = [{
                     id: makeInteger(0, 100),
                     name: makeName("script_name")
                 }];
-                $scope.tabs.nodes.testSelection = [{
+                $scope.tabs.machines.testSelection = [{
                     id: makeInteger(0, 100),
                     name: makeName("script_name")
                 }];
 
-                $scope.actionGo("nodes");
+                $scope.actionGo("machines");
                 defer.resolve();
                 $scope.$digest();
-                expect($scope.tabs.nodes.commissionOptions).toEqual({
+                expect($scope.tabs.machines.commissionOptions).toEqual({
                     enableSSH: false,
                     skipNetworking: false,
                     skipStorage: false,
                     updateFirmware: false,
                     configureHBA: false
                 });
-                expect($scope.tabs.nodes.commissioningSelection).toEqual([]);
-                expect($scope.tabs.nodes.testSelection).toEqual([]);
+                expect($scope.tabs.machines.commissioningSelection).toEqual([]);
+                expect($scope.tabs.machines.testSelection).toEqual([]);
             });
         });
     });

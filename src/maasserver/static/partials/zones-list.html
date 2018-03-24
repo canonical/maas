@@ -66,13 +66,13 @@
                         {$ zone.description $}
                     </td>
                     <td aria-label="Machines" class="u-align--right">
-                        <a href="#/nodes?tab=nodes&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
+                        <a href="#/machines?query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
                     </td>
                     <td aria-label="Devices" class="u-align--right">
-                        <a href="#/nodes?tab=devices&query=zone:({$ zone.name $})">{$ zone.devices_count $}</a>
+                        <a href="#/devices?query=zone:({$ zone.name $})">{$ zone.devices_count $}</a>
                     </td>
                     <td aria-label="Controllers" class="u-align--right">
-                        <a href="#/nodes?tab=controllers&query=zone:({$ zone.name $})">{$ zone.controllers_count $}</a>
+                        <a href="#/controllers?query=zone:({$ zone.name $})">{$ zone.controllers_count $}</a>
                     </td>
                 </tr>
             </tbody>

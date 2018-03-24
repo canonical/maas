@@ -507,7 +507,7 @@
                         <label class="p-form__label">Tags</label>
                         <div class="p-form__control tags--inline">
                             <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
-                                <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
+                                <a href="#/machines/?query=tags:({$ tag $})">{$ tag $}</a>
                             </span>
                             <tags-input data-ng-model="summary.tags"
                                 data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
@@ -729,10 +729,10 @@
                                     </div>
                                 </td>
                                 <td class="col-2">
-                                    <a href="#/node/controller/{$ vlanRow['primary_rack'].system_id $}">{$ vlanRow['primary_rack'].fqdn $}</a>
+                                    <a href="#/controller/{$ vlanRow['primary_rack'].system_id $}">{$ vlanRow['primary_rack'].fqdn $}</a>
                                 </td>
                                 <td class="col-2">
-                                    <a href="#/node/controller/{$ vlanRow['secondary_rack'].system_id $}">{$ vlanRow['secondary_rack'].fqdn $}</a>
+                                    <a href="#/controller/{$ vlanRow['secondary_rack'].system_id $}">{$ vlanRow['secondary_rack'].fqdn $}</a>
                                 </td>
                             </tr>
                         </tbody>
@@ -1825,7 +1825,7 @@
                                     </td>
                                     <td class="col-2" aria-label="Tags">
                                         <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
-                                            <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
+                                            <a href="#/machines/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </span>
                                     </td>
                                     <td class="col-1" aria-label="Health">
@@ -2635,7 +2635,7 @@
     <section class="p-strip" data-ng-if="section.area === 'events'">
         <div class="row">
             <div class="col-12 u-align--right" data-ng-if="node.events.length">
-                <a href="#/node/{$ type_name $}/{$ node.system_id $}/events">View full history</a>
+                <a href="#/{$ type_name $}/{$ node.system_id $}/events">View full history</a>
             </div>
         </div>
         <div class="row">

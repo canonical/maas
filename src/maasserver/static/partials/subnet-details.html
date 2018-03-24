@@ -491,11 +491,11 @@
                         <td class="col-2" aria-label="IP Address">{$ ip.ip $}</td>
                         <td class="col-1" aria-label="Type">{$ getAllocType(ip.alloc_type) $}</td>
                         <td class="col-2" aria-label="Node" data-ng-switch="ip.node_summary.node_type">
-                            <span data-ng-switch-when="0"><a href="#/node/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                            <span data-ng-switch-when="0"><a href="#/machine/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                             <span data-ng-switch-when="1">{$ ip.node_summary.hostname $}</span>
-                            <span data-ng-switch-when="2"><a href="#/node/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
-                            <span data-ng-switch-when="3"><a href="#/node/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
-                            <span data-ng-switch-when="4"><a href="#/node/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                            <span data-ng-switch-when="2"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                            <span data-ng-switch-when="3"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                            <span data-ng-switch-when="4"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                             <span data-ng-switch-default>{$ ip.node_summary.hostname $}</span>
                         </td>
                         <td class="col-1" aria-label="Interface" data-ng-switch="ip.node_summary.node_type">

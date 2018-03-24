@@ -181,10 +181,9 @@ describe("NodeDetailsController", function() {
         return controller;
     }
 
-    it("sets title to loading and page to nodes", function() {
+    it("sets title to loading", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Loading...");
-        expect($rootScope.page).toBe("nodes");
     });
 
     it("sets the initial $scope values", function() {
@@ -321,7 +320,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("sets controller values on load", function () {
-        $routeParams.type = 'controller';
+        $location.path('/controller');
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         spyOn(ControllersManager, "setActiveItem").and.returnValue(
@@ -346,7 +345,7 @@ describe("NodeDetailsController", function() {
             $q.defer().promise);
 
         var defer = $q.defer();
-        $routeParams.type = 'controller';
+        $location.path('/controller');
         var controller = makeController(defer);
         ControllersManager._activeItem = node;
 
@@ -366,7 +365,7 @@ describe("NodeDetailsController", function() {
         spyOn(ControllersManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
-        $routeParams.type = 'controller';
+        $location.path('/controller');
         var controller = makeController(defer);
         var getAllActionOptions = spyOn($scope, "getAllActionOptions");
         var myNode = angular.copy(node);
@@ -1188,7 +1187,7 @@ describe("NodeDetailsController", function() {
             $scope.actionGo();
             defer.resolve();
             $rootScope.$digest();
-            expect($location.path).toHaveBeenCalledWith("/nodes");
+            expect($location.path).toHaveBeenCalledWith("/machines");
         });
 
         it("sets actionError when rejected", function() {

@@ -59,7 +59,7 @@ from provisioningserver.tags import merge_details_cleanly
 
 NODE_TYPE_TO_LINK_TYPE = {
     NODE_TYPE.DEVICE: 'device',
-    NODE_TYPE.MACHINE: 'node',
+    NODE_TYPE.MACHINE: 'machine',
     NODE_TYPE.RACK_CONTROLLER: 'controller',
     NODE_TYPE.REGION_CONTROLLER: 'controller',
     NODE_TYPE.REGION_AND_RACK_CONTROLLER: 'controller',

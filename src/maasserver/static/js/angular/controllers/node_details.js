@@ -24,7 +24,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Set title and page.
         $rootScope.title = "Loading...";
-        $rootScope.page = "nodes";
 
         // Initial values.
         $scope.loaded = false;
@@ -615,7 +614,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.node, $scope.action.option.name, extra).then(function() {
                     // If the action was delete, then go back to listing.
                     if($scope.action.option.name === "delete") {
-                        $location.path("/nodes");
+                        $location.path("/machines");
                     }
                     $scope.action.option = null;
                     $scope.action.error = null;
@@ -1078,24 +1077,28 @@ angular.module('MAAS').controller('NodeDetailsController', [
             ServicesManager,
             ScriptsManager
         ]).then(function() {
-            if('controller' === $routeParams.type) {
+            var path = $location.path();
+            if(path.indexOf('/controller') !== -1) {
                 $scope.nodesManager = ControllersManager;
                 $scope.isController = true;
                 $scope.isDevice = false;
                 $scope.type_name = 'controller';
                 $scope.type_name_title = 'Controller';
-            }else if('device' === $routeParams.type) {
+                $rootScope.page = 'controllers';
+            }else if(path.indexOf('/device') !== -1) {
                 $scope.nodesManager = DevicesManager;
                 $scope.isController = false;
                 $scope.isDevice = true;
                 $scope.type_name = 'device';
                 $scope.type_name_title = 'Device';
+                $rootScope.page = 'devices';
             }else{
                 $scope.nodesManager = MachinesManager;
                 $scope.isController = false;
                 $scope.isDevice = false;
                 $scope.type_name = 'machine';
                 $scope.type_name_title = 'Machine';
+                $rootScope.page = 'machines';
             }
 
             // Possibly redirected from another controller that already had

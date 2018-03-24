@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Script Result Controller
@@ -13,7 +13,6 @@ angular.module('MAAS').controller('NodeResultController', [
              ManagerHelperService, ErrorService) {
         // Set the title and page.
         $rootScope.title = "Loading...";
-        $rootScope.page = "nodes";
 
         // Initial values.
         $scope.loaded = false;
@@ -65,12 +64,14 @@ angular.module('MAAS').controller('NodeResultController', [
             }
         });
 
-        if($routeParams.type === 'controller') {
+        if($location.path().indexOf("/controller") !== -1) {
             $scope.nodesManager = ControllersManager;
             $scope.type_name = 'controller';
+            $rootScope.page = 'controllers';
         }else{
             $scope.nodesManager = MachinesManager;
             $scope.type_name = 'machine';
+            $rootScope.page = 'machines';
         }
         // Load nodes manager.
         ManagerHelperService.loadManager(

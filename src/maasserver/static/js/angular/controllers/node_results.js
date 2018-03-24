@@ -5,10 +5,12 @@
  */
 
 angular.module('MAAS').controller('NodeResultsController', [
-    '$scope', '$routeParams', 'MachinesManager', 'ControllersManager',
-    'NodeResultsManagerFactory', 'ManagerHelperService', 'ErrorService',
-    function($scope, $routeParams, MachinesManager, ControllersManager,
-             NodeResultsManagerFactory, ManagerHelperService, ErrorService) {
+    '$scope', '$routeParams', '$location', 'MachinesManager',
+    'ControllersManager', 'NodeResultsManagerFactory', 'ManagerHelperService',
+    'ErrorService',
+    function($scope, $routeParams, $location, MachinesManager,
+             ControllersManager, NodeResultsManagerFactory,
+             ManagerHelperService, ErrorService) {
 
         // NodeResultsManager that is loaded once the node is loaded.
         $scope.nodeResultsManager = null;
@@ -95,7 +97,7 @@ angular.module('MAAS').controller('NodeResultsController', [
             });
         }
 
-        if($routeParams.type === 'controller') {
+        if($location.path().indexOf('/controller') !== -1 ){
             $scope.nodesManager = ControllersManager;
         } else {
             $scope.nodesManager = MachinesManager;

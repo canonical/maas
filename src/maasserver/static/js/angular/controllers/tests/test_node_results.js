@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeResultsController
@@ -14,6 +14,7 @@ describe("NodeResultsController", function() {
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
+        $location = $injector.get("$location");
         $scope = $rootScope.$new();
         $scope.section = {
             area: pickItem(["testing", "commissioning", "summary"])
@@ -127,7 +128,7 @@ describe("NodeResultsController", function() {
     });
 
     it("sets the initial $scope values when controller", function() {
-        $routeParams.type = 'controller';
+        $location.path('/controller');
         var controller = makeController();
         expect($scope.commissioning_results).toBeNull();
         expect($scope.testing_results).toBeNull();

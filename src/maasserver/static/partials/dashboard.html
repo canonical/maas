@@ -44,8 +44,8 @@
                     <tr data-ng-if="convertTo.saved">
                         <td class="col-11">
                             <i class="p-icon--success">Success:</i> {$ convertTo.hostname $} has been add to {$ site $}.
-                            <a href="#/node/{$ convertTo.parent $}" data-ng-if="convertTo.parent">Go to the machine devices page.</a>
-                            <a href="#/nodes/?tab=devices" data-ng-if="!convertTo.parent">Go to the device listing.</a>
+                            <a href="#/machine/{$ convertTo.parent $}" data-ng-if="convertTo.parent">Go to the machine devices page.</a>
+                            <a href="#/devices" data-ng-if="!convertTo.parent">Go to the device listing.</a>
                         </div>
                         <td class="col-1">
                             <button class="p-button--neutral" data-ng-click="convertTo.saved = false">Clear</button>

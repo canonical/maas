@@ -160,9 +160,9 @@ angular.module('MAAS').controller('DashboardController', [
             $scope.convertTo.saved = true;
             if($scope.convertTo.goTo) {
                 if(angular.isString(obj.parent)) {
-                    $location.path('/node/' + obj.parent);
+                    $location.path('/device/' + obj.parent);
                 } else {
-                    $location.path('/nodes').search({tab: 'devices'});
+                    $location.path('/devices/');
                 }
             }
         };
