@@ -9,13 +9,13 @@
     <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
         <div class="row">
             <div class="col-8">
-                <h1 class="page-header__title">Physical zone: {$ zone.name $}</h1>
+                <h1 class="page-header__title">Availability zone: {$ zone.name $}</h1>
             </div>
             <div class="col-4">
                 <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultZone() && !loading">
                     <button class="button--destructive button--inline"
                         data-ng-click="deleteButton()"
-                        data-ng-hide="confirmingDelete">Delete zone</button>
+                        data-ng-hide="confirmingDelete">Delete AZ</button>
                 </div>
             </div>
         </div>
@@ -24,7 +24,7 @@
                 <hr />
                 <section class="row ng-hide" data-ng-hide="canBeDeleted()">
                     <div class="col-6">
-                        <p><i class="p-icon--error">Error:</i> Zone cannot be deleted because it is the default zone.</p>
+                        <p><i class="p-icon--error">Error:</i> AZ cannot be deleted because it is the default AZ.</p>
                     </div>
                     <div class="col-6 u-align--right">
                         <button class="p-button--base"  type="button"data-ng-click="cancelDeleteButton()">Cancel</button>
@@ -32,11 +32,11 @@
                 </section>
                 <section class="row ng-hide" data-ng-show="canBeDeleted() && !error">
                     <div class="col-6">
-                        <p><i class="p-icon--error">Error:</i> Are you sure you want to delete this zone?</p>
+                        <p><i class="p-icon--error">Error:</i> Are you sure you want to delete this AZ?</p>
                     </div>
                     <div class="col-6 u-align--right">
                         <button class="p-button--base"  type="button"data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="p-button--negative u-no-margin--top" data-ng-click="deleteConfirmButton()">Delete zone</button>
+                        <button class="p-button--negative u-no-margin--top" data-ng-click="deleteConfirmButton()">Delete AZ</button>
                     </div>
                 </section>
                 <section class="row ng-hide" data-ng-show="canBeDeleted() && error">
@@ -55,7 +55,7 @@
         <section class="p-strip">
             <div class="row">
                 <div class="col-6">
-                    <h2>Zone summary</h2>
+                    <h2>Availability zone</h2>
                 </div>
                 <div class="col-6">
                     <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>

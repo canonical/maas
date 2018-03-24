@@ -1,18 +1,18 @@
 <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
     <div class="row">
         <div class="col-8">
-            <h1 class="page-header__title">Zones</h1>
+            <h1 class="page-header__title">Availability zones</h1>
             <p class="page-header__status" data-ng-show="!loading"><ng-pluralize data-ng-hide="loading" count="zones.length"
-                        when="{'one': '{$ zones.length $} zone available', 'other': '{$ zones.length $} zones available '}"></ng-pluralize></p>
+                        when="{'one': '{$ zones.length $} AZ available', 'other': '{$ zones.length $} AZs available '}"></ng-pluralize></p>
         </div>
         <div class="col-4">
             <div class="page-header__controls" data-ng-show="isSuperUser()">
                 <button class="button--secondary button--inline"
                     data-ng-click="addZone()"
-                    data-ng-hide="action.open">Add zone</button>
+                    data-ng-hide="action.open">Add AZ</button>
                 <button class="button--secondary button--inline"
                     data-ng-click="closeZone()"
-                    data-ng-show="action.open">Cancel add zone</button>
+                    data-ng-show="action.open">Cancel add AZ</button>
             </div>
         </div>
     </div>
@@ -27,7 +27,7 @@
             </div>
             <div class="col-6 u-align--right">
                 <button class="p-button--base"  type="button"data-ng-click="closeZone()">Cancel</button>
-                <button class="p-button--positive u-no-margin--top" maas-obj-save>Add zone</button>
+                <button class="p-button--positive u-no-margin--top" maas-obj-save>Add AZ</button>
             </div>
         </maas-obj-form>
     </div>
@@ -35,7 +35,7 @@
 <section class="p-strip">
     <div class="row">
         <div class="col-12 ng-hide u-equal-height" data-ng-show="!loading">
-            <h2 class="u-float--left">Physical zones</h2>&nbsp;&nbsp;
+            <h2 class="u-float--left">Availability zones</h2>&nbsp;&nbsp;
 
             <span class="u-vertically-center u-no-margin--top">
                 <span class="p-tooltip p-tooltip--btm-left">
