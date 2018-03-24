@@ -22,6 +22,11 @@ from maascli.auth import (
 )
 from maascli.command import Command
 from maascli.config import ProfileConfig
+from maascli.init import (
+    add_create_admin_options,
+    add_idm_options,
+    init_maas,
+)
 from maascli.utils import (
     api_url,
     parse_docstring,
@@ -159,6 +164,27 @@ class cmd_list(Command):
                     print(profile_name, url, creds)
 
 
+class cmd_init(Command):
+    """Initialize controller."""
+
+    def __init__(self, parser):
+        super().__init__(parser)
+        parser.add_argument(
+            '--skip-admin', action='store_true',
+            help="Skip the admin creation.")
+        add_create_admin_options(parser)
+        parser.add_argument(
+            '--enable-idm', default=False, action="store_true",
+            help=("Enable configuring the use of an external IDM server. "
+                  "This feature is currently experimental. "
+                  "If this isn't enabled, all --idm-* arguments "
+                  "will be ignored."))
+        add_idm_options(parser)
+
+    def __call__(self, options):
+        init_maas(options)
+
+
 # Built-in commands to the maascli.
 commands = {
     'login': cmd_login,
@@ -191,16 +217,22 @@ def register_cli_commands(parser):
     if 'SNAP' in os.environ:
         # Only import snappy if running under the snap.
         from maascli import snappy
-        for name, command in [
-                ('init', snappy.cmd_init),
-                ('config', snappy.cmd_config),
-                ('status', snappy.cmd_status),
-                ('migrate', snappy.cmd_migrate)]:
-            help_title, help_body = parse_docstring(command)
-            command_parser = parser.subparsers.add_parser(
-                safe_name(name), help=help_title, description=help_title,
-                epilog=help_body)
-            command_parser.set_defaults(execute=command(command_parser))
+        extra_commands = [
+            ('init', snappy.cmd_init),
+            ('config', snappy.cmd_config),
+            ('status', snappy.cmd_status),
+            ('migrate', snappy.cmd_migrate)]
+    elif is_maasserver_available():
+        extra_commands = [('init', cmd_init)]
+    else:
+        extra_commands = []
+
+    for name, command in extra_commands:
+        help_title, help_body = parse_docstring(command)
+        command_parser = parser.subparsers.add_parser(
+            safe_name(name), help=help_title, description=help_title,
+            epilog=help_body)
+        command_parser.set_defaults(execute=command(command_parser))
 
     # Setup and the allowed django commands into the maascli.
     management = get_django_management()

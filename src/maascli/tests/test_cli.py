@@ -7,13 +7,19 @@ __all__ = []
 
 import doctest
 from io import StringIO
+import json
+import os
 import sys
 from textwrap import dedent
 from unittest.mock import sentinel
 
 from apiclient.creds import convert_string_to_tuple
 from django.core import management
-from maascli import cli
+from maascli import (
+    cli,
+    init,
+    snappy,
+)
 from maascli.auth import UnexpectedResponse
 from maascli.parser import ArgumentParser
 from maascli.tests.test_auth import make_options
@@ -87,6 +93,33 @@ class TestRegisterCommands(MAASTestCase):
             self.assertIsNotNone(subparser)
             self.assertEqual(help_text, subparser.description)
 
+    def test_load_init_command_snap(self):
+        environ = {'SNAP': 'snap-path'}
+        self.patch(os, 'environ', environ)
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        subparser = parser.subparsers.choices.get('init')
+        self.assertIsInstance(
+            subparser.get_default('execute'), snappy.cmd_init)
+
+    def test_load_init_command_no_snap(self):
+        environ = {}
+        self.patch(os, 'environ', environ)
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        subparser = parser.subparsers.choices.get('init')
+        self.assertIsInstance(subparser.get_default('execute'), cli.cmd_init)
+
+    def test_load_init_command_no_snap_no_maasserver(self):
+        environ = {}
+        self.patch(os, 'environ', environ)
+        self.patch(
+            cli, "is_maasserver_available").return_value = None
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        subparser = parser.subparsers.choices.get('init')
+        self.assertIsNone(subparser)
+
 
 class TestLogin(MAASTestCase):
 
@@ -135,3 +168,48 @@ class TestLogin(MAASTestCase):
         observed = stdout.getvalue()
         flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
         self.assertThat(observed, DocTestMatches(expected, flags))
+
+
+class TestCmdInit(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        self.cmd = cli.cmd_init(self.parser)
+        self.maas_region_path = init.get_maas_region_bin_path()
+        self.call_mock = self.patch(init.subprocess, 'call')
+        self.check_output_mock = self.patch(init.subprocess, 'check_output')
+        self.check_output_mock.return_value = json.dumps(
+            {'external_auth_url': ''})
+
+    def test_defaults(self):
+        options = self.parser.parse_args([])
+        self.assertFalse(options.skip_admin)
+        self.assertIsNone(options.admin_username)
+        self.assertIsNone(options.admin_password)
+        self.assertIsNone(options.admin_email)
+        self.assertIsNone(options.admin_ssh_import)
+        self.assertFalse(options.enable_idm)
+        self.assertIsNone(options.idm_url)
+        self.assertIsNone(options.idm_user)
+        self.assertIsNone(options.idm_key)
+        self.assertIsNone(options.idm_agent_file)
+
+    def test_init_maas_no_idm(self):
+        options = self.parser.parse_args([])
+        self.cmd(options)
+        [createadmin_call] = self.call_mock.mock_calls
+        _, args, kwargs = createadmin_call
+        self.assertEqual(([self.maas_region_path, 'createadmin'],), args)
+        self.assertEqual({}, kwargs)
+
+    def test_init_maas_with_idm(self):
+        options = self.parser.parse_args(['--enable-idm'])
+        self.cmd(options)
+        configauth_call, createadmin_call = self.call_mock.mock_calls
+        _, args1, kwargs1 = configauth_call
+        _, args2, kwargs2 = createadmin_call
+        self.assertEqual(([self.maas_region_path, 'configauth'],), args1)
+        self.assertEqual({}, kwargs1)
+        self.assertEqual(([self.maas_region_path, 'createadmin'],), args2)
+        self.assertEqual({}, kwargs2)
