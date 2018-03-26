@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Script runtime counter directive.
@@ -36,9 +36,8 @@ angular.module('MAAS').directive('maasScriptRunTime', function() {
             function incrementCounter() {
                 if(($scope.scriptStatus === 1 || $scope.scriptStatus === 7) &&
                     $scope.startTime) {
-                    var start_date = new Date(null);
-                    start_date.setSeconds($scope.startTime);
-                    var seconds = Math.floor((Date.now() - start_date) / 1000);
+                    var seconds = Math.floor(
+                        (Date.now() / 1000) - $scope.startTime);
                     var minutes = Math.floor(seconds / 60);
                     var hours = Math.floor(minutes / 60);
                     var days = Math.floor(hours / 24);

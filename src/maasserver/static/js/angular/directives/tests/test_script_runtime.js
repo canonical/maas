@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for script runtime directive.
@@ -110,5 +110,18 @@ describe("maasScriptRunTime", function() {
         expect(spanElement).toBeDefined();
         expect(spanElement.text()).toEqual(
             '2 days, 0:00:00 of ~' + estimatedRunTime);
+    });
+
+    it('regression test for LP:1757153', function() {
+        var startTime = (Date.now() / 1000) - 1;
+        var estimatedRunTime = '0:00:54';
+        var scriptStatus = 1;
+        var directive = compileDirective(
+            startTime, null, estimatedRunTime, scriptStatus);
+        // Flush should not cause the passed time to change.
+        var spanElement = directive.find('span');
+        expect(spanElement).toBeDefined();
+        expect(spanElement.text()).toEqual(
+            '0:00:01 of ~' + estimatedRunTime);
     });
 });
