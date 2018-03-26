@@ -53,27 +53,26 @@
             table-form="true" save-on-blur="false" after-save="cancelAddPod" data-ng-if="add.open"
             class="p-form--stacked">
             <div class="row">
-                <hr />
                 <h3 class="page-header__dropdown-title">Add pod</h3>
             </div>
             <div class="row">
                 <div class="col-5">
-                    <maas-obj-field type="text" key="name" label="Name" label-width="two" input-width="three" placeholder="Name (optional)"></maas-obj-field>
-		    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
-		        options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                    <maas-obj-field type="text" key="name" label="Name" label-width="2" input-width="3" placeholder="Name (optional)"></maas-obj-field>
+                    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
+                        options="zone.id as zone.name for zone in zones"></maas-obj-field>
                 </div>
                 <div class="col-6 prefix-1">
                     <maas-pod-parameters></maas-pod-parameters>
                 </div>
             </div>
             <div class="row u-no-margin--top">
-                <hr class="u-no-margin--bottom" />
+                <hr />
                 <div class="col-12">
                     <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
                     <p maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
-                    <div class="page-header__controls" maas-obj-hide-saving>
+                    <div class="page-header__controls u-no-margin--top" maas-obj-hide-saving>
                         <button class="p-button--base is-inline" type="button" data-ng-click="cancelAddPod()">Cancel</button>
-                        <button class="p-button--positive is-inline" maas-obj-save>Save pod</button>
+                        <button class="p-button--positive is-inline u-no-margin--top" maas-obj-save>Save pod</button>
                     </div>
                 </div>
             </div>

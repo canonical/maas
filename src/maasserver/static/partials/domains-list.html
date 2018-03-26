@@ -26,27 +26,32 @@
             <div class="col-6">
                 <form class="p-form p-form--inline row">
                     <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': nameHasError() }">
-                        <label for="domain-name" class="p-form__label">Add domain</label>
+                        <label for="domain-name" class="p-form__label">Name</label>
                         <div class="p-form__control">
                             <input type="text" id="domain-name" placeholder="Domain name"
                                 data-ng-model="domain.name" class="p-form-validation__input">
-                            <input type="checkbox" class="checkbox" id="domain-authoritative" data-ng-model="domain.authoritative">
-                            <label for="domain-authoritative">Authoritative</label>
                         </div>
-                        <p class="ng-hide" data-ng-show="error">
-                            <i class="p-icon--error">Error:</i> {$ error $}
-                        </p>
                     </div>
+                    <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': nameHasError() }">
+                        <input type="checkbox" class="checkbox" id="domain-authoritative" data-ng-model="domain.authoritative">
+                        <label for="domain-authoritative" class="u-no-margin--top">Authoritative</label>
+                    </div>
+                    <p class="ng-hide" data-ng-show="error">
+                        <i class="p-icon--error">Error:</i> {$ error $}
+                    </p>
                 </form>
             </div>
-            <div class="col-6 u-align--right">
-                <button class="p-button--base" type="button" data-ng-click="cancel()">Cancel</button>
-                <button class="p-button--neutral"
-                    data-ng-class="{ 'is-disabled': domainHasError() }"
-                    data-ng-click="save(true)">Save and add another</button>
-                <button class="p-button--positive"
-                    data-ng-class="{ 'is-disabled': domainHasError() }"
-                    data-ng-click="save(false)">Save domain</button>
+            <div class="col-6">
+                <div class="u-align--right">
+                    <button class="p-button--base" type="button" 
+                        data-ng-click="cancel()">Cancel</button>
+                    <button class="p-button--neutral"
+                        data-ng-class="{ 'is-disabled': domainHasError() }"
+                        data-ng-click="save(true)">Save and add another</button>
+                    <button class="p-button--positive"
+                        data-ng-class="{ 'is-disabled': domainHasError() }"
+                        data-ng-click="save(false)">Save domain</button>
+                </div>
             </div>
         </div>
     </div>
@@ -56,10 +61,10 @@
         <table>
             <thead>
                 <tr>
-                    <td data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</td>
-                    <td data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</td>
-                    <td data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</td>
-                    <td data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</td>
+                    <th data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</th>
+                    <th data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</th>
+                    <th data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</th>
+                    <th data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</th>
                 </tr>
             </thead>
             <tbody>

@@ -911,10 +911,10 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <label for="check-all-devices" class="p-form__label u-no-margin--top"></label>
                             </span>
                             <span role="columnheader" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
-                                <abbr title="Fully Qualified Domain Name">FQDN</abbr>
+                                <abbr>FQDN</abbr>
                             </span>
                         </th>
-                        <th class="col-2" role="columnheader" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}"><abbr title="Media Access Control addresses">MAC</abbr></th>
+                        <th class="col-2" role="columnheader" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">MAC</th>
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Assignment</th>
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Address</th>
                         <th class="col-1" role="columnheader" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
@@ -975,13 +975,13 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <label for="check-all-controllers" class="p-form__label u-no-margin--top"></label>
                             </span>
                             <span role="columnheader" data-ng-click="sortTable('fqdn', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'fqdn', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
-                                <abbr title="Fully Qualified Domain Name">Name</abbr>
+                                Name
                             </span>
                         </th>
                         <th class="col-1 u-align--center">
                             <span title="Status">Status</span>
                         </th>
-                        <th class="col-3" role="columnheader" data-ng-click="sortTable('node_type_display', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'node_type_display', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}"><abbr title="Controller Type">Type</abbr></th>
+                        <th class="col-3" role="columnheader" data-ng-click="sortTable('node_type_display', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'node_type_display', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Type</th>
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('node_type_display', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'version', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Version</th>
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Last Image Sync</th>
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Images Status</th>
