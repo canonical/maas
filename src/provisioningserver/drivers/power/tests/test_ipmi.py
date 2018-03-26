@@ -25,7 +25,9 @@ from provisioningserver.drivers.power import (
     PowerError,
 )
 from provisioningserver.drivers.power.ipmi import (
+    IPMI_BOOT_TYPE,
     IPMI_CONFIG,
+    IPMI_CONFIG_WITH_BOOT_TYPE,
     IPMI_ERRORS,
     IPMIPowerDriver,
 )
@@ -107,7 +109,9 @@ class TestIPMIPowerDriver(MAASTestCase):
         # The IP address is passed to _issue_ipmi_chassis_config_command.
         self.assertThat(
             driver._issue_ipmi_chassis_config_command,
-            MockCalledOnceWith(ANY, power_change, ip_address))
+            MockCalledOnceWith(
+                ANY, power_change, ip_address,
+                power_boot_type=None))
         # The IP address is also within the command passed to
         # _issue_ipmi_chassis_config_command.
         self.assertThat(
@@ -324,3 +328,57 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.assertThat(
             _issue_ipmi_command_mock, MockCalledOnceWith('query', **context))
+
+    def test__issue_ipmi_chassis_config_with_power_boot_type(self):
+        context = make_context()
+        driver = IPMIPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        find_ip_via_arp = self.patch(ipmi_module, 'find_ip_via_arp')
+        find_ip_via_arp.return_value = ip_address
+        power_change = random.choice(("on", "off"))
+
+        context['mac_address'] = factory.make_mac_address()
+        context['power_address'] = random.choice((None, "", "   "))
+        context['power_boot_type'] = IPMI_BOOT_TYPE.EFI
+
+        self.patch_autospec(driver, "_issue_ipmi_chassis_config_command")
+        self.patch_autospec(driver, "_issue_ipmipower_command")
+        driver._issue_ipmi_command(power_change, **context)
+
+        # The IP address is passed to _issue_ipmi_chassis_config_command.
+        self.assertThat(
+            driver._issue_ipmi_chassis_config_command,
+            MockCalledOnceWith(
+                ANY, power_change, ip_address,
+                power_boot_type=IPMI_BOOT_TYPE.EFI))
+        # The IP address is also within the command passed to
+        # _issue_ipmi_chassis_config_command.
+        self.assertThat(
+            driver._issue_ipmi_chassis_config_command.call_args[0],
+            Contains(ip_address))
+        # The IP address is passed to _issue_ipmipower_command.
+        self.assertThat(
+            driver._issue_ipmipower_command,
+            MockCalledOnceWith(ANY, power_change, ip_address))
+
+    def test__chassis_config_written_to_temporary_file_with_boot_type(self):
+        boot_type = self.patch(ipmi_module, "power_boot_type")
+        boot_type.return_value = IPMI_BOOT_TYPE.EFI
+        NamedTemporaryFile = self.patch(ipmi_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+
+        IPMIPowerDriver._issue_ipmi_chassis_config_command(
+            ["true"], sentinel.change, sentinel.addr,
+            power_boot_type=IPMI_BOOT_TYPE.EFI)
+
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith("w+", encoding="utf-8"))
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCalledOnceWith(
+                IPMI_CONFIG_WITH_BOOT_TYPE % IPMI_BOOT_TYPE.EFI))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))

@@ -354,6 +354,7 @@ class TestSignal(MAASTestCase):
             ('power_pass', factory.make_name('power_pass')),
             ('power_address', factory.make_url()),
             ('power_driver', factory.make_name('power_driver')),
+            ('power_boot_type', factory.make_name('power_boot_type')),
         ])
 
         # None used for url and creds as we're not actually sending data.
