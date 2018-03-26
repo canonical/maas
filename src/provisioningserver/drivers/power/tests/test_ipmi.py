@@ -26,6 +26,7 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.drivers.power.ipmi import (
     IPMI_BOOT_TYPE,
+    IPMI_BOOT_TYPE_MAPPING,
     IPMI_CONFIG,
     IPMI_CONFIG_WITH_BOOT_TYPE,
     IPMI_ERRORS,
@@ -379,6 +380,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         self.assertThat(
             tmpfile.write,
             MockCalledOnceWith(
-                IPMI_CONFIG_WITH_BOOT_TYPE % IPMI_BOOT_TYPE.EFI))
+                IPMI_CONFIG_WITH_BOOT_TYPE % IPMI_BOOT_TYPE_MAPPING[
+                    IPMI_BOOT_TYPE.EFI]))
         self.assertThat(tmpfile.flush, MockCalledOnceWith())
         self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))

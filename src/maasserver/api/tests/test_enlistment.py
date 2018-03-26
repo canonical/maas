@@ -115,7 +115,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         # Add the default values.
         power_parameters['power_driver'] = 'LAN_2_0'
         power_parameters['mac_address'] = ''
-        power_parameters['power_boot_type'] = ''
+        power_parameters['power_boot_type'] = 'auto'
         self.assertEqual(http.client.OK, response.status_code)
         [machine] = Machine.objects.filter(hostname=hostname)
         self.assertEqual(power_parameters, machine.power_parameters)

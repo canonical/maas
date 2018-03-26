@@ -169,9 +169,9 @@ IPMI_DRIVER_CHOICES = [
 
 class IPMI_BOOT_TYPE:
     # DEFAULT used to provide backwards compatibility
-    DEFAULT = ''
-    LEGACY = 'PC-COMPATIBLE'
-    EFI = 'EFI'
+    DEFAULT = 'auto'
+    LEGACY = 'legacy'
+    EFI = 'efi'
 
 
 IPMI_BOOT_TYPE_CHOICES = [
@@ -179,6 +179,12 @@ IPMI_BOOT_TYPE_CHOICES = [
     [IPMI_BOOT_TYPE.LEGACY, "Legacy boot"],
     [IPMI_BOOT_TYPE.EFI, "EFI boot"]
     ]
+
+
+IPMI_BOOT_TYPE_MAPPING = {
+    IPMI_BOOT_TYPE.EFI: 'EFI',
+    IPMI_BOOT_TYPE.LEGACY: 'PC-COMPATIBLE',
+    }
 
 
 class IPMIPowerDriver(PowerDriver):
@@ -216,10 +222,13 @@ class IPMIPowerDriver(PowerDriver):
         env = shell.get_env_with_locale()
         with NamedTemporaryFile("w+", encoding="utf-8") as tmp_config:
             # Write out the chassis configuration.
-            if power_boot_type is None or power_boot_type == '':
+            if (power_boot_type is None or
+                    power_boot_type == IPMI_BOOT_TYPE.DEFAULT):
                 tmp_config.write(IPMI_CONFIG)
             else:
-                tmp_config.write(IPMI_CONFIG_WITH_BOOT_TYPE % power_boot_type)
+                tmp_config.write(
+                    IPMI_CONFIG_WITH_BOOT_TYPE %
+                    IPMI_BOOT_TYPE_MAPPING[power_boot_type])
             tmp_config.flush()
             # Use it when running the chassis config command.
             # XXX: Not using call_and_check here because we

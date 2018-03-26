@@ -321,8 +321,8 @@ def bmc_supports_lan2_0():
 def get_system_boot_type():
     """Detect if the system has boot EFI."""
     if os.path.isdir('/sys/firmware/efi'):
-        return 'EFI'
-    return ''
+        return 'efi'
+    return 'auto'
 
 
 def main():
