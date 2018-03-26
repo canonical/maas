@@ -263,6 +263,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(user.username, returned_user['username'])
         self.assertEqual(user.email, returned_user['email'])
         self.assertFalse(returned_user['is_superuser'])
+        self.assertTrue(returned_user['is_local'])
         self.assertEqual(get_user_uri(user), returned_user['resource_uri'])
 
     def test_GET_shows_expected_fields(self):
@@ -276,7 +277,7 @@ class TestUser(APITestCase.ForUser):
         returned_user = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
-            ['username', 'email', 'resource_uri', 'is_superuser'],
+            ['username', 'email', 'resource_uri', 'is_superuser', 'is_local'],
             returned_user.keys())
 
     def test_GET_identifies_superuser_as_such(self):
@@ -291,6 +292,19 @@ class TestUser(APITestCase.ForUser):
             json.loads(
                 response.content.decode(
                     settings.DEFAULT_CHARSET))['is_superuser'])
+
+    def test_GET_identifies_non_local_user_as_such(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+
+        user = factory.make_admin()
+        response = self.client.get(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertFalse(
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['is_local'])
 
     def test_GET_returns_404_if_user_not_found(self):
         nonuser = factory.make_name('nonuser')

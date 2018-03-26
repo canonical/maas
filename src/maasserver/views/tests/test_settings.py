@@ -89,6 +89,24 @@ class SettingsTest(MAASServerTestCase):
                 # logged-in user.
                 self.assertNotIn(
                     reverse('accounts-del', args=[user.username]), links)
+            # account type is reported
+            self.assertIn(
+                'Local', [elem.text.strip() for elem in row.cssselect('td')])
+
+    def test_setting_list_external_users(self):
+        Config.objects.set_config(
+            'external_auth_url', 'http://auth.example.com')
+        self.client_log_in(as_admin=True)
+        user = factory.make_User()
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        tab = doc.cssselect('#users')[0]
+        rows = tab.cssselect('tr[id="%s"]' % user.username)
+        # Only one row for the user.
+        self.assertEqual(1, len(rows))
+        row = rows[0]
+        self.assertIn(
+            'External', [elem.text.strip() for elem in row.cssselect('td')])
 
     def test_settings_external_auth_include_users_message(self):
         Config.objects.set_config(

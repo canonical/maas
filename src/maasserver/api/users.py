@@ -28,6 +28,7 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import DeleteUserForm
 from maasserver.models import User
+from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.orm import get_one
 from piston3.models import Consumer
 from piston3.utils import rc
@@ -102,6 +103,7 @@ class UserHandler(OperationsHandler):
     fields = (
         'username',
         'email',
+        'is_local',
         'is_superuser',
         )
 
@@ -145,3 +147,12 @@ class UserHandler(OperationsHandler):
     def resource_uri(cls, user=None):
         username = "username" if user is None else user.username
         return ('user_handler', [username])
+
+    @classmethod
+    def is_local(self, user=None):
+        if not user:
+            return False
+        if user.username in SYSTEM_USERS:
+            return True
+
+        return user.userprofile.is_local
