@@ -217,4 +217,21 @@
   .p-contextual-menu__dropdown {
     width: 100%;
   }
+
+  //Used to display an inline list of settings, usually labels and checkboxes
+  .p-inline-list--settings {
+
+    .p-inline-list__item {
+      display: inline-block;
+      margin-right: $sp-large;
+    }
+
+    [type='checkbox'] {
+      float: none;
+    }
+
+    label {
+      display: inline;
+    }
+  }
 }
