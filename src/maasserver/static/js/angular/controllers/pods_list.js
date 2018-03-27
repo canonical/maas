@@ -48,7 +48,10 @@ angular.module('MAAS').controller('PodsListController', [
         };
         $scope.add = {
           open: false,
-          obj: {}
+          obj: {
+              cpu_over_commit_ratio: 1,
+              memory_over_commit_ratio: 1
+          }
         };
         $scope.powerTypes = GeneralManager.getData("power_types");
         $scope.zones = ZonesManager.getItems();
@@ -199,6 +202,8 @@ angular.module('MAAS').controller('PodsListController', [
         $scope.addPod = function() {
             $scope.add.open = true;
             $scope.add.obj.zone = ZonesManager.getDefaultZone().id;
+            $scope.add.obj.cpu_over_commit_ratio = 1;
+            $scope.add.obj.memory_over_commit_ratio = 1;
         };
 
         // Called when the cancel add pod button is pressed.

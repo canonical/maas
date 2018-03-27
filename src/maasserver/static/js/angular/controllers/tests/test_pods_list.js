@@ -462,6 +462,8 @@ describe("PodsListController", function() {
             ZonesManager._items.push(zero);
             $scope.addPod();
             expect($scope.add.open).toBe(true);
+            expect($scope.add.obj.cpu_over_commit_ratio).toBe(1);
+            expect($scope.add.obj.memory_over_commit_ratio).toBe(1);
             expect(ZonesManager.getDefaultZone()).toBe(zero);
         });
     });

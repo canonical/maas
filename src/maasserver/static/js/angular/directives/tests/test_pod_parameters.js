@@ -114,6 +114,10 @@ describe("maasPodParameters", function() {
 
           expect($scope.obj.$maasForm.fields.power_address).toBeDefined();
           expect($scope.obj.$maasForm.fields.power_id).toBeUndefined();
+          expect($scope.obj.$maasForm.fields.cpu_over_commit_ratio
+                ).toBeDefined();
+          expect($scope.obj.$maasForm.fields.memory_over_commit_ratio
+                ).toBeDefined();
         });
 
         it("switches fields when type changed", function() {
@@ -124,6 +128,10 @@ describe("maasPodParameters", function() {
 
           expect($scope.obj.$maasForm.fields.power_address).toBeUndefined();
           expect($scope.obj.$maasForm.fields.power_id).toBeUndefined();
+          expect($scope.obj.$maasForm.fields.cpu_over_commit_ratio
+                ).toBeUndefined();
+          expect($scope.obj.$maasForm.fields.memory_over_commit_ratio
+                ).toBeUndefined();
           expect($scope.obj.$maasForm.fields.rsd_address).toBeDefined();
           expect($scope.obj.$maasForm.fields.rsd_id).toBeUndefined();
         });

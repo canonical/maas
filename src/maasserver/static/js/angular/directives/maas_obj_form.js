@@ -910,6 +910,36 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             }
                         }
                     };
+                } else if(attrs.type == "slider") {
+                    var sliderScope = scope.$new();
+                    sliderScope._slider = controller.registerField(
+                        attrs.key, scope);
+                    sliderScope._ngDisabled = scope.ngDisabled;
+
+                    // Construct the tags input.
+                    inputElement = angular.element([
+                        '<div class="p-slider__wrapper">',
+                        '<input class="p-slider" type="range"',
+                        'min="' + attrs.min + '" max="' + attrs.max + '" ',
+                        'value="1" step="1" id="' + attrs.key + '" ',
+                        'data-ng-model="_slider" data-ng-disabled="',
+                        '_ngDisabled()">',
+                        '<input class="p-slider__input" type="text" ',
+                        'maxlength="3" id="' + attrs.key + '-input" ',
+                        'data-ng-model="_slider" data-ng-disabled="',
+                        '_ngDisabled()"></div>'
+                    ].join(''));
+                    inputElement = $compile(inputElement)(sliderScope);
+
+                    // Called by controller to update the value.
+                    scope.updateValue = function(newValue) {
+                        sliderScope._slider = newValue;
+                    };
+
+                    // Called by controller to get the value.
+                    scope.getValue = function() {
+                        return sliderScope._slider;
+                    };
                 } else {
                     throw new Error(
                         "Unknown type on maas-obj-field: " + attrs.type);

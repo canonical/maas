@@ -40,6 +40,8 @@ DISPLAYED_POD_FIELDS = (
     'used',
     'available',
     'zone',
+    'cpu_over_commit_ratio',
+    'memory_over_commit_ratio',
     )
 
 
@@ -97,6 +99,8 @@ class PodHandler(OperationsHandler):
         """Update a specific Pod.
 
         :param name: Name for the pod (optional).
+        :param cpu_over_commit_ratio: CPU over commit ratio (optional).
+        :param memory_over_commit_ratio: Memory over commit ratio (optional).
 
         Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
         re-added to change the type.
@@ -273,6 +277,10 @@ class PodsHandler(OperationsHandler):
         :param name: Name for the pod (optional).
         :param zone: Name of the zone for the pod (optional).
         :param tags: A tag or tags (separated by comma) for the pod.
+        :param cpu_over_commit_ratio: CPU over commit ratio for the
+            pod (optional).
+        :param memory_over_commit_ratio: Memory over commit ratio for
+            the pod (optional).
 
         Returns 503 if the pod could not be discovered.
         Returns 404 if the pod is not found.

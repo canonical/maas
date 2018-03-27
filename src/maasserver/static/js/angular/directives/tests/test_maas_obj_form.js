@@ -442,6 +442,37 @@ describe("maasObjForm", function() {
         });
     });
 
+    describe("slider", function() {
+
+        var directive, options;
+        beforeEach(function() {
+            $scope.obj = {
+                key: []
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="slider" key="key" label="Key" ',
+                        'label-width="2" input-width="3">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("creates input", function() {
+            var slider = directive.find("input");
+            expect(slider.length).toBe(2);
+        });
+
+        it("adds label with width", function() {
+            var labelField = angular.element(
+                directive.find('label[for="key"]'));
+            expect(labelField.text()).toBe("Key");
+            expect(labelField.hasClass("col-2")).toBe(true);
+        });
+    });
+
     describe("hidden", function() {
 
         var directive, options;

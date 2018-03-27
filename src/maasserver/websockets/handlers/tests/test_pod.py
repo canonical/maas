@@ -47,16 +47,20 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
         pod_password = factory.make_name('password')
-        tags = [
+        pod_tags = [
             factory.make_name('tag')
             for _ in range(3)
         ]
+        pod_cpu_over_commit_ratio = random.randint(0, 10)
+        pod_memory_over_commit_ratio = random.randint(0, 10)
         return {
             'type': pod_type,
             'power_address': pod_power_address,
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
-            'tags': tags,
+            'tags': pod_tags,
+            'cpu_over_commit_ratio': pod_cpu_over_commit_ratio,
+            'memory_over_commit_ratio': pod_memory_over_commit_ratio
         }
 
     def fake_pod_discovery(self):

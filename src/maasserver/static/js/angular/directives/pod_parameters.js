@@ -67,6 +67,19 @@ angular.module('MAAS').directive(
                             '</maas-obj-field>');
                       }
                   });
+
+                  if(type.name === 'virsh') {
+                      html += (
+                          '<maas-obj-field type="slider" key="' +
+                          'cpu_over_commit_ratio" label="CPU over commit" ' +
+                          'min="0" max="10" label-width="2" input-width="5">' +
+                          '</maas-obj-field>');
+                      html += (
+                          '<maas-obj-field type="slider" key="' +
+                          'memory_over_commit_ratio" label="' +
+                          'Memory over commit" min="0" max="10" ' +
+                          'label-width="2" input-width="5"></maas-obj-field>');
+                  }
                   html += '</maas-obj-field-group>';
                   childScope = scope.$new();
                   var ele = angular.element(html);
