@@ -1006,6 +1006,8 @@ class TestVirshSSH(MAASTestCase):
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_set_machine_autostart = self.patch(
+            virsh.VirshSSH, "set_machine_autostart")
         mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
         mock_discovered = self.patch(virsh.VirshSSH, "get_discovered_machine")
         mock_discovered.return_value = sentinel.discovered
@@ -1017,7 +1019,9 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(
             mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
         self.assertThat(
-            mock_configure_pxe, MockCalledOnceWith(ANY))
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname))
         self.assertThat(
             mock_discovered, MockCalledOnceWith(ANY, request=request))
         self.assertEquals(sentinel.discovered, observed)
