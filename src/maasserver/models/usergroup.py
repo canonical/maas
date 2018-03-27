@@ -14,6 +14,7 @@ from datetime import datetime
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    BooleanField,
     CASCADE,
     CharField,
     ForeignKey,
@@ -57,7 +58,8 @@ class UserGroup(CleanSave, TimestampedModel):
     name = CharField(
         max_length=256, unique=True, editable=True,
         validators=[MODEL_NAME_VALIDATOR])
-    description = TextField(null=False, blank=True, editable=True)
+    description = TextField(null=False, blank=True)
+    local = BooleanField(blank=True, default=True)
     users = ManyToManyField(User, through='UserGroupMembership')
 
     class Meta(DefaultMeta):

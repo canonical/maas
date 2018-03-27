@@ -57,6 +57,15 @@ class TestUserGroup(MAASServerTestCase):
         group = reload_object(group)
         self.assertEqual(group.name, name)
         self.assertEqual(group.description, description)
+        self.assertTrue(group.local)
+
+    def test_not_local(self):
+        group = UserGroup(
+            name=factory.make_name(), description=factory.make_name(),
+            local=False)
+        group.save()
+        group = reload_object(group)
+        self.assertFalse(group.local)
 
     def test_is_default_true(self):
         self.assertTrue(
