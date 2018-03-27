@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from operator import attrgetter
 import random
 from textwrap import dedent
 
@@ -15,7 +14,6 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
-from maasserver.models.staticroute import StaticRoute
 from maasserver.preseed_network import (
     compose_curtin_network_config,
     NodeNetworkConfiguration,
@@ -227,31 +225,6 @@ class AssertNetworkConfigMixin:
                 elif dhcp_types == set([6]):
                     ret += "  - type: dhcp6\n"
         return ret
-
-    def collectRoutesConfig(self, node):
-        routes = set()
-        interfaces = node.interface_set.filter(enabled=True).order_by('name')
-        for iface in interfaces:
-            addresses = iface.ip_addresses.exclude(
-                alloc_type__in=[
-                    IPADDRESS_TYPE.DISCOVERED,
-                    IPADDRESS_TYPE.DHCP,
-                ]).order_by('id')
-            for address in addresses:
-                subnet = address.subnet
-                if subnet is not None:
-                    routes.update(
-                        StaticRoute.objects.filter(
-                            source=subnet).order_by('id'))
-        config = ""
-        for route in sorted(routes, key=attrgetter('id')):
-            config += self.ROUTE_CONFIG % {
-                'id': route.id,
-                'destination': route.destination.cidr,
-                'gateway': route.gateway_ip,
-                'metric': route.metric,
-            }
-        return config
 
     def collectDNSConfig(self, node, ipv4=True, ipv6=True):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
@@ -466,28 +439,13 @@ class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         self.assertNetworkConfig(net_config, config)
 
 
-class TestNetworkLayoutWithRoutes(
-        MAASServerTestCase, AssertNetworkConfigMixin):
-
-    def test__renders_expected_output(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            interface_count=2)
-        for iface in node.interface_set.filter(enabled=True):
-            subnet = iface.vlan.subnet_set.first()
-            factory.make_StaticRoute(source=subnet)
-            factory.make_StaticIPAddress(
-                interface=iface, subnet=subnet)
-        net_config = self.collect_interface_config(node)
-        net_config += self.collectRoutesConfig(node)
-        net_config += self.collectDNSConfig(node)
-        config = compose_curtin_network_config(node)
-        self.assertNetworkConfig(net_config, config)
-
-
 class TestNetplan(MAASServerTestCase):
 
     def _render_netplan_dict(self, node):
         return NodeNetworkConfiguration(node, version=2).config
+
+    def _render_v1_dict(self, node):
+        return NodeNetworkConfiguration(node, version=1).config
 
     def test__single_ethernet_interface(self):
         node = factory.make_Node()
@@ -824,3 +782,208 @@ class TestNetplan(MAASServerTestCase):
             }
         }
         self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__multiple_ethernet_interfaces_with_routes(self):
+        node = factory.make_Node()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            cidr='10.0.0.0/24', gateway_ip='10.0.0.1',
+            dns_servers=[])
+        subnet2 = factory.make_Subnet(
+            cidr='10.0.1.0/24', gateway_ip='10.0.1.1',
+            dns_servers=[])
+        dest_subnet = factory.make_Subnet(cidr='192.168.0.0/24')
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05", vlan=vlan)
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        node.boot_interface = eth0
+        node.save()
+        factory.make_StaticIPAddress(
+            interface=eth0, subnet=subnet, ip='10.0.0.4',
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        factory.make_StaticIPAddress(
+            interface=eth1, subnet=subnet2, ip='10.0.1.4',
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        factory.make_StaticRoute(
+            source=subnet, gateway_ip='10.0.0.3', destination=dest_subnet,
+            metric=42)
+        factory.make_StaticRoute(
+            source=subnet2, gateway_ip='10.0.1.3', destination=dest_subnet,
+            metric=43)
+        # Make sure we know when and where the default DNS server will be used.
+        get_default_dns_servers_mock = self.patch(
+            node, 'get_default_dns_servers')
+        get_default_dns_servers_mock.return_value = ['127.0.0.2']
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'gateway': '10.0.0.1',
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0',
+                        'addresses': ['10.0.0.4/24'],
+                        'routes': [{
+                            'to': '192.168.0.0/24',
+                            'via': '10.0.0.3',
+                            'metric': 42,
+                        }],
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1',
+                        'addresses': ['10.0.1.4/24'],
+                        'routes': [{
+                            'to': '192.168.0.0/24',
+                            'via': '10.0.1.3',
+                            'metric': 43,
+                        }],
+                    },
+                },
+            },
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+        v1 = self._render_v1_dict(node)
+        expected_v1 = {
+            'network': {
+                'version': 1,
+                'config': [
+                    {
+                        'id': 'eth0',
+                        'mac_address': '00:01:02:03:04:05',
+                        'mtu': 1500,
+                        'name': 'eth0',
+                        'subnets': [{
+                            'address': '10.0.0.4/24',
+                            'gateway': '10.0.0.1',
+                            'type': 'static',
+                            'routes': [{
+                                'destination': '192.168.0.0/24',
+                                'gateway': '10.0.0.3',
+                                'metric': 42
+                            }],
+                        }],
+                        'type': 'physical'
+                    },
+                    {
+                        'id': 'eth1',
+                        'mac_address': '02:01:02:03:04:05',
+                        'mtu': 1500,
+                        'name': 'eth1',
+                        'subnets': [{
+                            'address': '10.0.1.4/24',
+                            'type': 'static',
+                            'routes': [{
+                                'destination': '192.168.0.0/24',
+                                'gateway': '10.0.1.3',
+                                'metric': 43,
+                            }],
+                        }],
+                        'type': 'physical'
+                    },
+                    {
+                        'address': ['127.0.0.2'],
+                        'search': ['maas'],
+                        'type': 'nameserver'
+                    }
+                ],
+            }
+        }
+        self.expectThat(v1, Equals(expected_v1))
+
+    def test__multiple_ethernet_interfaces_with_dns(self):
+        node = factory.make_Node()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            cidr='10.0.0.0/24', gateway_ip='10.0.0.1',
+            dns_servers=['10.0.0.2'])
+        subnet2 = factory.make_Subnet(
+            cidr='10.0.1.0/24', gateway_ip='10.0.1.1',
+            dns_servers=['10.0.1.2'])
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05", vlan=vlan)
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        node.boot_interface = eth0
+        node.save()
+        factory.make_StaticIPAddress(
+            interface=eth0, subnet=subnet, ip='10.0.0.4',
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        factory.make_StaticIPAddress(
+            interface=eth1, subnet=subnet2, ip='10.0.1.4',
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        # Make sure we know when and where the default DNS server will be used.
+        get_default_dns_servers_mock = self.patch(
+            node, 'get_default_dns_servers')
+        get_default_dns_servers_mock.return_value = ['127.0.0.2']
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'gateway': '10.0.0.1',
+                        'nameservers': {
+                            'addresses': ['10.0.0.2']
+                        },
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0',
+                        'addresses': ['10.0.0.4/24'],
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'nameservers': {
+                            'addresses': ['10.0.1.2']
+                        },
+                        'mtu': 1500,
+                        'set-name': 'eth1',
+                        'addresses': ['10.0.1.4/24'],
+                    },
+                },
+            },
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+        v1 = self._render_v1_dict(node)
+        expected_v1 = {
+            'network': {
+                'version': 1,
+                'config': [
+                    {
+                        'id': 'eth0',
+                        'mac_address': '00:01:02:03:04:05',
+                        'mtu': 1500,
+                        'name': 'eth0',
+                        'subnets': [{
+                            'address': '10.0.0.4/24',
+                            'dns_nameservers': ['10.0.0.2'],
+                            'gateway': '10.0.0.1',
+                            'type': 'static',
+                        }],
+                        'type': 'physical'
+                    },
+                    {
+                        'id': 'eth1',
+                        'mac_address': '02:01:02:03:04:05',
+                        'mtu': 1500,
+                        'name': 'eth1',
+                        'subnets': [{
+                            'address': '10.0.1.4/24',
+                            'dns_nameservers': ['10.0.1.2'],
+                            'type': 'static',
+                        }],
+                        'type': 'physical'
+                    },
+                    {
+                        'address': ['127.0.0.2'],
+                        'search': ['maas'],
+                        'type': 'nameserver'
+                    }
+                ],
+            }
+        }
+        self.expectThat(v1, Equals(expected_v1))
