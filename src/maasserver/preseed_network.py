@@ -52,8 +52,6 @@ def _generate_route_operation(route, version=1):
     """Generate route operation place in `network_config`."""
     if version == 1:
         route_operation = {
-            "id": route.id,
-            "type": "route",
             "destination": route.destination.cidr,
             "gateway": route.gateway_ip,
             "metric": route.metric,
@@ -98,6 +96,19 @@ class InterfaceConfiguration:
             self.config = self._generate_bridge_operation(version=version)
         else:
             raise ValueError("Unknown interface type: %s" % self.type)
+
+        if version == 2:
+            routes = self._generate_route_operations(
+                self.matching_routes, version=version)
+            if len(routes) > 0:
+                self.config['routes'] = routes
+
+    def _generate_route_operations(self, matching_routes, version=1):
+        """Generate all route operations."""
+        routes = []
+        for route in sorted(matching_routes, key=attrgetter("id")):
+            routes.append(_generate_route_operation(route, version=version))
+        return routes
 
     def _generate_physical_operation(self, version=1):
         """Generate physical interface operation for `interface` and place in
@@ -241,7 +252,8 @@ class InterfaceConfiguration:
                     self._set_default_gateway(
                         subnet,
                         v1_subnet_operation if version == 1 else v2_config)
-                    if subnet.dns_servers is not None:
+                    if (subnet.dns_servers is not None and
+                            len(subnet.dns_servers) > 0):
                         v1_subnet_operation["dns_nameservers"] = (
                             subnet.dns_servers)
                         if "nameservers" not in v2_config:
@@ -251,8 +263,16 @@ class InterfaceConfiguration:
                                 v2_nameservers["addresses"] = []
                         v2_nameservers["addresses"].extend(
                             [server for server in subnet.dns_servers])
-                    self.matching_routes.update(
-                        self._get_matching_routes(subnet))
+                    matching_subnet_routes = self._get_matching_routes(subnet)
+                    if len(matching_subnet_routes) > 0 and version == 1:
+                        # For the v1 YAML, the list of routes is rendered
+                        # within the context of each subnet.
+                        routes = self._generate_route_operations(
+                            matching_subnet_routes, version=version)
+                        v1_subnet_operation['routes'] = routes
+                    # Keep track of routes which apply to the context of this
+                    # interface for rendering the v2 YAML.
+                    self.matching_routes.update(matching_subnet_routes)
             if dhcp_type:
                 v1_config.append(
                     {"type": dhcp_type}
@@ -479,7 +499,6 @@ class NodeNetworkConfiguration:
             for name in sorted(get_dns_search_paths())
             if name != self.node.domain.name
         ]
-        self._generate_route_operations(version=version)
         self.v1_config.append({
             "type": "nameserver",
             "address": default_dns_servers,
@@ -516,16 +535,6 @@ class NodeNetworkConfiguration:
             #         nameservers.update({"addresses": default_dns_servers})
             #     v2_config.update({"nameservers": nameservers})
         self.config = network_config
-
-    def _generate_route_operations(self, version=1):
-        """Generate all route operations."""
-        routes = []
-        for route in sorted(self.matching_routes, key=attrgetter("id")):
-            routes.append(_generate_route_operation(route, version=version))
-        if version == 1:
-            self.v1_config.extend(routes)
-        elif version == 2 and len(routes) > 0:
-            self.v2_config["routes"] = routes
 
 
 def compose_curtin_network_config(node, version=1):
