@@ -533,6 +533,14 @@ class VirshSSH(pexpect.spawn):
         discovered_machine.interfaces = interfaces
         return discovered_machine
 
+    def set_machine_autostart(self, machine):
+        """Set machine to autostart."""
+        output = self.run(['autostart', machine]).strip()
+        if output.startswith("error:"):
+            maaslog.error("%s: Failed to set autostart", machine)
+            return False
+        return True
+
     def configure_pxe_boot(self, machine):
         """Given the specified machine, reads the XML dump and determines
         if the boot order needs to be changed. The boot order needs to be
@@ -759,6 +767,9 @@ class VirshSSH(pexpect.spawn):
         best_network = self.get_best_network()
         for _ in request.interfaces:
             self.attach_interface(request.hostname, best_network)
+
+        # Set machine to autostart.
+        self.set_machine_autostart(request.hostname)
 
         # Setup the domain to PXE boot.
         self.configure_pxe_boot(request.hostname)
