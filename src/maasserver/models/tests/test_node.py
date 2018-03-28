@@ -2689,8 +2689,8 @@ class TestNode(MAASServerTestCase):
         skip_networking = factory.pick_bool()
         skip_storage = factory.pick_bool()
         node.start_commissioning(
-            admin, enable_ssh=enable_ssh, skip_networking=skip_networking,
-            skip_storage=skip_storage)
+            admin, enable_ssh=enable_ssh, skip_bmc_config=skip_bmc_config,
+            skip_networking=skip_networking, skip_storage=skip_storage)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         expected_attrs = {
