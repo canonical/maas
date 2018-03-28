@@ -303,8 +303,12 @@ def generate_random_password(
         # Create the extra characters to fullfill max_length
         letters += ''.join([
             random.choice(string.ascii_letters) for _ in range(length - 7)])
-        # Randomly mix the password
-        return ''.join(random.sample(letters, len(letters)))
+        # LP: #1758760 - Randomly mix the password until we ensure there's
+        # not consecutive occurrences of the same character.
+        password = ''.join(random.sample(letters, len(letters)))
+        while (bool(re.search(r'(.)\1', password))):
+            password = ''.join(random.sample(letters, len(letters)))
+        return password
     else:
         letters = string.ascii_letters + string.digits
         return ''.join([random.choice(letters) for _ in range(length)])
