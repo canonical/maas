@@ -120,14 +120,14 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         self.assertContentFailsWithMessage(
             OPTIONS_FILE, "Failed to make a backup")
 
-    def test_does_not_remove_existing_forwarders_config(self):
+    def test_remove_existing_forwarders_config(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_FORWARDERS)
         call_command(
             "edit_named_options", config_path=options_file,
             stdout=self.stdout)
 
         options = read_isc_file(options_file)
-        self.assertThat(make_isc_string(options), Contains('forwarders'))
+        self.assertThat(make_isc_string(options), Not(Contains('forwarders')))
 
     def test_removes_existing_forwarders_config_if_migrate_set(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_FORWARDERS)
@@ -152,7 +152,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         # that's now in the included file).
         options = read_isc_file(options_file)
         self.assertThat(
-            make_isc_string(options), Contains('dnssec-validation'))
+            make_isc_string(options), Not(Contains('dnssec-validation')))
 
     def test_removes_existing_dnssec_validation_config_if_migration_set(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
