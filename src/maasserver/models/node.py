@@ -857,6 +857,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar enable_ssh: An optional flag to indicate if this node can have
         ssh enabled during commissioning, allowing the user to ssh into the
         machine's commissioning environment using the user's SSH key.
+    :ivar skip_bmc_config: An optional flag to indicate if this node can be
+        commissioned without re-running the IPMI auto discovery mechanism.
     :ivar skip_networking: An optional flag to indicate if this node
         networking configuration doesn't need to be touched when it is
         commissioned.
@@ -1039,6 +1041,7 @@ class Node(CleanSave, TimestampedModel):
     #  2. Skip reconfiguring networking when a node is commissioned.
     #  3. Skip reconfiguring storage when a node is commissioned.
     enable_ssh = BooleanField(default=False)
+    skip_bmc_config = BooleanField(default=False)
     skip_networking = BooleanField(default=False)
     skip_storage = BooleanField(default=False)
 
@@ -1854,9 +1857,9 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def start_commissioning(
-            self, user, enable_ssh=False, skip_networking=False,
-            skip_storage=False, commissioning_scripts=[],
-            testing_scripts=[]):
+            self, user, enable_ssh=False, skip_bmc_config=False,
+            skip_networking=False, skip_storage=False,
+            commissioning_scripts=[], testing_scripts=[]):
         """Install OS and self-test a new node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -1879,6 +1882,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Set the commissioning options on the node.
         self.enable_ssh = enable_ssh
+        self.skip_bmc_config = skip_bmc_config
         self.skip_networking = skip_networking
         self.skip_storage = skip_storage
 

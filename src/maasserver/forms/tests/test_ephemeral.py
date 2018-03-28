@@ -146,9 +146,9 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertThat(
             mock_start_commissioning,
             MockCalledOnceWith(
-                user, enable_ssh=False, skip_networking=False,
-                skip_storage=False, commissioning_scripts=[],
-                testing_scripts=[]))
+                user, enable_ssh=False, skip_bmc_config=False,
+                skip_networking=False, skip_storage=False,
+                commissioning_scripts=[], testing_scripts=[]))
 
     def test__calls_start_commissioning_with_options(self):
         node = factory.make_Node(
@@ -166,6 +166,7 @@ class TestCommissionForm(MAASServerTestCase):
             node, 'start_commissioning')
         form = CommissionForm(instance=node, user=user, data={
             'enable_ssh': True,
+            'skip_bmc_config': True,
             'skip_networking': True,
             'skip_storage': True,
             'commissioning_scripts': ','.join(commissioning_scripts),
@@ -177,7 +178,8 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertThat(
             mock_start_commissioning,
             MockCalledOnceWith(
-                user, enable_ssh=True, skip_networking=True, skip_storage=True,
+                user, enable_ssh=True, skip_bmc_config=True,
+                skip_networking=True, skip_storage=True,
                 commissioning_scripts=commissioning_scripts,
                 testing_scripts=testing_scripts))
 
@@ -214,6 +216,6 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertThat(
             mock_start_commissioning,
             MockCalledOnceWith(
-                user, enable_ssh=False, skip_networking=False,
-                skip_storage=False, commissioning_scripts=[],
-                testing_scripts=['none']))
+                user, enable_ssh=False, skip_bmc_config=False,
+                skip_networking=False, skip_storage=False,
+                commissioning_scripts=[], testing_scripts=['none']))

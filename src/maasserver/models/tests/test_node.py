@@ -2685,6 +2685,7 @@ class TestNode(MAASServerTestCase):
                 post_commit()))
         admin = factory.make_admin()
         enable_ssh = factory.pick_bool()
+        skip_bmc_config = factory.pick_bool()
         skip_networking = factory.pick_bool()
         skip_storage = factory.pick_bool()
         node.start_commissioning(
@@ -2694,6 +2695,7 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
         expected_attrs = {
             'enable_ssh': enable_ssh,
+            'skip_bmc_config': skip_bmc_config,
             'skip_networking': skip_networking,
             'skip_storage': skip_storage,
         }

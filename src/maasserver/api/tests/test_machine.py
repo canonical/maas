@@ -1039,6 +1039,7 @@ class TestMachineAPI(APITestCase.ForUser):
         response = self.client.post(self.get_machine_uri(machine), {
             'op': 'commission',
             'enable_ssh': "true",
+            'skip_bmc_config': 1,
             'skip_networking': 1,
             'commissioning_scripts': ','.join([
                 choice([
@@ -1056,6 +1057,7 @@ class TestMachineAPI(APITestCase.ForUser):
         commissioning_script_set = machine.current_commissioning_script_set
         testing_script_set = machine.current_testing_script_set
         self.assertTrue(machine.enable_ssh)
+        self.assertTrue(machine.skip_bmc_config)
         self.assertTrue(machine.skip_networking)
         self.assertItemsEqual(
             set(expected_commissioning_scripts),

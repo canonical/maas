@@ -26,7 +26,7 @@ add_ipmi_config() {
 
 main() {
     prep_maas_api_helper
-
+    {{if not node.skip_bmc_config}}
     # LP:1730524 - Make sure we can signal the metadata service before updating
     # the BMC username and password.
     signal WORKING "Starting [maas-bmc-autodetect]" || exit 1
@@ -67,6 +67,7 @@ main() {
           "--power-type=${power_type}" "--power-parameters=${power_settings}" \
           WORKING "Finished [maas-bmc-autodetect]"
     fi
+    {{endif}}
 
     maas-run-remote-scripts "--config=${CRED_CFG}" "${TEMP_D}"
 }
@@ -100,7 +101,6 @@ END_MAAS_SIGNAL
 add_bin "maas-run-remote-scripts" <<"END_MAAS_RUN_REMOTE_SCRIPTS"
 {{maas_run_remote_scripts_py}}
 END_MAAS_RUN_REMOTE_SCRIPTS
-
 
 main
 exit

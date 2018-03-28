@@ -233,14 +233,15 @@ class Commission(NodeAction):
     for_type = {NODE_TYPE.MACHINE}
 
     def execute(
-            self, enable_ssh=False, skip_networking=False,
-            skip_storage=False, commissioning_scripts=[],
-            testing_scripts=[]):
+            self, enable_ssh=False, skip_bmc_config=False,
+            skip_networking=False, skip_storage=False,
+            commissioning_scripts=[], testing_scripts=[]):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(
                 self.user,
                 enable_ssh=enable_ssh,
+                skip_bmc_config=skip_bmc_config,
                 skip_networking=skip_networking,
                 skip_storage=skip_storage,
                 commissioning_scripts=commissioning_scripts,

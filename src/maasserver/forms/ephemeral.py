@@ -92,6 +92,7 @@ class TestForm(Form):
 class CommissionForm(TestForm):
     """Commission form."""
 
+    skip_bmc_config = BooleanField(required=False, initial=False)
     skip_networking = BooleanField(required=False, initial=False)
     skip_storage = BooleanField(required=False, initial=False)
 
@@ -131,11 +132,12 @@ class CommissionForm(TestForm):
 
     def save(self):
         enable_ssh = self.cleaned_data.get("enable_ssh", False)
+        skip_bmc_config = self.cleaned_data.get("skip_bmc_config", False)
         skip_networking = self.cleaned_data.get("skip_networking", False)
         skip_storage = self.cleaned_data.get("skip_storage", False)
         commissioning_scripts = self.cleaned_data.get("commissioning_scripts")
         testing_scripts = self.cleaned_data.get("testing_scripts")
         self.instance.start_commissioning(
-            self.user, enable_ssh, skip_networking, skip_storage,
-            commissioning_scripts, testing_scripts)
+            self.user, enable_ssh, skip_bmc_config, skip_networking,
+            skip_storage, commissioning_scripts, testing_scripts)
         return self.instance

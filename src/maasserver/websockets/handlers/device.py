@@ -113,6 +113,7 @@ class DeviceHandler(NodeHandler):
             "gateway_link_ipv4",
             "gateway_link_ipv6",
             "enable_ssh",
+            "skip_bmc_config",
             "skip_networking",
             "skip_storage",
             "instance_power_parameters",

@@ -676,6 +676,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         :param enable_ssh: Whether to enable SSH for the commissioning
             environment using the user's SSH key(s).
         :type enable_ssh: bool ('0' for False, '1' for True)
+        :param skip_bmc_config: Whether to skip re-configuration of the BMC
+            for IPMI based machines.
+        :type skip_bmc_config: bool ('0' for False, '1' for True)
         :param skip_networking: Whether to skip re-configuring the networking
             on the machine after the commissioning has completed.
         :type skip_networking: bool ('0' for False, '1' for True)
