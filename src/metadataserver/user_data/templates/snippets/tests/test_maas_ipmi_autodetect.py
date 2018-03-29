@@ -513,6 +513,10 @@ class TestGeneratesAcceptablePasswords(MAASTestCase):
                 required_character_sets += 1
             if required_character_sets < 2:
                 return False
+            # Test password doesn't have two or more occurrences of the
+            # the same consecutive character.
+            if bool(re.search(r'(.)\1', password)):
+                return False
             return True
         max_attempts = 100
         acceptable = 0
