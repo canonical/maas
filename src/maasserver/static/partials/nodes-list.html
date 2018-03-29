@@ -133,7 +133,7 @@
                                 <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
                             </div>
                         </div>
-                        <div class="p-form__group" data-ng-if="tabs[tab].actionOption.name === 'release'">
+                        <div data-ng-if="tabs[tab].actionOption.name === 'release'">
                             <div data-maas-release-options="tabs[tab].releaseOptions"></div>
                         </div>
                         <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">

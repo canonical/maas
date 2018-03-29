@@ -98,7 +98,7 @@
                                 </ul>
                             </div>
 
-                            <div class="col-8" data-ng-show="action.option.name === 'deploy' || action.option.name === 'release'">
+                            <div class="col-8 u-no-margin--left" data-ng-show="action.option.name === 'deploy' || action.option.name === 'release'">
                                 <div class="ng-hide" data-ng-show="action.option.name === 'deploy'">
                                     <div class="p-form__group">
                                         <label class="p-form__label">Choose your image</label>
@@ -107,10 +107,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="p-form__fieldset" data-ng-if="action.option.name === 'release'">
-                                    <div class="p-form__group">
-                                        <div data-maas-release-options="releaseOptions"></div>
-                                    </div>
+                                <div data-ng-if="action.option.name === 'release'" class="u-no-margin--top">
+                                    <div data-maas-release-options="releaseOptions"></div>
                                 </div>
                             </div>
                             <div class="col-4">
