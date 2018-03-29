@@ -21,11 +21,6 @@ export http_proxy := broken
 export https_proxy := broken
 endif
 
-# Python enum modules.
-py_enums := $(wildcard src/*/enum.py)
-# JavaScript enum module (not modules).
-js_enums := src/maasserver/static/js/yui/enums.js
-
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
 scss_input := src/maasserver/static/scss/build.scss
@@ -82,7 +77,6 @@ build: \
   bin/test.e2e \
   bin/test.parallel \
   bin/py bin/ipy \
-  $(js_enums) \
   pycharm
 
 all: build doc
@@ -126,18 +120,18 @@ bin/test.parallel: \
 
 bin/maas-region bin/regiond: \
     bin/buildout buildout.cfg versions.cfg setup.py \
-    $(js_enums) $(scss_output) $(javascript_output)
+    $(scss_output) $(javascript_output)
 	$(buildout) install region
 	@touch --no-create $@
 
 bin/test.region: \
-  bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) \
+  bin/buildout buildout.cfg versions.cfg setup.py \
   bin/maas-region bin/maas-rack bin/maas-common
 	$(buildout) install region-test
 	@touch --no-create $@
 
 bin/test.region.legacy: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install region-test-legacy
 	@touch --no-create $@
 
@@ -442,11 +436,6 @@ man/%: docs/man/%.rst | bin/sphinx-build
 
 pycharm: .idea
 
-enums: $(js_enums)
-
-$(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
-	bin/py -m maasserver.utils.jsenums $(py_enums) > $@
-
 styles: $(scss_output)
 
 force-styles: clean-styles $(scss_output)
@@ -481,7 +470,6 @@ clean: stop clean-failed
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development media/development.*
-	$(RM) $(js_enums) $(js_enums).tmp
 	$(RM) src/maasserver/data/templates.py
 	$(RM) *.log
 	$(RM) docs/api.rst
@@ -533,7 +521,6 @@ define phony_targets
   distclean
   doc
   doc-browse
-  enums
   force-styles
   force-javascript
   force-yarn-update
@@ -741,7 +728,7 @@ source-package-clean:
 
 # Debugging target. Allows printing of any variable.
 # As an example, try:
-#     make print-js_enums
+#     make print-scss_input
 print-%:
 	@echo $* = $($*)
 

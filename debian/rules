@@ -2,8 +2,6 @@
 
 BUILDHOME = $(CURDIR)/debian/build
 PYTHON3 = $(shell py3versions -d)
-# Python enum modules.
-py_enums := $(wildcard src/*/enum.py)
 
 %:
 	dh $@ --with python3,apport,systemd --buildsystem=pybuild
@@ -33,14 +31,6 @@ override_dh_systemd_start:
 	dh_systemd_start -p maas-dhcp maas-dhcpd.service
 	dh_systemd_start -p maas-dhcp maas-dhcpd6.service
 
-override_dh_auto_build:
-	dh_auto_build
-
-	mkdir -p $(BUILDHOME)
-	HOME=$(BUILDHOME) PYTHONPATH=$(CURDIR)/src/ $(PYTHON3)	\
-		$(CURDIR)/src/maasserver/utils/jsenums.py	\
-		$(py_enums) > $(BUILDHOME)/enums.js
-
 override_dh_auto_install:
 	dh_auto_install
 
@@ -51,9 +41,6 @@ override_dh_auto_install:
 
 	# Remove scss directory from static files
 	rm -rf $(CURDIR)/debian/tmp/usr/share/maas/web/scss
-
-	# Install built enums.js file.
-	cp $(BUILDHOME)/enums.js $(CURDIR)/debian/tmp/usr/share/maas/web/static/js/yui
 
 	# install the apparmor profile
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d

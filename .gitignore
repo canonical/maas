@@ -50,7 +50,6 @@
 /prime
 /services/*/supervise
 /snap/.snapcraft
-/src/maasserver/static/js/yui/enums.js
 /src/maasserver/static/js/bundle/
 /stage
 /TAGS
