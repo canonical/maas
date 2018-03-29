@@ -294,10 +294,7 @@ class TestUser(APITestCase.ForUser):
                     settings.DEFAULT_CHARSET))['is_superuser'])
 
     def test_GET_identifies_non_local_user_as_such(self):
-        Config.objects.set_config(
-            'external_auth_url', 'http://auth.example.com')
-
-        user = factory.make_admin()
+        user = factory.make_User(is_local=False)
         response = self.client.get(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(

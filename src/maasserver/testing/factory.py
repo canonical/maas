@@ -1007,7 +1007,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_User(
             self, username=None, password='test', email=None,
-            completed_intro=True, groups=()):
+            completed_intro=True, is_local=None, groups=()):
         if username is None:
             username = self.make_username()
         if email is None:
@@ -1018,6 +1018,8 @@ class Factory(maastesting.factory.Factory):
             UserGroupMembership.objects.create(
                 user=user, group=group)
         user.userprofile.completed_intro = completed_intro
+        if is_local is not None:
+            user.userprofile.is_local = is_local
         user.userprofile.save()
         return user
 

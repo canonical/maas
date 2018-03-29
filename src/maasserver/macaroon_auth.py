@@ -89,8 +89,16 @@ class MacaroonAPIAuthentication:
         # set the user in the request so that it's considered authenticated. If
         # a user is not found with the username from the identity, it's
         # created.
-        user, created = User.objects.get_or_create(
-            username=auth_info.identity.id(), defaults={'is_superuser': True})
+        username = auth_info.identity.id()
+        try:
+            user = User.objects.get(username=username)
+            if user.userprofile.is_local:
+                return False
+            created = False
+        except User.DoesNotExist:
+            user = User(username=username, is_superuser=True)
+            user.save()
+            created = True
 
         # Only check the user with IDM again if it wasn't just created
         if not created and not validate_user_external_auth(user):

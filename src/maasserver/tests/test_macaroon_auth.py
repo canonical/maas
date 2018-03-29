@@ -231,6 +231,13 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         self.assertTrue(user.is_superuser)
         self.assertFalse(user.userprofile.is_local)
 
+    def test_is_authenticated_user_exists_but_local(self):
+        user = factory.make_User()
+        user.userprofile.is_local = True
+        user.userprofile.save()
+        self.mock_auth_info(username=user.username)
+        self.assertFalse(self.auth.is_authenticated(self.get_request()))
+
     @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
     def test_is_authenticated_no_validate_if_created(self, mock_validate):
         username = factory.make_string()

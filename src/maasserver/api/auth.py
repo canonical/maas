@@ -7,11 +7,14 @@ __all__ = [
     'api_auth',
     ]
 
+from operator import xor
+
 from maasserver.exceptions import Unauthorized
 from maasserver.macaroon_auth import (
     MacaroonAPIAuthentication,
     validate_user_external_auth,
 )
+from maasserver.models.user import SYSTEM_USERS
 from piston3.authentication import (
     OAuthAuthentication,
     send_oauth_error,
@@ -48,8 +51,12 @@ class MAASAPIAuthentication(OAuthAuthentication):
     """
 
     def is_authenticated(self, request):
-        if request.user.is_authenticated:
-            return request.user
+        user = request.user
+        if user.is_authenticated:
+            # only authenticate if user is local and external auth is disabled
+            # or viceversa
+            return xor(
+                bool(request.external_auth_info), user.userprofile.is_local)
 
         # The following is much the same as is_authenticated from Piston's
         # OAuthAuthentication, with the difference that an OAuth request that
@@ -61,11 +68,18 @@ class MAASAPIAuthentication(OAuthAuthentication):
                 raise OAuthUnauthorized(error)
 
             if consumer and token:
+                user = token.user
+                is_local_user = (
+                    user.username in SYSTEM_USERS or user.userprofile.is_local)
                 if request.external_auth_info:
-                    if not validate_user_external_auth(token.user):
+                    if is_local_user:
                         return False
+                    if not validate_user_external_auth(user):
+                        return False
+                elif not is_local_user:
+                    return False
 
-                request.user = token.user
+                request.user = user
                 request.consumer = consumer
                 request.throttle_extra = token.consumer.id
                 return True

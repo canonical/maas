@@ -13,6 +13,7 @@ __all__ = [
 import functools
 
 from django.contrib.auth.models import AnonymousUser
+from maasserver.models import Config
 from maasserver.models.user import create_auth_token
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -173,6 +174,11 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         """Promote `self.user` to admin."""
         self.assertFalse(self.user.is_anonymous, (
             "Cannot promote anonymous user to admin."))
+        if Config.objects.get_config('external_auth_url'):
+            # if external auth is enabled, mark the user as remote, otherwise
+            # he wouldn't be able to authenticate
+            self.user.userprofile.is_local = False
+            self.user.userprofile.save()
         self.user.is_superuser = True
         self.user.save()
 

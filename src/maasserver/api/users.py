@@ -27,9 +27,13 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
 )
 from maasserver.forms import DeleteUserForm
-from maasserver.models import User
+from maasserver.models import (
+    User,
+    UserProfile,
+)
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.orm import get_one
+from piston3.handler import BaseHandler
 from piston3.models import Consumer
 from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
@@ -156,3 +160,15 @@ class UserHandler(OperationsHandler):
             return True
 
         return user.userprofile.is_local
+
+
+class UserProfileHandler(BaseHandler):
+    """Empty handler for UserProfile.
+
+    This is defined to avoid circular references when serializing User objects,
+    since the UserProfile references the user in turn.
+
+    """
+
+    model = UserProfile
+    exclude = ('user',)
