@@ -16,7 +16,7 @@
                             <h1 class="p-heading--three">Logout</h1>
                             <p>Are you sure you want to log out?</p>
                         </header>
-                        <form method="post" class="u-no-margin--top">
+                        <form method="post" class="u-no-margin--top u-align--right">
                             {% csrf_token %}
                             <input type="hidden" name="post" value="yes" />
                             <a href="{% url 'index' %}" class="p-button--neutral u-no-margin--top">No</a>
