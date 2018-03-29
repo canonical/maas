@@ -112,7 +112,7 @@
             </div>
         </div>
         <div class="row">
-            <table data-ng-if="showImagesTable()">
+            <table class="p-table-expanding" data-ng-if="showImagesTable()">
                 <thead>
                     <tr>
                         <th>Release</th>
@@ -142,12 +142,20 @@
                         <td aria-label="Size">{$ image.size $}</td>
                         <td aria-label="Status">{$ image.status $}</td>
                         <td class="u-align--right">
-                            <button data-ng-if="(isSuperUser() && canBeRemoved(image))" class="p-button--negative" aria-label="Remove" data-ng-click="deleteImage(image)">Remove</button>
+                            <button data-ng-if="(isSuperUser() && canBeRemoved(image))" class="p-button--base is-small" aria-label="Remove" data-ng-click="deleteImage(image)">
+                                <i class="p-icon--delete">Remove</i>
+                            </button>
                         </td>
                         <td colspan="6" class="p-table-expanding__panel col-12" data-ng-if="canBeRemoved(image) && ubuntuDeleteId === image.resourceId">
-                            <p><i class="p-icon--warning">Warning:</i> Are you sure you want to remove this image?</p>
-                            <button class="p-button--neutral is-inline" data-ng-click="deleteImage()">Cancel</button>
-                            <button class="p-button--negative" data-ng-click="confirmDeleteImage()">Remove</button>
+                            <div class="col-6">
+                                <p><i class="p-icon--warning">Warning:</i> Are you sure you want to remove this image?</p>
+                            </div>
+                            <div class="col-6">
+                                <div class="u-align--right">
+                                    <button class="p-button--neutral is-inline" data-ng-click="deleteImage()">Cancel</button>
+                                    <button class="p-button--negative u-no-margin--top" data-ng-click="confirmDeleteImage()">Remove</button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
