@@ -262,6 +262,15 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
             backend.authenticate(
                 request, username=user.username, password=password))
 
+    def test_authenticate_external_user_denied(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password, is_local=False)
+        backend = MAASAuthorizationBackend()
+        request = factory.make_fake_request('/')
+        self.assertIsNone(
+            backend.authenticate(
+                request, username=user.username, password=password))
+
 
 class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):
 

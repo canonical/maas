@@ -315,13 +315,19 @@ class MAASAuthorizationBackend(ModelBackend):
     supports_object_permissions = True
 
     def authenticate(self, request, username=None, password=None, **kwargs):
+        external_auth_info = getattr(request, 'external_auth_info', None)
         # use getattr so that tests that don't include the middleware don't
         # explode
-        if getattr(request, 'external_auth_info', False):
+        if external_auth_info:
             # Don't allow username/password logins with external authentication
             return
-        return super().authenticate(
+        authenticated = super().authenticate(
             request, username=username, password=password, **kwargs)
+        if authenticated:
+            user = User.objects.get(username=username)
+            if not user.userprofile.is_local:
+                return
+        return authenticated
 
     def has_perm(self, user, perm, obj=None):
         # Note that a check for a superuser will never reach this code

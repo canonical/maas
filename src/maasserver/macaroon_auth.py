@@ -33,6 +33,7 @@ from maasserver.models import (
     MAASAuthorizationBackend,
     RootKey,
 )
+from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.views import request_headers
 from macaroonbakery import (
     bakery,
@@ -59,9 +60,17 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
     def authenticate(self, request, identity=None):
         if not request.external_auth_info or not identity:
             return
-        user, created = User.objects.get_or_create(
-            username=identity.id(), defaults={'is_superuser': True})
-        if not created and not user.is_active:
+
+        username = identity.id()
+        try:
+            user = User.objects.get(username=username)
+            if username not in SYSTEM_USERS and user.userprofile.is_local:
+                return
+        except User.DoesNotExist:
+            user = User(username=username, is_superuser=True)
+            user.save()
+
+        if not user.is_active:
             # the user was previously marked as inactive, but is now
             # authenticated from external source, so it should be reactivated
             user.is_active = True

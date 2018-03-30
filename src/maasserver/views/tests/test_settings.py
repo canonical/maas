@@ -95,9 +95,11 @@ class SettingsTest(MAASServerTestCase):
                 'Local', [elem.text.strip() for elem in row.cssselect('td')])
 
     def test_setting_list_external_users(self):
+        admin = factory.make_admin()
+        # login before external auth is enabled to avoid requiring macaroons
+        self.client.login(user=admin)
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
@@ -110,9 +112,11 @@ class SettingsTest(MAASServerTestCase):
             'External', [elem.text.strip() for elem in row.cssselect('td')])
 
     def test_settings_external_auth_include_users_message(self):
+        admin = factory.make_admin()
+        # login before external auth is enabled to avoid requiring macaroons
+        self.client.login(user=admin)
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        self.client.login(user=factory.make_admin())
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
         [notification] = doc.cssselect('.p-notification__response')
@@ -435,9 +439,11 @@ class UserManagementTest(MAASServerTestCase):
         self.assertTrue(user.userprofile.is_local)
 
     def test_add_user_with_external_auth_not_local(self):
+        admin = factory.make_admin()
+        # login before external auth is enabled to avoid requiring macaroons
+        self.client.login(user=admin)
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        self.client.login(user=factory.make_admin())
         params = {
             'username': factory.make_string(),
             'last_name': factory.make_string(30),

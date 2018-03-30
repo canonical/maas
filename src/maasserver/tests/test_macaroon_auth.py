@@ -330,6 +330,12 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         self.assertIsNone(
             self.backend.authenticate(self.get_request(), identity=identity))
 
+    def test_authenticate_local_user_denied(self):
+        user = factory.make_User(is_local=True)
+        identity = SimpleIdentity(user=user.username)
+        self.assertIsNone(
+            self.backend.authenticate(self.get_request(), identity=identity))
+
 
 class TestMacaroonOvenKey(MAASServerTestCase):
 
