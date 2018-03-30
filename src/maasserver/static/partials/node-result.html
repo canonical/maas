@@ -20,33 +20,65 @@
         </div>
     </header>
     <div class="p-strip">
-        <div class="row">
+        <div class="form p-form--stacked row">
             <div class="col-6">
-                <dl>
-                    <dt>Status</dt>
-                        <dd class="ng-binding">
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Status</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p class="ng-binding">
                             <span data-maas-script-status="script-status" data-script-status="result.status" class="ng-isolate-scope"></span> {$ result.status_name $}
-                        </dd>
-                    <dt>Exit Status</dt>
-                        <dd class="ng-binding" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</dd>
-                        <dd class="ng-binding" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</dd>
-                    <dt class="two-col">Tags</dt>
-                        <dd class="ng-binding" data-ng-if="result.tags">{$ result.tags $}</dd>
-                        <dd class="ng-binding" data-ng-if="!result.tags">&nbsp;</dd>
-                </dl>
+                        </p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Exit Status</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p class="ng-binding" data-ng-if="result.exit_status || result.exit_status === 0">{$ result.exit_status $}</p>
+                        <p class="ng-binding" data-ng-if="!result.exit_status && result.exit_status !== 0">&nbsp;</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Tags</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p class="ng-binding" data-ng-if="result.tags">{$ result.tags $}</p>
+                        <p class="ng-binding" data-ng-if="!result.tags">&nbsp;</p>
+                    </div>
+                </div>
             </div>
             <div class="col-6">
-                <dl>
-                    <dt>Start Time</dt>
-                        <dd class="ng-binding" data-ng-if="result.started">{$ result.started $}</dd>
-                        <dd class="ng-binding" data-ng-if="!result.started">&nbsp;</dd>
-                    <dt class="two-col">End Time</dt>
-                        <dd class="ng-binding" data-ng-if="result.ended">{$ result.ended $}</dd>
-                        <dd class="ng-binding" data-ng-if="!result.ended">&nbsp;</dd>
-                    <dt class="two-col">Runtime</dt>
-                        <dd class="ng-binding" data-ng-if="result.runtime">{$ result.runtime $}</dd>
-                        <dd class="ng-binding" data-ng-if="!result.runtime">&nbsp;</dd>
-                </dl>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Start Time</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p class="ng-binding" data-ng-if="result.started">{$ result.started $}</p>
+                        <p class="ng-binding" data-ng-if="!result.started">&nbsp;</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>End Time</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p class="ng-binding" data-ng-if="result.ended">{$ result.ended $}</p>
+                        <p class="ng-binding" data-ng-if="!result.ended">&nbsp;</p>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p><strong>Runtime</strong></p>
+                    </div>
+                    <div class="p-form__control">
+                        <p class="ng-binding" data-ng-if="result.runtime">{$ result.runtime $}</p>
+                        <p class="ng-binding" data-ng-if="!result.runtime">&nbsp;</p>
+                    </div>
+                </div1>
             </div>
         </div>
         <div class="row" data-ng-if="result.results.length !== 0">
@@ -62,7 +94,7 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-6">
+            <div class="col-12">
                 <h2 class="ng-binding">Output</h2>
                 <nav class="p-tabs">
                     <ul class="p-tabs__list">
