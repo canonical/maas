@@ -2,9 +2,9 @@
     <div class="row">
         <div class="col-8">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <h1 class="page-header__title">{$ title $}</h1>
-
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+            <h1 class="page-header__title" data-ng-if="currentpage === 'machines'">{$ machines.length $} <ng-pluralize count="machines.length" when="{'one': 'Machine', 'other': 'Machines'}"></ng-pluralize></h1>
+            <h1 class="page-header__title" data-ng-if="currentpage === 'devices'">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize></h1>
+            <h1 class="page-header__title" data-ng-if="currentpage === 'controllers'">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize></h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading"><span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span></p>
         </div>
         <div class="col-4 ng-hide" data-ng-show="currentpage === 'machines'">
