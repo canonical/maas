@@ -47,10 +47,34 @@ angular.module('MAAS').factory(
             if(record.rrtype === 'A' || record.rrtype === 'AAAA') {
                 record.ip_addresses = record.rrdata.split(/[ ,]+/);
                 return RegionConnection.callMethod(
-                    "domain.create_dnsresource", record);
+                    "domain.create_address_record", record);
             } else {
                 return RegionConnection.callMethod(
                     "domain.create_dnsdata", record);
+            }
+        };
+
+        // Update a DNS record.
+        DomainsManager.prototype.updateDNSRecord = function(record) {
+            if(record.rrtype === 'A' || record.rrtype === 'AAAA') {
+                record.ip_addresses = record.rrdata.split(/[ ,]+/);
+                return RegionConnection.callMethod(
+                    "domain.update_address_record", record);
+            } else {
+                return RegionConnection.callMethod(
+                    "domain.update_dnsdata", record);
+            }
+        };
+
+        // Delete a DNS record.
+        DomainsManager.prototype.deleteDNSRecord = function(record) {
+            if(record.rrtype === 'A' || record.rrtype === 'AAAA') {
+                record.ip_addresses = record.rrdata.split(/[ ,]+/);
+                return RegionConnection.callMethod(
+                    "domain.delete_address_record", record);
+            } else {
+                return RegionConnection.callMethod(
+                    "domain.delete_dnsdata", record);
             }
         };
 

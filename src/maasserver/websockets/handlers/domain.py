@@ -44,6 +44,9 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
             'create_dnsresource',
             'update_dnsresource',
             'delete_dnsresource',
+            'create_address_record',
+            'update_address_record',
+            'delete_address_record',
             'create_dnsdata',
             'update_dnsdata',
             'delete_dnsdata',
@@ -87,7 +90,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
     def update_dnsresource(self, params):
         domain = self._get_domain_or_permission_error(params)
         dnsresource = DNSResource.objects.get(
-            domain=domain, id=params['dnsresource'])
+            domain=domain, id=params['dnsresource_id'])
         form = DNSResourceForm(
             instance=dnsresource, data=params, user=self.user)
         if form.is_valid():
@@ -99,8 +102,75 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
     def delete_dnsresource(self, params):
         domain = self._get_domain_or_permission_error(params)
         dnsresource = DNSResource.objects.get(
-            domain=domain, id=params['dnsresource'])
+            domain=domain, id=params['dnsresource_id'])
         dnsresource.delete()
+
+    def create_address_record(self, params):
+        domain = self._get_domain_or_permission_error(params)
+        dnsresource, created = DNSResource.objects.get_or_create(
+            domain=domain, name=params['name'])
+        if created:
+            ip_addresses = []
+        else:
+            ip_addresses = dnsresource.get_addresses()
+        ip_addresses.extend(params['ip_addresses'])
+        params['ip_addresses'] = ' '.join(ip_addresses)
+        form = DNSResourceForm(
+            data=params, user=self.user, instance=dnsresource)
+        if form.is_valid():
+            form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    def update_address_record(self, params):
+        domain = self._get_domain_or_permission_error(params)
+        dnsresource, created = DNSResource.objects.get_or_create(
+            domain=domain, name=params['name'])
+        if created:
+            # If we ended up creating a record, that's because the name
+            # was changed, so we'll start with an empty list. But that also
+            # means we need to edit the record with the original name.
+            ip_addresses = []
+            previous_dnsresource = DNSResource.objects.get(
+                domain=domain, name=params['previous_name'])
+            prevoius_ip_addresses = previous_dnsresource.get_addresses()
+            prevoius_ip_addresses.remove(params['previous_rrdata'])
+            modified_addresses = ' '.join(prevoius_ip_addresses)
+            form = DNSResourceForm(
+                data=dict(ip_addresses=modified_addresses), user=self.user,
+                instance=previous_dnsresource)
+            if form.is_valid():
+                form.save()
+            else:
+                raise ValidationError(form.errors)
+        else:
+            ip_addresses = dnsresource.get_addresses()
+            # Remove the previous address for the record being edited.
+            # The previous_rrdata field will contain the original value
+            # for the IP address in the edited row.
+            ip_addresses.remove(params['previous_rrdata'])
+        ip_addresses.extend(params['ip_addresses'])
+        params['ip_addresses'] = ' '.join(ip_addresses)
+        form = DNSResourceForm(
+            data=params, user=self.user, instance=dnsresource)
+        if form.is_valid():
+            form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    def delete_address_record(self, params):
+        domain = self._get_domain_or_permission_error(params)
+        dnsresource = DNSResource.objects.get(
+            domain=domain, id=params['dnsresource_id'])
+        ip_addresses = dnsresource.get_addresses()
+        ip_addresses.remove(params['rrdata'])
+        params['ip_addresses'] = ' '.join(ip_addresses)
+        form = DNSResourceForm(
+            data=params, user=self.user, instance=dnsresource)
+        if form.is_valid():
+            form.save()
+        else:
+            raise ValidationError(form.errors)
 
     def create_dnsdata(self, params):
         domain = self._get_domain_or_permission_error(params)
@@ -116,7 +186,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
     def update_dnsdata(self, params):
         domain = self._get_domain_or_permission_error(params)
         dnsdata = DNSData.objects.get(
-            id=params['dnsdata'], dnsresource=params['dnsresource'])
+            id=params['dnsdata_id'], dnsresource_id=params['dnsresource_id'])
         form = DNSDataForm(data=params, instance=dnsdata)
         if form.is_valid():
             form.save()
@@ -126,5 +196,5 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
 
     def delete_dnsdata(self, params):
         self._get_domain_or_permission_error(params)
-        dnsdata = DNSData.objects.get(id=params['dnsdata'])
+        dnsdata = DNSData.objects.get(id=params['dnsdata_id'])
         dnsdata.delete()

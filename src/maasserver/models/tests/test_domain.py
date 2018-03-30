@@ -386,6 +386,7 @@ class DomainTest(MAASServerTestCase):
                     rr_map[hostname].rrset.add((info.ttl, 'A', ip, None))
                 else:
                     rr_map[hostname].rrset.add((info.ttl, 'AAAA', ip, None))
+                rr_map[hostname].dnsresource_id = info.dnsresource_id
         rrsets = [
             {
                 'name': name,

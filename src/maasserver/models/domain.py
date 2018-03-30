@@ -368,6 +368,7 @@ class Domain(CleanSave, TimestampedModel):
             self, raw_ttl=True)
         for hostname, info in ip_mapping.items():
             hostname = hostname[:-len(self.name) - 1]
+            rr_mapping[hostname].dnsresource_id = info.dnsresource_id
             if info.system_id is not None:
                 rr_mapping[hostname].system_id = info.system_id
                 rr_mapping[hostname].node_type = info.node_type

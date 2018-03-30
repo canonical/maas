@@ -76,8 +76,8 @@ class HostnameRRsetMapping:
         self.rrset = set() if rrset is None else rrset.copy()
 
     def __repr__(self):
-        return "HostnameRRSetMapping(%r, %r, %r)" % (
-            self.system_id, self.rrset, self.node_type)
+        return "HostnameRRSetMapping(%r, %r, %r, %r)" % (
+            self.system_id, self.rrset, self.node_type, self.dnsresource_id)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

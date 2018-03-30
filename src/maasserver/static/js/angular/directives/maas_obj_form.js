@@ -554,6 +554,9 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         missingAttrs.join(", ") +
                         " are required on maas-obj-field.");
                 }
+                if(angular.isString(attrs.disabled)) {
+                    scope.ngDisabled = () => true;
+                }
 
                 // Remove transcluded element.
                 element.find("div").remove();

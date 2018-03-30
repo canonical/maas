@@ -642,10 +642,11 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None}
         ips.add(boot_ip.ip)
         expected_forward = {node.hostname: HostnameIPMapping(
-            node.system_id, node.address_ttl, ips, node.node_type)}
+            node.system_id, node.address_ttl, ips, node.node_type, dnsrr.id)}
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, node.address_ttl, ips, node.node_type)}
+                node.system_id, node.address_ttl, ips, node.node_type,
+                dnsrr.id)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
@@ -674,13 +675,14 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
             node.hostname: HostnameIPMapping(
                 node.system_id, node.address_ttl, node_ips, node.node_type),
             dnsrr.name: HostnameIPMapping(
-                None, dnsrr.address_ttl, dnsrr_ips, None),
+                None, dnsrr.address_ttl, dnsrr_ips, None, dnsrr.id),
             }
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, node.address_ttl, node_ips, node.node_type),
+                node.system_id, node.address_ttl, node_ips, node.node_type,
+                None),
             dnsrr.fqdn: HostnameIPMapping(
-                None, dnsrr.address_ttl, dnsrr_ips, None)}
+                None, dnsrr.address_ttl, dnsrr_ips, None, dnsrr.id)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()

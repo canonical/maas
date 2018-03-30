@@ -62,7 +62,7 @@ describe("DomainsManager", function() {
     });
 
     describe("createDNSRecord", function() {
-        it("calls create_dnsresource for A record", function() {
+        it("calls create_address_record for A record", function() {
             spyOn(RegionConnection, "callMethod");
             var record = {
                 'rrtype': 'A',
@@ -70,10 +70,10 @@ describe("DomainsManager", function() {
             };
             DomainsManager.createDNSRecord(record);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "domain.create_dnsresource", record);
+                "domain.create_address_record", record);
         });
 
-        it("calls create_dnsresource for AAAA record", function() {
+        it("calls create_address_record for AAAA record", function() {
             spyOn(RegionConnection, "callMethod");
             var record = {
                 'rrtype': 'AAAA',
@@ -81,7 +81,7 @@ describe("DomainsManager", function() {
             };
             DomainsManager.createDNSRecord(record);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "domain.create_dnsresource", record);
+                "domain.create_address_record", record);
         });
 
         it("converts rrdata into list for A and AAAA", function() {

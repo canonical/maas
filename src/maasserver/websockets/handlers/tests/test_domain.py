@@ -66,6 +66,7 @@ class TestDomainHandler(MAASServerTestCase):
                     rr_map[name].rrset.add((info.ttl, 'A', ip, None))
                 else:
                     rr_map[name].rrset.add((info.ttl, 'AAAA', ip, None))
+            rr_map[name].dnsresource_id = info.dnsresource_id
         rrsets = [
             {
                 'name': hostname,
@@ -252,7 +253,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         new_ttl = randint(1, 3600)
         handler.update_dnsresource({
             'domain': domain.id,
-            'dnsresource': resource.id,
+            'dnsresource_id': resource.id,
             'name': new_name,
             'address_ttl': new_ttl,
             'ip_addresses': ['127.0.0.1']
@@ -270,7 +271,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
         resource = factory.make_DNSResource(domain=domain)
         handler.delete_dnsresource({
             'domain': domain.id,
-            'dnsresource': resource.id,
+            'dnsresource_id': resource.id,
         })
         self.assertThat(reload_object(resource), Is(None))
 
@@ -403,8 +404,8 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
             dnsresource, rrtype="TXT", rrdata="original")
         handler.update_dnsdata({
             'domain': domain.id,
-            'dnsresource': dnsresource.id,
-            'dnsdata': dnsdata.id,
+            'dnsresource_id': dnsresource.id,
+            'dnsdata_id': dnsdata.id,
             'rrdata': 'updated',
         })
         dnsdata = reload_object(dnsdata)
@@ -420,8 +421,8 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         with ExpectedException(HandlerPermissionError):
             handler.update_dnsdata({
                 'domain': domain.id,
-                'dnsresource': dnsresource.id,
-                'dnsdata': dnsdata.id,
+                'dnsresource_id': dnsresource.id,
+                'dnsdata_id': dnsdata.id,
                 'rrdata': 'updated',
             })
         dnsdata = reload_object(dnsdata)
@@ -435,7 +436,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         dnsdata = factory.make_DNSData(dnsresource)
         handler.delete_dnsdata({
             'domain': domain.id,
-            'dnsdata': dnsdata.id,
+            'dnsdata_id': dnsdata.id,
         })
         dnsdata = reload_object(dnsdata)
         self.assertThat(dnsdata, Is(None))
@@ -449,7 +450,148 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
         with ExpectedException(HandlerPermissionError):
             handler.delete_dnsdata({
                 'domain': domain.id,
-                'dnsdata': dnsdata.id,
+                'dnsdata_id': dnsdata.id,
             })
         dnsdata = reload_object(dnsdata)
         self.assertThat(dnsdata, Not(Is(None)))
+
+
+class TestDomainHandlerAddressRecords(MAASServerTestCase):
+
+    def test__add_address_record(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        name = factory.make_hostname()
+        ttl = randint(1, 3600)
+        handler.create_address_record({
+            'domain': domain.id,
+            'name': name,
+            'address_ttl': ttl,
+            'ip_addresses': ['127.0.0.1']
+        })
+        resource = DNSResource.objects.get(domain=domain, name=name)
+        self.assertThat(resource.address_ttl, Equals(ttl))
+        self.assertThat(resource.name, Equals(name))
+        self.assertThat(
+            list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1"))
+
+    def test__add_two_addresses_in_succession(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        name = factory.make_hostname()
+        ttl = randint(1, 3600)
+        handler.create_address_record({
+            'domain': domain.id,
+            'name': name,
+            'address_ttl': ttl,
+            'ip_addresses': ['127.0.0.1']
+        })
+        handler.create_address_record({
+            'domain': domain.id,
+            'name': name,
+            'address_ttl': ttl,
+            'ip_addresses': ['127.0.0.2']
+        })
+        resource = DNSResource.objects.get(domain=domain, name=name)
+        self.assertThat(resource.address_ttl, Equals(ttl))
+        self.assertThat(resource.name, Equals(name))
+        self.assertThat(
+            resource.get_addresses(), Equals(["127.0.0.1", "127.0.0.2"]))
+
+    def test__update_address__updates_single_address(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        name = factory.make_hostname()
+        resource = factory.make_DNSResource(
+            domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"])
+        handler.update_address_record({
+            'domain': domain.id,
+            'dnsresource_id': resource.id,
+            'previous_name': resource.name,
+            'previous_rrdata': "127.0.0.1",
+            'name': name,
+            'ip_addresses': ['127.0.0.3']
+        })
+        resource = reload_object(resource)
+        self.assertThat(
+            resource.get_addresses(), Equals(["127.0.0.2", "127.0.0.3"]))
+
+    def test__update_address__creates_second_dnsrecord_if_name_changed(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(
+            domain=domain, name="foo", ip_addresses=["127.0.0.1", "127.0.0.2"])
+        handler.update_address_record({
+            'domain': domain.id,
+            'dnsresource_id': resource.id,
+            'previous_name': resource.name,
+            'previous_rrdata': "127.0.0.1",
+            'name': "bar",
+            'ip_addresses': ['127.0.0.3']
+        })
+        resource = reload_object(resource)
+        self.assertThat(
+            resource.get_addresses(), Equals(["127.0.0.2"]))
+        resource = DNSResource.objects.get(domain=domain, name="bar")
+        self.assertThat(
+            resource.get_addresses(), Equals(["127.0.0.3"]))
+
+    def test__delete_address_deletes_single_address(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        name = factory.make_hostname()
+        resource = factory.make_DNSResource(
+            domain=domain, name=name, ip_addresses=["127.0.0.1", "127.0.0.2"])
+        handler.delete_address_record({
+            'domain': domain.id,
+            'dnsresource_id': resource.id,
+            'rrdata': "127.0.0.1"
+        })
+        self.assertThat(
+            resource.get_addresses(), Equals(["127.0.0.2"]))
+
+    def test__add_address_as_non_admin_fails(self):
+        user = factory.make_User()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        name = factory.make_hostname()
+        ttl = randint(1, 3600)
+        with ExpectedException(HandlerPermissionError):
+            handler.create_address_record({
+                'domain': domain.id,
+                'name': name,
+                'address_ttl': ttl,
+                'ip_addresses': ['127.0.0.1']
+            })
+
+    def test__update_address_as_non_admin_fails(self):
+        user = factory.make_User()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        new_name = factory.make_hostname()
+        new_ttl = randint(1, 3600)
+        with ExpectedException(HandlerPermissionError):
+            handler.update_address_record({
+                'domain': domain.id,
+                'dnsresource': resource.id,
+                'name': new_name,
+                'address_ttl': new_ttl,
+                'ip_addresses': ['127.0.0.1'],
+            })
+
+    def test__delete_resource_as_non_admin_fails(self):
+        user = factory.make_User()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        with ExpectedException(HandlerPermissionError):
+            handler.delete_address_record({
+                'domain': domain.id,
+                'dnsresource': resource.id,
+            })
