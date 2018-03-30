@@ -15,8 +15,8 @@
     {% if no_users %}
         <div class="col-8">
             <h1>No admin user has been created yet</h1>
-            <p>Use the "createadmin" administration command to create one:</p>
-            <pre>{{ create_command }} createadmin</pre>
+            <p>Use the "init" administration command to create one:</p>
+            <pre>{{ create_command }} init</pre>
             <a href="{% url 'login' %}" class="p-button--primary">login</a>
         </div>
     {% else %}
