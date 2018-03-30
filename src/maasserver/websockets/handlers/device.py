@@ -37,10 +37,7 @@ from maasserver.websockets.base import (
     HandlerPermissionError,
     HandlerValidationError,
 )
-from maasserver.websockets.handlers.node import (
-    node_prefetch,
-    NodeHandler,
-)
+from maasserver.websockets.handlers.node import NodeHandler
 from netaddr import EUI
 from provisioningserver.logger import get_maas_logger
 
@@ -65,7 +62,16 @@ class DeviceHandler(NodeHandler):
 
     class Meta(NodeHandler.Meta):
         abstract = False
-        queryset = node_prefetch(Device.objects.filter(parent=None))
+        queryset = (
+            Device.objects.filter(parent=None).select_related(
+                'boot_interface', 'owner', 'zone', 'domain')
+            .prefetch_related(
+                'interface_set__ip_addresses__subnet__vlan__space')
+            .prefetch_related(
+                'interface_set__ip_addresses__subnet__vlan__fabric')
+            .prefetch_related('interface_set__vlan__fabric')
+            .prefetch_related('tags')
+        )
         allowed_methods = [
             'list',
             'get',
@@ -80,6 +86,7 @@ class DeviceHandler(NodeHandler):
             'update',
             'action']
         exclude = [
+            "bmc",
             "creation_type",
             "type",
             "boot_interface",
@@ -145,10 +152,11 @@ class DeviceHandler(NodeHandler):
         getpk = attrgetter(self._meta.pk)
         self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Device.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
+            self.user, NODE_PERMISSION.VIEW, from_nodes=super().get_queryset(
+                for_list=for_list))
 
     def dehydrate_parent(self, parent):
         if parent is None:

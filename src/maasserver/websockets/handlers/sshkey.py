@@ -41,7 +41,7 @@ class SSHKeyHandler(TimestampedModelHandler):
             "sshkey",
         ]
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` for SSH keys owned by `user`."""
         return self._meta.queryset.filter(user=self.user)
 

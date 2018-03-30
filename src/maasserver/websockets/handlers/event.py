@@ -75,7 +75,7 @@ class EventHandler(TimestampedModelHandler):
         """
         node = self.get_node(params)
         self.cache['node_ids'].append(node.id)
-        queryset = self.get_queryset()
+        queryset = self.get_queryset(for_list=True)
         queryset = queryset.filter(node=node)
         queryset = queryset.order_by('-id')
 

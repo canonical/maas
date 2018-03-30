@@ -134,13 +134,14 @@ def populate_kernel_opts(driver):
     return driver
 
 
-def get_third_party_driver(node):
+def get_third_party_driver(node, detected_aliases=None):
     """Determine which, if any, third party driver is required.
 
     Use the node's modaliases strings to determine if a third party
     driver is required.
     """
-    detected_aliases = node.modaliases
+    if detected_aliases is None:
+        detected_aliases = node.modaliases
 
     third_party_drivers_config = DriversConfig.load_from_cache()
     third_party_drivers = third_party_drivers_config['drivers']

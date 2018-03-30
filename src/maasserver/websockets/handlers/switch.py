@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The switch handler for the WebSocket connection."""
@@ -45,10 +45,14 @@ class SwitchHandler(NodeHandler):
             'switch',
         ]
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
+        # FIXME - Return a different query set when for_list is true. This
+        # should contain only the items needed to display a switch when listing
+        # in the UI.
         return Node.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
+            self.user, NODE_PERMISSION.VIEW,
+            from_nodes=self._meta.queryset)
 
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""

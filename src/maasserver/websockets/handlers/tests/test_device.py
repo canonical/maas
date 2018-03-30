@@ -137,7 +137,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         boot_interface = node.get_boot_interface()
         data = {
             "actions": list(compile_node_actions(node, user).keys()),
-            "bmc": node.bmc_id,
             "created": dehydrate_datetime(node.created),
             "domain": {
                 "id": node.domain.id,
@@ -149,7 +148,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
-            "metadata": {},
             "node_type_display": node.get_node_type_display(),
             "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "id": node.id,
@@ -195,7 +193,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "ip_address",
                 "ip_assignment",
                 "link_type",
-                "metadata",
                 "node_type_display",
                 "primary_mac",
                 "spaces",
@@ -253,6 +250,24 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             handler.get({"system_id": device.system_id}))
 
     @transactional
+    def test_get_num_queries_is_the_expected_number(self):
+        owner = factory.make_User()
+        handler = DeviceHandler(owner, {})
+        device = self.make_device_with_ip_address(
+            owner=owner, ip_assignment=DEVICE_IP_ASSIGNMENT_TYPE.STATIC)
+        queries, _ = count_queries(
+            handler.get, {"system_id": device.system_id})
+
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node get.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries, 19,
+            "Number of queries has changed; make sure this is expected.")
+
+    @transactional
     def test_list(self):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
@@ -301,7 +316,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 13,
+            query_10_count, 10,
             "Number of queries has changed; make sure this is expected.")
 
     @transactional

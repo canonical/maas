@@ -150,11 +150,12 @@ class TestMachineHandler(MAASServerTestCase):
 
         boot_interface = node.get_boot_interface()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
+        subnets = handler.get_all_subnets(node)
+
         blockdevices = [
             blockdevice.actual_instance
             for blockdevice in node.blockdevice_set.all()
             ]
-        driver = get_third_party_driver(node)
         disks = [
             handler.dehydrate_blockdevice(blockdevice, node)
             for blockdevice in blockdevices
@@ -167,8 +168,10 @@ class TestMachineHandler(MAASServerTestCase):
             for cache_set in CacheSet.objects.get_cache_sets_for_node(node)
         ]
         disks = sorted(disks, key=itemgetter("name"))
-        subnets = handler.get_all_subnets(node)
-        commissioning_scripts = node.get_latest_commissioning_script_results
+        driver = get_third_party_driver(node)
+
+        commissioning_scripts = (
+            node.get_latest_commissioning_script_results)
         commissioning_scripts = commissioning_scripts.exclude(
             status=SCRIPT_STATUS.ABORTED)
         testing_scripts = node.get_latest_testing_script_results
@@ -179,6 +182,7 @@ class TestMachineHandler(MAASServerTestCase):
             if (script_result.name in script_output_nsmap and
                     script_result.status == SCRIPT_STATUS.PASSED):
                 log_results.add(script_result.name)
+
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
@@ -186,25 +190,27 @@ class TestMachineHandler(MAASServerTestCase):
             "boot_disk": node.boot_disk,
             "bios_boot_method": node.bios_boot_method,
             "commissioning_script_count": commissioning_scripts.count(),
-            "commissioning_status": get_status_from_qs(commissioning_scripts),
+            "commissioning_status": get_status_from_qs(
+                commissioning_scripts),
             "commissioning_status_tooltip": (
                 handler.dehydrate_hardware_status_tooltip(
                     commissioning_scripts).replace(
                         'test', 'commissioning script')),
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id),
+            "current_testing_script_set": node.current_testing_script_set_id,
             "testing_script_count": testing_scripts.count(),
             "testing_status": get_status_from_qs(testing_scripts),
             "testing_status_tooltip": (
-                handler.dehydrate_hardware_status_tooltip(testing_scripts)),
-            "current_testing_script_set": node.current_testing_script_set_id,
+                handler.dehydrate_hardware_status_tooltip(
+                    testing_scripts)),
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
             "installation_status": (
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set)),
-            "has_logs": (
-                log_results.difference(script_output_nsmap.keys()) == set()),
+            "has_logs": (log_results.difference(
+                script_output_nsmap.keys()) == set()),
             "locked": node.locked,
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
@@ -231,7 +237,7 @@ class TestMachineHandler(MAASServerTestCase):
             "supported_filesystems": [
                 {'key': key, 'ui': ui}
                 for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES],
-            "distro_series": node.get_distro_series(),
+            "distro_series": node.distro_series,
             "error": node.error,
             "error_description": node.error_description,
             "events": handler.dehydrate_events(node),
@@ -251,10 +257,9 @@ class TestMachineHandler(MAASServerTestCase):
             "license_key": node.license_key,
             "link_type": NODE_TYPE_TO_LINK_TYPE[node.node_type],
             "memory": node.display_memory(),
-            "metadata": {},
             "node_type_display": node.get_node_type_display(),
             "min_hwe_kernel": node.min_hwe_kernel,
-            "osystem": node.get_osystem(),
+            "osystem": node.osystem,
             "owner": handler.dehydrate_owner(node.owner),
             "power_parameters": handler.dehydrate_power_parameters(
                 node.power_parameters),
@@ -292,7 +297,6 @@ class TestMachineHandler(MAASServerTestCase):
             "zone": handler.dehydrate_zone(node.zone),
             "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
-            "dhcp_on": node.interface_set.filter(vlan__dhcp_on=True).exists(),
         }
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
@@ -333,6 +337,13 @@ class TestMachineHandler(MAASServerTestCase):
             for key in list(data):
                 if key not in allowed_fields:
                     del data[key]
+        else:
+            data.update({
+                "dhcp_on": node.interface_set.filter(
+                    vlan__dhcp_on=True).exists(),
+                "grouped_storages": handler.get_grouped_storages(blockdevices),
+                "metadata": {},
+            })
 
         cpu_script_results = [
             script_result for script_result in
@@ -394,8 +405,6 @@ class TestMachineHandler(MAASServerTestCase):
                     script_results))
         else:
             data["status_tooltip"] = ""
-
-        data["grouped_storages"] = handler.get_grouped_storages(blockdevices)
 
         return data
 
@@ -495,10 +504,39 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 11,
+            queries_one, 8,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 11,
+            queries_total, 8,
+            "Number of queries has changed; make sure this is expected.")
+
+    def test_get_num_queries_is_the_expected_number(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        commissioning_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        testing_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.current_commissioning_script_set = commissioning_script_set
+        node.current_testing_script_set = testing_script_set
+        node.save()
+        for __ in range(10):
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=commissioning_script_set)
+            factory.make_ScriptResult(
+                status=SCRIPT_STATUS.PASSED,
+                script_set=testing_script_set)
+
+        handler = MachineHandler(owner, {})
+        queries, _ = count_queries(handler.get, {'system_id': node.system_id})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node get.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        self.assertEqual(
+            queries, 48,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):
@@ -521,6 +559,7 @@ class TestMachineHandler(MAASServerTestCase):
 
         handler = MachineHandler(owner, {})
         # Simulate a trigger pushing an update to the UI
+        handler.cache = {'active_pk': node.system_id}
         _, _, ret = handler.on_listen_for_active_pk(
             'update', node.system_id, node)
         self.assertEquals(ret['commissioning_script_count'], 10)

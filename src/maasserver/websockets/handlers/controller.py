@@ -24,8 +24,12 @@ class ControllerHandler(MachineHandler):
     class Meta(MachineHandler.Meta):
         abstract = False
         queryset = node_prefetch(
-            Controller.controllers.all().prefetch_related("interface_set"),
-            'controllerinfo'
+            Controller.controllers.all().prefetch_related(
+                "service_set"), "controllerinfo")
+        list_queryset = (
+            Controller.controllers.all()
+            .select_related("controllerinfo", "domain")
+            .prefetch_related("service_set")
         )
         allowed_methods = [
             'list',
@@ -90,10 +94,14 @@ class ControllerHandler(MachineHandler):
         else:
             raise HandlerError("Unknown action: %s" % action)
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `QuerySet` for controllers only viewable by `user`."""
+        if for_list:
+            qs = self._meta.list_queryset
+        else:
+            qs = self._meta.queryset
         return Controller.controllers.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
+            self.user, NODE_PERMISSION.VIEW, from_nodes=qs)
 
     def dehydrate(self, obj, data, for_list=False):
         obj = obj.as_self()
@@ -108,14 +116,15 @@ class ControllerHandler(MachineHandler):
             if version.is_snap:
                 long_version += " (snap)"
             data["version__long"] = long_version
-        data["vlan_ids"] = [
-            interface.vlan_id
-            for interface in obj.interface_set.all()
-        ]
         data["service_ids"] = [
             service.id
             for service in obj.service_set.all()
         ]
+        if not for_list:
+            data["vlan_ids"] = [
+                interface.vlan_id
+                for interface in obj.interface_set.all()
+            ]
         return data
 
     def check_images(self, params):

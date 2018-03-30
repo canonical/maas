@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The notification handler for the WebSocket connection."""
@@ -22,7 +22,7 @@ class NotificationHandler(TimestampedModelHandler):
         exclude = list_exclude = {"context"}
         listen_channels = {'notification', 'notificationdismissal'}
 
-    def get_queryset(self):
+    def get_queryset(self, for_list=False):
         """Return `Notifications` for the current user."""
         return Notification.objects.find_for_user(self.user)
 
