@@ -15,7 +15,6 @@ __all__ = [
 from itertools import count
 import sys
 import threading
-import warnings
 
 from django.db import (
     close_old_connections,
@@ -28,7 +27,6 @@ from django.db.utils import (
     OperationalError,
 )
 from maasserver.fields import register_mac_type
-from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
     PackageRepositoryFixture,
@@ -98,25 +96,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         # XXX: allenap bug=1427628 2015-03-03: These should not be here.
         # Disconnect the status transition event to speed up tests.
         self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', False)
-
-    def client_log_in(self, as_admin=False, completed_intro=True):
-        """Log `self.client` into MAAS.
-
-        Sets `self.logged_in_user` to match the logged-in identity.
-        """
-        warnings.warn(
-            "client_log_in assumes that the client uses password "
-            "authentication, but this is not always the case. Use "
-            "client.login instead.", DeprecationWarning)
-        password = 'test'
-        if as_admin:
-            user = factory.make_admin(
-                password=password, completed_intro=completed_intro)
-        else:
-            user = factory.make_User(
-                password=password, completed_intro=completed_intro)
-        self.client.login(username=user.username, password=password)
-        self.logged_in_user = user
 
     def assertNotInTransaction(self):
         self.assertFalse(connection.in_atomic_block, (

@@ -41,7 +41,7 @@ from provisioningserver.events import AUDIT
 class SettingsTest(MAASServerTestCase):
 
     def test_settings_redirects_to_index_when_intro_not_completed(self):
-        self.client_log_in()
+        self.client.login(user=factory.make_User())
         Config.objects.set_config('completed_intro', False)
         response = self.client.get(reverse('settings'))
         self.assertEqual('/', extract_redirect(response))
@@ -50,7 +50,8 @@ class SettingsTest(MAASServerTestCase):
         # The settings page displays a list of the users with links to view,
         # delete or edit each user. Note that the link to delete the the
         # logged-in user is not display.
-        self.client_log_in(as_admin=True)
+        admin = factory.make_admin()
+        self.client.login(user=admin)
         [factory.make_User() for _ in range(3)]
         users = UserProfile.objects.all_users()
         response = self.client.get(reverse('settings'))
@@ -80,7 +81,7 @@ class SettingsTest(MAASServerTestCase):
             # A link to edit the user is shown.
             self.assertIn(
                 reverse('accounts-edit', args=[user.username]), links)
-            if user != self.logged_in_user:
+            if user != admin:
                 # A link to delete the user is shown.
                 self.assertIn(
                     reverse('accounts-del', args=[user.username]), links)
@@ -96,7 +97,7 @@ class SettingsTest(MAASServerTestCase):
     def test_setting_list_external_users(self):
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
@@ -111,7 +112,7 @@ class SettingsTest(MAASServerTestCase):
     def test_settings_external_auth_include_users_message(self):
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
         [notification] = doc.cssselect('.p-notification__response')
@@ -120,7 +121,7 @@ class SettingsTest(MAASServerTestCase):
             notification.text)
 
     def test_settings_no_users_message_without_external_auth(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
         self.assertEqual(doc.cssselect('.p-notification__response'), [])
@@ -130,7 +131,7 @@ class SettingsTest(MAASServerTestCase):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_name = factory.make_string()
         response = self.client.post(
             reverse('settings'),
@@ -148,7 +149,7 @@ class SettingsTest(MAASServerTestCase):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_proxy = "http://%s.example.com:1234/" % factory.make_string()
         response = self.client.post(
             reverse('settings'),
@@ -169,7 +170,7 @@ class SettingsTest(MAASServerTestCase):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_upstream = "8.8.8.8"
         response = self.client.post(
             reverse('settings'),
@@ -189,7 +190,7 @@ class SettingsTest(MAASServerTestCase):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_servers = "ntp.example.com"
         response = self.client.post(
             reverse('settings'),
@@ -205,7 +206,7 @@ class SettingsTest(MAASServerTestCase):
         self.assertTrue(Config.objects.get_config('ntp_external_only'))
 
     def test_settings_commissioning_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         release = make_rpc_release(can_commission=True)
         osystem = make_rpc_osystem('ubuntu', releases=[release])
         patch_usable_osystems(self, [osystem])
@@ -230,7 +231,7 @@ class SettingsTest(MAASServerTestCase):
             ))
 
     def test_settings_hides_license_keys_if_no_OS_supporting_keys(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
         license_keys = doc.cssselect('#license_keys')
@@ -238,7 +239,7 @@ class SettingsTest(MAASServerTestCase):
             0, len(license_keys), "Didn't hide the license key section.")
 
     def test_settings_shows_license_keys_if_OS_supporting_keys(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         self.patch(
@@ -251,7 +252,7 @@ class SettingsTest(MAASServerTestCase):
             1, len(license_keys), "Didn't show the license key section.")
 
     def test_settings_third_party_drivers_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_enable_third_party_drivers = factory.pick_bool()
         response = self.client.post(
             reverse('settings'),
@@ -272,7 +273,7 @@ class SettingsTest(MAASServerTestCase):
             ))
 
     def test_settings_storage_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_storage_layout = factory.pick_choice(get_storage_layout_choices())
         new_enable_disk_erasing_on_release = factory.pick_bool()
         response = self.client.post(
@@ -297,7 +298,7 @@ class SettingsTest(MAASServerTestCase):
             ))
 
     def test_settings_deploy_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         osystem = make_usable_osystem(self)
         osystem_name = osystem['name']
         release_name = osystem['default_release']
@@ -326,7 +327,7 @@ class SettingsTest(MAASServerTestCase):
             ))
 
     def test_settings_ubuntu_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_main_archive = 'http://test.example.com/archive'
         new_ports_archive = 'http://test2.example.com/archive'
         response = self.client.post(
@@ -351,7 +352,7 @@ class SettingsTest(MAASServerTestCase):
             ))
 
     def test_settings_kernelopts_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         new_kernel_opts = "--new='arg' --flag=1 other"
         response = self.client.post(
             reverse('settings'),
@@ -370,7 +371,7 @@ class SettingsTest(MAASServerTestCase):
 class NonAdminSettingsTest(MAASServerTestCase):
 
     def test_settings_import_boot_images_reserved_to_admin(self):
-        self.client_log_in()
+        self.client.login(user=factory.make_User())
         response = self.client.post(
             reverse('settings'), {'import_all_boot_images': 1})
         self.assertEqual(reverse('login'), extract_redirect(response))
@@ -416,7 +417,7 @@ def subset_dict(input_dict, keys_subset):
 class UserManagementTest(MAASServerTestCase):
 
     def test_add_user_POST(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         params = {
             'username': factory.make_string(),
             'last_name': factory.make_string(30),
@@ -436,7 +437,7 @@ class UserManagementTest(MAASServerTestCase):
     def test_add_user_with_external_auth_not_local(self):
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         params = {
             'username': factory.make_string(),
             'last_name': factory.make_string(30),
@@ -450,7 +451,7 @@ class UserManagementTest(MAASServerTestCase):
         self.assertFalse(user.userprofile.is_local)
 
     def test_add_user_POST_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         username = factory.make_string()
         params = {
             'username': username,
@@ -469,7 +470,7 @@ class UserManagementTest(MAASServerTestCase):
             "User %s" % username + " created by '%(username)s'.")
 
     def test_add_admin_POST_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         username = factory.make_string()
         params = {
             'username': username,
@@ -488,7 +489,7 @@ class UserManagementTest(MAASServerTestCase):
             "Admin %s" % username + " created by '%(username)s'.")
 
     def test_edit_user_POST_profile_updates_attributes(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         params = make_user_attribute_params(user)
         params.update({
@@ -507,7 +508,7 @@ class UserManagementTest(MAASServerTestCase):
             reload_object(user), subset_dict(params, user_attributes))
 
     def test_edit_user_POST_profile_update_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         new_username = factory.make_name('newname')
         params = make_user_attribute_params(user)
@@ -534,7 +535,7 @@ class UserManagementTest(MAASServerTestCase):
             " updated by '%(username)s'.")
 
     def test_edit_user_POST_updates_password(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         new_password = factory.make_string()
         params = make_password_params(new_password)
@@ -545,7 +546,7 @@ class UserManagementTest(MAASServerTestCase):
         self.assertTrue(reload_object(user).check_password(new_password))
 
     def test_edit_user_POST_password_update_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         new_password = factory.make_string()
         params = make_password_params(new_password)
@@ -559,7 +560,7 @@ class UserManagementTest(MAASServerTestCase):
 
     def test_delete_user_GET(self):
         # The user delete page displays a confirmation page with a form.
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         del_link = reverse('accounts-del', args=[user.username])
         response = self.client.get(del_link)
@@ -573,7 +574,7 @@ class UserManagementTest(MAASServerTestCase):
 
     def test_delete_user_POST(self):
         # A POST request to the user delete finally deletes the user.
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         user_id = user.id
         del_link = reverse('accounts-del', args=[user.username])
@@ -582,7 +583,7 @@ class UserManagementTest(MAASServerTestCase):
         self.assertItemsEqual([], User.objects.filter(id=user_id))
 
     def test_delete_user_POST_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         del_link = reverse('accounts-del', args=[user.username])
         self.client.post(del_link, {'post': 'yes'})
@@ -593,7 +594,7 @@ class UserManagementTest(MAASServerTestCase):
             "User %s" % user.username + " deleted by '%(username)s'.")
 
     def test_delete_admin_POST_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_admin()
         del_link = reverse('accounts-del', args=[user.username])
         self.client.post(del_link, {'post': 'yes'})
@@ -605,7 +606,7 @@ class UserManagementTest(MAASServerTestCase):
 
     def test_view_user(self):
         # The user page feature the basic information about the user.
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User()
         del_link = reverse('accounts-view', args=[user.username])
         response = self.client.get(del_link)
@@ -616,7 +617,7 @@ class UserManagementTest(MAASServerTestCase):
 
     def test_account_views_are_routable_for_full_range_of_usernames(self):
         # Usernames can include characters in the regex [\w.@+-].
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         user = factory.make_User(username="abc-123@example.com")
         for view in "edit", "view", "del":
             path = reverse("accounts-%s" % view, args=[user.username])

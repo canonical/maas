@@ -196,8 +196,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     @synchronous
     @transactional
     def get_user_and_session_id(self):
-        self.client_log_in()
-        user = self.logged_in_user
+        user = maas_factory.make_User()
+        self.client.login(user=user)
         session_id = self.client.session._session_key
         return user, session_id
 
@@ -211,7 +211,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEqual(user, protocol_user)
 
     def test_getUserFromSessionId_returns_None_for_invalid_key(self):
-        self.client_log_in()
+        self.client.login(user=maas_factory.make_User())
         session_id = maas_factory.make_name("sessionid")
         protocol, factory = self.make_protocol()
         self.assertIs(

@@ -35,7 +35,7 @@ class Test404500(MAASServerTestCase):
         self.patch(settings, "DEBUG", False)
 
     def test_404(self):
-        self.client_log_in()
+        self.client.login(user=factory.make_User())
         response = self.client.get('/no-found-page/')
         doc = fromstring(response.content)
         self.assertIn(
@@ -48,7 +48,7 @@ class Test404500(MAASServerTestCase):
                 doc.cssselect('h2')])
 
     def test_500(self):
-        self.client_log_in()
+        self.client.login(user=factory.make_User())
         from maasserver.urls import urlpatterns
         urlpatterns += [url(r'^500/$', server_error)]
         response = self.client.get('/500/')

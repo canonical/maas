@@ -106,8 +106,9 @@ class TestNodeForm(MAASServerTestCase):
 class TestAdminNodeForm(MAASServerTestCase):
 
     def test_contains_limited_set_of_fields(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         form = AdminNodeForm(instance=node)
 
         self.assertItemsEqual(

@@ -29,7 +29,7 @@ from testtools.matchers import ContainsAll
 class CommissioningScriptListingTest(MAASServerTestCase):
 
     def test_settings_contains_names_and_content_of_scripts(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         scripts = {
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
@@ -47,13 +47,13 @@ class CommissioningScriptListingTest(MAASServerTestCase):
         ]))
 
     def test_settings_link_to_upload_script(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         links = get_content_links(self.client.get(reverse('settings')))
         script_add_link = reverse('commissioning-script-add')
         self.assertIn(script_add_link, links)
 
     def test_settings_contains_links_to_delete_scripts(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         scripts = {
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
@@ -65,7 +65,7 @@ class CommissioningScriptListingTest(MAASServerTestCase):
         self.assertThat(links, ContainsAll(script_delete_links))
 
     def test_settings_contains_commissioning_scripts_slot_anchor(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         response = self.client.get(reverse('settings'))
         document = fromstring(response.content)
         slots = document.xpath(
@@ -78,7 +78,7 @@ class CommissioningScriptListingTest(MAASServerTestCase):
 class CommissioningScriptDeleteTest(MAASServerTestCase):
 
     def test_can_delete_commissioning_script(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         script = factory.make_Script()
         delete_link = reverse('commissioning-script-delete', args=[script.id])
         response = self.client.post(delete_link, {'post': 'yes'})
@@ -89,7 +89,7 @@ class CommissioningScriptDeleteTest(MAASServerTestCase):
             Script.objects.filter(id=script.id).exists())
 
     def test_delete_script_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         script = factory.make_Script()
         script_name = script.name
         delete_link = reverse('commissioning-script-delete', args=[script.id])
@@ -104,7 +104,7 @@ class CommissioningScriptDeleteTest(MAASServerTestCase):
 class CommissioningScriptUploadTest(MAASServerTestCase):
 
     def test_can_create_commissioning_script(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         content = factory.make_script_content().encode("ascii")
         name = factory.make_name('filename')
         create_link = reverse('commissioning-script-add')

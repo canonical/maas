@@ -65,7 +65,7 @@ class LicenseKeyListingTest(MAASServerTestCase):
         return keys, osystems
 
     def test_settings_contains_osystem_and_distro_series(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         keys, _ = self.make_license_keys(3)
         response = self.client.get(reverse('settings'))
         os_titles = [key.osystem for key in keys]
@@ -75,14 +75,14 @@ class LicenseKeyListingTest(MAASServerTestCase):
             ContainsAll([title for title in os_titles + series_titles]))
 
     def test_settings_link_to_add_license_key(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         self.make_license_keys(3)
         links = get_content_links(self.client.get(reverse('settings')))
         script_add_link = reverse('license-key-add')
         self.assertIn(script_add_link, links)
 
     def test_settings_contains_links_to_delete(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         keys, _ = self.make_license_keys(3)
         links = get_content_links(self.client.get(reverse('settings')))
         license_key_delete_links = [
@@ -92,7 +92,7 @@ class LicenseKeyListingTest(MAASServerTestCase):
         self.assertThat(links, ContainsAll(license_key_delete_links))
 
     def test_settings_contains_links_to_edit(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         keys, _ = self.make_license_keys(3)
         links = get_content_links(self.client.get(reverse('settings')))
         license_key_delete_links = [
@@ -102,7 +102,7 @@ class LicenseKeyListingTest(MAASServerTestCase):
         self.assertThat(links, ContainsAll(license_key_delete_links))
 
     def test_settings_contains_commissioning_scripts_slot_anchor(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         self.make_license_keys(3)
         response = self.client.get(reverse('settings'))
         document = fromstring(response.content)
@@ -116,7 +116,7 @@ class LicenseKeyListingTest(MAASServerTestCase):
 class LicenseKeyAddTest(MAASServerTestCase):
 
     def test_can_create_license_key(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         osystem = make_osystem_requiring_license_key()
         patch_usable_osystems(self, osystems=[osystem])
         self.patch(forms, 'validate_license_key').return_value = True
@@ -145,7 +145,7 @@ class LicenseKeyAddTest(MAASServerTestCase):
 class LicenseKeyEditTest(MAASServerTestCase):
 
     def test_can_update_license_key(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         key = factory.make_LicenseKey()
         osystem = make_osystem_requiring_license_key(
             key.osystem, key.distro_series)
@@ -174,7 +174,7 @@ class LicenseKeyEditTest(MAASServerTestCase):
 class LicenseKeyDeleteTest(MAASServerTestCase):
 
     def test_can_delete_license_key(self):
-        self.client_log_in(as_admin=True)
+        self.client.login(user=factory.make_admin())
         key = factory.make_LicenseKey()
         delete_link = reverse(
             'license-key-delete', args=[key.osystem, key.distro_series])

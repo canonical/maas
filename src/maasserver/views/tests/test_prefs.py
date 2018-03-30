@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 
 from apiclient.creds import convert_tuple_to_string
-from django.contrib.auth.models import User
 from lxml.html import fromstring
 from maasserver.models import (
     Event,
@@ -22,6 +21,7 @@ from maasserver.testing import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
+from maasserver.utils.orm import reload_object
 from provisioningserver.events import AUDIT
 
 
@@ -30,10 +30,10 @@ class UserPrefsViewTest(MAASServerTestCase):
     def test_prefs_GET_profile(self):
         # The preferences page displays a form with the user's personal
         # information.
-        self.client_log_in()
-        user = self.logged_in_user
+        user = factory.make_User()
         user.last_name = 'Steve Bam'
         user.save()
+        self.client.login(user=user)
         response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)
         self.assertSequenceEqual(
@@ -43,8 +43,8 @@ class UserPrefsViewTest(MAASServerTestCase):
 
     def test_prefs_GET_api(self):
         # The preferences page displays the API access tokens.
-        self.client_log_in()
-        user = self.logged_in_user
+        user = factory.make_User()
+        self.client.login(user=user)
         # Create a few tokens.
         for _ in range(3):
             user.userprofile.create_authorisation_token()
@@ -61,7 +61,8 @@ class UserPrefsViewTest(MAASServerTestCase):
     def test_prefs_POST_profile(self):
         # The preferences page allows the user the update its profile
         # information.
-        self.client_log_in()
+        user = factory.make_User()
+        self.client.login(user=user)
         params = {
             'last_name': 'John Doe',
             'email': 'jon@example.com',
@@ -70,14 +71,15 @@ class UserPrefsViewTest(MAASServerTestCase):
             '/account/prefs/', get_prefixed_form_data('profile', params))
 
         self.assertEqual(http.client.FOUND, response.status_code)
-        user = User.objects.get(id=self.logged_in_user.id)
+        user = reload_object(user)
         self.assertAttributes(user, params)
 
     def test_prefs_POST_password(self):
         # The preferences page allows the user to change their password.
-        self.client_log_in()
-        self.logged_in_user.set_password('password')
-        old_pw = self.logged_in_user.password
+        user = factory.make_User()
+        self.client.login(username=user.username, password='test')
+        user.set_password('password')
+        old_pw = user.password
         response = self.client.post(
             '/account/prefs/',
             get_prefixed_form_data(
@@ -89,7 +91,7 @@ class UserPrefsViewTest(MAASServerTestCase):
                 }))
 
         self.assertEqual(http.client.FOUND, response.status_code)
-        user = User.objects.get(id=self.logged_in_user.id)
+        user = reload_object(user)
         # The password is SHA1ized, we just make sure that it has changed.
         self.assertNotEqual(old_pw, user.password)
         event = Event.objects.get(type__level=AUDIT)
@@ -98,18 +100,20 @@ class UserPrefsViewTest(MAASServerTestCase):
             event.description, "Password changed for '%(username)s'.")
 
     def test_create_ssl_key_POST(self):
-        self.client_log_in(as_admin=True)
+        user = factory.make_admin()
+        self.client.login(user=user)
         key_string = get_data('data/test_x509_0.pem')
         params = {'key': key_string}
         response = self.client.post(reverse('prefs-add-sslkey'), params)
-        sslkey = SSLKey.objects.get(user=self.logged_in_user)
+        sslkey = SSLKey.objects.get(user=user)
         self.assertEqual(http.client.FOUND, response.status_code)
         self.assertIsNotNone(sslkey)
         self.assertEqual(key_string, sslkey.key)
 
     def test_delete_ssl_key_POST_creates_audit_event(self):
-        self.client_log_in(as_admin=True)
-        sslkey = factory.make_SSLKey(self.logged_in_user)
+        user = factory.make_admin()
+        self.client.login(user=user)
+        sslkey = factory.make_SSLKey(user)
         keyid = sslkey.id
         del_link = reverse('prefs-delete-sslkey', args=[keyid])
         self.client.post(del_link, {'post': 'yes'})

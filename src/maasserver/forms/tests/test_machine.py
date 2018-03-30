@@ -81,9 +81,9 @@ class TestMachineForm(MAASServerTestCase):
             form.fields['architecture'].initial)
 
     def test_form_validates_hwe_kernel_by_passing_invalid_config(self):
-        self.client_log_in()
-        node = factory.make_Node(
-            owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystem = make_usable_osystem(self)
         form = MachineForm(data={
             'hostname': factory.make_name('host'),
@@ -108,8 +108,9 @@ class TestMachineForm(MAASServerTestCase):
             form.fields['architecture'].choices)
 
     def test_accepts_osystem(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystem = make_usable_osystem(self)
         form = MachineForm(data={
             'hostname': factory.make_name('host'),
@@ -120,8 +121,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
 
     def test_rejects_invalid_osystem(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         patch_usable_osystems(self)
         form = MachineForm(data={
             'hostname': factory.make_name('host'),
@@ -133,8 +135,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['osystem'], form._errors.keys())
 
     def test_starts_with_default_osystem(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystems = [make_osystem_with_releases(self) for _ in range(5)]
         patch_usable_osystems(self, osystems)
         form = MachineForm(instance=node)
@@ -143,8 +146,9 @@ class TestMachineForm(MAASServerTestCase):
             form.fields['osystem'].initial)
 
     def test_accepts_osystem_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystem = make_usable_osystem(self)
         release = osystem['default_release']
         form = MachineForm(data={
@@ -157,8 +161,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
 
     def test_rejects_invalid_osystem_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystem = make_usable_osystem(self)
         release = factory.make_name('release')
         form = MachineForm(data={
@@ -172,8 +177,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
     def test_set_distro_series_accepts_short_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         release = factory.make_name('release')
         make_usable_osystem(
             self, releases=[release + '6', release + '0', release + '3'])
@@ -187,8 +193,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertEqual(release + '6', node.distro_series)
 
     def test_set_distro_series_doesnt_allow_short_ubuntu_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         make_usable_osystem(
             self,
             osystem_name='ubuntu',
@@ -202,8 +209,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_starts_with_default_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystems = [make_osystem_with_releases(self) for _ in range(5)]
         patch_usable_osystems(self, osystems)
         form = MachineForm(instance=node)
@@ -212,8 +220,9 @@ class TestMachineForm(MAASServerTestCase):
             form.fields['distro_series'].initial)
 
     def test_rejects_mismatch_osystem_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         osystem = make_usable_osystem(self)
         release = osystem['default_release']
         invalid = factory.make_name('invalid_os')
@@ -228,8 +237,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_returns_False(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -248,8 +258,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_returns_False(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -267,8 +278,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_no_connection(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -286,8 +298,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_timeout(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -305,8 +318,9 @@ class TestMachineForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_no_os(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -327,8 +341,9 @@ class TestMachineForm(MAASServerTestCase):
 class TestAdminMachineForm(MAASServerTestCase):
 
     def test_AdminMachineForm_contains_limited_set_of_fields(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
         form = AdminMachineForm(instance=node)
 
         self.assertItemsEqual(

@@ -182,17 +182,6 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         self.user.is_superuser = True
         self.user.save()
 
-    def client_log_in(self, as_admin=False):
-        self.fail(
-            "client_log_in is broken. Use become_admin() "
-            "or client.login(user) instead.")
-
-    @property
-    def logged_in_user(self):
-        raise AttributeError(
-            "logged_in_user is gone; the user may not actually be "
-            "logged in. Use the user attribute instead.")
-
 
 class APITestCase(APITestCaseBase, MAASServerTestCase):
     """Class for logged-in API tests within a single transaction."""
