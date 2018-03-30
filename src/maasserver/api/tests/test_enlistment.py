@@ -480,6 +480,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
         new_power_address = factory.make_ip_address()  # XXX: URLs don't work.
         new_power_id = factory.make_name('power_id')
+        new_default_storage_pool = factory.make_name('default_pool')
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
@@ -488,6 +489,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                     {
                         "power_address": new_power_address,
                         "power_id": new_power_id,
+                        "default_storage_pool": new_default_storage_pool,
                     }),
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
@@ -500,6 +502,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 'power_pass': '',
                 'power_id': new_power_id,
                 'power_address': new_power_address,
+                'default_storage_pool': new_default_storage_pool,
             }, machine.power_parameters)
 
     def test_POST_returns_limited_fields(self):
@@ -614,6 +617,7 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
         new_power_id = factory.make_name('power_id')
         new_power_address = factory.make_ipv4_address()
         new_power_pass = factory.make_name('power_pass')
+        new_default_storage_pool = factory.make_name('default_pool')
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
@@ -621,6 +625,8 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 'power_parameters_power_id': new_power_id,
                 'power_parameters_power_pass': new_power_pass,
                 'power_parameters_power_address': new_power_address,
+                'power_parameters_default_storage_pool': (
+                    new_default_storage_pool),
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
@@ -633,6 +639,7 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 'power_id': new_power_id,
                 'power_pass': new_power_pass,
                 'power_address': new_power_address,
+                'default_storage_pool': new_default_storage_pool,
             },
             reload_object(machine).power_parameters)
 

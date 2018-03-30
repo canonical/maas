@@ -1280,12 +1280,15 @@ class TestMachineAPI(APITestCase.ForUser):
         new_power_id = factory.make_name('power_id')
         new_power_pass = factory.make_name('power_pass')
         new_power_address = factory.make_ipv4_address()
+        new_default_storage_pool = factory.make_name('default_pool')
         response = self.client.put(
             self.get_machine_uri(machine),
             {
                 'power_parameters_power_id': new_power_id,
                 'power_parameters_power_pass': new_power_pass,
                 'power_parameters_power_address': new_power_address,
+                'power_parameters_default_storage_pool': (
+                    new_default_storage_pool),
             }
         )
 
@@ -1295,6 +1298,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 'power_id': new_power_id,
                 'power_pass': new_power_pass,
                 'power_address': new_power_address,
+                'default_storage_pool': new_default_storage_pool,
             },
             reload_object(machine).power_parameters)
 

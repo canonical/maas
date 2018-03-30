@@ -1416,12 +1416,29 @@ class TestVirshPodDriver(MAASTestCase):
             yield driver.discover(system_id, context)
 
     @inlineCallbacks
+    def test_discover_errors_on_incorrect_default_storage_pool(self):
+        driver = VirshPodDriver()
+        system_id = factory.make_name('system_id')
+        context = {
+            'power_address': factory.make_name('power_address'),
+            'power_pass': factory.make_name('power_pass'),
+            'default_storage_pool': factory.make_name('non-existent-pool')
+        }
+        mock_login = self.patch(virsh.VirshSSH, 'login')
+        mock_login.return_value = True
+        mock_run = self.patch(virsh.VirshSSH, 'run')
+        mock_run.return_value = SAMPLE_POOLLIST
+        with ExpectedException(virsh.VirshError):
+            yield driver.discover(system_id, context)
+
+    @inlineCallbacks
     def test_discover(self):
         driver = VirshPodDriver()
         system_id = factory.make_name('system_id')
         context = {
             'power_address': factory.make_name('power_address'),
-            'power_pass': factory.make_name('power_pass')
+            'power_pass': factory.make_name('power_pass'),
+            'default_storage_pool': 'default'
         }
         machines = [
             factory.make_name('machine')
@@ -1429,6 +1446,8 @@ class TestVirshPodDriver(MAASTestCase):
         ]
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = True
+        mock_run = self.patch(virsh.VirshSSH, 'run')
+        mock_run.return_value = SAMPLE_POOLLIST
         mock_get_pod_resources = self.patch(
             virsh.VirshSSH, 'get_pod_resources')
         mock_get_pod_hints = self.patch(
@@ -1451,6 +1470,7 @@ class TestVirshPodDriver(MAASTestCase):
                 call(machines[1]),
                 call(machines[2])))
         self.expectThat(['virtual'], Equals(discovered_pod.tags))
+        self.expectThat(driver.default_storage_pool, Equals('default'))
 
     @inlineCallbacks
     def test_compose(self):

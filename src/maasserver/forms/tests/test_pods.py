@@ -94,6 +94,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
         pod_password = factory.make_name('password')
+        pod_default_storage_pool = factory.make_name('default_pool')
         pod_tags = [
             factory.make_name("tag")
             for _ in range(3)
@@ -104,6 +105,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             'type': pod_type,
             'power_address': pod_power_address,
             'power_pass': pod_password,
+            'default_storage_pool': pod_default_storage_pool,
             'ip_address': pod_ip_adddress,
             'tags': ",".join(pod_tags),
             'cpu_over_commit_ratio': pod_cpu_over_commit_ratio,
@@ -168,6 +170,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -208,6 +211,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -239,6 +243,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -288,6 +293,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -339,6 +345,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters={
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             })
         request = MagicMock()
         request.user = factory.make_User()
@@ -375,6 +382,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -425,6 +433,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': pod_info['power_pass'],
+                'default_storage_pool': pod_info['default_storage_pool'],
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))

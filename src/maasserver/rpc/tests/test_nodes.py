@@ -240,6 +240,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             'power_address': factory.make_ip_address(),  # XXX: URLs break.
             'power_pass': factory.make_name('power_pass'),
             'power_id': factory.make_name('power_id'),
+            'default_storage_pool': factory.make_name('default_pool'),
         }
 
         node = create_node(
