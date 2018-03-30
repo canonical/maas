@@ -2,6 +2,13 @@
     <div class="row">
         <div class="col-8">
             <h1 class="page-header__title">Availability zones</h1>
+            <span class="page-header__status p-tooltip p-tooltip--btm-left">
+                    <i class="p-icon--help">Help:</i>
+                    <span class="p-tooltip__message" role="tooltip">A representation of a grouping of nodes, typically by physical location.</span>
+            </span>
+            <p class="page-header__status" data-ng-show="loading">
+                <i class="p-icon--spinner u-animation--spin"></i> Loading...
+            </p>
             <p class="page-header__status" data-ng-show="!loading"><ng-pluralize data-ng-hide="loading" count="zones.length"
                         when="{'one': '{$ zones.length $} AZ available', 'other': '{$ zones.length $} AZs available '}"></ng-pluralize></p>
         </div>
@@ -33,18 +40,6 @@
     </div>
 </header>
 <section class="p-strip">
-    <div class="row">
-        <div class="col-12 ng-hide u-equal-height" data-ng-show="!loading">
-            <h2 class="u-float--left">Availability zones</h2>&nbsp;&nbsp;
-
-            <span class="u-vertically-center u-no-margin--top">
-                <span class="p-tooltip p-tooltip--btm-left">
-                    <i class="p-icon--help u-hide u-show--large u-no-margin--right">Help:</i>
-                    <span class="p-tooltip__message" role="tooltip">A representation of a grouping of nodes, typically by physical location.</span>
-                </span>
-            </span>
-        </div>
-    </div>
     <div class="row">
         <!-- Spaces grouped table -->
         <table class="table-listing">
