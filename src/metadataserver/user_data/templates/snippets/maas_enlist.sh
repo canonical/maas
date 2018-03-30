@@ -228,7 +228,7 @@ if [ -z "$servername" ]; then
 	serverurl="maas.local"
 	servername="$serverurl"
 fi
-if echo "$serverurl" | egrep -q '(^[a-z]+://|^)[a-z0-9\.\-]+($|/$)'; then
+if echo "$serverurl" | egrep -q '(^[a-z]+://|^)[a-zA-Z0-9\.\-]+($|/$)'; then
 	api_url="MAAS/api/2.0/machines/"
 else
 	api_url=`echo $serverurl | sed 's#^\(\|[a-z]\+://\)\([a-zA-Z0-9\.]\+\|\(\[[0-9a-fA-F:]\+\]\)\)\(\|\:[0-9]\+\)/##'`
