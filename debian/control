@@ -67,7 +67,8 @@ Description: MAAS server common files
 
 Package: maas-region-api
 Architecture: all
-Depends: bind9utils,
+Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
+         bind9utils,
          iproute2,
          libjs-angularjs,
          libjs-yui3-full,
@@ -88,9 +89,9 @@ Depends: bind9utils,
          ubuntu-keyring,
          ${misc:Depends},
          ${python3:Depends}
-Conflicts: maas-region-controller-min, ntp
-Replaces: maas-region-controller-min
-Provides: maas-region-controller-min
+Conflicts: maas-region-controller-min, maas-dns, ntp
+Replaces: maas-region-controller-min, maas-dns
+Provides: maas-region-controller-min, maas-dns
 Description: Region controller API service for MAAS
  The MAAS region controller consists of REST API services and a postgres
  database. This package installs only the API services (maas-regiond).
@@ -101,7 +102,6 @@ Architecture: all
 Depends: avahi-utils,
          dbconfig-pgsql,
          iputils-ping,
-         maas-dns (= ${binary:Version}),
          maas-region-api (= ${binary:Version}),
          postgresql (>= 9.1),
          tcpdump,
@@ -275,15 +275,15 @@ Description: MAAS DHCP server
  This package installs and configures a DHCP server that can be used by
  MAAS, and enhances the overall MAAS user experience.
 
-Package: maas-dns
-Architecture: all
-Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
-         maas-region-api (= ${binary:Version}),
-         ${misc:Depends}
-Conflicts: dnsmasq
-Description: MAAS DNS server
- This package installs and configures a DNS server that can be used by
- MAAS, and enhances the overall MAAS user experience.
+#Package: maas-dns
+#Architecture: all
+#Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
+#         maas-region-api (= ${binary:Version}),
+#         ${misc:Depends}
+#Conflicts: dnsmasq
+#Description: MAAS DNS server
+# This package installs and configures a DNS server that can be used by
+# MAAS, and enhances the overall MAAS user experience.
 
 Package: maas-proxy
 Architecture: all
