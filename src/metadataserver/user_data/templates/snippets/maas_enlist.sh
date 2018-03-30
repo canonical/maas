@@ -234,10 +234,8 @@ else
 	api_url=`echo $serverurl | sed 's#^\(\|[a-z]\+://\)\([a-zA-Z0-9\.]\+\|\(\[[0-9a-fA-F:]\+\]\)\)\(\|\:[0-9]\+\)/##'`
 fi
 
-#TODO: Auto-detect hostname?
 if [ -z "$hostname" ]; then
-	continue
-	#Error "No hostname has been provided"
+	echo "No hostname has been provided... MAAS will pick one automatically"
 fi
 
 if [ -z "$arch" ]; then
