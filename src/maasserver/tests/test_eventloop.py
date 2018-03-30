@@ -306,7 +306,7 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["region-controller"]["only_on_master"])
 
     def test_make_RegionService(self):
-        service = eventloop.make_RegionService(sentinel.advertiser)
+        service = eventloop.make_RegionService(sentinel.ipcWorker)
         self.assertThat(service, IsInstance(regionservice.RegionService))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
@@ -315,19 +315,7 @@ class TestFactories(MAASTestCase):
         self.assertFalse(
             eventloop.loop.factories["rpc"]["only_on_master"])
         self.assertEquals(
-            ["rpc-advertise"],
-            eventloop.loop.factories["rpc"]["requires"])
-
-    def test_make_RegionAdvertisingService(self):
-        service = eventloop.make_RegionAdvertisingService()
-        self.assertThat(service, IsInstance(
-            regionservice.RegionAdvertisingService))
-        # It is registered as a factory in RegionEventLoop.
-        self.assertIs(
-            eventloop.make_RegionAdvertisingService,
-            eventloop.loop.factories["rpc-advertise"]["factory"])
-        self.assertFalse(
-            eventloop.loop.factories["rpc-advertise"]["only_on_master"])
+            ["ipc-worker"], eventloop.loop.factories["rpc"]["requires"])
 
     def test_make_NonceCleanupService(self):
         service = eventloop.make_NonceCleanupService()
@@ -406,27 +394,25 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_RackControllerService,
             eventloop.loop.factories["rack-controller"]["factory"])
-        # Has a dependency of postgres-listener and rpc-advertise.
+        # Has a dependency of ipc-worker and postgres-listener.
         self.assertEquals(
-            ["postgres-listener-worker", "rpc-advertise"],
+            ["ipc-worker", "postgres-listener-worker"],
             eventloop.loop.factories["rack-controller"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["rack-controller"]["only_on_master"])
 
     def test_make_ServiceMonitorService(self):
-        service = eventloop.make_ServiceMonitorService(
-            sentinel.rpc_advertise)
+        service = eventloop.make_ServiceMonitorService()
         self.assertThat(service, IsInstance(
             service_monitor_service.ServiceMonitorService))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_ServiceMonitorService,
             eventloop.loop.factories["service-monitor"]["factory"])
-        # Has a dependency of rpc-advertise.
         self.assertEquals(
-            ["rpc-advertise"],
+            [],
             eventloop.loop.factories["service-monitor"]["requires"])
-        self.assertFalse(
+        self.assertTrue(
             eventloop.loop.factories["service-monitor"]["only_on_master"])
 
     def test_make_StatusWorkerService(self):

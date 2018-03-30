@@ -14,11 +14,41 @@ __all__ = [
 import json
 
 from django.http import HttpResponse
-from maasserver import eventloop
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    FOREVER,
-)
+from maasserver.models.node import RegionController
+
+
+def get_endpoints():
+    """Returns a list of ``(name, addr, port)`` tuples.
+
+    Each tuple corresponds to somewhere an event-loop is listening
+    within the whole region. The `name` is the event-loop name.
+    """
+    # Each regiond might be running a local bridge that duplicates the
+    # same IP address across region controllers. Each region controller
+    # must output a set of unique of IP addresses, to prevent the rack
+    # controller from connecting to a different region controller then
+    # the rack controller was expecting to be connecting to.
+    def _unique_to_region(address, region, regions):
+        for region_obj in regions:
+            if region_obj != region:
+                for process in region_obj.processes.all():
+                    for endpoint in process.endpoints.all():
+                        if endpoint.address == address:
+                            return False
+        return True
+
+    regions = RegionController.objects.all()
+    regions = regions.prefetch_related("processes", "processes__endpoints")
+    all_endpoints = []
+    for region_obj in regions:
+        for process in region_obj.processes.all():
+            for endpoint in process.endpoints.all():
+                if _unique_to_region(
+                        endpoint.address, region_obj, regions):
+                    all_endpoints.append((
+                        "%s:pid=%d" % (region_obj.hostname, process.pid),
+                        endpoint.address, endpoint.port))
+    return all_endpoints
 
 
 def info(request):
@@ -33,43 +63,14 @@ def info(request):
     instead ask again later.
 
     """
-    advertising = _getAdvertisingInstance()
-    if advertising is None:
-        # RPC advertising service is not running, so we declare that there are
-        # no endpoints *at all*.
-        endpoints = None
-    else:
-        endpoints = {}
-        for name, addr, port in advertising.dump():
-            if name in endpoints:
-                endpoints[name].append((addr, port))
-            else:
-                endpoints[name] = [(addr, port)]
+    endpoints = {}
+    for name, addr, port in get_endpoints():
+        if name in endpoints:
+            endpoints[name].append((addr, port))
+        else:
+            endpoints[name] = [(addr, port)]
 
     # Each endpoint is an entry point into this event-loop.
     info = {"eventloops": endpoints}
 
     return HttpResponse(json.dumps(info), content_type="application/json")
-
-
-@asynchronous(timeout=FOREVER)
-def _getAdvertisingInstance():
-    """Return the currently active :class:`RegionAdvertising` instance.
-
-    Or `None` if the RPC advertising service is not running, has failed to
-    start-up, or takes too long to start.
-    """
-    try:
-        advertiser = eventloop.services.getServiceNamed("rpc-advertise")
-    except KeyError:
-        # The advertising service has not been created.
-        return None
-    else:
-        if advertiser.running:
-            # Wait a short time in case the advertising service is still
-            # starting. Errors may arise from a failure during its start-up,
-            # but suppress them here because they are logged elsewhere.
-            return advertiser.advertising.get(1.0).addErrback(lambda _: None)
-        else:
-            # The advertising service is not running.
-            return None

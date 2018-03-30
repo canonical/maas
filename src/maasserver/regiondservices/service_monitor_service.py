@@ -9,6 +9,7 @@ __all__ = [
 
 from datetime import timedelta
 
+from maasserver.models.node import RegionController
 from maasserver.models.service import Service as ServiceModel
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
@@ -28,11 +29,10 @@ class ServiceMonitorService(TimerService, object):
 
     check_interval = timedelta(minutes=1).total_seconds()
 
-    def __init__(self, advertisingService, clock=reactor):
+    def __init__(self, clock=reactor):
         # Call self.monitorServices() every self.check_interval.
         super(ServiceMonitorService, self).__init__(
             self.check_interval, self.monitorServices)
-        self.advertisingService = advertisingService
         self.clock = clock
 
     def monitorServices(self):
@@ -53,19 +53,18 @@ class ServiceMonitorService(TimerService, object):
     @inlineCallbacks
     def _updateDatabase(self, services):
         """Update database about services status."""
-        advertising = yield self.advertisingService.advertising.get()
         services = yield self._buildServices(services)
-        process = yield deferToDatabase(advertising.getRegionProcess)
         yield deferToDatabase(
-            self._saveIntoDatabase, process, services)
+            self._saveIntoDatabase, services)
 
     @transactional
-    def _saveIntoDatabase(self, process, services):
+    def _saveIntoDatabase(self, services):
         """Save the `services` in the the database for process by `processId`.
         """
+        region_obj = RegionController.objects.get_running_controller()
         for service in services:
             ServiceModel.objects.update_service_for(
-                process.region, service["name"],
+                region_obj, service["name"],
                 service["status"], service["status_info"])
 
     @inlineCallbacks

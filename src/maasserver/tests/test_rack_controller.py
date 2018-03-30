@@ -15,11 +15,8 @@ from unittest.mock import (
 
 from crochet import wait_for
 from maasserver import rack_controller
+from maasserver.ipc import IPCWorkerService
 from maasserver.rack_controller import RackControllerService
-from maasserver.rpc.regionservice import (
-    RegionAdvertising,
-    RegionAdvertisingService,
-)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
@@ -47,7 +44,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_init_sets_properties(self):
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         self.assertThat(
             service,
             MatchesStructure.byEquality(
@@ -55,28 +52,28 @@ class TestRackControllerService(MAASTransactionServerTestCase):
                 starting=None,
                 watching=set(),
                 needsDHCPUpdate=set(),
-                postgresListener=sentinel.listener,
-                advertisingService=sentinel.advertiser))
+                ipcWorker=sentinel.ipcWorker,
+                postgresListener=sentinel.listener))
 
-    def test_startService_sets_starting_to_result_of_advertising_get(self):
-        advertiser = create_autospec(RegionAdvertisingService(), spec_set=True)
-        service = RackControllerService(sentinel.listener, advertiser)
+    def test_startService_sets_starting_to_result_of_processId_get(self):
+        ipcWorker = create_autospec(
+            IPCWorkerService(sentinel.reactor), spec_set=True)
+        service = RackControllerService(ipcWorker, sentinel.listener)
         observed = service.startService()
-        advertising = advertiser.advertising
-        self.assertEqual(advertising.get.return_value, observed)
-        self.assertEqual(advertising.get.return_value, service.starting)
+        processId = ipcWorker.processId
+        self.assertEqual(processId.get.return_value, observed)
+        self.assertEqual(processId.get.return_value, service.starting)
 
     @wait_for_reactor
     @inlineCallbacks
     def test_startService_registers_with_postgres_listener(self):
         regionProcessId = random.randint(0, 100)
 
-        advertiser = RegionAdvertisingService()
-        advertiser.advertising.set(
-            RegionAdvertising(sentinel.region_id, regionProcessId))
+        ipcWorker = IPCWorkerService(sentinel.reactor)
+        ipcWorker.processId.set(regionProcessId)
 
         listener = Mock()
-        service = RackControllerService(listener, advertiser)
+        service = RackControllerService(ipcWorker, listener)
         yield service.startService()
         self.assertThat(
             listener.register,
@@ -90,21 +87,20 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_startService_clears_starting_once_complete(self):
         regionProcessId = random.randint(0, 100)
 
-        advertiser = RegionAdvertisingService()
-        advertiser.advertising.set(
-            RegionAdvertising(sentinel.region_id, regionProcessId))
+        ipcWorker = IPCWorkerService(sentinel.reactor)
+        ipcWorker.processId.set(regionProcessId)
 
         listener = Mock()
-        service = RackControllerService(listener, advertiser)
+        service = RackControllerService(ipcWorker, listener)
         yield service.startService()
         self.assertIsNone(service.starting)
 
     @wait_for_reactor
     def test_startService_handles_cancel(self):
-        advertiser = RegionAdvertisingService()
+        ipcWorker = IPCWorkerService(sentinel.reactor)
 
         listener = Mock()
-        service = RackControllerService(listener, advertiser)
+        service = RackControllerService(ipcWorker, listener)
         starting = service.startService()
         self.assertIs(starting, service.starting)
         # Should not raise an exception and starting should be set to None.
@@ -127,12 +123,11 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         process, rack_controllers = yield deferToDatabase(
             create_process_and_racks)
 
-        advertiser = RegionAdvertisingService()
-        advertiser.advertising.set(
-            RegionAdvertising(sentinel.region_id, process.id))
+        ipcWorker = IPCWorkerService(sentinel.reactor)
+        ipcWorker.processId.set(process.id)
 
         listener = Mock()
-        service = RackControllerService(listener, advertiser)
+        service = RackControllerService(ipcWorker, listener)
         mock_coreHandler = self.patch(service, "coreHandler")
         yield service.startService()
         calls = [
@@ -147,7 +142,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_stopService_handles_canceling_startup(self):
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = random.randint(0, 100)
         service.starting = Deferred()
         yield service.stopService()
@@ -163,7 +158,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         processId = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         yield service.stopService()
         self.assertThat(
@@ -181,7 +176,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         }
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = watching
         yield service.stopService()
@@ -198,7 +193,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = {rack_id}
         service.needsDHCPUpdate = {rack_id}
@@ -214,7 +209,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         service.coreHandler("sys_core_%d" % processId, "unwatch_%d" % rack_id)
         self.assertThat(
@@ -225,7 +220,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         mock_startProcessing = self.patch(service, "startProcessing")
         service.coreHandler("sys_core_%d" % processId, "watch_%d" % rack_id)
@@ -241,7 +236,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = set([rack_id])
         mock_startProcessing = self.patch(service, "startProcessing")
@@ -257,7 +252,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.processId = processId
         with ExpectedException(ValueError):
             service.coreHandler(
@@ -267,7 +262,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         service.watching = set([rack_id])
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
@@ -278,7 +273,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack_id = random.randint(0, 100)
         listener = Mock()
         service = RackControllerService(
-            listener, sentinel.advertiser)
+            sentinel.ipcWorker, listener)
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
         self.assertEquals(set(), service.needsDHCPUpdate)
@@ -286,7 +281,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_startProcessing_doesnt_call_start_when_looping_call_running(self):
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         mock_start = self.patch(service.processing, "start")
         service.processing.running = True
         service.startProcessing()
@@ -294,7 +289,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_startProcessing_calls_start_when_looping_call_not_running(self):
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         mock_start = self.patch(service.processing, "start")
         service.startProcessing()
         self.assertThat(
@@ -306,7 +301,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_process_doesnt_call_processDHCP_when_not_running(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         service.watching = set([rack_id])
         service.needsDHCPUpdate = set([rack_id])
         service.running = False
@@ -320,7 +315,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_process_doesnt_call_processDHCP_when_nothing_to_process(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         service.watching = set([rack_id])
         service.needsDHCPUpdate = set()
         service.running = True
@@ -334,7 +329,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_process_calls_processDHCP_for_rack_controller(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         service.watching = set([rack_id])
         service.needsDHCPUpdate = set([rack_id])
         service.running = True
@@ -351,7 +346,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
             for _ in range(3)
         ]
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         service.watching = set(rack_ids)
         service.needsDHCPUpdate = set(rack_ids)
         service.running = True
@@ -368,7 +363,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         rack = yield deferToDatabase(
             transactional(factory.make_RackController))
         service = RackControllerService(
-            sentinel.listener, sentinel.advertiser)
+            sentinel.ipcWorker, sentinel.listener)
         mock_configure_dhcp = self.patch(
             rack_controller.dhcp, "configure_dhcp")
         mock_configure_dhcp.return_value = succeed(None)

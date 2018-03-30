@@ -11,14 +11,11 @@ from unittest.mock import sentinel
 from crochet import wait_for
 from maasserver import proxyconfig
 from maasserver.enum import SERVICE_STATUS
+from maasserver.models.node import RegionController
 from maasserver.models.service import Service
 from maasserver.regiondservices import service_monitor_service
 from maasserver.regiondservices.service_monitor_service import (
     ServiceMonitorService,
-)
-from maasserver.rpc.regionservice import (
-    RegionAdvertising,
-    RegionAdvertisingService,
 )
 from maasserver.service_monitor import service_monitor
 from maasserver.testing.factory import factory
@@ -52,19 +49,16 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         return random.choice(list(service_monitor._services.values()))
 
     def test_init_sets_up_timer_correctly(self):
-        monitor_service = ServiceMonitorService(
-            sentinel.advertisingService, sentinel.clock)
+        monitor_service = ServiceMonitorService(sentinel.clock)
         self.assertThat(monitor_service, MatchesStructure.byEquality(
             call=(monitor_service.monitorServices, (), {}),
-            step=(60), advertisingService=sentinel.advertisingService,
-            clock=sentinel.clock))
+            step=(60), clock=sentinel.clock))
 
     def test_monitorServices_does_not_do_anything_in_dev_environment(self):
         # Belt-n-braces make sure we're in a development environment.
         self.assertTrue(service_monitor_service.is_dev_environment())
 
-        monitor_service = ServiceMonitorService(
-            sentinel.advertisingService, Clock())
+        monitor_service = ServiceMonitorService(Clock())
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
@@ -78,8 +72,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         self.patch(
             service_monitor_service, "is_dev_environment").return_value = False
 
-        monitor_service = ServiceMonitorService(
-            sentinel.advertisingService, Clock())
+        monitor_service = ServiceMonitorService(Clock())
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         monitor_service.monitorServices()
         self.assertThat(
@@ -91,8 +84,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         self.patch(
             service_monitor_service, "is_dev_environment").return_value = False
 
-        monitor_service = ServiceMonitorService(
-            sentinel.advertisingService, Clock())
+        monitor_service = ServiceMonitorService(Clock())
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         mock_ensureServices.return_value = fail(factory.make_exception())
         with TwistedLoggerFixture() as logger:
@@ -117,16 +109,13 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
             service.name: state
         })
 
-        advertiser = RegionAdvertisingService()
-        monitor_service = ServiceMonitorService(advertiser, Clock())
-        yield monitor_service.startService()
-
         region = yield deferToDatabase(
             transactional(factory.make_RegionController))
-        region_process = yield deferToDatabase(
-            transactional(factory.make_RegionControllerProcess), region)
-        advertiser.advertising.set(
-            RegionAdvertising(region.id, region_process.id))
+        self.patch(
+            RegionController.objects,
+            'get_running_controller').return_value = region
+        monitor_service = ServiceMonitorService(Clock())
+        yield monitor_service.startService()
         yield monitor_service.stopService()
 
         service = yield deferToDatabase(
@@ -141,8 +130,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__buildServices_builds_services_list(self):
         self.patch(proxyconfig, "is_config_present").return_value = True
-        monitor_service = ServiceMonitorService(
-            sentinel.advertisingService, Clock())
+        monitor_service = ServiceMonitorService(Clock())
         service = self.pick_service()
         state = ServiceState(SERVICE_STATE.ON, "running")
         observed_services = yield monitor_service._buildServices({

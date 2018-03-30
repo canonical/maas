@@ -3464,7 +3464,8 @@ class TestIPRangeSubnetListener(
     def test__calls_handler_on_update_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         iprange = yield deferToDatabase(self.create_iprange)
-        new_end_ip = factory.pick_ip_in_IPRange(iprange)
+        new_end_ip = factory.pick_ip_in_IPRange(
+            iprange, but_not=[iprange.start_ip, iprange.end_ip])
 
         listener = PostgresListenerService()
         dv = DeferredValue()

@@ -64,8 +64,12 @@ def run():
         runWorkerServices()
         return
 
+    # Circular imports.
+    from maasserver.workers import set_max_workers_count
+
     # Debug mode, run the all-in-one mode.
     if args.debug:
+        set_max_workers_count(1)
         runAllInOneServices()
         return
 
@@ -82,7 +86,6 @@ def run():
         raise ValueError('Number of workers must be greater than zero.')
 
     # Set the maximum number of workers.
-    from maasserver.workers import set_max_workers_count
     set_max_workers_count(worker_count)
 
     # Start the master services, which will spawn the required workers.

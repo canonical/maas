@@ -80,16 +80,10 @@ def make_RegionControllerService(postgresListener):
     return RegionControllerService(postgresListener)
 
 
-def make_RegionService(advertiser):
+def make_RegionService(ipcWorker):
     # Import here to avoid a circular import.
     from maasserver.rpc import regionservice
-    return regionservice.RegionService(advertiser)
-
-
-def make_RegionAdvertisingService():
-    # Import here to avoid a circular import.
-    from maasserver.rpc import regionservice
-    return regionservice.RegionAdvertisingService()
+    return regionservice.RegionService(ipcWorker)
 
 
 def make_NonceCleanupService():
@@ -127,9 +121,9 @@ def make_PostgresListenerService():
     return PostgresListenerService()
 
 
-def make_RackControllerService(postgresListener, advertisingService):
+def make_RackControllerService(ipcWorker, postgresListener):
     from maasserver.rack_controller import RackControllerService
-    return RackControllerService(postgresListener, advertisingService)
+    return RackControllerService(ipcWorker, postgresListener)
 
 
 def make_StatusWorkerService(dbtasks):
@@ -137,9 +131,9 @@ def make_StatusWorkerService(dbtasks):
     return StatusWorkerService(dbtasks)
 
 
-def make_ServiceMonitorService(advertisingService):
+def make_ServiceMonitorService():
     from maasserver.regiondservices import service_monitor_service
-    return service_monitor_service.ServiceMonitorService(advertisingService)
+    return service_monitor_service.ServiceMonitorService()
 
 
 def make_NetworksMonitoringService():
@@ -255,12 +249,7 @@ class RegionEventLoop:
         "rpc": {
             "only_on_master": False,
             "factory": make_RegionService,
-            "requires": ["rpc-advertise"],
-        },
-        "rpc-advertise": {
-            "only_on_master": False,
-            "factory": make_RegionAdvertisingService,
-            "requires": [],
+            "requires": ["ipc-worker"],
         },
         "nonce-cleanup": {
             "only_on_master": True,
@@ -308,9 +297,9 @@ class RegionEventLoop:
             "requires": ["postgres-listener-worker", "status-worker"],
         },
         "service-monitor": {
-            "only_on_master": False,
+            "only_on_master": True,
             "factory": make_ServiceMonitorService,
-            "requires": ["rpc-advertise"],
+            "requires": [],
         },
         "status-worker": {
             "only_on_master": False,
@@ -335,7 +324,7 @@ class RegionEventLoop:
         "rack-controller": {
             "only_on_master": False,
             "factory": make_RackControllerService,
-            "requires": ["postgres-listener-worker", "rpc-advertise"],
+            "requires": ["ipc-worker", "postgres-listener-worker"],
         },
         "ntp": {
             "only_on_master": True,
@@ -440,12 +429,12 @@ class RegionEventLoop:
         self.services.startService()
 
     @asynchronous
-    def start(self):
+    def start(self, master=False, all_in_one=False):
         """start()
 
         Start all services in the region's event-loop.
         """
-        self.populate()
+        self.populate(master=master, all_in_one=all_in_one)
         self.handle = reactor.addSystemEventTrigger(
             'before', 'shutdown', self.services.stopService)
         return self.prepare().addCallback(

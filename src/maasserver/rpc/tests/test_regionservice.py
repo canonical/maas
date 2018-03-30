@@ -6,16 +6,10 @@
 __all__ = []
 
 from collections import defaultdict
-from datetime import timedelta
 from operator import attrgetter
-import os.path
 import random
-from random import randint
-from socket import gethostname
-import threading
 from unittest import skip
 from unittest.mock import (
-    ANY,
     call,
     MagicMock,
     Mock,
@@ -24,57 +18,27 @@ from unittest.mock import (
 
 from crochet import wait_for
 from django.db import IntegrityError
-from maasserver import (
-    eventloop,
-    workers,
-)
-from maasserver.enum import (
-    NODE_TYPE,
-    SERVICE_STATUS,
-)
 from maasserver.models import (
     RackController,
     RegionController,
-    RegionControllerProcess,
-    RegionControllerProcessEndpoint,
-    RegionRackRPCConnection,
-    Service as ServiceModel,
-    timestampedmodel,
 )
-from maasserver.models.timestampedmodel import now
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
-    getRegionID,
-    ignoreCancellation,
     RackClient,
     Region,
-    RegionAdvertising,
-    RegionAdvertisingService,
     RegionServer,
     RegionService,
 )
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_objects
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
-from maasserver.utils.orm import (
-    reload_object,
-    transactional,
-)
+from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
-    IsFiredDeferred,
-    IsUnfiredDeferred,
-    MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
-    MockNotCalled,
     Provides,
 )
-from maastesting.runtest import MAASCrochetRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
@@ -82,7 +46,6 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
-import netaddr
 from provisioningserver.rpc import (
     cluster,
     exceptions,
@@ -96,11 +59,6 @@ from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import events
-from provisioningserver.utils.testing import MAASIDFixture
-from provisioningserver.utils.twisted import (
-    callInReactorWithTimeout,
-    DeferredValue,
-)
 from provisioningserver.utils.version import get_maas_version
 from testtools import ExpectedException
 from testtools.deferredruntest import assert_fails_with
@@ -115,7 +73,6 @@ from testtools.matchers import (
     MatchesAny,
     MatchesListwise,
     MatchesSetwise,
-    MatchesStructure,
     Not,
 )
 from twisted.application.service import Service
@@ -136,7 +93,6 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
-from twisted.internet.task import LoopingCall
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
@@ -144,28 +100,6 @@ from zope.interface.verify import verifyObject
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
-
-
-class TestGetRegionID(MAASTestCase):
-    """Tests for `getRegionID`."""
-
-    def test__getRegionID_fails_when_advertising_service_not_running(self):
-        region_id = getRegionID()
-        self.assertThat(region_id, IsFiredDeferred())
-        error = self.assertRaises(KeyError, extract_result, region_id)
-        self.assertThat(str(error), Equals(repr('rpc-advertise')))
-
-    def test__getRegionID_returns_the_region_ID_when_available(self):
-        service = RegionAdvertisingService()
-        service.setName("rpc-advertise")
-        service.setServiceParent(eventloop.services)
-        self.addCleanup(service.disownServiceParent)
-        region_id = getRegionID()
-        self.assertThat(region_id, IsUnfiredDeferred())
-        service.advertising.set(
-            RegionAdvertising(sentinel.region_id, sentinel.process_id))
-        self.assertThat(region_id, IsFiredDeferred())
-        self.assertThat(region_id.result, Is(sentinel.region_id))
 
 
 class TestRegionServer(MAASTransactionServerTestCase):
@@ -178,7 +112,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         verifyObject(IConnection, protocol)
 
     def test_connectionMade_does_not_update_services_connection_set(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
@@ -187,7 +121,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertDictEqual({}, service.connections)
 
     def test_connectionMade_drops_connection_if_service_not_running(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = False  # Pretend it's not running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
@@ -200,7 +134,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertThat(transport.loseConnection, MockCalledOnceWith())
 
     def test_connectionLost_updates_services_connection_set(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
@@ -214,34 +148,23 @@ class TestRegionServer(MAASTransactionServerTestCase):
         # connectionLost() is called on the superclass.
         self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
 
-    def test_connectionLost_uses_advertiser_to_unregister(self):
-        advertising = MagicMock()
-        advertiser = MagicMock()
-        advertiser.advertising = DeferredValue()
-        advertiser.advertising.set(advertising)
-        service = RegionService(advertiser)
+    def test_connectionLost_uses_ipcWorker_to_unregister(self):
+        ipcWorker = MagicMock()
+        service = RegionService(ipcWorker)
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         protocol.ident = factory.make_name("node")
-        protocol.host = sentinel.host
+        protocol.host = Mock()
+        protocol.host.host = sentinel.host
+        protocol.host.port = sentinel.port
         protocol.hostIsRemote = True
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
         service.connections[protocol.ident] = {protocol}
 
-        process = factory.make_RegionControllerProcess()
-        mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
-        mock_deferToDatabase.side_effect = [
-            succeed(process),
-            succeed(None),
-        ]
         protocol.connectionLost(reason=None)
-        self.assertThat(
-            mock_deferToDatabase, MockCallsMatch(
-                call(advertising.getRegionProcess),
-                call(
-                    advertising.unregisterConnection,
-                    process, protocol.ident, protocol.host)))
+        self.assertThat(ipcWorker.rpcUnregisterConnection, MockCalledOnceWith(
+            protocol.ident, sentinel.host, sentinel.port))
         # The connection is removed from the set, but the key remains.
         self.assertDictEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
@@ -256,7 +179,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         authenticate.side_effect = always_fail_with(exception)
 
     def test_connectionMade_drops_connections_if_authentication_fails(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
@@ -272,7 +195,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     def test_connectionMade_drops_connections_if_authentication_errors(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
@@ -307,13 +230,13 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertEqual("", logger.output)
 
     def make_handshaking_server(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         return service.factory.buildProtocol(addr=None)  # addr is unused.
 
     def make_running_server(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.running = True  # Pretend it's running.
         # service.factory.protocol = RegionServer
         return service.factory.buildProtocol(addr=None)  # addr is unused.
@@ -358,12 +281,12 @@ class TestRegionServer(MAASTransactionServerTestCase):
         d = server.authenticateCluster()
         self.assertRaises(exception_type, extract_result, d)
 
-    def make_Region(self, advertiser=None):
-        if advertiser is None:
-            advertiser = sentinel.advertiser
+    def make_Region(self, ipcWorker=None):
+        if ipcWorker is None:
+            ipcWorker = sentinel.ipcWorker
         patched_region = RegionServer()
         patched_region.factory = Factory.forProtocol(RegionServer)
-        patched_region.factory.service = RegionService(advertiser)
+        patched_region.factory.service = RegionService(ipcWorker)
         return patched_region
 
     def test_register_is_registered(self):
@@ -373,25 +296,17 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
-    def installFakeRegionAdvertisingService(self):
+    def installFakeRegion(self):
         region = yield deferToDatabase(
             transactional(factory.make_RegionController))
         self.patch(
             RegionController.objects,
             "get_running_controller").return_value = region
-        service = RegionAdvertisingService()
-        service.setName("rpc-advertise")
-        service.advertising.set(RegionAdvertising(
-            region_id=region.system_id,
-            process_id=randint(1000, 9999)))
-        service.setServiceParent(eventloop.services)
-        self.addCleanup(service.disownServiceParent)
-        return service
 
     @wait_for_reactor
     @inlineCallbacks
     def test_register_returns_system_id(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -407,7 +322,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_acks_beacon_support(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -424,7 +339,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_acks_version(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -441,7 +356,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_updates_interfaces(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -472,7 +387,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_calls_handle_upgrade(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -492,7 +407,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_sets_ident(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -507,7 +422,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_calls_addConnectionFor(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -526,7 +441,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_sets_hosts(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -541,23 +456,19 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_register_sets_hostIsRemote_calls_registerConnection(self):
-        service = yield self.installFakeRegionAdvertisingService()
+    def test_register_sets_hostIsRemote_calls_rpcRegisterConnection(self):
+        yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)
-        advertising = yield service.advertising.get()
-        mock_registerConnection = self.patch(advertising, "registerConnection")
-        protocol = self.make_Region(service)
+        ipcWorker = MagicMock()
+        protocol = self.make_Region(ipcWorker)
         protocol.transport = MagicMock()
         host = IPv4Address(
             type='TCP', host=factory.make_ipv4_address(),
             port=random.randint(1, 400))
         protocol.transport.getHost.return_value = host
-        process = yield deferToDatabase(factory.make_RegionControllerProcess)
         mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
         mock_deferToDatabase.side_effect = [
             succeed(rack_controller),
-            succeed(process),
-            succeed(None),
         ]
         yield call_responder(
             protocol, RegisterRackController, {
@@ -567,13 +478,13 @@ class TestRegionServer(MAASTransactionServerTestCase):
             })
         self.assertTrue(sentinel.host, protocol.hostIsRemote)
         self.assertThat(
-            mock_deferToDatabase,
-            MockAnyCall(mock_registerConnection, process, ANY, host))
+            ipcWorker.rpcRegisterConnection,
+            MockCalledOnceWith(protocol.ident, host.host, host.port))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_register_creates_new_rack(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         protocol = self.make_Region()
         protocol.transport = MagicMock()
         hostname = factory.make_hostname()
@@ -589,7 +500,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_raises_CannotRegisterRackController_when_it_cant(self):
-        yield self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegion()
         patched_create = self.patch(RackController.objects, 'create')
         patched_create.side_effect = IntegrityError()
         hostname = factory.make_name("hostname")
@@ -600,7 +511,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                             "interfaces": {}}),
             CannotRegisterRackController)
         self.assertEquals((
-            "Failed to register rack controller 'None' into the database. "
+            "Failed to register rack controller 'None' with the master. "
             "Connection will be dropped.",), error.args)
 
 
@@ -681,7 +592,7 @@ class TestRackClient(MAASTestCase):
 class TestRegionService(MAASTestCase):
 
     def test_init_sets_appropriate_instance_attributes(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         self.assertThat(service, IsInstance(Service))
         self.assertThat(service.connections, IsInstance(defaultdict))
         self.assertThat(service.connections.default_factory, Is(set))
@@ -695,7 +606,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_starting_and_stopping_the_service(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         self.assertThat(service.starting, Is(None))
         service.startService()
         self.assertThat(service.starting, IsInstance(Deferred))
@@ -720,7 +631,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_startService_returns_Deferred(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         # Don't configure any endpoints.
         self.patch(service, "endpoints", [])
@@ -737,7 +648,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_start_up_can_be_cancelled(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         # Return an inert Deferred from the listen() call.
         endpoints = self.patch(service, "endpoints", [[Mock()]])
@@ -758,7 +669,8 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_start_up_errors_are_logged(self):
-        service = RegionService(sentinel.advertiser)
+        ipcWorker = MagicMock()
+        service = RegionService(ipcWorker)
 
         # Ensure that endpoint.listen fails with a obvious error.
         exception = ValueError("This is not the messiah.")
@@ -780,7 +692,7 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_start_up_binds_first_of_endpoint_options(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         endpoint_1 = Mock()
         endpoint_1.listen.return_value = succeed(sentinel.port1)
@@ -795,7 +707,7 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_start_up_binds_first_of_real_endpoint_options(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         # endpoint_1.listen(...) will bind to a random high-numbered port.
         endpoint_1 = TCP4ServerEndpoint(reactor, 0)
@@ -822,7 +734,7 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_start_up_binds_first_successful_of_endpoint_options(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         endpoint_broken = Mock()
         endpoint_broken.listen.return_value = fail(factory.make_exception())
@@ -838,7 +750,7 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_start_up_logs_failure_if_all_endpoint_options_fail(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         error_1 = factory.make_exception_type()
         error_2 = factory.make_exception_type()
@@ -863,7 +775,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_stopping_cancels_startup(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         # Return an inert Deferred from the listen() call.
         endpoints = self.patch(service, "endpoints", [[Mock()]])
@@ -881,9 +793,10 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopping_closes_connections_cleanly(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.starting = Deferred()
-        service.starting.addErrback(ignoreCancellation)
+        service.starting.addErrback(
+            lambda failure: failure.trap(CancelledError))
         service.factory.protocol = HandshakingRegionServer
         connections = {
             service.factory.buildProtocol(None),
@@ -906,9 +819,10 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopping_logs_errors_when_closing_connections(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.starting = Deferred()
-        service.starting.addErrback(ignoreCancellation)
+        service.starting.addErrback(
+            lambda failure: failure.trap(CancelledError))
         service.factory.protocol = HandshakingRegionServer
         connections = {
             service.factory.buildProtocol(None),
@@ -939,7 +853,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_stopping_when_start_up_failed(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
 
         # Ensure that endpoint.listen fails with a obvious error.
         exception = ValueError("This is a very naughty boy.")
@@ -952,7 +866,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getClientFor_errors_when_no_connections(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
         return assert_fails_with(
             service.getClientFor(factory.make_UUID(), timeout=0),
@@ -960,7 +874,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getClientFor_errors_when_no_connections_for_cluster(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         service.connections[uuid].clear()
         return assert_fails_with(
@@ -973,7 +887,7 @@ class TestRegionService(MAASTestCase):
         c2 = DummyConnection()
         chosen = DummyConnection()
 
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         conns_for_uuid = service.connections[uuid]
         conns_for_uuid.update({c1, c2})
@@ -992,13 +906,13 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getAllClients_empty(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
         self.assertThat(service.getAllClients(), Equals([]))
 
     @wait_for_reactor
     def test_getAllClients_empty_connections(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
         uuid1 = factory.make_UUID()
         service.connections[uuid1] = set()
@@ -1006,14 +920,14 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getRandomClient_empty_raises_NoConnectionsAvailable(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
         with ExpectedException(NoConnectionsAvailable):
             service.getRandomClient()
 
     @wait_for_reactor
     def test_getAllClients(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid1 = factory.make_UUID()
         c1 = DummyConnection()
         c2 = DummyConnection()
@@ -1035,7 +949,7 @@ class TestRegionService(MAASTestCase):
         ))
 
     def test_addConnectionFor_adds_connection(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         c1 = DummyConnection()
         c2 = DummyConnection()
@@ -1046,7 +960,7 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: {c1, c2}}, service.connections)
 
     def test_addConnectionFor_notifies_waiters(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         c1 = DummyConnection()
         c2 = DummyConnection()
@@ -1070,7 +984,7 @@ class TestRegionService(MAASTestCase):
             MockCallsMatch(call(c1), call(c2)))
 
     def test_addConnectionFor_fires_connected_event(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         c1 = DummyConnection()
 
@@ -1080,7 +994,7 @@ class TestRegionService(MAASTestCase):
         self.assertThat(mock_fire, MockCalledOnceWith(uuid))
 
     def test_removeConnectionFor_removes_connection(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         c1 = DummyConnection()
         c2 = DummyConnection()
@@ -1092,7 +1006,7 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: {c2}}, service.connections)
 
     def test_removeConnectionFor_is_okay_if_connection_is_not_there(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
 
         service._removeConnectionFor(uuid, DummyConnection())
@@ -1100,7 +1014,7 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: set()}, service.connections)
 
     def test_removeConnectionFor_fires_disconnected_event(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         c1 = DummyConnection()
 
@@ -1111,7 +1025,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getConnectionFor_returns_existing_connection(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         conn = DummyConnection()
 
@@ -1128,7 +1042,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getConnectionFor_waits_for_connection(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         conn = DummyConnection()
 
@@ -1149,7 +1063,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getConnectionFor_with_concurrent_waiters(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         conn = DummyConnection()
 
@@ -1174,7 +1088,7 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getConnectionFor_cancels_waiter_when_it_times_out(self):
-        service = RegionService(sentinel.advertiser)
+        service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
 
         d = service._getConnectionFor(uuid, 1)
@@ -1187,673 +1101,3 @@ class TestRegionService(MAASTestCase):
             self.assertEqual({uuid: set()}, service.waiters)
 
         return d.addCallback(check)
-
-
-class TestRegionAdvertisingService(MAASTransactionServerTestCase):
-
-    run_tests_with = MAASCrochetRunTest
-
-    def setUp(self):
-        super().setUp()
-        # Create the running region controller object
-        region = factory.make_RegionController()
-        region.owner = factory.make_admin()
-        region.save()
-        self.useFixture(MAASIDFixture(region.system_id))
-
-    def test_init(self):
-        ras = RegionAdvertisingService()
-        self.assertThat(
-            ras.advertiser, MatchesAll(
-                IsInstance(LoopingCall),
-                MatchesStructure.byEquality(f=ras._tryUpdate, a=(), kw={}),
-                first_only=True,
-            ))
-        self.assertThat(
-            ras.advertising, MatchesAll(
-                IsInstance(DeferredValue),
-                MatchesStructure.byEquality(isSet=False),
-                first_only=True,
-            ))
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_try_update_logs_all_errors(self):
-        ras = RegionAdvertisingService()
-        # Prevent periodic calls to `update`.
-        ras._startAdvertising = always_succeed_with(None)
-        ras._stopAdvertising = always_succeed_with(None)
-        # Start the service and make sure it stops later.
-        yield ras.startService()
-        try:
-            # Ensure that calls to `advertising.update` will crash.
-            advertising = yield ras.advertising.get(0.0)
-            advertising_update = self.patch(advertising, "update")
-            advertising_update.side_effect = factory.make_exception()
-
-            with TwistedLoggerFixture() as logger:
-                yield ras._tryUpdate()
-            self.assertDocTestMatches(
-                """
-                Failed to update regiond's process and endpoints;
-                  %s record's may be out of date
-                Traceback (most recent call last):
-                ...
-                maastesting.factory.TestException#...
-                """ % eventloop.loop.name,
-                logger.output)
-        finally:
-            yield ras.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_starting_and_stopping_the_service(self):
-        service = RegionAdvertisingService()
-
-        self.assertThat(service.starting, Is(None))
-        starting = service.startService()
-        try:
-            # The service is already marked as running.
-            self.assertTrue(service.running)
-            # Wait for start-up to fully complete.
-            self.assertThat(service.starting, IsInstance(Deferred))
-            self.assertThat(service.starting, Is(starting))
-            yield service.starting
-            # A RegionController has been created.
-            region_ids = yield deferToDatabase(lambda: {
-                region.system_id for region in RegionController.objects.all()})
-            self.assertThat(region_ids, HasLength(1))
-            # Finally, the advertising value has been set.
-            region_id = region_ids.pop()
-            advertising = yield service.advertising.get(0.0)
-            self.assertThat(
-                advertising, MatchesAll(
-                    IsInstance(RegionAdvertising),
-                    MatchesStructure.byEquality(region_id=region_id),
-                    first_only=True,
-                ))
-        finally:
-            self.assertThat(service.stopping, Is(None))
-            stopping = service.stopService()
-            # The service is already marked as NOT running.
-            self.assertFalse(service.running)
-            # Wait for shut-down to fully complete.
-            self.assertThat(service.stopping, IsInstance(Deferred))
-            self.assertThat(service.stopping, Is(stopping))
-            yield service.stopping
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_start_up_errors_are_logged(self):
-        service = RegionAdvertisingService()
-        # Prevent real pauses.
-        self.patch_autospec(regionservice, "pause").return_value = None
-        # Make service.promote fail the first time it's called.
-        exceptions = [ValueError("You don't vote for kings!")]
-        original = regionservice.RegionAdvertising.promote
-
-        def promote():
-            if len(exceptions) == 0:
-                return original()
-            else:
-                raise exceptions.pop(0)
-
-        fake_promote = self.patch(regionservice.RegionAdvertising, "promote")
-        fake_promote.side_effect = promote
-        # Capture all Twisted logs.
-        logger = self.useFixture(TwistedLoggerFixture())
-
-        yield service.startService()
-        try:
-            self.assertDocTestMatches(
-                """\
-                Promotion of ... failed; will try again in 5 seconds.
-                Traceback (most recent call last):...
-                builtins.ValueError: You don't vote for kings!
-                """,
-                logger.dump())
-        finally:
-            yield service.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_start_up_waits_for_region_obj(self):
-        service = RegionAdvertisingService()
-        # Prevent real pauses.
-        self.patch_autospec(regionservice, "pause").return_value = None
-        # Make service.promote fail the first time it's called.
-        exceptions = [RegionController.DoesNotExist()]
-        original = regionservice.RegionAdvertising.promote
-
-        def promote():
-            if len(exceptions) == 0:
-                return original()
-            else:
-                raise exceptions.pop(0)
-
-        fake_promote = self.patch(regionservice.RegionAdvertising, "promote")
-        fake_promote.side_effect = promote
-
-        yield service.startService()
-        try:
-            self.assertThat(fake_promote, MockCallsMatch(call(), call()))
-        finally:
-            yield service.stopService()
-
-    def test_stopping_waits_for_startup(self):
-        service = RegionAdvertisingService()
-        synchronise = threading.Condition()
-
-        # Prevent the advertising loop from starting.
-        service._startAdvertising = lambda: None
-        service._stopAdvertising = lambda: None
-
-        # Prevent the service's promote method - which is deferred to a thread,
-        # from completing while we hold the lock.
-        def promote(original=regionservice.RegionAdvertising.promote):
-            with synchronise:
-                synchronise.notify()
-                synchronise.wait(2.0)
-            return original()
-        fake_promote = self.patch(regionservice.RegionAdvertising, "promote")
-        fake_promote.side_effect = promote
-
-        with synchronise:
-            # Start the service, but stop it again before promote is able to
-            # complete.
-            service.startService()
-            synchronise.wait(2.0)
-            service.stopService()
-            synchronise.notify()
-
-        callInReactorWithTimeout(5.0, lambda: service.starting)
-        callInReactorWithTimeout(5.0, lambda: service.stopping)
-        self.assertFalse(service.running)
-
-    def test_stopping_when_start_up_failed(self):
-        service = RegionAdvertisingService()
-
-        # Ensure that service.promote fails with a obvious error.
-        exception = ValueError("First, shalt thou take out the holy pin.")
-        self.patch(service, "promote").side_effect = exception
-
-        # Start the service, but don't wait.
-        service.startService()
-        # The test is that stopService() succeeds.
-        service.stopService().wait(10)
-
-    def patch_port(self, port):
-        getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
-        getPort = getServiceNamed.return_value.getPort
-        getPort.return_value = port
-
-    def patch_addresses(self, source_addresses, old_addresses):
-        get_all_interface_source_addresses = self.patch(
-            regionservice, "get_all_interface_source_addresses")
-        get_all_interface_source_addresses.return_value = source_addresses
-        get_all_interface_addresses = self.patch(
-            regionservice, "get_all_interface_addresses")
-        get_all_interface_addresses.return_value = old_addresses
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_stopping_demotes_region(self):
-        service = RegionAdvertisingService()
-        service._getAddresses = always_succeed_with({("192.168.0.1", 9876)})
-
-        yield service.startService()
-        yield service.stopService()
-
-        dump = yield deferToDatabase(RegionAdvertising.dump)
-        self.assertItemsEqual([], dump)
-
-    def test__getAddresses_uses_source_addresses(self):
-        service = RegionAdvertisingService()
-
-        example_port = factory.pick_port()
-        self.patch_port(example_port)
-
-        example_ipv4_addrs = set()
-        for _ in range(5):
-            ip = factory.make_ipv4_address()
-            if not netaddr.IPAddress(ip).is_loopback():
-                example_ipv4_addrs.add(ip)
-        example_ipv6_addrs = set()
-        for _ in range(5):
-            ip = factory.make_ipv6_address()
-            if not netaddr.IPAddress(ip).is_loopback():
-                example_ipv6_addrs.add(ip)
-        example_link_local_addrs = {
-            factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
-            factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
-        }
-        example_loopback_addrs = {
-            factory.pick_ip_in_network(netaddr.ip.IPV4_LOOPBACK),
-            str(netaddr.ip.IPV6_LOOPBACK),
-        }
-        self.patch_addresses(
-            example_ipv4_addrs | example_ipv6_addrs,
-            example_link_local_addrs | example_loopback_addrs)
-
-        # Only the source addresses are returned.
-        self.assertItemsEqual(
-            [(addr, example_port)
-                for addr in example_ipv4_addrs.union(example_ipv6_addrs)],
-            service._getAddresses().wait(2.0))
-
-        self.assertThat(
-            eventloop.services.getServiceNamed,
-            MockCalledOnceWith("rpc"))
-        self.assertThat(
-            regionservice.get_all_interface_source_addresses,
-            MockCalledOnceWith())
-        self.assertThat(
-            regionservice.get_all_interface_addresses,
-            MockNotCalled())
-
-    def test__getAddresses_including_loopback(self):
-        service = RegionAdvertisingService()
-
-        example_port = factory.pick_port()
-        self.patch_port(example_port)
-
-        example_ipv4_addrs = set()
-        for _ in range(5):
-            ip = factory.make_ipv4_address()
-            if not netaddr.IPAddress(ip).is_loopback():
-                example_ipv4_addrs.add(ip)
-        example_ipv6_addrs = set()
-        for _ in range(5):
-            ip = factory.make_ipv6_address()
-            if not netaddr.IPAddress(ip).is_loopback():
-                example_ipv6_addrs.add(ip)
-        example_link_local_addrs = {
-            factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
-            factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
-        }
-        ipv4_loopback = factory.pick_ip_in_network(netaddr.ip.IPV4_LOOPBACK)
-        example_loopback_addrs = {
-            ipv4_loopback,
-            str(netaddr.ip.IPV6_LOOPBACK),
-        }
-        self.patch_addresses(
-            set(),
-            example_ipv4_addrs | example_ipv6_addrs |
-            example_link_local_addrs | example_loopback_addrs)
-
-        # Only IPv4 loopback is exposed.
-        self.assertItemsEqual(
-            [(addr, example_port) for addr in example_loopback_addrs],
-            service._getAddresses().wait(2.0))
-
-        self.assertThat(
-            eventloop.services.getServiceNamed,
-            MockCalledOnceWith("rpc"))
-        self.assertThat(
-            regionservice.get_all_interface_source_addresses,
-            MockCalledOnceWith())
-        self.assertThat(
-            regionservice.get_all_interface_addresses,
-            MockCalledOnceWith())
-
-    def test__getAddresses_when_rpc_down(self):
-        service = RegionAdvertisingService()
-
-        # getPort() returns None when the RPC service is not running or
-        # not able to bind a port.
-        self.patch_port(None)
-
-        get_all_interface_addresses = self.patch(
-            regionservice, "get_all_interface_addresses")
-        get_all_interface_addresses.return_value = [
-            factory.make_ipv4_address(),
-            factory.make_ipv4_address(),
-        ]
-
-        # If the RPC service is down, _getAddresses() returns nothing.
-        self.assertItemsEqual([], service._getAddresses().wait(2.0))
-
-
-class TestRegionAdvertising(MAASServerTestCase):
-
-    hostname = gethostname()
-
-    def setUp(self):
-        super().setUp()
-        # Create the running region controller object
-        region = factory.make_RegionController()
-        region.owner = factory.make_admin()
-        region.save()
-        self.useFixture(MAASIDFixture(region.system_id))
-
-    def make_addresses(self):
-        """Return a set of a couple of ``(addr, port)`` tuples."""
-        return {
-            (factory.make_ipv4_address(), factory.pick_port()),
-            (factory.make_ipv4_address(), factory.pick_port()),
-        }
-
-    def get_endpoints(self, region_id):
-        """Return a set of ``(addr, port)`` tuples for the given region."""
-        region = RegionController.objects.get(system_id=region_id)
-        return {
-            (endpoint.address, endpoint.port)
-            for process in region.processes.all()
-            for endpoint in process.endpoints.all()
-        }
-
-    def make_fake_connection(self, rack, endpoint=None):
-        conn = Mock()
-        conn.ident = rack.system_id
-        if endpoint is None:
-            address = factory.make_ipv4_address()
-            port = factory.pick_port()
-        else:
-            address = endpoint.address
-            port = endpoint.port
-        conn.host = IPv4Address('TCP', address, port)
-        return conn
-
-    def test_update_creates_process_when_removed(self):
-        advertising = RegionAdvertising.promote()
-
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        [process] = region.processes.all()
-        process_id = process.id
-        process.delete()
-
-        # Will re-create the process with the same ID.
-        advertising.update(self.make_addresses())
-
-        process.id = process_id
-        process = reload_object(process)
-        self.assertEquals(process.pid, os.getpid())
-
-    def test_update_removes_old_processes(self):
-        advertising = RegionAdvertising.promote()
-
-        old_time = now() - timedelta(seconds=90)
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        other_region = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        old_region_process = RegionControllerProcess.objects.create(
-            region=region, pid=randint(1, 1000), created=old_time,
-            updated=old_time)
-        old_other_region_process = RegionControllerProcess.objects.create(
-            region=other_region, pid=randint(1000, 2000), created=old_time,
-            updated=old_time)
-
-        advertising.update(self.make_addresses())
-
-        self.assertIsNone(reload_object(old_region_process))
-        self.assertIsNone(reload_object(old_other_region_process))
-
-    def test_update_removes_dead_sibling_processes(self):
-        advertising = RegionAdvertising.promote()
-
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        [my_process] = region.processes.all()
-
-        running_pid = randint(1, 10)
-        running_sibling = RegionControllerProcess.objects.create(
-            region=region, pid=running_pid)
-        dead_pid = randint(11, 20)
-        dead_sibling = RegionControllerProcess.objects.create(
-            region=region, pid=dead_pid)
-
-        def is_running(pid):
-            if pid == running_pid:
-                return True
-            elif pid == dead_pid:
-                return False
-            else:
-                raise ValueError("Unknown PID.")
-
-        self.patch(regionservice, "is_pid_running").side_effect = is_running
-
-        advertising.update(self.make_addresses())
-
-        self.assertIsNotNone(reload_object(running_sibling))
-        self.assertIsNone(reload_object(dead_sibling))
-
-    def test_update_updates_updated_time_on_region_and_process(self):
-        current_time = now()
-        self.patch(timestampedmodel, "now").return_value = current_time
-
-        advertising = RegionAdvertising.promote()
-
-        old_time = current_time - timedelta(seconds=90)
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        region.created = old_time
-        region.updated = old_time
-        region.save()
-        region_process = RegionControllerProcess.objects.get(
-            id=advertising.process_id)
-        region_process.created = region_process.updated = old_time
-        region_process.save()
-
-        advertising.update(self.make_addresses())
-
-        region = reload_object(region)
-        region_process = reload_object(region_process)
-        self.assertEquals(current_time, region.updated)
-        self.assertEquals(current_time, region_process.updated)
-
-    def test_update_creates_endpoints_on_process(self):
-        addresses = self.make_addresses()
-
-        advertising = RegionAdvertising.promote()
-        advertising.update(addresses)
-
-        saved_endpoints = self.get_endpoints(advertising.region_id)
-        self.assertEqual(addresses, saved_endpoints)
-
-    def test_update_does_not_insert_endpoints_when_nothings_listening(self):
-        advertising = RegionAdvertising.promote()
-        advertising.update(set())  # No addresses.
-
-        saved_endpoints = self.get_endpoints(advertising.region_id)
-        self.assertEqual(set(), saved_endpoints)
-
-    def test_update_deletes_old_endpoints(self):
-        addresses_common = self.make_addresses()
-        addresses_one = self.make_addresses().union(addresses_common)
-        addresses_two = self.make_addresses().union(addresses_common)
-
-        advertising = RegionAdvertising.promote()
-
-        advertising.update(addresses_one)
-        self.assertEqual(
-            addresses_one, self.get_endpoints(advertising.region_id))
-
-        advertising.update(addresses_two)
-        self.assertEqual(
-            addresses_two, self.get_endpoints(advertising.region_id))
-
-    def test_update_sets_regiond_degraded_with_less_than_workers(self):
-        advertising = RegionAdvertising.promote()
-        advertising.update(self.make_addresses())
-
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        [process] = region.processes.all()
-        regiond_service = ServiceModel.objects.get(node=region, name="regiond")
-        self.assertThat(regiond_service, MatchesStructure.byEquality(
-            status=SERVICE_STATUS.DEGRADED,
-            status_info="1 process running but %s were expected." % (
-                workers.MAX_WORKERS_COUNT)))
-
-    def test_update_sets_regiond_running_with_all_workers(self):
-        advertising = RegionAdvertising.promote()
-
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        [process] = region.processes.all()
-        self.patch(regionservice, "is_pid_running").return_value = True
-
-        # Make the required extra processes.
-        for _ in range(workers.MAX_WORKERS_COUNT - 1):
-            factory.make_RegionControllerProcess(region=region)
-
-        advertising.update(self.make_addresses())
-
-        regiond_service = ServiceModel.objects.get(node=region, name="regiond")
-        self.assertThat(regiond_service, MatchesStructure.byEquality(
-            status=SERVICE_STATUS.RUNNING, status_info=""))
-
-    def test_update_calls_mark_dead_on_regions_without_processes(self):
-        advertising = RegionAdvertising.promote()
-
-        other_region = factory.make_RegionController()
-        mock_mark_dead = self.patch(ServiceModel.objects, "mark_dead")
-
-        advertising.update(self.make_addresses())
-
-        self.assertThat(
-            mock_mark_dead,
-            MockCalledOnceWith(other_region, dead_region=True))
-
-    def test_updateConnections_removes_all_rpc_connections_when_none(self):
-        advertising = RegionAdvertising.promote()
-
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        [process] = region.processes.all()
-        endpoints = [
-            factory.make_RegionControllerProcessEndpoint(process=process)
-            for _ in range(3)
-        ]
-        rpc_connections = [
-            factory.make_RegionRackRPCConnection(endpoint=endpoint)
-            for endpoint in endpoints
-            for _ in range(3)
-        ]
-
-        advertising.updateConnections(process, [])
-
-        rpc_connections = reload_objects(
-            RegionRackRPCConnection, rpc_connections)
-        self.assertItemsEqual(rpc_connections, [])
-
-    def test_updateConnections_creates_updates_deletes_connections(self):
-        advertising = RegionAdvertising.promote()
-
-        region = RegionController.objects.get(system_id=advertising.region_id)
-        [process] = region.processes.all()
-        endpoints = [
-            factory.make_RegionControllerProcessEndpoint(process=process)
-            for _ in range(3)
-        ]
-        old_rpc_connections = [
-            factory.make_RegionRackRPCConnection(endpoint=endpoint)
-            for endpoint in endpoints
-            for _ in range(3)
-        ]
-        connected_racks = [
-            factory.make_RackController()
-            for _ in range(3)
-        ]
-        connections = {}
-        for rack, endpoint in zip(connected_racks, endpoints):
-            conn = self.make_fake_connection(rack, endpoint)
-            connections[conn.ident] = {conn, }
-
-        advertising.updateConnections(process, connections)
-
-        old_rpc_connections = reload_objects(
-            RegionRackRPCConnection, old_rpc_connections)
-        self.assertItemsEqual(old_rpc_connections, [])
-        self.assertThat(
-            RegionRackRPCConnection.objects.filter(endpoint__process=process),
-            MatchesSetwise(*[
-                MatchesStructure(
-                    endpoint=Equals(endpoint),
-                    rack_controller=Equals(rack),
-                )
-                for rack, endpoint in zip(connected_racks, endpoints)
-            ]))
-
-    def test_demote(self):
-        addresses = {
-            (factory.make_ipv4_address(), factory.pick_port()),
-            (factory.make_ipv4_address(), factory.pick_port()),
-        }
-        advertising = RegionAdvertising.promote()
-        advertising.update(addresses)
-        advertising.demote()
-        self.assertItemsEqual([], advertising.dump())
-
-    def test_dump(self):
-        addresses = {
-            (factory.make_ipv4_address(), factory.pick_port()),
-            (factory.make_ipv4_address(), factory.pick_port()),
-        }
-        advertising = RegionAdvertising.promote()
-        advertising.update(addresses)
-
-        expected = [
-            ("%s:pid=%d" % (gethostname(), os.getpid()), addr, port)
-            for (addr, port) in addresses
-        ]
-        self.assertItemsEqual(expected, advertising.dump())
-
-    def test_dump_doesnt_duplicate_ips_across_region_controllers(self):
-        duplicate_address = factory.make_ipv4_address()
-        addresses = {
-            (factory.make_ipv4_address(), factory.pick_port()),
-            (factory.make_ipv4_address(), factory.pick_port()),
-        }
-        advertising = RegionAdvertising.promote()
-        advertising.update(
-            addresses.union({(duplicate_address, factory.pick_port()), }))
-
-        other_addresses = {
-            (factory.make_ipv4_address(), factory.pick_port()),
-            (factory.make_ipv4_address(), factory.pick_port()),
-        }
-        other_region = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        other_process = RegionControllerProcess.objects.create(
-            region=other_region, pid=randint(1, 1000))
-        for address, port in other_addresses:
-            RegionControllerProcessEndpoint.objects.create(
-                process=other_process, address=address, port=port)
-        RegionControllerProcessEndpoint.objects.create(
-            process=other_process,
-            address=duplicate_address,
-            port=factory.pick_port())
-
-        expected = [
-            ("%s:pid=%d" % (gethostname(), os.getpid()), addr, port)
-            for (addr, port) in addresses
-        ] + [
-            ("%s:pid=%d" % (
-                other_region.hostname, other_process.pid),
-             addr, port)
-            for (addr, port) in other_addresses
-        ]
-        self.assertItemsEqual(expected, advertising.dump())
-
-    def test__adds_connection_and_removes_connection(self):
-        advertising = RegionAdvertising.promote()
-        process = advertising.getRegionProcess()
-        endpoint = factory.make_RegionControllerProcessEndpoint(process)
-
-        host = MagicMock()
-        host.host = endpoint.address
-        host.port = endpoint.port
-
-        rack_controller = factory.make_RackController()
-
-        advertising.registerConnection(process, rack_controller, host)
-        self.assertIsNotNone(
-            RegionRackRPCConnection.objects.filter(
-                endpoint=endpoint, rack_controller=rack_controller).first())
-
-        # Checks that an exception is not raised if already registered.
-        advertising.registerConnection(process, rack_controller, host)
-
-        advertising.unregisterConnection(
-            process, rack_controller.system_id, host)
-        self.assertIsNone(
-            RegionRackRPCConnection.objects.filter(
-                endpoint=endpoint, rack_controller=rack_controller).first())
-
-        # Checks that an exception is not raised if already unregistered.
-        advertising.unregisterConnection(
-            process, rack_controller.system_id, host)

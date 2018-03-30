@@ -5,44 +5,21 @@
 
 __all__ = [
     "RegionService",
-    "RegionAdvertisingService",
 ]
 
 from collections import defaultdict
 import copy
-from datetime import (
-    datetime,
-    timedelta,
-)
-import os
+from datetime import datetime
 from os import urandom
 import random
 from socket import (
     AF_INET,
     AF_INET6,
-    gethostname,
 )
-import threading
 
-from maasserver import (
-    eventloop,
-    locks,
-    workers,
-)
+from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
-from maasserver.enum import SERVICE_STATUS
-from maasserver.models.node import (
-    Node,
-    RackController,
-    RegionController,
-)
-from maasserver.models.regioncontrollerprocess import RegionControllerProcess
-from maasserver.models.regioncontrollerprocessendpoint import (
-    RegionControllerProcessEndpoint,
-)
-from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
-from maasserver.models.service import Service
-from maasserver.models.timestampedmodel import now
+from maasserver.models.node import RackController
 from maasserver.rpc import (
     boot,
     configuration,
@@ -59,11 +36,6 @@ from maasserver.rpc.nodes import (
 )
 from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
-from maasserver.utils import synchronised
-from maasserver.utils.orm import (
-    transactional,
-    with_connection,
-)
 from maasserver.utils.threads import deferToDatabase
 from netaddr import (
     AddrConversionError,
@@ -81,22 +53,12 @@ from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
 from provisioningserver.utils.events import EventGroup
-from provisioningserver.utils.network import (
-    get_all_interface_addresses,
-    get_all_interface_source_addresses,
-    resolves_to_loopback_address,
-)
-from provisioningserver.utils.ps import is_pid_running
+from provisioningserver.utils.network import resolves_to_loopback_address
 from provisioningserver.utils.twisted import (
     asynchronous,
-    call,
     callOut,
-    deferred,
-    DeferredValue,
     deferWithTimeout,
     FOREVER,
-    pause,
-    synchronous,
 )
 from provisioningserver.utils.version import get_maas_version
 from twisted.application import service
@@ -110,7 +72,6 @@ from twisted.internet.address import (
 )
 from twisted.internet.defer import (
     CancelledError,
-    fail,
     inlineCallbacks,
     maybeDeferred,
     returnValue,
@@ -119,7 +80,6 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP6ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
-from twisted.internet.task import LoopingCall
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from zope.interface import implementer
@@ -516,20 +476,6 @@ class Region(RPCProtocol):
         return deferToDatabase(nodes.get_time_configuration, system_id)
 
 
-def getRegionID():
-    """Obtain the region ID from the advertising service.
-
-    :return: :class:`Deferred`
-    """
-    try:
-        advertise = eventloop.services.getServiceNamed("rpc-advertise")
-    except:
-        return fail()
-    else:
-        return advertise.advertising.get().addCallback(
-            lambda advertising: advertising.region_id)
-
-
 @inlineCallbacks
 def isLoopbackURL(url):
     """Checks if the specified URL refers to a loopback address.
@@ -570,12 +516,12 @@ class RegionServer(Region):
     host = None
     hostIsRemote = False
 
-    @inlineCallbacks
+    @asynchronous
     def initResponder(self, rack_controller):
         """Set up local connection identifiers for this RPC connection.
 
         Sets up connection identifiers, and adds the connection into the
-        service and the database.
+        service and forwards to connection info to master.
 
         :param rack_controller: A RackController model object representing the
             remote rack controller.
@@ -586,16 +532,28 @@ class RegionServer(Region):
         self.host = self.transport.getHost()
         self.hostIsRemote = isinstance(
             self.host, (IPv4Address, IPv6Address))
-        # Only register the connection into the database when it's a valid
+        # Only register the connection with the master when it's a valid
         # IPv4 or IPv6. Only time it is not an IPv4 or IPv6 address is
         # when mocking a connection.
         if self.hostIsRemote:
-            advertising = yield (
-                self.factory.service.advertiser.advertising.get())
-            process = yield deferToDatabase(advertising.getRegionProcess)
-            yield deferToDatabase(
-                advertising.registerConnection,
-                process, rack_controller, self.host)
+            return self.registerWithMaster()
+
+    @asynchronous
+    def registerWithMaster(self):
+        # We need to handle the incoming name being an IPv6-form IPv4 address.
+        # Assume that's the case, and ignore the error if it is not.
+        try:
+            # Convert the hostname to an IPAddress, and then coerce that to
+            # dotted quad form, and from thence to a string.  If it works, we
+            # had an IPv4 address.  We want the dotted quad form, since that
+            # is what the region advertises.
+            self.host.host = str(IPAddress(self.host.host).ipv4())
+        except AddrConversionError:
+            # If we got an AddressConversionError, it's not one we need to
+            # convert.
+            pass
+        return self.factory.service.ipcWorker.rpcRegisterConnection(
+            self.ident, self.host.host, self.host.port)
 
     @inlineCallbacks
     def authenticateCluster(self):
@@ -649,23 +607,16 @@ class RegionServer(Region):
                     nodegroup_uuid)
 
             yield self.initResponder(rack_controller)
-
-            # Rack controller is now registered. Log this status.
-            log.msg(
-                "Process [%s] - registered rack controller '%s'." % (
-                    os.getpid(), self.ident))
-
         except:
             # Ensure we're not hanging onto this connection.
             self.factory.service._removeConnectionFor(self.ident, self)
             # Tell the logs about it.
             msg = (
-                "Failed to register rack controller '%s' into the "
-                "database. Connection will be dropped." % self.ident)
+                "Failed to register rack controller '%s' with the "
+                "master. Connection will be dropped." % self.ident)
             log.err(None, msg)
             # Finally, tell the callers.
             raise exceptions.CannotRegisterRackController(msg)
-
         else:
             # Done registering the rack controller and connection.
             return {'system_id': self.ident}
@@ -710,24 +661,11 @@ class RegionServer(Region):
 
     def connectionLost(self, reason):
         if self.hostIsRemote:
-
-            def get_process(service):
-                d = deferToDatabase(service.getRegionProcess)
-                d.addCallback(lambda process: (service, process))
-                return d
-
-            def unregister(result):
-                service, process = result
-                return deferToDatabase(
-                    service.unregisterConnection,
-                    process, self.ident, self.host)
-
-            advertising = self.factory.service.advertiser.advertising.get()
-            advertising.addCallback(get_process)
-            advertising.addCallback(unregister)
-            advertising.addErrback(
+            d = self.factory.service.ipcWorker.rpcUnregisterConnection(
+                self.ident, self.host.host, self.host.port)
+            d.addErrback(
                 log.err,
-                "Failed to unregister the rack controller connection.")
+                "Failed to unregister the connection with the master.")
         self.factory.service._removeConnectionFor(self.ident, self)
         log.msg("Rack controller '%s' disconnected." % self.ident)
         super(RegionServer, self).connectionLost(reason)
@@ -806,16 +744,15 @@ class RegionService(service.Service, object):
     connections = None
     starting = None
 
-    def __init__(self, advertiser):
+    def __init__(self, ipcWorker):
         super(RegionService, self).__init__()
+        self.ipcWorker = ipcWorker
         self.endpoints = [
             [TCP6ServerEndpoint(reactor, port)
              for port in range(5250, 5260)],
         ]
         self.connections = defaultdict(set)
         self.connectionsCache = defaultdict(dict)
-        self.advertiser = advertiser
-        self.advertiser.connections = self.connections
         self.waiters = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
@@ -945,7 +882,11 @@ class RegionService(service.Service, object):
             else:
                 log.err(failure, "RegionServer start-up failed.")
 
+        def report_to_master(result):
+            return self.ipcWorker.rpcPublish(self.getPort())
+
         self.starting.addCallback(self._savePorts)
+        self.starting.addCallback(report_to_master)
         self.starting.addErrback(log_failure)
 
         # Twisted's service framework does not track start-up progress, i.e.
@@ -1088,509 +1029,3 @@ class RegionService(service.Service, object):
             assert len(connection) > 0, "Connection set empty."
             connection = random.choice(list(connection))
             return RackClient(connection, self.connectionsCache[connection])
-
-
-def ignoreCancellation(failure):
-    """Suppress `defer.CancelledError`."""
-    failure.trap(defer.CancelledError)
-
-
-class RegionAdvertisingService(service.Service):
-    """Advertise the `RegionControllerProcess` and all of its
-    `RegionControllerProcessEndpoints` into the database.
-
-    :cvar lock: A lock to help coordinate - and prevent - concurrent
-        database access from this service across the whole interpreter.
-
-    :ivar starting: Either `None`, or a :class:`Deferred` that fires
-        with the service has successfully started. It does *not*
-        indicate that the first update has been done.
-    """
-
-    # Interval for this service when the rpc service has not started.
-    INTERVAL_NO_ENDPOINTS = 2  # seconds.
-
-    # Interval for this service when the rpc service has started.
-    INTERVAL_WITH_ENDPOINTS = 60  # seconds.
-
-    # A LoopingCall that ensures that this region is being advertised, and the
-    # Deferred that fires when it has stopped.
-    advertiser = advertiserDone = None
-
-    # Set by `RegionService` during initialization, so the advertising service
-    # can re-create RPC connections in the database if it needs to.
-    connections = None
-
-    starting = None
-    stopping = None
-
-    def __init__(self):
-        super(RegionAdvertisingService, self).__init__()
-        self.advertiser = LoopingCall(self._tryUpdate)
-        self.advertising = DeferredValue()
-
-    @asynchronous
-    def startService(self):
-        self.starting = maybeDeferred(super().startService)
-        # Populate advertising records in the database.
-        self.starting.addCallback(call, self._tryPromote)
-        self.starting.addCallbacks(self._promotionOkay, self._promotionFailed)
-        # Start the advertising loop to keep those records up-to-date.
-        self.starting.addCallback(callOut, self._startAdvertising)
-        # We may get cancelled; suppress the exception as a penultimate step.
-        self.starting.addErrback(ignoreCancellation)
-        # It would be better to let failures propagate, but MultiService does
-        # not wait for startService to complete. If we don't handle errors
-        # here we'll end up with "Unhandled error in Deferred" messages.
-        self.starting.addErrback(
-            log.err, "Failure starting advertising service.")
-        # Let the caller track all of this.
-        return self.starting
-
-    @asynchronous
-    def stopService(self):
-        # Officially begin stopping this service.
-        self.stopping = maybeDeferred(super().stopService)
-        # Wait for all start-up tasks to finish.
-        self.stopping.addCallback(callOut, lambda: self.starting)
-        # Stop the advertising loop and wait for it to complete.
-        self.stopping.addCallback(callOut, self._stopAdvertising)
-        # Remove this regiond from all advertising records.
-        self.stopping.addCallback(callOut, self._tryDemote)
-        # Let the caller track all of this.
-        return self.stopping
-
-    @inlineCallbacks
-    def _tryPromote(self):
-        """Keep calling `promote` until it works.
-
-        The call to `promote` can sometimes fail, particularly after starting
-        the region for the first time on a fresh MAAS installation, but the
-        mechanism is not yet understood. We take a pragmatic stance and just
-        keep trying until it works.
-
-        Each failure will be logged, and there will be a pause of 5 seconds
-        between each attempt.
-
-        :return: An instance of `RegionAdvertising`.
-        """
-        while self.running:
-            try:
-                advertising = yield deferToDatabase(RegionAdvertising.promote)
-            except RegionController.DoesNotExist:
-                # Wait for the region controller object to be created. This is
-                # belt-n-braces engineering: the RegionController should have
-                # created before this service is started.
-                yield pause(1)
-            except:
-                log.err(None, (
-                    "Promotion of %s failed; will try again in "
-                    "5 seconds." % (eventloop.loop.name,)))
-                yield pause(5)
-            else:
-                returnValue(advertising)
-        else:
-            # Preparation did not complete before this service was shutdown,
-            # so raise CancelledError to prevent callbacks from being called.
-            raise defer.CancelledError()
-
-    def _promotionOkay(self, advertising):
-        """Store the region advertising object.
-
-        Also ensures that the `maas_id` file is created. This is read by other
-        regiond processes on this host so that the `RegionControllerProcess`s
-        they create in the database all refer to the same `RegionController`.
-
-        :param advertising: An instance of `RegionAdvertising`.
-        """
-        self.advertising.set(advertising)
-
-    def _promotionFailed(self, failure):
-        """Clear up when service preparation fails."""
-        self.advertising.fail(failure)
-        return failure
-
-    def _tryUpdate(self):
-        d = self.advertising.get()
-
-        def deferUpdate(advertising):
-            d = deferToDatabase(
-                advertising.update, self._getAddresses())
-            d.addCallback(lambda result: (result, advertising))
-            return d
-        d.addCallback(deferUpdate)
-
-        def deferUpdateConnctions(result):
-            (interval, process), advertising = result
-            d = deferToDatabase(
-                advertising.updateConnections,
-                process, dict(self.connections))
-            d.addCallback(lambda _: interval)
-            return d
-        d.addCallback(deferUpdateConnctions)
-
-        def setInterval(interval):
-            self.advertiser.interval = interval
-        d.addCallback(setInterval)
-
-        return d.addErrback(ignoreCancellation).addErrback(
-            log.err, "Failed to update regiond's process and endpoints; "
-            "%s record's may be out of date" % (eventloop.loop.name,))
-
-    def _tryDemote(self):
-        d = self.advertising.get(0.0)  # Don't wait around.
-
-        def deferDemote(advertising):
-            return deferToDatabase(advertising.demote)
-        d.addCallback(deferDemote)
-
-        return d.addErrback(ignoreCancellation).addErrback(
-            log.err, "Failed to demote regiond's process and endpoints; "
-            "%s record's may be out of date" % (eventloop.loop.name,))
-
-    @deferred
-    def _startAdvertising(self):
-        """Keep advertising that this regiond is on active duty.
-
-        :return: A `Deferred` that will fire when the loop has started.
-        """
-        self.advertiserDone = self.advertiser.start(self.INTERVAL_NO_ENDPOINTS)
-
-    @deferred
-    def _stopAdvertising(self):
-        """Stop advertising that this regiond is on active duty.
-
-        :return: A `Deferred` that will fire when the loop has stopped.
-        """
-        if self.advertiser.running:
-            self.advertiser.stop()
-            return self.advertiserDone
-
-    @classmethod
-    @asynchronous
-    def _getAddresses(cls):
-        """Generate the addresses on which to advertise region availablilty.
-
-        This excludes link-local addresses. We may want to revisit this at a
-        later time, but right now it causes issues because multiple network
-        interfaces may have the same link-local address. Loopback addresses
-        are also excluded unless no other addresses are available.
-
-        This includes both IPv4 and IPv6 addresses, since we now support both.
-
-        :rtype: set
-        """
-        try:
-            service = eventloop.services.getServiceNamed("rpc")
-        except KeyError:
-            return set()  # No RPC service yet.
-        else:
-            port = service.getPort()
-            if port is None:
-                return set()  # Not serving yet.
-            else:
-                addresses = get_all_interface_source_addresses()
-                if len(addresses) > 0:
-                    return set(
-                        (addr, port)
-                        for addr in addresses
-                    )
-                # There are no non-loopback addresses, so return loopback
-                # address as a fallback.
-                loopback_addresses = set()
-                for addr in get_all_interface_addresses():
-                    ipaddr = IPAddress(addr)
-                    if ipaddr.is_link_local():
-                        continue  # Don't advertise link-local addresses.
-                    if ipaddr.is_loopback():
-                        loopback_addresses.add((addr, port))
-                return loopback_addresses
-
-
-class RegionAdvertising:
-    """Encapsulate all database operations related to advertising a regiond.
-
-    This class has a lifecycle:
-
-    * Set-up with `promote`.
-    * Keep up-to-date with calls to `update`.
-    * Tear-down with `demote`.
-
-    """
-
-    # Prevent advertising related transactions from overlapping.
-    lock = threading.Lock()
-
-    @classmethod
-    @synchronous
-    @synchronised(lock)
-    @transactional
-    def dump(cls):
-        """Returns a list of ``(name, addr, port)`` tuples.
-
-        Each tuple corresponds to somewhere an event-loop is listening
-        within the whole region. The `name` is the event-loop name.
-        """
-        # Each regiond might be running a local bridge that duplicates the
-        # same IP address across region controllers. Each region controller
-        # must output a set of unique of IP addresses, to prevent the rack
-        # controller from connecting to a different region controller then
-        # the rack controller was expecting to be connecting to.
-        def _unique_to_region(address, region, regions):
-            for region_obj in regions:
-                if region_obj != region:
-                    for process in region_obj.processes.all():
-                        for endpoint in process.endpoints.all():
-                            if endpoint.address == address:
-                                return False
-            return True
-
-        regions = RegionController.objects.all()
-        regions = regions.prefetch_related("processes", "processes__endpoints")
-        all_endpoints = []
-        for region_obj in regions:
-            for process in region_obj.processes.all():
-                for endpoint in process.endpoints.all():
-                    if _unique_to_region(
-                            endpoint.address, region_obj, regions):
-                        all_endpoints.append((
-                            "%s:pid=%d" % (region_obj.hostname, process.pid),
-                            endpoint.address, endpoint.port))
-        return all_endpoints
-
-    @classmethod
-    @synchronous
-    @synchronised(lock)
-    @with_connection  # Needed by the following lock.
-    @synchronised(locks.eventloop)
-    @transactional
-    def promote(cls):
-        """Promote this regiond to active duty.
-
-        Ensure that `RegionController` and `RegionControllerProcess` records
-        exists for this regiond.
-
-        :return: An instance of `RegionAdvertising`.
-        """
-        region_obj = RegionController.objects.get_running_controller()
-        # Create the process for this region. This process object will be
-        # updated by calls to `update`, which is the responsibility of the
-        # rpc-advertise service. Calls to `update` also remove old process
-        # records from the database.
-        process, _ = RegionControllerProcess.objects.get_or_create(
-            region=region_obj, pid=os.getpid())
-        return cls(region_obj.system_id, process.id)
-
-    def __init__(self, region_id, process_id):
-        """Use `promote` to construct new instances."""
-        super(RegionAdvertising, self).__init__()
-        self.region_id = region_id
-        self.process_id = process_id
-
-    @transactional
-    def getRegionProcess(self, process_id=None):
-        # Update the updated time for this process. This prevents other
-        # region process from removing this process.
-        try:
-            process = RegionControllerProcess.objects.get(id=self.process_id)
-        except RegionControllerProcess.DoesNotExist:
-            # Possible that another regiond process deleted this process
-            # because the updated field was not updated in time. Re-create the
-            # process with the same ID so its the same across the running of
-            # this regiond process.
-            process = RegionControllerProcess(
-                region=RegionController.objects.get_running_controller(),
-                pid=os.getpid(), created=now())
-            process.id = self.process_id
-            process.save(force_insert=True)
-        else:
-            process.save(update_fields=["updated"])
-        return process
-
-    @transactional
-    def registerConnection(
-            self, process, rack_controller, host, force_save=True):
-        """Register a connection into the database."""
-        # We need to handle the incoming name being an IPv6-form IPv4 address.
-        # Assume that's the case, and ignore the error if it is not.
-        try:
-            # Convert the hostname to an IPAddress, and then coerce that to
-            # dotted quad form, and from thence to a string.  If it works, we
-            # had an IPv4 address.  We want the dotted quad form, since that
-            # is what the region advertises.
-            host.host = str(IPAddress(host.host).ipv4())
-        except AddrConversionError:
-            # If we got an AddressConversionError, it's not one we need to
-            # convert.
-            pass
-        endpoint = RegionControllerProcessEndpoint.objects.get(
-            process=process, address=host.host, port=host.port)
-        connection, created = RegionRackRPCConnection.objects.get_or_create(
-            endpoint=endpoint, rack_controller=rack_controller)
-        if not created and force_save:
-            # Force the save so that signals connected to the
-            # RegionRackRPCConnection are performed.
-            connection.save()
-        return connection
-
-    @transactional
-    def unregisterConnection(self, process, ident, host):
-        """Unregister the connection into the database."""
-        try:
-            endpoint = RegionControllerProcessEndpoint.objects.get(
-                process=process, address=host.host, port=host.port)
-        except RegionControllerProcessEndpoint.DoesNotExist:
-            # Endpoint no longer exists, nothing to do.
-            pass
-        else:
-            try:
-                rack_controller = RackController.objects.get(system_id=ident)
-            except RackController.DoesNotExist:
-                # No rack controller, nothing to do.
-                pass
-            else:
-                RegionRackRPCConnection.objects.filter(
-                    endpoint=endpoint,
-                    rack_controller=rack_controller).delete()
-
-    @synchronous
-    @synchronised(lock)
-    @transactional
-    def update(self, addresses):
-        """Repopulate the `RegionControllerProcess` with this process's
-        information.
-
-        It updates all the records in `RegionControllerProcess` related to the
-        `RegionController`. Old `RegionControllerProcess` and
-        `RegionControllerProcessEndpoints` are garbage collected.
-
-        :param addresses: A set of `(address, port)` tuples.
-        """
-        # Get the region controller and update its hostname and last
-        # updated time.
-        region_obj = RegionController.objects.get(system_id=self.region_id)
-        update_fields = ["updated"]
-        hostname = gethostname()
-        if region_obj.hostname != hostname:
-            region_obj.hostname = hostname
-            update_fields.append("hostname")
-        region_obj.save(update_fields=update_fields)
-
-        # Get the updated region controller process.
-        process = self.getRegionProcess()
-
-        # Remove any old processes that are older than 90 seconds.
-        remove_before_time = now() - timedelta(seconds=90)
-        RegionControllerProcess.objects.filter(
-            updated__lte=remove_before_time).delete()
-
-        # Remove any processes that cannot be identified as still running
-        # on this region controller. This helps remove the need to wait
-        # 90 seconds to reap the old processes (only on region controllers
-        # where another regiond process is still running).
-        sibling_processes = (
-            RegionControllerProcess.objects
-            .filter(region=region_obj)
-            .exclude(id=self.process_id))
-        for sibling_process in sibling_processes:
-            if not is_pid_running(sibling_process.pid):
-                sibling_process.delete()
-
-        # Update all endpoints for this process.
-        previous_endpoint_ids = set(
-            RegionControllerProcessEndpoint.objects.filter(
-                process=process).values_list("id", flat=True))
-        if len(addresses) == 0:
-            # No endpoints; set the interval so it updates quickly.
-            interval = RegionAdvertisingService.INTERVAL_NO_ENDPOINTS
-        else:
-            # Has endpoints; update less frequently.
-            interval = RegionAdvertisingService.INTERVAL_WITH_ENDPOINTS
-            for addr, port in addresses:
-                endpoint, created = (
-                    RegionControllerProcessEndpoint.objects.get_or_create(
-                        process=process, address=addr, port=port))
-                if not created:
-                    previous_endpoint_ids.remove(endpoint.id)
-
-        # Remove any previous endpoints.
-        RegionControllerProcessEndpoint.objects.filter(
-            id__in=previous_endpoint_ids).delete()
-
-        # Update the status of this regiond service for this region based on
-        # the number of running processes.
-        Service.objects.create_services_for(region_obj)
-        number_of_processes = RegionControllerProcess.objects.filter(
-            region=region_obj).count()
-        not_running_count = workers.MAX_WORKERS_COUNT - number_of_processes
-        if not_running_count > 0:
-            if number_of_processes == 1:
-                process_text = "process"
-            else:
-                process_text = "processes"
-            Service.objects.update_service_for(
-                region_obj, "regiond", SERVICE_STATUS.DEGRADED,
-                "%d %s running but %d were expected." % (
-                    number_of_processes, process_text,
-                    workers.MAX_WORKERS_COUNT))
-        else:
-            Service.objects.update_service_for(
-                region_obj, "regiond", SERVICE_STATUS.RUNNING, "")
-
-        # Update the status of all regions that have no processes running.
-        for other_region in RegionController.objects.exclude(
-                system_id=self.region_id).prefetch_related("processes"):
-            # Use len with `all` so the prefetch cache is used.
-            if len(other_region.processes.all()) == 0:
-                Service.objects.mark_dead(other_region, dead_region=True)
-
-        # The caller is responsible for setting the update interval.
-        return interval, process
-
-    @synchronous
-    @synchronised(lock)
-    @transactional
-    def updateConnections(self, process, connections):
-        """Update the existing RPC connections into this region.
-
-        This is needed because the database could get in an incorrect state
-        because another process removed its references in the database and
-        the existing connections need to be re-created.
-        """
-        if connections is not None:
-            if len(connections) == 0:
-                RegionRackRPCConnection.objects.filter(
-                    endpoint__process=process).delete()
-            else:
-                previous_connection_ids = set(
-                    RegionRackRPCConnection.objects.filter(
-                        endpoint__process=process).values_list(
-                        "id", flat=True))
-                for ident, ident_conns in connections.items():
-                    rack = RackController.objects.filter(
-                        system_id=ident).first()
-                    if rack:
-                        for conn in ident_conns:
-                            if conn.hostIsRemote:
-                                db_conn = self.registerConnection(
-                                    process, rack, conn.host, force_save=False)
-                                previous_connection_ids.discard(db_conn.id)
-                RegionRackRPCConnection.objects.filter(
-                    id__in=previous_connection_ids).delete()
-
-    @synchronous
-    @synchronised(lock)
-    @transactional
-    def demote(self):
-        """Demote this regiond from active duty.
-
-        Removes all `RegionControllerProcess` records related to this process.
-
-        A subsequent call to `update()` will restore these records, hence
-        calling this while this service is running won't ultimately be very
-        useful.
-        """
-        # There should be only one, but this loop copes with zero too.
-        for region_obj in Node.objects.filter(system_id=self.region_id):
-            RegionControllerProcess.objects.get(
-                region=region_obj, pid=os.getpid()).delete()

@@ -15,6 +15,7 @@ __all__ = [
 from collections import (
     defaultdict,
     namedtuple,
+    OrderedDict,
 )
 from datetime import timedelta
 from functools import partial
@@ -3431,13 +3432,13 @@ class Node(CleanSave, TimestampedModel):
             if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
                 # An IPv4 subnet is hosting the default gateway and has DNS
                 # servers defined. IPv4 DNS servers take first-priority.
-                return subnet.dns_servers
+                return list(OrderedDict.fromkeys(subnet.dns_servers))
         if ipv6 and gateways.ipv6 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv6.subnet_id)
             if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
                 # An IPv6 subnet is hosting the default gateway and has DNS
                 # servers defined. IPv6 DNS servers take second-priority.
-                return subnet.dns_servers
+                return list(OrderedDict.fromkeys(subnet.dns_servers))
 
         # No default gateway subnet has specific DNS servers defined, so
         # use MAAS for the default DNS server.
@@ -3458,7 +3459,7 @@ class Node(CleanSave, TimestampedModel):
                 ipv4=(ipv4 and gateways.ipv4 is not None),
                 ipv6=(ipv6 and gateways.ipv6 is not None),
                 include_alternates=True)
-        return [str(ip) for ip in maas_dns_servers]
+        return list(set([str(ip) for ip in maas_dns_servers]))
 
     def get_boot_purpose(self):
         """

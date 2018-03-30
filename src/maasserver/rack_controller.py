@@ -70,13 +70,11 @@ class RackControllerService(Service):
     See module documentation for more details.
     """
 
-    def __init__(self, postgresListener, advertisingService, clock=reactor):
+    def __init__(self, ipcWorker, postgresListener, clock=reactor):
         """Initialise a new `RackControllerService`.
 
         :param postgresListener: The `PostgresListenerService` that is running
             in this regiond process.
-        :param advertisingService: The `RegionAdvertisingService` that is
-            updating the database about this regiond process.
         """
         super(RackControllerService, self).__init__()
         self.clock = clock
@@ -86,17 +84,17 @@ class RackControllerService(Service):
         self.processingDone = None
         self.watching = set()
         self.needsDHCPUpdate = set()
+        self.ipcWorker = ipcWorker
         self.postgresListener = postgresListener
-        self.advertisingService = advertisingService
 
     @asynchronous(timeout=FOREVER)
     def startService(self):
         """Start listening for messages."""
         super(RackControllerService, self).startService()
 
-        def cb_registerWithPostgres(advertising):
+        def cb_registerWithPostgres(processId):
             # Register the coreHandler with postgres.
-            self.processId = advertising.process_id
+            self.processId = processId
             self.postgresListener.register(
                 "sys_core_%d" % self.processId, self.coreHandler)
             return self.processId
@@ -125,7 +123,7 @@ class RackControllerService(Service):
             failure.trap(CancelledError)
             self.starting = None
 
-        self.starting = self.advertisingService.advertising.get()
+        self.starting = self.ipcWorker.processId.get()
         self.starting.addCallback(cb_registerWithPostgres)
         self.starting.addCallback(
             partial(deferToDatabase, cb_getManagingProcesses))
