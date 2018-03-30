@@ -42,7 +42,7 @@
                                             <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
                                         </button>
                                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                            <button class="p-contextual-menu__link" aria-label="View metrics" data-ng-if="!result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
+                                            <button class="p-contextual-menu__link" aria-label="View metrics" data-ng-if="!result.showing_results && result.results.length !== 0" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = true">View metrics</button>
                                             <button class="p-contextual-menu__link" aria-label="Hide metrics" data-ng-if="result.showing_results" data-ng-click="toggleMenu(); result.showing_history = false; result.showing_results = false">Hide metrics</button>
                                             <button class="p-contextual-menu__link" aria-label="View previous {$ result.result_section $}" data-ng-if="!result.showing_history" data-ng-click="toggleMenu(); loadHistory(result)">View previous {$ result.result_section $}</button>
                                             <button class="p-contextual-menu__link" aria-label="Hide previous {$ result.result_section $}" data-ng-if="result.showing_history" data-ng-click="toggleMenu(); result.showing_results = false; result.showing_history = false">Hide previous {$ result.result_section $}</button>
