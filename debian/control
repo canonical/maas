@@ -90,8 +90,8 @@ Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          ${misc:Depends},
          ${python3:Depends}
 Conflicts: dnsmasq, ntp
-Breaks: maas-region-controller-min, maas-dns (<= 2.4.0~alpha1~)
-Replaces: maas-region-controller-min, maas-dns (<= 2.4.0~alpha1~)
+Breaks: maas-region-controller-min, maas-dns (<= 2.4.0~alpha2~)
+Replaces: maas-region-controller-min, maas-dns (<= 2.4.0~alpha2~)
 Provides: maas-region-controller-min
 Description: Region controller API service for MAAS
  The MAAS region controller consists of REST API services and a postgres

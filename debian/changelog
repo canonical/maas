@@ -1,8 +1,10 @@
 maas (2.4.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release. (LP: #1754697)
+  * debian/*: Integrate maas-dns into maas-region-api; make maas-dns a
+    transitional package
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 16 Mar 2018 12:40:47 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 30 Mar 2018 15:08:20 -0400
 
 maas (2.4.0~alpha2-6717-gffaddd526-0ubuntu1~18.04.1) bionic; urgency=medium
 
