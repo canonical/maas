@@ -555,7 +555,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         " are required on maas-obj-field.");
                 }
                 if(angular.isString(attrs.disabled)) {
-                    scope.ngDisabled = () => true;
+                    scope.ngDisabled = function() { return true; };
                 }
 
                 // Remove transcluded element.
@@ -845,8 +845,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         '</input>'
                     ].join(''));
                     inputElement = $compile(inputElement)(hiddenScope);
-                    scope.getValue = () => attrs.value;
-                    scope.updateValue = () => null;
+                    scope.getValue = function() { return attrs.value; };
+                    scope.updateValue = function() { return null; };
                 } else if(attrs.type === "onoffswitch") {
                     var switchScope = scope.$new();
                     switchScope._toggle = controller.registerField(
