@@ -275,7 +275,7 @@
                         <th class="col-3">Gateway IP</th>
                         <th class="col-4">Destination</th>
                         <th class="col-2">Metric</th>
-                        <th class="col-3">Actions</th>
+                        <th class="col-3"><div class="u-align--right">Actions</div></th>
                         <th class="u-hide"><!-- empty cell required for validation --></th>
                         <th class="u-hide"><!-- empty cell required for validation --></th>
                     </tr>
@@ -289,12 +289,18 @@
                         <td class="col-4" aria-label="Destination" data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ getSubnetCIDR(staticRoute.destination) $}</td>
                         <td class="col-2" aria-label="Metric" data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ staticRoute.metric $}</td>
                         <td class="col-3" data-ng-if="!isStaticRouteInEditMode(staticRoute)">
-                            <button class="table__controls-action" aria-label="Edit static route"
-                                data-ng-click="toggleMenu(); staticRouteToggleEditMode(staticRoute)"
-                                data-ng-if="!isStaticRouteInDeleteMode(staticRoute) && !isStaticRouteInEditMode(staticRoute)">Edit</button>
-                            <button class="table__controls-action u-text--error" aria-label="Remove static route"
-                                data-ng-click="toggleMenu(); staticRouteEnterDeleteMode(staticRoute)"
-                                data-ng-if="!isStaticRouteInDeleteMode(staticRoute) && !isStaticRouteInEditMode(staticRoute)">Remove</button>
+                            <div class="u-align--right">
+                                <button class="p-button--base is-small" aria-label="Edit static route"
+                                    data-ng-click="toggleMenu(); staticRouteToggleEditMode(staticRoute)"
+                                    data-ng-if="!isStaticRouteInDeleteMode(staticRoute) && !isStaticRouteInEditMode(staticRoute)">
+                                    <i class="p-icon--edit">Edit</i>
+                                </button>
+                                <button class="p-button--base is-small" aria-label="Remove static route"
+                                    data-ng-click="toggleMenu(); staticRouteEnterDeleteMode(staticRoute)"
+                                    data-ng-if="!isStaticRouteInDeleteMode(staticRoute) && !isStaticRouteInEditMode(staticRoute)">
+                                    <i class="p-icon--delete">Remove</i>
+                                </button>
+                            </div>
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
                             <div data-ng-if="windowWidth <= 768">

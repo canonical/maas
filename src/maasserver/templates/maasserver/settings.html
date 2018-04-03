@@ -54,7 +54,7 @@
                             <th>Type</th>
                             <th>Last seen</th>
                             <th>MAAS Admin</th>
-                            <th></th>
+                            <th class="u-align--right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,21 +71,15 @@
                             <td aria-label="MAAS Admin">
                                 {% if user_item.is_superuser %} Yes {% endif %}
                             </td>
-                            <td>
-                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-icon--edit u-hide u-show--large u-float--left">
-                                    Edit
-                                </a>
-                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-button--neutral u-hide--large">
-                                    Edit
+                            <td class="u-align--right">
+                                <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="p-button--base is-small">
+                                    <i class="p-icon--edit">Edit</i>
                                 </a>
                                 {% if user != user_item %}
-                                <a title="Delete user {{ user_item.username }}" class="p-icon--delete u-hide u-show--large u-float--left" href="{% url 'accounts-del' user_item.username %}">
-                                    delete
+                                <a href="{% url 'accounts-del' user_item.username %}" title="Delete user {{ user_item.username }}" class="p-button--base is-small">
+                                    <i class="p-icon--delete">Delete</i>
                                 </a>
-                                <a title="Delete user {{ user_item.username }}" class="p-button--neutral u-hide--large u-margin--top-small" href="{% url 'accounts-del' user_item.username %}">
-                                    Delete
-                                </a>
-                                <form method="POST" action="{% url 'accounts-del' user_item.username %}">
+                                <form method="POST" action="{% url 'accounts-del' user_item.username %}" class="u-off-screen">
                                     {% csrf_token %}
                                     <input type="hidden" name="username" value="{{ user_item.username }}" />
                                 </form>

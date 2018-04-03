@@ -852,21 +852,23 @@
                                     </span>
                                 </td>
                                 <td class="col-1">
-                                    <div class="p-contextual-menu" toggle-ctrl  data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
-                                        <button class="p-contextual-menu__toggle p-button--base" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
-                                        <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                            <button class="p-contextual-menu__link"
-                                                aria-label="Add Alias or VLAN"
-                                                data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
-                                                data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
-                                            <button class="p-contextual-menu__link"
-                                                data-ng-if="!cannotEditInterface(interface)"
-                                                aria-label="Edit"
-                                                data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
-                                            <button class="p-contextual-menu__link"
-                                                data-ng-if="canBeRemoved()"
-                                                aria-label="Remove"
-                                                data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                    <div class="u-align--right">
+                                        <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
+                                            <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                                <button class="p-contextual-menu__link"
+                                                    aria-label="Add Alias or VLAN"
+                                                    data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
+                                                    data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
+                                                <button class="p-contextual-menu__link"
+                                                    data-ng-if="!cannotEditInterface(interface)"
+                                                    aria-label="Edit"
+                                                    data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                                <button class="p-contextual-menu__link"
+                                                    data-ng-if="canBeRemoved()"
+                                                    aria-label="Remove"
+                                                    data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -1558,8 +1560,8 @@
                                 <td class="col-1">
                                     <div class="u-align--right">
                                         <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
-                                            <button class="p-button--base p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
-                                                data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu"></i></button>
+                                            <button class="p-button--base is-small p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
+                                                data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu">Actions</i></button>
                                             <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
                                                 <a href="" class="p-contextual-menu__link"
                                                 aria-label="Unmount" data-ng-click="toggleMenu(); quickFilesystemUnmount(filesystem)"
@@ -1830,27 +1832,29 @@
                                         <span data-ng-if="item.test_status === -1">Unknown</span>
                                     </td>
                                     <td class="col-1">
-                                        <div class="p-contextual-menu u-align--right" toggle-ctrl
-                                            data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
-                                            <button class="p-contextual-menu__toggle p-button--base" aria-controls="#{$ item.name $}-menu"
-                                                data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
-                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
-                                                <a href="" class="p-contextual-menu__link"
-                                                    aria-label="Add logical volume"
-                                                    data-ng-show="canAddLogicalVolume(item)"
-                                                    data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</a>
-                                                <a href="" class="p-contextual-menu__link"
-                                                    aria-label="Partition"
-                                                    data-ng-show="canAddPartition(item)"
-                                                    data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</a>
-                                                <a href="" class="p-contextual-menu__link"
-                                                    aria-label="Edit"
-                                                    data-ng-show="canEdit(item)"
-                                                    data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</a>
-                                                <a href="" class="p-contextual-menu__link"
-                                                    aria-label="Remove"
-                                                    data-ng-show="canDelete(item)"
-                                                    data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</a>
+                                        <div class="u-align--right">
+                                            <div class="p-contextual-menu" toggle-ctrl
+                                                data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
+                                                <button class="p-contextual-menu__toggle p-button--base is-small" aria-controls="#{$ item.name $}-menu"
+                                                    data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                                                <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
+                                                    <a href="" class="p-contextual-menu__link"
+                                                        aria-label="Add logical volume"
+                                                        data-ng-show="canAddLogicalVolume(item)"
+                                                        data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</a>
+                                                    <a href="" class="p-contextual-menu__link"
+                                                        aria-label="Partition"
+                                                        data-ng-show="canAddPartition(item)"
+                                                        data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</a>
+                                                    <a href="" class="p-contextual-menu__link"
+                                                        aria-label="Edit"
+                                                        data-ng-show="canEdit(item)"
+                                                        data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</a>
+                                                    <a href="" class="p-contextual-menu__link"
+                                                        aria-label="Remove"
+                                                        data-ng-show="canDelete(item)"
+                                                        data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</a>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>

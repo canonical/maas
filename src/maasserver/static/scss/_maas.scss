@@ -234,4 +234,13 @@
       display: inline;
     }
   }
+  
+  .p-button--base.is-small {
+    padding: .5rem;
+    margin: 0;
+  }
+  
+  .p-tooltip__message {
+    margin: 0;
+  }
 }

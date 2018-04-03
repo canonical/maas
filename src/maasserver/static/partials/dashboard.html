@@ -37,7 +37,7 @@
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('ip')" data-ng-class="{'is-sorted': predicate === 'ip', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP</thdiv>
                         <th class="col-2" role="columnheader" data-ng-click="sortTable('observer_hostname')" data-ng-class="{'is-sorted': predicate === 'observer_hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Rack</th>
                         <th class="col-3" role="columnheader" data-ng-click="sortTable('last_seen')" data-ng-class="{'is-sorted': predicate === 'last_seen', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</th>
-                        <th class="col-1 u-align--right">Actions</th>
+                        <th class="col-1"><div class="u-align--right">Actions</div></th>
                     </tr>
                 </thead>
                 <tbody data-ng-if="convertTo.saved || !discoveredDevices.length">
@@ -83,7 +83,7 @@
                         </td>
                         <td class="col-1" data-ng-if="discovery.first_seen !== selectedDevice">
                             <div class="u-align--right">
-                                <button class="p-button--base" data-ng-click="toggleSelected(discovery.first_seen)">
+                                <button class="p-button--base is-small" data-ng-click="toggleSelected(discovery.first_seen)">
                                     <i class="p-icon--chevron u-no-margin--right">Open</i>
                                 </button>
                             </div>

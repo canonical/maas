@@ -39,7 +39,9 @@
                         <th class="col-2">Type</th>
                         <th class="col-4">Applies to</th>
                         <th class="col-1">Enabled</th>
-                        <th class="col-3">Actions</th>
+                        <th class="col-3">
+                            <div class="u-align--right">Actions</div>
+                        </th>
                         <th class="u-hide"><!-- empty cell required for validation --></th>
                     </tr>
                 </thead>
@@ -67,11 +69,18 @@
                             </div>
                         </td>
                         <td class="col-3" data-ng-if="editSnippet !== snippet">
-                            <span data-ng-if="deleteSnippet !== snippet">
-                            <button aria-label="Edit {$ snippet.name $}"
-                                data-ng-click="toggleMenu(); snippetEnterEdit(snippet)">Edit</button>
-                            <button aria-label="Remove {$ snippet.name $}"
-                                data-ng-click="toggleMenu(); snippetEnterRemove(snippet)">Remove</button>
+                            <div data-ng-if="deleteSnippet !== snippet" class="u-align--right">
+                                <button aria-label="Edit {$ snippet.name $}"
+                                    data-ng-click="toggleMenu(); snippetEnterEdit(snippet)"
+                                    class="p-button--base is-small">
+                                    <i class="p-icon--edit">Edit</i>
+                                </button>
+                                <button aria-label="Remove {$ snippet.name $}"
+                                    data-ng-click="toggleMenu(); snippetEnterRemove(snippet)"
+                                    class="p-button--base is-small">
+                                    <i class="p-icon--delete">Remove</i>
+                                </button>
+                            </div>
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="editSnippet === snippet">
                             <maas-obj-form obj="editSnippet" manager="snippetsManager" manager-method="updateItem"
@@ -368,11 +377,15 @@
                         </td>
                         <td class="col-3" data-ng-if="editRepository !== repository">
                             <div class="u-align--right" toggle-ctrl>
-                                <button aria-label="Edit"
-                                    data-ng-click="toggleMenu(); repositoryEnterEdit(repository)">Edit</button>
-                                <button aria-label="Remove"
+                                <button aria-label="Edit" class="p-button--base is-small"
+                                    data-ng-click="toggleMenu(); repositoryEnterEdit(repository)">
+                                    <i class="p-icon--edit">Edit</i>
+                                </button>
+                                <button aria-label="Remove" class="p-button--base is-small"
                                     data-ng-if="!isMirror(repository)"
-                                    data-ng-click="toggleMenu(); repositoryEnterRemove(repository)">Remove</button>
+                                    data-ng-click="toggleMenu(); repositoryEnterRemove(repository)">
+                                    <i class="p-icon--delete">Remove</i>
+                                </button>
                             </div>
                         </td>
                         <td class="is-active p-table-expanding__panel col-12" col-span="5" data-ng-if="editRepository === repository || deleteRepository === repository">
