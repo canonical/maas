@@ -603,11 +603,19 @@ describe("GeneralManager", function() {
 
     describe("loadItems", function() {
 
-        it("calls _loadData for all data", function() {
+        it("doesnt call _loadData without request", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(17);
+            expect(GeneralManager._loadData.calls.count()).toBe(0);
+        });
+
+        it("only call _loadData for requested data", function() {
+            spyOn(GeneralManager, "_loadData").and.returnValue(
+                $q.defer().promise);
+            GeneralManager.getData("osinfo");
+            GeneralManager.loadItems();
+            expect(GeneralManager._loadData.calls.count()).toBe(1);
         });
 
         it("calls _loadData for specified data only", function() {
@@ -621,29 +629,15 @@ describe("GeneralManager", function() {
             var defers = [
                 $q.defer(),
                 $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer()
             ];
             var i = 0;
             spyOn(GeneralManager, "_loadData").and.callFake(function() {
                 return defers[i++].promise;
             });
-            GeneralManager.loadItems().then(function() {
-                done();
-            });
+            GeneralManager.loadItems(['osinfo', 'hwe_kernels']).then(
+                function() {
+                    done();
+                });
             angular.forEach(defers, function(defer) {
                 defer.resolve();
                 $rootScope.$digest();

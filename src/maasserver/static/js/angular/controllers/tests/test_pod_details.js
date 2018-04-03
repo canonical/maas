@@ -42,6 +42,7 @@ describe("PodDetailsController", function() {
         GeneralManager = $injector.get("GeneralManager");
         DomainsManager = $injector.get("DomainsManager");
         ZonesManager = $injector.get("ZonesManager");
+        MachinesManager = $injector.get("MachinesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
@@ -99,6 +100,7 @@ describe("PodDetailsController", function() {
             UsersManager: UsersManager,
             DomainsManager: DomainsManager,
             ZonesManager: ZonesManager,
+            MachinesManager: MachinesManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -158,7 +160,7 @@ describe("PodDetailsController", function() {
     });
 
     it("calls loadManagers with PodsManager, UsersManager, GeneralManager, \
-        DomainsManager, ZonesManager", function() {
+        DomainsManager, ZonesManager, MachinesManager", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope,
@@ -167,7 +169,8 @@ describe("PodDetailsController", function() {
                     GeneralManager,
                     UsersManager,
                     DomainsManager,
-                    ZonesManager
+                    ZonesManager,
+                    MachinesManager
                 ]);
         });
 

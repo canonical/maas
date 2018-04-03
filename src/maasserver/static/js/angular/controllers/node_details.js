@@ -1059,9 +1059,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Reload osinfo when the page reloads
         $scope.$on("$routeChangeSuccess", function () {
-            GeneralManager.loadItems(["osinfo"]).then(function() {
-                $scope.osinfo = GeneralManager.getData("osinfo");
-            });
+            GeneralManager.loadItems();
         });
 
         // Load all the required managers.

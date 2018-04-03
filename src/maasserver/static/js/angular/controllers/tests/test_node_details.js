@@ -575,7 +575,7 @@ describe("NodeDetailsController", function() {
         spyOn(GeneralManager, "loadItems").and.returnValue(
             $q.defer().promise);
         $scope.$emit("$routeChangeSuccess");
-        expect(GeneralManager.loadItems).toHaveBeenCalledWith(["osinfo"]);
+        expect(GeneralManager.loadItems).toHaveBeenCalled();
     });
 
     describe("tagsAutocomplete", function() {

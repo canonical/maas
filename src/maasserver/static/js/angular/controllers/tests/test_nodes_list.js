@@ -226,12 +226,16 @@ describe("NodesListController", function() {
             it("calls loadManagers for " + node_type, function() {
                 $location.path("/" + node_type);
                 var controller = makeController();
+                var page_managers = [$scope.tabs[node_type].manager];
+                if($scope.currentpage === "machines" ||
+                        $scope.currentpage === "controllers") {
+                    page_managers.push(ScriptsManager);
+                }
                 expect(
                     ManagerHelperService.loadManagers
                 ).toHaveBeenCalledWith(
-                    $scope, [$scope.tabs[node_type].manager,
-                    GeneralManager, ZonesManager, UsersManager,
-                    ServicesManager, ScriptsManager]);
+                    $scope, [GeneralManager, ZonesManager, UsersManager,
+                    ServicesManager].concat(page_managers));
             });
         });
 
@@ -300,7 +304,7 @@ describe("NodesListController", function() {
         spyOn(GeneralManager, "loadItems").and.returnValue(
             $q.defer().promise);
         $scope.$emit("$routeChangeSuccess");
-        expect(GeneralManager.loadItems).toHaveBeenCalledWith(["osinfo"]);
+        expect(GeneralManager.loadItems).toHaveBeenCalled();
     });
 
     describe("toggleTab", function() {

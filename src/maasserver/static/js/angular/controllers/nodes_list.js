@@ -34,7 +34,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.switches = SwitchesManager.getItems();
         $scope.showswitches = $routeParams.switches === 'on';
         $scope.currentpage = "machines";
-        $scope.osinfo = GeneralManager.getData("osinfo");
+        $scope.osinfo = {};
         $scope.scripts = ScriptsManager.getItems();
         $scope.loading = true;
 
@@ -51,8 +51,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.machines.metadata = MachinesManager.getMetadata();
         $scope.tabs.machines.filters = SearchService.getEmptyFilter();
         $scope.tabs.machines.actionOption = null;
-        $scope.tabs.machines.takeActionOptions = GeneralManager.getData(
-            "machine_actions");
+        $scope.tabs.machines.takeActionOptions = [];
         $scope.tabs.machines.actionErrorCount = 0;
         $scope.tabs.machines.actionProgress = {
             total: 0,
@@ -94,8 +93,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.filters = SearchService.getEmptyFilter();
         $scope.tabs.devices.column = 'fqdn';
         $scope.tabs.devices.actionOption = null;
-        $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
-            "device_actions");
+        $scope.tabs.devices.takeActionOptions = [];
         $scope.tabs.devices.actionErrorCount = 0;
         $scope.tabs.devices.actionProgress = {
             total: 0,
@@ -124,8 +122,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.controllers.column = 'fqdn';
         $scope.tabs.controllers.actionOption = null;
         // Rack controllers contain all options
-        $scope.tabs.controllers.takeActionOptions = GeneralManager.getData(
-            "rack_controller_actions");
+        $scope.tabs.controllers.takeActionOptions = [];
         $scope.tabs.controllers.actionErrorCount = 0;
         $scope.tabs.controllers.actionProgress = {
             total: 0,
@@ -155,9 +152,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.switches.filters = SearchService.getEmptyFilter();
         $scope.tabs.switches.column = 'fqdn';
         $scope.tabs.switches.actionOption = null;
-        // XXX: Which actions should there be?
-        $scope.tabs.switches.takeActionOptions = GeneralManager.getData(
-            "machine_actions");
+        $scope.tabs.switches.takeActionOptions = [];
         $scope.tabs.switches.actionErrorCount = 0;
         $scope.tabs.switches.actionProgress = {
             total: 0,
@@ -357,6 +352,27 @@ angular.module('MAAS').controller('NodesListController', [
             $rootScope.title = $scope.tabs[tab].pagetitle;
             $rootScope.page = tab;
             $scope.currentpage = tab;
+
+            switch(tab) {
+            case 'machines':
+                $scope.osinfo = GeneralManager.getData('osinfo');
+                $scope.tabs.machines.takeActionOptions = GeneralManager.getData(
+                    'machine_actions');
+                break;
+            case 'devices':
+                $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
+                    'device_actions');
+                break;
+            case 'controllers':
+                $scope.tabs.controllers.takeActionOptions =
+                    GeneralManager.getData('rack_controller_actions');
+                break;
+            case 'switches':
+                // XXX: Which actions should there be?
+                $scope.tabs.switches.takeActionOptions = GeneralManager.getData(
+                    "machine_actions");
+                break;
+            }
         };
 
         // Clear the search bar.
@@ -717,9 +733,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Reload osinfo when the page reloads
         $scope.$on("$routeChangeSuccess", function () {
-            GeneralManager.loadItems(["osinfo"]).then(function() {
-                $scope.osinfo = GeneralManager.getData("osinfo");
-            });
+            GeneralManager.loadItems();
         });
 
         // Switch to the specified tab, if specified.
@@ -731,13 +745,20 @@ angular.module('MAAS').controller('NodesListController', [
                 }
             });
 
+        // The ScriptsManager is only needed for selecting testing or
+        // commissioning scripts.
+        var page_managers = [$scope.tabs[$scope.currentpage].manager];
+        if($scope.currentpage === "machines" ||
+                $scope.currentpage === "controllers") {
+            page_managers.push(ScriptsManager);
+        }
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
         ManagerHelperService.loadManagers($scope, [
-            $scope.tabs[$scope.currentpage].manager,
-            GeneralManager, ZonesManager, UsersManager, ServicesManager,
-            ScriptsManager]).then(function() {
+            GeneralManager, ZonesManager, UsersManager,
+            ServicesManager].concat(page_managers)).then(function() {
                 $scope.loading = false;
             });
 

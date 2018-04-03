@@ -7,10 +7,11 @@
 angular.module('MAAS').controller('PodDetailsController', [
     '$scope', '$rootScope', '$location', '$routeParams',
     'PodsManager', 'GeneralManager', 'UsersManager', 'DomainsManager',
-    'ZonesManager', 'ManagerHelperService', 'ErrorService', function(
+    'ZonesManager', 'MachinesManager', 'ManagerHelperService', 'ErrorService',
+    function(
         $scope, $rootScope, $location, $routeParams,
         PodsManager, GeneralManager, UsersManager, DomainsManager,
-        ZonesManager, ManagerHelperService, ErrorService) {
+        ZonesManager, MachinesManager, ManagerHelperService, ErrorService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -265,7 +266,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
             PodsManager, GeneralManager, UsersManager,
-            DomainsManager, ZonesManager]).then(function() {
+            DomainsManager, ZonesManager, MachinesManager]).then(function() {
 
             // Possibly redirected from another controller that already had
             // this pod set to active. Only call setActiveItem if not already

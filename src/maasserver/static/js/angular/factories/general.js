@@ -24,6 +24,7 @@ angular.module('MAAS').factory(
                 machine_actions: {
                     method: "general.machine_actions",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -31,6 +32,7 @@ angular.module('MAAS').factory(
                 device_actions: {
                     method: "general.device_actions",
                     data: [],
+                    request: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -38,6 +40,7 @@ angular.module('MAAS').factory(
                 region_controller_actions: {
                     method: "general.region_controller_actions",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -45,6 +48,7 @@ angular.module('MAAS').factory(
                 rack_controller_actions: {
                     method: "general.rack_controller_actions",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -52,6 +56,7 @@ angular.module('MAAS').factory(
                 region_and_rack_controller_actions: {
                     method: "general.region_and_rack_controller_actions",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -59,6 +64,7 @@ angular.module('MAAS').factory(
                 architectures: {
                     method: "general.architectures",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -66,6 +72,7 @@ angular.module('MAAS').factory(
                 known_architectures: {
                     method: "general.known_architectures",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -73,6 +80,7 @@ angular.module('MAAS').factory(
                 pockets_to_disable: {
                     method: "general.pockets_to_disable",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -80,6 +88,7 @@ angular.module('MAAS').factory(
                 components_to_disable: {
                     method: "general.components_to_disable",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -87,6 +96,7 @@ angular.module('MAAS').factory(
                 hwe_kernels: {
                     method: "general.hwe_kernels",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -94,6 +104,7 @@ angular.module('MAAS').factory(
                 min_hwe_kernels: {
                     method: "general.min_hwe_kernels",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null
@@ -101,6 +112,7 @@ angular.module('MAAS').factory(
                 default_min_hwe_kernel: {
                     method: "general.default_min_hwe_kernel",
                     data: { text: '' },
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null,
@@ -111,6 +123,7 @@ angular.module('MAAS').factory(
                 osinfo: {
                     method: "general.osinfo",
                     data: {},
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null,
@@ -126,6 +139,7 @@ angular.module('MAAS').factory(
                 bond_options: {
                     method: "general.bond_options",
                     data: {},
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null,
@@ -136,6 +150,7 @@ angular.module('MAAS').factory(
                 version: {
                     method: "general.version",
                     data: { text: null },
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null,
@@ -146,6 +161,7 @@ angular.module('MAAS').factory(
                 power_types: {
                     method: "general.power_types",
                     data: [],
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null,
@@ -194,6 +210,7 @@ angular.module('MAAS').factory(
                 release_options: {
                     method: "general.release_options",
                     data: {},
+                    requested: false,
                     loaded: false,
                     polling: [],
                     nextPromise: null,
@@ -236,7 +253,9 @@ angular.module('MAAS').factory(
 
         // Return loaded data.
         GeneralManager.prototype.getData = function(name) {
-            return this._getInternalData(name).data;
+            var d = this._getInternalData(name);
+            d.requested = true;
+            return d.data;
         };
 
         // Return true when all data has been loaded.
@@ -372,11 +391,15 @@ angular.module('MAAS').factory(
         GeneralManager.prototype.loadItems = function(items) {
             var self = this;
             var defer = $q.defer();
-            var waitingCount;
+            var waitingCount = 0;
             if(angular.isArray(items)) {
                 waitingCount = items.length;
             }else{
-                waitingCount = Object.keys(this._data).length;
+                angular.forEach(this._data, function(data) {
+                    if(data.requested) {
+                        waitingCount++;
+                    }
+                });
             }
             var done = function() {
                 waitingCount -= 1;
@@ -386,12 +409,12 @@ angular.module('MAAS').factory(
             };
 
             angular.forEach(this._data, function(data, name) {
-                if(angular.isArray(items) && items.indexOf(name) === -1) {
-                    return;
+                if((angular.isArray(items) && items.indexOf(name) !== -1) ||
+                        data.requested === true) {
+                    self._loadData(data, true).then(function() {
+                        done();
+                    });
                 }
-                self._loadData(data, true).then(function() {
-                    done();
-                });
             });
 
             return defer.promise;
