@@ -6,7 +6,7 @@ description: |
   Total automation of your physical servers for amazing data center operational efficiency.
 grade: stable
 confinement: strict
-base: base-18
+base: core18
 
 apps:
   supervisor:
