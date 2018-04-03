@@ -15,6 +15,7 @@ from maasserver.fields import (
 )
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
+    Fabric,
     RackController,
     Space,
 )
@@ -30,6 +31,9 @@ class VLANForm(MAASModelForm):
     space = SpecifierOrModelChoiceField(
         queryset=Space.objects.all(), required=False, empty_label="")
 
+    fabric = SpecifierOrModelChoiceField(
+        queryset=Fabric.objects.all(), required=False, empty_label="")
+
     class Meta:
         model = VLAN
         fields = (
@@ -42,6 +46,7 @@ class VLANForm(MAASModelForm):
             'secondary_rack',
             'relay_vlan',
             'space',
+            'fabric',
             )
 
     def __init__(self, *args, **kwargs):

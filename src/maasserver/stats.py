@@ -30,16 +30,20 @@ from maasserver.utils import get_maas_user_agent
 import requests
 
 
-def get_maas_stats():
+def get_machine_stats():
     nodes = Node.objects.all()
     machines = nodes.filter(node_type=NODE_TYPE.MACHINE)
     # Rather overall amount of stats for machines.
-    stats = machines.aggregate(
+    return machines.aggregate(
         total_cpu=Sum('cpu_count'), total_mem=Sum('memory'),
         total_storage=Sum('blockdevice__size'))
+
+
+def get_maas_stats():
     # Get all node types to get count values
     node_types = Node.objects.values_list('node_type', flat=True)
     node_types = Counter(node_types)
+    stats = get_machine_stats()
 
     return json.dumps({
         "controllers": {

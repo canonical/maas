@@ -14,6 +14,7 @@ from django.db.models import (
     BooleanField,
     CASCADE,
     CharField,
+    Count,
     deletion,
     ForeignKey,
     IntegerField,
@@ -243,6 +244,15 @@ class VLAN(CleanSave, TimestampedModel):
             subnet.vlan = self.fabric.get_default_vlan()
             subnet.save()
 
+    def unique_error_message(self, model_class, unique_check):
+        if set(unique_check) == {'vid', 'fabric'}:
+            return (
+                'A VLAN with the specified VID already exists in the '
+                'destination fabric.'
+            )
+        else:
+            return super().unique_error_message(model_class, unique_check)
+
     def delete(self):
         if self.is_fabric_default():
             raise ValidationError(
@@ -268,3 +278,9 @@ class VLAN(CleanSave, TimestampedModel):
                 "DHCP server is being used.",
                 ident="dhcp_disabled_all_vlans")
         super().save(*args, **kwargs)
+        # Circular dependencies.
+        from maasserver.models import Fabric
+        # Delete any now-empty fabrics.
+        fabrics_with_vlan_count = Fabric.objects.annotate(
+            vlan_count=Count("vlan"))
+        fabrics_with_vlan_count.filter(vlan_count=0).delete()

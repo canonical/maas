@@ -326,14 +326,8 @@
                             label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
                     </div>
                     <div class="col-6">
-                        <div class="p-form__group">
-                            <div class="p-form__label">
-                                <p><strong>Fabric</strong></p>
-                            </div>
-                            <div class="p-form__control">
-                                <p><a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a></p>
-                            </div>
-                        </div>
+                        <maas-obj-field type="options" key="fabric" label="Fabric"
+                                        options="fabric.id as fabric.name for fabric in vlanDetails.fabrics"></maas-obj-field>
                         <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
                             <div class="p-form__label">
                                 <p><strong>Rack controllers</strong>
@@ -351,6 +345,9 @@
                     </div>
                 </div>
                 <div class="row u-no-margin--top">
+                    <div class="col-8 u-vertically-center">
+                        <maas-obj-errors></maas-obj-errors>
+                    </div>
                     <div class="row u-align--right">
                         <button class="p-button--base" type="button"
                         data-ng-click="vlanDetails.exitEditSummary()">Cancel</button>
