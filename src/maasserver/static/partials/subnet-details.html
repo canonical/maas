@@ -230,7 +230,7 @@
                             options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
                             label-width="2" input-width="5"></maas-obj-field>
                         <maas-obj-field type="options" key="vlan" class="u-margin--bottom" label="VLAN" placeholder="Choose VLAN"
-                            options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.fabric"
+                            options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.$maasForm.getValue('fabric')"
                             label-width="2" input-width="5"></maas-obj-field>
                         <div class="p-form__group">
                             <div class="p-form__label">
