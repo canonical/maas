@@ -10,6 +10,7 @@ __all__ = [
 
 from datetime import timedelta
 
+from django.db.models import Sum
 from maasserver.models import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -30,6 +31,13 @@ import requests
 
 
 def get_maas_stats():
+    nodes = Node.objects.all()
+    machines = nodes.filter(node_type=NODE_TYPE.MACHINE)
+    # Rather overall amount of stats for machines.
+    stats = machines.aggregate(
+        total_cpu=Sum('cpu_count'), total_mem=Sum('memory'),
+        total_storage=Sum('blockdevice__size'))
+    # Get all node types to get count values
     node_types = Node.objects.values_list('node_type', flat=True)
     node_types = Counter(node_types)
 
@@ -43,7 +51,8 @@ def get_maas_stats():
         "nodes": {
             "machines": node_types.get(NODE_TYPE.MACHINE, 0),
             "devices": node_types.get(NODE_TYPE.DEVICE, 0),
-        }
+        },
+        "machine_stats": stats,
     })
 
 
