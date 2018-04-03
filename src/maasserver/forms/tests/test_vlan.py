@@ -13,6 +13,11 @@ from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    Not,
+)
 
 
 class TestVLANForm(MAASServerTestCase):
@@ -371,3 +376,63 @@ class TestVLANForm(MAASServerTestCase):
         self.assertEqual(secondary_rack, vlan.primary_rack)
         self.assertEqual(None, vlan.secondary_rack)
         self.assertTrue(vlan.dhcp_on)
+
+
+class TestVLANFormFabricModification(MAASServerTestCase):
+
+    def test__cannot_move_vlan_with_overlapping_vid(self):
+        fabric0 = Fabric.objects.get_default_fabric()
+        fabric1 = factory.make_Fabric()
+        fabric1_untagged = fabric1.get_default_vlan()
+        form = VLANForm(instance=fabric1_untagged, data={
+            "fabric": fabric0.id
+        })
+        is_valid = form.is_valid()
+        self.assertThat(is_valid, Equals(False))
+        self.assertThat(dict(form.errors), Equals(
+            {'__all__': [
+                'A VLAN with the specified VID already '
+                'exists in the destination fabric.'
+            ]}
+        ))
+        with ExpectedException(ValueError):
+            form.save()
+
+    def test__allows_moving_vlan_to_new_fabric_if_vid_is_unique(self):
+        fabric0 = Fabric.objects.get_default_fabric()
+        fabric1 = factory.make_Fabric()
+        fabric1_untagged = fabric1.get_default_vlan()
+        form = VLANForm(instance=fabric1_untagged, data={
+            "fabric": fabric0.id,
+            "vid": 10
+        })
+        is_valid = form.is_valid()
+        self.assertThat(is_valid, Equals(True))
+        form.save()
+
+    def test__deletes_empty_fabrics(self):
+        fabric0 = Fabric.objects.get_default_fabric()
+        fabric1 = factory.make_Fabric()
+        fabric1_untagged = fabric1.get_default_vlan()
+        form = VLANForm(instance=fabric1_untagged, data={
+            "fabric": fabric0.id,
+            "vid": 10
+        })
+        is_valid = form.is_valid()
+        self.assertThat(is_valid, Equals(True))
+        form.save()
+        self.assertThat(reload_object(fabric1), Equals(None))
+
+    def test__does_not_delete_non_empty_fabrics(self):
+        fabric0 = Fabric.objects.get_default_fabric()
+        fabric1 = factory.make_Fabric()
+        factory.make_VLAN(fabric=fabric1)
+        fabric1_untagged = fabric1.get_default_vlan()
+        form = VLANForm(instance=fabric1_untagged, data={
+            "fabric": fabric0.id,
+            "vid": 10
+        })
+        is_valid = form.is_valid()
+        form.save()
+        self.assertThat(is_valid, Equals(True))
+        self.assertThat(reload_object(fabric1), Not(Equals(None)))

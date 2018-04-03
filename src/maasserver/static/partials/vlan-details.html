@@ -220,7 +220,7 @@
         </div>
     </header>
     <section class="row">
-        <div class="wrapper--inner">
+        <fieldset class="wrapper--inner">
             <div class="twelve-col">
                 <h2 class="u-float--left">VLAN Summary</h2>
                 <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary">Edit</button>
@@ -268,12 +268,10 @@
                     <maas-obj-field type="textarea" key="description" label="Description" placeholder="VLAN description"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
-                <div class="six-col last-col">
+                <fieldset class="form__fieldset six-col last-col">
                     <dl>
-                        <dt class="two-col">Fabric</dt>
-                        <dd class="four-col last-col">
-                            <a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a>
-                        </dd>
+                        <maas-obj-field type="options" key="fabric" label="Fabric" label-width="two" input-width="three"
+                                        options="fabric.id as fabric.name for fabric in vlanDetails.fabrics"></maas-obj-field>
                         <div data-ng-if="vlanDetails.relatedControllers">
                             <dt class="two-col">Rack controllers <span class="icon icon--help tooltip" aria-label="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
                             <dd class="four-col last-col">
@@ -283,8 +281,11 @@
                             </dd>
                         </div>
                     </dl>
+                </fieldset>
+                <div class="six-col">
+                    <maas-obj-errors></maas-obj-errors>
                 </div>
-                <div class="twelve-col u-align--right">
+                <div class="six-col last-col u-align--right">
                     <button class="button--base button--inline"
                        data-ng-click="vlanDetails.exitEditSummary()">Cancel</button>
                     <button class="button--positive button--inline" maas-obj-save>Save summary</button>
