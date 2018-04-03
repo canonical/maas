@@ -53,10 +53,12 @@ class UserPrefsViewTest(MAASServerTestCase):
         # The OAuth tokens are displayed.
         for token in user.userprofile.get_authorisation_tokens():
             # The token string is a compact representation of the keys.
+            directive = doc.cssselect(
+                'li[data-maas-pref-key="%s"]' % token.key)[0]
             self.assertSequenceEqual(
                 [convert_tuple_to_string(get_creds_tuple(token))],
                 [elem.value.strip() for elem in
-                    doc.cssselect('input#%s' % token.key)])
+                    directive.cssselect('input')])
 
     def test_prefs_POST_profile(self):
         # The preferences page allows the user the update its profile

@@ -11,6 +11,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.user import UserHandler
+from piston3.models import Token
 
 
 class TestUserHandler(MAASServerTestCase):
@@ -77,3 +78,17 @@ class TestUserHandler(MAASServerTestCase):
         self.assertEqual(
             self.dehydrate_user(user),
             handler.auth_user({}))
+
+    def test_create_authorisation_token(self):
+        user = factory.make_User()
+        handler = UserHandler(user, {})
+        observed = handler.create_authorisation_token({})
+        self.assertItemsEqual(['key', 'secret', 'consumer'], observed.keys())
+        self.assertItemsEqual(['key', 'name'], observed['consumer'].keys())
+
+    def test_delete_authorisation_token(self):
+        user = factory.make_User()
+        handler = UserHandler(user, {})
+        observed = handler.create_authorisation_token({})
+        handler.delete_authorisation_token({'key': observed['key']})
+        self.assertIsNone(Token.objects.filter(key=observed['key']).first())

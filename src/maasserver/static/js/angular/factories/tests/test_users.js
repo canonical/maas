@@ -144,4 +144,58 @@ describe("UsersManager", function() {
             expect(UsersManager._loadAuthUser).toHaveBeenCalled();
         });
     });
+
+    describe("createAuthorisationToken", function() {
+
+        it("calls user.create_authorisation_token", function() {
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                $q.defer().promise);
+            UsersManager.createAuthorisationToken();
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                'user.create_authorisation_token', {});
+        });
+
+        it("raises error on error", function() {
+            var defer = $q.defer();
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                defer.promise);
+            spyOn(ErrorService, "raiseError");
+            UsersManager.createAuthorisationToken();
+
+            var error = makeName("error");
+            defer.reject(error);
+            $rootScope.$digest();
+
+            expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
+        });
+    });
+
+    describe("deleteAuthorisationToken", function() {
+
+        it("calls user.delete_authorisation_token", function() {
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                $q.defer().promise);
+
+            var key = makeName('key');
+            UsersManager.deleteAuthorisationToken(key);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                'user.delete_authorisation_token', {key: key});
+        });
+
+        it("raises error on error", function() {
+            var defer = $q.defer();
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                defer.promise);
+            spyOn(ErrorService, "raiseError");
+
+            var key = makeName('key');
+            UsersManager.deleteAuthorisationToken(key);
+
+            var error = makeName("error");
+            defer.reject(error);
+            $rootScope.$digest();
+
+            expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
+        });
+    });
 });

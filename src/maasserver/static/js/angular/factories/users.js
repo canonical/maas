@@ -120,5 +120,25 @@ angular.module('MAAS').factory(
                     });
         };
 
+        // Create a new authorisation token for the current user.
+        UsersManager.prototype.createAuthorisationToken = function() {
+            var self = this;
+            return RegionConnection.callMethod(
+                "user.create_authorisation_token", {}).catch(function(error) {
+                    ErrorService.raiseError(error);
+                });
+        };
+
+        // Delete the authorisation token for the current user.
+        UsersManager.prototype.deleteAuthorisationToken = function(key) {
+            var self = this;
+            return RegionConnection.callMethod(
+                "user.delete_authorisation_token", {
+                    key: key
+                }).catch(function(error) {
+                    ErrorService.raiseError(error);
+                });
+        };
+
         return new UsersManager();
     }]);

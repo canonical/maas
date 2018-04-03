@@ -8,12 +8,16 @@ __all__ = [
 ]
 
 from django.contrib.auth.models import User
+from django.http import HttpRequest
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
 )
+from provisioningserver.events import EVENT_TYPES
 
 
 class UserHandler(Handler):
@@ -21,7 +25,14 @@ class UserHandler(Handler):
     class Meta:
         queryset = User.objects.filter(is_active=True)
         pk = 'id'
-        allowed_methods = ['list', 'get', 'auth_user', 'mark_intro_complete']
+        allowed_methods = [
+            'list',
+            'get',
+            'auth_user',
+            'mark_intro_complete',
+            'create_authorisation_token',
+            'delete_authorisation_token',
+        ]
         fields = [
             "id",
             "username",
@@ -76,3 +87,40 @@ class UserHandler(Handler):
         self.user.userprofile.completed_intro = True
         self.user.userprofile.save()
         return self.full_dehydrate(self.user)
+
+    def create_authorisation_token(self, params):
+        """Create an authorisation token for the user.
+
+        This is only for the authenticated user. This cannot be performed on
+        a different user.
+        """
+        request = HttpRequest()
+        request.user = self.user
+        profile = self.user.userprofile
+        consumer, token = profile.create_authorisation_token()
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI,
+            request, None, "Created token for '%(username)s'.")
+        return {
+            'key': token.key,
+            'secret': token.secret,
+            'consumer': {
+                'key': consumer.key,
+                'name': consumer.name,
+            },
+        }
+
+    def delete_authorisation_token(self, params):
+        """Delete an authorisation token for the user.
+
+        This is only for the authenticated user. This cannot be performed on
+        a different user.
+        """
+        request = HttpRequest()
+        request.user = self.user
+        profile = self.user.userprofile
+        profile.delete_authorisation_token(params['key'])
+        create_audit_event(
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI,
+            request, None, "Deleted token for '%(username)s'.")
+        return {}
