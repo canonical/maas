@@ -108,7 +108,6 @@ from maasserver.models import (
     Subnet,
     Tag,
     UserGroup,
-    UserGroupMembership,
     VersionedTextFile,
     VirtualBlockDevice,
     VLAN,
@@ -1015,8 +1014,7 @@ class Factory(maastesting.factory.Factory):
         user = User.objects.create_user(
             username=username, password=password, email=email)
         for group in groups:
-            UserGroupMembership.objects.create(
-                user=user, group=group)
+            group.add(user)
         user.userprofile.completed_intro = completed_intro
         if is_local is not None:
             user.userprofile.is_local = is_local
@@ -1032,7 +1030,7 @@ class Factory(maastesting.factory.Factory):
         group = UserGroup(name=name, description=description)
         group.save()
         for user in users:
-            UserGroupMembership.objects.create(user=user, group=group)
+            group.add(user)
         return group
 
     def make_ResourcePool(self, name=None, description=None,

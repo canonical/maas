@@ -82,3 +82,22 @@ class TestUserGroup(MAASServerTestCase):
     def test_delete_default_fails(self):
         group = UserGroup.objects.get_default_usergroup()
         self.assertRaises(ValidationError, group.delete)
+
+    def test_add_user(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup()
+        group.add(user)
+        self.assertCountEqual(group.users.all(), [user])
+
+    def test_add_user_already_in_group(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        group.add(user)
+        self.assertCountEqual(group.users.all(), [user])
+
+    def test_remove_user(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        group = factory.make_UserGroup(users=[user1, user2])
+        group.remove(user1)
+        self.assertCountEqual(group.users.all(), [user2])

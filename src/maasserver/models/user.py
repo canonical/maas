@@ -92,12 +92,9 @@ def create_user(sender, instance, created, **kwargs):
         profile.create_authorisation_token()
 
         # Assign the user to the default group
-        from maasserver.models import (
-            UserGroup,
-            UserGroupMembership,
-        )
+        from maasserver.models import UserGroup
         default_group = UserGroup.objects.get_default_usergroup()
-        UserGroupMembership.objects.create(user=instance, group=default_group)
+        default_group.add(instance)
 
         # XXX assume that there is a 1:1 mapping between roles and pools.  Once
         # roles are exposed as part of RBAC, there might be many roles assigned

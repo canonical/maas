@@ -79,6 +79,16 @@ class UserGroup(CleanSave, TimestampedModel):
                 'This is the default user group, it cannot be deleted.')
         super().delete()
 
+    def add(self, user):
+        """Add a user to this group."""
+        if user in self.users.all():
+            return
+        UserGroupMembership.objects.create(user=user, group=self)
+
+    def remove(self, user):
+        """Remove a user from this group."""
+        UserGroupMembership.objects.filter(user=user, group=self).delete()
+
 
 class UserGroupMembership(Model):
 
