@@ -13,6 +13,7 @@ from maasserver import stats
 from maasserver.models import Config
 from maasserver.stats import (
     get_maas_stats,
+    get_machine_stats,
     get_request_params,
     make_maas_user_agent_request,
 )
@@ -40,12 +41,18 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_RegionRackController()
         factory.make_RegionController()
         factory.make_RackController()
-        m1 = factory.make_Machine(cpu_count=2, memory=200)
-        m2 = factory.make_Machine(cpu_count=3, memory=100)
+        factory.make_Machine(cpu_count=2, memory=200)
+        factory.make_Machine(cpu_count=3, memory=100)
         factory.make_Device()
 
         stats = get_maas_stats()
-        total_storage = int((m1.storage + m2.storage) * 1000000)
+        machine_stats = get_machine_stats()
+
+        # Due to floating point calculation subtleties, sometimes the value the
+        # database returns is off by one compared to the value Python
+        # calculates, so just get it directly from the database for the test.
+        total_storage = machine_stats['total_storage']
+
         compare = {
             "controllers": {
                 "regionracks": 1,
