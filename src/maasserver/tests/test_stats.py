@@ -40,10 +40,12 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_RegionRackController()
         factory.make_RegionController()
         factory.make_RackController()
-        factory.make_Machine()
+        m1 = factory.make_Machine(cpu_count=2, memory=200)
+        m2 = factory.make_Machine(cpu_count=3, memory=100)
         factory.make_Device()
 
         stats = get_maas_stats()
+        total_storage = int((m1.storage + m2.storage) * 1000000)
         compare = {
             "controllers": {
                 "regionracks": 1,
@@ -51,11 +53,16 @@ class TestMAASStats(MAASServerTestCase):
                 "racks": 1,
             },
             "nodes": {
-                "machines": 1,
+                "machines": 2,
                 "devices": 1,
             },
+            "machine_stats": {
+                "total_cpu": 5,
+                "total_mem": 300,
+                "total_storage": total_storage,
+            },
         }
-        self.assertEquals(stats, json.dumps(compare))
+        self.assertEquals(json.loads(stats), compare)
 
     def test_get_request_params_returns_params(self):
         factory.make_RegionRackController()
