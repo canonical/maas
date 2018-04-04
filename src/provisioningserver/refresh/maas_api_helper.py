@@ -234,7 +234,11 @@ def signal(
 
     if None not in (power_type, power_params):
         params[b'power_type'] = power_type.encode('utf-8')
-        user, power_pass, power_address, driver = power_params.split(",")
+        if power_type == 'moonshot':
+            user, power_pass, power_address, driver = power_params.split(",")
+        else:
+            (user, power_pass, power_address,
+                driver, boot_type) = power_params.split(",")
         # OrderedDict is used to make testing easier.
         power_params = OrderedDict([
             ('power_user', user),
@@ -245,6 +249,7 @@ def signal(
             power_params['power_hwaddress'] = driver
         else:
             power_params['power_driver'] = driver
+            power_params['power_boot_type'] = boot_type
         params[b'power_parameters'] = json.dumps(power_params).encode()
 
     data, headers = encode_multipart_data(

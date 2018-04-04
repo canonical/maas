@@ -6,6 +6,7 @@
 __all__ = []
 
 from collections import OrderedDict
+import os.path
 import platform
 import re
 import subprocess
@@ -31,6 +32,7 @@ from snippets.maas_ipmi_autodetect import (
     format_user_key,
     generate_random_password,
     get_ipmi_ip_address,
+    get_system_boot_type,
     IPMIError,
     list_user_numbers,
     make_ipmi_user_settings,
@@ -722,3 +724,24 @@ class TestEnableLanChannel(MAASTestCase):
             subprocess.CalledProcessError, bmc_set_mock)
         self.assertThat(
             bmc_set_mock.call_args_list, HasLength(1))
+
+
+class TestGetSystemBootType(MAASTestCase):
+
+    def test_get_system_boot_type_efi(self):
+        """Test that returns ."""
+        boot_type = 'efi'
+        # path os.path.isdir to return True to simulate
+        # that /sys/firmware/efi exists.
+        self.patch(os.path, "isdir").return_value = True
+        actual_boot_type = get_system_boot_type()
+        self.assertEqual(boot_type, actual_boot_type)
+
+    def test_get_system_boot_type_non_efi(self):
+        """Test """
+        boot_type = 'auto'
+        # path os.path.isdir to return False to simulate
+        # that /sys/firmware/efi doesn't exist.
+        self.patch(os.path, "isdir").return_value = False
+        actual_boot_type = get_system_boot_type()
+        self.assertEqual(boot_type, actual_boot_type)

@@ -263,16 +263,18 @@ def commit_ipmi_settings(config):
     run_command(('bmc-config', '--commit', '--filename', config))
 
 
-def get_maas_power_settings(user, password, ipaddress, version):
-    return "%s,%s,%s,%s" % (user, password, ipaddress, version)
+def get_maas_power_settings(user, password, ipaddress, version, boot_type):
+    return "%s,%s,%s,%s,%s" % (user, password, ipaddress, version, boot_type)
 
 
-def get_maas_power_settings_json(user, password, ipaddress, version):
+def get_maas_power_settings_json(
+        user, password, ipaddress, version, boot_type):
     power_params = {
         "power_address": ipaddress,
         "power_pass": password,
         "power_user": user,
         "power_driver": version,
+        "power_boot_type": boot_type,
     }
     return json.dumps(power_params)
 
@@ -318,6 +320,13 @@ def bmc_supports_lan2_0():
     if 'IPMI Version: 2.0' in output or platform.machine() == 'ppc64le':
         return True
     return False
+
+
+def get_system_boot_type():
+    """Detect if the system has boot EFI."""
+    if os.path.isdir('/sys/firmware/efi'):
+        return 'efi'
+    return 'auto'
 
 
 def main():
@@ -378,12 +387,17 @@ def main():
         IPMI_VERSION = "LAN_2_0"
     else:
         IPMI_VERSION = "LAN"
+
+    IPMI_BOOT_TYPE = get_system_boot_type()
+
     if args.commission_creds:
         print(get_maas_power_settings_json(
-            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS, IPMI_VERSION))
+            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS,
+            IPMI_VERSION, IPMI_BOOT_TYPE))
     else:
         print(get_maas_power_settings(
-            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS, IPMI_VERSION))
+            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS,
+            IPMI_VERSION, IPMI_BOOT_TYPE))
 
 if __name__ == '__main__':
     main()

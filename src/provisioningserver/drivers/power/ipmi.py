@@ -39,6 +39,14 @@ EndSection
 """
 
 
+IPMI_CONFIG_WITH_BOOT_TYPE = """\
+Section Chassis_Boot_Flags
+        Boot_Flags_Persistent                         No
+        BIOS_Boot_Type                                %s
+        Boot_Device                                   PXE
+EndSection
+"""
+
 IPMI_ERRORS = {
     'username invalid': {
         'message': (
@@ -159,6 +167,26 @@ IPMI_DRIVER_CHOICES = [
     ]
 
 
+class IPMI_BOOT_TYPE:
+    # DEFAULT used to provide backwards compatibility
+    DEFAULT = 'auto'
+    LEGACY = 'legacy'
+    EFI = 'efi'
+
+
+IPMI_BOOT_TYPE_CHOICES = [
+    [IPMI_BOOT_TYPE.DEFAULT, "Automatic"],
+    [IPMI_BOOT_TYPE.LEGACY, "Legacy boot"],
+    [IPMI_BOOT_TYPE.EFI, "EFI boot"]
+    ]
+
+
+IPMI_BOOT_TYPE_MAPPING = {
+    IPMI_BOOT_TYPE.EFI: 'EFI',
+    IPMI_BOOT_TYPE.LEGACY: 'PC-COMPATIBLE',
+    }
+
+
 class IPMIPowerDriver(PowerDriver):
 
     name = 'ipmi'
@@ -168,6 +196,11 @@ class IPMIPowerDriver(PowerDriver):
             'power_driver', "Power driver", field_type='choice',
             choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0,
             required=True),
+        make_setting_field(
+            'power_boot_type', "Power boot type", field_type='choice',
+            choices=IPMI_BOOT_TYPE_CHOICES, default=IPMI_BOOT_TYPE.DEFAULT,
+            required=False
+            ),
         make_setting_field('power_address', "IP address", required=True),
         make_setting_field('power_user', "Power user"),
         make_setting_field(
@@ -185,11 +218,17 @@ class IPMIPowerDriver(PowerDriver):
 
     @staticmethod
     def _issue_ipmi_chassis_config_command(
-            command, power_change, power_address):
+            command, power_change, power_address, power_boot_type=None):
         env = shell.select_c_utf8_locale()
         with NamedTemporaryFile("w+", encoding="utf-8") as tmp_config:
             # Write out the chassis configuration.
-            tmp_config.write(IPMI_CONFIG)
+            if (power_boot_type is None or
+                    power_boot_type == IPMI_BOOT_TYPE.DEFAULT):
+                tmp_config.write(IPMI_CONFIG)
+            else:
+                tmp_config.write(
+                    IPMI_CONFIG_WITH_BOOT_TYPE %
+                    IPMI_BOOT_TYPE_MAPPING[power_boot_type])
             tmp_config.flush()
             # Use it when running the chassis config command.
             # XXX: Not using call_and_check here because we
@@ -234,7 +273,7 @@ class IPMIPowerDriver(PowerDriver):
     def _issue_ipmi_command(
             self, power_change, power_address=None, power_user=None,
             power_pass=None, power_driver=None, power_off_mode=None,
-            mac_address=None, **extra):
+            mac_address=None, power_boot_type=None, **extra):
         """Issue command to ipmipower, for the given system."""
         # This script deliberately does not check the current power state
         # before issuing the requested power command. See bug 1171418 for an
@@ -271,7 +310,8 @@ class IPMIPowerDriver(PowerDriver):
         # Before changing state run the chassis config command.
         if power_change in ("on", "off"):
             self._issue_ipmi_chassis_config_command(
-                ipmi_chassis_config_command, power_change, power_address)
+                ipmi_chassis_config_command, power_change, power_address,
+                power_boot_type)
 
         # Additional arguments for the power command.
         if power_change == 'on':
