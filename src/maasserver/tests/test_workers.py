@@ -8,13 +8,18 @@ __all__ = []
 import os
 import random
 import sys
+from unittest.mock import call
 
 from crochet import wait_for
 from maasserver.workers import (
     set_max_workers_count,
+    WorkerProcess,
     WorkersService,
 )
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import DeferredValue
 from twisted.internet import reactor
@@ -59,9 +64,15 @@ class TestWorkersService(MAASTestCase):
         service = WorkersService(reactor, worker_count=worker_count)
         self.patch(service, '_spawnWorker')
         pid = random.randint(1, 500)
-        service.workers[pid] = {}
+        service.workers[pid] = WorkerProcess(service)
         service.spawnWorkers()
-        self.assertEquals(worker_count - 1, service._spawnWorker.call_count)
+        calls = [
+            call(runningImport=True)
+        ] + [
+            call()
+            for _ in range(worker_count - 2)
+        ]
+        self.assertThat(service._spawnWorker, MockCallsMatch(*calls))
 
     @wait_for_reactor
     @inlineCallbacks

@@ -9,6 +9,7 @@ __all__ = [
     "RegionWorkerServiceMaker",
 ]
 
+import os
 import signal
 import time
 
@@ -93,9 +94,14 @@ class RegionWorkerServiceMaker:
         self._configureReactor()
         self._configureCrochet()
 
+        # Should the import services run in this worker.
+        import_services = False
+        if os.environ.get('MAAS_REGIOND_RUN_IMPORTER_SERVICE') == 'true':
+            import_services = True
+
         # Populate the region's event-loop with services.
         from maasserver import eventloop
-        eventloop.loop.populate(master=False)
+        eventloop.loop.populate(master=False, import_services=import_services)
 
         # Return the eventloop's services to twistd, which will then be
         # responsible for starting them all.
@@ -179,7 +185,8 @@ class RegionAllInOneServiceMaker(RegionMasterServiceMaker):
 
         # Populate the region's event-loop with services.
         from maasserver import eventloop
-        eventloop.loop.populate(master=True, all_in_one=True)
+        eventloop.loop.populate(
+            master=True, all_in_one=True, import_services=True)
 
         # Return the eventloop's services to twistd, which will then be
         # responsible for starting them all.

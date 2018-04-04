@@ -26,9 +26,10 @@ def set_max_workers_count(worker_count):
 
 class WorkerProcess(protocol.ProcessProtocol):
 
-    def __init__(self, service):
+    def __init__(self, service, runningImport=False):
         super(WorkerProcess, self).__init__()
         self.service = service
+        self.runningImport = runningImport
 
     def connectionMade(self):
         self.pid = self.transport.pid
@@ -83,8 +84,17 @@ class WorkersService(service.Service, object):
             # Don't spwan new workers if the service is stopping.
             return
         missing = self.worker_count - len(self.workers)
+        if self.workers:
+            runningImport = max(
+                worker.runningImport for worker in self.workers.values())
+        else:
+            runningImport = False
         for _ in range(missing):
-            self._spawnWorker()
+            if not runningImport:
+                self._spawnWorker(runningImport=True)
+                runningImport = True
+            else:
+                self._spawnWorker()
 
     def registerWorker(self, worker):
         """Register the worker."""
@@ -109,12 +119,14 @@ class WorkersService(service.Service, object):
             log.msg("Killing worker pid:%d." % pid)
             worker.signal("KILL")
 
-    def _spawnWorker(self):
+    def _spawnWorker(self, runningImport=False):
         """Spawn a new worker."""
-        worker = WorkerProcess(self)
+        worker = WorkerProcess(self, runningImport=runningImport)
         env = os.environ.copy()
         env['MAAS_REGIOND_PROCESS_MODE'] = 'worker'
         env['MAAS_REGIOND_WORKER_COUNT'] = str(MAX_WORKERS_COUNT)
+        if runningImport:
+            env['MAAS_REGIOND_RUN_IMPORTER_SERVICE'] = 'true'
         self.reactor.spawnProcess(
             worker, self.worker_cmd, [self.worker_cmd],
             env=env, childFDs={0: 0, 1: 1, 2: 2})

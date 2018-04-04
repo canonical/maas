@@ -272,12 +272,14 @@ class RegionEventLoop:
             "requires": [],
         },
         "import-resources": {
-            "only_on_master": True,
+            "only_on_master": False,
+            "import_service": True,
             "factory": make_ImportResourcesService,
             "requires": [],
         },
         "import-resources-progress": {
-            "only_on_master": True,
+            "only_on_master": False,
+            "import_service": True,
             "factory": make_ImportResourcesProgressService,
             "requires": [],
         },
@@ -357,7 +359,8 @@ class RegionEventLoop:
         self.master = False
 
     @asynchronous
-    def populateService(self, name, master=False, all_in_one=False):
+    def populateService(
+            self, name, master=False, all_in_one=False, import_services=False):
         """Prepare a service."""
         factoryInfo = self.factories[name]
         if not all_in_one:
@@ -375,6 +378,10 @@ class RegionEventLoop:
                 raise ValueError(
                     "Service '%s' cannot be created because it can not run "
                     "in the all-in-one process." % name)
+        if factoryInfo.get('import_service', False) and not import_services:
+            raise ValueError(
+                "Service '%s' cannot be created because import services "
+                "should not run on this process." % name)
         try:
             service = self.services.getServiceNamed(name)
         except KeyError:
@@ -384,11 +391,13 @@ class RegionEventLoop:
             for require in factoryInfo["requires"]:
                 dependencies.append(
                     self.populateService(
-                        require, master=master, all_in_one=all_in_one))
+                        require, master=master, all_in_one=all_in_one,
+                        import_services=import_services))
             for optional in factoryInfo.get("optional", []):
                 try:
                     service = self.populateService(
-                        optional, master=master, all_in_one=all_in_one)
+                        optional, master=master, all_in_one=all_in_one,
+                        import_services=import_services)
                 except ValueError:
                     pass
                 else:
@@ -401,21 +410,27 @@ class RegionEventLoop:
         return service
 
     @asynchronous
-    def populate(self, master=False, all_in_one=False):
+    def populate(self, master=False, all_in_one=False, import_services=False):
         """Prepare services."""
         self.master = master
         for name, item in self.factories.items():
             if all_in_one:
                 if not item.get('not_all_in_one', False):
                     self.populateService(
-                        name, master=master, all_in_one=all_in_one)
+                        name, master=master, all_in_one=all_in_one,
+                        import_services=import_services)
             else:
                 if item['only_on_master'] and master:
                     self.populateService(
-                        name, master=master, all_in_one=all_in_one)
+                        name, master=master, all_in_one=all_in_one,
+                        import_services=import_services)
                 elif not item['only_on_master'] and not master:
-                    self.populateService(
-                        name, master=master, all_in_one=all_in_one)
+                    importService = item.get('import_service', False)
+                    if ((importService and import_services) or
+                            not importService):
+                        self.populateService(
+                            name, master=master, all_in_one=all_in_one,
+                            import_services=import_services)
 
     @asynchronous
     def prepare(self):

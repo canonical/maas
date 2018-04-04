@@ -8,6 +8,7 @@ __all__ = []
 import crochet
 from django.db import connections
 from django.db.backends.base.base import BaseDatabaseWrapper
+from fixtures import EnvironmentVariableFixture
 from maasserver import eventloop
 from maasserver.plugin import (
     Options,
@@ -97,7 +98,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         self.assertEqual("Hill", service_maker.description)
 
     @asynchronous(timeout=5)
-    def test_makeService(self):
+    def test_makeService_without_import_services(self):
         options = Options()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
         # Disable _configureThreads() as it's too invasive right now.
@@ -112,6 +113,38 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             "status-worker",
             "web",
             "ipc-worker",
+        ]
+        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        self.assertEqual(
+            len(service.namedServices), len(service.services),
+            "Not all services are named.")
+        self.assertThat(
+            logger.configure, MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD))
+        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+
+    @asynchronous(timeout=5)
+    def test_makeService_with_import_services(self):
+        options = Options()
+        service_maker = RegionWorkerServiceMaker("Harry", "Hill")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        # Set the environment variable to create the import services.
+        self.useFixture(
+            EnvironmentVariableFixture(
+                'MAAS_REGIOND_RUN_IMPORTER_SERVICE', 'true'))
+        service = service_maker.makeService(options)
+        self.assertIsInstance(service, MultiService)
+        expected_services = [
+            "database-tasks",
+            "postgres-listener-worker",
+            "rack-controller",
+            "rpc",
+            "status-worker",
+            "web",
+            "ipc-worker",
+            "import-resources",
+            "import-resources-progress",
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
@@ -173,8 +206,6 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "service-monitor",
             "status-monitor",
             "stats",
-            "import-resources",
-            "import-resources-progress",
             "postgres-listener-master",
             "networks-monitor",
             "active-discovery",

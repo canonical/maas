@@ -131,7 +131,7 @@ class TestRegionEventLoop(MAASTestCase):
                 ValueError, an_eventloop.populateService, *args, **kwargs)
         tryPopulate('workers', master=True, all_in_one=True).wait(30)
 
-    def test_populate_on_worker(self):
+    def test_populate_on_worker_without_import_services(self):
         self.patch(eventloop.services, "getServiceNamed")
         an_eventloop = eventloop.RegionEventLoop()
         # At first there are no services.
@@ -139,6 +139,32 @@ class TestRegionEventLoop(MAASTestCase):
             set(), {service.name for service in an_eventloop.services})
         # populate() creates a service with each factory.
         an_eventloop.populate(master=False).wait(30)
+        self.assertEqual(
+            {
+                name
+                for name, item in an_eventloop.factories.items()
+                if item["only_on_master"] is False and (
+                    item.get('import_service', False) is False)
+            },
+            {svc.name for svc in an_eventloop.services})
+        # The services are not started.
+        self.assertEqual(
+            {
+                name: False
+                for name, item in an_eventloop.factories.items()
+                if item["only_on_master"] is False and (
+                    item.get('import_service', False) is False)
+            },
+            {svc.name: svc.running for svc in an_eventloop.services})
+
+    def test_populate_on_worker_with_import_services(self):
+        self.patch(eventloop.services, "getServiceNamed")
+        an_eventloop = eventloop.RegionEventLoop()
+        # At first there are no services.
+        self.assertEqual(
+            set(), {service.name for service in an_eventloop.services})
+        # populate() creates a service with each factory.
+        an_eventloop.populate(master=False, import_services=True).wait(30)
         self.assertEqual(
             {
                 name
@@ -186,7 +212,8 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual(
             set(), {service.name for service in an_eventloop.services})
         # populate() creates a service with each factory.
-        an_eventloop.populate(master=True, all_in_one=True).wait(30)
+        an_eventloop.populate(
+            master=True, all_in_one=True, import_services=True).wait(30)
         self.assertEqual(
             {
                 name
@@ -358,8 +385,24 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_ImportResourcesService,
             eventloop.loop.factories["import-resources"]["factory"])
-        self.assertTrue(
+        self.assertFalse(
             eventloop.loop.factories["import-resources"]["only_on_master"])
+        self.assertTrue(
+            eventloop.loop.factories["import-resources"]["import_service"])
+
+    def test_make_ImportResourcesProgressService(self):
+        service = eventloop.make_ImportResourcesProgressService()
+        self.assertThat(service, IsInstance(
+            bootresources.ImportResourcesProgressService))
+        # It is registered as a factory in RegionEventLoop.
+        factories = eventloop.loop.factories
+        self.assertIs(
+            eventloop.make_ImportResourcesProgressService,
+            factories["import-resources-progress"]["factory"])
+        self.assertFalse(
+            factories["import-resources-progress"]["only_on_master"])
+        self.assertTrue(
+            factories["import-resources-progress"]["import_service"])
 
     def test_make_WebApplicationService(self):
         service = eventloop.make_WebApplicationService(
