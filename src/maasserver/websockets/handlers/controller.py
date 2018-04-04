@@ -28,7 +28,7 @@ class ControllerHandler(MachineHandler):
                 "service_set"), "controllerinfo")
         list_queryset = (
             Controller.controllers.all()
-            .select_related("controllerinfo", "domain")
+            .select_related("controllerinfo", "domain", "bmc")
             .prefetch_related("service_set")
         )
         allowed_methods = [

@@ -98,7 +98,7 @@ class MachineHandler(NodeHandler):
         queryset = node_prefetch(Machine.objects.all())
         list_queryset = (
             Machine.objects.select_related(
-                'boot_interface', 'owner', 'zone', 'domain')
+                'boot_interface', 'owner', 'zone', 'domain', 'bmc')
             .prefetch_related('blockdevice_set__iscsiblockdevice')
             .prefetch_related('blockdevice_set__physicalblockdevice')
             .prefetch_related('blockdevice_set__virtualblockdevice')
@@ -208,6 +208,10 @@ class MachineHandler(NodeHandler):
             else:
                 data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 
+        # Needed for machines to show up in the Pod details page.
+        if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
+            data['pod'] = self.dehydrate_pod(obj.bmc)
+
         cpu_script_results = [
             script_result for script_result in
             self._script_results.get(obj.id, {}).get(HARDWARE_TYPE.CPU, [])
@@ -262,8 +266,6 @@ class MachineHandler(NodeHandler):
             data["status_tooltip"] = ""
 
         if not for_list:
-            if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
-                data['pod'] = self.dehydrate_pod(obj.bmc)
             # Add info specific to a machine.
             data["show_os_info"] = self.dehydrate_show_os_info(obj)
             devices = [

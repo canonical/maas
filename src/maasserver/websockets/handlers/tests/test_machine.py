@@ -1702,6 +1702,15 @@ class TestMachineHandler(MAASServerTestCase):
             self.dehydrate_node(ownered_node, handler, for_list=True),
         ], handler.list({}))
 
+    def test_list_includes_pod_details_when_available(self):
+        user = factory.make_User()
+        pod = factory.make_Pod()
+        node = factory.make_Node(owner=user, bmc=pod)
+        handler = MachineHandler(user, {})
+        self.assertItemsEqual(
+            [self.dehydrate_node(node, handler, for_list=True)],
+            handler.list({}))
+
     def test_get_object_returns_node_if_super_user(self):
         user = factory.make_admin()
         node = factory.make_Node()
