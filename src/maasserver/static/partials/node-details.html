@@ -764,37 +764,252 @@
                 <div class="row">
                     <table class="p-table-expanding">
                         <thead>
-                            <tr>
-                                <th class="col-2">
-                                    <span data-ng-if="!isDevice">
-                                        <a data-ng-class="{ 'p-link--strong': tableInfo.column == 'name' }"
-                                            data-ng-click="tableInfo.column = 'name'">
-                                            Name
-                                        </a>
-                                        <span> | </span>
-                                        <a data-ng-class="{ 'p-link--strong': tableInfo.column == 'mac' }"
-                                            data-ng-click="tableInfo.column = 'mac'">
-                                            MAC
-                                        </a>
-                                    </span>
-                                    <span data-ng-if="isDevice">MAC</span>
+                            <tr data-ng-if="isDevice">
+                                <th class="table-col--25">MAC</th>
+                                <th class="table-col--20">IP Assignment</th>
+                                <th class="table-col--20">Subnet</th>
+                                <th class="table-col--20">IP Address</th>
+                                <th class="table-col--15"><div class="u-align--right">Actions</div></th>
+                            </tr>
+
+                            <tr data-ng-if="!isDevice">
+                                <th class="table-col--16">
+                                    <a data-ng-class="{ 'p-link--strong': tableInfo.column == 'name' }"
+                                        data-ng-click="tableInfo.column = 'name'">
+                                        Name
+                                    </a>
+                                    <span> | </span>
+                                    <a data-ng-class="{ 'p-link--strong': tableInfo.column == 'mac' }"
+                                        data-ng-click="tableInfo.column = 'mac'">
+                                        MAC
+                                    </a>
                                 </th>
-                                <th class="col-1 u-align--center"><span data-ng-if="!isController && !isDevice">PXE</span></th>
-                                <th class="col-1"><span data-ng-if="!isDevice">Type</span></th>
-                                <th class="col-1">
-                                    <span data-ng-if="!isDevice">Fabric</span>
-                                    <span data-ng-if="isDevice">IP Assignment</span>
-                                </th>
-                                <th class="col-1"><span data-ng-if="!isDevice">VLAN</span></th>
-                                <th class="col-3">Subnet</th>
-                                <th class="col-2">IP Address</th>
-                                <th class="col-1"><div class="u-align--right">Actions</div></th>
+                                <th class="table-col--7"><div data-ng-if="!isController" class="u-align--center">PXE</div></th>
+                                <th class="table-col--13">Type</th>
+                                <th class="table-col--13">Fabric</th>
+                                <th class="table-col--13">VLAN</th>
+                                <th class="table-col--13">Subnet</th>
+                                <th class="table-col--15">IP Address</th>
+                                <th class="table-col--10"><div class="u-align--right">Actions</div></th>
                             </tr>
                         </thead>
                         <tbody data-selected-rows>
-                            <tr data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
+                            <tr data-ng-if="isDevice" data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }" data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:isAllNetworkingDisabled() | removeInterfaceParents:newBridgeInterface:isAllNetworkingDisabled()">
+                                <td class="table-col--25">{$ interface.mac_address $}</td>
+                                <td class="table-col--20" aria-label="Subnet">
+                                    <span data-ng-if="!isEditing(interface) && (interface.subnet || (interface.fabric && !interface.discovered[0].subnet_id))">{$ getSubnetText(interface.subnet) $}</span>
+                                    <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
+                                        {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
+                                    </span>
+                                </td>
+                                <td class="table-col--20" aria-label="IP Address">{$ interface.ip_address $}</td>
+                                <td class="table-col--15">
+                                    <div class="u-align--right">
+                                        <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
+                                            <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                                <button class="p-contextual-menu__link"
+                                                    data-ng-if="!cannotEditInterface(interface)"
+                                                    aria-label="Edit"
+                                                    data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                                <button class="p-contextual-menu__link"
+                                                    data-ng-if="canBeRemoved()"
+                                                    aria-label="Remove"
+                                                    data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-table-expanding__panel col-12" data-ng-if="isShowingMembers(interface)">
+                                    <div class="row" data-ng-class="{ 'is-active': isShowingMembers(interface) }"
+                                        data-ng-repeat="member in interface.members"
+                                        data-ng-show="isShowingMembers(interface)">
+                                        <div class="col-1"></div>
+                                        <div class="col-2" data-ng-show="tableInfo.column == 'name'">{$ member.name $}</div>
+                                        <div class="col-2 ng-hide"data-ng-show="tableInfo.column == 'mac'">{$ member.mac_address $}</div>
+                                        <div class="col-2">{$ getInterfaceTypeText(member) $}</div>
+                                        <div class="col-7"></div>
+                                    </div>
+                                </td>
+                                <td class="p-table-expanding__panel col-12 u-no-padding"  data-ng-if="isInterfaceSelected(interface)">
+                                    <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
+                                        <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
+                                            <h2 data-ng-click="cancel()" class="u-float--left">
+                                                <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
+                                                <span data-ng-if="canAddVLAN(newInterface.parent)">Adding VLAN</span>
+                                                <span data-ng-if="isEditing(interface)">Editing {$ interface.name $}</span>
+                                                <span data-ng-if="isShowingDeleteConfirm()">Removing {$ interface.name $}</span>
+                                            </h2>
+                                            <button data-ng-click="cancel()" class="p-button u-float--right">
+                                                <i class="p-icon--remove">Cancel</i>
+                                            </button>
+                                        </div>
+                                        <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
+                                            <div class="row" data-ng-if="isShowingAdd()">
+                                                <div class="col-6">
+                                                    <div class="p-form__group">
+                                                        <label class="p-form__label">Name</label>
+                                                        <div class="p-form__control">
+                                                            <span class="col-4">{$ getAddName() $}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group">
+                                                        <label for="type" class="p-form__label">Type</label>
+                                                        <div class="p-form__control">
+                                                            <select name="type" data-ng-model="newInterface.type" data-ng-change="addTypeChanged()">
+                                                                <option value="alias" data-ng-show="canAddAlias(newInterface.parent)">Alias</option>
+                                                                <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="newInterface.type !== 'alias'">
+                                                        <label class="p-form__label">Tags</label>
+                                                        <div class="p-form__control tags--inline">
+                                                            <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="p-form__group">
+                                                        <label for="fabric" class="p-form__label">Fabric</label>
+                                                        <div class="p-form__control">
+                                                            <select name="fabric"
+                                                                data-ng-model="newInterface.parent.fabric"
+                                                                data-ng-options="fabric as fabric.name for fabric in fabrics"
+                                                                disabled="disabled">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="newInterface.type === 'alias'">
+                                                        <label for="vlan" class="p-form__label">VLAN</label>
+                                                        <div class="p-form__control">
+                                                            <select name="vlan"
+                                                                data-ng-model="newInterface.vlan"
+                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                                                disabled="disabled">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="newInterface.type === 'vlan'">
+                                                        <label for="vlan" class="p-form__label">VLAN</label>
+                                                        <div class="p-form__control">
+                                                            <select name="vlan"
+                                                                data-ng-model="newInterface.vlan"
+                                                                data-ng-change="vlanChanged(newInterface)"
+                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLAN | filterByFabric:newInterface.parent.fabric | filterByUnusedForInterface:newInterface.parent:originalInterfaces">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group">
+                                                        <label for="subnet" class="p-form__label">Subnet</label>
+                                                        <div class="p-form__control">
+                                                            <select name="subnet"
+                                                                data-ng-model="newInterface.subnet"
+                                                                data-ng-change="subnetChanged(newInterface)"
+                                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
+                                                                <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newInterface)">
+                                                        <label for="link-mode" class="p-form__label">IP mode</label>
+                                                        <div class="p-form__control">
+                                                            <select name="link-mode"
+                                                                data-ng-model="newInterface.mode"
+                                                                data-ng-change="modeChanged(newInterface)"
+                                                                data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:newInterface">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="newInterface.mode == 'static'">
+                                                        <label for="ip-address" class="p-form__label">IP address</label>
+                                                        <div class="p-form__control">
+                                                            <input name="ip-address" type="text"
+                                                                placeholder="IP address"
+                                                                data-ng-model="newInterface.ip_address"
+                                                                data-ng-class="{ 'is-error': isIPAddressInvalid(newInterface) }">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <maas-obj-form obj="editInterface" manager="nodesManager" manager-method="updateInterfaceForm"
+                                                table-form="true" save-on-blur="false" after-save="editSave" pre-process="preProcessInterface"
+                                                data-ng-if="isEditing(editInterface)">
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <maas-obj-field type="text" key="mac_address" label="MAC address" label-width="2" input-width="5"
+                                                            data-ng-if="interface.type !== 'alias' && interface.type !== 'vlan'" disable-label="false"
+                                                            input-class="table__input u-margin--none" placeholder="00:00:00:00:00:00"></maas-obj-field>
+                                                        <maas-obj-field type="tags" key="tags" label="Tags" label-width="2" input-width="5"
+                                                            placeholder="Add a tag"
+                                                            data-ng-if="!isAllNetworkingDisabled(interface) && interface.type !== 'alias'"
+                                                            disable-label="false"></maas-obj-field>
+                                                    </div>
+                                                    <div class="col-6" data-ng-if="!isAllNetworkingDisabled(interface)">
+                                                        <maas-obj-field type="options" key="ip_assignment" label="IP Assignment" label-width="2" input-width="5"
+                                                            disable-label="false"
+                                                            options="assignment.name as assignment.text for assignment in ipAssignments"></maas-obj-field>
+                                                        <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
+                                                            data-ng-init="editInterface.subnet = editInterface.defaultSubnet" label-width="2" input-width="5"
+                                                            data-ng-if="editInterface.$maasForm.getValue('ip_assignment') === 'static'"
+                                                            on-change="subnetChangedForm"
+                                                            disable-label="false"
+                                                            options="subnet as getSubnetText(subnet) for subnet in subnets"></maas-obj-field>
+                                                        <maas-obj-field type="text" key="ip_address" label="IP address" placeholder="IP Address" label-width="two" input-width="three"
+                                                            disable-label="false" input-class="table__input u-margin--none"
+                                                            data-ng-if="editInterface.$maasForm.getValue('ip_assignment') === 'external'">
+                                                            </maas-obj-field>
+                                                        <maas-obj-field type="text" key="ip_address" label="IP Address" placeholder="IP Address (optional)"
+                                                            data-ng-if="editInterface.$maasForm.getValue('ip_assignment') === 'static'" label-width="2" input-width="5"
+                                                            disable-label="false"></maas-obj-field>
+                                                    </div>
+                                                </div>
+                                                <div class="row u-no-margin--top">
+                                                    <hr />
+                                                    <div class="u-float--left">
+                                                        <maas-obj-errors></maas-obj-errors>
+                                                    </div>
+                                                    <div class="u-float--right u-no-margin--top">
+                                                        <button class="p-button--base"
+                                                            data-ng-click="editCancel()">Cancel</button>
+                                                        <button class="p-button--positive u-no-margin--top"
+                                                        data-ng-disabled="isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                        maas-obj-save>Save</button>
+                                                    </div>
+                                                </div>
+                                            </maas-obj-form>
+                                        </div>
+                                        <div class="row is-active" data-ng-if="isShowingDeleteConfirm() && isInterfaceSelected(interface)">
+                                            <div class="col-8">
+                                                <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
+                                            </div>
+                                            <div class="col-4 u-align--right">
+                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
+                                            </div>
+                                        </div>
+                                        <hr data-ng-if="isShowingAdd() && !newInterface.saving" />
+                                        <div class="row" data-ng-if="isShowingAdd() && !newInterface.saving">
+                                            <div class="col-6">
+                                                <button class="p-button--neutral"
+                                                    data-ng-click="addInterface('alias')"
+                                                    data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>alias</button>
+                                                <button class="p-button--neutral u-no-margin--top"
+                                                    data-ng-click="addInterface('vlan')"
+                                                    data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
+                                            </div>
+                                            <div class="col-6 u-align--right">
+                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr data-ng-if="!isDevice"  data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
                                 data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:isAllNetworkingDisabled() | removeInterfaceParents:newBridgeInterface:isAllNetworkingDisabled()">
-                                <td class="col-2" aria-label="Name" data-ng-if="!isDevice"
+                                <td class="table-col--16" aria-label="Name"
                                     data-ng-class="{ 'is-error': isInterfaceNameInvalid(editInterface) }">
                                     <ul class="p-inline-list u-no-margin--top">
                                         <li class="p-inline-list__item" data-ng-if="!isController && !isAllNetworkingDisabled() && !isEditing(interface)">
@@ -813,52 +1028,46 @@
                                         </li>
                                     </ul>
                                 </td>
-                                <td class="col-1" data-ng-if="isDevice">{$ interface.mac_address $}</td>
-                                <td class="col-1 u-align--center" aria-label="Boot interface">
-                                    <span class="u-hide u-show--large">
+                                <td class="table-col--7" aria-label="Boot interface">
+                                    <span class="u-align--center u-hide u-show--large">
                                         <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
-                                            data-ng-if="!isController && !isDevice && isBootInterface(interface)"
+                                            data-ng-if="!isController && isBootInterface(interface)"
                                             class="u-no-margin--right">
                                         <label for="{$ interface.name $}"></label>
                                     </span>
-                                    <span class="u-hide--large" data-ng-if="!isController && !isDevice && isBootInterface(interface)">Yes</span>
-                                    <span class="u-hide--large" data-ng-if="!isController && !isDevice && !isBootInterface(interface)">No</span>
+                                    <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface)">Yes</span>
+                                    <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface)">No</span>
                                 </td>
-                                <td class="col-1" aria-label="Type">
-                                    <span data-ng-if="!isDevice && !isEditing(interface)">{$ getInterfaceTypeText(interface) $}</span>
+                                <td class="table-col--13" aria-label="Type">
+                                    <span data-ng-if="!isEditing(interface)">{$ getInterfaceTypeText(interface) $}</span>
                                 </td>
-                                <td class="col-1" aria-label="Fabric">
-                                    <span data-ng-if="!isDevice && !isEditing(interface)">{$ interface.fabric.name || "Disconnected" $}</span>
-                                    <span data-ng-if="isDevice && !isEditing(interface)">{$ getDeviceIPAssignment(interface.ip_assignment) $}</span>
+                                <td class="table-col--13" aria-label="Fabric">
+                                    <span data-ng-if="!isEditing(interface)">{$ interface.fabric.name || "Disconnected" $}</span>
                                 </td>
-                                <td class="col-1" aria-label="VLAN">
-                                    <span data-ng-if="!isDevice && !isEditing(interface)">{$ getVLANText(interface.vlan) $}</span>
+                                <td class="table-col--13" aria-label="VLAN">
+                                    <span data-ng-if="!isEditing(interface)">{$ getVLANText(interface.vlan) $}</span>
                                 </td>
-                                <td class="col-3" aria-label="Subnet">
-                                    <span data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))">{$ getSubnetText(interface.subnet) $}</span>
+                                <td class="table-col--13" aria-label="Subnet">
                                     <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
                                         {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                     </span>
                                 </td>
-                                <td class="col-2" aria-label="IP Address">
-                                    <span data-ng-if="isDevice">
-                                        {$ interface.ip_address $}
-                                    </span>
-                                    <span data-ng-if="!isDevice && !isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" >
+                                <td class="table-col--15" aria-label="IP Address">
+                                    <span data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" >
                                         {$ interface.ip_address $} ({$ getLinkModeText(interface) $})
                                     </span>
-                                    <span data-ng-if="!isDevice && !isEditing(interface) && interface.discovered[0].ip_address && interface.fabric">
+                                    <span data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric">
                                         {$ interface.discovered[0].ip_address $} (DHCP)
                                     </span>
                                 </td>
-                                <td class="col-1">
+                                <td class="table-col--10">
                                     <div class="u-align--right">
                                         <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
                                             <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
                                             <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
                                                 <button class="p-contextual-menu__link"
                                                     aria-label="Add Alias or VLAN"
-                                                    data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
+                                                    data-ng-if="canAddAliasOrVLAN(interface)"
                                                     data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
                                                 <button class="p-contextual-menu__link"
                                                     data-ng-if="!cannotEditInterface(interface)"
@@ -990,7 +1199,7 @@
                                                 data-ng-if="isEditing(editInterface)">
                                                 <div class="row">
                                                     <div class="col-6">
-                                                        <div class="p-form__group" data-ng-if="!isDevice">
+                                                        <div class="p-form__group">
                                                             <label class="p-form__label">Type</label>
                                                             <div class="p-form__control">
                                                                 <span>{$ getInterfaceTypeText(interface) $}</span>
@@ -1007,46 +1216,41 @@
                                                     <div class="col-6" data-ng-if="!isAllNetworkingDisabled(interface)">
                                                         <maas-obj-field type="options" key="fabric" label="Fabric" label-width="2" input-width="5"
                                                             disable-label="false"
-                                                            data-ng-if="!isDevice"
                                                             placeholder="Disconnected" placeholder-enabled="true"
                                                             on-change="fabricChangedForm"
                                                             options="fabric as fabric.name for fabric in fabrics"></maas-obj-field>
                                                         <maas-obj-field type="options" key="vlan" label="VLAN" label-width="2" input-width="5"
                                                             disable-label="false"
-                                                            data-ng-if="!isDevice && editInterface.$maasForm.getValue('fabric')"
+                                                            data-ng-if="editInterface.$maasForm.getValue('fabric')"
                                                             disabled="interface.type === 'physical' || interface.type === 'bond'"
                                                             on-change="vlanChangedForm"
                                                             options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.$maasForm.getValue('fabric')">
                                                         </maas-obj-field>
                                                         <maas-obj-field type="options" key="ip_assignment" label="IP Assignment" label-width="2" input-width="5"
                                                             disable-label="false"
-                                                            data-ng-if="isDevice"
                                                             options="assignment.name as assignment.text for assignment in ipAssignments"></maas-obj-field>
                                                         <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
                                                             disable-label="false" label-width="2" input-width="5"
-                                                            data-ng-if="!isDevice && editInterface.$maasForm.getValue('fabric')"
+                                                            data-ng-if="editInterface.$maasForm.getValue('fabric')"
                                                             on-change="subnetChangedForm"
                                                             options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.$maasForm.getValue('vlan')">
                                                             </maas-obj-field>
                                                         <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
                                                             data-ng-init="editInterface.subnet = editInterface.defaultSubnet" label-width="2" input-width="5"
-                                                            data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'"
+                                                            data-ng-if="editInterface.$maasForm.getValue('ip_assignment') === 'static'"
                                                             on-change="subnetChangedForm"
                                                             disable-label="false"
                                                             options="subnet as getSubnetText(subnet) for subnet in subnets"></maas-obj-field>
                                                         <maas-obj-field type="options" key="mode" label="IP mode" label-width="2" input-width="5"
                                                             disable-label="false"
-                                                            data-ng-if="!isDevice && editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
+                                                            data-ng-if="editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
                                                             options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface.$maasForm">
                                                             on-change="modeChangedForm"
                                                             </maas-obj-field>
                                                         <maas-obj-field type="text" key="ip_address" label="IP address" placeholder="IP Address" label-width="two" input-width="three"
                                                             disable-label="false" input-class="table__input u-margin--none"
-                                                            data-ng-if="(!isDevice && editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static') || (isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'external')">
+                                                            data-ng-if="(editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static')">
                                                             </maas-obj-field>
-                                                        <maas-obj-field type="text" key="ip_address" label="IP Address" placeholder="IP Address (optional)"
-                                                            data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'" label-width="2" input-width="5"
-                                                            disable-label="false"></maas-obj-field>
                                                     </div>
                                                 </div>
                                                 <div class="row u-no-margin--top">
@@ -1058,7 +1262,7 @@
                                                         <button class="p-button--base"
                                                             data-ng-click="editCancel()">Cancel</button>
                                                         <button class="p-button--positive u-no-margin--top"
-                                                        data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                        data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
                                                         maas-obj-save>Save</button>
                                                     </div>
                                                 </div>
@@ -1091,6 +1295,7 @@
                                     </div>
                                 </td>
                             </tr>
+
                             <tr class="row is-active" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
                                 <td class="col-1">
                                     <input type="checkbox" class="checkbox" name="bond-create" disabled="disabled" checked />
