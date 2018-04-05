@@ -613,6 +613,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 // Add the wrapper for the input.
                 var inputWrapper = angular.element('<div></div>');
                 inputWrapper.addClass("p-form__control");
+                inputWrapper.addClass("u-no-margin--top");
 
                 if(attrs.inputWidth) {
                     inputWrapper.addClass("col-" + attrs.inputWidth);
@@ -1040,6 +1041,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             'p-icon--spinner u-animation--spin"></i>');
                         inputWrapper.addClass('p-tooltip');
                         inputWrapper.addClass('p-tooltip--bottom');
+                        inputWrapper.addClass('u-no-margin--top');
                         inputWrapper.attr('aria-label', 'Saving');
                     } else {
                       inputWrapper.children(
@@ -1047,6 +1049,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         inputWrapper.find('i.obj-saving').remove();
                         inputWrapper.removeClass('p-tooltip');
                         inputWrapper.removeClass('p-tooltip--right');
+                        inputWrapper.addClass('u-no-margin--top');
                         inputWrapper.removeAttr('aria-label');
                     }
                 });

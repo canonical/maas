@@ -1,9 +1,9 @@
 @mixin maas-switch {
   .maas-p-switch {
-    height: $sp-x-large;
+    height: $sp-large;
     margin: 0 auto;
     position: relative;
-    width: $sp-x-large * 2;
+    width: $sp-large * 2;
     display: inline-block;
 
     &--input {
@@ -18,7 +18,7 @@
     &--mask {
       background: $color-light;
       height: 100%;
-      line-height: $sp-x-large;
+      line-height: $sp-large;
       margin-top: 0;
       pointer-events: none;
       position: relative;
@@ -29,7 +29,7 @@
           brisk
         );
         background: $color-mid-light;
-        content: 'Off';
+        content: '';
         display: block;
         height: 100%;
         text-align: right;
@@ -63,7 +63,7 @@
     &--input:checked + &--mask {
       &::before {
         text-align: left;
-        content: 'On';
+        content: '';
         color: $color-x-light;
         background: $color-information;
       }
