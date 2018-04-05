@@ -208,13 +208,13 @@
         </div>
         <div class="col-2">
           <button class="p-button--neutral u-float--right"
-                data-ng-if="canEdit()"
+                data-ng-if="canEdit() && !editing"
                 data-ng-click="editPodConfiguration()">Edit</button>
         </div>
       </div>
       <div class="row">
             <maas-obj-form obj="pod" manager="podManager" manager-method="updateItem"
-                table-form="true" save-on-blur="false" data-ng-disabled="!editing">
+                table-form="true" save-on-blur="false" after-save="exitEditPodConfiguration" data-ng-disabled="!editing">
                 <div class="col-6">
                     <div class="col-6">
                         <dl>
@@ -229,7 +229,6 @@
                 </div>
                 <div class="col-6">
                     <maas-pod-parameters hide-type="true"></maas-pod-parameters>
-                    <maas-obj-errors></maas-obj-errors>
                 </div>
 		<div class="row">
 		  <div class="col-12 u-align--right" data-ng-if="editing">
@@ -237,7 +236,7 @@
 		    <p maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
 		    <button class="p-button--base"
 			    data-ng-click="exitEditPodConfiguration()">Cancel</button>
-		    <button class="p-button--positive" data-ng-click="exitEditPodConfiguration()" maas-obj-save>Save changes</button>
+		    <button class="p-button--positive" maas-obj-save>Save changes</button>
 		  </div>
 		</div>
             </maas-obj-form>
