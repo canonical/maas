@@ -6,10 +6,7 @@ from datetime import (
     timedelta,
 )
 import json
-from unittest import (
-    mock,
-    TestCase,
-)
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
@@ -32,15 +29,17 @@ from maasserver.models import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.worker_user import get_worker_user
 from macaroonbakery.bakery import (
     IdentityError,
     SimpleIdentity,
     VerificationError,
 )
+from metadataserver.nodeinituser import get_node_init_user
 import requests
 
 
-class TestIDClient(TestCase):
+class TestIDClient(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
@@ -51,9 +50,9 @@ class TestIDClient(TestCase):
         self.assertEqual(identity.id(), 'user')
 
     def test_declared_entity_no_username(self):
-        with self.assertRaises(IdentityError) as cm:
-            self.client.declared_identity(None, {'other': 'stuff'})
-        self.assertEqual(str(cm.exception), 'No username found')
+        self.assertRaises(
+            IdentityError, self.client.declared_identity, None,
+            {'other': 'stuff'})
 
     def test_identity_from_context(self):
         _, [caveat] = self.client.identity_from_context(None)
@@ -130,6 +129,14 @@ class TestValidateUserExternalAuth(MAASServerTestCase):
         self.assertEqual(self.user.userprofile.auth_last_check, self.now)
         # user is still enabled
         self.assertTrue(self.user.is_active)
+
+    def test_system_user_valid_no_check(self):
+        client = mock.MagicMock()
+        self.assertTrue(
+            validate_user_external_auth(get_worker_user(), client=client))
+        self.assertTrue(
+            validate_user_external_auth(get_node_init_user(), client=client))
+        client.get_groups.assert_not_called()
 
     def test_valid_inactive_user_is_active(self):
         self.user.is_active = False

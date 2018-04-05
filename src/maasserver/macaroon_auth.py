@@ -285,15 +285,20 @@ def validate_user_external_auth(user, now=datetime.utcnow, client=None):
     Its is_active status is changed based on the result of the check.
 
     """
+    if user.username in SYSTEM_USERS:
+        # don't perform the check for system users
+        return True
+
     now = now()
-    if user.userprofile.auth_last_check + IDM_USER_CHECK_INTERVAL > now:
+    profile = user.userprofile
+    if profile.auth_last_check + IDM_USER_CHECK_INTERVAL > now:
         return True
 
     if client is None:
         client = IDMClient()
 
-    user.userprofile.auth_last_check = now
-    user.userprofile.save()
+    profile.auth_last_check = now
+    profile.save()
 
     active = True
     try:

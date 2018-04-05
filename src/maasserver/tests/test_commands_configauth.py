@@ -44,7 +44,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             Config.objects.get_config('external_auth_url'))
 
     def test_configauth_changes_auth_prompts(self):
-        self.read_input.return_value = 'http://idm.example.com/'
+        self.read_input.side_effect = [
+            'http://idm.example.com/', 'user@admin', 'private-key', 'group']
         call_command('configauth')
 
         self.assertEqual(

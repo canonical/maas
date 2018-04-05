@@ -49,6 +49,11 @@ class UserGroupManager(Manager):
                 'updated': now})
         return group
 
+    def get_remote_group_names(self):
+        """Return names of groups related to external authentication."""
+        return frozenset(
+            self.filter(local=False).values_list('name', flat=True))
+
 
 class UserGroup(CleanSave, TimestampedModel):
     """A Group of Users."""

@@ -1022,12 +1022,12 @@ class Factory(maastesting.factory.Factory):
         return user
 
     def make_UserGroup(self, name=None, description=None,
-                       users=()):
+                       local=True, users=()):
         if name is None:
             name = self.make_name('usergroup')
         if description is None:
             description = self.make_string()
-        group = UserGroup(name=name, description=description)
+        group = UserGroup(name=name, description=description, local=local)
         group.save()
         for user in users:
             group.add(user)

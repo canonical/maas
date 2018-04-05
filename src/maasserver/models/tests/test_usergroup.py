@@ -33,6 +33,14 @@ class TestUserGroupManager(MAASServerTestCase):
             UserGroup.objects.get_default_usergroup().name,
             DEFAULT_USERGROUP_NAME)
 
+    def test_get_remote_group_names(self):
+        remote1 = factory.make_UserGroup(local=False)
+        remote2 = factory.make_UserGroup(local=False)
+        factory.make_UserGroup(local=True)
+        self.assertEqual(
+            UserGroup.objects.get_remote_group_names(),
+            {remote1.name, remote2.name})
+
     def test_user_assigned_to_default_group(self):
         default_group = UserGroup.objects.get_default_usergroup()
         user = factory.make_User()

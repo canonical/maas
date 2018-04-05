@@ -40,6 +40,7 @@ __all__ = [
     "list_all_usable_architectures",
     "MAASForm",
     "MachineForm",
+    "ManageUserResourcePoolsForm",
     "NetworksListingForm",
     "NewUserCreationForm",
     "NetworkDiscoveryForm",
@@ -48,6 +49,7 @@ __all__ = [
     "MachineWithPowerAndMACAddressesForm",
     "ProfileForm",
     "ReleaseIPForm",
+    "ResourcePoolForm",
     "SSHKeyForm",
     "SSLKeyForm",
     "StorageSettingsForm",
@@ -61,6 +63,7 @@ __all__ = [
     "UpdateRaidForm",
     "UpdateVirtualBlockDeviceForm",
     "UpdateVolumeGroupForm",
+    "UserGroupForm",
     "WindowsForm",
     "ZoneForm",
     ]
@@ -151,9 +154,11 @@ from maasserver.models import (
     PartitionTable,
     PhysicalBlockDevice,
     RAID,
+    ResourcePool,
     SSHKey,
     SSLKey,
     Tag,
+    UserGroup,
     VirtualBlockDevice,
     VolumeGroup,
     Zone,
@@ -1397,6 +1402,36 @@ class DeleteUserForm(Form):
         help_text="Transfer resources owned by the user to this user.")
 
 
+class UserGroupForm(MAASModelForm):
+    """Form for managing a user group."""
+
+    class Meta:
+        model = UserGroup
+        fields = (
+            'name',
+            'description',
+            'local',
+            )
+
+    def clean_local(self):
+        new_local = self.cleaned_data['local']
+        if self.is_update and new_local != self.instance.local:
+            raise ValidationError("Can't change user group type")
+
+        # if not specified, apply the field default (when creating an object)
+        if not self.is_update and 'local' not in self.data:
+            self.cleaned_data['local'] = self.fields['local'].initial
+        return self.cleaned_data['local']
+
+
+class ManageUserResourcePoolsForm(Form):
+    """A form to grant/revoke user access to resource pools."""
+
+    pool = forms.ModelMultipleChoiceField(
+        queryset=ResourcePool.objects.all(),
+        label="Resource pool to grant access to", required=True)
+
+
 class ConfigForm(Form):
     """A base class for forms that save the content of their fields into
     Config objects.
@@ -1962,6 +1997,16 @@ class ZoneForm(MAASModelForm):
             raise forms.ValidationError(
                 "This zone is the default zone, it cannot be renamed.")
         return self.cleaned_data['name']
+
+
+class ResourcePoolForm(MAASModelForm):
+
+    class Meta:
+        model = ResourcePool
+        fields = (
+            'name',
+            'description',
+            )
 
 
 class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
