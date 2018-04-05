@@ -3,7 +3,6 @@
 
 """Test Role objects."""
 
-from maasserver.models.role import Role
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -26,6 +25,14 @@ class TestRole(MAASServerTestCase):
         role.users.add(user2)
         self.assertCountEqual(role.users.all(), [user1, user2])
 
+    def test_related_group(self):
+        group1 = factory.make_UserGroup()
+        group2 = factory.make_UserGroup()
+        role = factory.make_Role()
+        role.groups.add(group1)
+        role.groups.add(group2)
+        self.assertCountEqual(role.groups.all(), [group1, group2])
+
     def test_related_resource_pools(self):
         pool1 = factory.make_ResourcePool()
         pool2 = factory.make_ResourcePool()
@@ -33,9 +40,3 @@ class TestRole(MAASServerTestCase):
         role.resource_pools.add(pool1)
         role.resource_pools.add(pool2)
         self.assertCountEqual(role.resource_pools.all(), [pool1, pool2])
-
-    def test_create_user_adds_it_to_default_role(self):
-        user1 = factory.make_User()
-        user2 = factory.make_User()
-        default_role = Role.objects.get(name='role-default')
-        self.assertCountEqual(default_role.users.all(), [user1, user2])

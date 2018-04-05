@@ -11,7 +11,8 @@ from django.db.models import (
     TextField,
 )
 from maasserver.fields import MODEL_NAME_VALIDATOR
-from maasserver.models import ResourcePool
+from maasserver.models.resourcepool import ResourcePool
+from maasserver.models.usergroup import UserGroup
 
 
 class Role(Model):
@@ -22,4 +23,5 @@ class Role(Model):
         validators=[MODEL_NAME_VALIDATOR])
     description = TextField(blank=True, editable=True)
     users = ManyToManyField(User)
+    groups = ManyToManyField(UserGroup)
     resource_pools = ManyToManyField(ResourcePool)

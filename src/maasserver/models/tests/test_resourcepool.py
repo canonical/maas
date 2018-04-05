@@ -34,17 +34,37 @@ class TestResourcePoolManager(MAASServerTestCase):
             ResourcePool.objects.get_default_resource_pool().name,
             DEFAULT_RESOURCEPOOL_NAME)
 
-    def test_get_user_resource_pools(self):
+    def test_get_user_resource_pools_user_in_role(self):
         user = factory.make_User()
         default_pool = ResourcePool.objects.get_default_resource_pool()
         pool1 = factory.make_ResourcePool()
         pool2 = factory.make_ResourcePool()
         factory.make_ResourcePool()  # a pool the user doesn't have access to
+        factory.make_Role(users=[user], pools=[pool1, pool2])
+        self.assertCountEqual(
+            ResourcePool.objects.get_user_resource_pools(user),
+            [default_pool, pool1, pool2])
 
-        role = factory.make_Role()
-        role.users.add(user)
-        role.resource_pools.add(pool1)
-        role.resource_pools.add(pool2)
+    def test_get_user_resource_pools_user_group_in_role(self):
+        user = factory.make_User()
+        default_pool = ResourcePool.objects.get_default_resource_pool()
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
+        factory.make_ResourcePool()  # a pool the user doesn't have access to
+        group = factory.make_UserGroup(users=[user])
+        factory.make_Role(groups=[group], pools=[pool1, pool2])
+        self.assertCountEqual(
+            ResourcePool.objects.get_user_resource_pools(user),
+            [default_pool, pool1, pool2])
+
+    def test_get_user_resource_pools_role_direct_and_via_group(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        default_pool = ResourcePool.objects.get_default_resource_pool()
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
+        factory.make_Role(users=[user], pools=[pool1])
+        factory.make_Role(groups=[group], pools=[pool2])
         self.assertCountEqual(
             ResourcePool.objects.get_user_resource_pools(user),
             [default_pool, pool1, pool2])
@@ -124,10 +144,12 @@ class TestResourcePool(MAASServerTestCase):
 
     def test_revoke_user(self):
         user = factory.make_User()
-        default_pool = ResourcePool.objects.get_default_resource_pool()
-        default_pool.revoke_user(user)
-        self.assertCountEqual(
-            ResourcePool.objects.get_user_resource_pools(user), [])
+        pool = factory.make_ResourcePool()
+        pool.grant_user(user)
+        pool.revoke_user(user)
+        self.assertNotIn(
+            pool,
+            ResourcePool.objects.get_user_resource_pools(user))
 
     def test_revoke_user_with_machine_in_pool_fail(self):
         user = factory.make_User()

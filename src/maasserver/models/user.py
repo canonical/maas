@@ -12,11 +12,7 @@ __all__ = [
     ]
 
 from maasserver import worker_user
-from maasserver.models import (
-    Config,
-    ResourcePool,
-    Role,
-)
+from maasserver.models import Config
 from metadataserver import nodeinituser
 from piston3.models import (
     Consumer,
@@ -95,13 +91,6 @@ def create_user(sender, instance, created, **kwargs):
         from maasserver.models import UserGroup
         default_group = UserGroup.objects.get_default_usergroup()
         default_group.add(instance)
-
-        # XXX assume that there is a 1:1 mapping between roles and pools.  Once
-        # roles are exposed as part of RBAC, there might be many roles assigned
-        # to a pool, and users should be explicitly assigned to roles.
-        default_pool = ResourcePool.objects.get_default_resource_pool()
-        [default_role] = Role.objects.filter(resource_pools=default_pool)
-        default_role.users.add(instance)
 
 
 def get_creds_tuple(token):

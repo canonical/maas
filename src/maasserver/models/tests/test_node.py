@@ -90,6 +90,7 @@ from maasserver.models import (
     Service,
     Subnet,
     UnknownInterface,
+    UserGroup,
     VLAN,
     VLANInterface,
 )
@@ -480,6 +481,16 @@ class TestMachineManager(MAASServerTestCase):
         machine = self.make_machine()
         # the user doesn't have access to this pool
         self.make_machine(pool=factory.make_ResourcePool())
+        self.assertCountEqual(
+            Machine.objects.get_available_machines_for_acquisition(user),
+            [machine])
+
+    def test_get_availalble_machines_includes_accessible_via_group(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        machine = self.make_machine()
+        pool = factory.make_ResourcePool(nodes=[machine])
+        factory.make_Role(groups=[group], pools=[pool])
         self.assertCountEqual(
             Machine.objects.get_available_machines_for_acquisition(user),
             [machine])
@@ -5032,8 +5043,8 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_get_nodes_no_accessible_pool(self):
         user = factory.make_User()
-        default_pool = ResourcePool.objects.get_default_resource_pool()
-        default_pool.revoke_user(user)
+        default_usergroup = UserGroup.objects.get_default_usergroup()
+        default_usergroup.remove(user)
         factory.make_Node()
         self.assertCountEqual(
             Node.objects.get_nodes(user, NODE_PERMISSION.VIEW), [])

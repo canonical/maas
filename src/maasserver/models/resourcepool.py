@@ -15,6 +15,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     Manager,
+    Q,
     TextField,
 )
 from maasserver import DefaultMeta
@@ -47,7 +48,8 @@ class ResourcePoolManager(Manager):
 
     def get_user_resource_pools(self, user):
         """Return ResourcePools a User has access to."""
-        return self.model.objects.filter(role__users=user)
+        return self.model.objects.filter(
+            Q(role__users=user) | Q(role__groups__users=user))
 
     def user_can_access_pool(self, user, pool):
         """Whether a User has access to a ResourcePool."""

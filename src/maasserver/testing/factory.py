@@ -1050,13 +1050,20 @@ class Factory(maastesting.factory.Factory):
                 pool.grant_user(user)
         return pool
 
-    def make_Role(self, name=None, description=None):
+    def make_Role(self, name=None, description=None, pools=None, users=None,
+                  groups=None):
         if name is None:
             name = self.make_name('role')
         if description is None:
             description = self.make_string()
         role = Role(name=name, description=description)
         role.save()
+        if pools:
+            role.resource_pools.add(*pools)
+        if users:
+            role.users.add(*users)
+        if groups:
+            role.groups.add(*groups)
         return role
 
     def make_KeySource(self, protocol=None, auth_id=None, auto_update=False):

@@ -1663,14 +1663,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "storage": storage,
                 }
                 # Only match allocation if Pod's zone matches.
+                pods = Pod.objects.filter(
+                    Q(default_pool__role__users=request.user) |
+                    Q(default_pool__role__groups__users=request.user))
                 if zone is not None:
-                    pods = Pod.objects.filter(
-                        default_pool__role__users=request.user,
-                        zone__name=zone)
-                else:
-                    pods = Pod.objects.filter(
-                        default_pool__role__users=request.user)
-
+                    pods = pods.filter(zone__name=zone)
                 if pods:
                     machine, storage = get_allocated_composed_machine(
                         request, data, storage, pods, form, input_constraints)
