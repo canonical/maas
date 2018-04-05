@@ -102,7 +102,7 @@ SAMPLE_POOLINFO = dedent("""
     Autostart:      yes
     Capacity:       452.96 GiB
     Allocation:     279.12 GiB
-    Available:      173.84 GiB
+    Available:      %s GiB
     """)
 
 SAMPLE_POOLINFO_TB = dedent("""
@@ -450,6 +450,18 @@ class TestVirshSSH(MAASTestCase):
         expected = conn.list_pools()
         self.assertItemsEqual(names, expected)
 
+    def test_list_pools_filters_on_default_pool(self):
+        conn = self.configure_virshssh(SAMPLE_POOLLIST)
+        expected = conn.list_pools(default_pool='ubuntu')
+        self.assertItemsEqual(['ubuntu'], expected)
+
+    def test_list_pools_filters_on_disk_tags(self):
+        conn = self.configure_virshssh(SAMPLE_POOLLIST)
+        disk = RequestedMachineBlockDevice(
+            size=random.randint(1000, 2000), tags=['default'])
+        expected = conn.list_pools(default_pool='ubuntu', disk=disk)
+        self.assertItemsEqual(['default'], expected)
+
     def test_list_machine_block_devices(self):
         block_devices = ('vda', 'vdb')
         conn = self.configure_virshssh(SAMPLE_DOMBLKLIST)
@@ -544,12 +556,12 @@ class TestVirshSSH(MAASTestCase):
         self.assertRaises(PodInvalidResources, conn.get_pod_local_storage)
 
     def test_get_pod_available_local_storage(self):
-        conn = self.configure_virshssh(SAMPLE_POOLINFO)
+        conn = self.configure_virshssh(SAMPLE_POOLINFO % '200')
         pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
         pools_mock.return_value = [
             factory.make_name('pool') for _ in range(3)]
         expected = conn.get_pod_available_local_storage()
-        self.assertEqual(int(173.84 * 3 * 2**30), expected)
+        self.assertEqual(int(200 * 3 * 2**30), expected)
 
     def test_get_machine_local_storage(self):
         conn = self.configure_virshssh(SAMPLE_DOMBLKINFO)
@@ -797,13 +809,15 @@ class TestVirshSSH(MAASTestCase):
             random.randint(i * 1000, (i + 1) * 1000))
             for i in range(3)
         ])
-        size = random.randint(
-            list(pools.values())[0] + 1, list(pools.values())[1] + 1)
+        disk = RequestedMachineBlockDevice(
+            size=random.randint(
+                list(pools.values())[0] + 1, list(pools.values())[1] + 1),
+            tags=[])
         self.patch(
             virsh.VirshSSH, "get_pod_pool_size_map").return_value = pools
         self.assertEqual(
             list(pools.keys())[1],
-            conn.get_usable_pool(size))
+            conn.get_usable_pool(disk))
 
     def test_create_local_volume_returns_None(self):
         conn = self.configure_virshssh('')
@@ -811,16 +825,28 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, "get_usable_pool").return_value = None
         self.assertIsNone(conn.create_local_volume(random.randint(1000, 2000)))
 
+    def test_create_local_volume_returns_tagged_pool_and_volume(self):
+        conn = self.configure_virshssh('')
+        tagged_pools = ['pool1', 'pool2']
+        self.patch(virsh.VirshSSH, "list_pools").return_value = tagged_pools
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.side_effect = (
+            SAMPLE_POOLINFO % '0', SAMPLE_POOLINFO % '200', None)
+        disk = RequestedMachineBlockDevice(size=4096, tags=tagged_pools)
+        used_pool, _ = conn.create_local_volume(disk)
+        self.assertEqual(tagged_pools[1], used_pool)
+
     def test_create_local_volume_makes_call_returns_pool_and_volume(self):
         conn = self.configure_virshssh('')
         pool = factory.make_name('pool')
         self.patch(
             virsh.VirshSSH, "get_usable_pool").return_value = pool
         mock_run = self.patch(virsh.VirshSSH, "run")
-        volume_size = random.randint(1000, 2000)
-        used_pool, volume_name = conn.create_local_volume(volume_size)
+        disk = RequestedMachineBlockDevice(
+            size=random.randint(1000, 2000), tags=[])
+        used_pool, volume_name = conn.create_local_volume(disk)
         self.assertThat(mock_run, MockCalledOnceWith([
-            'vol-create-as', used_pool, volume_name, str(volume_size),
+            'vol-create-as', used_pool, volume_name, str(disk.size),
             '--allocation', '0', '--format', 'raw']))
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)

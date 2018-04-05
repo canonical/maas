@@ -295,17 +295,33 @@ class VirshSSH(pexpect.spawn):
         machines = machines.strip().splitlines()
         return [m for m in machines if m.startswith(self.dom_prefix)]
 
-    def list_pools(self, default_pool=None):
+    def list_pools(self, default_pool=None, disk=None):
         """Lists all pools in the pod.
 
-        If default_pool is set, only return this pool.
+        Filters pools with disk tags first and default_pool second, if set.
         """
         keys = ['Name']
         output = self.run(['pool-list'])
         pools = self.get_column_values(output, keys)
+        pool_names = [p[0] for p in pools]
+        if disk:
+            pools = [
+                tag
+                for tag in disk.tags
+                if tag in pool_names
+            ]
+            return pools if pools else pool_names
         if default_pool:
-            return [p[0] for p in pools if p[0] == default_pool]
-        return [p[0] for p in pools]
+            pools = [
+                pool_name
+                for pool_name in pool_names
+                if pool_name == default_pool
+            ]
+            if not len(pools):
+                raise VirshError(
+                    "Default storage pool '%s' doesn't exist." % default_pool)
+            return pools
+        return pool_names
 
     def list_machine_block_devices(self, machine):
         """Lists all devices for VM."""
@@ -377,10 +393,10 @@ class VirshSSH(pexpect.spawn):
         # Memory in MiB.
         return int(KiB / 1024)
 
-    def get_pod_pool_size_map(self, key, default_pool=None):
+    def get_pod_pool_size_map(self, key, disk=None, default_pool=None):
         """Return the mapping for a size calculation based on key."""
         pools = {}
-        for pool in self.list_pools(default_pool):
+        for pool in self.list_pools(default_pool, disk):
             output = self.run(['pool-info', pool]).strip()
             if output is None:
                 # Skip if cannot get more information.
@@ -449,11 +465,6 @@ class VirshSSH(pexpect.spawn):
         # Fix architectures that need to be referenced by a different
         # name, that MAAS understands.
         return ARCH_FIX.get(arch, arch)
-
-    def check_default_storage_pool(self, default_pool):
-        """Check that default_pool exists."""
-        if not len(self.list_pools(default_pool)):
-            raise VirshError("Storage pool '%s' doesn't exist." % default_pool)
 
     def get_pod_resources(self):
         """Get the pod resources."""
@@ -606,22 +617,22 @@ class VirshSSH(pexpect.spawn):
             return False
         return True
 
-    def get_usable_pool(self, size, default_pool=None):
-        """Return the pool that as enough space for `size`."""
-        pools = self.get_pod_pool_size_map("Available", default_pool)
+    def get_usable_pool(self, disk, default_pool=None):
+        """Return the pool that has enough space for `disk.size`."""
+        pools = self.get_pod_pool_size_map("Available", disk, default_pool)
         for pool, available in pools.items():
-            if size <= available:
+            if disk.size <= available:
                 return pool
         return None
 
-    def create_local_volume(self, size, default_pool=None):
-        """Create a local volume with `size`."""
-        usable_pool = self.get_usable_pool(size, default_pool)
+    def create_local_volume(self, disk, default_pool=None):
+        """Create a local volume with `disk.size`."""
+        usable_pool = self.get_usable_pool(disk, default_pool)
         if usable_pool is None:
             return None
         volume = str(uuid.uuid4())
         self.run([
-            'vol-create-as', usable_pool, volume, str(size),
+            'vol-create-as', usable_pool, volume, str(disk.size),
             '--allocation', '0', '--format', 'raw'])
         return usable_pool, volume
 
@@ -740,7 +751,7 @@ class VirshSSH(pexpect.spawn):
         created_disks = []
         for idx, disk in enumerate(request.block_devices):
             try:
-                disk_info = self.create_local_volume(disk.size, default_pool)
+                disk_info = self.create_local_volume(disk, default_pool)
             except Exception:
                 self.cleanup_disks(created_disks)
                 raise
@@ -922,7 +933,7 @@ class VirshPodDriver(PodDriver):
         if self.default_storage_pool:
             try:
                 yield deferToThread(
-                    conn.check_default_storage_pool, self.default_storage_pool)
+                    conn.list_pools, self.default_storage_pool)
             except VirshError:
                 # Set the default_storage_pool to None since
                 # one wasn't found and raise the error.
