@@ -115,11 +115,11 @@
             <table class="p-table-expanding" data-ng-if="showImagesTable()">
                 <thead>
                     <tr>
-                        <th>Release</th>
-                        <th>Architecture</th>
-                        <th>Size</th>
-                        <th>Status</th>
-                        <th class="u-align--right">Actions</th>
+                        <th class="table-col--20">Release</th>
+                        <th class="table-col--15">Architecture</th>
+                        <th class="table-col--15">Size</th>
+                        <th class="table-col--35">Status</th>
+                        <th class="table-col--15" class="u-align--right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -134,14 +134,14 @@
                         </td>
                     </tr>
                     <tr data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']" data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
-                        <td aria-label="Release">
+                        <td class="table-col--20"aria-label="Release">
                             <i class="{$ image.icon $}"></i>
                             {$ image.title $} <span class="p-tooltip__message" role="tooltip" id="tooltip-{$ image.resourceId}" data-ng-if="canBeRemoved(image)"><i class="p-icon--warning p-tooltip p-tooltip--top-right"  aria-describedby="tooltip-{$ image.resourceId}">Image no longer exists at the source.</span></i>
                         </td>
-                        <td aria-label="Architecture">{$ image.arch $}</td>
-                        <td aria-label="Size">{$ image.size $}</td>
-                        <td aria-label="Status">{$ image.status $}</td>
-                        <td class="u-align--right">
+                        <td class="table-col--15"aria-label="Architecture">{$ image.arch $}</td>
+                        <td class="table-col--15"aria-label="Size">{$ image.size $}</td>
+                        <td class="table-col--35"aria-label="Status">{$ image.status $}</td>
+                        <td class="table-col--15"class="u-align--right">
                             <button data-ng-if="(isSuperUser() && canBeRemoved(image))" class="p-button--base is-small" aria-label="Remove" data-ng-click="deleteImage(image)">
                                 <i class="p-icon--delete">Remove</i>
                             </button>
@@ -187,21 +187,23 @@
             <table class="p-table-expanding">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Architecture</th>
-                        <th>Size</th>
-                        <th>Status</th>
+                        <th class="table-cell--20">Name</th>
+                        <th class="table-cell--15">Architecture</th>
+                        <th class="table-cell--15">Size</th>
+                        <th class="table-cell--35">Status</th>
+                        <th class="table-cell--15">&nbsp;</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr data-ng-if="!ubuntuCoreImages.length">
-                        <td colspan="4">No images have been selected for syncing.</td>
+                        <td colspan="4" class="table-cell--100">No images have been selected for syncing.</td>
                     </tr>
                     <tr data-ng-repeat="image in ubuntuCoreImages | orderBy:['-title', 'arch']">
-                        <td aria-label="Name"><i class="{$ image.icon $}"></i>{$ image.title $}</td>
-                        <td aria-label="Architecture">{$ image.arch $}</td>
-                        <td aria-label="Size">{$ image.size $}</td>
-                        <td aria-label="Status">{$ image.status $}</td>
+                        <td class="table-cell--20" aria-label="Name"><i class="{$ image.icon $}"></i>{$ image.title $}</td>
+                        <td class="table-cell--15" aria-label="Architecture">{$ image.arch $}</td>
+                        <td class="table-cell--15" aria-label="Size">{$ image.size $}</td>
+                        <td class="table-cell--35" aria-label="Status">{$ image.status $}</td>
+                        <td class="table-cell--15">&nbsp;</td>
                     </tr>
                 </tbody>
             </table>
@@ -229,26 +231,28 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Release</th>
-                        <th>Architecture</th>
-                        <th>Size</th>
-                        <th>Status</th>
+                        <th class="table-cell--20">Release</th>
+                        <th class="table-cell--15">Architecture</th>
+                        <th class="table-cell--15">Size</th>
+                        <th class="table-cell--35">Status</th>
+                        <th class="table-col--15">&nbsp;</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr data-ng-if="!otherImages.length">
-                        <td colspan="4">
+                        <td colspan="4" class="table-cell--100">
                             No images have been selected for syncing.
                         </td>
                     </tr>
                     <tr data-ng-repeat="image in otherImages | orderBy:['-title', 'arch']">
-                        <td aria-label="Release">
+                        <td aria-label="Release" class="table-cell--20">
                             <i class="{$ image.icon $}"></i>
                             {$ image.title $}
                         </td>
-                        <td aria-label="Architecture">{$ image.arch $}</td>
-                        <td aria-label="Size">{$ image.size $}</td>
-                        <td aria-label="Status">{$ image.status $}</td>
+                        <td aria-label="Architecture" class="table-cell--15">{$ image.arch $}</td>
+                        <td aria-label="Size" class="table-cell--15">{$ image.size $}</td>
+                        <td aria-label="Status" class="table-cell--35">{$ image.status $}</td>
+                        <td class="table-col--15">&nbsp;</td>
                     </tr>
                 </tbody>
             </table>
@@ -266,11 +270,11 @@
         <table class="p-table-expanding">
             <thead>
                 <tr>
-                    <th colspan="2">Release</th>
-                    <th>Architecture</th>
-                    <th>Size</th>
-                    <th>Status</th>
-                    <th class="u-align--right">Actions</th>
+                    <th class="table-col--20">Release</th>
+                    <th class="table-col--15">Architecture</th>
+                    <th class="table-col--15">Size</th>
+                    <th class="table-col--35">Status</th>
+                    <th class="table-col--15 u-align--right">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -280,16 +284,14 @@
                     </td>
                 </tr>
                 <tr data-ng-repeat="image in generatedImages | orderBy:['-title', 'arch']" data-ng-class="{ 'is-active': isShowingDeleteConfirm(image)}">
-                    <td>
+                    <td aria-label="Release" class="table-col--20">
                         <i class="{$ image.icon $}"></i>
-                    </td>
-                    <td aria-label="Release">
                         {$ image.title $}
                     </td>
-                    <td aria-label="Architecture">{$ image.arch $}</td>
-                    <td aria-label="Size">{$ image.size $}</td>
-                    <td aria-label="Status">{$ image.status $}</td>
-                    <td class="u-align--right">
+                    <td aria-label="Architecture" class="table-col--15">{$ image.arch $}</td>
+                    <td aria-label="Size" class="table-col--15">{$ image.size $}</td>
+                    <td aria-label="Status" class="table-col--35">{$ image.status $}</td>
+                    <td class="table-col--15 u-align--right">
                         <button class="p-button--negative" aria-label="Remove" data-ng-click="quickRemove(image)">Remove image</button>
                     </td>
                     <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
@@ -311,11 +313,11 @@
         <table class="p-table-expanding">
             <thead>
                 <tr>
-                    <th colspan="2">Release</th>
-                    <th>Architecture</th>
-                    <th>Size</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th class="table-col--20">Release</th>
+                    <th class="table-col--15">Architecture</th>
+                    <th class="table-col--15">Size</th>
+                    <th class="table-col--35">Status</th>
+                    <th class="table-col--15">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -325,16 +327,14 @@
                     </td>
                 </tr>
                 <tr data-ng-repeat="image in customImages | orderBy:['-title', 'arch']" data-ng-class="{ 'is-active': isShowingDeleteConfirm(image)}">
-                    <td>
+                    <td aria-label="Release" class="table-col--20">
                         <i class="{$ image.icon $}"></i>
-                    </td>
-                    <td aria-label="Release">
                         {$ image.title $}
                     </td>
-                    <td aria-label="Architecture">{$ image.arch $}</td>
-                    <td aria-label="Size">{$ image.size $}</td>
-                    <td aria-label="Status">{$ image.status $}</td>
-                    <td class="u-align--right">
+                    <td aria-label="Architecture" class="table-col--15">{$ image.arch $}</td>
+                    <td aria-label="Size" class="table-col--15">{$ image.size $}</td>
+                    <td aria-label="Status" class="table-col--35">{$ image.status $}</td>
+                    <td class="table-col--15 u-align--right">
                         <a aria-label="Remove" data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
                     </td>
                     <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
