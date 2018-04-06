@@ -95,6 +95,11 @@ class DomainManager(Manager, DomainQueriesMixin):
         return queryset
 
     def get_default_domain(self):
+        # Circular imports.
+        from maasserver.models.globaldefault import GlobalDefault
+        return GlobalDefault.objects.instance().domain
+
+    def get_or_create_default_domain(self):
         """Return the default domain."""
         now = datetime.datetime.now()
         domain, _ = self.get_or_create(

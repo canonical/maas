@@ -34,6 +34,7 @@ __all__ = [
     'FileStorage',
     'Filesystem',
     'FilesystemGroup',
+    'GlobalDefault',
     'Interface',
     'IPRange',
     'ISCSIBlockDevice',
@@ -134,6 +135,7 @@ from maasserver.models.filesystemgroup import (
     RAID,
     VolumeGroup,
 )
+from maasserver.models.globaldefault import GlobalDefault
 from maasserver.models.interface import (
     BondInterface,
     BridgeInterface,

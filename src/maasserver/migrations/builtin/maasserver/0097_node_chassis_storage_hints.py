@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='node',
             name='domain',
-            field=models.ForeignKey(to='maasserver.Domain', null=True, default=maasserver.models.node.get_default_domain, blank=True, on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(to='maasserver.Domain', null=True, blank=True, on_delete=django.db.models.deletion.PROTECT),
         ),
         migrations.AlterField(
             model_name='node',

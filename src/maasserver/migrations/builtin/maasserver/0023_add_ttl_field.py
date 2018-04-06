@@ -44,11 +44,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='dnsresource',
             name='domain',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.dnsresource.get_default_domain, to='maasserver.Domain'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='maasserver.Domain'),
         ),
         migrations.AlterField(
             model_name='node',
             name='domain',
-            field=models.ForeignKey(default=maasserver.models.node.get_default_domain, null=False, to='maasserver.Domain', on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(null=False, to='maasserver.Domain', on_delete=django.db.models.deletion.PROTECT),
         ),
     ]
