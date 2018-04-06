@@ -5,19 +5,15 @@
 
 __all__ = []
 
-from collections import Callable
 import http.client
 import os
 
 from django.conf import settings
-from django.test.client import RequestFactory
-from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
 from maasserver.views.combo import (
     get_absolute_location,
-    get_combo_view,
     MERGE_VIEWS,
 )
 from maastesting.fixtures import ImportErrorFixture
@@ -50,101 +46,9 @@ class TestUtilities(MAASServerTestCase):
         self.assertEqual(
             expected_location, get_absolute_location(location=rel_location))
 
-    def test_get_combo_view_returns_callable(self):
-        rel_location = os.path.join(
-            factory.make_string(), factory.make_string())
-        view = get_combo_view(rel_location)
-        self.assertIsInstance(view, Callable)
-
-    def test_get_combo_view_loads_from_disk(self):
-        test_file_contents = factory.make_string()
-        # Create a valid file with a proper extension (the combo loader only
-        # serves JS or CSS files)
-        test_file_name = "%s.js" % factory.make_string()
-        test_file = self.make_file(
-            name=test_file_name, contents=test_file_contents)
-        directory = os.path.dirname(test_file)
-        view = get_combo_view(directory)
-        # Create a request for test file.
-        rf = RequestFactory()
-        request = rf.get("/test/?%s" % test_file_name)
-        response = view(request)
-        expected_content = '/* %s */\n%s\n' % (
-            test_file_name, test_file_contents)
-        self.assertEqual(
-            (http.client.OK, expected_content.encode(
-                settings.DEFAULT_CHARSET)),
-            (response.status_code, response.content))
-
-    def test_get_combo_redirects_if_unknown_type(self):
-        # The optional parameter 'default_redirect' allows to configure
-        # a default address where requests for files of unknown types will be
-        # redirected.
-        # Create a test file with an unknown extension.
-        test_file_name = "%s.%s" % (
-            factory.make_string(), factory.make_string())
-        redirect_root = factory.make_string()
-        view = get_combo_view(
-            factory.make_string(), default_redirect=redirect_root)
-        rf = RequestFactory()
-        request = rf.get("/test/?%s" % test_file_name)
-        response = view(request)
-        self.assertEqual(
-            '%s%s' % (redirect_root, test_file_name),
-            extract_redirect(response))
-
 
 # String used by convoy to replace missing files.
 CONVOY_MISSING_FILE = b"/* [missing] */"
-
-
-class TestComboLoaderView(MAASServerTestCase):
-    """Test combo loader views."""
-
-    def test_yui_load_js(self):
-        requested_files = [
-            'oop/oop.js',
-            'event-custom-base/event-custom-base.js'
-            ]
-        url = '%s?%s' % (reverse('combo-yui'), '&'.join(requested_files))
-        response = self.client.get(url)
-        self.assertIn('text/javascript', response['Content-Type'])
-        for requested_file in requested_files:
-            self.assertIn(
-                requested_file.encode(settings.DEFAULT_CHARSET),
-                response.content)
-        # No sign of a missing js file.
-        self.assertNotIn(CONVOY_MISSING_FILE, response.content)
-        # The file contains a link to YUI's licence.
-        self.assertIn(b'http://yuilibrary.com/license/', response.content)
-
-    def test_yui_load_css(self):
-        requested_files = [
-            'widget-base/assets/skins/sam/widget-base.css',
-            'widget-stack/assets/skins/sam/widget-stack.css',
-            ]
-        url = '%s?%s' % (reverse('combo-yui'), '&'.join(requested_files))
-        response = self.client.get(url)
-        self.assertIn('text/css', response['Content-Type'])
-        for requested_file in requested_files:
-            self.assertIn(
-                requested_file.encode(settings.DEFAULT_CHARSET),
-                response.content)
-        # No sign of a missing css file.
-        self.assertNotIn(CONVOY_MISSING_FILE, response.content)
-        # The file contains a link to YUI's licence.
-        self.assertIn(b'http://yuilibrary.com/license/', response.content)
-
-    def test_yui_combo_no_file_returns_not_found(self):
-        response = self.client.get(reverse('combo-yui'))
-        self.assertEqual(http.client.NOT_FOUND, response.status_code)
-
-    def test_yui_combo_other_file_extension_returns_bad_request(self):
-        url = '%s?%s' % (reverse('combo-yui'), 'file.wrongextension')
-        response = self.client.get(url)
-        self.assertEqual(
-            (http.client.BAD_REQUEST, b"Invalid file type requested."),
-            (response.status_code, response.content))
 
 
 class TestMergeLoaderView(MAASServerTestCase):

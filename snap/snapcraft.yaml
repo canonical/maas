@@ -50,8 +50,6 @@ parts:
       - isc-dhcp-server
       - libjs-angularjs
       - libjs-jquery
-      - libjs-yui3-full
-      - libjs-yui3-min
       - lshw
       - chrony
       - openssh-client

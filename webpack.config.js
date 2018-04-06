@@ -7,9 +7,6 @@ module.exports = {
         vendor: [].concat(
             glob.sync('./src/maasserver/static/js/angular/3rdparty/*.js')
         ),
-        'maas-yui': [].concat(
-            glob.sync('./src/maasserver/static/js/yui/*.js')
-        ),
         maas: [].concat(
             glob.sync('./src/maasserver/static/js/*.js'),
             glob.sync('./src/maasserver/static/js/ui/*.js'),

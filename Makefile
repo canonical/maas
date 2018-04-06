@@ -36,8 +36,6 @@ javascript_deps := \
 javascript_output := \
   src/maasserver/static/js/bundle/maas-min.js \
   src/maasserver/static/js/bundle/maas-min.js.map \
-  src/maasserver/static/js/bundle/maas-yui-min.js \
-  src/maasserver/static/js/bundle/maas-yui-min.js.map \
   src/maasserver/static/js/bundle/vendor-min.js \
   src/maasserver/static/js/bundle/vendor-min.js.map
 

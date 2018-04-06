@@ -67,7 +67,6 @@ PUBLIC_URL_PREFIXES = [
     reverse('authenticate'),
     reverse('discharge-request'),
     # The combo loaders are publicly accessible.
-    reverse('combo-yui'),
     reverse('robots'),
     reverse('api-doc'),
     # Metadata service is for use by nodes; no login.

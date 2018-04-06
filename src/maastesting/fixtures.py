@@ -9,7 +9,6 @@ __all__ = [
     "DisplayFixture",
     "LoggerSilencerFixture",
     "ProxiesDisabledFixture",
-    "SeleniumFixture",
     "TempDirectory",
 ]
 
@@ -34,7 +33,6 @@ import fixtures
 from fixtures import EnvironmentVariable
 from maastesting import root
 from testtools.monkey import MonkeyPatcher
-from twisted.python.reflect import namedObject
 
 
 class ImportErrorFixture(fixtures.Fixture):
@@ -148,43 +146,6 @@ class DisplayFixture(fixtures.Fixture):
         self.process.stdin.close()
         if self.process.wait() != 0:
             raise CalledProcessError(self.process.returncode, self.command)
-
-
-class SeleniumFixture(fixtures.Fixture):
-    """Set-up a JavaScript-enabled testing browser instance."""
-
-    # browser-name -> (driver-name, driver-args)
-    browsers = {
-        "Chrome": (
-            "selenium.webdriver.Chrome",
-            ("/usr/lib/chromium-browser/chromedriver",),
-        ),
-        "Firefox": (
-            "selenium.webdriver.Firefox",
-            (),
-        ),
-        "PhantomJS": (
-            "selenium.webdriver.PhantomJS",
-            (),
-        ),
-    }
-
-    logger_names = ['selenium.webdriver.remote.remote_connection']
-
-    def __init__(self, browser_name):
-        super(SeleniumFixture, self).__init__()
-        if browser_name in self.browsers:
-            driver, driver_args = self.browsers[browser_name]
-            self.driver = namedObject(driver)
-            self.driver_args = driver_args
-        else:
-            raise ValueError("Unrecognised browser: %s" % (browser_name,))
-
-    def setUp(self):
-        super(SeleniumFixture, self).setUp()
-        self.browser = self.driver(*self.driver_args)
-        self.useFixture(LoggerSilencerFixture(self.logger_names))
-        self.addCleanup(self.browser.quit)
 
 
 class ProxiesDisabledFixture(fixtures.Fixture):

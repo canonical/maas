@@ -13,7 +13,6 @@ gjs
 ipython
 libjs-jquery
 libjs-jquery-hotkeys
-libjs-yui3-full
 libnss-wrapper
 make
 psmisc

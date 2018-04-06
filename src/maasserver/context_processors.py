@@ -5,7 +5,6 @@
 
 __all__ = [
     "global_options",
-    "yui",
     ]
 
 from django.conf import settings
@@ -18,12 +17,6 @@ from provisioningserver.utils.version import (
     get_maas_doc_version,
     get_maas_version_ui,
 )
-
-
-def yui(request):
-    return {
-        'YUI_DEBUG': settings.YUI_DEBUG,
-    }
 
 
 def global_options(request):

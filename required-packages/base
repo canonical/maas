@@ -11,7 +11,6 @@ isc-dhcp-common
 isc-dhcp-server
 libjs-angularjs
 libjs-jquery
-libjs-yui3-min
 libpq-dev
 lshw
 postgresql

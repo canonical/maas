@@ -14,8 +14,6 @@ from maasserver.djangosettings import (
 import_settings(settings)
 
 # Override the location of JS libraries.
-YUI_LOCATION = os.path.join(
-    os.environ['SNAP'], 'usr', 'share', 'javascript', 'yui3')
 JQUERY_LOCATION = os.path.join(
     os.environ['SNAP'], 'usr', 'share', 'javascript', 'jquery')
 ANGULARJS_LOCATION = os.path.join(

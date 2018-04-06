@@ -10,10 +10,6 @@
 {% block head %}
 {% endblock %}
 
-{% block extra-js %}
-  <script type="text/javascript" src="{% url "merge" filename="maas-settings-yui.js" %}?v={{files_version}}"></script>
-{% endblock %}
-
 {% block page-header-classes %}u-no-padding--bottom{% endblock %}
 {% block page-navigation %}
 <nav class="p-tabs">
@@ -142,7 +138,7 @@
                 <h2>Deploy</h2>
                 <form action="{% url 'settings' %}" method="post">
                     {% csrf_token %}
-                    <ul class="p-list">
+                    <ul class="p-list" data-maas-default-os-select="#id_deploy-default_osystem" data-maas-default-series-select="#id_deploy-default_distro_series">
                         {% for field in deploy_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
                     <input type="hidden" name="deploy_submit" value="1" />

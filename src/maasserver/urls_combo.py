@@ -6,19 +6,11 @@
 __all__ = []
 
 
-from django.conf import settings
 from django.conf.urls import url
-from maasserver.views.combo import (
-    get_combo_view,
-    merge_view,
-)
+from maasserver.views.combo import merge_view
 
 
 urlpatterns = [
-    url(
-        r'^yui/',
-        get_combo_view(location=settings.YUI_LOCATION),
-        name='combo-yui'),
     url(
         r'^(?P<filename>[^/]*)', merge_view, name='merge'),
 ]

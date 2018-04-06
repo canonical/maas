@@ -1,13 +1,5 @@
 <script type="text/javascript">
 <!--
-var YUI_config = {
-    debug: {% if YUI_DEBUG %}true{% else %}false{% endif %},
-    combine: true,
-    filter: {% if YUI_DEBUG %}'raw'{% else %}'min'{% endif %},
-    root: '',
-    base: '{% url "combo-yui" %}?',
-    comboBase: '{% url "combo-yui" %}?',
-};
 var MAAS_config = {
     uris: {
         login: '{% url "login" %}',
@@ -23,7 +15,7 @@ var MAAS_config = {
     register_url: '{{register_url}}',
     register_secret: '{{register_secret}}',
     {% endif %}
-    debug: {% if YUI_DEBUG %}true{% else %}false{% endif %},
+    debug: {% if DEBUG %}true{% else %}false{% endif %},
     completed_intro: {% if completed_intro %}true{% else %}false{% endif %},
     user_completed_intro: {% if user_completed_intro %}true{% else %}false{% endif %},
     analytics_user_id: '{{analytics_user_id}}',
@@ -39,16 +31,10 @@ var MAAS_config = {
     src="{% url "merge" filename="angular.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-        src="{% url "merge" filename="yui.js" %}?v={{files_version}}">
-</script>
-<script type="text/javascript"
         src="{{STATIC_URL}}/js/bundle/vendor-min.js?v={{files_version}}">
 </script>
 <script type="text/javascript"
         src="{{STATIC_URL}}/js/bundle/maas-min.js?v={{files_version}}">
-</script>
-<script type="text/javascript"
-        src="{{STATIC_URL}}/js/bundle/maas-yui-min.js?v={{files_version}}">
 </script>
 
 {% if global_options.enable_analytics %}
