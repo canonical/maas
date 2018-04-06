@@ -95,114 +95,117 @@
                 </div>
             </div>
             <section class="page-header__section row u-no-margin--top" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)">
-                <div class="col-12">
-                    <form class="p-form p-form--inline">
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test'">
-                            <div class="p-form__control u-clearfix">
-                                <input id="{$ tab $}-enableSSH" type="checkbox"
-                                    data-ng-model="tabs[tab].commissionOptions.enableSSH">
+                <div class="row">
+                        <div class="col-12">
+                        <form class="p-form p-form--inline">
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test'">
+                                <div class="p-form__control u-clearfix">
+                                    <input id="{$ tab $}-enableSSH" type="checkbox"
+                                        data-ng-model="tabs[tab].commissionOptions.enableSSH">
+                                </div>
+                                <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
                             </div>
-                            <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
-                        </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                            <div class="p-form__control u-clearfix">
-                                <input id="{$ tab $}-skipNetworking" type="checkbox"
-                                    data-ng-model="tabs[tab].commissionOptions.skipNetworking">
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                                <div class="p-form__control u-clearfix">
+                                    <input id="{$ tab $}-skipNetworking" type="checkbox"
+                                        data-ng-model="tabs[tab].commissionOptions.skipNetworking">
+                                </div>
+                                <label class="p-form__label" for="{$ tab $}-skipNetworking">Retain network configuration</label>
                             </div>
-                            <label class="p-form__label" for="{$ tab $}-skipNetworking">Retain network configuration</label>
-                        </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                            <div class="p-form__control u-clearfix">
-                                <input id="{$ tab $}-skipStorage" type="checkbox"
-                                    data-ng-model="tabs[tab].commissionOptions.skipStorage">
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                                <div class="p-form__control u-clearfix">
+                                    <input id="{$ tab $}-skipStorage" type="checkbox"
+                                        data-ng-model="tabs[tab].commissionOptions.skipStorage">
+                                </div>
+                                <label class="p-form__label" for="{$ tab $}-skipStorage">Retain storage configuration</label>
                             </div>
-                            <label class="p-form__label" for="{$ tab $}-skipStorage">Retain storage configuration</label>
-                        </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                            <div class="p-form__control u-clearfix">
-                                <input id="{$ tab $}-updateFirmware" type="checkbox"
-                                    data-ng-model="tabs[tab].commissionOptions.updateFirmware">
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                                <div class="p-form__control u-clearfix">
+                                    <input id="{$ tab $}-updateFirmware" type="checkbox"
+                                        data-ng-model="tabs[tab].commissionOptions.updateFirmware">
+                                </div>
+                                <label class="p-form__label" for="{$ tab $}-updateFirmware">Update firmware</label>
                             </div>
-                            <label class="p-form__label" for="{$ tab $}-updateFirmware">Update firmware</label>
-                        </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                            <div class="p-form__control u-clearfix">
-                                <input id="{$ tab $}-configureHBA" type="checkbox"
-                                    data-ng-model="tabs[tab].commissionOptions.configureHBA">
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                                <div class="p-form__control u-clearfix">
+                                    <input id="{$ tab $}-configureHBA" type="checkbox"
+                                        data-ng-model="tabs[tab].commissionOptions.configureHBA">
+                                </div>
+                                <label class="p-form__label" for="{$ tab $}-configureHBA">Configure HBA</label>
                             </div>
-                            <label class="p-form__label" for="{$ tab $}-configureHBA">Configure HBA</label>
-                        </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
-                            <label for="image" class="p-form__label">Choose your image</label>
-                            <div class="p-form__control u-clearfix">
-                                <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
+                                <div class="p-form__control u-clearfix">
+                                    <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div data-ng-if="tabs[tab].actionOption.name === 'release'">
-                            <div data-maas-release-options="tabs[tab].releaseOptions"></div>
-                        </div>
-                        <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
-                            <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
-                            <div class="p-form__control u-clearfix">
-                                <select name="zone" id="{$ tab $}-zone3"
-                                    data-ng-model="tabs[tab].zoneSelection"
-                                    data-ng-options="zone as zone.name for zone in zones">
-                                    <option value="" disabled="disabled">Choose a zone</option>
-                                </select>
+                            <div data-ng-if="tabs[tab].actionOption.name === 'release'">
+                                <div data-maas-release-options="tabs[tab].releaseOptions"></div>
                             </div>
-                        </div>
-                    </form>
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
+                                <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
+                                <div class="p-form__control u-clearfix">
+                                    <select name="zone" id="{$ tab $}-zone3"
+                                        data-ng-model="tabs[tab].zoneSelection"
+                                        data-ng-options="zone as zone.name for zone in zones">
+                                        <option value="" disabled="disabled">Choose a zone</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <div class="page-header__controls col-6 u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
-                    <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
-                    <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
-                        <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'release'">Release {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'set-zone'">Set zone for {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'on'">Power on {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'off'">Power off {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'abort'">Abort action for {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'mark-broken'">Mark {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as broken
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                        <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $}
-                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </span>
-                    </button>
-                    <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-show="hasActionsFailed(tab)">Retry</button>
+                <div class="page-header__controls row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
+                    <div class="col-12">
+                        <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
+                        <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
+                            <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'release'">Release {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'set-zone'">Set zone for {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'on'">Power on {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'off'">Power off {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'abort'">Abort action for {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-broken'">Mark {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as broken
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $}
+                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                        </button>
+                        <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-show="hasActionsFailed(tab)">Retry</button>
+                    </div>
                 </div>
             </section>
             <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' && hasCustomCommissioningScripts()">

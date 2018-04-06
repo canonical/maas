@@ -98,20 +98,17 @@
                                 </ul>
                             </div>
 
-                            <div class="col-8 u-no-margin--left" data-ng-show="action.option.name === 'deploy' || action.option.name === 'release'">
+                            <div class="col-12 u-no-margin--left" data-ng-show="action.option.name === 'deploy' || action.option.name === 'release'">
                                 <div class="ng-hide" data-ng-show="action.option.name === 'deploy'">
-                                    <div class="p-form__group">
-                                        <label class="p-form__label">Choose your image</label>
-                                        <div class="p-form__control u-clearfix">
-                                            <div data-maas-os-select="osinfo" data-ng-model="osSelection"></div>
-                                        </div>
-                                    </div>
+                                    <div data-maas-os-select="osinfo" data-ng-model="osSelection"></div>
                                 </div>
                                 <div data-ng-if="action.option.name === 'release'" class="u-no-margin--top">
                                     <div data-maas-release-options="releaseOptions"></div>
                                 </div>
                             </div>
-                            <div class="col-4">
+                        </div>
+                        <div class="row">
+                            <div class="col-12 u-align--right">
                                 <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
                                     <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                                     <button class="p-button--neutral u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
