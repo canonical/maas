@@ -103,21 +103,9 @@ class TestIPMIPowerDriver(MAASTestCase):
         context['mac_address'] = factory.make_mac_address()
         context['power_address'] = random.choice((None, "", "   "))
 
-        self.patch_autospec(driver, "_issue_ipmi_chassis_config_command")
         self.patch_autospec(driver, "_issue_ipmipower_command")
         driver._issue_ipmi_command(power_change, **context)
 
-        # The IP address is passed to _issue_ipmi_chassis_config_command.
-        self.assertThat(
-            driver._issue_ipmi_chassis_config_command,
-            MockCalledOnceWith(
-                ANY, power_change, ip_address,
-                power_boot_type=None))
-        # The IP address is also within the command passed to
-        # _issue_ipmi_chassis_config_command.
-        self.assertThat(
-            driver._issue_ipmi_chassis_config_command.call_args[0],
-            Contains(ip_address))
         # The IP address is passed to _issue_ipmipower_command.
         self.assertThat(
             driver._issue_ipmipower_command,
@@ -233,23 +221,19 @@ class TestIPMIPowerDriver(MAASTestCase):
 
     def test__issue_ipmi_command_issues_power_off(self):
         context = make_context()
-        ipmi_chassis_config_command = make_ipmi_chassis_config_command(
-            **context, tmp_config_name=ANY)
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ('--off', )
         ipmi_power_driver = IPMIPowerDriver()
         env = get_env_with_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.side_effect = [(b'', b''), (b'off', b'')]
+        process.communicate.side_effect = [(b'off', b'')]
         process.returncode = 0
 
         result = ipmi_power_driver._issue_ipmi_command('off', **context)
 
         self.expectThat(
             popen_mock, MockCallsMatch(
-                call(ipmi_chassis_config_command, stdout=PIPE,
-                     stderr=PIPE, env=env),
                 call(ipmipower_command, stdout=PIPE,
                      stderr=PIPE, env=env)))
         self.expectThat(result, Equals('off'))
@@ -257,23 +241,19 @@ class TestIPMIPowerDriver(MAASTestCase):
     def test__issue_ipmi_command_issues_power_off_soft_mode(self):
         context = make_context()
         context['power_off_mode'] = 'soft'
-        ipmi_chassis_config_command = make_ipmi_chassis_config_command(
-            **context, tmp_config_name=ANY)
         ipmipower_command = make_ipmipower_command(**context)
         ipmipower_command += ('--soft', )
         ipmi_power_driver = IPMIPowerDriver()
         env = get_env_with_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.side_effect = [(b'', b''), (b'off', b'')]
+        process.communicate.side_effect = [(b'off', b'')]
         process.returncode = 0
 
         result = ipmi_power_driver._issue_ipmi_command('off', **context)
 
         self.expectThat(
             popen_mock, MockCallsMatch(
-                call(ipmi_chassis_config_command, stdout=PIPE,
-                     stderr=PIPE, env=env),
                 call(ipmipower_command, stdout=PIPE,
                      stderr=PIPE, env=env)))
         self.expectThat(result, Equals('off'))
@@ -336,7 +316,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ip_address = factory.make_ipv4_address()
         find_ip_via_arp = self.patch(ipmi_module, 'find_ip_via_arp')
         find_ip_via_arp.return_value = ip_address
-        power_change = random.choice(("on", "off"))
+        power_change = "on"
 
         context['mac_address'] = factory.make_mac_address()
         context['power_address'] = random.choice((None, "", "   "))
