@@ -53,18 +53,21 @@ def gen_available_browsers():
 
 def run_karma():
     """Start Karma with the MAAS JS testing configuration."""
-    browsers = set()  # Names passed to bin/karma.
-    extra = {}  # Additional environment variables.
 
-    for name, env in gen_available_browsers():
-        browsers.add(name)
-        extra.update(env)
-
-    command = (
-        'include/nodejs/bin/node', 'bin/karma', 'start', '--single-run',
-        '--no-colors', '--browsers',
-        ','.join(browsers), 'src/maastesting/karma.conf.js')
+    def run_with_browser(browser, env):
+        """Run tests with a specific browser and environment."""
+        command = (
+            'include/nodejs/bin/node', 'bin/karma', 'start', '--single-run',
+            '--no-colors', '--browsers', browser,
+            'src/maastesting/karma.conf.js')
+        karma = Popen(command, env=dict(os.environ, **env))
+        return karma.wait()
 
     with DisplayFixture():
-        karma = Popen(command, env=dict(os.environ, **extra))
-        raise SystemExit(karma.wait())
+        for browser, env in gen_available_browsers():
+            # run karma separately for each browser, since running multiple
+            # browsers seems to tringger a buggy behavior in karma which makes
+            # some tests fail with page reload (lp:1762344)
+            ret = run_with_browser(browser, env)
+            if ret:
+                SystemExit(ret)
