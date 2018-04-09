@@ -810,7 +810,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.architecture = $scope.summary.architecture.selected;
             if($scope.summary.min_hwe_kernel.selected === null) {
                 node.min_hwe_kernel = "";
-            }else{
+            } else {
                 node.min_hwe_kernel = $scope.summary.min_hwe_kernel.selected;
             }
             node.tags = [];
@@ -1050,9 +1050,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             var label = $scope.node.cpu_count + " cores";
             if(!$scope.node.cpu_speed || $scope.node.cpu_speed === 0) {
                 return label;
-            }else if($scope.node.cpu_speed < 1000) {
+            } else if($scope.node.cpu_speed < 1000) {
                 return label + " @ " + $scope.node.cpu_speed + " Mhz";
-            }else{
+            } else {
                 return label + " @ " + ($scope.node.cpu_speed / 1000) + " Ghz";
             }
         }
@@ -1083,14 +1083,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.type_name = 'controller';
                 $scope.type_name_title = 'Controller';
                 $rootScope.page = 'controllers';
-            }else if(path.indexOf('/device') !== -1) {
+            } else if(path.indexOf('/device') !== -1) {
                 $scope.nodesManager = DevicesManager;
                 $scope.isController = false;
                 $scope.isDevice = true;
                 $scope.type_name = 'device';
                 $scope.type_name_title = 'Device';
                 $rootScope.page = 'devices';
-            }else{
+            } else {
                 $scope.nodesManager = MachinesManager;
                 $scope.isController = false;
                 $scope.isDevice = false;
