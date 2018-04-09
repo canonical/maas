@@ -58,7 +58,6 @@ from netaddr import (
     IPAddress,
 )
 from provisioningserver.logger import LegacyLogger
-from twisted.internet import reactor
 from twisted.internet.defer import (
     AlreadyCalledError,
     CancelledError,
@@ -224,6 +223,7 @@ def synchronous(func):
         # isInIOThread() can return True if the reactor has previously been
         # started but has now stopped, so don't test isInIOThread() until
         # we've also checked if the reactor is running.
+        from twisted.internet import reactor
         if reactor.running and isInIOThread():
             raise AssertionError(
                 "Function %s(...) must not be called in the "
@@ -258,7 +258,7 @@ def suppress(failure, *exceptions, instead=None):
         return instead
 
 
-def retries(timeout=30, intervals=1, clock=reactor):
+def retries(timeout=30, intervals=1, clock=None):
     """Helper for retrying something, sleeping between attempts.
 
     Returns a generator that yields ``(elapsed, remaining, wait)`` tuples,
@@ -274,6 +274,8 @@ def retries(timeout=30, intervals=1, clock=reactor):
     :param clock: An optional `IReactorTime` provider. Defaults to the
         installed reactor.
     """
+    if clock is None:
+        from twisted.internet import reactor as clock
     start = clock.seconds()
     end = start + timeout
 
@@ -285,7 +287,7 @@ def retries(timeout=30, intervals=1, clock=reactor):
     return gen_retries(start, end, intervals, clock)
 
 
-def gen_retries(start, end, intervals, clock=reactor):
+def gen_retries(start, end, intervals, clock=None):
     """Helper for retrying something, sleeping between attempts.
 
     Yields ``(elapsed, remaining, wait)`` tuples, giving times in seconds. The
@@ -307,6 +309,8 @@ def gen_retries(start, end, intervals, clock=reactor):
         installed reactor.
 
     """
+    if clock is None:
+        from twisted.internet import reactor as clock
     for interval in intervals:
         now = clock.seconds()
         if now < end:
@@ -317,11 +321,13 @@ def gen_retries(start, end, intervals, clock=reactor):
             break
 
 
-def pause(duration, clock=reactor):
+def pause(duration, clock=None):
     """Pause execution for `duration` seconds.
 
     Returns a `Deferred` that will fire after `duration` seconds.
     """
+    if clock is None:
+        from twisted.internet import reactor as clock
     d = Deferred(lambda d: dc.cancel())
     dc = clock.callLater(duration, d.callback, None)
     return d
@@ -347,6 +353,7 @@ def deferWithTimeout(timeout, func=None, *args, **kwargs):
     else:
         d = maybeDeferred(func, *args, **kwargs)
 
+    from twisted.internet import reactor
     timeoutCall = reactor.callLater(timeout, d.cancel)
 
     def done(result):
@@ -714,6 +721,7 @@ def callInThread(ctx, func, args, kwargs, d):
         the function call.
 
     """
+    from twisted.internet import reactor
     try:
         result = context.call(ctx, func, *args, **kwargs)
     except:
@@ -928,10 +936,14 @@ class ThreadPoolLimiter:
     thread-pool to be portioned out.
     """
 
-    def __init__(self, pool, lock):
+    def __init__(self, pool, lock, clock=None):
         super(ThreadPoolLimiter, self).__init__()
         self.pool = pool
         self.lock = lock
+        self.clock = clock
+        if self.clock is None:
+            from twisted.internet import reactor
+            self.clock = reactor
 
     start = property(attrgetter("pool.start"))
     started = property(attrgetter("pool.started"))
@@ -963,14 +975,14 @@ class ThreadPoolLimiter:
         if onResult is None:
             def callback(success, result, lock=self.lock):
                 # Ignore the result; it was never wanted anyway.
-                reactor.callFromThread(release, lock)
+                self.clock.callFromThread(release, lock)
         else:
             def callback(success, result, lock=self.lock):
                 # Make the callback before releasing the lock.
                 try:
                     signal(success, result)
                 finally:
-                    reactor.callFromThread(release, lock)
+                    self.clock.callFromThread(release, lock)
 
         def locked(lock, pool=self.pool):
             try:
@@ -1007,7 +1019,8 @@ def makeDeferredWithProcessProtocol():
 
 
 def terminateProcess(
-        pid, done, *, term_after=0.0, quit_after=5.0, kill_after=10.0):
+        pid, done, *, term_after=0.0, quit_after=5.0, kill_after=10.0,
+        reactor=None):
     """Terminate the given process.
 
     A "sensible" way to terminate a process. Does the following:
@@ -1028,6 +1041,9 @@ def terminateProcess(
     :param done: A `Deferred` that fires when the process exits.
     """
     ppgid = os.getpgrp()
+
+    if reactor is None:
+        from twisted.internet import reactor
 
     def kill(sig):
         """Attempt to send `signal` to the given `pid`."""

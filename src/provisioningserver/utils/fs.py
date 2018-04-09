@@ -56,7 +56,6 @@ from provisioningserver.utils import (
 )
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
-from twisted.internet import reactor
 from twisted.python.filepath import FilePath
 from twisted.python.lockfile import FilesystemLock
 
@@ -442,9 +441,13 @@ class SystemLock:
     # claim a file-system lock at a time.
     PROCESS_LOCK = threading.Lock()
 
-    def __init__(self, path):
+    def __init__(self, path, reactor=None):
         super(SystemLock, self).__init__()
         self._fslock = FilesystemLock(path)
+        self.reactor = reactor
+        if self.reactor is None:
+            from twisted.internet import reactor
+            self.reactor = reactor
 
     def __enter__(self):
         self.acquire()
@@ -475,7 +478,7 @@ class SystemLock:
         """
         interval = max(0.1, min(1.0, float(timeout) / 10.0))
 
-        for _, _, wait in retries(timeout, interval, reactor):
+        for _, _, wait in retries(timeout, interval, self.reactor):
             with self.PROCESS_LOCK:
                 if self._fslock.lock():
                     break
@@ -527,9 +530,9 @@ class SystemLock:
 class FileLock(SystemLock):
     """Always create a lock file at ``${path}.lock``."""
 
-    def __init__(self, path):
+    def __init__(self, path, reactor=None):
         lockpath = FilePath(path).asTextMode().path + ".lock"
-        super(FileLock, self).__init__(lockpath)
+        super(FileLock, self).__init__(lockpath, reactor=reactor)
 
 
 class RunLock(SystemLock):
@@ -543,11 +546,11 @@ class RunLock(SystemLock):
     and forward slashes will be replaced with colons.
     """
 
-    def __init__(self, path):
+    def __init__(self, path, reactor=None):
         abspath = FilePath(path).asTextMode().path.lstrip("/")
         discriminator = abspath.replace(":", "::").replace("/", ":")
         lockpath = get_data_path("run", "lock", "maas@%s" % discriminator)
-        super(RunLock, self).__init__(lockpath)
+        super(RunLock, self).__init__(lockpath, reactor=reactor)
 
 
 class NamedLock(SystemLock):
@@ -561,7 +564,7 @@ class NamedLock(SystemLock):
     ACCEPTABLE_CHARACTERS = frozenset().union(
         string.ascii_letters, string.digits, "-")
 
-    def __init__(self, name):
+    def __init__(self, name, reactor=None):
         if not isinstance(name, str):
             raise TypeError(
                 "Lock name must be str, not %s"
@@ -573,4 +576,4 @@ class NamedLock(SystemLock):
                 % "".join(sorted(illegal)))
         else:
             lockpath = get_data_path("run", "lock", "maas:%s" % name)
-            super(NamedLock, self).__init__(lockpath)
+            super(NamedLock, self).__init__(lockpath, reactor=reactor)

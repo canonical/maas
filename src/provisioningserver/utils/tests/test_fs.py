@@ -79,6 +79,7 @@ from testtools.matchers import (
     StartsWith,
 )
 from testtools.testcase import ExpectedException
+from twisted import internet
 from twisted.internet.task import Clock
 from twisted.python import lockfile
 
@@ -871,7 +872,7 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
 
     def test__wait_waits_until_lock_can_be_acquired(self):
-        clock = self.patch(fs_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
         sleep = self.patch(fs_module, "sleep")
         sleep.side_effect = clock.advance
 
@@ -889,7 +890,7 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(do_unlock, MockCalledOnceWith())
 
     def test__wait_raises_exception_when_time_has_run_out(self):
-        clock = self.patch(fs_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
         sleep = self.patch(fs_module, "sleep")
         sleep.side_effect = clock.advance
 

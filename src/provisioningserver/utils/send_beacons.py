@@ -30,7 +30,6 @@ from provisioningserver.utils.services import (
     BeaconingSocketProtocol,
     interface_info_to_beacon_remote_payload,
 )
-from twisted.internet import reactor
 
 
 log = LegacyLogger()
@@ -64,13 +63,15 @@ def add_arguments(parser):
              "interfaces.")
 
 
-def do_beaconing(args, interfaces=None):
+def do_beaconing(args, interfaces=None, reactor=None):
     """Sends out beacons based on the given arguments, and waits for replies.
 
     :param args: The command-line arguments.
     :param interfaces: The interfaces to send out beacons on.
         Must be the result of `get_all_interfaces_definition()`.
     """
+    if reactor is None:
+        from twisted.internet import reactor
     if args.source is None:
         source_ip = '::'
     else:

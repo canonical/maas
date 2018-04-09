@@ -91,6 +91,7 @@ from testtools.matchers import (
     Raises,
 )
 from testtools.testcase import ExpectedException
+from twisted import internet
 from twisted.internet import (
     address,
     reactor,
@@ -525,7 +526,7 @@ DelayedCallCalled = MatchesStructure(
 class TestDeferWithTimeout(MAASTestCase):
 
     def test__returns_Deferred_that_will_be_cancelled_after_timeout(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
 
         # Called with only a timeout, `deferWithTimeout` returns a Deferred.
         timeout = randint(10, 100)
@@ -548,7 +549,7 @@ class TestDeferWithTimeout(MAASTestCase):
         self.assertRaises(CancelledError, extract_result, d)
 
     def test__returns_Deferred_that_wont_be_cancelled_if_called(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
 
         # Called without a function argument, `deferWithTimeout` returns a new
         # Deferred, and schedules it to be cancelled in `timeout` seconds.
@@ -568,7 +569,7 @@ class TestDeferWithTimeout(MAASTestCase):
         self.assertThat(extract_result(d), Is(sentinel.result))
 
     def test__returns_Deferred_that_wont_be_cancelled_if_errored(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
 
         # Called without a function argument, `deferWithTimeout` returns a new
         # Deferred, and schedules it to be cancelled in `timeout` seconds.
@@ -590,7 +591,7 @@ class TestDeferWithTimeout(MAASTestCase):
         self.assertRaises(RuntimeError, extract_result, d)
 
     def test__calls_given_function(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
 
         class OurDeferred(Deferred):
             """A Deferred subclass that we use as a marker."""
@@ -618,7 +619,7 @@ class TestDeferWithTimeout(MAASTestCase):
         self.assertRaises(CancelledError, extract_result, d)
 
     def test__calls_given_function_and_always_returns_Deferred(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
 
         def do_something(a, *b, **c):
             return do_something, a, b, c
@@ -852,7 +853,7 @@ class TestDeferredValue(MAASTestCase):
         self.assertThat(dvalue.get(), IsInstance(Deferred))
 
     def test__get_returns_a_Deferred_with_a_timeout(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
         dvalue = DeferredValue()
         waiter = dvalue.get(10)
         self.assertThat(waiter, IsUnfiredDeferred())
@@ -870,7 +871,7 @@ class TestDeferredValue(MAASTestCase):
         self.expectThat(extract_result(waiter2), Is(sentinel.value))
 
     def test__set_notifies_all_waiters_that_have_not_timed_out(self):
-        clock = self.patch(twisted_module, "reactor", Clock())
+        clock = self.patch(internet, "reactor", Clock())
         dvalue = DeferredValue()
         waiter0 = dvalue.get()
         waiter1 = dvalue.get(1)

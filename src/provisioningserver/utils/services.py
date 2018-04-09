@@ -56,7 +56,6 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.application.internet import TimerService
 from twisted.application.service import MultiService
-from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
@@ -215,10 +214,17 @@ class ProtocolForObserveMDNS(JSONPerLineProtocol):
 
 class ProcessProtocolService(TimerService, metaclass=ABCMeta):
 
-    def __init__(self, interval=60.0):
+    def __init__(self, interval=60.0, clock=None, reactor=None):
         super().__init__(interval, self.startProcess)
         self._process = self._protocol = None
         self._stopping = False
+        self.reactor = reactor
+        if self.reactor is None:
+            from twisted.internet import reactor
+            self.reactor = reactor
+        self.clock = clock
+        if self.clock is None:
+            self.clock = self.reactor
 
     @deferred
     def startProcess(self):
@@ -228,7 +234,7 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         assert all(isinstance(arg, bytes) for arg in args), (
             "Process arguments must all be bytes, got: %s" % repr(args))
         self._protocol = self.createProcessProtocol()
-        self._process = reactor.spawnProcess(
+        self._process = self.reactor.spawnProcess(
             self._protocol, args[0], args, env=env)
         return self._protocol.done.addBoth(self._processEnded)
 

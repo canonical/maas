@@ -25,6 +25,8 @@ from provisioningserver.utils.send_beacons import (
     run,
 )
 from testtools.matchers import MatchesStructure
+from twisted import internet
+from twisted.internet.task import Clock
 
 
 def ArgumentsMatching(**kwargs):
@@ -116,7 +118,8 @@ class TestSendBeaconsProtocolInteraction(
         self.fake_protocol.send_multicast_beacons = Mock()
         self.fake_protocol.send_beacon = Mock()
         # Prevent the command from starting and stopping the reactor.
-        self.reactor_mock = self.patch(send_beacons_module, "reactor")
+        self.reactor_mock = self.patch(internet, "reactor", Clock())
+        self.patch(self.reactor_mock, "run")
 
     def test__sends_multicast_beacons_by_default(self):
         self.run_command()
