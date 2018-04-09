@@ -11,9 +11,11 @@ __all__ = [
 
 from datetime import datetime
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
+    Count,
     Manager,
     Q,
     TextField,
@@ -107,11 +109,50 @@ class ResourcePool(CleanSave, TimestampedModel):
         moved to methods in Role.
         """
         from maasserver.models.node import Machine
-        if Machine.objects.filter(pool=self, owner=user).exists():
+        from maasserver.models.role import Role
+        has_machines = Machine.objects.filter(pool=self, owner=user).exists()
+        has_access_through_roles = Role.objects.filter(
+            groups__users=user, resource_pools=self).exists()
+        if has_machines and not has_access_through_roles:
             raise ValidationError(
                 'User has machines in the pool, it cannot be revoked.')
         role = self._get_pool_role()
         role.users.remove(user)
+
+    def grant_group(self, group):
+        """Grant group access to the resource pool.
+
+        XXX This should be dropped once we implement full RBAC, and the logic
+        moved to methods in Role.
+        """
+        role = self._get_pool_role()
+        role.groups.add(group)
+
+    def revoke_group(self, group):
+        """Revoke group access to the resource pool.
+
+        XXX This should be dropped once we implement full RBAC, and the logic
+        moved to methods in Role.
+        """
+        # check that users that have machines in the pool can still access them
+        # either directly or via other groups
+        users_with_direct_access = User.objects.filter(
+            role__resource_pools=self).values('id')
+        users_with_other_group_access = User.objects.filter(
+            usergroup__role__resource_pools=self).annotate(
+                usergroup_count=Count('usergroup')).filter(
+                    usergroup_count__gt=1).values('id')
+        users_with_machines = User.objects.filter(node__pool=self).values('id')
+        excluded_users = users_with_machines.difference(
+            users_with_direct_access).difference(users_with_other_group_access)
+        if excluded_users.exists():
+            raise ValidationError(
+                "Can't remove group from pool, some users have machines that"
+                " would become unaccessible.")
+
+        # remove the group
+        role = self._get_pool_role()
+        role.groups.remove(group)
 
     def _get_pool_role(self):
         """Return the Role associated to the pool.

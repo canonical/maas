@@ -1034,20 +1034,24 @@ class Factory(maastesting.factory.Factory):
         return group
 
     def make_ResourcePool(self, name=None, description=None,
-                          nodes=None, users=None):
+                          nodes=None, users=None, groups=None):
         if name is None:
             name = self.make_name('resourcepool')
         if description is None:
             description = self.make_string()
         pool = ResourcePool(name=name, description=description)
         pool.save()
+        if users is not None:
+            for user in users:
+                pool.grant_user(user)
+        if groups is not None:
+            for group in groups:
+                pool.grant_group(group)
+        # add nodes last, as owner might need access granted to the pool first
         if nodes is not None:
             for node in nodes:
                 node.pool = pool
                 node.save()
-        if users is not None:
-            for user in users:
-                pool.grant_user(user)
         return pool
 
     def make_Role(self, name=None, description=None, pools=None, users=None,
