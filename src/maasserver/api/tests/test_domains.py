@@ -10,6 +10,7 @@ import json
 import random
 
 from django.conf import settings
+from maasserver.models import GlobalDefault
 from maasserver.models.dnspublication import zone_serial
 from maasserver.models.domain import Domain
 from maasserver.sequence import INT_MAX
@@ -158,6 +159,29 @@ class TestDomainAPI(APITestCase.ForUser):
             "resource_record_count": Equals(3),
             }))
 
+    def test_read_includes_default_domain(self):
+        defaults = GlobalDefault.objects.instance()
+        old_default = Domain.objects.get_default_domain()
+        domain = factory.make_Domain()
+        defaults.domain = domain
+        defaults.save()
+        uri = get_domain_uri(domain)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_domain = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(parsed_domain, ContainsDict({
+            "is_default": Equals(True)}))
+        uri = get_domain_uri(old_default)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_domain = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(parsed_domain, ContainsDict({
+            "is_default": Equals(False)}))
+
     def test_read_404_when_bad_id(self):
         uri = reverse(
             'domain_handler', args=[random.randint(100, 1000)])
@@ -198,6 +222,28 @@ class TestDomainAPI(APITestCase.ForUser):
         })
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_set_default(self):
+        self.become_admin()
+        domain = factory.make_Domain()
+        self.assertEqual(False, domain.is_default())
+        uri = get_domain_uri(domain)
+        response = self.client.post(uri, {
+            "op": "set_default",
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        ret = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        domain = reload_object(domain)
+        self.assertEqual(True, ret['is_default'])
+        self.assertEqual(True, domain.is_default())
+
+    def test_set_default_admin_only(self):
+        domain = factory.make_Domain()
+        uri = get_domain_uri(domain)
+        self.client.post(uri, {
+            "op": "set_default",
+        })
 
     def test_delete_deletes_domain(self):
         self.become_admin()

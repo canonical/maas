@@ -426,6 +426,7 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
                 'id',
                 'name',
                 'ttl',
+                'is_default',
                 'authoritative',
                 'resource_record_count',
             ],

@@ -13,7 +13,10 @@ from maasserver.dns.config import dns_force_reload
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.domain import DomainForm
-from maasserver.models import Domain
+from maasserver.models import (
+    Domain,
+    GlobalDefault,
+)
 from maasserver.models.dnspublication import zone_serial
 from maasserver.sequence import INT_MAX
 from piston3.utils import rc
@@ -25,6 +28,7 @@ DISPLAYED_DOMAIN_FIELDS = (
     'ttl',
     'authoritative',
     'resource_record_count',
+    'is_default',
 )
 
 
@@ -41,7 +45,7 @@ class DomainsHandler(OperationsHandler):
 
     def read(self, request):
         """List all domains."""
-        return Domain.objects.all()
+        return Domain.objects.all().prefetch_related('globaldefault_set')
 
     @admin_method
     def create(self, request):
@@ -107,6 +111,11 @@ class DomainHandler(OperationsHandler):
         return domain.get_name()
 
     @classmethod
+    def is_default(cls, domain):
+        """Returns True if the domain is a default domain."""
+        return domain.is_default()
+
+    @classmethod
     def resources(cls, domain):
         """Return DNSResources within the specified domain."""
         return domain.dnsresource_set.all()
@@ -138,11 +147,29 @@ class DomainHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
+    @operation(idempotent=False)
+    def set_default(self, request, id):
+        """Set the specified domain to be the default.
+
+        If any unallocated nodes are using the previous default domain,
+        changes them to use the new default domain.
+
+        Returns 403 if the user does not have permission to update the
+        default domain.
+        Returns 404 if the domain is not found.
+        """
+        domain = Domain.objects.get_domain_or_404(
+            id, request.user, NODE_PERMISSION.ADMIN)
+        global_defaults = GlobalDefault.objects.instance()
+        global_defaults.domain = domain
+        global_defaults.save()
+        return domain
+
     def delete(self, request, id):
         """Delete domain.
 
         Returns 403 if the user does not have permission to update the
-        dnsresource.
+        domain.
         Returns 404 if the domain is not found.
         """
         domain = Domain.objects.get_domain_or_404(

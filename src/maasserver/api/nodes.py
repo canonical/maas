@@ -77,6 +77,7 @@ NODES_SELECT_RELATED = (
 NODES_PREFETCH = [
     'domain__dnsresource_set__ip_addresses',
     'domain__dnsresource_set__dnsdata_set',
+    'domain__globaldefault_set',
     'ownerdata_set',
     'special_filesystems',
     'gateway_link_ipv4__subnet',

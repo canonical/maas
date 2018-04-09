@@ -319,8 +319,12 @@ class Domain(CleanSave, TimestampedModel):
         return "name=%s" % self.get_name()
 
     def is_default(self):
-        """Is this the default domain?"""
-        return self.id == 0
+        """Returns True if this is the default domain, False otherwise."""
+        # Iterate over cached objects. (There should be just one, in fact.)
+        for defaults in self.globaldefault_set.all():
+            if defaults.domain_id == self.id:
+                return True
+        return False
 
     def get_name(self):
         """Return the name of the domain."""
