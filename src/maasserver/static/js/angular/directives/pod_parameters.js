@@ -68,7 +68,7 @@ angular.module('MAAS').directive(
                       }
                   });
 
-                  if(type.name === 'virsh') {
+                  if(type.name === 'virsh' && attrs.hideSlider !== "true") {
                       html += (
                           '<maas-obj-field type="slider" key="' +
                           'cpu_over_commit_ratio" label="CPU over commit" ' +
