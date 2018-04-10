@@ -290,7 +290,7 @@
                         nodes are transitioning to {$ tabs[tab].actionOption.sentence $}.
                     </p>
                     <p class="page-header__message page-header__message--error"
-                    data-ng-repeat="(error, machines) in tabs[tab].actionProgress.errors">
+                    data-ng-repeat="(error, nodes) in tabs[tab].actionProgress.errors">
                         The {$ tabs[tab].actionOption.title.toLowerCase() $} action for {$ nodes.length $}
                         <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                         failed with error: {$ error $}
