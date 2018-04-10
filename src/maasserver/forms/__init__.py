@@ -1445,7 +1445,7 @@ class ManageResourcePoolsAssociationForm(Form):
 
     pool = forms.ModelMultipleChoiceField(
         queryset=ResourcePool.objects.all(),
-        label="Resource pool to grant access to", required=True)
+        label="Resource pool to grant/revoke access to", required=True)
 
 
 class ConfigForm(Form):

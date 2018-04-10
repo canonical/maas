@@ -5,11 +5,37 @@
 
 __all__ = []
 
-from maasserver.forms import UserGroupForm
+from maasserver.forms import (
+    ManageUserGroupsForm,
+    UserGroupForm,
+)
 from maasserver.models import UserGroup
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.worker_user import get_worker_user
+from metadataserver.nodeinituser import get_node_init_user
+
+
+class TestManageUserGroupsForm(MAASServerTestCase):
+
+    def test_get_users(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        form = ManageUserGroupsForm(
+            data={'user': [str(user1.id), str(user2.id)]})
+        self.assertTrue(form.is_valid())
+        self.assertCountEqual(form.cleaned_data['user'], [user1, user2])
+
+    def test_node_init_user_not_valid(self):
+        user = get_node_init_user()
+        form = ManageUserGroupsForm(data={'user': [str(user.id)]})
+        self.assertFalse(form.is_valid())
+
+    def test_worker_user_not_valid(self):
+        user = get_worker_user()
+        form = ManageUserGroupsForm(data={'user': [str(user.id)]})
+        self.assertFalse(form.is_valid())
 
 
 class TestUserGroupForm(MAASServerTestCase):
