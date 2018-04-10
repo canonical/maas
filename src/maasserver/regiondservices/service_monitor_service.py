@@ -27,7 +27,7 @@ log = LegacyLogger()
 class ServiceMonitorService(TimerService, object):
     """Service to monitor external services that the region requires."""
 
-    check_interval = timedelta(minutes=1).total_seconds()
+    check_interval = timedelta(seconds=30).total_seconds()
 
     def __init__(self, clock=reactor):
         # Call self.monitorServices() every self.check_interval.

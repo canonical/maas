@@ -52,7 +52,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         monitor_service = ServiceMonitorService(sentinel.clock)
         self.assertThat(monitor_service, MatchesStructure.byEquality(
             call=(monitor_service.monitorServices, (), {}),
-            step=(60), clock=sentinel.clock))
+            step=(30), clock=sentinel.clock))
 
     def test_monitorServices_does_not_do_anything_in_dev_environment(self):
         # Belt-n-braces make sure we're in a development environment.

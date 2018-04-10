@@ -60,7 +60,7 @@ class TestServiceMonitorService(MAASTestCase):
             sentinel.client_service, sentinel.clock)
         self.assertThat(monitor_service, MatchesStructure.byEquality(
             call=(monitor_service.monitorServices, (), {}),
-            step=(60), client_service=sentinel.client_service,
+            step=(30), client_service=sentinel.client_service,
             clock=sentinel.clock))
 
     def test_monitorServices_does_not_do_anything_in_dev_environment(self):

@@ -52,7 +52,7 @@ class ServiceMonitorService(TimerService, object):
         },
     ]
 
-    check_interval = timedelta(minutes=1).total_seconds()
+    check_interval = timedelta(seconds=30).total_seconds()
 
     def __init__(self, client_service, clock):
         # Call self.monitorServices() every self.check_interval.
