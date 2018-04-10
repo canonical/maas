@@ -431,6 +431,31 @@ class TestVirshSSH(MAASTestCase):
         value = conn.get_key_value(SAMPLE_NODEINFO, key)
         self.assertEquals(value, expected)
 
+    def test_create_storage_pool(self):
+        mock_run = self.patch(virsh.VirshSSH, 'run')
+        mock_run.return_value = ''
+        conn = virsh.VirshSSH()
+        conn.create_storage_pool()
+        self.assertThat(mock_run, MockCallsMatch(
+            call(['pool-define-as', 'maas', 'dir',
+                  '- - - -', '/var/lib/libvirt/maas-images']),
+            call(['pool-build', 'maas']),
+            call(['pool-start', 'maas']),
+            call(['pool-autostart', 'maas'])))
+
+    def test_create_storage_pool_writes_maaslog_on_error(self):
+        mock_maaslog = self.patch(virsh, 'maaslog')
+        mock_run = self.patch(virsh.VirshSSH, 'run')
+        error_msg = 'error: error message here'
+        mock_run.return_value = error_msg
+        conn = virsh.VirshSSH()
+        conn.create_storage_pool()
+        self.assertThat(mock_run, MockCalledOnceWith(
+            ['pool-define-as', 'maas', 'dir',
+             '- - - -', '/var/lib/libvirt/maas-images']))
+        self.assertThat(mock_maaslog.error, MockCalledOnceWith(
+            "Failed to create Pod storage pool: %s", error_msg))
+
     def test_list_machines(self):
         names = [factory.make_name('machine') for _ in range(3)]
         conn = self.configure_virshssh('\n'.join(names))
@@ -1472,8 +1497,10 @@ class TestVirshPodDriver(MAASTestCase):
         ]
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = True
-        mock_run = self.patch(virsh.VirshSSH, 'run')
-        mock_run.return_value = SAMPLE_POOLLIST
+        mock_list_pools = self.patch(virsh.VirshSSH, 'list_pools')
+        mock_list_pools.side_effect = ([], ['default'], ['default'])
+        mock_create_storage_pool = self.patch(
+            virsh.VirshSSH, 'create_storage_pool')
         mock_get_pod_resources = self.patch(
             virsh.VirshSSH, 'get_pod_resources')
         mock_get_pod_hints = self.patch(
@@ -1484,6 +1511,7 @@ class TestVirshPodDriver(MAASTestCase):
         mock_list_machines.return_value = machines
 
         discovered_pod = yield driver.discover(system_id, context)
+        self.expectThat(mock_create_storage_pool, MockCalledOnceWith())
         self.expectThat(
             mock_get_pod_resources, MockCalledOnceWith())
         self.expectThat(

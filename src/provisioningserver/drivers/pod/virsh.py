@@ -289,6 +289,20 @@ class VirshSSH(pexpect.spawn):
         if value:
             return value.split()[0]
 
+    def create_storage_pool(self):
+        """Create a storage pool named `maas`."""
+        commands = [
+            ['pool-define-as', 'maas', 'dir',
+             '- - - -', '/var/lib/libvirt/maas-images'],
+            ['pool-build', 'maas'],
+            ['pool-start', 'maas'],
+            ['pool-autostart', 'maas']]
+        for command in commands:
+            output = self.run(command)
+            if output.startswith('error:'):
+                maaslog.error("Failed to create Pod storage pool: %s", output)
+                return None
+
     def list_machines(self):
         """Lists all VMs by name."""
         machines = self.run(['list', '--all', '--name'])
@@ -927,6 +941,11 @@ class VirshPodDriver(PodDriver):
         Returns a defer to a DiscoveredPod object.
         """
         conn = yield self.get_virsh_connection(context)
+
+        # Check that we have at least one storage pool.  If not, create it.
+        pools = yield deferToThread(conn.list_pools)
+        if not len(pools):
+            yield deferToThread(conn.create_storage_pool)
 
         # Check and set default storage pool.
         self.default_storage_pool = context.get('default_storage_pool')
