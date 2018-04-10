@@ -8,7 +8,7 @@ __all__ = []
 from django.contrib.auth.models import User
 from maasserver.forms import (
     EditUserForm,
-    ManageUserResourcePoolsForm,
+    ManageResourcePoolsAssociationForm,
     NewUserCreationForm,
     ProfileForm,
 )
@@ -139,20 +139,20 @@ class TestNewUserCreationForm(MAASServerTestCase):
         self.assertFalse(user.has_usable_password())
 
 
-class TestManageUserResourcePooolsForm(MAASServerTestCase):
+class TestManageResourcePoolsAssociationForm(MAASServerTestCase):
 
     def test_resource_pools(self):
         pool1 = factory.make_ResourcePool()
         pool2 = factory.make_ResourcePool()
         params = {'pool': [str(pool1.id), str(pool2.id)]}
-        form = ManageUserResourcePoolsForm(params)
+        form = ManageResourcePoolsAssociationForm(params)
         self.assertTrue(form.is_valid())
         self.assertCountEqual(form.cleaned_data['pool'], [pool1, pool2])
 
     def test_pool_required(self):
-        form = ManageUserResourcePoolsForm({})
+        form = ManageResourcePoolsAssociationForm({})
         self.assertFalse(form.is_valid())
 
     def test_unknown_pool(self):
-        form = ManageUserResourcePoolsForm({'pool': [-1]})
+        form = ManageResourcePoolsAssociationForm({'pool': [-1]})
         self.assertFalse(form.is_valid())

@@ -40,7 +40,8 @@ __all__ = [
     "list_all_usable_architectures",
     "MAASForm",
     "MachineForm",
-    "ManageUserResourcePoolsForm",
+    "ManageResourcePoolsAssociationForm",
+    "ManageUserGroupsForm",
     "NetworksListingForm",
     "NewUserCreationForm",
     "NetworkDiscoveryForm",
@@ -191,6 +192,8 @@ from maasserver.utils.osystems import (
     validate_min_hwe_kernel,
 )
 from maasserver.utils.threads import deferToDatabase
+from maasserver.worker_user import user_name as worker_username
+from metadataserver.nodeinituser import user_name as node_init_username
 from netaddr import (
     IPNetwork,
     valid_ipv6,
@@ -1424,8 +1427,21 @@ class UserGroupForm(MAASModelForm):
         return self.cleaned_data['local']
 
 
-class ManageUserResourcePoolsForm(Form):
-    """A form to grant/revoke user access to resource pools."""
+class ManageUserGroupsForm(Form):
+    """A form to add/remove users with groups."""
+
+    user = forms.ModelMultipleChoiceField(
+        queryset=User.objects.filter(is_active=True).exclude(
+            username__in=(worker_username, node_init_username)),
+        label="User group to add/remove ", required=True)
+
+
+class ManageResourcePoolsAssociationForm(Form):
+    """A form to grant/revoke access to resource pools.
+
+    It's used to manage user and user groups association with resource pools.
+
+    """
 
     pool = forms.ModelMultipleChoiceField(
         queryset=ResourcePool.objects.all(),
