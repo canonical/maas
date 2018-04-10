@@ -144,27 +144,40 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Update the available action options for the node.
         function updateAvailableActionOptions() {
-            $scope.action.availableOptions = [];
             if(!angular.isObject($scope.node)) {
                 return;
             }
-
-            // Initialize the allowed action list.
-            if($scope.action.allOptions === null) {
-                $scope.action.allOptions =
-                    $scope.getAllActionOptions($scope.node.node_type);
+            var actionTypeForNodeType = {
+                0: "machine_actions",
+                1: "device_actions",
+                2: "rack_controller_actions",
+                3: "region_controller_actions",
+                4: "region_and_rack_controller_actions"
+            };
+            if(GeneralManager.isDataLoaded(
+                    actionTypeForNodeType[$scope.node.node_type])) {
+                // Build the available action options control from the
+                // allowed actions, except set-zone which does not make
+                // sense in this view because the form has this
+                // functionality
+                $scope.action.availableOptions = GeneralManager.getData(
+                    actionTypeForNodeType[$scope.node.node_type]);
+                angular.forEach($scope.action.allOptions, function(option) {
+                    if($scope.node.actions.indexOf(option.name) >= 0
+                       && option.name !== "set-zone") {
+                        $scope.action.availableOptions.push(option);
+                    }
+                });
+            } else {
+                // The GeneralManager only loads data requested on load. This
+                // isn't called until after load as its triggered on the loaded
+                // node's actions. If the node's action list isn't loaded load
+                // it then update the available options.
+                var self = updateAvailableActionOptions;
+                GeneralManager.loadItems(
+                    [actionTypeForNodeType[$scope.node.node_type]]).then(
+                    updateAvailableActionOptions);
             }
-
-            // Build the available action options control from the
-            // allowed actions, except set-zone which does not make
-            // sense in this view because the form has this
-            // functionality
-            angular.forEach($scope.action.allOptions, function(option) {
-                if($scope.node.actions.indexOf(option.name) >= 0
-                   && option.name !== "set-zone") {
-                    $scope.action.availableOptions.push(option);
-                }
-            });
         }
 
         // Updates the currently selected items in the power section.
@@ -348,21 +361,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.networkingController.nodeLoaded();
             }
         }
-
-        $scope.getAllActionOptions = function(node_type) {
-            if(typeof node_type !== 'number' ||
-                    node_type < 0 || node_type > 4) {
-                return [];
-            }
-            var actionTypeForNodeType = {
-                0: "machine_actions",
-                1: "device_actions",
-                2: "rack_controller_actions",
-                3: "region_controller_actions",
-                4: "region_and_rack_controller_actions"
-            };
-            return GeneralManager.getData(actionTypeForNodeType[node_type]);
-        };
 
         // Update the node with new data on the region.
         $scope.updateNode = function(node, queryPower) {
@@ -1062,43 +1060,42 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager.loadItems();
         });
 
+        var page_managers;
+        if($location.path().indexOf('/controller') !== -1) {
+            $scope.nodesManager = ControllersManager;
+            page_managers = [ControllersManager, ScriptsManager];
+            $scope.isController = true;
+            $scope.isDevice = false;
+            $scope.type_name = 'controller';
+            $scope.type_name_title = 'Controller';
+            $rootScope.page = 'controllers';
+        } else if($location.path().indexOf('/device') !== -1) {
+            $scope.nodesManager = DevicesManager;
+            page_managers = [DevicesManager];
+            $scope.isController = false;
+            $scope.isDevice = true;
+            $scope.type_name = 'device';
+            $scope.type_name_title = 'Device';
+            $rootScope.page = 'devices';
+        } else {
+            $scope.nodesManager = MachinesManager;
+            page_managers = [MachinesManager, ScriptsManager];
+            $scope.isController = false;
+            $scope.isDevice = false;
+            $scope.type_name = 'machine';
+            $scope.type_name_title = 'Machine';
+            $rootScope.page = 'machines';
+        }
+
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
-            MachinesManager,
-            DevicesManager,
-            ControllersManager,
             ZonesManager,
             GeneralManager,
             UsersManager,
             TagsManager,
             DomainsManager,
             ServicesManager,
-            ScriptsManager
-        ]).then(function() {
-            var path = $location.path();
-            if(path.indexOf('/controller') !== -1) {
-                $scope.nodesManager = ControllersManager;
-                $scope.isController = true;
-                $scope.isDevice = false;
-                $scope.type_name = 'controller';
-                $scope.type_name_title = 'Controller';
-                $rootScope.page = 'controllers';
-            } else if(path.indexOf('/device') !== -1) {
-                $scope.nodesManager = DevicesManager;
-                $scope.isController = false;
-                $scope.isDevice = true;
-                $scope.type_name = 'device';
-                $scope.type_name_title = 'Device';
-                $rootScope.page = 'devices';
-            } else {
-                $scope.nodesManager = MachinesManager;
-                $scope.isController = false;
-                $scope.isDevice = false;
-                $scope.type_name = 'machine';
-                $scope.type_name_title = 'Machine';
-                $rootScope.page = 'machines';
-            }
-
+        ].concat(page_managers)).then(function() {
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already
             // the activeItem.

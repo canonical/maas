@@ -118,12 +118,19 @@ describe("NodeDetailsController", function() {
     });
 
     // Makes the NodeDetailsController
-    function makeController(loadManagersDefer) {
+    function makeController(loadManagersDefer, loadItemsDefer) {
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagersDefer)) {
             loadManagers.and.returnValue(loadManagersDefer.promise);
         } else {
             loadManagers.and.returnValue($q.defer().promise);
+        }
+
+        var loadItems = spyOn(GeneralManager, "loadItems");
+        if(angular.isObject(loadItemsDefer)) {
+            loadItems.and.returnValue(loadItemsDefer.promise);
+        } else {
+            loadItems.and.returnValue($q.defer().promise);
         }
 
         // Start the connection so a valid websocket is created in the
@@ -154,8 +161,6 @@ describe("NodeDetailsController", function() {
             ErrorService: ErrorService,
             ScriptsManager: ScriptsManager
         });
-
-        $scope.nodesManager = MachinesManager;
 
         // Since the osSelection directive is not used in this test the
         // osSelection item on the model needs to have $reset function added
@@ -261,13 +266,33 @@ describe("NodeDetailsController", function() {
         expect($scope.section.area).toEqual($routeParams.area);
     });
 
-    it("calls loadManagers with all needed managers", function() {
+    it("calls loadManagers for machine", function() {
+        $location.path("/machine");
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
-                MachinesManager, DevicesManager, ControllersManager,
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
-                DomainsManager, ServicesManager, ScriptsManager]);
+                DomainsManager, ServicesManager, MachinesManager,
+                ScriptsManager]);
+    });
+
+    it("calls loadManagers for device", function() {
+        $location.path("/device");
+        var controller = makeController();
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            $scope, [
+                ZonesManager, GeneralManager, UsersManager, TagsManager,
+                DomainsManager, ServicesManager, DevicesManager]);
+    });
+
+    it("calls loadManagers for controller", function() {
+        $location.path("/controller");
+        var controller = makeController();
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            $scope, [
+                ZonesManager, GeneralManager, UsersManager, TagsManager,
+                DomainsManager, ServicesManager, ControllersManager,
+                ScriptsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -361,20 +386,31 @@ describe("NodeDetailsController", function() {
         expect($scope.services.rackd.status).toBe('running');
     });
 
-    it("getAllActionOptions called when node is loaded", function() {
+    it("loads node actions", function() {
         spyOn(ControllersManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
-        var defer = $q.defer();
-        $location.path('/controller');
-        var controller = makeController(defer);
-        var getAllActionOptions = spyOn($scope, "getAllActionOptions");
+        var called = false;
+        spyOn(GeneralManager, "isDataLoaded").and.callFake(function() {
+            var tmp = called;
+            called = true;
+            return tmp;
+        });
+        var loadManagersDefer = $q.defer();
+        var loadItemsDefer = $q.defer();
+        $location.path("/controller");
+        var controller = makeController(loadManagersDefer, loadItemsDefer);
         var myNode = angular.copy(node);
         // Make node a rack controller.
         myNode.node_type = 2;
         ControllersManager._activeItem = myNode;
-        defer.resolve();
+        loadManagersDefer.resolve();
+        loadItemsDefer.resolve();
         $rootScope.$digest();
-        expect(getAllActionOptions).toHaveBeenCalledWith(2);
+        expect(GeneralManager.isDataLoaded.calls.count()).toBe(2);
+        expect(GeneralManager.isDataLoaded).toHaveBeenCalledWith(
+            "rack_controller_actions");
+        expect(GeneralManager.loadItems).toHaveBeenCalledWith(
+            ["rack_controller_actions"]);
     });
 
     it("title is updated once setActiveItem resolves", function() {
@@ -572,8 +608,6 @@ describe("NodeDetailsController", function() {
 
     it("reloads osinfo on route change", function() {
         var controller = makeController();
-        spyOn(GeneralManager, "loadItems").and.returnValue(
-            $q.defer().promise);
         $scope.$emit("$routeChangeSuccess");
         expect(GeneralManager.loadItems).toHaveBeenCalled();
     });
