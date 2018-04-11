@@ -122,9 +122,11 @@
             <div class="row" data-ng-if="action.option && !action.inProgress">
                 <form class="p-form p-form--inline u-align--right">
                     <div class="col-8">
-                        <p data-ng-if="action.error">
-                            <i class="p-icon--error">Error:</i> Performing {$ action.option.sentence $} failed: {$ action.error $}
-                        </p>
+                        <div class="p-notification--negative" data-ng-if="action.error">
+                            <p class="p-notification__response">
+                                <span class="p-notification__status">Error:</span> Performing {$ action.option.sentence $} failed: {$ action.error $}
+                            </p>
+                        </div>
                     </div>
                     <div class="col-4 u-align--right">
                         <button class="p-button--base" type="button" data-ng-click="actionCancel()">Cancel</button>
@@ -224,7 +226,7 @@
 			<maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
 					options="zone.id as zone.name for zone in zones"></maas-obj-field>
 			<maas-obj-field type="tags" key="tags" label="Tags" label-width="2" input-width="5"
-                                        disable-label="false" placeholder="Add a tag"></maas-obj-field>			
+                                        disable-label="false" placeholder="Add a tag"></maas-obj-field>
                     </div>
                 </div>
                 <div class="col-6">

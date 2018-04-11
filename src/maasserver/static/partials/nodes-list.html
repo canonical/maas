@@ -285,12 +285,9 @@
                         {$ tabs[tab].actionProgress.completed $} of {$ tabs[tab].actionProgress.total $}
                         nodes are transitioning to {$ tabs[tab].actionOption.sentence $}.
                     </p>
-                    <p class="page-header__message page-header__message--error"
-                    data-ng-repeat="(error, nodes) in tabs[tab].actionProgress.errors">
-                        The {$ tabs[tab].actionOption.title.toLowerCase() $} action for {$ nodes.length $}
-                        <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                        failed with error: {$ error $}
-                    </p>
+                    <div class="p-notification--negative" data-ng-repeat="(error, machines) in tabs[tab].actionProgress.errors">
+                        <p class="p-notification__response"><span class="p-notification__status">Error: </span> The {$ tabs[tab].actionOption.title.toLowerCase() $} action for {$ nodes.length $} <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span> failed with error: {$ error $}</p>
+                    </div>
                 </div>
             </section>
         </div>
@@ -479,12 +476,11 @@
                 {$ tabs.devices.actionProgress.completed $} of {$ tabs.devices.actionProgress.total $}
                 devices have been {$ tabs.devices.actionOption.sentence $}.
             </p>
-            <p class="page-header__message page-header__message--error"
-                data-ng-repeat="(error, devices) in tabs.devices.actionProgress.errors">
-                The {$ tabs.devices.actionOption.title.toLowerCase() $} action for {$ devices.length $}
-                <span data-ng-pluralize count="devices.length" when="{'one': 'device', 'other': 'devices'}"></span>
-                failed with error: {$ error $}
-            </p>
+            <div class="p-notification--negative" data-ng-repeat="(error, devices) in tabs.devices.actionProgress.errors">
+                <p class="p-notification__response">
+                    <span class="p-notification__status">Error: </span>The {$ tabs.devices.actionOption.title.toLowerCase() $} action for {$ devices.length $} <span data-ng-pluralize count="devices.length" when="{'one': 'device', 'other': 'devices'}"></span> failed with error: {$ error $}
+                </p>
+            </div>
         </div>
     </div>
 
@@ -688,12 +684,11 @@
                     {$ tabs.controllers.actionProgress.completed $} of {$ tabs.controllers.actionProgress.total $}
                     controllers have been {$ tabs.controllers.actionOption.sentence $}.
                 </p>
-                <p class="page-header__message page-header__message--error"
-                    data-ng-repeat="(error, controllers) in tabs.controllers.actionProgress.errors">
-                    The {$ tabs.controllers.actionOption.title.toLowerCase() $} action for {$ controllers.length $}
-                    <span data-ng-pluralize count="controllers.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    failed with error: {$ error $}
-                </p>
+                <div class="p-notification--negative" data-ng-repeat="(error, controllers) in tabs.controllers.actionProgress.errors">
+                    <p class="p-notification__response">
+                        <span class="p-notification__status">Error:</span> The {$ tabs.controllers.actionOption.title.toLowerCase() $} action for {$ controllers.length $} <span data-ng-pluralize count="controllers.length" when="{'one': 'controller', 'other': 'controllers'}"></span> failed with error: {$ error $}
+                    </p>
+                </div>
             </form>
         </div>
     </div>

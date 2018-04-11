@@ -188,9 +188,11 @@
             <div class="row ng-hide" data-ng-show="isActionError()">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="col-12">
-                    <p>
-                        <i class="p-icon--error">Error:</i> Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
-                    </p>
+                    <div class="p-notification--negative">
+                        <p class="p-notification__response">
+                            <span class="p-notification__status">Error:</span>Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
+                        </p>
+                    </div>
                     <div class="u-align--right">
                         <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                         <button class="p-button--neutral" data-ng-click="actionGo()">Retry</button>
@@ -200,9 +202,11 @@
             <div class="row ng-hide" data-ng-show="isDeployError()">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="col-8">
-                    <p>
-                        <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
-                    </p>
+                    <div class="p-notification--negative">
+                        <p class="p-notification__response">
+                            <span class="p-notification__status">Error:</span> Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                        </p>
+                    </div>
                 </div>
                 <div class="col-4 u-align--right">
                     <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
@@ -210,11 +214,11 @@
             </div>
             <div class="row ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
                 <div class="col-8">
-                    <p>
-                        <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because power control software for the
-                        node is missing from its rack controller. To proceed, install the
-                        {$ getPowerErrors() $} on the rack controller.
-                    </p>
+                    <div class="p-notification--negative">
+                        <p class="p-notification__response">
+                            <span class="p-notification__status">Error:</span> Node cannot be {$ action.option.sentence $}, because power control software for the node is missing from its rack controller. To proceed, install the {$ getPowerErrors() $} on the rack controller.
+                        </p>
+                    </div>
                 </div>
                 <div class="col-4 u-align--right">
                     <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
