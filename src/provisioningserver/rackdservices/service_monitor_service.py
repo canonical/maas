@@ -60,7 +60,6 @@ class ServiceMonitorService(TimerService, object):
             self.check_interval, self.monitorServices)
         self.client_service = client_service
         self.clock = clock
-        self._services = None
 
     def monitorServices(self):
         """Monitors all of the external services and makes sure they
@@ -71,21 +70,16 @@ class ServiceMonitorService(TimerService, object):
                 "Skipping check of services; they're not running under "
                 "the supervision of systemd.")
         else:
-            d = service_monitor.ensureServices()
+            d = self._getConnection()
+            d.addCallback(self._ensureServices)
             d.addCallback(self._updateRegion)
             d.addErrback(
                 log.err, "Failed to monitor services and update region.")
             return d
 
     @inlineCallbacks
-    def _updateRegion(self, services):
-        """Update region about services status."""
-        services = yield self._buildServices(services)
-        if self._services is not None and self._services == services:
-            # The updated status to the region hasn't changed no reason
-            # to update the region controller.
-            return None
-        self._services = services
+    def _getConnection(self):
+        """Get a connection to the region."""
         client = None
         for elapsed, remaining, wait in retries(30, 10, self.clock):
             try:
@@ -97,11 +91,25 @@ class ServiceMonitorService(TimerService, object):
             maaslog.error(
                 "Can't update service statuses, no RPC "
                 "connection to region.")
-            return
-        yield client(
-            UpdateServices,
-            system_id=client.localIdent,
-            services=services)
+        return client
+
+    @inlineCallbacks
+    def _ensureServices(self, client):
+        if client:
+            services = yield service_monitor.ensureServices()
+            return (client, services)
+        return None, None
+
+    @inlineCallbacks
+    def _updateRegion(self, result):
+        """Update region about services status."""
+        client, services = result
+        if client:
+            services = yield self._buildServices(services)
+            yield client(
+                UpdateServices,
+                system_id=client.localIdent,
+                services=services)
 
     @inlineCallbacks
     def _buildServices(self, services):

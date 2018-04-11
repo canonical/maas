@@ -83,6 +83,9 @@ class TestServiceMonitorService(MAASTestCase):
 
         monitor_service = sms.ServiceMonitorService(
             sentinel.client_service, Clock())
+        mock_client = Mock()
+        self.patch(monitor_service, "_getConnection").return_value = (
+            succeed(mock_client))
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         monitor_service.monitorServices()
         self.assertThat(
@@ -95,7 +98,7 @@ class TestServiceMonitorService(MAASTestCase):
 
         monitor_service = sms.ServiceMonitorService(
             sentinel.client_service, Clock())
-        mock_ensureServices = self.patch(service_monitor, "ensureServices")
+        mock_ensureServices = self.patch(monitor_service, "_getConnection")
         mock_ensureServices.return_value = fail(factory.make_exception())
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
@@ -149,7 +152,7 @@ class TestServiceMonitorService(MAASTestCase):
                 services=expected_services))
 
     @inlineCallbacks
-    def test_reports_services_to_region_when_changed(self):
+    def test_reports_services_to_region(self):
         # Pretend we're in a production environment.
         self.patch(sms, "is_dev_environment").return_value = False
 
@@ -176,14 +179,6 @@ class TestServiceMonitorService(MAASTestCase):
         rpc_service.getClientNow.return_value = succeed(client)
         monitor_service = sms.ServiceMonitorService(
             rpc_service, Clock())
-        monitor_service._services = yield monitor_service._buildServices({
-            service.name: state
-        })
-
-        # Force last reported state to dead. That way an update is performed.
-        orig_cached_services = monitor_service._services
-        for ser in orig_cached_services:
-            ser['status'] = 'dead'
 
         yield monitor_service.startService()
         yield monitor_service.stopService()
@@ -200,46 +195,6 @@ class TestServiceMonitorService(MAASTestCase):
                 protocol,
                 system_id=client.localIdent,
                 services=expected_services))
-        self.assertIsNot(orig_cached_services, monitor_service._services)
-
-    @inlineCallbacks
-    def test_doesnt_reports_services_to_region_when_the_same_status(self):
-        # Pretend we're in a production environment.
-        self.patch(sms, "is_dev_environment").return_value = False
-
-        protocol, connecting = self.patch_rpc_methods()
-        self.addCleanup((yield connecting))
-
-        class ExampleService(AlwaysOnService):
-            name = service_name = snap_service_name = (
-                factory.make_name("service"))
-
-        service = ExampleService()
-        # Inveigle this new service into the service monitor.
-        self.addCleanup(service_monitor._services.pop, service.name)
-        service_monitor._services[service.name] = service
-
-        state = ServiceState(SERVICE_STATE.ON, "running")
-        mock_ensureServices = self.patch(service_monitor, "ensureServices")
-        mock_ensureServices.return_value = succeed({
-            service.name: state
-        })
-
-        client = getRegionClient()
-        rpc_service = Mock()
-        rpc_service.getClientNow.return_value = succeed(client)
-        monitor_service = sms.ServiceMonitorService(
-            rpc_service, Clock())
-        monitor_service._services = yield monitor_service._buildServices({
-            service.name: state
-        })
-
-        yield monitor_service.startService()
-        yield monitor_service.stopService()
-
-        self.assertThat(
-            protocol.UpdateServices,
-            MockNotCalled())
 
     @inlineCallbacks
     def test__buildServices_includes_always_running_services(self):
