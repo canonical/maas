@@ -76,6 +76,12 @@ class UserPrefsViewTest(MAASServerTestCase):
         user = reload_object(user)
         self.assertAttributes(user, params)
 
+    def test_prefs_GET_profile_does_not_have_autofocus_attributes(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        response = self.client.get('/account/prefs/')
+        self.assertNotIn(b"autofocus", response.content)
+
     def test_prefs_POST_password(self):
         # The preferences page allows the user to change their password.
         user = factory.make_User()

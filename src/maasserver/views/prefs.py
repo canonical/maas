@@ -89,6 +89,7 @@ def userprefsview(request):
     password_form, response = process_form(
         request, PasswordChangeForm, reverse('prefs'), 'password',
         "Password updated.", {'user': user})
+    password_form.fields['old_password'].widget.attrs.pop('autofocus', None)
     if response is not None:
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
