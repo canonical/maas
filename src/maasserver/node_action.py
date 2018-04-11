@@ -205,7 +205,7 @@ class Delete(NodeAction):
 class SetZone(NodeAction):
     """Set the zone of a node."""
     name = "set-zone"
-    display = "Set Zone"
+    display = "Set zone"
     display_sentence = "Zone set"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
