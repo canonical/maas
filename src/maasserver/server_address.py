@@ -110,17 +110,21 @@ def get_maas_facing_server_addresses(
         raise UnresolvableHost("No address found for host %s." % hostname)
     if not link_local:
         addresses = [ip for ip in addresses if not ip.is_link_local()]
+    # Addresses must be returned in a consistent order, with the set of IP
+    # addresses found from get_maas_facing_server_host() (i.e. maas_url)
+    # coming first.
+    addresses = sorted(addresses)
     if include_alternates:
         maas_id = get_maas_id()
         if maas_id is not None:
             # Circular imports
             from maasserver.models import Subnet
             from maasserver.models import StaticIPAddress
-            # Keep track of the regions already represented.
+            # Don't include more than one alternate IP address, per region,
+            # per address-family.
             regions = set()
             alternate_ips = []
             for ip in addresses:
-                regions.add(maas_id + str(ip.version))
                 if not ip.is_link_local():
                     # Since we only know that the IP address given in the MAAS
                     # URL is reachable, alternates must be pulled from the same
@@ -149,5 +153,10 @@ def get_maas_facing_server_addresses(
                             else:
                                 regions.add(id_plus_family)
                                 alternate_ips.append(ipa)
-            addresses.extend(alternate_ips)
+            # Append non-duplicate region IP addresses to the list of
+            # addresses to return. We don't want duplicates, but we
+            # also need to preserve the existing order.
+            for address in alternate_ips:
+                if address not in addresses:
+                    addresses.append(address)
     return addresses
