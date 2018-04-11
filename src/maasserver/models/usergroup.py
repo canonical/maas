@@ -17,6 +17,7 @@ from django.db.models import (
     BooleanField,
     CASCADE,
     CharField,
+    Count,
     ForeignKey,
     Manager,
     ManyToManyField,
@@ -25,6 +26,7 @@ from django.db.models import (
 )
 from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
+from maasserver.models import Node
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -82,6 +84,28 @@ class UserGroup(CleanSave, TimestampedModel):
         if self.is_default():
             raise ValidationError(
                 'This is the default user group, it cannot be deleted.')
+
+        # check if by removing the group, any user would lose access to
+        # machines in related resource pools
+        nodes = Node.objects.filter(
+            owner__isnull=False, pool__role__groups=self)
+        # get a list of tuples with (User ID, Node ID) for users that have a
+        # single way of accessing nodes in pool related to the group being
+        # removed through user groups
+        affected_users = User.objects.filter(
+            usergroup__role__resource_pools__node__in=nodes).annotate(
+                access_count=Count('usergroup')).filter(
+                    access_count__lte=1).values('id', 'node')
+        # remove tuples where users can access machines through a direct
+        # relation with roles associated to resource pools
+        affected_users = affected_users.difference(
+            User.objects.filter(
+                role__resource_pools__node__in=nodes).values('id', 'node'))
+        if affected_users:
+            raise ValidationError(
+                "Can't remove group, some users have machines that"
+                " would become unaccessible")
+
         super().delete()
 
     def add(self, user):

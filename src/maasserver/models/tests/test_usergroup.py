@@ -4,6 +4,7 @@
 """Test UserGroup objects."""
 
 from django.core.exceptions import ValidationError
+from maasserver.models import ResourcePool
 from maasserver.models.usergroup import (
     DEFAULT_USERGROUP_DESCRIPTION,
     DEFAULT_USERGROUP_NAME,
@@ -90,6 +91,44 @@ class TestUserGroup(MAASServerTestCase):
     def test_delete_default_fails(self):
         group = UserGroup.objects.get_default_usergroup()
         self.assertRaises(ValidationError, group.delete)
+
+    def test_delete_with_user_losing_access_fails(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        node = factory.make_Node(owner=user)
+        factory.make_ResourcePool(groups=[group], nodes=[node])
+        self.assertRaises(ValidationError, group.delete)
+
+    def test_delete_with_user_direct_access(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        node = factory.make_Node(owner=user)
+        pool = factory.make_ResourcePool(
+            groups=[group], users=[user], nodes=[node])
+        group.delete()
+        self.assertIn(
+            pool, ResourcePool.objects.get_user_resource_pools(user))
+
+    def test_delete_with_other_group_access(self):
+        user = factory.make_User()
+        group1 = factory.make_UserGroup(users=[user])
+        group2 = factory.make_UserGroup(users=[user])
+        node = factory.make_Node(owner=user)
+        pool = factory.make_ResourcePool(groups=[group1, group2], nodes=[node])
+        group1.delete()
+        self.assertIn(
+            pool, ResourcePool.objects.get_user_resource_pools(user))
+
+    def test_delete_user_unrelated_resources(self):
+        user = factory.make_User()
+        group1 = factory.make_UserGroup(users=[user])
+        group2 = factory.make_UserGroup(users=[user])
+        node = factory.make_Node(owner=user)
+        factory.make_ResourcePool(groups=[group1])
+        pool2 = factory.make_ResourcePool(groups=[group2], nodes=[node])
+        group1.delete()
+        self.assertIn(
+            pool2, ResourcePool.objects.get_user_resource_pools(user))
 
     def test_add_user(self):
         user = factory.make_User()
