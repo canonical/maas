@@ -44,6 +44,7 @@ from maasserver.models.node import RackController
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -215,6 +216,7 @@ class RackControllerService(Service):
         else:
             rack_id = self.needsDHCPUpdate.pop()
             d = maybeDeferred(self.processDHCP, rack_id)
+            d.addErrback(lambda f: f.trap(NoConnectionsAvailable))
             d.addErrback(
                 log.err,
                 "Failed configuring DHCP on rack controller 'id:%d'." % (
