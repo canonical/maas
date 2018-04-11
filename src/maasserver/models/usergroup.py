@@ -22,11 +22,15 @@ from django.db.models import (
     Manager,
     ManyToManyField,
     Model,
+    Q,
     TextField,
 )
 from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
-from maasserver.models import Node
+from maasserver.models import (
+    Node,
+    ResourcePool,
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -116,7 +120,23 @@ class UserGroup(CleanSave, TimestampedModel):
 
     def remove(self, user):
         """Remove a user from this group."""
+        self._check_pools_accessibility_without_group(user)
         UserGroupMembership.objects.filter(user=user, group=self).delete()
+
+    def _check_pools_accessibility_without_group(self, user):
+        """Check required pools are still accessible after removing user."""
+        # pools that are required to be accessible by the user because of owned
+        # resources
+        required_pools = ResourcePool.objects.filter(node__owner=user)
+        # pools that are accessible after removing the user from the group
+        from maasserver.models import Role
+        roles = Role.objects.filter(
+            Q(users=user) | (Q(groups__users=user) & ~Q(groups=self)))
+        pools = ResourcePool.objects.filter(role__in=roles)
+        if required_pools.difference(pools):
+            raise ValidationError(
+                "Can't remove user from group, owned machines are in pools"
+                " that would become unaccessible.")
 
 
 class UserGroupMembership(Model):

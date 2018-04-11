@@ -148,3 +148,40 @@ class TestUserGroup(MAASServerTestCase):
         group = factory.make_UserGroup(users=[user1, user2])
         group.remove(user1)
         self.assertCountEqual(group.users.all(), [user2])
+
+    def test_remove_user_would_lose_machine_access(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        pool = factory.make_ResourcePool()
+        factory.make_Role(pools=[pool], groups=[group])
+        factory.make_Node(owner=user, pool=pool)
+        self.assertRaises(ValidationError, group.remove, user)
+
+    def test_remove_user_with_other_group_access_to_machine(self):
+        user = factory.make_User()
+        group1 = factory.make_UserGroup(users=[user])
+        group2 = factory.make_UserGroup(users=[user])
+        pool = factory.make_ResourcePool()
+        factory.make_Role(pools=[pool], groups=[group1])
+        factory.make_Role(pools=[pool], groups=[group2])
+        factory.make_Node(owner=user, pool=pool)
+        group1.remove(user)
+        self.assertTrue(ResourcePool.objects.user_can_access_pool(user, pool))
+
+    def test_remove_user_with_other_group_access_to_machine_same_role(self):
+        user = factory.make_User()
+        group1 = factory.make_UserGroup(users=[user])
+        group2 = factory.make_UserGroup(users=[user])
+        pool = factory.make_ResourcePool()
+        factory.make_Role(pools=[pool], groups=[group1, group2])
+        factory.make_Node(owner=user, pool=pool)
+        group1.remove(user)
+        self.assertTrue(ResourcePool.objects.user_can_access_pool(user, pool))
+
+    def test_remove_user_with_direct_access_to_machine(self):
+        user = factory.make_User()
+        group = factory.make_UserGroup(users=[user])
+        pool = factory.make_ResourcePool(users=[user])
+        factory.make_Role(pools=[pool], groups=[group])
+        group.remove(user)
+        self.assertTrue(ResourcePool.objects.user_can_access_pool(user, pool))
