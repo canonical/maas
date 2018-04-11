@@ -214,12 +214,36 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             region_ips,
             Equals([
                 IPAddress("192.168.0.254"),
+                IPAddress("192.168.0.1"),
                 IPAddress("192.168.0.2"),
                 IPAddress("192.168.0.4"),
             ])
         )
 
-    def test__alternates_include_one_ip_address_per_region(self):
+    def test__alternates_do_not_contain_duplicate_for_maas_url_ip(self):
+        # See bug #1753493. (This tests to ensure we don't provide the same
+        # IP address from maas_url twice.) Also ensures that the IP address
+        # from maas_url comes first.
+        factory.make_Subnet(cidr='192.168.0.0/24')
+        maas_url = 'http://192.168.0.2/MAAS'
+        rack = factory.make_RackController(url=maas_url)
+        r1 = factory.make_RegionController()
+        factory.make_Interface(node=r1, ip='192.168.0.1')
+        r2 = factory.make_RegionController()
+        factory.make_Interface(node=r2, ip='192.168.0.2')
+        # Make the "current" region controller r1.
+        self.patch(server_address, 'get_maas_id').return_value = r1.system_id
+        region_ips = get_maas_facing_server_addresses(
+            rack, include_alternates=True)
+        self.assertThat(
+            region_ips,
+            Equals([
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.1"),
+            ])
+        )
+
+    def test__alternates_include_one_ip_address_per_region_and_maas_url(self):
         factory.make_Subnet(cidr='192.168.0.0/24')
         maas_url = 'http://192.168.0.254/MAAS'
         rack = factory.make_RackController(url=maas_url)
@@ -240,6 +264,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
             region_ips,
             Equals([
                 IPAddress("192.168.0.254"),
+                IPAddress("192.168.0.1"),
                 IPAddress("192.168.0.2"),
                 IPAddress("192.168.0.4"),
             ])
@@ -296,12 +321,12 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         self.assertThat(
             region_ips,
             Equals([
-                IPAddress("2001:db8::1"),
                 IPAddress("192.168.0.1"),
-                IPAddress("2001:db8::2"),
-                IPAddress("2001:db8::4"),
+                IPAddress("2001:db8::1"),
                 IPAddress("192.168.0.2"),
                 IPAddress("192.168.0.4"),
+                IPAddress("2001:db8::2"),
+                IPAddress("2001:db8::4"),
             ])
         )
 
