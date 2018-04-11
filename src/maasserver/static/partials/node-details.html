@@ -73,8 +73,8 @@
                 <div class="page-header__section">
                     <form class="p-form">
                         <div class="row">
-                            <div class="col-12 ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
-                                <ul class="p-inline-list--settings">
+                            <div class="col-10 ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
+                                <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
                                     <li class="p-inline-list__item">
                                         <input id="enableSSH" type="checkbox" data-ng-model="commissionOptions.enableSSH">
                                         <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
@@ -139,7 +139,7 @@
                 <div class="page-header__section">
                     <form class="p-form p-form--stacked">
                         <div class="col-8">
-                            <div class="p-form__group">
+                            <div class="p-form__group u-vertically-center">
                                 <label for="commissioning-scripts">Additional commissioning scripts</label>
                                 <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection"></span>
                             </div>
@@ -153,7 +153,7 @@
                     <form class="p-form">
                         <div class="col-8">
                             <div class="p-form__group">
-                                <label>Hardware tests</label>
+                                <label for="testing-scripts">Hardware tests</label>
                                 <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
                             </div>
                         </div>

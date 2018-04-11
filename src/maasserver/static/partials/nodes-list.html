@@ -96,42 +96,40 @@
             </div>
             <section class="page-header__section row u-no-margin--top" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)">
                 <div class="row">
-                        <div class="col-12">
+                    <div class="col-10 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
+                        <form>
+                            <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
+                                <li class="p-inline-list__item">
+                                    <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH">
+                                    <label for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
+                                </li>
+                                <li class="p-inline-list__item">
+                                    <input id="{$ tab $}-skipNetworking" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipNetworking">
+                                    <label for="{$ tab $}-skipNetworking">Retain network configuration</label>
+                                </li>
+                                <li class="p-inline-list__item">
+                                    <input id="{$ tab $}-skipStorage" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipStorage">
+                                    <label for="{$ tab $}-skipStorage">Retain storage configuration</label>
+                                </li>
+                                <li class="p-inline-list__item">
+                                    <input id="{$ tab $}-updateFirmware" type="checkbox" data-ng-model="tabs[tab].commissionOptions.updateFirmware">
+                                    <label for="{$ tab $}-updateFirmware">Update firmware</label>
+                                </li>
+                                <li class="p-inline-list__item">
+                                    <input id="{$ tab $}-configureHBA" type="checkbox" data-ng-model="tabs[tab].commissionOptions.configureHBA">
+                                    <label for="{$ tab $}-configureHBA">Configure HBA</label>
+                                </li>
+                            </ul>
+                        </form>
+                    </div>
+                    <div class="col-12 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone'" >
                         <form class="p-form p-form--inline">
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name === 'test'">
+                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
                                 <div class="p-form__control u-clearfix">
                                     <input id="{$ tab $}-enableSSH" type="checkbox"
                                         data-ng-model="tabs[tab].commissionOptions.enableSSH">
                                 </div>
                                 <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
-                            </div>
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                                <div class="p-form__control u-clearfix">
-                                    <input id="{$ tab $}-skipNetworking" type="checkbox"
-                                        data-ng-model="tabs[tab].commissionOptions.skipNetworking">
-                                </div>
-                                <label class="p-form__label" for="{$ tab $}-skipNetworking">Retain network configuration</label>
-                            </div>
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                                <div class="p-form__control u-clearfix">
-                                    <input id="{$ tab $}-skipStorage" type="checkbox"
-                                        data-ng-model="tabs[tab].commissionOptions.skipStorage">
-                                </div>
-                                <label class="p-form__label" for="{$ tab $}-skipStorage">Retain storage configuration</label>
-                            </div>
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                                <div class="p-form__control u-clearfix">
-                                    <input id="{$ tab $}-updateFirmware" type="checkbox"
-                                        data-ng-model="tabs[tab].commissionOptions.updateFirmware">
-                                </div>
-                                <label class="p-form__label" for="{$ tab $}-updateFirmware">Update firmware</label>
-                            </div>
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'commission'">
-                                <div class="p-form__control u-clearfix">
-                                    <input id="{$ tab $}-configureHBA" type="checkbox"
-                                        data-ng-model="tabs[tab].commissionOptions.configureHBA">
-                                </div>
-                                <label class="p-form__label" for="{$ tab $}-configureHBA">Configure HBA</label>
                             </div>
                             <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
                                 <div class="p-form__control u-clearfix">
@@ -211,7 +209,7 @@
             <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' && hasCustomCommissioningScripts()">
                 <form class="p-form p-form--stacked">
                     <div class="col-8">
-                        <div class="p-form__group">
+                        <div class="p-form__group u-vertically-center">
                             <label class="p-form__label" for="{$ tab $}-commissiong-scripts">Additional commissioning Scripts</label>
                             <div class="p-form__control">
                                 <span id="{$ tab $}-commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="tabs[tab].commissioningSelection" class="tags--inline"></span>
@@ -222,13 +220,11 @@
             </section>
             <section class="page-header__section row" data-ng-hide="isActionError(tab) || hasActionsInProgress(tab)" data-ng-if="tabs[tab].actionOption.name === 'commission' || tabs[tab].actionOption.name ==='test'">
                 <hr />
-                <form class="p-form p-form--stacked">
+                <form class="p-form">
                     <div class="col-8">
-                        <div class="p-form__group u-vertically-center">
-                            <label class="p-form__label" for="{$ tab $}-testing-scripts">Hardware tests</label>
-                            <div class="p-form__control">
-                                <span id="{$ tab $}-testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs[tab].testSelection" class="tags--inline"></span>
-                            </div>
+                        <div class="p-form__group">
+                            <label for="{$ tab $}-testing-scripts">Hardware tests</label>
+                            <span id="{$ tab $}-testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs[tab].testSelection" class="tags--inline"></span>
                         </div>
                     </div>
                 </form>
@@ -649,15 +645,17 @@
             </div>
         </div>
 
-        <div class="page-header__section col-12 ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
-            <form class="p-form p-form--stacked">
-                <div class="col-8">
-                    <div class="p-form__group u-vertically-center">
-                        <label for="testing-scripts">Hardware Tests</label>
-                        <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.machines.testSelection" class="tags--inline"></span>
+        <div class="row">
+            <div class="page-header__section ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
+                <form class="p-form">
+                    <div class="col-8">
+                        <div class="p-form__group">
+                            <label for="testing-scripts">Hardware Tests</label>
+                            <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.machines.testSelection" class="tags--inline"></span>
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
 
         <div class="page-header__section col-12" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
