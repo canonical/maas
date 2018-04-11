@@ -101,7 +101,7 @@
                     label-width="two" input-width="three"></maas-obj-field>
               </div>
             </section>
-            <section class="u-no-margin--top"> 
+            <section class="u-no-margin--top">
                 <maas-obj-errors class="page-header__message page-header__message--error"></maas-obj-errors>
                 <div class="page-header__controls u-no-margin--top">
                     <button class="p-button p-button--inline" data-ng-click="cancelAction()">Cancel</button>
@@ -113,8 +113,8 @@
 </header>
 <section class="p-strip is-shallow">
     <div class="row u-equal-height">
-        <div class="col-3">
-            <form class="p-form p-form--inline">
+        <div class="col-4">
+            <form class="p-form p-form--stacked">
                 <div class="p-form__group">
                     <label class="p-form__label" for="network-filter">Group by</label>
                     <select name="network-filter" class="p-form__control" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
@@ -124,7 +124,8 @@
                 </div>
             </form>
         </div>
-        <div class="col-1 u-vertically-center">
+        <div class="col-1 u-vertically-center u-no-margin--left">
+            &emsp;
             <div class="p-tooltip p-tooltip--right">
                 <i class="p-icon--help u-hide u-show--large">Help:</i>
                 <span class="p-tooltip__message" role="tooltip">Fabric is a set of consistent interconnected VLANs that are capable of mutual communication.&#xa;Space is a grouping of networks (VLANs and their subnets) that are able to mutually communicate with each other.&#xa;Subnets within a space do not need to belong to the same fabric.</span>

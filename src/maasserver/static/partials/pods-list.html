@@ -112,50 +112,50 @@
                 <button class="p-button--positive is-inline ng-scope" data-ng-click="addPod()" data-ng-if="!add.open">Add pod</button>
             </div>
         </div>
-        <div class="row" style="overflow-x: auto;">
-            <table class="p-table-expanding p-table--sortable" data-ng-if="pods.length > 0" style="min-width: 1150px;">
+        <div class="row p-table__wrapper">
+            <table class="p-table-expanding p-table--sortable p-table--pods" data-ng-if="pods.length > 0">
                 <thead>
-                    <tr>
-                        <th class="table-col--18" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                    <tr class="p-table__row">
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
                             <div data-ng-if="isSuperUser()" class="u-float--left">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                                 <label for="check-all-pods" class="checkbox-label"></label>
                             </div>
                             Name
                         </th>
-                        <th class="table-col--7" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</th>
-                        <th class="table-col--15" role="columnheader" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</th>
-                        <th class="table-col--15" role="columnheader" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">iSCSI storage (GiB)</th>
-                        <th class="table-col--15" role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</th>
-                        <th class="table-col--15" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</th>
-                        <th class="table-col--15 u-align--right" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">iSCSI storage (GiB)</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</th>
+                        <th class="p-table__cell u-align--right" role="columnheader" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</th>
                     </tr>
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
-                    <tr data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
-                        <td class="table-col--18" aria-label="Name">
+                    <tr class="p-table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id" data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
+                        <td class="p-table__cell" aria-label="Name">
                             <div class="u-float--left" data-ng-if="isSuperUser()">
                                 <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
                                 <label for="{$ pod.id $}" class="checkbox-label"></label>
                             </div>
                             <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
                         </td>
-                        <td class="table-col--7" aria-label="Type">
+                        <td class="p-table__cell" aria-label="Type">
                             {$ getPowerTypeTitle(pod.type) $}
                         </td>
-                        <td class="table-col--15" aria-label="Local storage (GiB)">
+                        <td class="p-table__cell" aria-label="Local storage (GiB)">
                             {$ pod.available.local_storage_gb $} free of {$ pod.total.local_storage_gb $}
                         </td>
-                        <td class="table-col--15" aria-label="iSCSI storage (GiB)">
+                        <td class="p-table__cell" aria-label="iSCSI storage (GiB)">
                             {$ pod.available.iscsi_storage_gb || '0' $} free of {$ pod.total.iscsi_storage_gb || '0' $}
                         </td>
-                        <td class="table-col--15" aria-label="Cores">
+                        <td class="p-table__cell" aria-label="Cores">
                             {$ pod.available.cores $} free of {$ pod.total.cores $}
                         </td>
-                        <td class="table-col--15" aria-label="RAM (GiB)">
+                        <td class="p-table__cell" aria-label="RAM (GiB)">
                             {$ pod.available.memory_gb $} free of {$ pod.total.memory_gb $}
                         </td>
-                        <td class="table-col--15 u-align--right" aria-label="Composed machines">
+                        <td class="p-table__cell u-align--right" aria-label="Composed machines">
                             {$ pod.composed_machines_count $}
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="pod.$selected && pod.action_failed">

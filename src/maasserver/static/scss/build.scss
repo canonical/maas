@@ -25,6 +25,7 @@
 @import 'patterns_footer';
 @import 'patterns_table-sortable';
 @import 'patterns_table-columns';
+@import 'tables';
 
 // Include local patterns
 @include maas;
@@ -45,3 +46,4 @@
 @include maas-p-sticky-footer;
 @include maas-table-sortable;
 @include maas-table-columns(100);
+@include maas-table-widths;
