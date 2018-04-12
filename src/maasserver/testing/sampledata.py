@@ -424,7 +424,7 @@ def populate_main():
         RandomInterfaceFactory.create_random(machine)
 
         # Add random storage devices and set a random layout.
-        for _ in range(3):
+        for _ in range(random.randint(1, 5)):
             factory.make_PhysicalBlockDevice(node=machine)
         if status in [
                 NODE_STATUS.READY,
