@@ -287,8 +287,8 @@ def dhcp_explore():
 
     def get_iface_list(ifconfig_output):
         return [
-            line.split()[0]
-            for line in ifconfig_output.splitlines()[1:]]
+            line.split()[1].split(b':')[0].split(b'@')[0]
+            for line in ifconfig_output.splitlines()]
 
     def has_ipv4_address(iface):
         output = check_output(('ip', '-4', 'addr', 'list', 'dev', iface))
@@ -309,8 +309,9 @@ def dhcp_explore():
         # a configured ipv6 interface, since ipv6 won't work there.
         return no_ipv6_found
 
-    all_ifaces = get_iface_list(check_output(("ifconfig", "-s", "-a")))
-    configured_ifaces = get_iface_list(check_output(("ifconfig", "-s")))
+    all_ifaces = get_iface_list(check_output(("ip", "-o", "link", "show")))
+    configured_ifaces = get_iface_list(check_output(
+        ("ip", "-o", "link", "show", "up")))
     configured_ifaces_4 = [
         iface for iface in configured_ifaces if has_ipv4_address(iface)]
     configured_ifaces_6 = [
