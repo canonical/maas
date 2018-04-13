@@ -7,6 +7,9 @@ __all__ = [
     "ZoneHandler",
     ]
 
+from collections import defaultdict
+
+from django.db.models import Count
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ZoneForm
 from maasserver.models.zone import Zone
@@ -43,22 +46,16 @@ class ZoneHandler(TimestampedModelHandler):
         zone.delete()
 
     def dehydrate(self, zone, data, for_list=False):
-        data['devices_count'] = len([
-            node
-            for node in zone.node_set.all()
-            if node.node_type == NODE_TYPE.DEVICE
-        ])
-        data['machines_count'] = len([
-            node
-            for node in zone.node_set.all()
-            if node.node_type == NODE_TYPE.MACHINE
-        ])
-        data['controllers_count'] = len([
-            node
-            for node in zone.node_set.all()
-            if (
-                node.node_type == NODE_TYPE.RACK_CONTROLLER or
-                node.node_type == NODE_TYPE.REGION_CONTROLLER or
-                node.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER)
-        ])
+        node_count_by_type = defaultdict(
+            int,
+            zone.node_set.values('node_type').annotate(
+                node_count=Count('node_type')).values_list(
+                    'node_type', 'node_count'))
+        data.update({
+            'devices_count': node_count_by_type[NODE_TYPE.DEVICE],
+            'machines_count': node_count_by_type[NODE_TYPE.MACHINE],
+            'controllers_count': (
+                node_count_by_type[NODE_TYPE.RACK_CONTROLLER] +
+                node_count_by_type[NODE_TYPE.REGION_CONTROLLER] +
+                node_count_by_type[NODE_TYPE.REGION_AND_RACK_CONTROLLER])})
         return data
