@@ -209,33 +209,63 @@ class TestLLDPScripts(MAASTestCase):
 
 
 # The two following example outputs differ because eth2 and eth1 are not
-# configured and thus 'ifconfig -s -a' returns a list with both 'eth1'
-# and 'eth2' while 'ifconfig -s' does not contain them.
+# configured and thus 'ip -o link show' returns a list with both 'eth1'
+# and 'eth2' while 'ip -o link show up' does not contain them.
 
-# Example output of 'ifconfig -s -a':
-ifconfig_all = b"""\
-Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
-eth2       1500 0         0      0      0 0             0      0
-eth1       1500 0         0      0      0 0             0      0
-eth0       1500 0   1366127      0      0 0        831110      0
-eth4       1500 0         0      0      0 0             0      0
-eth5       1500 0         0      0      0 0             0      0
-eth6       1500 0         0      0      0 0             0      0
-lo        65536 0     38075      0      0 0         38075      0
-virbr0     1500 0         0      0      0 0             0      0
-wlan0      1500 0   2304695      0      0 0       1436049      0
+# Example output of 'ip -o link show':
+ip_link_show_all = b"""\
+1: eth2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:08 brd \
+ ff:ff:ff:ff:ff:ff
+2: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:07 brd \
+ ff:ff:ff:ff:ff:ff
+3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode \
+ DEFAULT group default qlen 1000\\    link/ether 00:01:02:03:04:03 brd \
+ ff:ff:ff:ff:ff:ff
+4: eth4: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:04 brd \
+ ff:ff:ff:ff:ff:ff
+5: eth5: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:06 brd \
+ ff:ff:ff:ff:ff:ff
+6: eth6: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:06 brd \
+ ff:ff:ff:ff:ff:ff
+7: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode \
+ DEFAULT group default qlen 1000\\    link/loopback 00:00:00:00:00:00 brd \
+ 00:00:00:00:00:00
+8: virbr0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:02 brd \
+ ff:ff:ff:ff:ff:ff
+9: wlan0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:05 brd \
+ ff:ff:ff:ff:ff:ff
 """
 
-# Example output of 'ifconfig -s':
-ifconfig_config = b"""\
-Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
-eth0       1500 0   1366127      0      0 0        831110      0
-eth4       1500 0   1366127      0      0 0        831110      0
-eth5       1500 0   1366127      0      0 0        831110      0
-eth6       1500 0   1366127      0      0 0        831110      0
-lo        65536 0     38115      0      0 0         38115      0
-virbr0     1500 0         0      0      0 0             0      0
-wlan0      1500 0   2304961      0      0 0       1436319      0
+# Example output of 'ip -o link show up':
+ip_link_show = b"""\
+1: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode \
+ DEFAULT group default qlen 1000\\    link/ether 00:01:02:03:04:03 brd \
+ ff:ff:ff:ff:ff:ff
+2: eth4: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state UP mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:04 brd \
+ ff:ff:ff:ff:ff:ff
+3: eth5: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state UP mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:06 brd \
+ ff:ff:ff:ff:ff:ff
+4: eth6: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state UP mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:06 brd \
+ ff:ff:ff:ff:ff:ff
+5: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode \
+ DEFAULT group default qlen 1000\\    link/loopback 00:00:00:00:00:00 \
+ brd 00:00:00:00:00:00
+6: virbr0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state UP mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:02 brd \
+ ff:ff:ff:ff:ff:ff
+7: wlan0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state UP mode DEFAULT \
+ group default qlen 1000\\    link/ether 00:01:02:03:04:05 brd \
+ ff:ff:ff:ff:ff:ff
 """
 
 # Example output of 'ip addr list dev XX':
@@ -306,7 +336,7 @@ class TestDHCPExplore(MAASTestCase):
     def test_calls_dhclient_on_unconfigured_interfaces(self):
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
-            ifconfig_all, ifconfig_config,
+            ip_link_show_all, ip_link_show,
             ip_eth0, ip_eth4, ip_eth5, ip_eth6, ip_lo, ip_virbr0, ip_wlan0,
             ip_eth0, ip_eth4, ip_eth5, ip_eth6, ip_lo, ip_virbr0, ip_wlan0
             ]
