@@ -196,6 +196,7 @@ class TestScriptResult(MAASServerTestCase):
             'failed': SCRIPT_STATUS.FAILED,
             'degraded': SCRIPT_STATUS.DEGRADED,
             'timedout': SCRIPT_STATUS.TIMEDOUT,
+            'skipped': SCRIPT_STATUS.SKIPPED,
         }
         status = random.choice(list(status_choices.keys()))
         status_yaml = {'status': status}
@@ -351,7 +352,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.status = random.choice([
             SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
             SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED,
-            SCRIPT_STATUS.FAILED_INSTALLING])
+            SCRIPT_STATUS.FAILED_INSTALLING, SCRIPT_STATUS.SKIPPED])
         script_result.save(update_fields=['status'])
         self.assertIsNotNone(reload_object(script_result).ended)
 
@@ -362,7 +363,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.status = random.choice([
             SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
             SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED,
-            SCRIPT_STATUS.FAILED_INSTALLING])
+            SCRIPT_STATUS.FAILED_INSTALLING, SCRIPT_STATUS.SKIPPED])
         script_result.save(update_fields=['status'])
         script_result = reload_object(script_result)
         self.assertIsNotNone(script_result.started)
@@ -502,7 +503,7 @@ class TestScriptResult(MAASServerTestCase):
     def test_read_results(self):
         results = {
             'status': random.choice(
-                ['passed', 'failed', 'degraded', 'timedout']),
+                ['passed', 'failed', 'degraded', 'timedout', 'skipped']),
             'results': {
                 factory.make_name('key'): factory.make_name('value'),
                 factory.make_name('key'): [
@@ -524,7 +525,7 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_read_results_does_not_require_results(self):
         result = {'status': random.choice(
-            ['passed', 'failed', 'degraded', 'timedout'])}
+            ['passed', 'failed', 'degraded', 'timedout', 'skipped'])}
         script_result = factory.make_ScriptResult(
             result=yaml.safe_dump(result).encode())
         self.assertDictEqual(result, script_result.read_results())
@@ -547,8 +548,8 @@ class TestScriptResult(MAASServerTestCase):
             result=yaml.safe_dump(result).encode())
         with self.assertRaisesRegex(
                 ValidationError,
-                'status must be "passed", "failed", "degraded", or '
-                '"timedout".'):
+                'status must be "passed", "failed", "degraded", '
+                '"timedout", or "skipped".'):
             script_result.read_results()
 
     def test_read_results_errors_when_dict_keys_not_str(self):

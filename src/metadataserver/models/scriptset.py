@@ -68,6 +68,8 @@ def get_status_from_qs(qs):
     if count == 0:
         return -1
     # The status order below represents the order of precedence.
+    # Skipped is omitted here otherwise one skipped test will show
+    # a warning icon in the UI on the test tab.
     for status in (
             SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.INSTALLING,
             SCRIPT_STATUS.PENDING, SCRIPT_STATUS.ABORTED,

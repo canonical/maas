@@ -76,6 +76,7 @@ class SCRIPT_STATUS:
     DEGRADED = 6
     INSTALLING = 7
     FAILED_INSTALLING = 8
+    SKIPPED = 9
 
 
 SCRIPT_STATUS_CHOICES = (
@@ -87,7 +88,8 @@ SCRIPT_STATUS_CHOICES = (
     (SCRIPT_STATUS.ABORTED, "Aborted"),
     (SCRIPT_STATUS.DEGRADED, "Degraded"),
     (SCRIPT_STATUS.INSTALLING, "Installing dependencies"),
-    (SCRIPT_STATUS.FAILED_INSTALLING, "Failed installing dependencies")
+    (SCRIPT_STATUS.FAILED_INSTALLING, "Failed installing dependencies"),
+    (SCRIPT_STATUS.SKIPPED, "Skipped"),
 )
 
 

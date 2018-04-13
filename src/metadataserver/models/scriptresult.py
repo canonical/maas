@@ -189,10 +189,10 @@ class ScriptResult(CleanSave, TimestampedModel):
             raise ValidationError('YAML must be a dictionary.')
 
         if parsed_yaml.get('status') not in [
-                'passed', 'failed', 'degraded', 'timedout', None]:
+                'passed', 'failed', 'degraded', 'timedout', 'skipped', None]:
             raise ValidationError(
-                'status must be "passed", "failed", "degraded", or '
-                '"timedout".')
+                'status must be "passed", "failed", "degraded", '
+                '"timedout", or "skipped".')
 
         results = parsed_yaml.get('results')
         if results is None:
@@ -274,6 +274,8 @@ class ScriptResult(CleanSave, TimestampedModel):
                     self.status = SCRIPT_STATUS.DEGRADED
                 elif status == 'timedout':
                     self.status = SCRIPT_STATUS.TIMEDOUT
+                elif status == 'skipped':
+                    self.status = SCRIPT_STATUS.SKIPPED
 
         if self.script:
             if script_version_id is not None:
@@ -351,7 +353,8 @@ class ScriptResult(CleanSave, TimestampedModel):
         elif self.ended is None and self.status in {
                 SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
                 SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED,
-                SCRIPT_STATUS.DEGRADED, SCRIPT_STATUS.FAILED_INSTALLING}:
+                SCRIPT_STATUS.DEGRADED, SCRIPT_STATUS.FAILED_INSTALLING,
+                SCRIPT_STATUS.SKIPPED}:
             self.ended = datetime.now()
             if 'update_fields' in kwargs:
                 kwargs['update_fields'].append('ended')

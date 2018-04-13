@@ -1,4 +1,4 @@
-/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Script status icon select directive.
@@ -50,6 +50,10 @@ angular.module('MAAS').directive('maasScriptStatus', function() {
                     // SCRIPT_STATUS.TIMEDOUT
                     case 4:
                         $scope.icon = 'p-icon--timed-out';
+                        break;
+                    // SCRIPT_STATUS.SKIPPED
+                    case 9:
+                        $scope.icon = 'p-icon--warning';
                         break;
                     case -1:
                         // No scripts have been run.

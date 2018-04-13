@@ -1,10 +1,11 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test smartctl functions."""
 
 __all__ = []
 
+import io
 from subprocess import (
     CalledProcessError,
     DEVNULL,
@@ -81,6 +82,11 @@ class TestSmartCTL(MAASTestCase):
         mock_check_output = self.patch(smartctl, "check_output")
         mock_check_output.return_value = b"SMART support is not available."
         mock_print = self.patch(smartctl, "print")
+        result_path = factory.make_name("result_path")
+        self.patch(smartctl.os, "environ", {"RESULT_PATH": result_path})
+        mock_open = self.patch(smartctl, "open")
+        mock_open.return_value = io.StringIO()
+        mock_yaml_safe_dump = self.patch(smartctl.yaml, "safe_dump")
 
         self.assertRaises(SystemExit, smartctl.check_SMART_support, storage)
         self.assertThat(mock_check_output, MockCalledOnceWith(
@@ -95,6 +101,9 @@ class TestSmartCTL(MAASTestCase):
                      'sudo -n smartctl --all %s\n' % storage),
                 call('INFO: Unable to run test. The following drive does '
                      'not support SMART: %s\n' % storage)))
+        self.assertThat(mock_open, MockCalledOnceWith(result_path, "w"))
+        self.assertThat(mock_yaml_safe_dump, MockCalledOnceWith(
+            {'status': 'skipped'}, mock_open.return_value))
 
     def test_run_smartctl_selftest(self):
         storage = factory.make_name('storage')

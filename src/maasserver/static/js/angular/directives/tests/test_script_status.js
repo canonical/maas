@@ -87,6 +87,12 @@ describe("maasScriptStatus", function() {
         expect(select.attr("class")).toBe("p-icon--timed-out");
     });
 
+    it("SCRIPT_STATUS.SKIPPED", function() {
+        var directive = compileDirective("9");
+        var select = directive.find("span");
+        expect(select.attr("class")).toBe("p-icon--warning");
+    });
+
     it("NONE", function() {
         var directive = compileDirective("-1");
         var select = directive.find("span");

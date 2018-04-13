@@ -35,6 +35,7 @@
 # --- End MAAS 1.0 script metadata ---
 
 import argparse
+import os
 import re
 from subprocess import (
     CalledProcessError,
@@ -48,6 +49,8 @@ from subprocess import (
 )
 import sys
 from time import sleep
+
+import yaml
 
 # We're just reading the SMART data or asking the drive to run a self test.
 # If this takes more then a minute there is something wrong the with drive.
@@ -84,6 +87,10 @@ def check_SMART_support(storage):
         print(
             'INFO: Unable to run test. The following drive '
             'does not support SMART: %s\n' % storage)
+        result_path = os.environ.get('RESULT_PATH')
+        if result_path is not None:
+            with open(result_path, 'w') as results_file:
+                yaml.safe_dump({'status': 'skipped'}, results_file)
         sys.exit()
     print('INFO: SMART support is available; continuing...')
 
