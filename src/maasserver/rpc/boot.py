@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers for getting the configuration for a booting machine."""
@@ -166,6 +166,83 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
     return final_params
 
 
+def get_boot_config_for_machine(machine, configs):
+    """Get the correct operating system and series based on the purpose
+    of the booting machine.
+    """
+    purpose = machine.get_boot_purpose()
+    _, subarch = machine.split_arch()
+    precise = False
+    if purpose == "commissioning":
+        osystem = configs['commissioning_osystem']
+        series = configs['commissioning_distro_series']
+    else:
+        osystem = machine.get_osystem(default=configs['default_osystem'])
+        series = machine.get_distro_series(
+            default=configs['default_distro_series'])
+        # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and
+        # drop of iscsi), precise is no longer deployable. To address a
+        # squashfs image is made available allowing it to be deployed in
+        # the commissioning ephemeral environment.
+        precise = True if series == "precise" else False
+        if purpose == "xinstall" and (osystem != "ubuntu" or precise):
+            # Use only the commissioning osystem and series, for operating
+            # systems other than Ubuntu. As Ubuntu supports HWE kernels,
+            # and needs to use that kernel to perform the installation.
+            osystem = configs['commissioning_osystem']
+            series = configs['commissioning_distro_series']
+
+    # Pre MAAS-1.9 the subarchitecture defined any kernel the machine
+    # needed to be able to boot. This could be a hardware enablement
+    # kernel(e.g hwe-t) or something like highbank. With MAAS-1.9 any
+    # hardware enablement kernel must be specifed in the hwe_kernel field,
+    # any other kernel, such as highbank, is still specifed as a
+    # subarchitecture. Since Ubuntu does not support architecture specific
+    # hardware enablement kernels(i.e a highbank hwe-t kernel on precise)
+    # we give precedence to any kernel defined in the subarchitecture field
+
+    # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
+    # the deployment ephemeral env) when deploying precise, provided that
+    # it uses the commissioning distro_series and hwe kernels are not
+    # needed.
+    kernel_validated = False
+    if subarch == "generic" and machine.hwe_kernel and not precise:
+        subarch = machine.hwe_kernel
+    elif(subarch == "generic" and
+         purpose == "commissioning" and
+         machine.min_hwe_kernel):
+        try:
+            subarch = validate_hwe_kernel(
+                None, machine.min_hwe_kernel, machine.architecture,
+                osystem, series)
+        except ValidationError:
+            subarch = "no-such-kernel"
+        kernel_validated = True
+
+    # LP:1730525 - If entering the ephemeral environment from a deployed
+    # OS subarch will be machine.hwe_kernel. If a newer version of Ubuntu
+    # was deployed then the commissioning OS hwe_kernel will not be
+    # available. Use the hwe kernel instead of the ga.
+    if purpose == "commissioning" and not kernel_validated:
+        try:
+            subarch = validate_hwe_kernel(
+                subarch, machine.min_hwe_kernel, machine.architecture,
+                osystem, series)
+        except ValidationError:
+            try:
+                # Get the default kernel.
+                subarch = validate_hwe_kernel(
+                    None, machine.min_hwe_kernel, machine.architecture,
+                    osystem, series)
+            except ValidationError:
+                subarch = "no-such-kernel"
+            else:
+                # Switch to hwe-
+                subarch = subarch.replace('ga-', 'hwe-')
+
+    return osystem, series, subarch
+
+
 @synchronous
 @transactional
 def get_config(
@@ -273,53 +350,8 @@ def get_config(
         else:
             event_log_pxe_request(machine, purpose)
 
-        # Get the correct operating system and series based on the purpose
-        # of the booting machine.
-        precise = False
-        if purpose == "commissioning":
-            osystem = configs['commissioning_osystem']
-            series = configs['commissioning_distro_series']
-        else:
-            osystem = machine.get_osystem(
-                default=configs['default_osystem'])
-            series = machine.get_distro_series(
-                default=configs['default_distro_series'])
-            # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and
-            # drop of iscsi), precise is no longer deployable. To address a
-            # squashfs image is made available allowing it to be deployed in
-            # the commissioning ephemeral environment.
-            precise = True if series == "precise" else False
-            if purpose == "xinstall" and (osystem != "ubuntu" or precise):
-                # Use only the commissioning osystem and series, for operating
-                # systems other than Ubuntu. As Ubuntu supports HWE kernels,
-                # and needs to use that kernel to perform the installation.
-                osystem = configs['commissioning_osystem']
-                series = configs['commissioning_distro_series']
-
-        # Pre MAAS-1.9 the subarchitecture defined any kernel the machine
-        # needed to be able to boot. This could be a hardware enablement
-        # kernel(e.g hwe-t) or something like highbank. With MAAS-1.9 any
-        # hardware enablement kernel must be specifed in the hwe_kernel field,
-        # any other kernel, such as highbank, is still specifed as a
-        # subarchitecture. Since Ubuntu does not support architecture specific
-        # hardware enablement kernels(i.e a highbank hwe-t kernel on precise)
-        # we give precedence to any kernel defined in the subarchitecture field
-
-        # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
-        # the deployment ephemeral env) when deploying precise, provided that
-        # it uses the commissioning distro_series and hwe kernels are not
-        # needed.
-        if subarch == "generic" and machine.hwe_kernel and not precise:
-            subarch = machine.hwe_kernel
-        elif(subarch == "generic" and
-             purpose == "commissioning" and
-             machine.min_hwe_kernel):
-            try:
-                subarch = validate_hwe_kernel(
-                    None, machine.min_hwe_kernel, machine.architecture,
-                    osystem, series)
-            except ValidationError:
-                subarch = "no-such-kernel"
+        osystem, series, subarch = get_boot_config_for_machine(
+            machine, configs)
 
         # We don't care if the kernel opts is from the global setting or a tag,
         # just get the options

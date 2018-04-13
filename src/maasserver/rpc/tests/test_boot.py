@@ -710,6 +710,20 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual("no-such-kernel", observed_config["subarch"])
 
+    def test__commissioning_node_uses_hwe_kernel_when_series_is_newer(self):
+        # Regression test for LP:1730525, see comment in boot.py
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(
+            status=NODE_STATUS.DISK_ERASING, hwe_kernel="ga-90.90")
+        make_usable_architecture(self)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=23)
+        self.assertEqual("hwe-16.04", observed_config["subarch"])
+
     def test__returns_ubuntu_os_series_for_ubuntu_xinstall(self):
         self.patch(boot_module, 'get_boot_filenames').return_value = (
             None, None, None)
