@@ -498,6 +498,17 @@
                             </select>
                         </div>
                     </div>
+                    <div class="p-form__group" data-ng-if="MAAS_config.is_premium && !isDevice && !isController">
+                        <label for="pool" class="p-form__label">Resource pool</label>
+                        <div class="p-form__control">
+                            <select name="pool" id="pool"
+                                data-ng-disabled="!summary.editing"
+                                data-ng-model="summary.pool.selected"
+                                data-ng-options="pool as pool.name for pool in summary.pool.options">
+                                <option value="" disabled="disabled">Choose a resource pool</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="p-form__group">
                         <label class="p-form__label">Tags</label>
                         <div class="p-form__control tags--inline">

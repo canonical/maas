@@ -27,6 +27,7 @@ angular.module('MAAS').controller('NodesListController', [
         $rootScope.page = "machines";
 
         // Set initial values.
+        $scope.MAAS_config = MAAS_config;
         $scope.machines = MachinesManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.devices = DevicesManager.getItems();

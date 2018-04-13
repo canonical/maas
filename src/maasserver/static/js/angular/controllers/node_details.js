@@ -26,6 +26,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $rootScope.title = "Loading...";
 
         // Initial values.
+        $scope.MAAS_config = MAAS_config;
         $scope.loaded = false;
         $scope.node = null;
         $scope.action = {
