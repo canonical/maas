@@ -61,27 +61,45 @@
                     <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
                 </div>
             </div>
-            <div class="row" data-ng-if="editSummary != true">
-                <dl class="col-6">
-                    <dt>Name</dt>
-                    <dd>{$ zone.name $}</dd>
-                    <dt>Description</dt>
-                    <dd>{$ zone.description $}&nbsp;</dd>
-                    <dt>Machines</dt>
-                    <dd><a href="#/machines&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a></dd>
-                </dl>
+            <div class="row form p-form--stacked" data-ng-if="editSummary != true">
+                <div class="col-6">
+                    <div class="p-form__group">
+                        <div class="p-form__label">
+                            <p><strong>Name</strong></p>
+                        </div>
+                        <div class="p-form__control">
+                            <p>{$ zone.name $}</p>
+                        </div>
+                    </div>
+                    <div class="p-form__group">
+                        <div class="p-form__label">
+                            <p><strong>Description</strong></p>
+                        </div>
+                        <div class="p-form__control">
+                            <p>{$ zone.description $}</p>
+                        </div>
+                    </div>
+                    <div class="p-form__group">
+                        <div class="p-form__label">
+                            <p><strong>Machines</strong></p>
+                        </div>
+                        <div class="p-form__control">
+                            <p>{$ zone.machines_count $}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="row">
                 <maas-obj-form obj="zone" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="zoneManager" data-ng-disabled="!isSuperUser()">
                     <div class="row">
                         <div class="col-6">
                             <maas-obj-field type="text" key="name" label="Name" placeholder="Zone name"
-                                label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                                label-width="2" input-width="4" blur-on-enter="true"></maas-obj-field>
                             <maas-obj-field type="textarea" key="description" label="Description" placeholder="Zone description"
-                                label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                                label-width="2" input-width="4" blur-on-enter="true"></maas-obj-field>
                             <dl>
                                 <dt class="col-2">Machines</dt>
-                                <dd class="col-5">
+                                <dd class="col-4">
                                     <a href="#/machines&query=zone:({$ zone.name $})">{$ zone.machines_count $}</a>
                                 </dd>
                             </dl>
