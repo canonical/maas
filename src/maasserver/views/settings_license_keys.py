@@ -38,7 +38,7 @@ class LicenseKeyDelete(DeleteView):
             LicenseKey, osystem=osystem, distro_series=distro_series)
 
     def get_next_url(self):
-        return reverse('settings') + '#' + LICENSE_KEY_ANCHOR
+        return reverse('settings_license_keys') + '#' + LICENSE_KEY_ANCHOR
 
     def delete(self, request, *args, **kwargs):
         license_key = self.get_object()
@@ -58,7 +58,7 @@ class LicenseKeyCreate(CreateView):
     context_object_name = 'licensekey'
 
     def get_success_url(self):
-        return reverse('settings') + '#' + LICENSE_KEY_ANCHOR
+        return reverse('settings_license_keys') + '#' + LICENSE_KEY_ANCHOR
 
     def form_valid(self, form):
         messages.info(self.request, "License key created.")
@@ -79,7 +79,7 @@ class LicenseKeyEdit(UpdateView):
             LicenseKey, osystem=osystem, distro_series=distro_series)
 
     def get_success_url(self):
-        return reverse('settings') + '#' + LICENSE_KEY_ANCHOR
+        return reverse('settings_license_keys') + '#' + LICENSE_KEY_ANCHOR
 
     def form_valid(self, form):
         messages.info(self.request, "License key updated.")

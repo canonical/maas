@@ -40,7 +40,7 @@ class TestScriptDelete(DeleteView):
         return get_object_or_404(Script, id=id)
 
     def get_next_url(self):
-        return reverse('settings') + '#' + TEST_SCRIPTS_ANCHOR
+        return reverse('settings_scripts') + '#' + TEST_SCRIPTS_ANCHOR
 
     def delete(self, request, *args, **kwargs):
         script = self.get_object()
@@ -59,7 +59,7 @@ class TestScriptCreate(CreateView):
     context_object_name = 'testscript'
 
     def get_success_url(self):
-        return reverse('settings') + '#' + TEST_SCRIPTS_ANCHOR
+        return reverse('settings_scripts') + '#' + TEST_SCRIPTS_ANCHOR
 
     def form_valid(self, form):
         if form.is_valid():

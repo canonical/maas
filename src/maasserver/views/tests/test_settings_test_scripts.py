@@ -34,7 +34,7 @@ class TestScriptListingTest(MAASServerTestCase):
             factory.make_Script(script_type=SCRIPT_TYPE.TESTING,
                                 default=True)
             ]
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_scripts'))
         names = [script.name for script in scripts[:-1]]
         contents = [script.script.data for script in scripts[:-1]]
         self.assertThat(response.content, ContainsAll([
@@ -48,7 +48,7 @@ class TestScriptListingTest(MAASServerTestCase):
 
     def test_settings_link_to_upload_script(self):
         self.client.login(user=factory.make_admin())
-        links = get_content_links(self.client.get(reverse('settings')))
+        links = get_content_links(self.client.get(reverse('settings_scripts')))
         script_add_link = reverse('test-script-add')
         self.assertIn(script_add_link, links)
 
@@ -58,7 +58,7 @@ class TestScriptListingTest(MAASServerTestCase):
             factory.make_Script(script_type=SCRIPT_TYPE.TESTING),
             factory.make_Script(script_type=SCRIPT_TYPE.TESTING),
             }
-        links = get_content_links(self.client.get(reverse('settings')))
+        links = get_content_links(self.client.get(reverse('settings_scripts')))
         script_delete_links = [
             reverse('test-script-delete', args=[script.id])
             for script in scripts]
@@ -66,7 +66,7 @@ class TestScriptListingTest(MAASServerTestCase):
 
     def test_settings_contains_test_scripts_slot_anchor(self):
         self.client.login(user=factory.make_admin())
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_scripts'))
         document = fromstring(response.content)
         slots = document.xpath(
             "//div[@id='%s']" % TEST_SCRIPTS_ANCHOR)
@@ -83,7 +83,7 @@ class TestScriptDeleteTest(MAASServerTestCase):
         delete_link = reverse('test-script-delete', args=[script.id])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
-            (http.client.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings_scripts')),
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
             Script.objects.filter(id=script.id).exists())
@@ -113,7 +113,7 @@ class TestScriptUploadTest(MAASServerTestCase):
             response = self.client.post(
                 create_link, {'name': name, 'content': fp})
         self.assertEqual(
-            (http.client.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings_scripts')),
             (response.status_code, extract_redirect(response)))
         new_script = Script.objects.get(name=name)
         self.assertEquals(name, new_script.name)

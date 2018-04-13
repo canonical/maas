@@ -21,7 +21,10 @@ from maasserver.bootresources import (
     simplestreams_stream_handler,
 )
 from maasserver.macaroon_auth import MacaroonDischargeRequest
-from maasserver.views import TextTemplateView
+from maasserver.views import (
+    settings,
+    TextTemplateView,
+)
 from maasserver.views.account import (
     authenticate,
     login,
@@ -39,7 +42,6 @@ from maasserver.views.settings import (
     AccountsDelete,
     AccountsEdit,
     AccountsView,
-    settings,
 )
 from maasserver.views.settings_commissioning_scripts import (
     CommissioningScriptCreate,
@@ -115,7 +117,19 @@ urlpatterns += [
 # # URLs for admin users.
 # Settings views.
 urlpatterns += [
-    adminurl(r'^settings/$', settings, name='settings'),
+    adminurl(r'^settings/$', settings.settings, name='settings'),
+    adminurl(r'^settings/users/$', settings.users, name='settings_users'),
+    adminurl(
+        r'^settings/general/$', settings.general, name='settings_general'),
+    adminurl(
+        r'^settings/scripts/$', settings.scripts, name='settings_scripts'),
+    adminurl(
+        r'^settings/storage/$', settings.storage, name='settings_storage'),
+    adminurl(
+        r'^settings/network/$', settings.network, name='settings_network'),
+    adminurl(
+        r'^settings/license-keys/$', settings.license_keys,
+        name='settings_license_keys'),
     adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
     adminurl(
         r'^accounts/(?P<username>[^/]+)/edit/$', AccountsEdit.as_view(),

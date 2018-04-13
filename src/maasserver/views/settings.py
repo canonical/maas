@@ -17,6 +17,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
 from django.shortcuts import (
     get_object_or_404,
+    redirect,
     render,
 )
 from django.views.generic import (
@@ -85,7 +86,7 @@ class AccountsAdd(CreateView):
     context_object_name = 'new_user'
 
     def get_success_url(self):
-        return reverse('settings')
+        return reverse('settings_users')
 
     def form_valid(self, form):
         username = self.request._post['username']
@@ -109,7 +110,7 @@ class AccountsDelete(DeleteView):
         return user.userprofile
 
     def get_next_url(self):
-        return reverse('settings')
+        return reverse('settings_users')
 
     def delete(self, request, *args, **kwargs):
         profile = self.get_object()
@@ -155,7 +156,7 @@ class AccountsEdit(TemplateView, ModelFormMixin,
     def post(self, request, *args, **kwargs):
         """Called by `TemplateView`: handle a POST request."""
         self.object = user = self.get_object()
-        next_page = reverse('settings')
+        next_page = reverse('settings_users')
 
         # Process the profile-editing form, if that's what was submitted.
         profile_form, response = process_form(
@@ -216,93 +217,94 @@ def set_license_key_titles(license_key, osystems):
     license_key.distro_series_title = release['title']
 
 
-def settings(request):
-    user_list = UserProfile.objects.all_users().order_by('username')
+def show_license_keys():
+    """Return True when license keys should be shown."""
+    osystems = list(gen_all_known_operating_systems())
+    return has_osystems_supporting_license_keys(osystems)
 
+
+def settings(request):
+    return redirect('settings_users')
+
+
+def users(request):
+    user_list = UserProfile.objects.all_users().order_by('username')
+    return render(
+        request,
+        'maasserver/settings_users.html',
+        {
+            'user_list': user_list,
+            'external_auth_enabled': bool(request.external_auth_info),
+            'show_license_keys': show_license_keys(),
+        })
+
+
+def general(request):
     # Process Third Party Drivers form.
     third_party_drivers_form, response = process_form(
-        request, ThirdPartyDriversForm, reverse('settings'),
+        request, ThirdPartyDriversForm, reverse('settings_general'),
         'third_party_drivers', "Configuration updated.")
-    if response is not None:
-        return response
-
-    # Process disk erasing on release form.
-    storage_settings_form, response = process_form(
-        request, StorageSettingsForm, reverse('settings'),
-        'storage_settings', "Configuration updated.")
     if response is not None:
         return response
 
     # Process the MAAS form.
     maas_form, response = process_form(
-        request, MAASForm, reverse('settings'), 'maas',
+        request, MAASForm, reverse('settings_general'), 'maas',
         "Configuration updated.")
-    if response is not None:
-        return response
-
-    # Process the network form.
-    proxy_form, response = process_form(
-        request, ProxyForm, reverse('settings'), 'proxy',
-        "Configuration updated.")
-    if response is not None:
-        return response
-
-    # Process the DNS form.
-    dns_form, response = process_form(
-        request, DNSForm, reverse('settings'), 'dns',
-        "Configuration updated.")
-    if response is not None:
-        return response
-
-    # Process the NTP form.
-    ntp_form, response = process_form(
-        request, NTPForm, reverse('settings'), 'ntp',
-        "Configuration updated.")
-    if response is not None:
-        return response
-
-    # Process the network discovery form.
-    network_discovery_form, response = process_form(
-        request, NetworkDiscoveryForm, reverse('settings'),
-        'network_discovery', "Configuration updated.")
     if response is not None:
         return response
 
     # Process the Commissioning form.
     commissioning_form, response = process_form(
-        request, CommissioningForm, reverse('settings'), 'commissioning',
-        "Configuration updated.")
+        request, CommissioningForm, reverse('settings_general'),
+        'commissioning', "Configuration updated.")
     if response is not None:
         return response
 
     # Process the Deploy form.
     deploy_form, response = process_form(
-        request, DeployForm, reverse('settings'), 'deploy',
+        request, DeployForm, reverse('settings_general'), 'deploy',
         "Configuration updated.")
     if response is not None:
         return response
 
     # Process the Ubuntu form.
     ubuntu_form, response = process_form(
-        request, UbuntuForm, reverse('settings'), 'ubuntu',
+        request, UbuntuForm, reverse('settings_general'), 'ubuntu',
         "Configuration updated.")
     if response is not None:
         return response
 
     # Process the Windows form.
     windows_form, response = process_form(
-        request, WindowsForm, reverse('settings'), 'windows',
+        request, WindowsForm, reverse('settings_general'), 'windows',
         "Configuration updated.")
     if response is not None:
         return response
 
     # Process the Global Kernel Opts form.
     kernelopts_form, response = process_form(
-        request, GlobalKernelOptsForm, reverse('settings'), 'kernelopts',
-        "Configuration updated.")
+        request, GlobalKernelOptsForm, reverse('settings_general'),
+        'kernelopts', "Configuration updated.")
     if response is not None:
         return response
 
+    return render(
+        request,
+        'maasserver/settings_general.html',
+        {
+            'maas_form': maas_form,
+            'third_party_drivers_form': third_party_drivers_form,
+            'commissioning_form': commissioning_form,
+            'deploy_form': deploy_form,
+            'ubuntu_form': ubuntu_form,
+            'windows_form': windows_form,
+            'kernelopts_form': kernelopts_form,
+            'show_license_keys': show_license_keys(),
+        })
+
+
+def scripts(request):
     # Commissioning scripts.
     commissioning_scripts = Script.objects.filter(
         script_type=SCRIPT_TYPE.COMMISSIONING)
@@ -311,33 +313,82 @@ def settings(request):
     test_scripts = Script.objects.filter(
         script_type=SCRIPT_TYPE.TESTING, default=False)
 
-    # License keys w/ titles for osystem and distro_series
+    return render(
+        request,
+        'maasserver/settings_scripts.html',
+        {
+            'commissioning_scripts': commissioning_scripts,
+            'test_scripts': test_scripts,
+            'show_license_keys': show_license_keys(),
+        })
+
+
+def storage(request):
+    storage_settings_form, response = process_form(
+        request, StorageSettingsForm, reverse('settings_storage'),
+        'storage_settings', "Configuration updated.")
+    if response is not None:
+        return response
+
+    return render(
+        request,
+        'maasserver/settings_storage.html',
+        {
+            'storage_settings_form': storage_settings_form,
+            'show_license_keys': show_license_keys(),
+        })
+
+
+def network(request):
+    # Process the network form.
+    proxy_form, response = process_form(
+        request, ProxyForm, reverse('settings_network'), 'proxy',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
+    # Process the DNS form.
+    dns_form, response = process_form(
+        request, DNSForm, reverse('settings_network'), 'dns',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
+    # Process the NTP form.
+    ntp_form, response = process_form(
+        request, NTPForm, reverse('settings_network'), 'ntp',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
+    # Process the network discovery form.
+    network_discovery_form, response = process_form(
+        request, NetworkDiscoveryForm, reverse('settings_network'),
+        'network_discovery', "Configuration updated.")
+    if response is not None:
+        return response
+
+    return render(
+        request,
+        'maasserver/settings_network.html',
+        {
+            'proxy_form': proxy_form,
+            'dns_form': dns_form,
+            'ntp_form': ntp_form,
+            'network_discovery_form': network_discovery_form,
+            'show_license_keys': show_license_keys(),
+        })
+
+
+def license_keys(request):
     osystems = list(gen_all_known_operating_systems())
-    show_license_keys = has_osystems_supporting_license_keys(osystems)
     license_keys = LicenseKey.objects.all()
     for license_key in license_keys:
         set_license_key_titles(license_key, osystems)
 
     return render(
         request,
-        'maasserver/settings.html',
+        'maasserver/settings_license_keys.html',
         {
-            'user_list': user_list,
-            'commissioning_scripts': commissioning_scripts,
-            'test_scripts': test_scripts,
-            'show_license_keys': show_license_keys,
             'license_keys': license_keys,
-            'maas_form': maas_form,
-            'proxy_form': proxy_form,
-            'dns_form': dns_form,
-            'ntp_form': ntp_form,
-            'network_discovery_form': network_discovery_form,
-            'third_party_drivers_form': third_party_drivers_form,
-            'storage_settings_form': storage_settings_form,
-            'commissioning_form': commissioning_form,
-            'deploy_form': deploy_form,
-            'ubuntu_form': ubuntu_form,
-            'windows_form': windows_form,
-            'kernelopts_form': kernelopts_form,
-            'external_auth_enabled': bool(request.external_auth_info),
         })

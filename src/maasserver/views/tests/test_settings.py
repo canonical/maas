@@ -46,6 +46,12 @@ class SettingsTest(MAASServerTestCase):
         response = self.client.get(reverse('settings'))
         self.assertEqual('/', extract_redirect(response))
 
+    def test_settings_redirects_to_settings_user(self):
+        admin = factory.make_admin()
+        self.client.login(user=admin)
+        response = self.client.get(reverse('settings'))
+        self.assertEqual(reverse('settings_users'), extract_redirect(response))
+
     def test_settings_list_users(self):
         # The settings page displays a list of the users with links to view,
         # delete or edit each user. Note that the link to delete the the
@@ -54,7 +60,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=admin)
         [factory.make_User() for _ in range(3)]
         users = UserProfile.objects.all_users()
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_users'))
         doc = fromstring(response.content)
         tab = doc.cssselect('#users')[0]
         all_links = [elem.get('href') for elem in tab.cssselect('a')]
@@ -101,7 +107,7 @@ class SettingsTest(MAASServerTestCase):
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
         user = factory.make_User()
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_users'))
         doc = fromstring(response.content)
         tab = doc.cssselect('#users')[0]
         rows = tab.cssselect('tr[id="%s"]' % user.username)
@@ -117,7 +123,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=admin)
         Config.objects.set_config(
             'external_auth_url', 'http://auth.example.com')
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_users'))
         doc = fromstring(response.content)
         [notification] = doc.cssselect('.p-notification__response')
         self.assertIn(
@@ -126,7 +132,7 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_no_users_message_without_external_auth(self):
         self.client.login(user=factory.make_admin())
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_users'))
         doc = fromstring(response.content)
         self.assertEqual(doc.cssselect('.p-notification__response'), [])
 
@@ -138,7 +144,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         new_name = factory.make_string()
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_general'),
             get_prefixed_form_data(
                 prefix='maas',
                 data={
@@ -156,7 +162,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         new_proxy = "http://%s.example.com:1234/" % factory.make_string()
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_network'),
             get_prefixed_form_data(
                 prefix='proxy',
                 data={
@@ -177,7 +183,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         new_upstream = "8.8.8.8"
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_network'),
             get_prefixed_form_data(
                 prefix='dns',
                 data={
@@ -197,7 +203,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         new_servers = "ntp.example.com"
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_network'),
             get_prefixed_form_data(
                 prefix='ntp',
                 data={
@@ -217,7 +223,7 @@ class SettingsTest(MAASServerTestCase):
 
         new_commissioning = release['name']
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_general'),
             get_prefixed_form_data(
                 prefix='commissioning',
                 data={
@@ -236,9 +242,9 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_hides_license_keys_if_no_OS_supporting_keys(self):
         self.client.login(user=factory.make_admin())
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_general'))
         doc = fromstring(response.content)
-        license_keys = doc.cssselect('#license_keys')
+        license_keys = doc.cssselect('a[href="/settings/license-keys/"]')
         self.assertEqual(
             0, len(license_keys), "Didn't hide the license key section.")
 
@@ -249,9 +255,9 @@ class SettingsTest(MAASServerTestCase):
         self.patch(
             settings_view,
             'gen_all_known_operating_systems').return_value = [osystem]
-        response = self.client.get(reverse('settings'))
+        response = self.client.get(reverse('settings_general'))
         doc = fromstring(response.content)
-        license_keys = doc.cssselect('#license_keys')
+        license_keys = doc.cssselect('a[href="/settings/license-keys/"]')
         self.assertEqual(
             1, len(license_keys), "Didn't show the license key section.")
 
@@ -259,7 +265,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         new_enable_third_party_drivers = factory.pick_bool()
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_general'),
             get_prefixed_form_data(
                 prefix='third_party_drivers',
                 data={
@@ -281,7 +287,7 @@ class SettingsTest(MAASServerTestCase):
         new_storage_layout = factory.pick_choice(get_storage_layout_choices())
         new_enable_disk_erasing_on_release = factory.pick_bool()
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_storage'),
             get_prefixed_form_data(
                 prefix='storage_settings',
                 data={
@@ -307,7 +313,7 @@ class SettingsTest(MAASServerTestCase):
         osystem_name = osystem['name']
         release_name = osystem['default_release']
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_general'),
             get_prefixed_form_data(
                 prefix='deploy',
                 data={
@@ -335,7 +341,7 @@ class SettingsTest(MAASServerTestCase):
         new_main_archive = 'http://test.example.com/archive'
         new_ports_archive = 'http://test2.example.com/archive'
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_general'),
             get_prefixed_form_data(
                 prefix='ubuntu',
                 data={
@@ -359,7 +365,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         new_kernel_opts = "--new='arg' --flag=1 other"
         response = self.client.post(
-            reverse('settings'),
+            reverse('settings_general'),
             get_prefixed_form_data(
                 prefix='kernelopts',
                 data={

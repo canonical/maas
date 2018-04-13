@@ -21,7 +21,7 @@
             <a href="{% url 'settings_general' %}" class="p-tabs__link" role="tab">General</a>
         </li>
         <li class="p-tabs__item" role="presentation">
-            <a href="{% url 'settings_scripts' %}" class="p-tabs__link" role="tab">User scripts</a>
+            <a href="{% url 'settings_scripts' %}" class="p-tabs__link" role="tab" aria-selected="true">User scripts</a>
         </li>
         <li class="p-tabs__item" role="presentation">
             <a href="{% url 'settings_storage' %}" class="p-tabs__link" role="tab">Storage</a>
@@ -35,9 +35,11 @@
         <li class="p-tabs__item" role="presentation">
             <a href="{% url 'index' %}#/settings/repositories" class="p-tabs__link" role="tab">Package repositories</a>
         </li>
+        {% if show_license_keys %}
         <li class="p-tabs__item" role="presentation">
-            <a href="{% url 'settings_license_keys' %}" class="p-tabs__link" role="tab" aria-selected="true">License keys</a>
+            <a href="{% url 'settings_license_keys' %}" class="p-tabs__link" role="tab">License keys</a>
         </li>
+        {% endif %}
     </ul>
 </nav>
 {% endblock %}
@@ -46,35 +48,18 @@
 <div id="settings">
     <div class="p-strip is-bordered">
         <div class="row">
-            <div id="license_keys" class="col-8">
-                <table>
-                    <tbody>
-                        {% for key in license_keys %}
-                        <tr id="{{ key.osystem }}-{{ key.distro_series }}">
-                            <td>{{ key.osystem_title }}</td>
-                            <td>{{ key.distro_series_title }}</td>
-                            <td class="u-align--right">
-                                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="p-icon--edit">
-                                    edit
-                                </a>
-                                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="p-icon--delete">
-                                    delete
-                                </a>
-                            </td>
-                            {% empty %}
-                            <p>No license keys.</p>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <a class="p-button--neutral u-float--right" href="{% url 'license-key-add' %}">Add license key</a>
+            <div id="commissioning_scripts" class="col-8">
+                {% include "maasserver/settings_commissioning_scripts.html" %}
+            </div>
+        </div>
+    </div>
+
+    <div class="p-strip is-bordered">
+        <div class="row">
+            <div id="test_scripts" class="col-8">
+                {% include "maasserver/settings_test_scripts.html" %}
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-
-
-
-
-
