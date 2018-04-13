@@ -302,19 +302,19 @@ class IPMIPowerDriver(PowerDriver):
             common_args.extend(("-u", power_user))
         common_args.extend(('-p', power_pass))
 
-        # Update the chassis config and power commands.
-        ipmi_chassis_config_command.extend(common_args)
-        ipmi_chassis_config_command.append('--commit')
+        # Update the power commands with common args.
         ipmipower_command.extend(common_args)
 
-        # Before changing state run the chassis config command.
-        if power_change in ("on", "off"):
+        # Additional arguments for the power command.
+        if power_change == 'on':
+            # Update the chassis config commands and call it just when
+            # powering on the machine.
+            ipmi_chassis_config_command.extend(common_args)
+            ipmi_chassis_config_command.append('--commit')
             self._issue_ipmi_chassis_config_command(
                 ipmi_chassis_config_command, power_change, power_address,
                 power_boot_type)
 
-        # Additional arguments for the power command.
-        if power_change == 'on':
             ipmipower_command.append('--cycle')
             ipmipower_command.append('--on-if-off')
         elif power_change == 'off':
