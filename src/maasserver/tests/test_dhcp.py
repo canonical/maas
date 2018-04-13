@@ -897,6 +897,35 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             rack_controller, subnet, [""], ntp_servers, default_domain)
         self.expectThat(config['ntp_servers'], Equals([address.ip]))
 
+    def test__sets_ntp_from_dict_argument_with_alternates(self):
+        r1 = factory.make_RackController(interface=False)
+        r2 = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN(primary_rack=r1, secondary_rack=r2)
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[], space=None)
+        r1_eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r1)
+        r2_eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r2)
+        a1 = factory.make_StaticIPAddress(
+            interface=r1_eth0, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        a2 = factory.make_StaticIPAddress(
+            interface=r2_eth0, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        r1_ntp_servers = {
+            (vlan.space_id, subnet.get_ipnetwork().version): a1.ip,
+        }
+        r2_ntp_servers = {
+            (vlan.space_id, subnet.get_ipnetwork().version): a2.ip,
+        }
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            r1, subnet, [""], r1_ntp_servers, default_domain, peer_rack=r2)
+        self.expectThat(config['ntp_servers'], Equals([a1.ip, a2.ip]))
+        config = dhcp.make_subnet_config(
+            r2, subnet, [""], r2_ntp_servers, default_domain, peer_rack=r1)
+        self.expectThat(config['ntp_servers'], Equals([a2.ip, a1.ip]))
+
     def test__overrides_ipv4_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
@@ -1351,7 +1380,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             "mode": "primary",
             "address": str(primary_ip.ip),
             "peer_address": str(secondary_ip.ip),
-        }), dhcp.make_failover_peer_config(vlan, primary_rack))
+        }, secondary_rack), dhcp.make_failover_peer_config(vlan, primary_rack))
 
     def test__renders_config_for_secondary(self):
         primary_rack = factory.make_RackController()
@@ -1376,7 +1405,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             "mode": "secondary",
             "address": str(secondary_ip.ip),
             "peer_address": str(primary_ip.ip),
-        }), dhcp.make_failover_peer_config(vlan, secondary_rack))
+        }, primary_rack), dhcp.make_failover_peer_config(vlan, secondary_rack))
 
 
 class TestGetDHCPConfigureFor(MAASServerTestCase):

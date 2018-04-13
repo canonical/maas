@@ -398,7 +398,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 def make_subnet_config(
         rack_controller, subnet, default_dns_servers: Optional[list],
         ntp_servers: Union[list, dict], default_domain, search_list=None,
-        failover_peer=None, subnets_dhcp_snippets: list=None):
+        failover_peer=None, subnets_dhcp_snippets: list=None, peer_rack=None):
     """Return DHCP subnet configuration dict for a rack interface.
 
     :param ntp_servers: Either a list of NTP server addresses or hostnames to
@@ -416,15 +416,6 @@ def make_subnet_config(
     if subnets_dhcp_snippets is None:
         subnets_dhcp_snippets = []
 
-    if isinstance(ntp_servers, dict):
-        try:
-            ntp_server = ntp_servers[
-                subnet.vlan.space_id, subnet.get_ip_version()]
-        except KeyError:
-            ntp_servers = []
-        else:
-            ntp_servers = [ntp_server]
-
     subnet_config = {
         'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
@@ -434,7 +425,7 @@ def make_subnet_config(
             '' if not subnet.gateway_ip
             else str(subnet.gateway_ip)),
         'dns_servers': dns_servers,
-        'ntp_servers': ntp_servers,
+        'ntp_servers': get_ntp_servers(ntp_servers, subnet, peer_rack),
         'domain_name': default_domain.name,
         'pools': make_pools_for_subnet(subnet, failover_peer),
         'dhcp_snippets': [
@@ -454,18 +445,47 @@ def make_failover_peer_config(vlan, rack_controller):
     interface_ip_address = get_ip_address_for_rack_controller(
         rack_controller, vlan)
     if is_primary:
-        peer_address = get_ip_address_for_rack_controller(
-            vlan.secondary_rack, vlan)
+        peer_rack = vlan.secondary_rack
     else:
-        peer_address = get_ip_address_for_rack_controller(
-            vlan.primary_rack, vlan)
+        peer_rack = vlan.primary_rack
+    peer_address = get_ip_address_for_rack_controller(peer_rack, vlan)
     name = "failover-vlan-%d" % vlan.id
-    return name, {
-        "name": name,
-        "mode": "primary" if is_primary else "secondary",
-        "address": str(interface_ip_address.ip),
-        "peer_address": str(peer_address.ip),
-    }
+    return (
+        name,
+        {
+            "name": name,
+            "mode": "primary" if is_primary else "secondary",
+            "address": str(interface_ip_address.ip),
+            "peer_address": str(peer_address.ip),
+        },
+        peer_rack
+    )
+
+
+def get_ntp_servers(ntp_servers, subnet, peer_rack):
+    """Return the list of NTP servers, based on the initial input list of
+    servers or dictionary, the subnet the servers will be advertised on,
+    and the peer rack controller (if present).
+    """
+    if isinstance(ntp_servers, dict):
+        # If ntp_servers is a dict, that means it maps each
+        # (space_id, address_family) to the best NTP server for that space.
+        # If it's already a list, that means we're just using the external
+        # NTP server(s).
+        space_address_family = (subnet.vlan.space_id, subnet.get_ip_version())
+        ntp_server = ntp_servers.get(space_address_family)
+        if ntp_server is None:
+            return []
+        else:
+            if peer_rack is not None:
+                alternates = get_ntp_server_addresses_for_rack(peer_rack)
+                alternate_ntp_server = alternates.get(space_address_family)
+                if alternate_ntp_server is not None:
+                    return [ntp_server, alternate_ntp_server]
+            return [ntp_server]
+    else:
+        # Return the original input; it was already a list.
+        return ntp_servers
 
 
 @typed
@@ -487,12 +507,14 @@ def get_dhcp_configure_for(
         rack_controller, vlan, ip_version)
     interface = get_best_interface(interfaces)
 
-    # Generate the failover peer for this VLAN.
-    if vlan.secondary_rack_id is not None:
-        peer_name, peer_config = make_failover_peer_config(
+    has_secondary = vlan.secondary_rack_id is not None
+
+    if has_secondary:
+        # Generate the failover peer for this VLAN.
+        peer_name, peer_config, peer_rack = make_failover_peer_config(
             vlan, rack_controller)
     else:
-        peer_name, peer_config = None, None
+        peer_name, peer_config, peer_rack = None, None, None
 
     if dhcp_snippets is None:
         dhcp_snippets = []
@@ -510,7 +532,8 @@ def get_dhcp_configure_for(
         subnet_configs.append(
             make_subnet_config(
                 rack_controller, subnet, maas_dns_servers, ntp_servers,
-                domain, search_list, peer_name, subnets_dhcp_snippets))
+                domain, search_list, peer_name, subnets_dhcp_snippets,
+                peer_rack))
 
     # Generate the hosts for all subnets.
     hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
