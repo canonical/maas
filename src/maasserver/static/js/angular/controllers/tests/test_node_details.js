@@ -606,6 +606,33 @@ describe("NodeDetailsController", function() {
         ]);
     });
 
+    it("updates $scope.actions", function() {
+        var setActiveDefer = $q.defer();
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
+            setActiveDefer.promise);
+        var loadManagersDefer = $q.defer();
+        var loadItemsDefer = $q.defer();
+        var controller = makeController(loadManagersDefer, loadItemsDefer);
+        node.node_type = 0;
+        node.actions = ['test', 'release', 'delete'];
+        var all_actions = [
+            {'name': 'deploy'},
+            {'name': 'commission'},
+            {'name': 'test'},
+            {'name': 'release'},
+            {'name': 'delete'}
+        ];
+        loadManagersDefer.resolve();
+        $rootScope.$digest();
+        setActiveDefer.resolve(node);
+        $rootScope.$digest();
+        loadItemsDefer.resolve(all_actions);
+        $rootScope.$digest();
+        expect($scope.action.allOptions).toEqual(all_actions);
+        expect($scope.action.availableOptions).toEqual([
+            {'name': 'test'}, {'name': 'release'}, {'name': 'delete'}]);
+    });
+
     it("reloads osinfo on route change", function() {
         var controller = makeController();
         $scope.$emit("$routeChangeSuccess");

@@ -161,8 +161,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 // allowed actions, except set-zone which does not make
                 // sense in this view because the form has this
                 // functionality
-                $scope.action.availableOptions = GeneralManager.getData(
+                $scope.action.allOptions = GeneralManager.getData(
                     actionTypeForNodeType[$scope.node.node_type]);
+                $scope.action.availableOptions.length = 0;
                 angular.forEach($scope.action.allOptions, function(option) {
                     if($scope.node.actions.indexOf(option.name) >= 0
                        && option.name !== "set-zone") {
