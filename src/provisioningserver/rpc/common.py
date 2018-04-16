@@ -18,13 +18,18 @@ from provisioningserver.rpc.interfaces import (
     IConnection,
     IConnectionToRegion,
 )
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    deferWithTimeout,
+)
 from twisted.internet.defer import Deferred
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 
 
 log = LegacyLogger()
+
+undefined = object()
 
 
 class Identify(amp.Command):
@@ -150,7 +155,14 @@ class Client:
                 "arguments are not supported. Usage: client(command, arg1="
                 "value1, ...)" % (receiver_name, len(args), args))
 
-        return self._conn.callRemote(cmd, **kwargs)
+        timeout = kwargs.pop('_timeout', undefined)
+        if timeout is undefined:
+            timeout = 120  # 2 minutes
+        if timeout is None or timeout <= 0:
+            return self._conn.callRemote(cmd, **kwargs)
+        else:
+            return deferWithTimeout(
+                timeout, self._conn.callRemote, cmd, **kwargs)
 
     @asynchronous
     def getHostCertificate(self):

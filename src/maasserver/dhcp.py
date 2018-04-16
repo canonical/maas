@@ -890,7 +890,11 @@ def _perform_dhcp_config(
     :param args: Remaining arguments for `v2_command` and `v1_command`.
     """
     def call(command):
-        return client(command, shared_networks=shared_networks, **args)
+        # DHCP command should not take more than 30 seconds to complete. Even
+        # 30 seconds is too high, but just in case of high load 30 seconds is
+        # used as a fail-safe.
+        return client(
+            command, _timeout=30, shared_networks=shared_networks, **args)
 
     def maybeDowngrade(failure):
         if failure.check(amp.UnhandledCommand):

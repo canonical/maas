@@ -81,14 +81,53 @@ class TestClient(MAASTestCase):
                 NotImplementedError, ".* only available in the rack\\b"):
             client.address
 
-    def test_call(self):
+    def test_call_no_timeout(self):
         conn, client = self.make_connection_and_client()
         self.patch_autospec(conn, "callRemote")
         conn.callRemote.return_value = sentinel.response
-        response = client(sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
+        response = client(
+            sentinel.command, _timeout=None,
+            foo=sentinel.foo, bar=sentinel.bar)
         self.assertThat(response, Is(sentinel.response))
         self.assertThat(conn.callRemote, MockCalledOnceWith(
             sentinel.command, foo=sentinel.foo, bar=sentinel.bar))
+
+    def test_call_zero_timeout(self):
+        conn, client = self.make_connection_and_client()
+        self.patch_autospec(conn, "callRemote")
+        conn.callRemote.return_value = sentinel.response
+        response = client(
+            sentinel.command, _timeout=0,
+            foo=sentinel.foo, bar=sentinel.bar)
+        self.assertThat(response, Is(sentinel.response))
+        self.assertThat(conn.callRemote, MockCalledOnceWith(
+            sentinel.command, foo=sentinel.foo, bar=sentinel.bar))
+
+    def test_call_default_timeout(self):
+        conn, client = self.make_connection_and_client()
+        self.patch_autospec(common, "deferWithTimeout")
+        common.deferWithTimeout.return_value = sentinel.response
+        response = client(
+            sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
+        self.assertThat(response, Is(sentinel.response))
+        self.assertThat(
+            common.deferWithTimeout, MockCalledOnceWith(
+                120, conn.callRemote, sentinel.command,
+                foo=sentinel.foo, bar=sentinel.bar))
+
+    def test_call_custom_timeout(self):
+        conn, client = self.make_connection_and_client()
+        timeout = random.randint(10, 20)
+        self.patch_autospec(common, "deferWithTimeout")
+        common.deferWithTimeout.return_value = sentinel.response
+        response = client(
+            sentinel.command, _timeout=timeout,
+            foo=sentinel.foo, bar=sentinel.bar)
+        self.assertThat(response, Is(sentinel.response))
+        self.assertThat(
+            common.deferWithTimeout, MockCalledOnceWith(
+                timeout, conn.callRemote, sentinel.command,
+                foo=sentinel.foo, bar=sentinel.bar))
 
     def test_call_with_keyword_arguments_raises_useful_error(self):
         conn = DummyConnection()
