@@ -626,6 +626,11 @@ describe("NodeDetailsController", function() {
         $rootScope.$digest();
         setActiveDefer.resolve(node);
         $rootScope.$digest();
+        // loadItems normally sets loaded to true and sets data to the items
+        // retrieved from the region. The spy prevents that from happening
+        // which is needed for GeneralManager.isLoaded to work.
+        GeneralManager._data.machine_actions.loaded = true;
+        GeneralManager._data.machine_actions.data = all_actions;
         loadItemsDefer.resolve(all_actions);
         $rootScope.$digest();
         expect($scope.action.allOptions).toEqual(all_actions);
