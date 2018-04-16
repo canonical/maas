@@ -1066,6 +1066,11 @@ angular.module('MAAS').controller('NodeStorageController', [
             var params = {
                 name: disk.name
             };
+            // Only take the disk's name if it is a parition as
+            // these params are passed to update_disk.
+            if(disk.type === "partition") {
+                params.name = params.name.split('-')[0];
+            }
 
             // Do nothing if not valid.
             if($scope.isNameInvalid(disk) ||
