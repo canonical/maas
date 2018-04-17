@@ -58,6 +58,11 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <tr data-ng-if="snippets.length === 0">
+                        <td colspan="5">
+                            No DHCP snippets available
+                        </td>
+                    </tr>
                     <tr data-ng-repeat="snippet in snippets track by snippet.id"
                         data-ng-class="{ 'is-active': editSnippet === snippet || deleteSnippet === snippet }">
                         <td class="col-2" aria-label="Name" data-ng-if="editSnippet !== snippet">
@@ -204,11 +209,11 @@
                                         <label for="subnet" class="u-hide u-show--small" data-ng-if="newSnippet.$maasForm.getValue('type') === 'Subnet'">Choose subnet</label>
                                         <label for="node" class="u-hide u-show--small" data-ng-if="newSnippet.$maasForm.getValue('type') === 'Node'">Choose node</label>
                                         <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
-                                            disable-label="true" input-class="table__input"
+                                            disable-label="true" input-class="table__input" class="u-no-margin--top"
                                             options="subnet.id as getSubnetName(subnet) for subnet in subnets"
                                             data-ng-if="newSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
                                         <maas-obj-field type="options" key="node" placeholder="Choose node"
-                                            disable-label="true" input-class="table__input"
+                                            disable-label="true" input-class="table__input" class="u-no-margin--top"
                                             options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
                                             data-ng-if="newSnippet.$maasForm.getValue('type') === 'Node'">
                                         </maas-obj-field>
