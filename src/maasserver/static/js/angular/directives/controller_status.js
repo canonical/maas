@@ -89,7 +89,7 @@ angular.module('MAAS').directive('maasControllerStatus', [
                 // Watch the services array and the services on the controller,
                 // if any changes then update the status.
                 $scope.$watch("controller.service_ids", updateStatusClass);
-                $scope.$watchCollection("services", updateStatusClass);
+                $scope.$watch("services", updateStatusClass, true);
 
                 // Update on creation.
                 updateStatusClass();

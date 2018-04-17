@@ -146,4 +146,19 @@ describe("maasControllerStatus", function() {
         var directive = compileDirective();
         expect(directive.isolateScope().serviceClass).toBe("success");
     });
+
+    it("update service status updates service class", function() {
+        var services = [
+            makeService("dead")
+        ];
+        ServicesManager._items.push.apply(
+            ServicesManager._items, services);
+        $scope.controller = makeController(services);
+        var directive = compileDirective();
+        expect(directive.isolateScope().serviceClass).toBe("power-error");
+
+        services[0].status = "running";
+        $scope.$digest();
+        expect(directive.isolateScope().serviceClass).toBe("success");
+    });
 });
