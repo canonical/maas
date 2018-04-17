@@ -1768,13 +1768,13 @@
             </div>
             <div class="row">
                 <div data-ng-controller="NodeFilesystemsController">
-                    <h3>File systems</h3>
+                    <h3>Filesystems</h3>
                     <table class="p-table-expanding">
                         <thead>
                             <tr>
                                 <th class="col-3">Name</th>
                                 <th class="col-1">Size</th>
-                                <th class="col-2">File system</th>
+                                <th class="col-2">Filesystem</th>
                                 <th class="col-3">Mount point</th>
                                 <th class="col-2">Mount options</th>
                                 <th class="col-1"><div class="u-align--center">Actions</div></th>
@@ -1789,7 +1789,7 @@
                             <tr data-ng-repeat="filesystem in filesystems" data-ng-class="{ 'is-active': filesystem.$selected }">
                                 <td class="col-3" aria-label="Name">{$ filesystem.name $}</td>
                                 <td class="col-1" aria-label="Size">{$ filesystem.size_human $}</td>
-                                <td class="col-2" aria-label="File system">{$ filesystem.fstype $}</td>
+                                <td class="col-2" aria-label="Filesystem">{$ filesystem.fstype $}</td>
                                 <td class="col-3" aria-label="Mount point">{$ filesystem.mount_point $}</td>
                                 <td class="col-2" aria-label="Mount options">{$ filesystem.mount_options $}</td>
                                 <td class="col-1">
@@ -1850,7 +1850,7 @@
                             </tr>
 
                             <tr class="is-active" data-ng-if="dropdown" data-ng-switch="dropdown">
-                                <!-- Adding a new TMPFS or RAMFPS file system -->
+                                <!-- Adding a new TMPFS or RAMFPS filesystem -->
                                 <td class="p-table-expanding__panel col-12" data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
                                     <div class="row" data-ng-if="windowWidth <= 768">
                                         <div class="col-8">
@@ -2631,7 +2631,7 @@
                                                 </div>
                                                 <div class="col-6">
                                                     <div class="p-form__group">
-                                                        <label for="type" class="p-form__label">File system</label>
+                                                        <label for="type" class="p-form__label">Filesystem</label>
                                                         <div class="p-form__controls">
                                                             <select name="filesys"
                                                                 data-ng-model="availableNew.fstype"
