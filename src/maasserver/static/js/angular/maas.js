@@ -212,15 +212,11 @@ angular.module('MAAS',
                     templateUrl: versionedPath(
                         'static/partials/dashboard.html'),
                     controller: 'DashboardController'
-                }).
-                otherwise({
-                    redirectTo: '/dashboard'
-                });
-            } else {
-                routes = routes.otherwise({
-                    redirectTo: '/machines'
                 });
             }
+            routes = routes.otherwise({
+                redirectTo: '/machines'
+            });
         }
     });
 
