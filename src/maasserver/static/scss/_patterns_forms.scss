@@ -9,11 +9,21 @@
     .p-form__label {
       max-width: 30%;
       flex-basis: 30%;
+
+      @media (max-width: $breakpoint-small) {
+        max-width: 100%;
+        flex-basis: 100%;
+      }
     }
 
     .p-form__control {
       max-width: 70%;
       flex-basis: 70%;
+
+      @media (max-width: $breakpoint-small) {
+        max-width: 100%;
+        flex-basis: 100%;
+      }
     }
   }
 }

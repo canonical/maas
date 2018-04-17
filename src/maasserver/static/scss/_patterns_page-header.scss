@@ -29,6 +29,11 @@
 
     &__controls {
       float: right;
+
+      @media (max-width: $breakpoint-small) {
+        float: none;
+        padding-top: 1rem;
+      }
     }
   }
 }
