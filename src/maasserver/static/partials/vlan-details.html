@@ -20,6 +20,8 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="row">
             <div class="page-header__dropdown" data-ng-class="{ 'is-open': vlanDetails.actionOption }" data-ng-if="vlanDetails.actionOption">
                 <div class="row">
                     <section class="page-header__section" data-ng-if="vlanDetails.actionOption.name === 'enable_dhcp'">
@@ -193,33 +195,28 @@
                         </form>
                     </section>
                 </div>
-                <div class="row">
+                <div class="row u-no-margin--top">
                     <section class="page-header__section col-12" data-ng-if="!vlanDetails.isActionError()">
-                        <p class="page-header__message page-header__message--warning"
-                        data-ng-if="vlanDetails.actionOption.name === 'disable_dhcp' && vlanDetails.vlan.dhcp_on">
-                            Are you sure you want to disable DHCP on this VLAN? All subnets on this VLAN will be affected.
+                        <p class="col-8" data-ng-if="vlanDetails.actionOption.name === 'disable_dhcp' && vlanDetails.vlan.dhcp_on">
+                            <i class="p-icon--warning">Warning:</i> Are you sure you want to disable DHCP on this VLAN? All subnets on this VLAN will be affected.
                         </p>
-                        <p class="page-header__message page-header__message--warning"
-                        data-ng-if="vlanDetails.actionOption.name === 'disable_dhcp' && vlanDetails.vlan.relay_vlan">
-                            Are you sure you want to disable DHCP relay on this VLAN? All subnets on this VLAN will be affected.
+                        <p class="col-8" data-ng-if="vlanDetails.actionOption.name === 'disable_dhcp' && vlanDetails.vlan.relay_vlan">
+                            <i class="p-icon--warning">Warning:</i> Are you sure you want to disable DHCP relay on this VLAN? All subnets on this VLAN will be affected.
                         </p>
-                        <p class="page-header__message page-header__message--error"
-                        data-ng-if="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">
-                            No subnets are available on this VLAN. DHCP cannot be enabled.
+                        <p class="col-8" data-ng-if="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">
+                            <i class="p-icon--error">Error:</i> No subnets are available on this VLAN. DHCP cannot be enabled.
                         </p>
-                        <p class="page-header__message page-header__message--warning"
-                        data-ng-if="vlanDetails.actionOption.name === 'delete'">
-                            Are you sure you want to delete this VLAN?
+                        <p class="col-8" data-ng-if="vlanDetails.actionOption.name === 'delete'">
+                            <i class="p-icon--warning">Warning:</i> Are you sure you want to delete this VLAN?
                         </p>
-                        <div class="page-header__controls">
-                            <button class="button--base button--inline" type="button" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
-                            <button class="button--inline" data-ng-class="vlanDetails.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'"  data-ng-click="vlanDetails.actionGo()" data-ng-disabled="!vlanDetails.canPerformAction()">{$ vlanDetails.actionOption.title $}</button>
+                        <div class="page-header__controls u-no-margin--top">
+                            <button class="p-button--base" type="button" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
+                            <button data-ng-class="vlanDetails.actionOption.name === 'delete' ? 'p-button--negative' : 'button--positive'"  data-ng-click="vlanDetails.actionGo()" data-ng-disabled="!vlanDetails.canPerformAction()">{$ vlanDetails.actionOption.title $}</button>
                         </div>
                     </section>
                 </div>
-                <div class="row">
-                    <section class="page-header__section col-12"
-                        data-ng-if="vlanDetails.isActionError()">
+                <div class="row" data-ng-if="vlanDetails.isActionError()">
+                    <section class="page-header__section col-12">
                         <p class="page-header__message page-header__message--error">{$ vlanDetails.actionError $}</p>
                         <div class="page-header__controls">
                             <button class="button--base button--inline u-margin--right" type="button" data-ng-click="vlanDetails.actionCancel()">Cancel</button>
@@ -366,7 +363,7 @@
             </div>
         </div>
         <div class="p-form p-form--stacked row">
-            <div class="col-6">
+            <div class="col-8">
                 <div class="p-form__group">
                     <div class="p-form__label">
                         <p><strong>Status</strong></p>
@@ -390,25 +387,34 @@
                         </p>
                     </div>
                 </div>
-                    <div data-ng-if="vlanDetails.primaryRack">
-                        <dt>Primary controller
+                <div class="p-form__group" data-ng-if="vlanDetails.primaryRack">
+                    <div class="p-form__label">
+                        <p>
+                            <strong>Primary controller</strong>
                             <span class="p-tooltip p-tooltip--top-center">
                                 <i class="p-icon--help">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">The rack controller where DHCP service runs on.</span>
                             </span>
-                        </dt>
-                        <dd>{$ vlanDetails.primaryRack.hostname $}</dd>
+                        </p>
                     </div>
-                    <div data-ng-if="vlanDetails.secondaryRack">
-                        <dt>Secondary controller
+                    <div class="p-form__control">
+                        <p>{$ vlanDetails.primaryRack.hostname $}</p>
+                    </div>
+                </div>
+                <div class="p-form__group" data-ng-if="vlanDetails.secondaryRack">
+                    <div class="p-form__label">
+                        <p>
+                            <strong>Secondary controller</strong>
                             <span class="p-tooltip p-tooltip--top-center">
                                 <i class="p-icon--help">Help:</i>
                                 <span class="p-tooltip__message" role="tooltip">The rack controller that will take over DHCP services if the primary fails.</span>
                             </span>
-                        </dt>
-                        <dd>{$ vlanDetails.secondaryRack.hostname $}</dd>
+                        </p>
                     </div>
-                </dl>
+                    <div class="p-form__control">
+                        <p>{$ vlanDetails.secondaryRack.hostname $}</p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
