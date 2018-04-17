@@ -79,6 +79,17 @@ class Authenticate(amp.Command):
     errors = []
 
 
+class Ping(amp.Command):
+    """Ensure the connection is still good.
+
+    :since: 2.4
+    """
+
+    arguments = []
+    response = []
+    errors = []
+
+
 class Client:
     """Wrapper around an :class:`amp.AMP` instance.
 
@@ -283,3 +294,12 @@ class RPCProtocol(amp.AMP, object):
             "Unhandled failure during AMP request. This is probably a bug. "
             "Please ensure that this error is handled within application "
             "code."))
+
+    @Ping.responder
+    def ping(self):
+        """ping()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.common.Ping`.
+        """
+        return {}

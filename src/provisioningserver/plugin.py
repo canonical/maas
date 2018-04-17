@@ -134,6 +134,14 @@ class ProvisioningServiceMaker:
         rpc_service.setName("rpc")
         return rpc_service
 
+    def _makeRPCPingService(self, rpc_service, clock=reactor):
+        from provisioningserver.rpc.clusterservice import (
+            ClusterClientCheckerService,
+        )
+        service = ClusterClientCheckerService(rpc_service, reactor)
+        service.setName("rpc-ping")
+        return service
+
     def _makeNetworksMonitoringService(self, rpc_service, clock=reactor):
         from provisioningserver.rackdservices.networks_monitoring_service \
             import RackNetworksMonitoringService
@@ -167,6 +175,7 @@ class ProvisioningServiceMaker:
         rpc_service = self._makeRPCService()
         yield rpc_service
         # Other services that make up the MAAS Region Controller.
+        yield self._makeRPCPingService(rpc_service, clock=clock)
         yield self._makeNetworksMonitoringService(rpc_service, clock=clock)
         yield self._makeDHCPProbeService(rpc_service)
         yield self._makeLeaseSocketService(rpc_service)

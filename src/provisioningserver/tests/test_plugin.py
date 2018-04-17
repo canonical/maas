@@ -45,6 +45,7 @@ from provisioningserver.rackdservices.tftp import (
     TFTPService,
 )
 from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
+from provisioningserver.rpc.clusterservice import ClusterClientCheckerService
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.twisted import reducedWebLogFormatter
 from testtools.matchers import (
@@ -105,8 +106,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
-            "lease_socket_service", "node_monitor", "ntp", "rpc", "tftp",
-            "image_service", "service_monitor",
+            "lease_socket_service", "node_monitor", "ntp", "rpc", "rpc-ping",
+            "tftp", "image_service", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
@@ -176,6 +177,13 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options, clock=None)
         service_monitor = service.getServiceNamed("service_monitor")
         self.assertIsInstance(service_monitor, ServiceMonitorService)
+
+    def test_rpc_ping_service(self):
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options, clock=None)
+        rpc_ping = service.getServiceNamed("rpc-ping")
+        self.assertIsInstance(rpc_ping, ClusterClientCheckerService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

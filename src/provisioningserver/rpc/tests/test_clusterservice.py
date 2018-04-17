@@ -90,6 +90,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
+    ClusterClientCheckerService,
     ClusterClientService,
     executeScanNetworksSubprocess,
     get_scan_all_networks_args,
@@ -131,7 +132,10 @@ from testtools.matchers import (
 )
 from twisted import web
 from twisted.application.internet import TimerService
-from twisted.internet import error
+from twisted.internet import (
+    error,
+    reactor,
+)
 from twisted.internet.defer import (
     Deferred,
     fail,
@@ -1532,6 +1536,68 @@ class TestClusterClient(MAASTestCase):
                 interfaces=interfaces, url=urlparse(maas_url),
                 nodegroup_uuid=None, beacon_support=True,
                 version=get_maas_version()))
+
+
+class TestClusterClientCheckerService(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def make_client(self):
+        client = Mock()
+        client.return_value = succeed(None)
+        return client
+
+    def test_init_sets_up_timer_correctly(self):
+        service = ClusterClientCheckerService(
+            sentinel.client_service, sentinel.clock)
+        self.assertThat(service, MatchesStructure.byEquality(
+            call=(service.tryLoop, (), {}),
+            step=(30), client_service=sentinel.client_service,
+            clock=sentinel.clock))
+
+    def test_tryLoop_calls_loop(self):
+        service = ClusterClientCheckerService(
+            sentinel.client_service, sentinel.clock)
+        mock_loop = self.patch(service, "loop")
+        mock_loop.return_value = succeed(None)
+        service.tryLoop()
+        self.assertThat(
+            mock_loop,
+            MockCalledOnceWith())
+
+    def test_loop_does_nothing_with_no_clients(self):
+        mock_client_service = MagicMock()
+        mock_client_service.getAllClients.return_value = []
+        service = ClusterClientCheckerService(
+            mock_client_service, reactor)
+        # Test will timeout if this blocks longer than 5 seconds.
+        return service.loop()
+
+    @inlineCallbacks
+    def test_loop_calls_ping_for_each_client(self):
+        clients = [
+            self.make_client()
+            for _ in range(3)
+        ]
+        mock_client_service = MagicMock()
+        mock_client_service.getAllClients.return_value = clients
+        service = ClusterClientCheckerService(
+            mock_client_service, reactor)
+        yield service.loop()
+        for client in clients:
+            self.expectThat(
+                client, MockCalledOnceWith(common.Ping, _timeout=10))
+
+    @inlineCallbacks
+    def test_ping_calls_loseConnection_on_failure(self):
+        client = MagicMock()
+        client.return_value = fail(factory.make_exception())
+        mock_client_service = MagicMock()
+        service = ClusterClientCheckerService(
+            mock_client_service, reactor)
+        yield service._ping(client)
+        self.assertThat(
+            client._conn.transport.loseConnection, MockCalledOnceWith())
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

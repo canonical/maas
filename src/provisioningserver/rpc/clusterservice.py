@@ -62,7 +62,10 @@ from provisioningserver.rpc.boot_images import (
     is_import_boot_images_running,
     list_boot_images,
 )
-from provisioningserver.rpc.common import RPCProtocol
+from provisioningserver.rpc.common import (
+    Ping,
+    RPCProtocol,
+)
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
@@ -1162,10 +1165,12 @@ class ClusterClientService(TimerService, object):
             # Fully connected to the region; update every so often.
             return self.INTERVAL_HIGH
 
-    def _update_interval(self, num_eventloops, num_connections):
+    def _update_interval(self, num_eventloops, num_connections, reset=False):
         """Change the update interval."""
         self._loop.interval = self.step = self._calculate_interval(
             num_eventloops, num_connections)
+        if reset and self._loop.running:
+            self._loop.reset()
 
     @inlineCallbacks
     def _update_connections(self, eventloops):
@@ -1337,6 +1342,50 @@ class ClusterClientService(TimerService, object):
                     "Lost all connections to region controllers. "
                     "Stopping service(s) %s." % ",".join(stopping_services))
                 service_monitor.ensureServices()
-        # Lower the interval so a re-check happens sooner instead of its
-        # currently set interval.
-        self._update_interval(0, 0)
+        # Lower and reset the interval so a reconnection happens.
+        self._update_interval(0, 0, reset=True)
+
+
+class ClusterClientCheckerService(TimerService, object):
+    """A cluster controller RPC client checker service.
+
+    This is a service - in the Twisted sense - that cordinates with the
+    `ClusterClientService` to ensure that all RPC connections are functional.
+    A ping is performed over each current connection to ensure that the
+    connection is working properly. If connection is not operational then it
+    is dropped allowing the `ClusterClientService` to make a new connection.
+
+    :ivar client_service: The `ClusterClientService` instance.
+    """
+
+    def __init__(self, client_service, reactor):
+        super(ClusterClientCheckerService, self).__init__(30, self.tryLoop)
+        self.client_service = client_service
+        self.clock = reactor
+
+    def tryLoop(self):
+        d = self.loop()
+        d.addErrback(
+            log.err, "Failure while performing ping on RPC connections.")
+        return d
+
+    def loop(self):
+        return DeferredList([
+            self._ping(client)
+            for client in self.client_service.getAllClients()
+        ], consumeErrors=True)
+
+    def _ping(self, client):
+        """Ping the client to ensure it works."""
+
+        def _onFailure(failure):
+            log.msg(
+                "Failure on ping dropping connection to event-loop: %s" % (
+                    client.ident))
+            # The protocol will call `remove_connection on the
+            # `ClusterClientService` that will perform the reconnection.
+            client._conn.transport.loseConnection()
+
+        d = client(Ping, _timeout=10)
+        d.addErrback(_onFailure)
+        return d
