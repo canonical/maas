@@ -25,25 +25,31 @@
                 <p class="page-header__message col-6">
                     <i class="p-icon--error">Error:</i> Space cannot be deleted because it has subnets attached. Remove all subnets from the space to allow deletion.
                 </p>
-                <div class="page-header__controls col-6 u-align--right">
-                    <button class="p-button--neutral" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                <div class="page-header__controls col-6">
+                    <div class="u-align--right">
+                        <button class="p-button--neutral" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    </div>
                 </div>
             </div>
             <div class="page-header__section row ng-hide" data-ng-show="canBeDeleted() && !error">
                 <p class="page-header__message col-6">
                     <i class="p-icon--warning">Warning:</i> Are you sure you want to delete this space?
                 </p>
-                <div class="page-header__controls col-6 u-align--right">
-                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                    <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete space</button>
+                <div class="page-header__controls col-6">
+                    <div class="u-align--right">
+                        <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete space</button>
+                    </div>
                 </div>
             </div>
             <div class="page-header__section row ng-hide" data-ng-show="canBeDeleted() && error">
                 <p class="page-header__message col-6">
                     <i class="p-icon--error">Error:</i> {$ error $}</p>
-                <div class="page-header__controls col-6 u-align--right">
-                    <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
-                    <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
+                <div class="page-header__controls col-6">
+                    <div class="u-align--right">
+                        <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
+                    </div>
                 </div>
             </div>
         </div>

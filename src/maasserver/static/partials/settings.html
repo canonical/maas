@@ -150,10 +150,12 @@
                                         <div class="col-8 u-vertically-center">
                                             <maas-obj-errors></maas-obj-errors>
                                         </div>
-                                        <div class="col-4 u-align--right">
-                                            <button class="p-button--base u-no-margin--top"
-                                                data-ng-click="snippetExitEdit(snippet)" type="button">Cancel</button>
-                                            <button class="p-button--positive u-no-margin--top" maas-obj-save>Save snippet</button>
+                                        <div class="col-4">
+                                            <div class="u-align--right">
+                                                <button class="p-button--base u-no-margin--top"
+                                                    data-ng-click="snippetExitEdit(snippet)" type="button">Cancel</button>
+                                                <button class="p-button--positive u-no-margin--top" maas-obj-save>Save snippet</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -169,9 +171,11 @@
                                 <div class="col-6 u-vertically-center">
                                     <p><i class="p-icon--warning">Warning:</i> Are you sure you want to remove this snippet?</p>
                                 </div>
-                                <div class="col-6 u-align--right">
-                                    <button class="p-button--base" type="button" data-ng-click="snippetExitRemove(snippet)">Cancel</button>
-                                    <button class="p-button--negative" data-ng-click="snippetConfirmRemove(snippet)">Remove</button>
+                                <div class="col-6">
+                                    <div class="u-align--right">
+                                        <button class="p-button--base" type="button" data-ng-click="snippetExitRemove(snippet)">Cancel</button>
+                                        <button class="p-button--negative" data-ng-click="snippetConfirmRemove(snippet)">Remove</button>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -495,9 +499,11 @@
                                     <div class="col-6 u-vertically-center">
                                         <p><span class="p-icon--warning"></span> Are you sure you want to remove this repository?</p>
                                     </div>
-                                    <div class="col-6 u-align--right">
-                                        <button class="p-button--base" type="button" data-ng-click="repositoryExitRemove()">Cancel</button>
-                                        <button class="p-button--negative" data-ng-click="repositoryConfirmRemove()">Remove</button>
+                                    <div class="col-6">
+                                        <div class="u-align--right">
+                                            <button class="p-button--base" type="button" data-ng-click="repositoryExitRemove()">Cancel</button>
+                                            <button class="p-button--negative" data-ng-click="repositoryConfirmRemove()">Remove</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

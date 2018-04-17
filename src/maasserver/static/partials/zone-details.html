@@ -26,26 +26,32 @@
                     <div class="col-6">
                         <p><i class="p-icon--error">Error:</i> AZ cannot be deleted because it is the default AZ.</p>
                     </div>
-                    <div class="col-6 u-align--right">
-                        <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                    <div class="col-6">
+                        <div class="u-align--right">
+                            <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                        </div>
                     </div>
                 </section>
                 <section class="row ng-hide" data-ng-show="canBeDeleted() && !error">
                     <div class="col-6">
                         <p><i class="p-icon--error">Error:</i> Are you sure you want to delete this AZ?</p>
                     </div>
-                    <div class="col-6 u-align--right">
-                        <button class="p-button--base"  type="button"data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="p-button--negative u-no-margin--top" data-ng-click="deleteConfirmButton()">Delete AZ</button>
+                    <div class="col-6">
+                        <div class="u-align--right">
+                            <button class="p-button--base" type="button"data-ng-click="cancelDeleteButton()">Cancel</button>
+                            <button class="p-button--negative u-no-margin--top" data-ng-click="deleteConfirmButton()">Delete AZ</button>
+                        </div>
                     </div>
                 </section>
                 <section class="row ng-hide" data-ng-show="canBeDeleted() && error">
                     <div class="col-6">
                         <p><i class="p-icon--error">Error:</i> {$ error $}</p>
                     </div>
-                    <div class="col-6 u-align--right">
-                        <button class="p-button--base"  type="button"data-ng-click="cancelDeleteButton()">Cancel</button>
-                        <button class="p-button--neutral u-no-margin--top" data-ng-click="deleteConfirmButton()">Retry</button>
+                    <div class="col-6">
+                        <div class="u-align--right">
+                            <button class="p-button--base"  type="button"data-ng-click="cancelDeleteButton()">Cancel</button>
+                            <button class="p-button--neutral u-no-margin--top" data-ng-click="deleteConfirmButton()">Retry</button>
+                        </div>
                     </div>
                 </section>
             </div>

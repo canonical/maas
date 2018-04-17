@@ -208,8 +208,10 @@
                         </p>
                     </div>
                 </div>
-                <div class="col-4 u-align--right">
-                    <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
+                <div class="col-4">
+                    <div class="u-align--right">
+                        <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
+                    </div>
                 </div>
             </div>
             <div class="row ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
@@ -220,8 +222,10 @@
                         </p>
                     </div>
                 </div>
-                <div class="col-4 u-align--right">
-                    <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
+                <div class="col-4">
+                    <div class="u-align--right">
+                        <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
+                    </div>
                 </div>
             </div>
             <div class="row ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
@@ -994,9 +998,11 @@
                                             <div class="col-8">
                                                 <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
                                             </div>
-                                            <div class="col-4 u-align--right">
-                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
-                                                <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
+                                            <div class="col-4">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                    <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
+                                                </div>
                                             </div>
                                         </div>
                                         <hr data-ng-if="isShowingAdd() && !newInterface.saving" />
@@ -1009,9 +1015,11 @@
                                                     data-ng-click="addInterface('vlan')"
                                                     data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
                                             </div>
-                                            <div class="col-6 u-align--right">
-                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
-                                                <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
+                                            <div class="col-6">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                    <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1284,9 +1292,11 @@
                                             <div class="col-8">
                                                 <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
                                             </div>
-                                            <div class="col-4 u-align--right">
-                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
-                                                <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
+                                            <div class="col-4">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                    <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
+                                                </div>
                                             </div>
                                         </div>
                                         <hr data-ng-if="isShowingAdd() && !newInterface.saving" />
@@ -1299,9 +1309,11 @@
                                                     data-ng-click="addInterface('vlan')"
                                                     data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
                                             </div>
-                                            <div class="col-6 u-align--right">
-                                                <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
-                                                <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
+                                            <div class="col-6">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
+                                                    <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1317,10 +1329,12 @@
                                     <input type="text" name="name" class="editible p-form-validation__input"
                                         data-ng-model="newBondInterface.name">
                                 </td>
-                                <td class="col-1 u-align--center">
-                                    <input type="radio" name="bondBootInterface" checked id="{$ newBondInterface $}"
-                                        data-ng-if="hasBootInterface(newBondInterface)">
-                                    <label for="{$ newBondInterface $}"></label>
+                                <td class="col-1">
+                                    <div class="u-align--center">
+                                        <input type="radio" name="bondBootInterface" checked id="{$ newBondInterface $}"
+                                            data-ng-if="hasBootInterface(newBondInterface)">
+                                        <label for="{$ newBondInterface $}"></label>
+                                    </div>
                                 </td>
                                 <td class="col-8"></td>
                                 <td class="p-table-expanding__panel col-12">
@@ -1445,10 +1459,12 @@
                                                 Create bridge
                                             </h2>
                                         </div>
-                                        <div class="col-6 u-align--right">
-                                            <button data-ng-click="cancel()" class="p-button--base">
-                                                <i class="p-icon--close">Cancel</i>
-                                            </button>
+                                        <div class="col-6">
+                                            <div class="u-align--right">
+                                                <button data-ng-click="cancel()" class="p-button--base">
+                                                    <i class="p-icon--close">Cancel</i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="p-form p-form--stacked">
@@ -1533,8 +1549,10 @@
                                         <div class="col-8">
                                             <h2 data-ng-click="cancel()">&lsaquo;&nbsp;&nbsp;New interface</h2>
                                         </div>
-                                        <div class="col-4 u-align--right">
-                                            <i data-ng-click="cancel()" class="p-icon--close">Cancel</i>
+                                        <div class="col-4">
+                                            <div class="u-align--right">
+                                                <i data-ng-click="cancel()" class="p-icon--close">Cancel</i>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="p-form p-form--stacked" data-ng-if="!isDevice">
@@ -1798,8 +1816,10 @@
                                                 <span data-ng-if="filesystemMode === 'delete'">Removing {$ filesystem.name $}</span>
                                             </h2>
                                         </div>
-                                        <div class="col-4 u-align--right">
-                                            <button data-ng-click="filesystemCancel()" class="p-icon--close">Cancel</button>
+                                        <div class="col-4">
+                                            <div class="u-align--right">
+                                                <button data-ng-click="filesystemCancel()" class="p-icon--close">Cancel</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div data-ng-if="filesystemMode !== null && filesystemMode !== 'multi'" data-ng-class="{ 'is-active': filesystemMode !== null && filesystemMode !== 'multi' }">
@@ -1807,18 +1827,22 @@
                                             <div class="col-8">
                                                 <p><span class="p-icon--warning">Warning:</span> Are you sure you want to unmount this filesystem?</p>
                                             </div>
-                                            <div class="col-4 u-align--right">
-                                                <button class="p-button--base" type="button" data-ng-click="filesystemCancel()">Cancel</button>
-                                                <button class="p-button--neutral u-no-margin--top" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
+                                            <div class="col-4">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base" type="button" data-ng-click="filesystemCancel()">Cancel</button>
+                                                    <button class="p-button--neutral u-no-margin--top" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div data-ng-if="filesystemMode === 'delete'">
                                             <div class="col-8">
                                                 <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(filesystem) $}?</p>
                                             </div>
-                                            <div class="col-4 u-align--right">
-                                                <button class="p-button--base" type="button" data-ng-click="filesystemCancel(filesystem)">Cancel</button>
-                                                <button class="p-button--negative u-no-margin--top" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
+                                            <div class="col-4">
+                                                <div class="u-align--right">
+                                                    <button class="p-button--base" type="button" data-ng-click="filesystemCancel(filesystem)">Cancel</button>
+                                                    <button class="p-button--negative u-no-margin--top" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1832,8 +1856,10 @@
                                         <div class="col-8">
                                             <h2 data-ng-click="cancel()">Adding filesystem</h2>
                                         </div>
-                                        <div class="col-4 u-align--right">
-                                            <i data-ng-click="cancel()" class="p-icon--close">Cancel</i>
+                                        <div class="col-4">
+                                            <div class="u-align--right">
+                                                <i data-ng-click="cancel()" class="p-icon--close">Cancel</i>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="row p-form p-form--stacked">
@@ -1908,7 +1934,9 @@
                                     <th class="col-2">Name</th>
                                     <th class="col-3">Size</th>
                                     <th class="col-4">Used by</th>
-                                    <th class="col-2 u-align--right">Actions</th>
+                                    <th class="col-2">
+                                        <div class="u-align--right">Actions</div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1945,9 +1973,11 @@
                                                 <div class="col-8">
                                                     <p><span class="p-icon--warning">Warning:</span> Are you sure you want to delete this cache set?</p>
                                                 </div>
-                                                <div class="col-4 u-align--right">
-                                                    <button class="p-button--base" type="button" data-ng-click="cacheSetCancel()">Cancel</button>
-                                                    <button class="p-button--negative u-no-margin--top" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
+                                                <div class="col-4">
+                                                    <div class="u-align--right">
+                                                        <button class="p-button--base" type="button" data-ng-click="cacheSetCancel()">Cancel</button>
+                                                        <button class="p-button--negative u-no-margin--top" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2087,8 +2117,10 @@
                                                     <span data-ng-if="availableMode === 'delete'">Removing {$ item.name $}</span>
                                                 </h2>
                                             </div>
-                                            <div class="col-4 u-align--right">
-                                                <i data-ng-click="availableCancel(item)" class="p-icon--close">Cancel</i>
+                                            <div class="col-4">
+                                                <div class="u-align--right">
+                                                    <i data-ng-click="availableCancel(item)" class="p-icon--close">Cancel</i>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="row p-form p-form--stacked" data-ng-if="availableMode === 'edit'">
@@ -2360,38 +2392,46 @@
                                             data-ng-class="{ 'is-active': availableMode !== null && activeMode !== 'multi' }">
                                             <div data-ng-if="availableMode === 'edit'" class="row">
                                                 <hr />
-                                                <div class="col-12 u-align--right">
-                                                    <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
-                                                    <button class="p-button--positive u-no-margin--top"
-                                                        data-ng-disabled="isMountPointInvalid(item.$options.mountPoint) || isNameInvalid(item)"
-                                                        data-ng-click="availableConfirmEdit(item)">Save</button>
+                                                <div class="col-12">
+                                                    <div class="u-align--right">
+                                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                                        <button class="p-button--positive u-no-margin--top"
+                                                            data-ng-disabled="isMountPointInvalid(item.$options.mountPoint) || isNameInvalid(item)"
+                                                            data-ng-click="availableConfirmEdit(item)">Save</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div data-ng-if="availableMode === 'delete'" class="row">
                                                 <div class="col-8">
                                                     <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(item) $}?</p>
                                                 </div>
-                                                <div class="col-4 u-align--right">
-                                                    <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
-                                                    <button class="p-button--negative u-no-margin--top" data-ng-click="availableConfirmDelete(item)">Remove</button>
+                                                <div class="col-4">
+                                                    <div class="u-align--right">
+                                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                                        <button class="p-button--negative u-no-margin--top" data-ng-click="availableConfirmDelete(item)">Remove</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div data-ng-if="availableMode === 'partition'" class="row">
                                                 <hr />
-                                                <div class="col-12 u-align--right">
-                                                    <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
-                                                    <button class="p-button--positive u-no-margin--top"
-                                                        data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
-                                                        data-ng-click="availableConfirmPartition(item)">Add partition</button>
+                                                <div class="col-12">
+                                                    <div class="u-align--right">
+                                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                                        <button class="p-button--positive u-no-margin--top"
+                                                            data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
+                                                            data-ng-click="availableConfirmPartition(item)">Add partition</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div data-ng-if="availableMode === 'logical-volume'" class="row">
                                                 <hr />
-                                                <div class="col-12 u-align--right">
-                                                    <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
-                                                    <button class="p-button--positive u-no-margin--top"
-                                                        data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
-                                                        data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
+                                                <div class="col-12">
+                                                    <div class="u-align--right">
+                                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                                        <button class="p-button--positive u-no-margin--top"
+                                                            data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
+                                                            data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2547,10 +2587,12 @@
                                             <div class="col-8">
                                                 <h2 data-ng-click="availableCancel()">Creating RAID</h2>
                                             </div>
-                                            <div class="col-4 u-align--right">
-                                                <button data-ng-click="availableCancel()" class="p-button">
-                                                    <i class="p-icon--close">Cancel</i>
-                                                </button>
+                                            <div class="col-4">
+                                                <div class="u-align--right">
+                                                    <button data-ng-click="availableCancel()" class="p-button">
+                                                        <i class="p-icon--close">Cancel</i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="p-form p-form--stacked row">
@@ -2682,10 +2724,12 @@
                                                 <div class="col-8">
                                                     <h2 data-ng-click="availableCancel()">Creating volume group</h2>
                                                 </div>
-                                                <div class="col-4 u-align--right">
-                                                    <button data-ng-click="availableCancel()" class="p-button">
-                                                        <i class="p-icon--close">Cancel</i>
-                                                    </button>
+                                                <div class="col-4">
+                                                    <div class="u-align--right">
+                                                        <button data-ng-click="availableCancel()" class="p-button">
+                                                            <i class="p-icon--close">Cancel</i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="row">

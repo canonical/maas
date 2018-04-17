@@ -37,9 +37,11 @@
                                 <span data-ng-if="group.source !== 'upload'"><span class="p-icon p-icon--warning">Warning:</span> Are you sure you want to remove this key source?</span>
                                 <span data-ng-if="group.source === 'upload'"><span class="p-icon p-icon--warning">Warning:</span> Are you sure you want to remove this key?</span>
                             </div>
-                            <div class="col-4 u-align--right">
-                                <button class="p-button--base" data-ng-click="close()">Cancel</button>
-                                <button class="p-button--negative" data-ng-click="confirmDelete(group)">Remove</button>
+                            <div class="col-4">
+                                <div class="u-align--right">
+                                    <button class="p-button--base" data-ng-click="close()">Cancel</button>
+                                    <button class="p-button--negative" data-ng-click="confirmDelete(group)">Remove</button>
+                                </div>
                             </div>
                         </div>
                     </td>

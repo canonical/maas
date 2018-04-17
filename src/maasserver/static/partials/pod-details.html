@@ -20,9 +20,9 @@
                 </div>
             </div>
         </div>
-        <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option.name === 'compose' }">
+        <div class="page-header__dropdown" data-ng-if="action.option.name === 'compose'">
             <maas-obj-form obj="compose.obj" manager="podManager" manager-method="compose"
-            table-form="true" save-on-blur="false" pre-process="composePreProcess" after-save="cancelCompose" data-ng-if="action.option.name === 'compose'">
+            table-form="true" save-on-blur="false" pre-process="composePreProcess" after-save="cancelCompose">
                 <div class="row">
                     <div class="col-12">
                         <hr />
@@ -54,7 +54,9 @@
                                     <th class="col-2">Location</th>
                                     <th class="col-3">Capacity (GB)</th>
                                     <th class="col-4">Tags</th>
-                                    <th class="col-1 u-align--center">Boot</th>
+                                    <th class="col-1">
+                                        <div class="u-align--center">Boot</div>
+                                    </th>
                                     <th class="col-2"></th>
                                 </tr>
                             </thead>
@@ -80,15 +82,17 @@
                                             <tags-input data-ng-model="storage.tags" allow-tags-pattern="[\\w-]+"></tags-input>
                                         </div>
                                     </td>
-                                    <td class="col-1 u-align--center">
-                                        <input type="radio" id="{$ $index $}-boot" class="u-no-margin--right"
-                                            data-ng-click="composeSetBootDisk(storage)"
-                                            data-ng-checked="storage.boot"
-                                            data-ng-if="storage.type === 'local'">
-                                        <label for="{$ $index $}-boot"></label>
+                                    <td class="col-1">
+                                        <div class="u-align--center">
+                                            <input type="radio" id="{$ $index $}-boot" class="u-no-margin--right"
+                                                data-ng-click="composeSetBootDisk(storage)"
+                                                data-ng-checked="storage.boot"
+                                                data-ng-if="storage.type === 'local'">
+                                            <label for="{$ $index $}-boot"></label>
+                                        </div>
                                     </td>
-                                    <td class="col-2 u-align--right">
-                                        <div data-ng-if="!storage.boot">
+                                    <td class="col-2">
+                                        <div class="u-align--right" data-ng-if="!storage.boot">
                                             <button data-ng-click="composeRemoveDisk(storage)">Remove</button>
                                         </div>
                                     </td>
@@ -128,20 +132,22 @@
                             </p>
                         </div>
                     </div>
-                    <div class="col-4 u-align--right">
-                        <button class="p-button--base" type="button" data-ng-click="actionCancel()">Cancel</button>
-                        <button class="u-no-margin--top u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
-                            <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
-                            <span data-ng-if="action.option.name === 'delete'">Delete pod</span>
-                        </button>
-                        <button class="p-button--neutral u-no-margin--top" data-ng-click="actionGo()" data-ng-if="action.error">Retry</button>
+                    <div class="col-4">
+                        <div class="u-align--right">
+                            <button class="p-button--base" type="button" data-ng-click="actionCancel()">Cancel</button>
+                            <button class="u-no-margin--top u-no-margin--top" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
+                                <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
+                                <span data-ng-if="action.option.name === 'delete'">Delete pod</span>
+                            </button>
+                            <button class="p-button--neutral u-no-margin--top" data-ng-click="actionGo()" data-ng-if="action.error">Retry</button>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
-        <div class="p-strip is-shallow u-no-padding--bottom" media-query="min-width: 769px" offset="89" data-ng-class="{ 'u-hide': action.option }">
+        <div class="p-strip is-shallow u-no-padding--bottom" media-query="min-width: 769px" offset="89">
             <nav class="p-tabs">
-                <ul class="p-tabs__list" role="tablist">
+                <ul class="p-tabs__list" role="tablist" data-ng-class="{ 'u-hide': action.option }">
                     <li class="p-tabs__item" role="presentation">
                         <a href="" role="tab" class="p-tabs__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
                     </li>
@@ -160,32 +166,32 @@
                     <h3 class="p-heading--four">CPU ({$ pod.total.cores $} cores)</h3>
                     <meter class="p-meter" max="{$ pod.total.cores $}" value="{$ pod.used.cores $}"></meter>
                     <p>
-                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
-                        <span class="u-float--right u-no-margin--top">{$ pod.available.cores $} cores available</span>
+                        <span>{$ pod.available.cores $} cores available</span>
+                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
                     </p>
                 </div>
                 <div class="p-card">
                     <h3 class="p-heading--four">RAM ({$ pod.total.memory_gb $}&nbsp;GiB)</h3>
                     <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
                     <p>
-                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
-                        <span class="u-float--right u-no-margin--top">{$ pod.available.memory_gb $} GiB available</span>
+                        <span>{$ pod.available.memory_gb $} GiB available</span>
+                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
                     </p>
                 </div>
                 <div class="p-card">
                     <h3 class="p-heading--four">Local storage ({$ pod.total.local_storage_gb $}&nbsp;GiB)</h3>
                     <meter class="p-meter" max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}"></meter>
                     <p>
-                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
-                        <span class="u-float--right u-no-margin--top">{$ pod.available.local_storage_gb $} GiB available</span>
+                        <span>{$ pod.available.local_storage_gb $} GiB available</span>
+                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
                     </p>
                 </div>
                 <div class="p-card" data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
                     <h3 class="p-heading--four">iSCSI storage ({$ pod.total.iscsi_storage_gb $}&nbsp;GiB)</h3>
                     <meter class="p-meter" max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
                     <p>
-                        <span data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
-                        <span class="u-float--right u-no-margin--top">{$ pod.available.iscsi_storage_gb $} GiB available</span>
+                        <span>{$ pod.available.iscsi_storage_gb $} GiB available</span>
+                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
                     </p>
                 </div>
             </aside>
