@@ -166,7 +166,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.action.availableOptions.length = 0;
                 angular.forEach($scope.action.allOptions, function(option) {
                     if($scope.node.actions.indexOf(option.name) >= 0
-                       && option.name !== "set-zone") {
+                       && option.name !== "set-zone"
+                       && option.name !== "set-pool") {
                         $scope.action.availableOptions.push(option);
                     }
                 });
