@@ -164,7 +164,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
         protocol.connectionLost(reason=None)
         self.assertThat(ipcWorker.rpcUnregisterConnection, MockCalledOnceWith(
-            protocol.ident, sentinel.host, sentinel.port))
+            protocol.connid))
         # The connection is removed from the set, but the key remains.
         self.assertDictEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
@@ -479,7 +479,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertTrue(sentinel.host, protocol.hostIsRemote)
         self.assertThat(
             ipcWorker.rpcRegisterConnection,
-            MockCalledOnceWith(protocol.ident, host.host, host.port))
+            MockCalledOnceWith(
+                protocol.connid, protocol.ident, host.host, host.port))
 
     @wait_for_reactor
     @inlineCallbacks

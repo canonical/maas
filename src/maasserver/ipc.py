@@ -97,6 +97,7 @@ class RPCRegisterConnection(amp.Command):
 
     arguments = [
         (b"pid", amp.Integer()),
+        (b"connid", amp.Unicode()),
         (b"ident", amp.Unicode()),
         (b"host", amp.Unicode()),
         (b"port", amp.Integer()),
@@ -110,9 +111,7 @@ class RPCUnregisterConnection(amp.Command):
 
     arguments = [
         (b"pid", amp.Integer()),
-        (b"ident", amp.Unicode()),
-        (b"host", amp.Unicode()),
-        (b"port", amp.Integer()),
+        (b"connid", amp.Unicode()),
     ]
     response = []
     errors = []
@@ -137,17 +136,16 @@ class IPCMaster(RPCProtocol):
         return {}
 
     @RPCRegisterConnection.responder
-    def rpc_register_connection(self, pid, ident, host, port):
+    def rpc_register_connection(self, pid, connid, ident, host, port):
         """Register worker has connection from RPC client."""
         self.factory.service.registerWorkerRPCConnection(
-            pid, ident, host, port)
+            pid, connid, ident, host, port)
         return {}
 
     @RPCUnregisterConnection.responder
-    def rpc_unregister_connection(self, pid, ident, host, port):
+    def rpc_unregister_connection(self, pid, connid):
         """Unregister worker lost connection from RPC client."""
-        self.factory.service.unregisterWorkerRPCConnection(
-            pid, ident, host, port)
+        self.factory.service.unregisterWorkerRPCConnection(pid, connid)
         return {}
 
 
@@ -385,7 +383,7 @@ class IPCMasterService(service.Service, object):
             def set_result(result):
                 pid, port = result
                 self.connections[pid]['rpc']['port'] = port
-                self.connections[pid]['rpc']['connections'] = set()
+                self.connections[pid]['rpc']['connections'] = {}
                 return result
 
             def log_rpc_open(result):
@@ -411,27 +409,29 @@ class IPCMasterService(service.Service, object):
             connection.save(force_update=True)
         return connection
 
-    def registerWorkerRPCConnection(self, pid, ident, host, port):
+    def registerWorkerRPCConnection(self, pid, connid, ident, host, port):
         """Register the worker with `pid` has RPC an RPC connection."""
         if pid in self.connections:
 
             @transactional
-            def register_connection(pid, ident, host, port):
+            def register_connection(pid, connid, ident, host, port):
                 process = self._getProcessObjFor(pid)
                 self._registerConnection(process, ident, host, port)
-                return (pid, ident, host, port)
+                return (pid, connid, ident, host, port)
 
             def log_connection(result):
                 pid, conn = result[0], result[1:]
                 log.msg(
                     "Worker pid:%d registered RPC connection to %s." % (
-                        pid, conn))
+                        pid, conn[1:]))
                 return conn
 
             def set_result(conn):
-                self.connections[pid]['rpc']['connections'].add(conn)
+                connid, conn = conn[0], conn[1:]
+                self.connections[pid]['rpc']['connections'][connid] = conn
 
-            d = deferToDatabase(register_connection, pid, ident, host, port)
+            d = deferToDatabase(
+                register_connection, pid, connid, ident, host, port)
             d.addCallback(log_connection)
             d.addCallback(set_result)
             return d
@@ -455,31 +455,32 @@ class IPCMasterService(service.Service, object):
                 RegionRackRPCConnection.objects.filter(
                     endpoint=endpoint, rack_controller=rackd).delete()
 
-    def unregisterWorkerRPCConnection(self, pid, ident, host, port):
+    def unregisterWorkerRPCConnection(self, pid, connid):
         """Unregister connection for worker with `pid`."""
         if pid in self.connections:
             connections = self.connections[pid]['rpc']['connections']
-            conn = (ident, host, port)
-            if conn in connections:
+            conn = connections.get(connid, None)
+            if conn is not None:
 
                 @transactional
-                def unregister_connection(pid, ident, host, port):
+                def unregister_connection(pid, connid, ident, host, port):
                     process = self._getProcessObjFor(pid)
                     self._unregisterConnection(process, ident, host, port)
-                    return (pid, ident, host, port)
+                    return (pid, connid, ident, host, port)
 
                 def log_disconnect(result):
                     pid, conn = result[0], result[1:]
                     log.msg(
                         "Worker pid:%d lost RPC connection to %s." % (
-                            pid, conn))
+                            pid, conn[1:]))
                     return conn
 
                 def set_result(conn):
-                    connections.remove(conn)
+                    connid = conn[0]
+                    connections.pop(connid, None)
 
                 d = deferToDatabase(
-                    unregister_connection, pid, ident, host, port)
+                    unregister_connection, pid, connid, *conn)
                 d.addCallback(log_disconnect)
                 d.addCallback(set_result)
                 return d
@@ -500,7 +501,7 @@ class IPCMasterService(service.Service, object):
                 RegionRackRPCConnection.objects.filter(
                     endpoint__process=process).values_list(
                     "id", flat=True))
-            for ident, host, port in connections:
+            for _, (ident, host, port) in connections.items():
                 db_conn = self._registerConnection(
                     process, ident, host, port, force_save=False)
                 previous_connection_ids.discard(db_conn.id)
@@ -685,21 +686,20 @@ class IPCWorkerService(service.Service, object):
         return d
 
     @asynchronous
-    def rpcRegisterConnection(self, ident, host, port):
+    def rpcRegisterConnection(self, connid, ident, host, port):
         """Register RPC connection on master."""
         d = self.protocol.get()
         d.addCallback(
             lambda protocol: protocol.callRemote(
                 RPCRegisterConnection, pid=os.getpid(),
-                ident=ident, host=host, port=port))
+                connid=connid, ident=ident, host=host, port=port))
         return d
 
     @asynchronous
-    def rpcUnregisterConnection(self, ident, host, port):
+    def rpcUnregisterConnection(self, connid):
         """Unregister RPC connection on master."""
         d = self.protocol.get()
         d.addCallback(
             lambda protocol: protocol.callRemote(
-                RPCUnregisterConnection, pid=os.getpid(),
-                ident=ident, host=host, port=port))
+                RPCUnregisterConnection, pid=os.getpid(), connid=connid))
         return d

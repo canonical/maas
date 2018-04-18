@@ -9,6 +9,7 @@ from datetime import timedelta
 import os
 import random
 from unittest.mock import MagicMock
+import uuid
 
 from crochet import wait_for
 from fixtures import EnvironmentVariableFixture
@@ -252,9 +253,11 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         yield rpc_started.get(timeout=2)
 
         rackd = yield deferToDatabase(factory.make_RackController)
+        connid = str(uuid.uuid4())
         address = factory.make_ipv4_address()
         port = random.randint(1000, 5000)
-        yield worker.rpcRegisterConnection(rackd.system_id, address, port)
+        yield worker.rpcRegisterConnection(
+            connid, rackd.system_id, address, port)
 
         def getConnection():
             region = RegionController.objects.get_running_controller()
@@ -268,10 +271,10 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         connection = yield deferToDatabase(getConnection)
         self.assertIsNotNone(connection)
         self.assertEquals(
-            {(rackd.system_id, address, port), },
+            {connid: (rackd.system_id, address, port)},
             master.connections[pid]['rpc']['connections'])
 
-        yield worker.rpcUnregisterConnection(rackd.system_id, address, port)
+        yield worker.rpcUnregisterConnection(connid)
         connection = yield deferToDatabase(getConnection)
         self.assertIsNone(connection)
 

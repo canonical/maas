@@ -16,6 +16,7 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
+import uuid
 
 from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
@@ -512,6 +513,7 @@ class RegionServer(Region):
     """
 
     factory = None
+    connid = None
     ident = None
     host = None
     hostIsRemote = False
@@ -553,7 +555,7 @@ class RegionServer(Region):
             # convert.
             pass
         return self.factory.service.ipcWorker.rpcRegisterConnection(
-            self.ident, self.host.host, self.host.port)
+            self.connid, self.ident, self.host.host, self.host.port)
 
     @inlineCallbacks
     def authenticateCluster(self):
@@ -654,6 +656,7 @@ class RegionServer(Region):
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()
+        self.connid = str(uuid.uuid4())
         if self.factory.service.running:
             return self.performHandshake().addErrback(self.handshakeFailed)
         else:
@@ -662,7 +665,7 @@ class RegionServer(Region):
     def connectionLost(self, reason):
         if self.hostIsRemote:
             d = self.factory.service.ipcWorker.rpcUnregisterConnection(
-                self.ident, self.host.host, self.host.port)
+                self.connid)
             d.addErrback(
                 log.err,
                 "Failed to unregister the connection with the master.")
