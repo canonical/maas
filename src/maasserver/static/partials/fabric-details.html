@@ -8,38 +8,62 @@
 <div class="ng-hide u-no-margin--top" data-ng-show="loaded">
     <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
         <div class="row">
-            <div class="col-8">
-                <h1 class="page-header__title">{$ fabric.name $}</h1>
-            </div>
-            <div class="col-4">
-                <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
+            <div>
+                <h1 class="page-header__title u-hide--small">{$ fabric.name $}</h1>
+                <div class="col-12 u-hide u-show--small">
+                    <h1 class="page-header__title">{$ fabric.name $}</h1>
+                </div>
+                <div class="page-header__controls u-no-margin--top ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
                     <button class="p-button--negative"
                         data-ng-click="deleteButton()"
                         data-ng-hide="confirmingDelete">Delete fabric</button>
                 </div>
-                <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !confirmingDelete }">
-                    <section class="page-header__section ng-hide u-align--right" data-ng-hide="canBeDeleted()">
-                        <p class="page-header__message page-header__message--error">
-                            Fabric cannot be deleted because it is the default fabric.
-                        </p>
-                        <div class="page-header__controls">
+                <div class="page-header__controls u-no-margin--top" data-ng-class="{ 'u-hide': !confirmingDelete }">
+                    <section class="u-no-margin--top u-align--right" data-ng-hide="canBeDeleted()">
+                        <div class="u-hide--small">
+                            <i class="p-icon--error"></i> Fabric cannot be deleted because it is the default fabric.&emsp;
                             <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                         </div>
+                        <div class="u-hide u-show--small u-align--left">
+                            <div class="col-12 u-align--left">
+                                <p><i class="p-icon--error"></i> Fabric cannot be deleted because it is the default fabric.</p>
+                            </div>
+                            <div class="col-12 u-align--right">
+                                <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                            </div>
+                        </div>
+
                     </section>
-                    <section class="page-header__section ng-hide  u-align--right" data-ng-show="canBeDeleted() && !error">
-                        <p class="page-header__message page-header__message--error">
-                            <i class="p-icon--warning"></i> Are you sure you want to delete this fabric?
-                        </p>
-                        <div class="page-header__controls">
+                    <section class="ng-hide u-no-margin--top u-align--right" data-ng-show="canBeDeleted() && !error">
+                        <div class="u-hide--small">
+                            <i class="p-icon--warning"></i> Are you sure you want to delete this fabric?&emsp;
                             <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                             <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete fabric</button>
                         </div>
+                        <div class="u-hide u-show--small u-align--left">
+                            <div class="col-12 u-align--left">
+                                <p><i class="p-icon--warning"></i> Are you sure you want to delete this fabric?</p>
+                            </div>
+                            <div class="col-12 u-align--right">
+                                <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                                <button class="p-button--negative" data-ng-click="deleteConfirmButton()">Delete fabric</button>
+                            </div>
+                        </div>
                     </section>
-                    <section class="page-header__section ng-hide u-align--right" data-ng-show="canBeDeleted() && error">
-                        <p class="page-header__message page-header__message--error">{$ error $}</p>
-                        <div class="page-header__controls">
+                    <section class="page-header__controls u-no-margin--top u-align--right" data-ng-show="canBeDeleted() && error">
+                        <div class="u-hide--small">
+                            <i class="p-icon--error"></i> {$ error $}&emsp;
                             <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
                             <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
+                        </div>
+                        <div class="u-hide u-show--small u-align--left">
+                            <div class="col-12 u-align--left">
+                                <p><i class="p-icon--error"></i> {$ error $}</p>
+                            </div>
+                            <div class="col-12 u-align--right">
+                                <button class="p-button--base" type="button" data-ng-click="cancelDeleteButton()">Cancel</button>
+                                <button class="p-button--neutral" data-ng-click="deleteConfirmButton()">Retry</button>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -82,7 +106,7 @@
                         </div>
                         <div class="p-form__control">
                             <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>, 
+                                <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
                             </span>
                         </div>
                     </div>
@@ -104,7 +128,7 @@
                                 </div>
                                 <div class="p-form__control">
                                     <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
-                                        <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>, 
+                                        <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
                                     </span>
                                 </div>
                             </div>
