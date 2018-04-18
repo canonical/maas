@@ -8,6 +8,7 @@
             </p>
             <p class="page-header__status" data-ng-show="!loading">
                 <ng-pluralize data-ng-if="currentpage === 'machines'" count="machines.length" when="{'one': '{$ machines.length $} machine available', 'other': '{$ machines.length $} machines available'}"></ng-pluralize>
+                <ng-pluralize data-ng-if="currentpage === 'pools'" count="pools.length" when="{'one': '{$ pools.length $} resource pool available', 'other': '{$ pools.length $} resource pools available'}"></ng-pluralize>
                 <ng-pluralize data-ng-if="currentpage === 'devices'" count="devices.length" when="{'one': '{$ devices.length $} device available', 'other': '{$ devices.length $} devices available'}"></ng-pluralize>
                 <ng-pluralize data-ng-if="currentpage === 'controllers'" count="controllers.length" when="{'one': '{$ controllers.length $} controller available', 'other': '{$ controllers.length $} controllers available'}"></ng-pluralize>
             </p>
@@ -969,6 +970,27 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+    <div class="row ng-hide"  data-ng-show="MAAS_config.is_premium && currentpage === 'pools'">
+        <div class="p-table__wrapper">
+            <table class="p-table--sortable p-table--pools">
+                <thead>
+                    <tr class="p-table__row">
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
+                        <th class="p-table__cell" role="columnheader">Actions</th>
+                    </tr>
+                </thead>
+                <tbody vs-repeat vs-scroll-parent="window">
+                    <tr class="p-table__row"
+                        data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name">
+                        <td class="p-table__cell" aria-label="Name">{$ pool.name $}</td>
+                        <td class="p-table__cell" aria-label="Description">{$ pool.description $}</td>
+                        <td class="p-table__cell" aria-label="Actions">...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
     <div class="row ng-hide"  data-ng-show="currentpage === 'controllers'">

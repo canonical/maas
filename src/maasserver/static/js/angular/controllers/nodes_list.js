@@ -739,7 +739,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Switch to the specified tab, if specified.
         angular.forEach(
-            ["machines", "devices", "controllers", "switches"],
+            ["machines", "pools", "devices", "controllers", "switches"],
             function(node_type) {
                 if($location.path().indexOf("/" + node_type) !== -1) {
                     $scope.toggleTab(node_type);

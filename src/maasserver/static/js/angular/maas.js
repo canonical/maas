@@ -206,6 +206,14 @@ angular.module('MAAS',
                     controller: 'ZonesListController',
                     reloadOnSearch: false
                 });
+
+            if (MAAS_config.is_premium) {
+                routes = routes.when('/pools', {
+                    templateUrl: versionedPath(
+                        'static/partials/nodes-list.html'),
+                    controller: 'NodesListController'
+                });
+            }
             if(MAAS_config.superuser) {
                 // Only superuser's can access the dashboard at the moment.
                 routes = routes.when('/dashboard', {
