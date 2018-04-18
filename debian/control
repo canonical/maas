@@ -56,7 +56,8 @@ Description: "Metal as a Service" is a physical cloud and IPAM
 
 Package: maas-common
 Architecture: all
-Depends: rsyslog,
+Depends: avahi-utils,
+         rsyslog,
          ${misc:Depends},
          ${python3:Depends},
          python3-maas-provisioningserver
@@ -98,8 +99,7 @@ Description: Region controller API service for MAAS
 
 Package: maas-region-controller
 Architecture: all
-Depends: avahi-utils,
-         dbconfig-pgsql,
+Depends: dbconfig-pgsql,
          iputils-ping,
          maas-region-api (= ${binary:Version}),
          postgresql (>= 9.1),
