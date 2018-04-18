@@ -4,58 +4,41 @@
     @return $percentage-width - 3.2877%;
   }
 
-  .p-table__wrapper {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .p-table--machines {
-    @media (min-width: $breakpoint-medium) {
-      min-width: 1000px;
-    }
-  }
-
   .p-table--pods {
-    @media (min-width: $breakpoint-medium) {
-      min-width: 1150px;
+    .p-table__row {
+      .p-table__cell {
+        &:nth-child(1) {
+          width: 18%;
+        }
 
-      .p-table__row {
-        .p-table__cell {
-          &:nth-child(1) {
-            width: 18%;
-          }
+        &:nth-child(2) {
+          width: cell-percentage-width(9%);
+        }
 
-          &:nth-child(2) {
-            width: cell-percentage-width(9%);
-          }
+        &:nth-child(3) {
+          width: cell-percentage-width(14%);
+        }
 
-          &:nth-child(3) {
-            width: cell-percentage-width(14%);
-          }
+        &:nth-child(4) {
+          width: cell-percentage-width(14%);
+        }
 
-          &:nth-child(4) {
-            width: cell-percentage-width(14%);
-          }
+        &:nth-child(5) {
+          width: cell-percentage-width(10%);
+        }
 
-          &:nth-child(5) {
-            width: cell-percentage-width(10%);
-          }
+        &:nth-child(6) {
+          width: cell-percentage-width(14%);
+        }
 
-          &:nth-child(6) {
-            width: cell-percentage-width(14%);
-          }
-
-          &:nth-child(7) {
-            width: cell-percentage-width(15%);
-          }
+        &:nth-child(7) {
+          width: cell-percentage-width(15%);
         }
       }
     }
   }
 
   .p-table--devices {
-    min-width: 830px;
-
     .p-table__row {
       .p-table__cell {
         &:nth-child(1) {
@@ -82,8 +65,6 @@
   }
 
   .p-table--controllers {
-    min-width: 800px;
-
     .p-table__row {
       .p-table__cell {
         &:nth-child(1) {
@@ -140,8 +121,6 @@
   }
 
   .p-table--disks-partitions {
-    min-width: 1400px;
-
     .p-table__row {
       .p-table__cell {
         &:nth-child(1) {

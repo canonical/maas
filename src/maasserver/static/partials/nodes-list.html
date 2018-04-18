@@ -924,52 +924,50 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </button>
                 </div>
             </div>
-            <div class="p-table__wrapper">
-                <table class="p-table-expanding p-table--sortable p-table--devices">
-                    <thead>
-                        <tr class="p-table__row">
-                            <th class="p-table__cell">
-                                <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                                <span class="u-float--left">
-                                    <input type="checkbox" class="u-float--none" data-ng-click="toggleCheckAll('devices')" data-ng-checked="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
-                                    <label for="check-all-devices" class="p-form__label u-no-margin--top"></label>
-                                </span>
-                                <span role="columnheader" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
-                                    <abbr>FQDN</abbr>
-                                </span>
-                            </th>
-                            <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">MAC</th>
-                            <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Assignment</th>
-                            <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Address</th>
-                            <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
-                                <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                                Owner
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody vs-repeat vs-scroll-parent="window">
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
-                        <tr class="p-table__row"
-                            data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
-                            data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), selected: device.$selected }">
-                            <td class="p-table__cell" aria-label="FQDN">
-                                <span class="u-float--left">
-                                    <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
-                                    <label for="{$ device.fqdn $}" class="p-form__label u-no-margin--top"></label>
-                                </span>
-                                <a href="#/device/{$ device.system_id $}">{$ device.fqdn $}</a>
-                            </td>
-                            <td class="p-table__cell" aria-label="MAC">
-                                {$ device.primary_mac $}
-                                <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
-                            </td>
-                            <td class="p-table__cell" aria-label="IP Assignment">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
-                            <td class="p-table__cell" aria-label="IP Address">{$ device.ip_address $}</td>
-                            <td class="p-table__cell" aria-label="Owner">{$ device.owner $}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <table class="p-table-expanding p-table--sortable p-table--devices">
+                <thead>
+                    <tr class="p-table__row">
+                        <th class="p-table__cell">
+                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                            <span class="u-float--left">
+                                <input type="checkbox" class="u-float--none" data-ng-click="toggleCheckAll('devices')" data-ng-checked="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
+                                <label for="check-all-devices" class="p-form__label u-no-margin--top"></label>
+                            </span>
+                            <span role="columnheader" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
+                                <abbr>FQDN</abbr>
+                            </span>
+                        </th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">MAC</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Assignment</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP Address</th>
+                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{'is-sorted': tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
+                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                            Owner
+                        </th>
+                    </tr>
+                </thead>
+                <tbody vs-repeat vs-scroll-parent="window">
+                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
+                    <tr class="p-table__row"
+                        data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
+                        data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), selected: device.$selected }">
+                        <td class="p-table__cell" aria-label="FQDN">
+                            <span class="u-float--left">
+                                <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
+                                <label for="{$ device.fqdn $}" class="p-form__label u-no-margin--top"></label>
+                            </span>
+                            <a href="#/device/{$ device.system_id $}">{$ device.fqdn $}</a>
+                        </td>
+                        <td class="p-table__cell" aria-label="MAC">
+                            {$ device.primary_mac $}
+                            <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
+                        </td>
+                        <td class="p-table__cell" aria-label="IP Assignment">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
+                        <td class="p-table__cell" aria-label="IP Address">{$ device.ip_address $}</td>
+                        <td class="p-table__cell" aria-label="Owner">{$ device.owner $}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
     <div class="row ng-hide"  data-ng-show="MAAS_config.is_premium && currentpage === 'pools'">
