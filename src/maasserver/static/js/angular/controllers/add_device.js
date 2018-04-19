@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Add Device Controller
@@ -99,14 +99,20 @@ angular.module('MAAS').controller('AddDeviceController', [
             if($scope.viewable) {
                 return;
             }
-            $scope.device = newDevice();
-            $scope.viewable = true;
+            // Load subnets to get the available subnets.
+            ManagerHelperService.loadManagers(
+                    $scope, [SubnetsManager, DomainsManager]).then(function() {
+                $scope.device = newDevice($scope.device);
+                $scope.viewable = true;
+            });
         };
 
         // Called by the parent scope when this controller is hidden.
         $scope.hide = function() {
             $scope.viewable = false;
 
+            ManagerHelperService.unloadManagers(
+                $scope, [SubnetsManager, DomainsManager]);
             // Emit the hidden event.
             $scope.$emit('addDeviceHidden');
         };
@@ -263,11 +269,4 @@ angular.module('MAAS').controller('AddDeviceController', [
                     ManagerHelperService.parseValidationError(error);
             });
         };
-
-        // Load subnets to get the available subnets.
-        ManagerHelperService.loadManagers(
-            $scope, [SubnetsManager, DomainsManager]).then(function() {
-                // Initial device.
-                $scope.device = newDevice();
-            });
     }]);

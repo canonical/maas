@@ -5,10 +5,10 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$http', 'ZonesManager', 'MachinesManager',
+    '$q', '$scope', '$http', 'ZonesManager', 'MachinesManager',
     'GeneralManager', 'DomainsManager', 'RegionConnection',
     'ManagerHelperService', 'ValidationService', function(
-        $scope, $http, ZonesManager, MachinesManager,
+        $q, $scope, $http, ZonesManager, MachinesManager,
         GeneralManager, DomainsManager, RegionConnection,
         ManagerHelperService, ValidationService) {
 
@@ -393,32 +393,54 @@ angular.module('MAAS').controller('AddHardwareController', [
                 return;
             }
 
-            // Change the mode.
-            if($scope.mode !== mode) {
-                if($scope.mode === "machine") {
-                    $scope.machine = newMachine();
-                } else if($scope.mode === "chassis") {
-                    $scope.chassis = newChassis();
-                }
-                $scope.error = null;
-                $scope.mode = mode;
-            }
+            $scope.mode = mode;
 
+            var loadedItems = false, loadedManagers = false;
+            var defer = $q.defer();
+            defer.promise.then(function() {
+                   // Add the first machine and chassis.
+                $scope.machine = newMachine($scope.machine);
+                $scope.chassis = newChassis($scope.chassis);
+                $scope.error = null;
+
+                // If the machine doesn't have an architecture
+                // set then it was created before all of the
+                // architectures were loaded. Set the default
+                // architecture for that machine.
+                if(angular.isObject($scope.machine) &&
+                    $scope.machine.architecture === '') {
+                    $scope.machine.architecture = defaultArchitecture();
+                }
+                $scope.viewable = true;
+            });
+
+            // The parent scope has already loaded the GeneralManager. If the
+            // general manager is reloaded all items from the parents scope
+            // will be reloaded as well. Call loadItems so only the items
+            // the add hardware form cares about are loaded.
             GeneralManager.loadItems([
                 "architectures", "hwe_kernels", "default_min_hwe_kernel"
-                ]).then(function() {
-                    $scope.architectures = GeneralManager.getData(
-                        "architectures");
-                    $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
-                    $scope.default_min_hwe_kernel = GeneralManager.getData(
-                        "default_min_hwe_kernel");
-                    $scope.viewable = true;
+            ]).then(function() {
+                loadedItems = true;
+                if(loadedManagers) {
+                    defer.resolve();
+                }
+            });
+            ManagerHelperService.loadManagers(
+                $scope, [ZonesManager, DomainsManager]).then(function() {
+                    loadedManagers = true;
+                    if(loadedItems) {
+                        defer.resolve();
+                    }
                 });
         };
 
         // Called by the parent scope when this controller is hidden.
         $scope.hide = function() {
             $scope.viewable = false;
+
+            ManagerHelperService.unloadManagers(
+                $scope, [ZonesManager, DomainsManager]);
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');
@@ -600,28 +622,4 @@ angular.module('MAAS').controller('AddHardwareController', [
                     ManagerHelperService.parseValidationError(error.data);
             });
         };
-
-        // Load zones and domains. Once loaded create the first machine and
-        // chassis.
-        ManagerHelperService.loadManagers(
-            $scope, [ZonesManager, DomainsManager]).then(function() {
-                // Add the first machine and chassis.
-                $scope.machine = newMachine();
-                $scope.chassis = newChassis();
-            });
-
-        // Load the general manager.
-        ManagerHelperService.loadManager(
-            $scope, GeneralManager).then(function() {
-            if($scope.architectures.length > 0) {
-                // If the machine doesn't have an architecture
-                // set then it was created before all of the
-                // architectures were loaded. Set the default
-                // architecture for that machine.
-                if(angular.isObject($scope.machine) &&
-                    $scope.machine.architecture === '') {
-                    $scope.machine.architecture = defaultArchitecture();
-                }
-            }
-        });
     }]);

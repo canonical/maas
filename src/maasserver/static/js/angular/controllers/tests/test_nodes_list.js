@@ -299,12 +299,12 @@ describe("NodesListController", function() {
             expect($scope.tabs.machines.filters._).toEqual([query]);
         });
 
-    it("reloads osinfo on route change", function() {
+    it("reloads osinfo on route update", function() {
         var controller = makeController();
         spyOn(GeneralManager, "loadItems").and.returnValue(
             $q.defer().promise);
-        $scope.$emit("$routeChangeSuccess");
-        expect(GeneralManager.loadItems).toHaveBeenCalled();
+        $scope.$emit("$routeUpdate");
+        expect(GeneralManager.loadItems).toHaveBeenCalledWith(["osinfo"]);
     });
 
     describe("toggleTab", function() {

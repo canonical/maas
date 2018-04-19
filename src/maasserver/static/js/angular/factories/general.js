@@ -410,7 +410,7 @@ angular.module('MAAS').factory(
 
             angular.forEach(this._data, function(data, name) {
                 if((angular.isArray(items) && items.indexOf(name) !== -1) ||
-                        data.requested === true) {
+                        (!angular.isArray(items) && data.requested)) {
                     self._loadData(data, true).then(function() {
                         done();
                     });

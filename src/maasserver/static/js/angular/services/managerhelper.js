@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Manager Helper Service
@@ -15,6 +15,7 @@ angular.module('MAAS').service('ManagerHelperService', [
         // Loads the manager.
         this.loadManager = function(scope, manager) {
             var defer = $q.defer();
+            var self = this;
 
             // If the manager already has this scope loaded then nothing needs
             // to be done.
@@ -48,10 +49,7 @@ angular.module('MAAS').service('ManagerHelperService', [
 
                     // Remove the scope for the loaded scopes for the manager.
                     scope.$on("$destroy", function() {
-                        var idx = manager._scopes.indexOf(scope);
-                        if(idx > -1) {
-                            manager._scopes.splice(idx, 1);
-                        }
+                        self.unloadManager(scope, manager);
                     });
                 } else if(manager._type === 'poll') {
                     if(manager.isPolling()) {
@@ -71,13 +69,7 @@ angular.module('MAAS').service('ManagerHelperService', [
                     // Stop the polling when the scope is destroyed and its
                     // not in use by any other scopes.
                     scope.$on("$destroy", function() {
-                        var idx = manager._scopes.indexOf(scope);
-                        if(idx > -1) {
-                            manager._scopes.splice(idx, 1);
-                        }
-                        if(manager._scopes.length === 0) {
-                            manager.stopPolling();
-                        }
+                        self.unloadManager(scope, manager);
                     });
                 } else {
                     throw new Error("Unknown manager type: " + manager._type);
@@ -107,6 +99,23 @@ angular.module('MAAS').service('ManagerHelperService', [
             });
             return defer.promise;
         };
+
+        this.unloadManager = function(scope, manager) {
+            var idx = manager._scopes.indexOf(scope);
+            if(idx > -1) {
+                manager._scopes.splice(idx, 1);
+            }
+            if(manager._type === 'poll' && manager._scopes.length === 0) {
+                manager.stopPolling();
+            }
+        }
+
+        this.unloadManagers = function(scope, managers) {
+            var self = this;
+            angular.forEach(managers, function(manager) {
+                self.unloadManager(scope, manager);
+            });
+        }
 
         // Tries to parse the specified string as JSON. If parsing fails,
         // returns the original string. (This is useful since some manager

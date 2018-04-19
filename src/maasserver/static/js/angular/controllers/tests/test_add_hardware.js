@@ -45,7 +45,7 @@ describe("AddHardwareController", function() {
     });
 
     // Makes the AddHardwareController
-    function makeController(loadManagersDefer, loadManagerDefer) {
+    function makeController(loadManagersDefer, loadItemsDefer) {
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagersDefer)) {
             loadManagers.and.returnValue(loadManagersDefer.promise);
@@ -53,18 +53,18 @@ describe("AddHardwareController", function() {
             loadManagers.and.returnValue($q.defer().promise);
         }
 
-        var loadManager = spyOn(ManagerHelperService, "loadManager");
-        if(angular.isObject(loadManagerDefer)) {
-            loadManager.and.returnValue(loadManagerDefer.promise);
+        var loadItems = spyOn(GeneralManager, "loadItems");
+        if(angular.isObject(loadItemsDefer)) {
+            loadItems.and.returnValue(loadItemsDefer.promise);
         } else {
-            loadManager.and.returnValue($q.defer().promise);
+            loadItems.and.returnValue($q.defer().promise);
         }
 
         // Start the connection so a valid websocket is created in the
         // RegionConnection.
         RegionConnection.connect("");
 
-        return $controller("AddHardwareController", {
+        var controller = $controller("AddHardwareController", {
             $scope: $scope,
             $timeout: $timeout,
             $http: $http,
@@ -75,14 +75,18 @@ describe("AddHardwareController", function() {
             RegionConnection: RegionConnection,
             ManagerHelperService: ManagerHelperService
         });
+        return controller;
     }
 
     // Makes the AddHardwareController with the $scope.machine already
     // initialized.
     function makeControllerWithMachine() {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
+        var loadManagers_defer = $q.defer();
+        var loadItems_defer = $q.defer();
+        var controller = makeController(loadManagers_defer, loadItems_defer);
+        $scope.show();
+        loadManagers_defer.resolve();
+        loadItems_defer.resolve();
         $rootScope.$digest();
         return controller;
     }
@@ -105,93 +109,85 @@ describe("AddHardwareController", function() {
         expect($scope.chassis).toBeNull();
     });
 
-    it("calls loadManagers with ZonesManager, DomainsManager", function() {
+    it("doesn't call loadManagers when initialized", function() {
+        // add_hardware is loaded on the listing and details page. Managers
+        // should be loaded when shown. Otherwise all Zones and Domains are
+        // loaded and updated even though they are not needed.
         var controller = makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            $scope, [ZonesManager, DomainsManager]);
+        expect(ManagerHelperService.loadManagers).not.toHaveBeenCalled();
     });
-
-    it("calls loadManager with GeneralManager", function() {
-        var controller = makeController();
-        expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            $scope, GeneralManager);
-    });
-
-    it("intializes machine once ZonesManager and DomainsManager loaded",
-        function() {
-            var defer = $q.defer();
-            var controller = makeController(defer);
-
-            defer.resolve();
-            $scope.$digest();
-            expect($scope.machine).not.toBeNull();
-        });
-
-    it("intializes chassis once ZonesManager and DomainsManager loaded",
-        function() {
-            var defer = $q.defer();
-            var controller = makeController(defer);
-
-            defer.resolve();
-            $scope.$digest();
-            expect($scope.chassis).not.toBeNull();
-        });
 
     it("initializes machine architecture with first arch", function() {
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
+        var loadManagers_defer = $q.defer();
+        var loadItems_defer = $q.defer();
+        var controller = makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         $scope.architectures = [arch];
         $scope.machine = {
-            architecture: ''
+            architecture: '',
+            power: {type: makeName("power_type")}
         };
+        $scope.show();
 
-        defer.resolve();
+        loadManagers_defer.resolve();
+        loadItems_defer.resolve();
         $scope.$digest();
         expect($scope.machine.architecture).toEqual(arch);
     });
 
     it("initializes machine architecture with amd64 arch", function() {
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
+        var loadManagers_defer = $q.defer();
+        var loadItems_defer = $q.defer();
+        var controller = makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         $scope.architectures = [arch, "amd64/generic"];
         $scope.machine = {
-            architecture: ''
+            architecture: '',
+            power: {type: makeName("power_type")}
         };
+        $scope.show();
 
-        defer.resolve();
+        loadManagers_defer.resolve();
+        loadItems_defer.resolve();
         $scope.$digest();
         expect($scope.machine.architecture).toEqual("amd64/generic");
     });
 
     it("doesnt initializes machine architecture if set", function() {
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
+        var loadManagers_defer = $q.defer();
+        var loadItems_defer = $q.defer();
+        var controller = makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         var newArch = makeName("arch");
         $scope.architectures = [newArch];
         $scope.machine = {
-            architecture: arch
+            architecture: arch,
+            power: {type: makeName("power_type")}
         };
+        $scope.show();
 
-        defer.resolve();
+        loadManagers_defer.resolve();
+        loadItems_defer.resolve();
         $scope.$digest();
         expect($scope.machine.architecture).toEqual(arch);
     });
 
     it("initializes machine min_hwe_kernel with hwe-t", function() {
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
+        var loadManagers_defer = $q.defer();
+        var loadItems_defer = $q.defer();
+        var controller = makeController(loadManagers_defer, loadItems_defer);
         var arch = makeName("arch");
         var min_hwe_kernel = "hwe-t";
         $scope.architectures = [arch];
         $scope.machine = {
             architecture: '',
-            min_hwe_kernel: 'hwe-t'
+            min_hwe_kernel: 'hwe-t',
+            power: {type: makeName("power_type")}
         };
+        $scope.show();
 
-        defer.resolve();
+        loadManagers_defer.resolve();
+        loadItems_defer.resolve();
         $scope.$digest();
         expect($scope.machine.min_hwe_kernel).toEqual("hwe-t");
     });
@@ -199,16 +195,60 @@ describe("AddHardwareController", function() {
     describe("show", function() {
 
         it("sets viewable to true", function() {
-            var defer = $q.defer();
-            var controller = makeController(null, defer);
-            spyOn(GeneralManager, "loadItems").and.returnValue(
-                defer.promise);
+            var loadItems_defer = $q.defer();
+            var loadManagers_defer = $q.defer();
+            var controller = makeController(
+                loadManagers_defer, loadItems_defer);
             $scope.show();
 
-            defer.resolve();
+            loadItems_defer.resolve();
+            loadManagers_defer.resolve();
             $rootScope.$digest();
             expect($scope.viewable).toBe(true);
         });
+
+        it("reloads arches and kernels", function() {
+            var loadItems_defer = $q.defer();
+            var loadManagers_defer = $q.defer();
+            var controller = makeController(
+                loadManagers_defer, loadItems_defer);
+            $scope.show();
+
+            loadItems_defer.resolve();
+            loadManagers_defer.resolve();
+            $rootScope.$digest();
+            expect(GeneralManager.loadItems).toHaveBeenCalledWith([
+                "architectures", "hwe_kernels", "default_min_hwe_kernel"]);
+        });
+
+        it("calls loadManagers with ZonesManager, DomainsManager", function() {
+            var loadItems_defer = $q.defer();
+            var loadManagers_defer = $q.defer();
+            var controller = makeController(
+                loadManagers_defer, loadItems_defer);
+            $scope.show();
+
+            loadItems_defer.resolve();
+            loadManagers_defer.resolve();
+            $rootScope.$digest();
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                $scope, [ZonesManager, DomainsManager]);
+        });
+
+        it("initializes machine/chassis when Zones/Domains manager loaded",
+            function() {
+                var loadItems_defer = $q.defer();
+                var loadManagers_defer = $q.defer();
+                var controller = makeController(
+                    loadManagers_defer, loadItems_defer);
+                $scope.show();
+
+                loadItems_defer.resolve();
+                loadManagers_defer.resolve();
+                $rootScope.$digest();
+                expect($scope.machine).not.toBeNull();
+                expect($scope.chassis).not.toBeNull();
+            });
     });
 
     describe("hide", function() {
@@ -226,6 +266,15 @@ describe("AddHardwareController", function() {
                 done();
             });
             $scope.hide();
+        });
+
+        it("unloadManagers", function() {
+            var unloadManagers = spyOn(ManagerHelperService, "unloadManagers");
+            var controller = makeController();
+            $scope.viewable = true;
+            $scope.hide();
+            expect(unloadManagers).toHaveBeenCalledWith(
+                $scope, [ZonesManager, DomainsManager]);
         });
     });
 

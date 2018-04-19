@@ -606,6 +606,12 @@ describe("NodeDetailsController", function() {
         ]);
     });
 
+    it("reloads osinfo on route update", function() {
+        var controller = makeController();
+        $scope.$emit("$routeUpdate");
+        expect(GeneralManager.loadItems).toHaveBeenCalled();
+    });
+
     it("updates $scope.actions", function() {
         var setActiveDefer = $q.defer();
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
@@ -638,14 +644,7 @@ describe("NodeDetailsController", function() {
             {'name': 'test'}, {'name': 'release'}, {'name': 'delete'}]);
     });
 
-    it("reloads osinfo on route change", function() {
-        var controller = makeController();
-        $scope.$emit("$routeChangeSuccess");
-        expect(GeneralManager.loadItems).toHaveBeenCalled();
-    });
-
     describe("tagsAutocomplete", function() {
-
         it("calls TagsManager.autocomplete with query", function() {
             var controller = makeController();
             spyOn(TagsManager, "autocomplete");

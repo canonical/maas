@@ -733,8 +733,8 @@ angular.module('MAAS').controller('NodesListController', [
         };
 
         // Reload osinfo when the page reloads
-        $scope.$on("$routeChangeSuccess", function () {
-            GeneralManager.loadItems();
+        $scope.$on("$routeUpdate", function () {
+            GeneralManager.loadItems(["osinfo"]);
         });
 
         // Switch to the specified tab, if specified.

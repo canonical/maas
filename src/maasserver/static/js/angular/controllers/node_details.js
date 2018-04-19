@@ -1059,8 +1059,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
         }
 
         // Reload osinfo when the page reloads
-        $scope.$on("$routeChangeSuccess", function () {
-            GeneralManager.loadItems();
+        $scope.$on("$routeUpdate", function () {
+            GeneralManager.loadItems(
+                ["osinfo", "architectures", "min_hwe_kernels"]);
         });
 
         var page_managers;

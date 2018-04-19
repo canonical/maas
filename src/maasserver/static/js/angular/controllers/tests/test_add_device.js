@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for AddDeviceController.
@@ -68,6 +68,7 @@ describe("AddDeviceController", function() {
     function makeControllerWithDevice() {
         var defer = $q.defer();
         var controller = makeController(defer);
+        $scope.show();
         defer.resolve();
         $rootScope.$digest();
         return controller;
@@ -142,7 +143,7 @@ describe("AddDeviceController", function() {
     });
 
     it("sets initial values on $scope", function() {
-        var controller = makeControllerWithDevice();
+        var controller = makeController();
         expect($scope.viewable).toBe(false);
         expect($scope.error).toBe(null);
         expect($scope.ipAssignments).toEqual([
@@ -159,44 +160,64 @@ describe("AddDeviceController", function() {
                 title: "Static"
             }
         ]);
-        expect($scope.device).toEqual({
-            name: "",
-            domain: null,
-            interfaces: [{
-                mac: "",
-                ipAssignment: null,
-                subnetId: null,
-                ipAddress: ""
-            }]
-        });
-        expect($scope.domains).toBe(DomainsManager.getItems());
     });
 
-    it("calls loadManagers with SubnetsManager and DomainsManager", function() {
+    it("doesn't call loadManagers when initialized", function() {
+        // add_hardware is loaded on the listing and details page. Managers
+        // should be loaded when shown. Otherwise all Zones and Domains are
+        // loaded and updated even though they are not needed.
         var controller = makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            $scope, [SubnetsManager, DomainsManager]);
+        expect(ManagerHelperService.loadManagers).not.toHaveBeenCalled();
     });
 
     describe("show", function() {
 
         it("does nothing if already viewable", function() {
-            var controller = makeControllerWithDevice();
+            var defer = $q.defer();
+            var controller = makeController(defer);
             $scope.viewable = true;
             var name = makeName("name");
-            $scope.device.name = name;
+            $scope.device = {name: name};
             $scope.show();
+
+            defer.resolve();
+            $rootScope.$digest();
             // The device name should have stayed the same, showing that
             // the call did nothing.
             expect($scope.device.name).toBe(name);
         });
 
         it("clears device and sets viewable to true", function() {
-            var controller = makeControllerWithDevice();
-            $scope.device.name = makeName("name");
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            $scope.device = {name: makeName("name")};
             $scope.show();
-            expect($scope.device.name).toBe("");
+
+            defer.resolve();
+            $rootScope.$digest();
+            expect($scope.device).toEqual({
+                name: "",
+                domain: undefined,
+                interfaces: [{
+                    mac: "",
+                    ipAssignment: null,
+                    subnetId: null,
+                    ipAddress: ""
+                }]
+            });
+            expect($scope.domains).toBe(DomainsManager.getItems());
             expect($scope.viewable).toBe(true);
+        });
+
+        it("calls loadManagers for Subnets/Domains Manager", function() {
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            $scope.show();
+
+            defer.resolve();
+            $rootScope.$digest();
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                $scope, [SubnetsManager, DomainsManager]);
         });
     });
 
@@ -216,6 +237,15 @@ describe("AddDeviceController", function() {
                 done();
             });
             $scope.hide();
+        });
+
+        it("unloadManagers", function() {
+            var unloadManagers = spyOn(ManagerHelperService, "unloadManagers");
+            var controller = makeController();
+            $scope.viewable = true;
+            $scope.hide();
+            expect(unloadManagers).toHaveBeenCalledWith(
+                $scope, [SubnetsManager, DomainsManager]);
         });
     });
 
