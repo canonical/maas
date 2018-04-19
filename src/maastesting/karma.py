@@ -6,6 +6,7 @@
 __all__ = [
     ]
 
+import argparse
 import os
 from subprocess import (
     CalledProcessError,
@@ -53,6 +54,14 @@ def gen_available_browsers():
 
 def run_karma():
     """Start Karma with the MAAS JS testing configuration."""
+    browsers = dict(gen_available_browsers())
+
+    parser = argparse.ArgumentParser(
+        description='Run javascript tests with karma')
+    parser.add_argument(
+        '--browsers', nargs='*', help='browser(s) to run tests with',
+        choices=browsers, default=list(browsers))
+    args = parser.parse_args()
 
     def run_with_browser(browser, env):
         """Run tests with a specific browser and environment."""
@@ -64,10 +73,10 @@ def run_karma():
         return karma.wait()
 
     with DisplayFixture():
-        for browser, env in gen_available_browsers():
+        for browser in args.browsers:
             # run karma separately for each browser, since running multiple
             # browsers seems to tringger a buggy behavior in karma which makes
             # some tests fail with page reload (lp:1762344)
-            ret = run_with_browser(browser, env)
+            ret = run_with_browser(browser, env=browsers[browser])
             if ret:
-                SystemExit(ret)
+                raise SystemExit(ret)

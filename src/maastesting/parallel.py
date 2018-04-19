@@ -26,11 +26,12 @@ import testtools
 class TestScriptBase(metaclass=abc.ABCMeta):
     """A test-like object that wraps one of the `bin/test.*` scripts."""
 
-    def __init__(self, lock, script):
+    def __init__(self, lock, script, with_subunit=True):
         super(TestScriptBase, self).__init__()
         self.lock = lock
         assert isinstance(script, str)
         self.script = script
+        self.with_subunit = with_subunit
         self.with_coverage = False
 
     @abc.abstractmethod
@@ -66,7 +67,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         with tempfile.NamedTemporaryFile() as log:
             try:
                 okay = self._run(result, log)
-            except:
+            except Exception:
                 result.addError(self, None, {
                     "log": content_from_file(log.name),
                     "traceback": testtools.content.TracebackContent(
@@ -84,12 +85,15 @@ class TestScriptBase(metaclass=abc.ABCMeta):
             subprocess.check_call(
                 ("make", "--quiet", "bin/coverage", self.script),
                 stdout=log, stderr=log)
-        # Run the script in a subprocess, capturing subunit output.
+        # Run the script in a subprocess, capturing subunit output if
+        # with_subunit is set.
         pread, pwrite = os.pipe()
         with io.open(pread, "rb") as preader:
             try:
-                command = self.extendCommand((
-                    self.script, "--with-subunit", "--subunit-fd=%d" % pwrite))
+                args = [self.script]
+                if self.with_subunit:
+                    args.extend(("--with-subunit", "--subunit-fd=%d" % pwrite))
+                command = self.extendCommand(args)
                 process = subprocess.Popen(
                     command, pass_fds={pwrite}, stdout=log, stderr=log)
             finally:
@@ -368,7 +372,7 @@ def main(args=None):
         # Run the monolithic tests first. These will each consume a worker
         # thread (spawned by ConcurrentTestSuite) for a prolonged duration.
         # Putting divisible tests afterwards evens out the spread of work.
-        TestScriptMonolithic(lock, "bin/test.js"),
+        TestScriptMonolithic(lock, "bin/test.js", with_subunit=False),
         TestScriptMonolithic(lock, "bin/test.region.legacy"),
         # The divisible test scripts will each be executed multiple times,
         # each time to work on a distinct "bucket" of tests.
