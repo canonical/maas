@@ -43,7 +43,7 @@
             </div>
             <div class="col-6">
                 <div class="u-align--right">
-                    <button class="p-button--base" type="button" 
+                    <button class="p-button--base" type="button"
                         data-ng-click="cancel()">Cancel</button>
                     <button class="p-button--neutral"
                         data-ng-class="{ 'is-disabled': domainHasError() }"
@@ -58,21 +58,21 @@
 </header>
 <div class="p-strip" data-ng-show="!loading">
     <section class="row">
-        <table>
+        <table class="p-table--mobile-card">
             <thead>
                 <tr>
-                    <th data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</th>
-                    <th data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</th>
-                    <th data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</th>
-                    <th data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</th>
+                    <th data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Domain">Domain</th>
+                    <th data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Hosts">Hosts</th>
+                    <th data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Total Records">Total Records</th>
+                    <th data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Authoritative">Authoritative</th>
                 </tr>
             </thead>
             <tbody>
                 <tr data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
-                    <td aria-label="Domain"><a href="#/domain/{$ row.id $}">{$ row.displayname $}</a></td>
-                    <td aria-label="Hosts">{$ row.hosts $}</td>
-                    <td aria-label="Total records">{$ row.resource_count $}</td>
-                    <td aria-label="Authorative">{$ row.authoritative ? "Yes" : "No" $}</td>
+                    <td aria-label="Domain"><a href="#/domain/{$ row.id $}" title="{$ row.displayname $}">{$ row.displayname $}</a></td>
+                    <td aria-label="Hosts" title="{$ row.hosts $}">{$ row.hosts $}</td>
+                    <td aria-label="Total records" title="{$ row.resource_count $}">{$ row.resource_count $}</td>
+                    <td aria-label="Authorative" title="{$ row.authoritative ? 'Yes' : 'No' $}">{$ row.authoritative ? "Yes" : "No" $}</td>
                 </tr>
             </tbody>
         </div>

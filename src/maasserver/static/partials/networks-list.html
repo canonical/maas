@@ -160,7 +160,7 @@
                         <th>DHCP</th>
                         <th>Fabric</th>
                         <th>Subnet</th>
-                        <th class="u-align--right">Available IPs</th>
+                        <th><div class="u-align--right">Available IPs</div></th>
                     </tr>
                 </thead>
                 <tbody vs-repeat vs-scroll-parent="window">
@@ -171,23 +171,23 @@
                                 <label class="checkbox-label" for="space-{$ row.space.id $}"></label>
                             </div>
                         </td> -->
-                        <td aria-label="Space">
+                        <td aria-label="Space" title="{$ row.space_name $}">
                             <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                         </td>
                         <td aria-label="VLAN">
-                            <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                            <a href="#/vlan/{$ row.vlan.id $}" title="{$ row.vlan_name $}">{$ row.vlan_name $}</a>
                         </td>
                         <td aria-label="DHCP">
                             <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null">Enabled</p>
                             <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
                         </td>
                         <td aria-label="Fabric">
-                            <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
+                            <a href="#/fabric/{$ row.fabric.id $}" title="{$ row.fabric.name $}">{$ row.fabric.name $}</a>
                         </td>
                         <td aria-label="Subnet">
-                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                            <a href="#/subnet/{$ row.subnet.id $}" title="{$ row.subnet_name $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td class="u-align--right" aria-label="Available IPs">
+                        <td class="u-align--right" aria-label="Available IPs" title="{$ row.subnet.statistics.available_string $}">
                             {$ row.subnet.statistics.available_string $}
                         </td>
                     </tr>
@@ -197,20 +197,21 @@
                             <span data-ng-if="$index === 0" class="p-icon--warning tooltip tooltip--right u-margin--left-small u-display--desktop"
                               aria-label="MAAS integrations require a space in order to determine the purpose of a network.&#xa;Define a space for each subnet by selecting the space on the VLAN details page.&#xa;If an approprate space does not exist, one may be created on this page."></span>
                         </td>
-                        <td>
+                        <td title="{$ row.vlan_name $}">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
                         <td aria-label="DHCP">
-                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true">Enabled</p>
-                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true" title="Enabled">Enabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null" title="Disabled">Disabled</p>
                         </td>
-                        <td>
+                        <td title="{$ row.fabric.name $}">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
-                        <td>
+                        <td title="{$ row.subnet_name $}">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td class="u-align--right">
+                        <td>
+                            <div class="u-align--right">
                             {$ row.subnet.statistics.available_string $}
                         </td>
                     </tr>
@@ -240,25 +241,25 @@
                                 <label class="checkbox-label" for="fabric-{$ row.fabric.id $}"></label>
                             </div>
                         </td> -->
-                        <td aria-label="Fabric">
+                        <td aria-label="Fabric" title="{$ row.fabric_name $}">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                         </td>
-                        <td aria-label="VLAN">
+                        <td aria-label="VLAN" title="{$ row.vlan_name $}">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
                         <td aria-label="DHCP">
-                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true">Enabled</p>
-                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null">Disabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on === true || row.vlan.relay_vlan !== null || row.vlan.external_dhcp === true" title="Enabled">Enabled</p>
+                            <p data-ng-if="row.vlan.dhcp_on !== true && row.vlan.relay_vlan === null" title="Disabled">Disabled</p>
                         </td>
-                        <td aria-label="Subnet">
+                        <td aria-label="Subnet" title="{$ row.subnet_name $}">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td aria-label="Available IPs">
+                        <td aria-label="Available IPs" title="{$ row.subnet.statistics.available_string $}">
                             {$ row.subnet.statistics.available_string $}
                         </td>
                         <td aria-label="Space">
-                            <a data-ng-if="row.space !== null" href="#/space/{$ row.space.id $}">{$ row.space.name $}</a>
-                            <p data-ng-if="row.space === null">(undefined)</p>
+                            <a data-ng-if="row.space !== null" href="#/space/{$ row.space.id $}" title="{$ row.space.name $}">{$ row.space.name $}</a>
+                            <p data-ng-if="row.space === null" title="(undefined)">(undefined)</p>
                         </td>
                     </tr>
                 </tbody>

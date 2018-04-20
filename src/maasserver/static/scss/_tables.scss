@@ -51,6 +51,10 @@
 
         &:nth-child(3) {
           width: cell-percentage-width(15%);
+
+          @media (max-width: 1000px) {
+            display: none !important;
+          }
         }
 
         &:nth-child(4) {
@@ -161,4 +165,15 @@
       }
     }
   }
+
+  .p-table--machines {
+    .p-table__row {
+      th, td {
+        &:nth-child(1) {
+          width: 20%;
+        }
+      }
+    }
+  }
+
 }

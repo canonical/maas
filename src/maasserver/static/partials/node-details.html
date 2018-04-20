@@ -708,39 +708,39 @@
             </div>
             <div class="row">
                 <form data-ng-if="loaded">
-                    <table>
+                    <table class="p-table-expanding">
                         <thead>
                             <tr>
-                                <th class="col-2">Fabric</th>
-                                <th class="col-2">VLAN</th>
-                                <th class="col-1">DHCP</th>
-                                <th class="col-3">Subnets</th>
-                                <th class="col-2">Primary rack</th>
-                                <th class="col-2">Secondary rack</th>
+                                <th class="col-2" title="Fabric">Fabric</th>
+                                <th class="col-2" title="VLAN">VLAN</th>
+                                <th class="col-1" title="DHCP">DHCP</th>
+                                <th class="col-3" title="Subnets">Subnets</th>
+                                <th class="col-2" title="Primary rack">Primary rack</th>
+                                <th class="col-2" title="Secondary rack">Secondary rack</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr class="table__row" data-ng-repeat="vlanRow in vlanTable">
-                                <td class="col-2">
+                                <td class="col-2" title="{$ vlanRow['fabric'].name $}">
                                     <a href="#/fabric/{$ vlanRow['fabric'].id $}">{$ vlanRow['fabric'].name $}</a>
                                 </td>
-                                <td class="col-2">
+                                <td class="col-2" title="{$ vlanRow['fabric'].name $}">
                                     <a href="#/vlan/{$ vlanRow['vlan'].id $}">{$ getVLANText(vlanRow['vlan']) $}</a>
                                 </td>
                                 <td class="col-1">
-                                    <p data-ng-if="vlanRow.vlan.dhcp_on === true || vlanRow.vlan.relay_vlan !== null || vlanRow.vlan.external_dhcp === true">Enabled</p>
-                                    <p data-ng-if="vlanRow.vlan.dhcp_on !== true && vlanRow.vlan.relay_vlan === null">Disabled</p>
+                                    <span data-ng-if="vlanRow.vlan.dhcp_on === true || vlanRow.vlan.relay_vlan !== null || vlanRow.vlan.external_dhcp === true">Enabled</span>
+                                    <span data-ng-if="vlanRow.vlan.dhcp_on !== true && vlanRow.vlan.relay_vlan === null">Disabled</span>
                                 </td>
                                 <td class="col-3">
                                     <div class="u-no-margin--top" data-ng-repeat="subnet in vlanRow['subnets']">
-                                      <a href="#/subnet/{$ subnet.id $}">{$ getSubnetText(subnet) $}</a>
+                                      <a href="#/subnet/{$ subnet.id $}" title="{$ getSubnetText(subnet) $}">{$ getSubnetText(subnet) $}</a>
                                     </div>
                                 </td>
                                 <td class="col-2">
-                                    <a href="#/controller/{$ vlanRow['primary_rack'].system_id $}">{$ vlanRow['primary_rack'].fqdn $}</a>
+                                    <a href="#/controller/{$ vlanRow['primary_rack'].system_id $}" title="{$ vlanRow['primary_rack'].fqdn $}">{$ vlanRow['primary_rack'].fqdn $}</a>
                                 </td>
                                 <td class="col-2">
-                                    <a href="#/controller/{$ vlanRow['secondary_rack'].system_id $}">{$ vlanRow['secondary_rack'].fqdn $}</a>
+                                    <a href="#/controller/{$ vlanRow['secondary_rack'].system_id $}" title="{$ vlanRow['secondary_rack'].fqdn $}">{$ vlanRow['secondary_rack'].fqdn $}</a>
                                 </td>
                             </tr>
                         </tbody>
@@ -811,12 +811,12 @@
                                 <td class="table-col--30">{$ interface.mac_address $}</td>
                                 <td class="table-col--25" aria-label="Subnet">
                                     <span data-ng-if="!isEditing(interface) && (interface.subnet || (interface.fabric && !interface.discovered[0].subnet_id))">{$ getSubnetText(interface.subnet) $}</span>
-                                    <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
+                                    <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id" title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
                                         {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                     </span>
                                 </td>
                                 <td class="table-col--25" aria-label="IP Address">{$ interface.ip_address $}</td>
-                                <td class="table-col--15">
+                                <td class="table-col--15 p-table--action-cell">
                                     <div class="u-align--right">
                                         <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
                                             <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
@@ -844,7 +844,7 @@
                                         <div class="col-7"></div>
                                     </div>
                                 </td>
-                                <td class="p-table-expanding__panel col-12 u-no-padding"  data-ng-if="isInterfaceSelected(interface)">
+                                <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface)">
                                     <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
                                         <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                             <h2 data-ng-click="cancel()" class="u-float--left">
@@ -1028,22 +1028,18 @@
                                 data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:isAllNetworkingDisabled() | removeInterfaceParents:newBridgeInterface:isAllNetworkingDisabled()">
                                 <td class="table-col--16" aria-label="Name"
                                     data-ng-class="{ 'is-error': isInterfaceNameInvalid(editInterface) }">
-                                    <ul class="p-inline-list u-no-margin--top">
-                                        <li class="p-inline-list__item" data-ng-if="!isController && !isAllNetworkingDisabled() && !isEditing(interface)">
-                                            <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
-                                            data-ng-hide="isAllNetworkingDisabled()"
-                                            data-ng-checked="isInterfaceSelected(interface)"
-                                            data-ng-click="toggleInterfaceSelect(interface)"
-                                            data-ng-disabled="isDisabled()">
-                                        </li>
-                                        <li class="p-inline-list__item">
-                                            <span data-ng-if="!isEditing(interface)" data-ng-show="tableInfo.column == 'name'">{$ interface.name $}</span>
-                                            <span class="ng-hide" data-ng-show="tableInfo.column == 'mac'">{$ interface.mac_address $}</span>
-                                            <input type="text" class="p-form-validation__input u-no-margin--top"
-                                                data-ng-if="isEditing(interface) && interface.type !== 'vlan'"
-                                                data-ng-model="editInterface.name">
-                                        </li>
-                                    </ul>
+                                    <span class="u-float--left" data-ng-if="!isController && !isAllNetworkingDisabled() && !isEditing(interface)">
+                                        <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
+                                        data-ng-hide="isAllNetworkingDisabled()"
+                                        data-ng-checked="isInterfaceSelected(interface)"
+                                        data-ng-click="toggleInterfaceSelect(interface)"
+                                        data-ng-disabled="isDisabled()">
+                                    </span>
+                                    <span data-ng-if="!isEditing(interface)" data-ng-show="tableInfo.column == 'name'" title="{$ interface.name $}">{$ interface.name $}</span>
+                                    <span class="ng-hide" data-ng-show="tableInfo.column == 'mac'" title="{$ interface.mac_address $}">{$ interface.mac_address $}</span>
+                                    <input type="text" class="p-form-validation__input u-no-margin--top"
+                                        data-ng-if="isEditing(interface) && interface.type !== 'vlan'"
+                                        data-ng-model="editInterface.name">
                                 </td>
                                 <td class="table-col--7" aria-label="Boot interface">
                                     <span class="u-align--center u-hide u-show--large">
@@ -1056,29 +1052,29 @@
                                     <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface)">No</span>
                                 </td>
                                 <td class="table-col--9" aria-label="Type">
-                                    <span data-ng-if="!isEditing(interface)">{$ getInterfaceTypeText(interface) $}</span>
+                                    <span data-ng-if="!isEditing(interface)" title="{$ getInterfaceTypeText(interface) $}">{$ getInterfaceTypeText(interface) $}</span>
                                 </td>
                                 <td class="table-col--13" aria-label="Fabric">
-                                    <span data-ng-if="!isEditing(interface)">{$ interface.fabric.name || "Disconnected" $}</span>
+                                    <span data-ng-if="!isEditing(interface)" title="{$ interface.fabric.name || 'Disconnected' $}">{$ interface.fabric.name || "Disconnected" $}</span>
                                 </td>
                                 <td class="table-col--13" aria-label="VLAN">
-                                    <span data-ng-if="!isEditing(interface)">{$ getVLANText(interface.vlan) $}</span>
+                                    <span data-ng-if="!isEditing(interface)" title="{$ getVLANText(interface.vlan) $}">{$ getVLANText(interface.vlan) $}</span>
                                 </td>
                                 <td class="table-col--13" aria-label="Subnet">
-                                    <span data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))">{$ getSubnetText(interface.subnet) $}</span>
+                                    <span data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))" title="{$ getSubnetText(interface.subnet) $}">{$ getSubnetText(interface.subnet) $}</span>
                                     <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
                                         {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                     </span>
                                 </td>
                                 <td class="table-col--19" aria-label="IP Address">
-                                    <span data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" >
+                                    <span data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" title="{$ interface.ip_address $} ({$ getLinkModeText(interface) $})">
                                         {$ interface.ip_address $} ({$ getLinkModeText(interface) $})
                                     </span>
-                                    <span data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric">
+                                    <span data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric" title="{$ interface.discovered[0].ip_address $} (DHCP)">
                                         {$ interface.discovered[0].ip_address $} (DHCP)
                                     </span>
                                 </td>
-                                <td class="table-col--10">
+                                <td class="table-col--10 p-table--action-cell">
                                     <div class="u-align--right">
                                         <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)">
                                             <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
@@ -1111,7 +1107,7 @@
                                     </div>
                                 </td>
 
-                                <td class="p-table-expanding__panel col-12 u-no-padding"  data-ng-if="isInterfaceSelected(interface)">
+                                <td class="p-table-expanding__panel col-12" data-ng-class="{ 'u-no-padding': !isShowingAdd() && !isEditing(interface) && !isShowingDeleteConfirm() && !isShowingAdd() || newInterface.saving }" data-ng-if="isInterfaceSelected(interface)">
                                     <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
                                         <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                             <h2 data-ng-click="cancel()" class="u-float--left">
@@ -1435,12 +1431,12 @@
                                 </td>
                             </tr>
                             <tr class="is-active" data-ng-if="isShowingCreateBridge() && !isAllNetworkingDisabled()">
-                                <td class="col-1">
-                                    <input type="checkbox" class="checkbox" id="bond-create" disabled="disabled" checked />
-                                    <label for="bridge-create"></label>
-                                </td>
-                                <td class="col-2">
-                                    <input type="text" class="table__input editible"
+                                <td class="table-col--16 p-table--action-cell">
+                                    <span class="u-float--left">
+                                        <input type="checkbox" class="checkbox" id="bond-create" disabled="disabled" checked />
+                                        <label for="bridge-create"></label>
+                                    </span>
+                                    <input type="text" class="table__input editible u-no-margin--top"
                                         data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBridgeInterface) }"
                                         data-ng-model="newBridgeInterface.name">
                                 </td>
@@ -1482,7 +1478,7 @@
                                                         <span>{$ newBridgeInterface.primary.name $}</span>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group p-form-validation"
+                                                <div class="p-form__group p-form-validation u-no-margin--top"
                                                     data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
                                                     <label for="mac" class="p-form__label">MAC address</label>
                                                     <div class="p-form__control">
@@ -1570,7 +1566,7 @@
                                                         <span>Physical</span>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group p-form-validation"
+                                                <div class="p-form__group p-form-validation u-no-margin--top"
                                                     data-ng-class="{ 'is-error': isMACAddressInvalid(newInterface.mac_address, false) || newInterface.macError }">
                                                     <label for="mac" class="p-form__label">MAC address</label>
                                                     <div class="p-form__control">
@@ -1645,7 +1641,7 @@
                                     <div class="p-form p-form--stacked u-no-margin--top">
                                         <div class="row" data-ng-if="isDevice">
                                             <div class="col-6">
-                                                <div class="p-form__group p-form-validation"
+                                                <div class="p-form__group p-form-validation u-no-margin--top"
                                                     data-ng-class="{ 'is-error': isMACAddressInvalid(newInterface.mac_address, true) }">
                                                     <label for="mac" class="p-form__label">MAC address</label>
                                                     <div class="p-form__control">
@@ -1785,28 +1781,28 @@
                                 </td>
                             </tr>
                             <tr data-ng-repeat="filesystem in filesystems" data-ng-class="{ 'is-active': filesystem.$selected }">
-                                <td class="col-3" aria-label="Name">{$ filesystem.name $}</td>
-                                <td class="col-1" aria-label="Size">{$ filesystem.size_human $}</td>
-                                <td class="col-2" aria-label="Filesystem">{$ filesystem.fstype $}</td>
-                                <td class="col-3" aria-label="Mount point">{$ filesystem.mount_point $}</td>
-                                <td class="col-2" aria-label="Mount options">{$ filesystem.mount_options $}</td>
-                                <td class="col-1">
+                                <td class="col-3" aria-label="Name" title="{$ filesystem.name $}">{$ filesystem.name $}</td>
+                                <td class="col-1" aria-label="Size" title="{$ filesystem.size_human $}">{$ filesystem.size_human $}</td>
+                                <td class="col-2" aria-label="Filesystem" title="{$ filesystem.fstype $}">{$ filesystem.fstype $}</td>
+                                <td class="col-3" aria-label="Mount point" title="{$ filesystem.mount_point $}">{$ filesystem.mount_point $}</td>
+                                <td class="col-2" aria-label="Mount options" title="{$ filesystem.mount_options $}">{$ filesystem.mount_options $}</td>
+                                <td class="col-1 p-table--action-cell">
                                     <div class="u-align--right">
                                         <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
                                             <button class="p-button--base is-small p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
                                                 data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu">Actions</i></button>
                                             <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
-                                                <a href="" class="p-contextual-menu__link"
+                                                <button class="p-contextual-menu__link"
                                                 aria-label="Unmount" data-ng-click="toggleMenu(); quickFilesystemUnmount(filesystem)"
-                                                data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</a>
-                                                <a href="" class="p-contextual-menu__link"
+                                                data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</button>
+                                                <button class="p-contextual-menu__link"
                                                 aria-label="Remove" data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem)"
-                                                data-ng-show="!isAllStorageDisabled()">Remove&hellip;</a>
+                                                data-ng-show="!isAllStorageDisabled()">Remove&hellip;</button>
                                             </div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="p-table-expanding__panel col-12" data-ng-if="filesystemMode === 'unmount' || filesystemMode === 'delete'">
+                                <td class="p-table-expanding__panel col-12" data-ng-if="filesystem.$selected && (filesystemMode === 'unmount' || filesystemMode === 'delete')">
                                     <div class="row" data-ng-if="windowWidth <= 768">
                                         <div class="col-8">
                                             <h2 data-ng-click="filesystemCancel()">
@@ -1928,7 +1924,6 @@
                         <table class="p-table-expanding">
                             <thead>
                                 <tr>
-                                    <th class="col-1"></th>
                                     <th class="col-2">Name</th>
                                     <th class="col-3">Size</th>
                                     <th class="col-4">Used by</th>
@@ -1939,11 +1934,10 @@
                             </thead>
                             <tbody>
                                 <tr data-ng-repeat="cacheset in cachesets" data-ng-class="{ 'is-active': cacheset.$selected }">
-                                    <td class="col-1 u-hide u-show--large"></td>
-                                    <td class="col-2" aria-label="Name">{$ cacheset.name $}</td>
-                                    <td class="col-3" aria-label="Size">{$ cacheset.size_human $}</td>
-                                    <td class="col-4" aria-label="Used by">{$ cacheset.used_by $}</td>
-                                    <td class="col-2">
+                                    <td class="col-2" aria-label="Name" title="{$ cacheset.name $}">{$ cacheset.name $}</td>
+                                    <td class="col-3" aria-label="Size" title="{$ cacheset.size_human $}">{$ cacheset.size_human $}</td>
+                                    <td class="col-4" aria-label="Used by" title="{$ cacheset.used_by $}">{$ cacheset.used_by $}</td>
+                                    <td class="col-2 p-table--action-cell">
                                         <div toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset)">
                                             <button class="p-button" aria-label="Remove"
                                                 data-ng-show="canDeleteCacheSet(cacheset)"
@@ -2033,10 +2027,10 @@
                                             data-ng-click="toggleAvailableSelect(item)"
                                             data-ng-disabled="isAvailableDisabled()" />
                                         <label for="{$ item.name $}" ></label>
-                                        <span data-ng-show="tableInfo.column === 'name'" data-ng-hide="availableMode === 'edit' && item.$selected">{$ item.name $}</span>
-                                        <span data-ng-show="tableInfo.column === 'model'">{$ item.model $}</span>
-                                        <span data-ng-show="tableInfo.column === 'serial'">{$ item.serial $}</span>
-                                        <span data-ng-show="tableInfo.column === 'firmware_version'">{$ item.firmware_version $}</span>
+                                        <span data-ng-show="tableInfo.column === 'name'" data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.name $}">{$ item.name $}</span>
+                                        <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
+                                        <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
+                                        <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
                                         <input type="text" class="p-form-validation__input"
                                             data-ng-model="item.name"
                                             data-ng-show="availableMode === 'edit' && item.$selected"
@@ -2055,51 +2049,51 @@
                                         </div>
                                     </td>
                                     <td class="col-1" aria-label="Size">
-                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.size_human $}">
                                             {$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span>
                                         </span>
                                     </td>
                                     <td class="col-1" aria-label="type">
-                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ getDeviceType(item) $}</span>
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ getDeviceType(item) $}">{$ getDeviceType(item) $}</span>
                                     </td>
                                     <td class="col-2" aria-label="Filesystem">
-                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ item.fstype $}</span>
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.fstype $}">{$ item.fstype $}</span>
                                     </td>
                                     <td class="col-2" aria-label="Tags">
                                         <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
-                                            <a href="#/machines/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
+                                            <a href="#/machines/?query=storage_tags:({$ tag.text $})" title="{$ tag.text $}">{$ tag.text $}</a>
                                         </span>
                                     </td>
                                     <td class="col-1" aria-label="Health">
                                         <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
-                                        <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7">Ok</span>
-                                        <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8">Error</span>
-                                        <span data-ng-if="item.test_status === 6">Degraded</span>
-                                        <span data-ng-if="item.test_status === -1">Unknown</span>
+                                        <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
+                                        <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
+                                        <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
+                                        <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                                     </td>
-                                    <td class="col-1">
+                                    <td class="col-1 p-table--action-cell">
                                         <div class="u-align--right">
                                             <div class="p-contextual-menu" toggle-ctrl
                                                 data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
                                                 <button class="p-contextual-menu__toggle p-button--base is-small" aria-controls="#{$ item.name $}-menu"
                                                     data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
                                                 <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
-                                                    <a href="" class="p-contextual-menu__link"
+                                                    <button class="p-contextual-menu__link"
                                                         aria-label="Add logical volume"
                                                         data-ng-show="canAddLogicalVolume(item)"
-                                                        data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</a>
-                                                    <a href="" class="p-contextual-menu__link"
+                                                        data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</button>
+                                                    <button class="p-contextual-menu__link"
                                                         aria-label="Partition"
                                                         data-ng-show="canAddPartition(item)"
-                                                        data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</a>
-                                                    <a href="" class="p-contextual-menu__link"
+                                                        data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</button>
+                                                    <button class="p-contextual-menu__link"
                                                         aria-label="Edit"
                                                         data-ng-show="canEdit(item)"
-                                                        data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</a>
-                                                    <a href="" class="p-contextual-menu__link"
+                                                        data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</button>
+                                                    <button class="p-contextual-menu__link"
                                                         aria-label="Remove"
                                                         data-ng-show="canDelete(item)"
-                                                        data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</a>
+                                                        data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -2832,7 +2826,7 @@
                     <h3>Used disks and partitions</h3>
                 </div>
                 <div class="row">
-                    <table>
+                    <table class="p-table-expanding">
                         <thead>
                             <tr>
                                 <th class="col-3">
@@ -2858,10 +2852,10 @@
                             </tr>
                             <tr data-ng-repeat="item in used" class="table__row details__used">
                                 <td class="col-3" aria-label="Name">
-                                    <span data-ng-show="tableInfo.column === 'name'">{$ item.name $}</span>
-                                    <span data-ng-show="tableInfo.column === 'model'">{$ item.model $}</span>
-                                    <span data-ng-show="tableInfo.column === 'serial'">{$ item.serial $}</span>
-                                    <span data-ng-show="tableInfo.column === 'firmware_version'">{$ item.firmware_version $}</span>
+                                    <span data-ng-show="tableInfo.column === 'name'" title="{$ item.name $}">{$ item.name $}</span>
+                                    <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
+                                    <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
+                                    <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
                                 </td>
                                 <td class="col-1" aria-label="Boot disk">
                                     <div class="u-align--center">
@@ -2873,15 +2867,15 @@
                                         <label for="{$ item.name $}-boot"></label>
                                     </div>
                                 </td>
-                                <td class="col-2" aria-label="Device type">{$ getDeviceType(item) $}</td>
-                                <td class="col-3" aria-label="Used for">{$ item.used_for $}</td>
+                                <td class="col-2" aria-label="Device type" title="{$ getDeviceType(item) $}">{$ getDeviceType(item) $}</td>
+                                <td class="col-3" aria-label="Used for" title="{$ item.used_for $}">{$ item.used_for $}</td>
                                 <td class="col-2" aria-label="Health">
                                     <span data-ng-if="item.type === 'physical'">
                                         <span data-maas-script-status="script-status" data-script-status="item.test_status"></span>
-                                        <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7">Ok</span>
-                                        <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8">Error</span>
-                                        <span data-ng-if="item.test_status === 6">Degraded</span>
-                                        <span data-ng-if="item.test_status === -1">Unknown</span>
+                                        <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
+                                        <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
+                                        <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
+                                        <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
                                     </span>
                                 </td>
                             </tr>
@@ -2910,8 +2904,8 @@
                     <tbody>
                         <tr
                             data-ng-repeat="event in node.events | orderByDate:'created':'id' | limitTo:events.limit">
-                            <td class="col-9" aria-label="Event"><span class="p-icon--{$ event.type.level $}"></span>{$ getEventText(event) $}</td>
-                            <td class="col-3" aria-label="Created">{$ event.created $}</td>
+                            <td class="col-9" aria-label="Event" title="{$ getEventText(event) $}"><span class="p-icon--{$ event.type.level $}"></span>{$ getEventText(event) $}</td>
+                            <td class="col-3" aria-label="Created" title="{$ event.created $}">{$ event.created $}</td>
                         </tr>
                     </tbody>
                 </table>

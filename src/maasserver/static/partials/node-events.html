@@ -48,11 +48,11 @@
                     </thead>
                     <tbody vs-repeat vs-scroll-parent="window">
                         <tr data-ng-repeat="event in events | filter:search | orderByDate:'created':'id' track by event.id">
-                            <td class="col-9">
+                            <td class="col-9" title="{$ getEventText(event) $}">
                                 <span class="p-icon--{$ event.type.level $}"></span>
                                 {$ getEventText(event) $}
                             </td>
-                            <td class="col-3">
+                            <td class="col-3" title="{$ event.created $}">
                                 {$ event.created $}
                             </td>
                         </tr>

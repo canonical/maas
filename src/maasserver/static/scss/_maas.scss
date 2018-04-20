@@ -36,6 +36,22 @@
   .p-table-expanding__panel {
     background-color: $color-x-light;
     margin-left: 0 !important;
+
+    .p-form-validation .p-form-validation__input {
+      padding: .5rem .75rem;
+    }
+  }
+
+  .p-table--mobile-card {
+    td[aria-label] {
+      min-height: 2rem;
+    }
+
+    td, tr {
+      @media (max-width: $breakpoint-medium) {
+        overflow-x: visible;
+      }
+    }
   }
 
   table {
@@ -131,6 +147,7 @@
 
   .p-form__controls {
     margin-top: 0;
+    white-space: normal;
   }
 
   select {

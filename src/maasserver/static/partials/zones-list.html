@@ -44,7 +44,7 @@
 <section class="p-strip">
     <div class="row">
         <!-- Spaces grouped table -->
-        <table class="table-listing">
+        <table class="p-table--mobile-card">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -56,10 +56,10 @@
             </thead>
             <tbody vs-repeat vs-scroll-parent="window">
                 <tr data-ng-repeat="zone in zones">
-                    <td aria-label="Name">
+                    <td aria-label="Name" title="{$ zone.name $}">
                         <a href="#/zone/{$ zone.id $}">{$ zone.name $}</a>
                     </td>
-                    <td aria-label="Description">
+                    <td aria-label="Description" title="{$ zone.description $}">
                         {$ zone.description $}
                     </td>
                     <td aria-label="Machines" class="u-align--right">

@@ -115,10 +115,10 @@
             <table class="p-table-expanding p-table--images" data-ng-if="showImagesTable()">
                 <thead>
                     <tr class="p-table__row">
-                        <th class="p-table__cell">Release</th>
-                        <th class="p-table__cell">Architecture</th>
-                        <th class="p-table__cell">Size</th>
-                        <th class="p-table__cell">Status</th>
+                        <th class="p-table__cell" title="Release">Release</th>
+                        <th class="p-table__cell" title="Architecture">Architecture</th>
+                        <th class="p-table__cell" title="Size">Size</th>
+                        <th class="p-table__cell" title="Status">Status</th>
                         <th class="p-table__cell u-align--right">Actions</th>
                     </tr>
                 </thead>
@@ -134,14 +134,14 @@
                         </td>
                     </tr>
                     <tr class="p-table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']" data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
-                        <td class="p-table__cell" aria-label="Release">
+                        <td class="p-table__cell" aria-label="Release" title="{$ image.title $}">
                             <i class="{$ image.icon $}"></i>
                             {$ image.title $} <span class="p-tooltip__message" role="tooltip" id="tooltip-{$ image.resourceId}" data-ng-if="canBeRemoved(image)"><i class="p-icon--warning p-tooltip p-tooltip--top-right"  aria-describedby="tooltip-{$ image.resourceId}">Image no longer exists at the source.</span></i>
                         </td>
-                        <td class="p-table__cell" aria-label="Architecture">{$ image.arch $}</td>
-                        <td class="p-table__cell" aria-label="Size">{$ image.size $}</td>
-                        <td class="p-table__cell" aria-label="Status">{$ image.status $}</td>
-                        <td class="p-table__cell u-align--right">
+                        <td class="p-table__cell" aria-label="Architecture" title="{$ image.arch $}">{$ image.arch $}</td>
+                        <td class="p-table__cell" aria-label="Size" title="{$ image.size $}">{$ image.size $}</td>
+                        <td class="p-table__cell" aria-label="Status" title="{$ image.status $}">{$ image.status $}</td>
+                        <td class="p-table__cell u-align--right p-table--actions-cells">
                             <button data-ng-if="(isSuperUser() && canBeRemoved(image))" class="p-button--base is-small" aria-label="Remove" data-ng-click="deleteImage(image)">
                                 <i class="p-icon--delete">Remove</i>
                             </button>

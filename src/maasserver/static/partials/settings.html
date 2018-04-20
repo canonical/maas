@@ -44,13 +44,13 @@
                 </div>
             </div>
             -->
-            <table class="p-table-expanding p-table--mobile-card">
+            <table class="p-table--mobile-card">
                 <thead>
                     <tr>
                         <th class="col-2">Name</th>
                         <th class="col-2">Type</th>
                         <th class="col-4">Applies to</th>
-                        <th class="col-1">Enabled</th>
+                        <th class="col-2">Enabled</th>
                         <th class="col-3">
                             <div class="u-align--right">Actions</div>
                         </th>
@@ -74,7 +74,7 @@
                         <td class="col-4" aria-label="Applies to" data-ng-if="editSnippet !== snippet">
                             <span>{$ getSnippetAppliesToText(snippet) $}</span>
                         </td>
-                        <td class="col-1" aria-label="Enabled" data-ng-if="editSnippet !== snippet">
+                        <td class="col-2" aria-label="Enabled" data-ng-if="editSnippet !== snippet">
                             <div class="onoffswitch" data-ng-if="deleteSnippet !== snippet">
                                 <input type="checkbox" name="enabled" class="onoffswitch-checkbox u-float-none" id="enabled-{$ snippet.id $}"
                                     data-ng-model="snippet.enabled"

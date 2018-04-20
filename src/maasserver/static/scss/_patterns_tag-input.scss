@@ -114,6 +114,7 @@
     .tag-list {
       width: 100%;
       margin: 0;
+      overflow: hidden;
 
       .tag-item {
         display: inline-block;
