@@ -686,7 +686,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return True if the interface name that the user typed is invalid.
         $scope.isInterfaceNameInvalid = function(nic) {
-            if(!angular.isString(nic.name) || nic.name.length === 0) {
+            if(!angular.isObject(nic) || !nic.hasOwnProperty('name') ||
+                    nic.name.length === 0) {
                 return true;
             } else if(angular.isArray($scope.node.interfaces)) {
                 var i;

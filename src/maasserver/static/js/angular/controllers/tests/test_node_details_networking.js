@@ -1730,6 +1730,18 @@ describe("NodeNetworkingController", function() {
             expect($scope.isInterfaceNameInvalid(nic)).toBe(true);
         });
 
+        it("returns true if name is missing", function() {
+            var controller = makeController();
+            var nic = {};
+            expect($scope.isInterfaceNameInvalid(nic)).toBe(true);
+        });
+
+        it("returns true if nic is null", function() {
+            var controller = makeController();
+            var nic = null;
+            expect($scope.isInterfaceNameInvalid(nic)).toBe(true);
+        });
+
         it("returns true if name is same as another interface", function() {
             var controller = makeController();
             var name = makeName("nic");
