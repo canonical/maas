@@ -79,6 +79,24 @@ class ResourcePool(CleanSave, TimestampedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def users(self):
+        """Return users that have access to the pool.
+
+        XXX This should be dropped once we implement full RBAC, and the logic
+        moved to methods in Role.
+        """
+        return self._get_pool_role().users.all()
+
+    @property
+    def groups(self):
+        """Return groups that have access to the pool.
+
+        XXX This should be dropped once we implement full RBAC, and the logic
+        moved to methods in Role.
+        """
+        return self._get_pool_role().groups.all()
+
     def is_default(self):
         """Whether this is the default pool."""
         return self.id == 0

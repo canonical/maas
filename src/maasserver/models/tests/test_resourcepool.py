@@ -108,6 +108,20 @@ class TestResourcePool(MAASServerTestCase):
     def test_is_default_false(self):
         self.assertFalse(factory.make_ResourcePool().is_default())
 
+    def test_users(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        factory.make_User()
+        pool = factory.make_ResourcePool(users=[user1, user2])
+        self.assertCountEqual(pool.users, [user1, user2])
+
+    def test_groups(self):
+        group1 = factory.make_UserGroup()
+        group2 = factory.make_UserGroup()
+        factory.make_UserGroup()
+        pool = factory.make_ResourcePool(groups=[group1, group2])
+        self.assertCountEqual(pool.groups, [group1, group2])
+
     def test_delete(self):
         pool = factory.make_ResourcePool()
         pool.delete()

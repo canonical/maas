@@ -2024,6 +2024,28 @@ class ResourcePoolForm(MAASModelForm):
             'description',
             )
 
+    def save(self):
+        pool = super().save()
+        user_ids = set(self.data.getlist('users'))
+        if user_ids:
+            self._update_linked(
+                pool.users, pool.grant_user, pool.revoke_user, User, user_ids)
+        group_ids = set(self.data.getlist('groups'))
+        if group_ids:
+            self._update_linked(
+                pool.groups, pool.grant_group, pool.revoke_group, UserGroup,
+                group_ids)
+        return pool
+
+    def _update_linked(self, current_set, grant, revoke, model, ids):
+        current_ids = set(current_set.values_list('id', flat=True))
+        to_add = model.objects.filter(id__in=(ids - current_ids))
+        to_remove = model.objects.filter(id__in=(current_ids - ids))
+        for entry in to_remove:
+            revoke(entry)
+        for entry in to_add:
+            grant(entry)
+
 
 class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
     """A ModelMultipleChoiceField which shows the name of the MACs."""

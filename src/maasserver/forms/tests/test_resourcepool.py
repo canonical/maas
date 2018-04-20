@@ -25,6 +25,20 @@ class TestResourcePost(MAASServerTestCase):
         self.assertIsNotNone(pool)
         self.assertEqual(pool.description, description)
 
+    def test_creates_pool_users_groups(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        group1 = factory.make_UserGroup()
+        group2 = factory.make_UserGroup()
+        data = {
+            'name': factory.make_name('pool'),
+            'users': [user1.id, user2.id],
+            'groups': [group1.id, group2.id]}
+        form = ResourcePoolForm(data=data)
+        pool = form.save()
+        self.assertCountEqual(pool.users, [user1, user2])
+        self.assertCountEqual(pool.groups, [group1, group2])
+
     def test_updates_pool(self):
         pool = factory.make_ResourcePool()
         new_description = factory.make_string()
@@ -33,6 +47,23 @@ class TestResourcePost(MAASServerTestCase):
         form.save()
         pool = reload_object(pool)
         self.assertEqual(pool.description, new_description)
+
+    def test_updates_pool_users_groups(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        user3 = factory.make_User()
+        group1 = factory.make_UserGroup()
+        group2 = factory.make_UserGroup()
+        group3 = factory.make_UserGroup()
+        pool = factory.make_ResourcePool(
+            users=[user1, user2], groups=[group1, group2])
+        data = {
+            'users': [user1.id, user3.id],
+            'groups': [group1.id, group3.id]}
+        form = ResourcePoolForm(data=data, instance=pool)
+        pool = form.save()
+        self.assertCountEqual(pool.users, [user1, user3])
+        self.assertCountEqual(pool.groups, [group1, group3])
 
     def test_renames_pool(self):
         pool = factory.make_ResourcePool()
