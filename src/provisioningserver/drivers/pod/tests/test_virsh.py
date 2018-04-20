@@ -836,7 +836,7 @@ class TestVirshSSH(MAASTestCase):
         ])
         disk = RequestedMachineBlockDevice(
             size=random.randint(
-                list(pools.values())[0] + 1, list(pools.values())[1] + 1),
+                list(pools.values())[0] + 1, list(pools.values())[1] - 1),
             tags=[])
         self.patch(
             virsh.VirshSSH, "get_pod_pool_size_map").return_value = pools
