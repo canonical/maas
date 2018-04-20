@@ -10,10 +10,7 @@ from random import randint
 
 from maasserver import server_address
 from maasserver.exceptions import UnresolvableHost
-from maasserver.server_address import (
-    get_maas_facing_server_address,
-    get_maas_facing_server_addresses,
-)
+from maasserver.server_address import get_maas_facing_server_addresses
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -329,98 +326,3 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
                 IPAddress("2001:db8::4"),
             ])
         )
-
-
-class TestGetMAASFacingServerAddress(MAASServerTestCase):
-
-    def make_addresses(self):
-        """Return a set of IP addresses, mixing IPv4 and IPv6."""
-        return {
-            factory.make_ipv4_address(),
-            factory.make_ipv6_address(),
-            }
-
-    def patch_get_maas_facing_server_host(self, host=None):
-        if host is None:
-            host = make_hostname()
-        patch = self.patch(server_address, 'get_maas_facing_server_host')
-        patch.return_value = str(host)
-        return patch
-
-    def patch_resolve_hostname(self, addresses=None):
-        if addresses is None:
-            addresses = self.make_addresses()
-        fake = FakeResolveHostname(*addresses)
-        return self.patch(server_address, 'resolve_hostname', fake)
-
-    def test__integrates_with_get_maas_facing_server_host(self):
-        ip = factory.make_ipv4_address()
-        maas_url = 'http://%s' % ip
-        rack = factory.make_RackController(url=maas_url)
-        self.assertEqual(
-            str(ip),
-            server_address.get_maas_facing_server_host(rack))
-
-    def test__resolves_hostname(self):
-        hostname = make_hostname()
-        self.patch_get_maas_facing_server_host(hostname)
-        ip = factory.make_ipv4_address()
-        fake_resolve = self.patch_resolve_hostname([ip])
-        result = get_maas_facing_server_address()
-        self.assertEqual(str(ip), result)
-        self.assertEqual(hostname, fake_resolve.hostname)
-
-    def test__prefers_IPv4_if_ipv4_set(self):
-        # If a server has mixed v4 and v6 addresses,
-        # get_maas_facing_server_address() will return a v4 address
-        # rather than a v6 one.
-        v4_ip = factory.make_ipv4_address()
-        v6_ip = factory.make_ipv6_address()
-        self.patch_resolve_hostname([v4_ip, v6_ip])
-        self.patch_get_maas_facing_server_host()
-        self.assertEqual(
-            str(v4_ip),
-            get_maas_facing_server_address(ipv4=True, ipv6=True))
-
-    def test__ignores_IPv4_if_ipv4_not_set(self):
-        v4_ip = factory.make_ipv4_address()
-        v6_ip = factory.make_ipv6_address()
-        self.patch_resolve_hostname([v4_ip, v6_ip])
-        self.patch_get_maas_facing_server_host()
-        self.assertEqual(
-            str(v6_ip),
-            get_maas_facing_server_address(ipv4=False, ipv6=True))
-
-    def test__falls_back_on_IPv6_if_ipv4_set_but_no_IPv4_address_found(self):
-        v6_ip = factory.make_ipv6_address()
-        self.patch_resolve_hostname([v6_ip])
-        self.patch_get_maas_facing_server_host()
-        self.assertEqual(
-            str(v6_ip),
-            get_maas_facing_server_address(ipv4=True, ipv6=True))
-
-    def test__prefers_global_IPv6_over_link_local_IPv6(self):
-        global_ipv6 = factory.make_ipv6_address()
-        local_ipv6 = [
-            'fe80::%d:9876:5432:10' % randint(0, 9999)
-            for _ in range(5)
-            ]
-        self.patch_resolve_hostname([global_ipv6] + local_ipv6)
-        self.patch_get_maas_facing_server_host()
-        self.assertEqual(
-            str(global_ipv6),
-            get_maas_facing_server_address())
-
-    def test__fails_if_neither_ipv4_nor_ipv6_set(self):
-        self.patch_resolve_hostname()
-        self.patch_get_maas_facing_server_host()
-        self.assertRaises(
-            UnresolvableHost,
-            get_maas_facing_server_address, ipv4=False, ipv6=False)
-
-    def test__raises_error_if_hostname_does_not_resolve(self):
-        self.patch_resolve_hostname([])
-        self.patch_get_maas_facing_server_host()
-        self.assertRaises(
-            UnresolvableHost,
-            get_maas_facing_server_address)
