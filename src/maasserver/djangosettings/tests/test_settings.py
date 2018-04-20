@@ -8,7 +8,6 @@ __all__ = []
 import os
 import types
 
-from django.conf import settings
 from django.db import connections
 from maasserver.djangosettings import (
     find_settings,
@@ -57,13 +56,6 @@ class TestSettingsHelpers(MAASServerTestCase):
 
 
 class TestDatabaseConfiguration(MAASServerTestCase):
-
-    def test_transactionmiddleware_is_not_used(self):
-        # The 'TransactionMiddleware' is not enabled (it has been
-        # deprecated by the Django project).
-        self.assertNotIn(
-            'django.middleware.transaction.TransactionMiddleware',
-            settings.MIDDLEWARE_CLASSES)
 
     def test_atomic_requests_are_enabled(self):
         # ATOMIC_REQUESTS *must* be set for the default connection.

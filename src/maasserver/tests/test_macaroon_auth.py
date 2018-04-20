@@ -211,8 +211,7 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
     def get_request(self):
         request = factory.make_fake_request('/')
         # add external_auth_info to the request
-        ExternalAuthInfoMiddleware().process_request(request)
-        return request
+        return ExternalAuthInfoMiddleware(lambda request: request)(request)
 
     def test_is_authenticated_no_external_auth(self):
         # authentication details are provided
@@ -297,8 +296,7 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
     def get_request(self):
         request = factory.make_fake_request('/')
         # add external_auth_info to the request
-        ExternalAuthInfoMiddleware().process_request(request)
-        return request
+        return ExternalAuthInfoMiddleware(lambda request: request)(request)
 
     def test_authenticate(self):
         user = factory.make_User()

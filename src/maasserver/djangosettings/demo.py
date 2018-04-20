@@ -13,7 +13,7 @@ from maasserver.djangosettings import (
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.
-MIDDLEWARE_CLASSES = None
+MIDDLEWARE = None
 
 # Extend base and development settings.
 import_settings(settings)

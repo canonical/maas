@@ -8,7 +8,6 @@ __all__ = [
     "ExceptionMiddleware",
     ]
 
-from abc import ABCMeta
 from collections import namedtuple
 import http.client
 import json
@@ -24,12 +23,17 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.core.handlers.exception import get_exception_response
 from django.http import (
     Http404,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
     HttpResponseRedirect,
+)
+from django.urls import (
+    get_resolver,
+    get_urlconf,
 )
 from django.utils import six
 from django.utils.encoding import force_str
@@ -99,9 +103,12 @@ class AccessMiddleware:
     piston).
     """
 
-    def process_request(self, request):
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
         if is_public_path(request.path_info):
-            return None
+            return self.get_response(request)
 
         if request.user.is_anonymous:
             return HttpResponseRedirect("%s?next=%s" % (
@@ -114,9 +121,14 @@ class AccessMiddleware:
                     request.path != reverse('logout')):
                 return HttpResponseRedirect(index_path)
 
+        return self.get_response(request)
+
 
 class ExternalComponentsMiddleware:
     """Middleware to check external components at regular intervals."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
 
     def _check_rack_controller_connectivity(self):
         """Check each rack controller to see if it's connected.
@@ -146,16 +158,16 @@ class ExternalComponentsMiddleware:
                 "more information." % (message, reverse('index')))
             register_persistent_error(COMPONENT.RACK_CONTROLLERS, message)
 
-    def process_request(self, request):
+    def __call__(self, request):
         # This middleware hijacks the request to perform checks.  Any
         # error raised during these checks should be caught to avoid
         # disturbing the handling of the request.  Proper error reporting
         # should be handled in the check method itself.
         self._check_rack_controller_connectivity()
-        return None
+        return self.get_response(request)
 
 
-class ExceptionMiddleware(metaclass=ABCMeta):
+class ExceptionMiddleware:
     """Convert exceptions into appropriate HttpResponse responses.
 
     For example, a MAASAPINotFound exception processed by a middleware
@@ -166,12 +178,20 @@ class ExceptionMiddleware(metaclass=ABCMeta):
        /en/dev/topics/http/middleware/
     """
 
-    def process_exception(self, request, exception):
-        """Django middleware callback."""
-        if is_retryable_failure(exception):
-            # We never handle retryable failures.
-            return None
+    def __init__(self, get_response):
+        self.get_response = get_response
 
+    def __call__(self, request):
+        try:
+            return self.get_response(request)
+        except Exception as exception:
+            response = self.process_exception(request, exception)
+            if response:
+                return response
+            else:
+                raise
+
+    def process_exception(self, request, exception):
         encoding = 'utf-8'
         if isinstance(exception, MAASAPIException):
             # Print a traceback if this is a 500 error.
@@ -201,9 +221,6 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             return HttpResponseForbidden(
                 content=str(exception).encode(encoding),
                 content_type="text/plain; charset=%s" % encoding)
-        elif isinstance(exception, Http404):
-            # Don't catch 404 errors
-            return
         elif isinstance(exception, ExternalProcessError):
             # Catch problems interacting with processes that the
             # appserver spawns, e.g. rndc.
@@ -221,6 +238,16 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)
             return response
+        elif isinstance(exception, Http404):
+            if settings.DEBUG:
+                self.log_exception(exception)
+            return get_exception_response(
+                request, get_resolver(get_urlconf()), 404, exception)
+        elif is_retryable_failure(exception):
+            # We never handle retryable failures.
+            return None
+        elif isinstance(exception, SystemExit):
+            return None
         else:
             # Print a traceback.
             self.log_exception(exception)
@@ -239,6 +266,9 @@ class ExceptionMiddleware(metaclass=ABCMeta):
 class DebuggingLoggerMiddleware:
 
     log_level = logging.DEBUG
+
+    def __init__(self, get_response):
+        self.get_response = get_response
 
     # Taken straight out of Django 1.8 django.http.request module to improve
     # our debug output on requests (dropped in Django 1.9).
@@ -289,15 +319,13 @@ class DebuggingLoggerMiddleware:
              six.text_type(cookies),
              six.text_type(meta)))
 
-    def process_request(self, request):
+    def __call__(self, request):
         if logger.isEnabledFor(self.log_level):
             header = " Request dump ".center(79, "#")
             logger.log(
                 self.log_level, "%s\n%s", header,
                 self._build_request_repr(request))
-        return None  # Allow request processing to continue unabated.
-
-    def process_response(self, request, response):
+        response = self.get_response(request)
         if logger.isEnabledFor(self.log_level):
             header = " Response dump ".center(79, "#")
             content = getattr(response, "content", "{no content}")
@@ -311,7 +339,7 @@ class DebuggingLoggerMiddleware:
                 logger.log(
                     self.log_level,
                     "%s\n%s", header, decoded_content)
-        return response  # Return response unaltered.
+        return response
 
 
 class RPCErrorsMiddleware:
@@ -323,11 +351,24 @@ class RPCErrorsMiddleware:
         TimeoutError,
         )
 
+    def __init__(self, get_response):
+        self.get_response = get_response
+
     def _handle_exception(self, request, exception):
         logging.exception(exception)
         messages.error(
             request,
             "Error: %s" % get_error_message_for_exception(exception))
+
+    def __call__(self, request):
+        try:
+            return self.get_response(request)
+        except Exception as exception:
+            response = self.process_exception(request, exception)
+            if response:
+                return response
+            else:
+                raise
 
     def process_exception(self, request, exception):
         if request.path_info.startswith(settings.API_URL_PREFIX):
@@ -389,7 +430,10 @@ class CSRFHelperMiddleware:
     need to use the CSRF protection machinery because each request is signed.
     """
 
-    def process_request(self, request):
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
         session_cookie = request.COOKIES.get(
             settings.SESSION_COOKIE_NAME, None)
         if session_cookie is None:
@@ -397,7 +441,7 @@ class CSRFHelperMiddleware:
             # to bypass the CSRF protection when it's not needed (i.e. when the
             # request is OAuth-authenticated).
             request.csrf_processing_done = True
-        return None
+        return self.get_response(request)
 
 
 # Hold information about external authentication type and configuration
@@ -413,7 +457,10 @@ class ExternalAuthInfoMiddleware:
 
     """
 
-    def process_request(self, request):
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
         auth_endpoint = Config.objects.get_config('external_auth_url')
         auth_info = None
         if auth_endpoint:
@@ -422,3 +469,4 @@ class ExternalAuthInfoMiddleware:
             auth_info = ExternalAuthInfo(
                 type='macaroon', url=auth_endpoint.rstrip('/'))
         request.external_auth_info = auth_info
+        return self.get_response(request)

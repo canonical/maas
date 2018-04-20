@@ -50,7 +50,6 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.views import HttpResponseConflict
 from maastesting.matchers import (
-    DocTestMatches,
     MockCalledOnceWith,
     MockCallsMatch,
 )
@@ -231,12 +230,13 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         failure = self.capture_serialization_failure()
         response = handler.handle_uncaught_exception(
-            request=request, resolver=get_resolver(None), exc_info=failure)
-        # HTTP 500 is returned...
+            request=request, resolver=get_resolver(None), exc_info=failure,
+            reraise=False)
+        # HTTP 409 is returned...
         self.expectThat(
             response.status_code,
-            Equals(http.client.INTERNAL_SERVER_ERROR))
-        # ... but the response is recorded as needing a retry.
+            Equals(http.client.CONFLICT))
+        # ... and the response is recorded as needing a retry.
         self.expectThat(
             handler._WebApplicationHandler__retry,
             Contains(response))
@@ -248,7 +248,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         failure_type = factory.make_exception_type()
         failure = failure_type, failure_type(), None
         response = handler.handle_uncaught_exception(
-            request=request, resolver=get_resolver(None), exc_info=failure)
+            request=request, resolver=get_resolver(None), exc_info=failure,
+            reraise=False)
         # HTTP 500 is returned...
         self.expectThat(
             response.status_code,
@@ -257,32 +258,6 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.expectThat(
             handler._WebApplicationHandler__retry,
             Not(Contains(response)))
-
-    def test__handle_uncaught_exception_logs_other_failure(self):
-        handler = views.WebApplicationHandler()
-        request = make_request()
-        request.path = factory.make_name("path")
-
-        # Capture an exc_info tuple with traceback.
-        exc_type = factory.make_exception_type()
-        exc_msg = factory.make_name("message")
-        try:
-            raise exc_type(exc_msg)
-        except exc_type:
-            exc_info = sys.exc_info()
-
-        with FakeLogger(views.__name__, logging.ERROR) as logger:
-            handler.handle_uncaught_exception(
-                request=request, resolver=get_resolver(None),
-                exc_info=exc_info)
-
-        self.assertThat(
-            logger.output, DocTestMatches("""\
-            500 Internal Server Error @ %s
-            Traceback (most recent call last):
-            ...
-            maastesting.factory.TestException#...: %s
-            """ % (request.path, exc_msg)))
 
     def test__handle_uncaught_exception_raises_error_on_api_exception(self):
         handler = views.WebApplicationHandler()
@@ -299,7 +274,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
         response = handler.handle_uncaught_exception(
             request=request, resolver=get_resolver(None),
-            exc_info=exc_info)
+            exc_info=exc_info, reraise=False)
         self.assertThat(
             response.status_code, Equals(http.client.INTERNAL_SERVER_ERROR))
 
@@ -366,18 +341,19 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
                 sender=views.WebApplicationHandler, request=request))
 
     def test__get_response_tries_only_once(self):
+        response = HttpResponse(status=200)
         get_response = self.patch(WSGIHandler, "get_response")
-        get_response.return_value = sentinel.response
+        get_response.return_value = response
 
         handler = views.WebApplicationHandler()
         request = make_request()
         request.path = factory.make_name("path")
-        response = handler.get_response(request)
+        observed_response = handler.get_response(request)
 
         self.assertThat(
             get_response, MockCalledOnceWith(request))
         self.assertThat(
-            response, Is(sentinel.response))
+            observed_response, Is(response))
 
     def test__get_response_tries_multiple_times(self):
         handler = views.WebApplicationHandler(3)
@@ -385,7 +361,9 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         # an HttpResponseConflict (HTTP 409 - Conflict) error
         # indicating that the request reached its maximum
         # number of retry attempts.
-        responses = iter((sentinel.r1, sentinel.r2, sentinel.r3))
+        responses = iter((
+            HttpResponse(status=200), HttpResponse(status=200),
+            HttpResponse(status=200)))
 
         def set_retry(request):
             response = next(responses)
@@ -459,7 +437,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         handler = views.WebApplicationHandler(2, timeout)
 
         def set_retry(request):
-            response = sentinel.response
+            response = HttpResponse(status=200)
             handler._WebApplicationHandler__retry.add(response)
             return response
 
@@ -529,7 +507,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             # Record calls.
             recorder.append(content)
             response = HttpResponse(
-                content=content,
+                content=content, status=200,
                 content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response
@@ -570,7 +548,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             # Record calls.
             recorder.append(created)
             response = HttpResponse(
-                content='',
+                content='', status=200,
                 content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response

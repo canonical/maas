@@ -245,7 +245,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         user = factory.make_User(password=password)
         backend = MAASAuthorizationBackend()
         request = factory.make_fake_request('/')
-        ExternalAuthInfoMiddleware().process_request(request)
+        ExternalAuthInfoMiddleware(lambda request: request)(request)
         self.assertEqual(
             backend.authenticate(
                 request, username=user.username, password=password),
@@ -257,7 +257,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         user = factory.make_User(password=password)
         backend = MAASAuthorizationBackend()
         request = factory.make_fake_request('/')
-        ExternalAuthInfoMiddleware().process_request(request)
+        ExternalAuthInfoMiddleware(lambda request: request)(request)
         self.assertIsNone(
             backend.authenticate(
                 request, username=user.username, password=password))

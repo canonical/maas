@@ -89,51 +89,43 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         """Return a path to handle exceptions for."""
         return "/%s" % factory.make_string()
 
-    def make_middleware(self, base_path):
-        """Create an ExceptionMiddleware for base_path."""
-        class TestingExceptionMiddleware(ExceptionMiddleware):
-            path_prefix = base_path
+    def make_fake_request(self):
+        return factory.make_fake_request(self.make_base_path())
 
-        return TestingExceptionMiddleware()
+    def process_exception(self, request, exception):
 
-    def process_exception(self, exception):
-        """Run a given exception through a fake ExceptionMiddleware.
+        def get_response(request):
+            raise exception
 
-        :param exception: The exception to simulate.
-        :type exception: Exception
-        :return: The response as returned by the ExceptionMiddleware.
-        :rtype: HttpResponse or None.
-        """
-        base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path)
-        request = factory.make_fake_request(base_path)
-        return middleware.process_exception(request, exception)
+        middleware = ExceptionMiddleware(get_response)
+        return middleware(request)
 
     def test_ignores_serialization_failures(self):
-        base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path)
-        request = factory.make_fake_request(base_path)
+        request = self.make_fake_request()
         exception = make_serialization_failure()
-        self.assertIsNone(middleware.process_exception(request, exception))
+        self.assertRaises(
+            type(exception),
+            self.process_exception, request, exception)
 
     def test_ignores_deadlock_failures(self):
-        base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path)
-        request = factory.make_fake_request(base_path)
+        request = self.make_fake_request()
         exception = make_deadlock_failure()
-        self.assertIsNone(middleware.process_exception(request, exception))
+        self.assertRaises(
+            type(exception),
+            self.process_exception, request, exception)
 
     def test_ignores_404_errors(self):
-        base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path)
-        request = factory.make_fake_request(base_path)
-        self.assertIsNone(middleware.process_exception(request, Http404()))
+        request = self.make_fake_request()
+        response = self.process_exception(request, Http404())
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_unknown_exception_generates_internal_server_error(self):
         # An unknown exception generates an internal server error with the
         # exception message.
+        request = self.make_fake_request()
         error_message = factory.make_string()
-        response = self.process_exception(RuntimeError(error_message))
+        response = self.process_exception(
+            request, RuntimeError(error_message))
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.INTERNAL_SERVER_ERROR, error_message),
@@ -146,7 +138,8 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
         error_message = factory.make_string()
         exception = MyException(error_message)
-        response = self.process_exception(exception)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.UNAUTHORIZED, error_message),
@@ -158,7 +151,9 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             api_error = int(http.client.UNAUTHORIZED)
 
         error_message = "Error %s" % chr(233)
-        response = self.process_exception(MyException(error_message))
+        exception = MyException(error_message)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.assertEqual(
             (http.client.UNAUTHORIZED, error_message),
             (response.status_code,
@@ -166,7 +161,9 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def test_reports_ValidationError_as_Bad_Request(self):
         error_message = factory.make_string()
-        response = self.process_exception(ValidationError(error_message))
+        exception = ValidationError(error_message)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.BAD_REQUEST, error_message),
@@ -176,7 +173,8 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
     def test_returns_ValidationError_message_dict_as_json(self):
         exception_dict = {'hostname': ['invalid']}
         exception = ValidationError(exception_dict)
-        response = self.process_exception(exception)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(exception_dict, json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)))
@@ -184,7 +182,9 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def test_reports_PermissionDenied_as_Forbidden(self):
         error_message = factory.make_string()
-        response = self.process_exception(PermissionDenied(error_message))
+        exception = PermissionDenied(error_message)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.FORBIDDEN, error_message),
@@ -194,13 +194,17 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
     def test_api_500_error_is_logged(self):
         logger = self.useFixture(FakeLogger('maasserver'))
         error_text = factory.make_string()
-        self.process_exception(MAASAPIException(error_text))
+        exception = MAASAPIException(error_text)
+        request = self.make_fake_request()
+        self.process_exception(request, exception)
         self.assertThat(logger.output, Contains(error_text))
 
     def test_generic_500_error_is_logged(self):
         logger = self.useFixture(FakeLogger('maasserver'))
         error_text = factory.make_string()
-        self.process_exception(Exception(error_text))
+        exception = Exception(error_text)
+        request = self.make_fake_request()
+        self.process_exception(request, exception)
         self.assertThat(logger.output, Contains(error_text))
 
     def test_reports_ExternalProcessError_as_ServiceUnavailable(self):
@@ -209,7 +213,8 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         retry_after = random.randint(0, 10)
         self.patch(
             middleware_module, 'RETRY_AFTER_SERVICE_UNAVAILABLE', retry_after)
-        response = self.process_exception(exception)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.expectThat(
             response.status_code, Equals(http.client.SERVICE_UNAVAILABLE))
         self.expectThat(
@@ -220,7 +225,8 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
     def test_handles_error_on_API(self):
         error_message = factory.make_string()
         exception = MAASAPINotFound(error_message)
-        response = self.process_exception(exception)
+        request = self.make_fake_request()
+        response = self.process_exception(request, exception)
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (http.client.NOT_FOUND, error_message),
@@ -229,7 +235,8 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def test_503_response_includes_retry_after_header(self):
         error = ExternalProcessError(returncode=-1, cmd="foo-bar")
-        response = self.process_exception(error)
+        request = self.make_fake_request()
+        response = self.process_exception(request, error)
         self.assertEqual(
             (
                 http.client.SERVICE_UNAVAILABLE,
@@ -240,10 +247,21 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
 class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
+    def process_request(self, request, response=None):
+
+        def get_response(request):
+            if response:
+                return response
+            else:
+                return HttpResponse(status=200)
+
+        middleware = DebuggingLoggerMiddleware(get_response)
+        return middleware(request)
+
     def test_debugging_logger_does_not_log_request_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
         request = factory.make_fake_request("/api/2.0/nodes/")
-        DebuggingLoggerMiddleware().process_request(request)
+        self.process_request(request)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
         self.assertThat(logger.output, Not(Contains(debug_output)))
 
@@ -253,7 +271,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         response = HttpResponse(
             content="test content",
             content_type=b"text/plain; charset=utf-8")
-        DebuggingLoggerMiddleware().process_response(request, response)
+        self.process_request(request, response)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
         self.assertThat(
             logger.output, Not(Contains(debug_output)))
@@ -262,7 +280,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = factory.make_fake_request("/api/2.0/nodes/")
         request.content = "test content"
-        DebuggingLoggerMiddleware().process_request(request)
+        self.process_request(request)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
         self.assertThat(logger.output, Contains(debug_output))
 
@@ -272,7 +290,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         response = HttpResponse(
             content="test content",
             content_type=b"text/plain; charset=utf-8")
-        DebuggingLoggerMiddleware().process_response(request, response)
+        self.process_request(request, response)
         self.assertThat(
             logger.output,
             Contains(response.content.decode(settings.DEFAULT_CHARSET)))
@@ -283,7 +301,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         response = HttpResponse(
             content=sample_binary_data,
             content_type=b"application/octet-stream")
-        DebuggingLoggerMiddleware().process_response(request, response)
+        self.process_request(request, response)
         self.assertThat(
             logger.output,
             Contains("non-utf-8 (binary?) content"))
@@ -291,14 +309,24 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
 class RPCErrorsMiddlewareTest(MAASServerTestCase):
 
+    def process_request(self, request, exception=None):
+
+        def get_response(request):
+            if exception:
+                raise exception
+            else:
+                return None
+
+        middleware = RPCErrorsMiddleware(get_response)
+        return middleware(request)
+
     def test_handles_PowerActionAlreadyInProgress(self):
-        middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         error_message = (
             "Unable to execute power action: another action is "
             "already in progress for node %s" % factory.make_name('node'))
         error = PowerActionAlreadyInProgress(error_message)
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         # The response is a redirect.
         self.assertEqual(request.path, extract_redirect(response))
@@ -308,13 +336,12 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             request._messages.messages)
 
     def test_handles_NoConnectionsAvailable(self):
-        middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         error_message = (
             "No connections available for cluster %s" %
             factory.make_name('cluster'))
         error = NoConnectionsAvailable(error_message)
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         # The response is a redirect.
         self.assertEqual(request.path, extract_redirect(response))
@@ -324,11 +351,10 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             request._messages.messages)
 
     def test_handles_TimeoutError(self):
-        middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         error_message = "Here, have a picture of Queen Victoria!"
         error = TimeoutError(error_message)
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         # The response is a redirect.
         self.assertEqual(request.path, extract_redirect(response))
@@ -338,34 +364,32 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             request._messages.messages)
 
     def test_ignores_non_rpc_errors(self):
-        middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         exception = ZeroDivisionError(
             "You may think it's a long walk down the street to the chemist "
             "but that's just peanuts to space!")
-        response = middleware.process_exception(request, exception)
-        self.assertIsNone(response)
+        self.assertRaises(
+            ZeroDivisionError, self.process_request, request, exception)
 
     def test_ignores_error_on_API(self):
-        middleware = RPCErrorsMiddleware()
         non_api_request = factory.make_fake_request("/api/2.0/ohai")
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
         exception = exception_class(factory.make_string())
-        self.assertIsNone(
-            middleware.process_exception(non_api_request, exception))
+        self.assertRaises(
+            exception_class,
+            self.process_request, non_api_request, exception)
 
     def test_no_connections_available_has_usable_cluster_name_in_msg(self):
         # If a NoConnectionsAvailable exception carries a reference to
         # the cluster UUID, RPCErrorsMiddleware will look up the
         # cluster's name and make the error message it displays more
         # useful.
-        middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         rack_controller = factory.make_RackController()
         error = NoConnectionsAvailable(
             factory.make_name('msg'), uuid=rack_controller.system_id)
-        middleware.process_exception(request, error)
+        self.process_request(request, error)
 
         expected_error_message = (
             "Error: Unable to connect to rack controller '%s' (%s); no "
@@ -378,37 +402,47 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
 
 class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
+    def process_request(self, request, exception=None):
+
+        def get_response(request):
+            if exception:
+                raise exception
+            else:
+                return None
+
+        middleware = APIRPCErrorsMiddleware(get_response)
+        return middleware(request)
+
     def test_handles_error_on_API(self):
-        middleware = APIRPCErrorsMiddleware()
+        middleware = APIRPCErrorsMiddleware(lambda request: None)
         api_request = factory.make_fake_request("/api/2.0/hello")
         error_message = factory.make_string()
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
         exception = exception_class(error_message)
-        response = middleware.process_exception(api_request, exception)
+        response = self.process_request(api_request, exception)
         self.assertEqual(
             (middleware.handled_exceptions[exception_class], error_message),
             (response.status_code,
              response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_ignores_error_outside_API(self):
-        middleware = APIRPCErrorsMiddleware()
         non_api_request = factory.make_fake_request("/middleware/api/hello")
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
         exception = exception_class(factory.make_string())
-        self.assertIsNone(
-            middleware.process_exception(non_api_request, exception))
+        self.assertRaises(
+            exception_class,
+            self.process_request, non_api_request, exception)
 
     def test_no_connections_available_returned_as_503(self):
-        middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
             "/api/2.0/" + factory.make_string(), 'POST')
         error_message = (
             "Unable to connect to cluster '%s'; no connections available" %
             factory.make_name('cluster'))
         error = NoConnectionsAvailable(error_message)
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         self.assertEqual(
             (http.client.SERVICE_UNAVAILABLE, error_message),
@@ -416,11 +450,10 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
              response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_503_response_includes_retry_after_header_by_default(self):
-        middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
             "/api/2.0/" + factory.make_string(), 'POST')
         error = NoConnectionsAvailable(factory.make_name())
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         self.assertEqual(
             (
@@ -430,14 +463,13 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
             (response.status_code, response['Retry-after']))
 
     def test_power_action_already_in_progress_returned_as_503(self):
-        middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
             "/api/2.0/" + factory.make_string(), 'POST')
         error_message = (
             "Unable to execute power action: another action is already in "
             "progress for node %s" % factory.make_name('node'))
         error = PowerActionAlreadyInProgress(error_message)
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         self.assertEqual(
             (http.client.SERVICE_UNAVAILABLE, error_message),
@@ -445,12 +477,11 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
              response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_handles_TimeoutError(self):
-        middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
             "/api/2.0/" + factory.make_string(), 'POST')
         error_message = "No thanks, I'm trying to give them up."
         error = TimeoutError(error_message)
-        response = middleware.process_exception(request, error)
+        response = self.process_request(request, error)
 
         self.assertEqual(
             (http.client.GATEWAY_TIMEOUT, error_message),
@@ -458,25 +489,34 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
              response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_ignores_non_rpc_errors(self):
-        middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
             "/api/2.0/" + factory.make_string(), 'POST')
         exception = ZeroDivisionError(
             "You may think it's a long walk down the street to the chemist "
             "but that's just peanuts to space!")
-        response = middleware.process_exception(request, exception)
-        self.assertIsNone(response)
+        self.assertRaises(
+            ZeroDivisionError, self.process_request, request, exception)
 
 
 class ExternalComponentsMiddlewareTest(MAASServerTestCase):
     """Tests for the ExternalComponentsMiddleware."""
 
+    def process_request(self, request):
+
+        def get_response(request):
+            return None
+
+        middleware = ExternalComponentsMiddleware(get_response)
+        return middleware(request)
+
+    def quick_process(self):
+        request = factory.make_fake_request(factory.make_string(), 'GET')
+        return self.process_request(request)
+
     def test__checks_connectivity_of_rack_controllers(self):
         getAllClients = self.patch(middleware_module, 'getAllClients')
 
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware = ExternalComponentsMiddleware()
-        middleware.process_request(request)
+        self.quick_process()
 
         self.assertThat(getAllClients, MockCalledOnceWith())
 
@@ -486,9 +526,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         getAllClients = self.patch(middleware_module, 'getAllClients')
         getAllClients.return_value = []
 
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware = ExternalComponentsMiddleware()
-        middleware.process_request(request)
+        self.quick_process()
 
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
@@ -510,9 +548,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         getAllClients.return_value = [
             Mock(ident=rack_controllers[0].system_id)]
 
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware = ExternalComponentsMiddleware()
-        middleware.process_request(request)
+        self.quick_process()
 
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
@@ -537,20 +573,23 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         register_persistent_error(
             COMPONENT.RACK_CONTROLLERS, "Who flung that batter pudding?")
 
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware = ExternalComponentsMiddleware()
-        middleware.process_request(request)
+        self.quick_process()
 
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertIsNone(error)
 
     def test__does_not_suppress_exceptions_from_connectivity_checks(self):
-        middleware = ExternalComponentsMiddleware()
+
+        def get_response(request):
+            return None
+
+        middleware = ExternalComponentsMiddleware(get_response)
+
         error_type = factory.make_exception_type()
         check_rack_controller_connectivity = self.patch(
             middleware, "_check_rack_controller_connectivity")
         check_rack_controller_connectivity.side_effect = error_type
-        self.assertRaises(error_type, middleware.process_request, None)
+        self.assertRaises(error_type, middleware, None)
         self.assertThat(
             check_rack_controller_connectivity, MockCalledOnceWith())
 
@@ -558,38 +597,50 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
 class CSRFHelperMiddlewareTest(MAASServerTestCase):
     """Tests for the CSRFHelperMiddleware."""
 
+    def process_request(self, request):
+
+        def get_response(request):
+            return None
+
+        middleware = CSRFHelperMiddleware(get_response)
+        return middleware(request)
+
     def test_sets_csrf_exception_if_no_session_cookie(self):
-        middleware = CSRFHelperMiddleware()
         cookies = {}
         request = factory.make_fake_request(
             factory.make_string(), 'GET', cookies=cookies)
-        self.assertIsNone(middleware.process_request(request))
+        self.process_request(request)
         self.assertTrue(getattr(request, 'csrf_processing_done', None))
 
     def test_doesnt_set_csrf_exception_if_session_cookie(self):
-        middleware = CSRFHelperMiddleware()
         cookies = {
             settings.SESSION_COOKIE_NAME: factory.make_name('session')
         }
         request = factory.make_fake_request(
             factory.make_string(), 'GET', cookies=cookies)
-        self.assertIsNone(middleware.process_request(request))
+        self.process_request(request)
         self.assertIsNone(getattr(request, 'csrf_processing_done', None))
 
 
 class TestExternalAuthInfoMiddleware(MAASServerTestCase):
 
+    def process_request(self, request):
+
+        def get_response(request):
+            return None
+
+        middleware = ExternalAuthInfoMiddleware(get_response)
+        return middleware(request)
+
     def test_without_external_auth(self):
         request = factory.make_fake_request('/')
-        middleware = ExternalAuthInfoMiddleware()
-        middleware.process_request(request)
+        self.process_request(request)
         self.assertIsNone(request.external_auth_info)
 
     def test_with_external_auth(self):
         Config.objects.set_config('external_auth_url', 'https://example.com')
         request = factory.make_fake_request('/')
-        middleware = ExternalAuthInfoMiddleware()
-        middleware.process_request(request)
+        self.process_request(request)
         self.assertEqual(request.external_auth_info.type, 'macaroon')
         self.assertEqual(
             request.external_auth_info.url, 'https://example.com')
@@ -597,8 +648,7 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
     def test_with_external_auth_strip_trailing_slash(self):
         Config.objects.set_config('external_auth_url', 'https://example.com/')
         request = factory.make_fake_request('/')
-        middleware = ExternalAuthInfoMiddleware()
-        middleware.process_request(request)
+        self.process_request(request)
         self.assertEqual(request.external_auth_info.type, 'macaroon')
         self.assertEqual(
             request.external_auth_info.url, 'https://example.com')

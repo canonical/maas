@@ -212,25 +212,21 @@ TEMPLATES = [
     },
 ]
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
 
-    # Used to append trailing slashes to URLs (APPEND_SLASH defaults on).
-    'django.middleware.common.CommonMiddleware',
+    # Prints request & response to the logs. FIXME: Do we use this? Keep
+    # DebuggingLoggerMiddleware underneath GZipMiddleware so that it deals
+    # with un-compressed responses.
+    'maasserver.middleware.DebuggingLoggerMiddleware',
+
+    # Compress responses.
+    'django.middleware.gzip.GZipMiddleware',
 
     # Used for session and cookies.
     'django.contrib.sessions.middleware.SessionMiddleware',
 
-    # Used for to determine if a request requires protection against
-    # CSRF attacks.
-    'maasserver.middleware.CSRFHelperMiddleware',
-
-    # Used to add external auth info to the request, to avoid getting the
-    # information in multiple places.
-    'maasserver.middleware.ExternalAuthInfoMiddleware',
-
-    # Used to display errors about disconnected clusters. FIXME: This should
-    # not be done on every request!
-    'maasserver.middleware.ExternalComponentsMiddleware',
+    # Used to append trailing slashes to URLs (APPEND_SLASH defaults on).
+    'django.middleware.common.CommonMiddleware',
 
     # Used for rendering and logging exceptions.
     'maasserver.middleware.ExceptionMiddleware',
@@ -243,8 +239,13 @@ MIDDLEWARE_CLASSES = (
     # Same as RPCErrorsMiddleware but for the Web API. FIXME.
     'maasserver.middleware.APIRPCErrorsMiddleware',
 
-    # Sets X-Frame-Options header to SAMEORIGIN.
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Used for to determine if a request requires protection against
+    # CSRF attacks.
+    'maasserver.middleware.CSRFHelperMiddleware',
+
+    # Used to add external auth info to the request, to avoid getting the
+    # information in multiple places.
+    'maasserver.middleware.ExternalAuthInfoMiddleware',
 
     # Cookies to prevent CSRF.
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -252,21 +253,19 @@ MIDDLEWARE_CLASSES = (
     # Creates request.user.
     'django.contrib.auth.middleware.AuthenticationMiddleware',
 
-    # Temporary messages. FIXME: Not sure if it's used.
-    'django.contrib.messages.middleware.MessageMiddleware',
-
     # Demands a user for most web pages. The equivalent for the Web API is
     # handled by Piston.
     'maasserver.middleware.AccessMiddleware',
 
-    # Compress responses.
-    'django.middleware.gzip.GZipMiddleware',
+    # Temporary messages. FIXME: Not sure if it's used.
+    'django.contrib.messages.middleware.MessageMiddleware',
 
-    # Prints request & response to the logs. FIXME: Do we use this? Keep
-    # DebuggingLoggerMiddleware underneath GZipMiddleware so that it deals
-    # with un-compressed responses.
-    'maasserver.middleware.DebuggingLoggerMiddleware',
+    # Sets X-Frame-Options header to SAMEORIGIN.
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
+    # Used to display errors about disconnected clusters. FIXME: This should
+    # not be done on every request!
+    'maasserver.middleware.ExternalComponentsMiddleware',
 )
 
 ROOT_URLCONF = 'maasserver.djangosettings.urls'

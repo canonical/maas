@@ -28,6 +28,8 @@ def global_options(request):
     with RegionConfiguration.open() as config:
         maas_url = config.maas_url
     user_completed_intro = False
+    if not hasattr(request, 'user'):
+        return {}
     if hasattr(request.user, 'userprofile'):
         user_completed_intro = request.user.userprofile.completed_intro
     if request.user.is_authenticated:

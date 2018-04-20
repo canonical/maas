@@ -14,11 +14,17 @@ import sys
 from time import sleep
 from weakref import WeakSet
 
+from django.conf import settings
 from django.core import signals
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    MiddlewareNotUsed,
+)
 from django.core.handlers.wsgi import WSGIHandler
 from django.db import transaction
+from django.http import HttpResponse
 from django.template.response import SimpleTemplateResponse
-from maasserver.exceptions import MAASAPIException
+from django.utils.module_loading import import_string
 from maasserver.utils.django_urls import get_resolver
 from maasserver.utils.orm import (
     gen_retry_intervals,
@@ -37,6 +43,17 @@ from twisted.web import wsgi
 
 
 logger = logging.getLogger(__name__)
+
+
+class InternalErrorResponse(BaseException):
+    """Exception raised to exit the transaction context.
+
+    Used when `get_response` of the handler returns a response of 500.
+    """
+
+    def __init__(self, response):
+        super(InternalErrorResponse).__init__()
+        self.response = response
 
 
 def log_failed_attempt(request, attempt, elapsed, remaining, pause):
@@ -149,30 +166,94 @@ class WebApplicationHandler(WSGIHandler):
         self.__retry_timeout = timeout
         self.__retry = WeakSet()
 
-    def handle_uncaught_exception(self, request, resolver, exc_info):
+    def load_middleware(self):
+        """Override `BaseHandler.load_middleware`.
+
+        Remove the use of built-in convert_exception_to_response, use the ones
+        provided by the class. That allows exceptions to propogate up the
+        middleware instead of wrapping each middleware.
+        """
+        self._request_middleware = []
+        self._view_middleware = []
+        self._template_response_middleware = []
+        self._response_middleware = []
+        self._exception_middleware = []
+
+        if settings.MIDDLEWARE is None:
+            raise ImproperlyConfigured(
+                "Old-style middleware is not supported with "
+                "`WebApplicationHandler`. Use the new settings.MIDDLEWARE "
+                "instead.")
+        else:
+            handler = self._get_response
+            for middleware_path in reversed(settings.MIDDLEWARE):
+                middleware = import_string(middleware_path)
+                try:
+                    mw_instance = middleware(handler)
+                except MiddlewareNotUsed as exc:
+                    continue
+
+                if mw_instance is None:
+                    raise ImproperlyConfigured(
+                        'Middleware factory %s returned None.' % (
+                            middleware_path))
+
+                if hasattr(mw_instance, 'process_view'):
+                    self._view_middleware.insert(0, mw_instance.process_view)
+                if hasattr(mw_instance, 'process_template_response'):
+                    self._template_response_middleware.append(
+                        mw_instance.process_template_response)
+                if hasattr(mw_instance, 'process_exception'):
+                    self._exception_middleware.append(
+                        mw_instance.process_exception)
+
+                handler = mw_instance
+
+        self._middleware_chain = handler
+
+    def handle_uncaught_exception(
+            self, request, resolver, exc_info, reraise=True):
         """Override `BaseHandler.handle_uncaught_exception`.
 
         If a retryable failure is detected, a retry is requested. It's up
         to ``get_response`` to actually do the retry.
         """
-        upcall = super(WebApplicationHandler, self).handle_uncaught_exception
-        response = upcall(request, resolver, exc_info)
-        # Add it to the retry set if this response was caused by a
-        # retryable failure.
         exc_type, exc_value, exc_traceback = exc_info
-        if isinstance(exc_value, RetryTransaction):
+        exc = exc_type(exc_value)
+        exc.__traceback__ = exc_traceback
+        exc.__cause__ = exc_value.__cause__
+
+        if reraise:
+            raise exc from exc.__cause__
+
+        # Re-perform the exception so the process_exception_by_middlware
+        # can process the exception. Any exceptions that cause a retry to
+        # occur place it in the __retry so the `get_response` can handle
+        # performing the retry.
+        try:
+            try:
+                raise exc from exc.__cause__
+            except Exception as exc:
+                return self.process_exception_by_middleware(exc, request)
+        except SystemExit:
+            raise
+        except RetryTransaction:
+            response = HttpResponseConflict()
             self.__retry.add(response)
-        elif is_retryable_failure(exc_value):
-            self.__retry.add(response)
-        elif isinstance(exc_value, MAASAPIException):
-            return exc_value.make_http_response()
-        else:
-            logger.error(
-                "500 Internal Server Error @ %s" % request.path,
-                exc_info=exc_info)
-        # Return the response regardless. This means that we'll get Django's
-        # error page when there's a persistent retryable failure.
-        return response
+            return response
+        except Exception as exc:
+            if is_retryable_failure(exc):
+                response = HttpResponseConflict()
+                self.__retry.add(response)
+                return response
+            else:
+                logger.error(
+                    "500 Internal Server Error @ %s" % request.path,
+                    exc_info=sys.exc_info())
+                return HttpResponse(
+                    content=str(exc).encode('utf-8'),
+                    status=int(http.client.INTERNAL_SERVER_ERROR),
+                    content_type="text/plain; charset=utf-8")
 
     def make_view_atomic(self, view):
         """Make `view` atomic and with a post-commit hook savepoint.
@@ -214,11 +295,18 @@ class WebApplicationHandler(WSGIHandler):
             try:
                 with post_commit_hooks:
                     with transaction.atomic():
-                        return django_get_response(request)
+                        response = django_get_response(request)
+                        if response.status_code == 500:
+                            raise InternalErrorResponse(response)
+                        return response
             except SystemExit:
                 # Allow sys.exit() to actually exit, reproducing behaviour
                 # found in Django's BaseHandler.
                 raise
+            except InternalErrorResponse as exc:
+                # Response is good, but the transaction needed to be rolled
+                # back because the response was a 500 error.
+                return exc.response
             except:
                 # Catch *everything* else, also reproducing behaviour found in
                 # Django's BaseHandler. In practice, we should only really see
@@ -229,7 +317,7 @@ class WebApplicationHandler(WSGIHandler):
                 signals.got_request_exception.send(
                     sender=self.__class__, request=request)
                 return self.handle_uncaught_exception(
-                    request, get_resolver(None), sys.exc_info())
+                    request, get_resolver(None), sys.exc_info(), reraise=False)
 
         # Attempt to start new transactions for up to `__retry_timeout`
         # seconds, at intervals defined by `gen_retry_intervals`, but don't
