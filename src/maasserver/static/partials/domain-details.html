@@ -2,14 +2,17 @@
     <div class="row">
         <div class="col-8">
             <h1 class="page-header__title">
-                {$ domain.displayname $}:
-                <ng-pluralize data-ng-hide="loading" count="domain.hosts"
-                            when="{'one': '{$ domain.hosts $} host,', 'other': '{$ domain.hosts $} hosts,'}"></ng-pluralize>
-                <ng-pluralize data-ng-hide="loading" count="domain.resource_count"
-                            when="{'one': ' {$ domain.resource_count $} record total', 'other': ' {$ domain.resource_count $} records total'}"></ng-pluralize>
+                {$ domain.name $}
             </h1>
             <p class="page-header__status" data-ng-show="loading">
                 <i class="p-icon--spinner u-animation--spin"></i> Loading...
+            </p>
+            <p class="page-header__status" data-ng-show="!loading">
+                <span data-ng-if="isDefaultDomain()">Default domain.</span>
+                <ng-pluralize data-ng-hide="loading" count="domain.hosts"
+                            when="{'0': '', 'one': '{$ domain.hosts $} host;', 'other': '{$ domain.hosts $} hosts;'}"></ng-pluralize>
+                <ng-pluralize data-ng-hide="loading" count="domain.resource_count"
+                            when="{'0': 'No resource records', 'one': ' {$ domain.resource_count $} resource record', 'other': ' {$ domain.resource_count $} resource records'}"></ng-pluralize>
             </p>
         </div>
         <div class="col-4">
