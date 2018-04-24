@@ -67,6 +67,9 @@ angular.module('MAAS').controller('NodesListController', [
             hwe_kernel: null
         };
         $scope.tabs.machines.zoneSelection = null;
+        $scope.tabs.machines.poolSelection = null;
+        $scope.tabs.machines.poolAction = 'select-pool';
+        $scope.tabs.machines.newPool = {};
         $scope.tabs.machines.commissionOptions = {
             enableSSH: false,
             skipNetworking: false,
@@ -104,6 +107,9 @@ angular.module('MAAS').controller('NodesListController', [
             affected_nodes: 0
         };
         $scope.tabs.devices.zoneSelection = null;
+        $scope.tabs.devices.poolSelection = null;
+        $scope.tabs.devices.poolAction = 'select-pool';
+        $scope.tabs.devices.newPool = {};
 
         // Controller tab.
         $scope.tabs.controllers = {};
@@ -137,6 +143,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.controllers.addController = false;
         $scope.tabs.controllers.registerUrl = MAAS_config.register_url;
         $scope.tabs.controllers.registerSecret = MAAS_config.register_secret;
+        $scope.tabs.controllers.poolSelection = null;
+        $scope.tabs.controllers.poolAction = 'select-pool';
+        $scope.tabs.controllers.newPool = {};
 
         // Switch tab.
         $scope.tabs.switches = {};
@@ -168,6 +177,9 @@ angular.module('MAAS').controller('NodesListController', [
             hwe_kernel: null
         };
         $scope.tabs.switches.zoneSelection = null;
+        $scope.tabs.switches.poolSelection = null;
+        $scope.tabs.switches.poolAction = 'select-pool';
+        $scope.tabs.switches.newPool = {};
         $scope.tabs.switches.commissioningSelection = [];
         $scope.tabs.switches.commissionOptions = {
             enableSSH: false,
@@ -252,6 +264,9 @@ angular.module('MAAS').controller('NodesListController', [
             leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
             $scope.tabs[tab].zoneSelection = null;
+            $scope.tabs[tab].poolSelection = null;
+            $scope.tabs[tab].poolAction = 'select-pool';
+            $scope.tabs[tab].newPool = {};
             if(tab === "machines" || tab === "switches") {
                 // Possible for this to be called before the osSelect
                 // direction is initialized. In that case it has not
@@ -564,51 +579,55 @@ angular.module('MAAS').controller('NodesListController', [
         };
 
         // Perform the action on all nodes.
-        $scope.actionGo = function(tab) {
+        $scope.actionGo = function(tabName) {
+            var tab = $scope.tabs[tabName];
             var extra = {};
             var i;
             // Set deploy parameters if a deploy or set zone action.
-            if($scope.tabs[tab].actionOption.name === "deploy" &&
-                angular.isString($scope.tabs[tab].osSelection.osystem) &&
-                angular.isString($scope.tabs[tab].osSelection.release)) {
+            if(tab.actionOption.name === "deploy" &&
+               angular.isString(tab.osSelection.osystem) &&
+               angular.isString(tab.osSelection.release)) {
 
                 // Set extra. UI side the release is structured os/release, but
                 // when it is sent over the websocket only the "release" is
                 // sent.
-                extra.osystem = $scope.tabs[tab].osSelection.osystem;
-                var release = $scope.tabs[tab].osSelection.release;
+                extra.osystem = tab.osSelection.osystem;
+                var release = tab.osSelection.release;
                 release = release.split("/");
                 release = release[release.length-1];
                 extra.distro_series = release;
                 // hwe_kernel is optional so only include it if its specified
-                if(angular.isString($scope.tabs[tab].osSelection.hwe_kernel) &&
-                   ($scope.tabs[tab].osSelection.hwe_kernel.indexOf('hwe-')
-                    >= 0 ||
-                    $scope.tabs[tab].osSelection.hwe_kernel.indexOf('ga-')
-                    >= 0)) {
-                    extra.hwe_kernel = $scope.tabs[tab].osSelection.hwe_kernel;
+                if(angular.isString(tab.osSelection.hwe_kernel) &&
+                   (tab.osSelection.hwe_kernel.indexOf('hwe-') >= 0 ||
+                    tab.osSelection.hwe_kernel.indexOf('ga-') >= 0)) {
+                    extra.hwe_kernel = tab.osSelection.hwe_kernel;
                 }
-            } else if($scope.tabs[tab].actionOption.name === "set-zone" &&
-                angular.isNumber($scope.tabs[tab].zoneSelection.id)) {
+            } else if(tab.actionOption.name === "set-zone" &&
+                angular.isNumber(tab.zoneSelection.id)) {
                 // Set the zone parameter.
-                extra.zone_id = $scope.tabs[tab].zoneSelection.id;
-            } else if($scope.tabs[tab].actionOption.name === "commission") {
-                // Set the commission options.
-                extra.enable_ssh = (
-                    $scope.tabs[tab].commissionOptions.enableSSH);
-                extra.skip_networking = (
-                    $scope.tabs[tab].commissionOptions.skipNetworking);
-                extra.skip_storage = (
-                    $scope.tabs[tab].commissionOptions.skipStorage);
-                extra.commissioning_scripts = [];
-                for(i=0;i<$scope.tabs[tab].commissioningSelection.length;i++) {
-                    extra.commissioning_scripts.push(
-                        $scope.tabs[tab].commissioningSelection[i].id);
+                extra.zone_id = tab.zoneSelection.id;
+            } else if(tab.actionOption.name === "set-pool") {
+                if ((tab.poolAction === 'create-pool') &&
+                    (tab.newPool.name !== undefined)) {
+                    extra.new_pool = tab.newPool;
+                } else if (angular.isNumber(tab.poolSelection.id)) {
+                    // Set the pool parameter.
+                    extra.pool_id = tab.poolSelection.id;
                 }
-                if($scope.tabs[tab].commissionOptions.updateFirmware) {
+            } else if(tab.actionOption.name === "commission") {
+                // Set the commission options.
+                extra.enable_ssh = tab.commissionOptions.enableSSH;
+                extra.skip_networking = tab.commissionOptions.skipNetworking;
+                extra.skip_storage = tab.commissionOptions.skipStorage;
+                extra.commissioning_scripts = [];
+                for(i=0;i<tab.commissioningSelection.length;i++) {
+                    extra.commissioning_scripts.push(
+                        tab.commissioningSelection[i].id);
+                }
+                if(tab.commissionOptions.updateFirmware) {
                     extra.commissioning_scripts.push('update_firmware')
                 }
-                if($scope.tabs[tab].commissionOptions.configureHBA) {
+                if(tab.commissionOptions.configureHBA) {
                     extra.commissioning_scripts.push('configure_hba')
                 }
                 if(extra.commissioning_scripts.length === 0) {
@@ -617,67 +636,62 @@ angular.module('MAAS').controller('NodesListController', [
                     extra.commissioning_scripts.push('none');
                 }
                 extra.testing_scripts = [];
-                for(i=0;i<$scope.tabs[tab].testSelection.length;i++) {
+                for(i=0;i<tab.testSelection.length;i++) {
                     extra.testing_scripts.push(
-                        $scope.tabs[tab].testSelection[i].id);
+                        tab.testSelection[i].id);
                 }
                 if(extra.testing_scripts.length === 0) {
                     // Tell the region not to run any tests.
                     extra.testing_scripts.push('none');
                 }
-            } else if($scope.tabs[tab].actionOption.name === "test") {
-                if(!$scope.tabs[tab].actionProgress.showing_confirmation) {
-                    var progress = $scope.tabs[tab].actionProgress;
-                    for(i=0;i<$scope.tabs[tab].selectedItems.length;i++) {
-                        if($scope.tabs[tab].selectedItems[i].status_code === 6)
+            } else if(tab.actionOption.name === "test") {
+                if(!tab.actionProgress.showing_confirmation) {
+                    var progress = tab.actionProgress;
+                    for(i=0;i<tab.selectedItems.length;i++) {
+                        if(tab.selectedItems[i].status_code === 6)
                         {
                             progress.showing_confirmation = true;
                             progress.affected_nodes++;
                         }
                     }
-                    if($scope.tabs[tab].actionProgress.affected_nodes != 0) {
+                    if(tab.actionProgress.affected_nodes != 0) {
                         return;
                     }
                 }
                 // Set the test options.
-                extra.enable_ssh = (
-                    $scope.tabs[tab].commissionOptions.enableSSH);
+                extra.enable_ssh = tab.commissionOptions.enableSSH;
                 extra.testing_scripts = [];
-                for(i=0;i<$scope.tabs[tab].testSelection.length;i++) {
+                for(i=0;i<tab.testSelection.length;i++) {
                     extra.testing_scripts.push(
-                        $scope.tabs[tab].testSelection[i].id);
+                        tab.testSelection[i].id);
                 }
                 if(extra.testing_scripts.length === 0) {
                     // Tell the region not to run any tests.
                     extra.testing_scripts.push('none');
                 }
-            } else if($scope.tabs[tab].actionOption.name === "release") {
+            } else if(tab.actionOption.name === "release") {
                 // Set the release options.
-                extra.erase = (
-                    $scope.tabs[tab].releaseOptions.erase);
-                extra.secure_erase = (
-                    $scope.tabs[tab].releaseOptions.secureErase);
-                extra.quick_erase = (
-                    $scope.tabs[tab].releaseOptions.quickErase);
+                extra.erase = tab.releaseOptions.erase;
+                extra.secure_erase = tab.releaseOptions.secureErase;
+                extra.quick_erase = tab.releaseOptions.quickErase;
             }
 
             // Setup actionProgress.
-            resetActionProgress(tab);
-            $scope.tabs[tab].actionProgress.total =
-                $scope.tabs[tab].selectedItems.length;
+            resetActionProgress(tabName);
+            tab.actionProgress.total = tab.selectedItems.length;
 
             // Perform the action on all selected items.
-            angular.forEach($scope.tabs[tab].selectedItems, function(node) {
-                $scope.tabs[tab].manager.performAction(
-                    node, $scope.tabs[tab].actionOption.name,
+            angular.forEach(tab.selectedItems, function(node) {
+                tab.manager.performAction(
+                    node, tab.actionOption.name,
                     extra).then(function() {
-                        $scope.tabs[tab].actionProgress.completed += 1;
+                        tab.actionProgress.completed += 1;
                         node.action_failed = false;
-                        updateSelectedItems(tab);
+                        updateSelectedItems(tabName);
                     }, function(error) {
-                        addErrorToActionProgress(tab, error, node);
+                        addErrorToActionProgress(tabName, error, node);
                         node.action_failed = true;
-                        updateSelectedItems(tab);
+                        updateSelectedItems(tabName);
                     });
             });
         };

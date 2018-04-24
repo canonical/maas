@@ -123,8 +123,8 @@
                             </ul>
                         </form>
                     </div>
-                    <div class="col-12 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
-                        <form class="p-form p-form--inline">
+                    <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
+                        <form class="p-form">
                             <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
                                 <div class="p-form__control u-clearfix">
                                     <input id="{$ tab $}-enableSSH" type="checkbox"
@@ -140,7 +140,7 @@
                             <div data-ng-if="tabs[tab].actionOption.name === 'release'">
                                 <div data-maas-release-options="tabs[tab].releaseOptions"></div>
                             </div>
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
+                            <div class="p-form__group col-5 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
                                 <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
                                 <div class="p-form__control u-clearfix">
                                     <select name="zone" id="{$ tab $}-zone3"
@@ -150,20 +150,52 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="p-form__group ng-hide" data-ng-show="MAAS_config.is_premium && tabs[tab].actionOption.name === 'set-pool'">
-                                <label for="{$ tab $}-pool3" class="p-form__label">Select Pool</label>
-                                <div class="p-form__control u-clearfix">
-                                    <select name="pool" id="{$ tab $}-pool3"
-                                        data-ng-model="tabs[tab].poolSelection"
-                                        data-ng-options="pool as pool.name for pool in pools">
-                                        <option value="" disabled="disabled">Choose a pool</option>
-                                    </select>
-                                </div>
+                            <div class="ng-hide" data-ng-show="MAAS_config.is_premium && tabs[tab].actionOption.name === 'set-pool'">
+                              <div class="row">
+                                <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
+                                  <li class="p-inline-list__item col-3">
+                                    <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked">
+                                    <label for="pool-select">Select pool</label>
+                                </li>
+                                <li class="p-inline-list__item">
+                                    <input type="radio" name="pool-action" id="pool-create" data-ng-model="tabs[tab].poolAction" value="create-pool">
+                                    <label for="pool-create">Create pool</label>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'select-pool'">
+                            <div class="col-5 p-form__group">
+                                <label for="{$ tab $}-pool3">Pool</label>
+                                <select name="pool" id="{$ tab $}-pool3"
+                                    data-ng-model="tabs[tab].poolSelection"
+                                    data-ng-options="pool as pool.name for pool in pools">
+                                    <option value="" disabled="disabled">Select pool</option>
+                                </select>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                        <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'create-pool'">
+                            <div class="col-5 p-form__group">
+                              <label for="{$ tab $}-pool4">Pool name</label>
+                              <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name">
+                              <label for="{$ tab $}-pool5">Users</label>
+                              <span id="{$ tab $}-pool5"
+                                    data-maas-resource-pool-access="users"
+                                    data-ng-model="tabs[tab].newPool.users"
+                                    data-collection="users"
+                                    class="tags--inline">
+                              </span>
+                              <label for="{$ tab $}-pool6">Groups</label>
+                              <span id="{$ tab $}-pool6"
+                                    data-maas-resource-pool-access="groups"
+                                    data-ng-model="tabs[tab].newPool.groups"
+                                    data-collection="groups"
+                                    class="tags--inline">
+                              </span>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="page-header__controls row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
+                <div class="row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
                     <div class="col-12">
                         <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
                         <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
