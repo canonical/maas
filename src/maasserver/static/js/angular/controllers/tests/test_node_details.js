@@ -249,7 +249,8 @@ describe("NodeDetailsController", function() {
             editing: false,
             type: null,
             bmc_node_count: 0,
-            parameters: {}
+            parameters: {},
+            in_pod: false
         });
     });
 
@@ -1884,6 +1885,7 @@ describe("NodeDetailsController", function() {
             $scope.editPower();
             expect($scope.power.editing).toBe(true);
         });
+
     });
 
     describe("cancelEditPower", function() {
@@ -1913,6 +1915,17 @@ describe("NodeDetailsController", function() {
             $scope.cancelEditPower();
             expect($scope.power.editing).toBe(false);
         });
+
+        it("sets in_pod to true for node in pod", function() {
+            var controller = makeController();
+            node.power_type = makeName("power");
+            node.pod = makeName("pod");
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.cancelEditPower();
+            expect($scope.power.in_pod).toBe(true);
+        });
+
     });
 
     describe("saveEditPower", function() {

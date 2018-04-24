@@ -198,7 +198,8 @@ describe("maasPowerParameters", function() {
                 expect(select.attr("data-ng-options")).toBe(
                     "type as type.description for type " +
                     "in maasPowerParameters track by type.name");
-                expect(select.attr("data-ng-disabled")).toBe("ngDisabled");
+                expect(select.attr("data-ng-disabled")).toBe(
+                    "ngDisabled || ngModel.in_pod");
             });
 
         it("creates option with description", function() {

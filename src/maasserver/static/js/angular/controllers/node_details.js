@@ -100,7 +100,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             editing: false,
             type: null,
             bmc_node_count: 0,
-            parameters: {}
+            parameters: {},
+            in_pod: false
         };
 
         // Get the display text for device ip assignment type.
@@ -215,6 +216,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                $scope.node.node_type === 0) {
                 $scope.power.editing = true;
             }
+
+            $scope.power.in_pod = angular.isDefined($scope.node.pod);
         }
 
         // Updates the currently selected items in the summary section.

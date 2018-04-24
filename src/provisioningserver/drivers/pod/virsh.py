@@ -839,7 +839,7 @@ class VirshPodDriver(PodDriver):
             required=True),
         make_setting_field(
             'default_storage_pool', "Default storage pool (optional)",
-            required=False),
+            scope=SETTING_SCOPE.BMC, required=False),
     ]
     default_storage_pool = None
     ip_extractor = make_ip_extractor(

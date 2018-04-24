@@ -4503,6 +4503,23 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(bmc_parameters, node.bmc.power_parameters)
         self.assertEqual("10.0.2.1", node.bmc.ip_address.ip)
 
+    def test_default_storage_pool_not_part_of_power_parameters(self):
+        node = factory.make_Node(power_type='virsh')
+        default_storage_pool = factory.make_name('default_storage_pool')
+        bmc_parameters = dict(
+            power_address="qemu+ssh://trapnine@10.0.2.1/system",
+            power_pass=factory.make_string(),
+            default_storage_pool=default_storage_pool,
+            )
+        node_parameters = dict(
+            power_id="maas-x",
+            )
+        parameters = {**bmc_parameters, **node_parameters}
+        node.power_parameters = parameters
+        node.save()
+        node = reload_object(node)
+        self.assertNotIn(default_storage_pool, node.power_parameters)
+
     def test_unknown_power_parameter_stored_on_node(self):
         node = factory.make_Node(power_type='hmc')
         bmc_parameters = dict(power_address=factory.make_ipv4_address())
