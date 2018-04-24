@@ -24,6 +24,7 @@ from provisioningserver.import_images.helpers import (
     ImageSpec,
     maaslog,
 )
+from simplestreams import util as sutil
 from simplestreams.mirrors import (
     BasicMirrorWriter,
     UrlMirrorReader,
@@ -217,6 +218,13 @@ class RepoDumper(BasicMirrorWriter):
             # stack where it is then acted upon, to empty out BootSourceCache
             # for example. True story.
             raise
+        except sutil.SignatureMissingException as error:
+            # Handle this error here so we can log for both the region and rack
+            # have been unable to use simplestreams.
+            maaslog.error(
+                "Failed to download image descriptions with Simplestreams "
+                "(%s). Verify network connectivity." % error)
+            raise
 
 
 def value_passes_filter_list(filter_list, property_value):
@@ -309,8 +317,14 @@ def download_image_descriptions(
     mirror, rpath = path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring)
     if user_agent is None:
+        # If user_agent is NOT set, we know we are downloading descriptions
+        # from the Region controller *by* the Rack controller.
+        maaslog.info("Rack downloading image descriptions from '%s'.", path)
         reader = UrlMirrorReader(mirror, policy=policy)
     else:
+        # Since user_agent is set, we know we are downloading descriptions
+        # from the Images repository *by* the Region.
+        maaslog.info("Region downloading image descriptions from '%s'.", path)
         try:
             reader = UrlMirrorReader(
                 mirror, policy=policy, user_agent=user_agent)

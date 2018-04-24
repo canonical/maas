@@ -47,6 +47,7 @@ from provisioningserver.utils.twisted import (
     FOREVER,
 )
 from requests.exceptions import ConnectionError
+from simplestreams import util as sutil
 from twisted.internet.defer import inlineCallbacks
 
 
@@ -281,6 +282,14 @@ def cache_boot_sources():
                         commissioning_osystem, commissioning_series),
                     ident='commissioning_series_unavailable')
 
+    @transactional
+    def get_proxy():
+        enabled = Config.objects.get_config("enable_http_proxy")
+        proxy = Config.objects.get_config("http_proxy")
+        if enabled and proxy:
+            return proxy
+        return False
+
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
     yield deferToDatabase(set_simplestreams_env)
@@ -296,21 +305,38 @@ def cache_boot_sources():
                     [source],
                     user_agent=user_agent)
             except (IOError, ConnectionError) as error:
-                errors.append(
-                    "Failed to import images from boot source "
+                msg = (
+                    "Failed to import images from "
                     "%s: %s" % (source["url"], error))
+                errors.append(msg)
+                maaslog.error(msg)
+            except sutil.SignatureMissingException as error:
+                # Raise an error to the UI.
+                proxy = yield deferToDatabase(get_proxy)
+                if not proxy:
+                    msg = (
+                        "Failed to import images from %s (%s). Verify "
+                        "network connectivity and try again." % (
+                            source["url"], error))
+                else:
+                    msg = (
+                        "Failed to import images from %s (%s). Verify "
+                        "network connectivity via your external "
+                        "proxy (%s) and try again." % (
+                            source["url"], error, proxy))
+                errors.append(msg)
             else:
                 yield deferToDatabase(_update_cache, source, descriptions)
 
     yield deferToDatabase(check_commissioning_series_selected)
 
-    maaslog.info("Updated boot sources cache.")
-
     component = COMPONENT.REGION_IMAGE_IMPORT
     if len(errors) > 0:
+        maaslog.error("Unable to update boot sources cache.")
         yield deferToDatabase(
             register_persistent_error, component,
             "<br>".join(map(html.escape, errors)))
     else:
+        maaslog.info("Updated boot sources cache.")
         yield deferToDatabase(
             discard_persistent_error, component)

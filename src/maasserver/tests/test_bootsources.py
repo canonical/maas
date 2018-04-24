@@ -479,7 +479,7 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
             IOError(error_text_two),
             ]
         cache_boot_sources()
-        base_error = "Failed to import images from boot source {url}: {err}"
+        base_error = "Failed to import images from {url}: {err}"
         error_part_one = base_error.format(
             url=sources[0].url, err=html.escape(error_text_one))
         error_part_two = base_error.format(
