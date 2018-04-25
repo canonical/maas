@@ -251,7 +251,10 @@ def maybe_change_power_state(
             log.err, "%s: Power %s failed." % (
                 hostname, power_change))
 
-        return d
+        # LP: 1761600 - Returning d will cause d to be resolved with the
+        # caller. This causes power actions in the UI/API such as deploy,
+        # commission, or release to wait for the power action to complete
+        # before finishing.
 
     elif current_power_change == power_change:
         # What we want is already happening; let it continue.

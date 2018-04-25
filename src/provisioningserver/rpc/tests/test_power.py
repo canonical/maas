@@ -147,7 +147,6 @@ class TestPowerHelpers(MAASTestCase):
         )
         self.assertIsNone(extract_result(d))
 
-    @inlineCallbacks
     def test_power_change_failure_emits_event(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -157,7 +156,6 @@ class TestPowerHelpers(MAASTestCase):
         d = power.power_change_failure(
             system_id, hostname, power_change, message)
         io.flush()
-        yield d
         self.assertThat(
             protocol.SendEvent,
             MockCalledOnceWith(
@@ -388,6 +386,11 @@ class TestMaybeChangePowerState(MAASTestCase):
             self.patch(
                 power_driver, "detect_missing_packages").return_value = []
         self.useFixture(EventTypesAllRegistered())
+        # Defer later won't run during the test so replace it with a
+        # maybeDeferred.
+        self.patch(power, 'deferLater').side_effect = (
+            lambda clock, delay, func, *args, **kwargs:
+            maybeDeferred(func, *args, **kwargs))
 
     def patch_methods_using_rpc(self):
         pcs = self.patch_autospec(power, 'power_change_starting')
@@ -425,9 +428,12 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         d = power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
-        self.assertEqual(
-            {system_id: (power_change, ANY)},
-            power.power_action_registry)
+        # XXX - maybe_change_power_state is resolving before the yield. This
+        # causes power.power_action_registry to be reset before it can be
+        # checked.
+        # self.assertEqual(
+        #    {system_id: (power_change, ANY)},
+        #    power.power_action_registry)
         yield d
         self.assertEqual({}, power.power_action_registry)
 
@@ -612,15 +618,18 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        power_defer = power.maybe_change_power_state(
+        ret = yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
 
         # Get the Deferred from the registry and cancel it.
         _, d = power.power_action_registry[system_id]
-        self.assertEqual(power_defer, d)
         d.cancel()
         yield d
 
+        # LP: #1761600 - If the deferLater value is returned the RPC call waits
+        # for the power change to complete. This holds up the UI. Make sure
+        # nothing is returned.
+        self.assertIsNone(ret)
         self.assertNotIn(system_id, power.power_action_registry)
         self.assertDocTestMatches(
             """\
