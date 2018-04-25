@@ -61,8 +61,9 @@
                             </div>
                         </div>
                         <div class="row" data-ng-if="iprange.type !== 'dynamic'">
-                            <maas-obj-field type="text" key="comment" label="Purpose" placeholder="IP range purpose (optional)"
-                                label-width="2" input-width="4"></maas-obj-field>
+                            <div class="col-6">
+                                <maas-obj-field type="text" key="comment" label="Purpose" placeholder="IP range purpose (optional)" label-width="2" input-width="4"></maas-obj-field>
+                            </div>
                         </div>
                         <div class="row" data-ng-if="iprange.type === 'dynamic'">
                             <div class="p-form__group">
@@ -93,7 +94,7 @@
                 <td class="col-12">No IP ranges have been reserved for this subnet.</td>
             </tr>
             <tr class="p-table-expanding__panel col-12" data-ng-if="newRange">
-                <td class="p-form p-form--inline ">
+                <td class="p-form">
                     <maas-obj-form obj="newRange" manager="iprangeManager" manager-method="createItem"
                         table-form="true" save-on-blur="false" after-save="cancelAddRange">
                         <div class="u-hide u-show--small">
