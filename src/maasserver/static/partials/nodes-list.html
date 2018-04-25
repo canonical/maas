@@ -127,8 +127,7 @@
                         <form class="p-form">
                             <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
                                 <div class="p-form__control u-clearfix">
-                                    <input id="{$ tab $}-enableSSH" type="checkbox"
-                                        data-ng-model="tabs[tab].commissionOptions.enableSSH">
+                                    <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH"></input>
                                 </div>
                                 <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
                             </div>
@@ -143,57 +142,45 @@
                             <div class="p-form__group col-5 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
                                 <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
                                 <div class="p-form__control u-clearfix">
-                                    <select name="zone" id="{$ tab $}-zone3"
-                                        data-ng-model="tabs[tab].zoneSelection"
-                                        data-ng-options="zone as zone.name for zone in zones">
+                                    <select name="zone" id="{$ tab $}-zone3" data-ng-model="tabs[tab].zoneSelection" data-ng-options="zone as zone.name for zone in zones">
                                         <option value="" disabled="disabled">Choose a zone</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="ng-hide" data-ng-show="MAAS_config.is_premium && tabs[tab].actionOption.name === 'set-pool'">
-                              <div class="row">
-                                <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
-                                  <li class="p-inline-list__item col-3">
-                                    <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked">
-                                    <label for="pool-select">Select pool</label>
-                                </li>
-                                <li class="p-inline-list__item">
-                                    <input type="radio" name="pool-action" id="pool-create" data-ng-model="tabs[tab].poolAction" value="create-pool">
-                                    <label for="pool-create">Create pool</label>
-                                </li>
-                            </ul>
-                        </div>
-                        <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'select-pool'">
-                            <div class="col-5 p-form__group">
-                                <label for="{$ tab $}-pool3">Pool</label>
-                                <select name="pool" id="{$ tab $}-pool3"
-                                    data-ng-model="tabs[tab].poolSelection"
-                                    data-ng-options="pool as pool.name for pool in pools">
-                                    <option value="" disabled="disabled">Select pool</option>
-                                </select>
+                                <div class="row">
+                                    <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
+                                        <li class="p-inline-list__item col-3">
+                                            <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked"></input>
+                                            <label for="pool-select">Select pool</label>
+                                        </li>
+                                        <li class="p-inline-list__item">
+                                            <input type="radio" name="pool-action" id="pool-create" data-ng-model="tabs[tab].poolAction" value="create-pool"></input>
+                                            <label for="pool-create">Create pool</label>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'select-pool'">
+                                    <div class="col-5 p-form__group">
+                                        <label for="{$ tab $}-pool3">Pool</label>
+                                        <select name="pool" id="{$ tab $}-pool3" data-ng-model="tabs[tab].poolSelection" data-ng-options="pool as pool.name for pool in pools">
+                                            <option value="" disabled="disabled">Select pool</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'create-pool'">
+                                    <div class="col-5 p-form__group">
+                                        <label for="{$ tab $}-pool4">Pool name</label>
+                                        <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name"></input>
+                                        <label for="{$ tab $}-pool5">Users</label>
+                                        <span id="{$ tab $}-pool5" data-maas-resource-pool-access="users" data-ng-model="tabs[tab].newPool.users" data-collection="users" class="tags--inline"></span>
+                                        <label for="{$ tab $}-pool6">Groups</label>
+                                        <span id="{$ tab $}-pool6" data-maas-resource-pool-access="groups" data-ng-model="tabs[tab].newPool.groups" data-collection="groups" class="tags--inline"></span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'create-pool'">
-                            <div class="col-5 p-form__group">
-                              <label for="{$ tab $}-pool4">Pool name</label>
-                              <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name">
-                              <label for="{$ tab $}-pool5">Users</label>
-                              <span id="{$ tab $}-pool5"
-                                    data-maas-resource-pool-access="users"
-                                    data-ng-model="tabs[tab].newPool.users"
-                                    data-collection="users"
-                                    class="tags--inline">
-                              </span>
-                              <label for="{$ tab $}-pool6">Groups</label>
-                              <span id="{$ tab $}-pool6"
-                                    data-maas-resource-pool-access="groups"
-                                    data-ng-model="tabs[tab].newPool.groups"
-                                    data-collection="groups"
-                                    class="tags--inline">
-                              </span>
-                            </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
                 <div class="row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
                     <div class="col-12">
