@@ -1,8 +1,9 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Functionality to refresh rack controller hardware and networking details."""
 
+import copy
 import os
 import socket
 import stat
@@ -157,6 +158,14 @@ def runscripts(scripts, url, creds, tmpdir):
         stdout_path = os.path.join(out_dir, stdout_name)
         stderr_name = '%s.err' % script_name
         stderr_path = os.path.join(out_dir, stderr_name)
+        result_name = '%s.yaml' % script_name
+        result_path = os.path.join(out_dir, result_name)
+
+        env = copy.deepcopy(os.environ)
+        env['OUTPUT_COMBINED_PATH'] = combined_path
+        env['OUTPUT_STDOUT_PATH'] = stdout_path
+        env['OUTPUT_STDERR_PATH'] = stderr_path
+        env['RESULT_PATH'] = result_path
 
         timeout = builtin_script.get('timeout')
         if timeout is None:
@@ -165,7 +174,8 @@ def runscripts(scripts, url, creds, tmpdir):
             timeout_seconds = timeout.seconds
 
         try:
-            proc = Popen(script_path, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
+            proc = Popen(
+                script_path, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env)
             capture_script_output(
                 proc, combined_path, stdout_path, stderr_path, timeout_seconds)
         except OSError as e:
@@ -203,6 +213,8 @@ def runscripts(scripts, url, creds, tmpdir):
                 stdout_name: open(stdout_path, 'rb').read(),
                 stderr_name: open(stderr_path, 'rb').read(),
             }
+            if os.path.exists(result_path):
+                files[result_name] = open(result_path, 'rb').read()
             signal_wrapper(
                 url, creds, 'WORKING', files=files,
                 exit_status=proc.returncode,

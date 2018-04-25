@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test refresh functions."""
@@ -10,6 +10,7 @@ from datetime import timedelta
 import os
 from pathlib import Path
 import random
+import sys
 import tempfile
 from textwrap import dedent
 from unittest.mock import sentinel
@@ -129,18 +130,27 @@ class TestHelpers(MAASTestCase):
 
 
 class TestRefresh(MAASTestCase):
-    def patch_scripts_success(self, script_name=None, timeout=None):
+
+    def setUp(self):
+        super().setUp()
+        # When running scripts in a tty MAAS outputs the results to help with
+        # debug. Quiet the output when running in tests.
+        self.patch(sys, 'stdout')
+
+    def patch_scripts_success(
+            self, script_name=None, timeout=None, script_content=None):
         if script_name is None:
             script_name = factory.make_name('script_name')
         if timeout is None:
             timeout = timedelta(seconds=random.randint(1, 500))
-        TEST_SCRIPT = dedent("""\
-            #!/bin/bash
-            echo 'test script'
-            """)
+        if script_content is None:
+            script_content = dedent("""\
+                #!/bin/bash
+                echo 'test script'
+                """)
         refresh.NODE_INFO_SCRIPTS = OrderedDict([
             (script_name, {
-                'content': TEST_SCRIPT.encode('ascii'),
+                'content': script_content.encode('ascii'),
                 'name': script_name,
                 'run_on_controller': True,
                 'timeout': timeout,
@@ -216,7 +226,12 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_results(self):
         signal = self.patch(refresh, 'signal')
         script_name = factory.make_name('script_name')
-        self.patch_scripts_success(script_name)
+        script_content = dedent("""\
+        #!/bin/bash
+        echo 'test script'
+        echo '{status: skipped}' > $RESULT_PATH
+        """)
+        self.patch_scripts_success(script_name, script_content=script_content)
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
@@ -238,10 +253,33 @@ class TestRefresh(MAASTestCase):
                 script_name: b'test script\n',
                 '%s.out' % script_name: b'test script\n',
                 '%s.err' % script_name: b'',
+                '%s.yaml' % script_name: b'{status: skipped}\n',
             },
             exit_status=0,
             error='Finished %s [1/1]: 0' % script_name,
         ))
+
+    def test_refresh_sets_env_vars(self):
+        self.patch(refresh, 'signal')
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_failure(script_name)
+        mock_popen = self.patch(refresh, 'Popen')
+        mock_popen.side_effect = OSError(8, 'Exec format error')
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+
+        env = mock_popen.call_args[1]['env']
+        for name in [
+                'OUTPUT_COMBINED_PATH', 'OUTPUT_STDOUT_PATH',
+                'OUTPUT_STDERR_PATH', 'RESULT_PATH']:
+            self.assertIn(name, env)
+            self.assertIn(script_name, env[name])
 
     def test_refresh_signals_failure_on_unexecutable_script(self):
         signal = self.patch(refresh, 'signal')

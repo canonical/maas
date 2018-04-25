@@ -32,7 +32,9 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import node_info_scripts as node_info_module
 from provisioningserver.refresh.node_info_scripts import (
+    BLOCK_DEVICES_OUTPUT_NAME,
     make_function_call_script,
+    VIRTUALITY_OUTPUT_NAME,
     VIRTUALITY_SCRIPT,
 )
 from provisioningserver.utils import typed
@@ -890,14 +892,22 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
 
     def test__quietly_exits_in_container(self):
         script_dir = self.useFixture(TempDirectory()).path
-        script_path = os.path.join(script_dir, '00-maas-07-block-devices')
-        virtuality_result_path = os.path.join(script_dir, 'out')
-        os.makedirs(virtuality_result_path)
-        virtuality_result_path = os.path.join(
-            virtuality_result_path, '00-maas-02-virtuality')
+        script_path = os.path.join(script_dir, BLOCK_DEVICES_OUTPUT_NAME)
+        out_path = os.path.join(script_dir, 'out')
+        os.makedirs(out_path)
+        virtuality_result_path = os.path.join(out_path, VIRTUALITY_OUTPUT_NAME)
+        storage_result_path = os.path.join(
+            out_path, '%s.yaml' % BLOCK_DEVICES_OUTPUT_NAME)
+        self.patch(node_info_module.os.environ.get).return_value = (
+            storage_result_path)
         open(virtuality_result_path, 'w').write('lxc\n')
+        os.environ['RESULT_PATH'] = storage_result_path
         self.assertItemsEqual(
             [], self.call_gather_physical_block_devices(file_path=script_path))
+        self.assertTrue(os.path.exists(storage_result_path))
+        self.assertEqual(
+            open(storage_result_path, 'r').read(), '{status: skipped}\n')
+        os.environ.pop('RESULT_PATH')
 
 
 class TestVirtualityScript(MAASTestCase):

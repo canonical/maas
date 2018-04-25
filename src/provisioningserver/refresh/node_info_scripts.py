@@ -452,6 +452,8 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     import sys
     from subprocess import check_output
 
+    import yaml
+
     # XXX: Set LC_* and LANG environment variables to C.UTF-8 explicitly.
 
     def _path_to_idpath(path):
@@ -485,6 +487,10 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
                 'Unable to detect block devices while running in container!',
                 file=sys.stderr)
             print('[]')
+            result_path = os.environ.get('RESULT_PATH')
+            if result_path is not None:
+                with open(result_path, 'w') as results_file:
+                    yaml.safe_dump({'status': 'skipped'}, results_file)
             return
 
     # Grab the block devices from lsblk. Excludes RAM devices
