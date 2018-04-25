@@ -1,7 +1,29 @@
 @mixin maas-table-widths {
   @function cell-percentage-width($percentage-width){
-    //Remove the table margin from the provided percentage
+    // Remove the table margin from the provided percentage
     @return $percentage-width - 3.2877%;
+  }
+
+  @mixin table-sortable-adjust($breakpoint) {
+    // At a set breakpoint position the sorting chevron above the table header
+    @media (max-width: $breakpoint) {
+      &,
+      .is-sorted {
+        position: relative;
+
+        &::after {
+          position: absolute;
+          top: 0;
+          left: calc(50% - 8px);
+        }
+      }
+
+      // When the sortable element is within the table header adjust the top
+      //position to provide space
+      .is-sorted::after {
+        top: -.75rem;
+      }
+    }
   }
 
   .p-table--pods {
@@ -170,10 +192,40 @@
     .p-table__row {
       th, td {
         &:nth-child(1) {
+          @include table-sortable-adjust(990px);
           width: 20%;
+        }
+        &:nth-child(2) {
+          @include table-sortable-adjust(1150px);
+          width: 10%;
+        }
+        &:nth-child(3) {
+          width: 4%;
+        }
+        &:nth-child(4) {
+          width: 20%;
+        }
+        &:nth-child(5) {
+          @include table-sortable-adjust(1100px);
+          width: 10%;
+        }
+        &:nth-child(6) {
+          @include table-sortable-adjust(1600px);
+          width: 7%;
+        }
+        &:nth-child(7) {
+          @include table-sortable-adjust(1390px);
+          width: 10%;
+        }
+        &:nth-child(8) {
+          @include table-sortable-adjust(1600px);
+          width: 7%;
+        }
+        &:nth-child(9) {
+          @include table-sortable-adjust(1600px);
+          width: 12%;
         }
       }
     }
   }
-
 }
