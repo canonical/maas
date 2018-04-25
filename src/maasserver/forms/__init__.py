@@ -1416,6 +1416,11 @@ class UserGroupForm(MAASModelForm):
             'local',
             )
 
+    def clean(self):
+        if self.is_update and not self.instance.local:
+            raise ValidationError("Can't edit non-local group")
+        return super().clean()
+
     def clean_local(self):
         new_local = self.cleaned_data['local']
         if self.is_update and new_local != self.instance.local:

@@ -78,6 +78,15 @@ class TestUserGroupForm(MAASServerTestCase):
             form.errors['local'].as_data()[0].message,
             "Can't change user group type")
 
+    def test_update_usergroup_not_local_no_change(self):
+        group = factory.make_UserGroup(local=False)
+        form = UserGroupForm(
+            data={'name': factory.make_name()}, instance=group)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors['__all__'].as_data()[0].message,
+            "Can't edit non-local group")
+
     def test_renames_group(self):
         group = factory.make_UserGroup()
         new_name = factory.make_name('group')
