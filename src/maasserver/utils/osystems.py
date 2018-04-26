@@ -416,7 +416,7 @@ def get_release_version_from_string(string):
             ubuntu_release = get_release_from_db(release)
         if ubuntu_release is None:
             raise ValueError(
-                "%s not found amoungst the known Ubuntu releases!" % string)
+                "%s not found amongst the known Ubuntu releases!" % string)
         # Remove 'LTS' from version if it exists
         version = ubuntu_release['version'].split(' ')[0]
         # Convert the version into a list of ints

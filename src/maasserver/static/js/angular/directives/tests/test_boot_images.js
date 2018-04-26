@@ -1,4 +1,4 @@
-/* Copyright 2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for boot images directive.
@@ -536,20 +536,20 @@ describe("maasBootImages", function() {
 
     describe("selectDefaults", function() {
 
-        it("selects xenial and amd64", function() {
+        it("selects bionic and amd64", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            var xenial = {
-                name: 'xenial'
+            var bionic = {
+                name: 'bionic'
             };
             var amd64 = {
                 name: 'amd64'
             };
-            scope.source.releases = [xenial];
+            scope.source.releases = [bionic];
             scope.source.arches = [amd64];
             scope.selectDefaults();
 
-            expect(scope.source.selections.releases).toEqual([xenial]);
+            expect(scope.source.selections.releases).toEqual([bionic]);
             expect(scope.source.selections.arches).toEqual([amd64]);
         });
     });

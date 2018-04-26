@@ -1,4 +1,4 @@
-/* Copyright 2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Boot images directive.
@@ -208,10 +208,10 @@ angular.module('MAAS').directive('maasBootImages', [
                 };
 
                 // Select the default images that should be selected. Current
-                // defaults are '16.04 LTS' and 'amd64'.
+                // defaults are '18.04 LTS' and 'amd64'.
                 $scope.selectDefaults = function() {
                     angular.forEach($scope.source.releases, function(release) {
-                        if(release.name === "xenial") {
+                        if(release.name === "bionic") {
                             $scope.source.selections.releases.push(release);
                         }
                     });

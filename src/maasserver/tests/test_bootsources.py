@@ -135,11 +135,11 @@ class TestHelpers(MAASServerTestCase):
             selection.release: selection
             for selection in selections
             }
-        self.assertItemsEqual(['xenial'], by_release.keys())
+        self.assertItemsEqual(['bionic'], by_release.keys())
         self.assertAttributes(
-            by_release['xenial'],
+            by_release['bionic'],
             {
-                'release': 'xenial',
+                'release': 'bionic',
                 'arches': ['amd64'],
                 'subarches': ['*'],
                 'labels': ['*'],

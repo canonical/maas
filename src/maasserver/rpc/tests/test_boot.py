@@ -11,7 +11,6 @@ from unittest.mock import ANY
 from maasserver import server_address
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
-    BOOT_RESOURCE_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -273,7 +272,7 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         expected_arch = tuple(
             make_usable_architecture(
-                self, arch_name="i386", subarch_name="hwe-16.04").split("/"))
+                self, arch_name="i386", subarch_name="hwe-18.04").split("/"))
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         observed_arch = observed_config["arch"], observed_config["subarch"]
@@ -340,7 +339,7 @@ class TestGetConfig(MAASServerTestCase):
         factory.make_default_ubuntu_release_bootable(arch)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, arch=arch)
-        self.assertEqual('hwe-16.04', observed_config['subarch'])
+        self.assertEqual('hwe-18.04', observed_config['subarch'])
 
     def test__enlistment_return_generic_when_none(self):
         rack_controller = factory.make_RackController()
@@ -672,17 +671,14 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.COMMISSIONING,
-            min_hwe_kernel="hwe-16.10")
+            min_hwe_kernel="hwe-18.04")
         arch = node.split_arch()[0]
-        ubuntu = factory.make_default_ubuntu_release_bootable(arch)
-        factory.make_usable_boot_resource(
-            name=ubuntu.name, architecture="%s/hwe-16.10" % arch,
-            kflavor='generic', rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        factory.make_default_ubuntu_release_bootable(arch)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
             query_count=21)
-        self.assertEqual("hwe-16.10", observed_config["subarch"])
+        self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_converted(self):
         rack_controller = factory.make_RackController()
@@ -696,15 +692,18 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
             query_count=21)
-        self.assertEqual("hwe-16.04", observed_config["subarch"])
+        self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_reports_missing(self):
+        factory.make_BootSourceCache(
+            release="18.10", subarch="hwe-18.10", release_title="18.10 CC",
+            release_codename="CC")
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node(
             status=NODE_STATUS.COMMISSIONING,
-            min_hwe_kernel="hwe-17.04")
+            min_hwe_kernel="hwe-18.10")
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -722,7 +721,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
             query_count=23)
-        self.assertEqual("hwe-16.04", observed_config["subarch"])
+        self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__returns_ubuntu_os_series_for_ubuntu_xinstall(self):
         self.patch(boot_module, 'get_boot_filenames').return_value = (

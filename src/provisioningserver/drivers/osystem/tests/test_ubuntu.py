@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the UbuntuOS module."""
@@ -19,7 +19,10 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 class TestUbuntuOS(MAASTestCase):
 
     def get_lts_release(self):
-        return UbuntuDistroInfo().lts()
+        # XXX ltrager 2018-01-08 - Force the default to be bionic before
+        # bionic release for testing with MAAS 2.4.0.
+        # return UbuntuDistroInfo().lts()
+        return 'bionic'
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()
@@ -57,7 +60,7 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_lts_release(self):
         # Canary so we know when the lts changes
         osystem = UbuntuOS()
-        self.assertEquals('xenial', osystem.get_lts_release())
+        self.assertEquals('bionic', osystem.get_lts_release())
 
     def test_get_default_release(self):
         osystem = UbuntuOS()
