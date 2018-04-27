@@ -325,6 +325,15 @@ describe("SubnetDetailsController", function() {
             expect($scope.getUsageForIP(ipAddress)).toBe('BMC');
         });
 
+        it("handles containers", function() {
+            makeControllerResolveSetActiveItem();
+            var ip = {};
+            ip.node_summary = {};
+            ip.node_summary.node_type = 1;
+            ip.node_summary.is_container = true;
+            expect($scope.getUsageForIP(ip)).toBe('Container');
+        });
+
         it("handles DNS records", function() {
             makeControllerResolveSetActiveItem();
             var ipAddress = {

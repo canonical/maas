@@ -938,6 +938,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     "node_type": node.node_type,
                     "fqdn": node.fqdn,
                     "hostname": node.hostname,
+                    "is_container": node.parent_id is not None,
                 }
                 if iface is not None:
                     data["node_summary"]["via"] = iface.get_name()

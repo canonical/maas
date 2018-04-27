@@ -141,7 +141,11 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Return the name of the node type for the given IP.
         $scope.getUsageForIP = function(ip) {
             if(angular.isObject(ip.node_summary)) {
+                var isContainer = ip.node_summary.is_container;
                 var nodeType = ip.node_summary.node_type;
+                if(nodeType === 1 && isContainer === true) {
+                    return "Container";
+                }
                 var str = NODE_TYPES[nodeType];
                 if(angular.isString(str)) {
                     return str;
