@@ -34,9 +34,8 @@
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="checkbox-label" for="{$ node.fqdn $}"></label>
                 </div>
-                <span data-ng-if="node.locked" class="p-tooltip p-tooltip--top-left" aria-describedby="{$ node.fqdn $}-locked-state">
+                <span data-ng-if="node.locked" title="This machine is locked. You have to unlock it to perform any actions." aria-describedby="{$ node.fqdn $}-locked-state">
                     <i class="p-icon--locked">Locked: </i>
-                    <span class="p-tooltip__message" role="tooltip" id="{$ node.fqdn $}-locked-state">This machine is locked. You have to unlock it to perform any actions.</span>
                 </span>
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">{$ node.fqdn $}</a>
             </td>
@@ -51,7 +50,7 @@
             <td class="powerstate u-upper-case--first" aria-label="Power state">
                 <span data-ng-if="node.power_state != 'unknown'" class="p-icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}
             </td>
-            <td class="u-hide--small u-align--center">
+            <td class="u-hide--small u-align--center p-table--action-cell">
                 <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin u-hide--small"></i>
                 <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" class="tooltip tooltip--left" aria-label="{$ node.other_test_status_tooltip $}"></i>
                 <span class="p-tooltip p-tooltip--top-right">
@@ -75,21 +74,21 @@
             </td>
             <td data-ng-if="table.visibleColumns['owner_pool'] === 'owner'" aria-label="Owner" title="{$ node.owner $}">{$ node.owner $}</td>
             <td data-ng-if="table.visibleColumns['owner_pool'] === 'pool'" aria-label="Owner" title="{$ node.owner $}">{$ node.pool.name $}</td>
-            <td class="u-align--right u-hide--small" aria-label="CPU">
+            <td class="u-align--right u-hide--small p-table--action-cell" aria-label="CPU">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
                     {$ node.cpu_count $}
                     <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2">{$ node.cpu_test_status_tooltip $}</span>
                 </span>
             </td>
-            <td class="u-align--right u-hide--small" aria-label="Memory">
+            <td class="u-align--right u-hide--small p-table--action-cell" aria-label="Memory">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.memory_test_status" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2" aria-describedby="node-memory-tooltip-{$ node.fqdn $}"></span>
                     {$ node.memory $}
                     <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2">{$ node.memory_test_status_tooltip $}</span>
                 </span>
             </td>
-            <td class="u-align--right u-hide--small " aria-label="Disks">
+            <td class="u-align--right u-hide--small p-table--action-cell" aria-label="Disks">
                 <span class="p-tooltip p-tooltip--left">
                     <span class="" data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
                     </span>
