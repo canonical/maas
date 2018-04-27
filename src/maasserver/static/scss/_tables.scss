@@ -193,7 +193,7 @@
       th, td {
         &:nth-child(1) {
           @include table-sortable-adjust(990px);
-          width: 20%;
+          width: 17%;
         }
         &:nth-child(2) {
           @include table-sortable-adjust(1150px);
@@ -207,7 +207,7 @@
         }
         &:nth-child(5) {
           @include table-sortable-adjust(1100px);
-          width: 10%;
+          width: 13%;
         }
         &:nth-child(6) {
           @include table-sortable-adjust(1600px);
