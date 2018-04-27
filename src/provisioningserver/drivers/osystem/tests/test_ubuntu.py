@@ -19,7 +19,11 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 class TestUbuntuOS(MAASTestCase):
 
     def get_lts_release(self):
-        return UbuntuDistroInfo().lts()
+        # XXX roaksoax 2017-04-26 LP: #1767137
+        # 2.3 uses Xenial as the default release. Hardcode this to
+        # xenial to ensure it doesn't break CI environments or new
+        # installs that expect xenial.
+        return "xenial"
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()

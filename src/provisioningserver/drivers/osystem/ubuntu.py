@@ -41,8 +41,13 @@ class UbuntuOS(OperatingSystem):
         return row is not None
 
     def get_lts_release(self):
-        """Return the latest Ubuntu LTS release."""
-        return self.ubuntu_distro_info.lts()
+        """Return the default Ubuntu LTS release for this MAAS release."""
+        # XXX roaksoax 2017-04-26 LP: #1767137 - This function used to
+        # rely on distro info to get the default LTS. However, since it now
+        # returns a release that's not 'xenial', this breaks new installs
+        # or CI environments. As such, hard code the LTS release to use as
+        # a default here.
+        return "xenial"
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
