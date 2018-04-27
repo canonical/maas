@@ -161,7 +161,14 @@ class MAASClient:
         # urljoin is very sensitive to leading slashes and when spurious
         # slashes appear it removes path parts. This is why joining is
         # done manually here.
-        return self.url.rstrip("/") + "/" + path.lstrip("/")
+        url = self.url.rstrip('/')
+        path = path.lstrip('/')
+        if url.endswith('MAAS') and path.startswith('MAAS'):
+            # Remove the double '/MAAS/MAAS/' as it should only be
+            # a single MAAS in the url.
+            path = path[4:]
+            path = path.lstrip('/')
+        return url + "/" + path
 
     def _flatten(self, kwargs):
         """Flatten dictionary values if they are not an instance of

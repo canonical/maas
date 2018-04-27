@@ -182,6 +182,13 @@ class TestMAASClient(APIClientTestCase):
         expected = client.url.rstrip("/") + "/" + path.lstrip("/")
         self.assertEqual(expected, client._make_url(path))
 
+    def test_make_url_removes_duplicate_MAAS(self):
+        path = '/MAAS/api/2.0/machines/'
+        client = make_client(root='http://example.com/MAAS/')
+        self.assertEqual(
+            'http://example.com/MAAS/api/2.0/machines/',
+            client._make_url(path))
+
     def test_make_url_converts_sequence_to_path(self):
         path = ['top', 'sub', 'leaf']
         client = make_client(root='http://example.com/')
