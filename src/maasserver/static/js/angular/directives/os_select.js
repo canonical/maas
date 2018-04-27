@@ -7,7 +7,8 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the os-select.html into the template cache.
     $templateCache.put('directive/templates/os-select.html', [
-        '<ul class="p-inline-list--settings u-no-margin--top">',
+        '<ul class="p-inline-list--settings u-no-margin--top u-no-margin--left',
+            ' u-no-padding--left">',
             '<li class="p-inline-list__item"> ',
                 '<label class="p-form__label">Choose your image</label>',
             '</li>',
