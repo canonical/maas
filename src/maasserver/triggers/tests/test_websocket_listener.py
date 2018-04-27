@@ -2220,6 +2220,96 @@ class TestSubnetListener(
         finally:
             yield listener.stopService()
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_ip_address_insert(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(
+            self.create_node,
+            {'node_type': NODE_TYPE.MACHINE, 'interface': True})
+        interface = yield deferToDatabase(
+            self.get_node_boot_interface, node.system_id)
+        subnet = yield deferToDatabase(self.create_subnet)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register('subnet', lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_staticipaddress, {
+                    "alloc_type": IPADDRESS_TYPE.AUTO,
+                    "interface": interface,
+                    "subnet": subnet,
+                    "ip": "",
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_ip_address_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(
+            self.create_node,
+            {'node_type': NODE_TYPE.MACHINE, 'interface': True})
+        interface = yield deferToDatabase(
+            self.get_node_boot_interface, node.system_id)
+        subnet = yield deferToDatabase(self.create_subnet)
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        ipaddress = yield deferToDatabase(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+                "subnet": subnet,
+                "ip": "",
+                })
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register('subnet', lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_staticipaddress, ipaddress.id,
+                {"ip": selected_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_ip_address_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(
+            self.create_node,
+            {'node_type': NODE_TYPE.MACHINE, 'interface': True})
+        interface = yield deferToDatabase(
+            self.get_node_boot_interface, node.system_id)
+        subnet = yield deferToDatabase(self.create_subnet)
+        ipaddress = yield deferToDatabase(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+                "subnet": subnet,
+                "ip": "",
+                })
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register('subnet', lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.delete_staticipaddress, ipaddress.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
 
 class TestSpaceListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):

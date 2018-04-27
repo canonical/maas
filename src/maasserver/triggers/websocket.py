@@ -709,6 +709,14 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
 STATIC_IP_ADDRESS_SUBNET_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     BEGIN
+      IF TG_OP = 'INSERT' THEN
+        PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+        RETURN NEW;
+      END IF;
+      IF TG_OP = 'DELETE' THEN
+        PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+        RETURN OLD;
+      END IF;
       IF OLD.subnet_id != NEW.subnet_id THEN
         IF OLD.subnet_id IS NOT NULL THEN
           PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
@@ -1416,9 +1424,13 @@ def register_websocket_triggers():
     # IP address subnet notifications
     register_procedure(
         STATIC_IP_ADDRESS_SUBNET_NOTIFY % 'ipaddress_subnet_update_notify')
-    register_trigger(
-        "maasserver_staticipaddress",
-        "ipaddress_subnet_update_notify", "update")
+    register_procedure(
+        STATIC_IP_ADDRESS_SUBNET_NOTIFY % 'ipaddress_subnet_insert_notify')
+    register_procedure(
+        STATIC_IP_ADDRESS_SUBNET_NOTIFY % 'ipaddress_subnet_delete_notify')
+    register_triggers(
+        "maasserver_staticipaddress", "ipaddress_subnet",
+        events=EVENTS_IUD)
 
     # IP address domain notifications
     register_procedure(

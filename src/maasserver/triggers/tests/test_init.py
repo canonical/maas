@@ -238,6 +238,8 @@ class TestTriggersUsed(MAASServerTestCase):
         "staticipaddress_ipaddress_domain_insert_notify",
         "staticipaddress_ipaddress_domain_update_notify",
         "staticipaddress_ipaddress_machine_update_notify",
+        "staticipaddress_ipaddress_subnet_delete_notify",
+        "staticipaddress_ipaddress_subnet_insert_notify",
         "staticipaddress_ipaddress_subnet_update_notify",
         "staticroute_staticroute_create_notify",
         "staticroute_staticroute_delete_notify",
