@@ -43,7 +43,7 @@ class TestLoginLegacy(MAASServerTestCase):
 
     def test_login_contains_input_tags_if_user(self):
         factory.make_User()
-        response = self.client.get('/accounts/login/')
+        response = self.client.get(reverse("login"))
         doc = fromstring(response.content)
         self.assertFalse(response.context_data['no_users'])
         self.assertEqual(1, len(doc.cssselect('input#id_username')))
@@ -52,7 +52,7 @@ class TestLoginLegacy(MAASServerTestCase):
     def test_login_displays_createadmin_message_if_no_user(self):
         path = factory.make_string()
         self.patch(settings, 'MAAS_CLI', path)
-        response = self.client.get('/accounts/login/')
+        response = self.client.get(reverse("login"))
         self.assertTrue(response.context_data['no_users'])
         self.assertEqual(path, response.context_data['create_command'])
 
@@ -63,23 +63,23 @@ class TestLogin(MAASServerTestCase):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.login(username=user.username, password=password)
-        response = self.client.get('/accounts/login/')
-        self.assertEqual('/', extract_redirect(response))
+        response = self.client.get(reverse("login"))
+        self.assertEqual(reverse("index"), extract_redirect(response))
 
     def test_login_doesnt_redirect_to_logout_GET(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         response = self.client.post(
-            '/accounts/login/?%s=%s' % (
+            reverse("login") + '?%s=%s' % (
                 REDIRECT_FIELD_NAME, reverse('logout')),
             {'username': user.username, 'password': password})
-        self.assertEqual('/', extract_redirect(response))
+        self.assertEqual(reverse("index"), extract_redirect(response))
 
     def test_login_redirects_GET(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         response = self.client.post(
-            '/accounts/login/?%s=%s' % (
+            reverse("login") + '?%s=%s' % (
                 REDIRECT_FIELD_NAME, reverse('prefs')),
             {'username': user.username, 'password': password})
         self.assertEqual(reverse('prefs'), extract_redirect(response))
@@ -88,18 +88,18 @@ class TestLogin(MAASServerTestCase):
         password = factory.make_string()
         user = factory.make_User(password=password)
         response = self.client.post(
-            '/accounts/login/', {
+            reverse("login"), {
                 'username': user.username,
                 'password': password,
                 REDIRECT_FIELD_NAME: reverse('logout'),
             })
-        self.assertEqual('/', extract_redirect(response))
+        self.assertEqual(reverse("index"), extract_redirect(response))
 
     def test_login_redirects_POST(self):
         password = factory.make_string()
         user = factory.make_User(password=password)
         response = self.client.post(
-            '/accounts/login/', {
+            reverse("login"), {
                 'username': user.username,
                 'password': password,
                 REDIRECT_FIELD_NAME: reverse('prefs'),
@@ -109,7 +109,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_sets_autocomplete_off_in_production(self):
         self.patch(settings, 'DEBUG', False)
         factory.make_User()
-        response = self.client.get('/accounts/login/')
+        response = self.client.get(reverse("login"))
         doc = fromstring(response.content)
         form = doc.cssselect("form")[0]
         self.assertIn(b'autocomplete="off"', tostring(form))
@@ -117,7 +117,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_sets_autocomplete_on_in_debug_mode(self):
         self.patch(settings, 'DEBUG', True)
         factory.make_User()
-        response = self.client.get('/accounts/login/')
+        response = self.client.get(reverse("login"))
         doc = fromstring(response.content)
         form = doc.cssselect("form")[0]
         self.assertNotIn(b'autocomplete="off"', tostring(form))
@@ -126,7 +126,7 @@ class TestLogin(MAASServerTestCase):
         password = factory.make_string()
         user = factory.make_User(password=password)
         self.client.post(
-            '/accounts/login/', {
+            reverse("login"), {
                 'username': user.username,
                 'password': password,
                 REDIRECT_FIELD_NAME: reverse('prefs'),
@@ -141,7 +141,7 @@ class TestLogin(MAASServerTestCase):
         Config.objects.set_config(
             'external_auth_url', 'http://idm.example.com')
         factory.make_User()
-        response = self.client.get('/accounts/login/')
+        response = self.client.get(reverse("login"))
         doc = fromstring(response.content)
         # no login form is presented (as login button is js-based)
         self.assertEqual(len(doc.cssselect("form")), 0)

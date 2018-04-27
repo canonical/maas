@@ -75,7 +75,7 @@ def get_details_for_nodes(client, system_ids):
     """
     details = {}
     for system_id in system_ids:
-        path = '/api/2.0/nodes/%s/' % system_id
+        path = '/MAAS/api/2.0/nodes/%s/' % system_id
         data = process_response(client.get(path, op='details'))
         details[system_id] = data
     return details
@@ -93,7 +93,7 @@ def post_updated_nodes(
     :param added: Set of nodes to add
     :param removed: Set of nodes to remove
     """
-    path = '/api/2.0/tags/%s/' % (tag_name,)
+    path = '/MAAS/api/2.0/tags/%s/' % (tag_name,)
     maaslog.debug(
         "Updating nodes for %s, adding %s removing %s"
         % (tag_name, len(added), len(removed)))

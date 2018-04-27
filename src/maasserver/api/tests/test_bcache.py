@@ -47,7 +47,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
     def test_handler_path(self):
         node = factory.make_Node()
         self.assertEqual(
-            '/api/2.0/nodes/%s/bcaches/' % (node.system_id),
+            '/MAAS/api/2.0/nodes/%s/bcaches/' % (node.system_id),
             get_bcache_devices_uri(node))
 
     def test_read(self):
@@ -190,7 +190,7 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         self.assertEqual(
-            '/api/2.0/nodes/%s/bcache/%s/' % (
+            '/MAAS/api/2.0/nodes/%s/bcache/%s/' % (
                 node.system_id, bcache.id),
             get_bcache_device_uri(bcache, node=node))
 

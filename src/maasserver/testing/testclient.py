@@ -10,6 +10,8 @@ __all__ = [
 
 from time import time
 
+from django.conf import settings
+from django.test.client import RequestFactory
 from maasserver.models.user import get_auth_tokens
 from maasserver.utils.orm import (
     post_commit_hooks,
@@ -26,7 +28,30 @@ from oauth.oauth import (
 )
 
 
-class MAASSensibleClient(SensibleClient):
+class MAASSensibleGetPathMixin:
+    """A mixin that modifies `_get_path`.
+
+    This simulates the twisted WSGI handler that is used by MAAS.
+    """
+
+    def _get_path(self, parsed):
+        # FORCE_SCRIPT_NAME will cause this client to prepend the setting
+        # to the front again when its passed to the WSGIRequest. In a running
+        # FORCE_SCRIPT_NAME is removed by the twisted Resource and passed as
+        # the SCRIPT_NAME in the environ. We perform the same behaviour here
+        # by removing the initial FORCE_SCRIPT_NAME from the url path. The
+        # WSGIRequest will add it back on just like in a running MAAS.
+        script_path = settings.FORCE_SCRIPT_NAME.rstrip('/')
+        if parsed.path.startswith(script_path):
+            parsed = parsed._replace(path=parsed.path[len(script_path):])
+        return super(MAASSensibleGetPathMixin, self)._get_path(parsed)
+
+
+class MAASSensibleRequestFactory(MAASSensibleGetPathMixin, RequestFactory):
+    """A derivative of Django's request factory specially for MAAS."""
+
+
+class MAASSensibleClient(MAASSensibleGetPathMixin, SensibleClient):
     """A derivative of Django's test client specially for MAAS.
 
     This ensures that requests are performed in a transaction, and that

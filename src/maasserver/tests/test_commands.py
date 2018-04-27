@@ -65,7 +65,7 @@ class TestCommands(MAASServerTestCase):
         call_command('generate_api_doc', stdout=stdout)
         result = stdout.getvalue()
         # Just check that the documentation looks all right.
-        self.assertIn("POST /api/2.0/account/", result)
+        self.assertIn("POST /MAAS/api/2.0/account/", result)
         self.assertIn("MAAS API", result)
         # The documentation starts with a link target: "region-controller-api".
         # (And also a specification that the left-side table-of-contents depth

@@ -65,7 +65,6 @@ from maasserver.models import (
 from maasserver.rpc import getAllClients
 from maasserver.utils import (
     absolute_reverse,
-    absolute_url_reverse,
     get_maas_user_agent,
     synchronised,
 )
@@ -1493,7 +1492,7 @@ class ImportResourcesProgressService(TimerService, object):
 
     @transactional
     def set_import_warning(self, warning):
-        warning %= {"images_link": absolute_url_reverse('index') + '#/images'}
+        warning %= {"images_link": absolute_reverse('index') + '#/images'}
         register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
     @transactional

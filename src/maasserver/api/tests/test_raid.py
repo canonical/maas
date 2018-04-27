@@ -75,7 +75,7 @@ class TestRaidsAPI(APITestCase.ForUser):
     def test_handler_path(self):
         node = factory.make_Node()
         self.assertEqual(
-            '/api/2.0/nodes/%s/raids/' % (node.system_id),
+            '/MAAS/api/2.0/nodes/%s/raids/' % (node.system_id),
             get_raid_devices_uri(node))
 
     def test_read(self):
@@ -727,7 +727,7 @@ class TestRaidAPI(APITestCase.ForUser):
         raid = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
         self.assertEqual(
-            '/api/2.0/nodes/%s/raid/%s/' % (
+            '/MAAS/api/2.0/nodes/%s/raid/%s/' % (
                 node.system_id, raid.id),
             get_raid_device_uri(raid, node=node))
 

@@ -41,7 +41,7 @@ class TestUsers(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/users/', reverse('users_handler'))
+            '/MAAS/api/2.0/users/', reverse('users_handler'))
 
     def test_POST_creates_user(self):
         self.become_admin()
@@ -247,7 +247,7 @@ class TestUser(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/users/username/',
+            '/MAAS/api/2.0/users/username/',
             reverse('user_handler', args=['username']))
 
     def test_GET_finds_user(self):

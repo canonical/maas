@@ -34,7 +34,7 @@ class TestStaticRoutesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/static-routes/', get_staticroutes_uri())
+            '/MAAS/api/2.0/static-routes/', get_staticroutes_uri())
 
     def test_read(self):
         routes = [
@@ -89,7 +89,7 @@ class TestStaticRouteAPI(APITestCase.ForUser):
     def test_handler_path(self):
         route = factory.make_StaticRoute()
         self.assertEqual(
-            '/api/2.0/static-routes/%s/' % route.id,
+            '/MAAS/api/2.0/static-routes/%s/' % route.id,
             get_staticroute_uri(route))
 
     def test_read(self):

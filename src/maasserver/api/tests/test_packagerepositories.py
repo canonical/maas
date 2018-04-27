@@ -35,7 +35,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
     def test_handler_path(self):
         package_repository = factory.make_PackageRepository()
         self.assertEqual(
-            '/api/2.0/package-repositories/%s/' % package_repository.id,
+            '/MAAS/api/2.0/package-repositories/%s/' % package_repository.id,
             self.get_package_repository_uri(package_repository))
 
     def test_read_by_id(self):
@@ -55,7 +55,8 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
 
     def test_read_by_name(self):
         package_repository = factory.make_PackageRepository()
-        uri = '/api/2.0/package-repositories/%s/' % package_repository.name
+        uri = '/MAAS/api/2.0/package-repositories/%s/' % (
+            package_repository.name)
         response = self.client.get(uri)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -265,7 +266,7 @@ class TestPackageRepositoriesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/package-repositories/',
+            '/MAAS/api/2.0/package-repositories/',
             self.get_package_repositories_uri())
 
     def test_read(self):

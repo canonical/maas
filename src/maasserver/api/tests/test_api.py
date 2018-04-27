@@ -244,7 +244,7 @@ class AccountAPITest(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/account/', reverse('account_handler'))
+            '/MAAS/api/2.0/account/', reverse('account_handler'))
 
     def test_create_authorisation_token(self):
         # The api operation create_authorisation_token returns a json dict
@@ -453,11 +453,11 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
 
     def test_sshkeys_handler_path(self):
         self.assertEqual(
-            '/api/2.0/account/prefs/sshkeys/', reverse('sshkeys_handler'))
+            '/MAAS/api/2.0/account/prefs/sshkeys/', reverse('sshkeys_handler'))
 
     def test_sshkey_handler_path(self):
         self.assertEqual(
-            '/api/2.0/account/prefs/sshkeys/key/',
+            '/MAAS/api/2.0/account/prefs/sshkeys/key/',
             reverse('sshkey_handler', args=['key']))
 
     def test_list_works(self):
@@ -642,10 +642,10 @@ class MAASAPIAnonTest(APITestCase.ForAnonymous):
 class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_api_version_handler_path(self):
-        self.assertEqual('/api/version/', reverse('api_version'))
+        self.assertEqual('/MAAS/api/version/', reverse('api_version'))
 
     def test_v1_error_handler_path(self):
-        self.assertEqual('/api/1.0/', reverse('api_v1_error'))
+        self.assertEqual('/MAAS/api/1.0/', reverse('api_v1_error'))
 
     def test_get_api_version(self):
         response = self.client.get(reverse('api_version'))
@@ -667,7 +667,7 @@ class MAASAPITest(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/maas/', reverse('maas_handler'))
+            '/MAAS/api/2.0/maas/', reverse('maas_handler'))
 
     def test_simple_user_set_config_forbidden(self):
         response = self.client.post(

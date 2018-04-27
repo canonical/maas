@@ -69,18 +69,19 @@ from testtools.matchers import (
 class IsPublicPathTest(MAASServerTestCase):
 
     def test_public_path(self):
-        self.assertTrue(is_public_path('/accounts/login/'))
-        self.assertTrue(is_public_path('/rpc/someurl'))
+        self.assertTrue(is_public_path('/MAAS/accounts/login/'))
+        self.assertTrue(is_public_path('/MAAS/rpc/someurl'))
 
     def test_public_path_static_files(self):
-        self.assertTrue(is_public_path('/combo/angular.js'))
-        self.assertTrue(is_public_path('/combo/jquery.js'))
-        self.assertTrue(is_public_path('/combo/macaroons.js'))
-        self.assertTrue(is_public_path('/static/js/bundle/maas-min.js'))
-        self.assertTrue(is_public_path('/static/js/bundle/vendor-min.js'))
+        self.assertTrue(is_public_path('/MAAS/combo/angular.js'))
+        self.assertTrue(is_public_path('/MAAS/combo/jquery.js'))
+        self.assertTrue(is_public_path('/MAAS/combo/macaroons.js'))
+        self.assertTrue(is_public_path('/MAAS/static/js/bundle/maas-min.js'))
+        self.assertTrue(is_public_path('/MAAS/static/js/bundle/vendor-min.js'))
 
     def test_path_not_public(self):
         self.assertFalse(is_public_path('/'))
+        self.assertFalse(is_public_path('/MAAS/'))
 
 
 class ExceptionMiddlewareTest(MAASServerTestCase):
@@ -260,14 +261,14 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_does_not_log_request_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = factory.make_fake_request("/api/2.0/nodes/")
+        request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
         self.process_request(request)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
         self.assertThat(logger.output, Not(Contains(debug_output)))
 
     def test_debugging_logger_does_not_log_response_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = factory.make_fake_request("/api/2.0/nodes/")
+        request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
         response = HttpResponse(
             content="test content",
             content_type=b"text/plain; charset=utf-8")
@@ -278,7 +279,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_logs_request(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
-        request = factory.make_fake_request("/api/2.0/nodes/")
+        request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
         request.content = "test content"
         self.process_request(request)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
@@ -372,7 +373,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             ZeroDivisionError, self.process_request, request, exception)
 
     def test_ignores_error_on_API(self):
-        non_api_request = factory.make_fake_request("/api/2.0/ohai")
+        non_api_request = factory.make_fake_request("/MAAS/api/2.0/ohai")
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
         exception = exception_class(factory.make_string())
@@ -415,7 +416,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIRPCErrorsMiddleware(lambda request: None)
-        api_request = factory.make_fake_request("/api/2.0/hello")
+        api_request = factory.make_fake_request("/MAAS/api/2.0/hello")
         error_message = factory.make_string()
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
@@ -427,7 +428,8 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
              response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_ignores_error_outside_API(self):
-        non_api_request = factory.make_fake_request("/middleware/api/hello")
+        non_api_request = factory.make_fake_request(
+            "/MAAS/middleware/api/hello")
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
         exception = exception_class(factory.make_string())
@@ -437,7 +439,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_no_connections_available_returned_as_503(self):
         request = factory.make_fake_request(
-            "/api/2.0/" + factory.make_string(), 'POST')
+            "/MAAS/api/2.0/" + factory.make_string(), 'POST')
         error_message = (
             "Unable to connect to cluster '%s'; no connections available" %
             factory.make_name('cluster'))
@@ -451,7 +453,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_503_response_includes_retry_after_header_by_default(self):
         request = factory.make_fake_request(
-            "/api/2.0/" + factory.make_string(), 'POST')
+            "/MAAS/api/2.0/" + factory.make_string(), 'POST')
         error = NoConnectionsAvailable(factory.make_name())
         response = self.process_request(request, error)
 
@@ -464,7 +466,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_power_action_already_in_progress_returned_as_503(self):
         request = factory.make_fake_request(
-            "/api/2.0/" + factory.make_string(), 'POST')
+            "/MAAS/api/2.0/" + factory.make_string(), 'POST')
         error_message = (
             "Unable to execute power action: another action is already in "
             "progress for node %s" % factory.make_name('node'))
@@ -478,7 +480,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_TimeoutError(self):
         request = factory.make_fake_request(
-            "/api/2.0/" + factory.make_string(), 'POST')
+            "/MAAS/api/2.0/" + factory.make_string(), 'POST')
         error_message = "No thanks, I'm trying to give them up."
         error = TimeoutError(error_message)
         response = self.process_request(request, error)
@@ -490,7 +492,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_ignores_non_rpc_errors(self):
         request = factory.make_fake_request(
-            "/api/2.0/" + factory.make_string(), 'POST')
+            "/MAAS/api/2.0/" + factory.make_string(), 'POST')
         exception = ZeroDivisionError(
             "You may think it's a long walk down the street to the chemist "
             "but that's just peanuts to space!")

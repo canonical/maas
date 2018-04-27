@@ -21,7 +21,7 @@ class TestVersionAPIBasics(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/version/', reverse('version_handler'))
+            '/MAAS/api/2.0/version/', reverse('version_handler'))
 
 
 class TestVersionAPI(APITestCase.ForAnonymousAndUser):

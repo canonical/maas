@@ -326,7 +326,7 @@ class TestNodesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/nodes/', reverse('nodes_handler'))
+            '/MAAS/api/2.0/nodes/', reverse('nodes_handler'))
 
     def test_GET_lists_nodes(self):
         # The api allows for fetching the list of Nodes.

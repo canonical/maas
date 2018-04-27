@@ -77,9 +77,6 @@ PROXY_CONNECT = True
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas'
 
-API_URL_PREFIX = '/api/2.0/'
-METADATA_URL_PREFIX = '/metadata/'
-
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
 PISTON_DISPLAY_ERRORS = False
@@ -350,6 +347,13 @@ SERIALIZATION_MODULES = {
 # MAAS has no upload limit to allow for big image files.
 # (Django 1.10 introduced this limit with a default of 2.5MB.)
 DATA_UPLOAD_MAX_MEMORY_SIZE = None
+
+# Force all resolved urls to be prefixed with 'MAAS/'.
+# All *must* start and end with a '/'.
+FORCE_SCRIPT_NAME = '/MAAS/'
+API_URL_PREFIX = '/MAAS/api/2.0/'
+METADATA_URL_PREFIX = '/MAAS/metadata/'
+SIMPLESTREAMS_URL_PREFIX = '/MAAS/images-stream/'
 
 # Patch the get_script_prefix method to allow twisted to work with django.
 patch_get_script_prefix()

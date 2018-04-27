@@ -53,7 +53,7 @@ class TestFabricsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/fabrics/', get_fabrics_uri())
+            '/MAAS/api/2.0/fabrics/', get_fabrics_uri())
 
     def test_read(self):
         for _ in range(3):
@@ -133,7 +133,7 @@ class TestFabricAPI(APITestCase.ForUser):
     def test_handler_path(self):
         fabric = factory.make_Fabric()
         self.assertEqual(
-            '/api/2.0/fabrics/%s/' % fabric.id,
+            '/MAAS/api/2.0/fabrics/%s/' % fabric.id,
             get_fabric_uri(fabric))
 
     def test_read(self):

@@ -40,7 +40,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/boot-sources/3/',
+            '/MAAS/api/2.0/boot-sources/3/',
             reverse('boot_source_handler', args=['3']))
 
     def test_GET_returns_boot_source(self):
@@ -125,7 +125,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/boot-sources/',
+            '/MAAS/api/2.0/boot-sources/',
             reverse('boot_sources_handler'))
 
     def test_GET_returns_boot_source_list(self):

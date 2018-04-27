@@ -26,7 +26,8 @@ class TestZoneAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/zones/name/', reverse('zone_handler', args=['name']))
+            '/MAAS/api/2.0/zones/name/',
+            reverse('zone_handler', args=['name']))
 
     def test_POST_is_prohibited(self):
         self.become_admin()

@@ -49,7 +49,7 @@ class TestTagAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/tags/tag-name/',
+            '/MAAS/api/2.0/tags/tag-name/',
             reverse('tag_handler', args=['tag-name']))
 
     def get_tag_uri(self, tag):
@@ -723,7 +723,7 @@ class TestTagsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/tags/', reverse('tags_handler'))
+            '/MAAS/api/2.0/tags/', reverse('tags_handler'))
 
     def test_GET_list_without_tags_returns_empty_list(self):
         response = self.client.get(reverse('tags_handler'))

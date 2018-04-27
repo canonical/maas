@@ -10,7 +10,6 @@ from unittest.mock import sentinel
 from urllib.parse import (
     urlencode,
     urljoin,
-    urlparse,
 )
 
 from django.http import HttpRequest
@@ -24,7 +23,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import (
     absolute_reverse,
-    absolute_url_reverse,
     build_absolute_uri,
     find_rack_controller,
     get_default_region_ip,
@@ -52,7 +50,7 @@ class TestAbsoluteReverse(MAASServerTestCase):
     def expected_from_maas_url_and_reverse(self, maas_url, reversed_url):
         # We need to remove the leading '/' from the reversed url, or
         # urljoin won't actually join.
-        return urljoin(maas_url, reversed_url.lstrip("/"))
+        return urljoin(maas_url.rstrip('/') + '/', reversed_url.lstrip('/'))
 
     def test_absolute_reverse_uses_maas_url_by_default(self):
         maas_url = factory.make_simple_http_url(path='')
@@ -60,6 +58,15 @@ class TestAbsoluteReverse(MAASServerTestCase):
         absolute_url = absolute_reverse('settings')
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reverse('settings'))
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_reverse_handles_base_url_without_ending_slash(self):
+        maas_url = factory.make_simple_http_url()
+        maas_url = maas_url.rstrip('/')
+        absolute_url = absolute_reverse('settings', base_url=maas_url)
+        expected_url = self.expected_from_maas_url_and_reverse(
+            maas_url,
+            reverse('settings'))
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_given_base_url(self):
@@ -107,39 +114,6 @@ class TestAbsoluteReverse(MAASServerTestCase):
             maas_url,
             reversed_url)
         self.assertEqual(expected_url, observed_url)
-
-
-class TestAbsoluteUrlReverse(MAASServerTestCase):
-
-    def setUp(self):
-        super(TestAbsoluteUrlReverse, self).setUp()
-        self.useFixture(RegionConfigurationFixture())
-
-    def test_absolute_url_reverse_uses_path_from_maas_url(self):
-        maas_url = factory.make_simple_http_url()
-        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        path = urlparse(maas_url).path
-        absolute_url = absolute_url_reverse('settings')
-        expected_url = path + reverse('settings')
-        self.assertEqual(expected_url, absolute_url)
-
-    def test_absolute_url_reverse_copes_with_trailing_slash(self):
-        maas_url = factory.make_simple_http_url()
-        path = urlparse(maas_url).path + '/'
-        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        absolute_url = absolute_url_reverse('settings')
-        expected_url = path[:-1] + reverse('settings')
-        self.assertEqual(expected_url, absolute_url)
-
-    def test_absolute_url_reverse_uses_query_string(self):
-        maas_url = factory.make_simple_http_url()
-        path = urlparse(maas_url).path
-        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        parameters = {factory.make_string(): factory.make_string()}
-        absolute_url = absolute_url_reverse('settings', query=parameters)
-        expected_url = path + "%s?%s" % (
-            reverse('settings'), urlencode(parameters))
-        self.assertEqual(expected_url, absolute_url)
 
 
 class TestBuildAbsoluteURI(MAASTestCase):

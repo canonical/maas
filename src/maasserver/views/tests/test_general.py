@@ -36,13 +36,13 @@ class Test404500(MAASServerTestCase):
 
     def test_404(self):
         self.client.login(user=factory.make_User())
-        response = self.client.get('/no-found-page/')
+        response = self.client.get('/MAAS/no-found-page/')
         doc = fromstring(response.content)
         self.assertIn(
             "Error: Page not found",
             doc.cssselect('title')[0].text)
         self.assertSequenceEqual(
-            ['The requested URL /no-found-page/ was not found on this '
+            ['The requested URL /MAAS/no-found-page/ was not found on this '
              'server.'],
             [elem.text.strip() for elem in
                 doc.cssselect('h2')])

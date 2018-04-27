@@ -40,7 +40,7 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/ipaddresses/', reverse('ipaddresses_handler'))
+            '/MAAS/api/2.0/ipaddresses/', reverse('ipaddresses_handler'))
 
     def test_GET_returns_ipaddresses(self):
         original_ipaddress = factory.make_StaticIPAddress(

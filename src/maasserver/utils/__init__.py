@@ -18,10 +18,10 @@ from functools import wraps
 from urllib.parse import (
     urlencode,
     urljoin,
-    urlparse,
     urlsplit,
 )
 
+from django.conf import settings
 from maasserver.config import RegionConfiguration
 from maasserver.utils.django_urls import reverse
 from provisioningserver.config import (
@@ -70,37 +70,20 @@ def absolute_reverse(
             base_url = config.maas_url
         if default_region_ip is not None:
             base_url = compose_URL(base_url, default_region_ip)
-    url = urljoin(base_url, reverse(view_name, *args, **kwargs))
-    if query is not None:
-        url += '?%s' % urlencode(query, doseq=True)
-    return url
-
-
-def absolute_url_reverse(view_name, query=None, *args, **kwargs):
-    """Returns the absolute path (i.e. starting with '/') for the given view.
-
-    This utility is meant to be used by methods that need to compute URLs but
-    run outside of Django and thus don't have the 'script prefix' transparently
-    added the the URL.
-
-    :param view_name: Django's view function name/reference or URL pattern
-        name for which to compute the absolute URL.
-    :param query: Optional query argument which will be passed down to
-        urllib.urlencode.  The result of that call will be appended to the
-        resulting url.
-    :param args: Positional arguments for Django's 'reverse' method.
-    :param kwargs: Named arguments for Django's 'reverse' method.
-    """
-    with RegionConfiguration.open() as config:
-        abs_path = urlparse(config.maas_url).path
-    if not abs_path.endswith('/'):
+    if not base_url.endswith('/'):
         # Add trailing '/' to get urljoin to behave.
-        abs_path = abs_path + '/'
+        base_url = base_url + '/'
     reverse_link = reverse(view_name, *args, **kwargs)
     if reverse_link.startswith('/'):
         # Drop the leading '/'.
         reverse_link = reverse_link[1:]
-    url = urljoin(abs_path, reverse_link)
+    script_name = settings.FORCE_SCRIPT_NAME.lstrip('/')
+    if (base_url.endswith(script_name) and
+            reverse_link.startswith(script_name)):
+        # This would double up the SCRIPT_NAME we only need one so remove the
+        # prefix from the reverse_link.
+        reverse_link = reverse_link[len(script_name):]
+    url = urljoin(base_url, reverse_link)
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
     return url

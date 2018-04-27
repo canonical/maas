@@ -1100,7 +1100,7 @@ class TestCurtinUtilities(
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
         self.assertEqual(
-            "%smetadata/latest/by-id/%s/" % (
+            "%sMAAS/metadata/latest/by-id/%s/" % (
                 primary_rack.url, node.system_id),
             yaml_conf['late_commands']['maas'][2])
         self.assertTrue('debconf_selections' in yaml_conf)
@@ -1115,7 +1115,7 @@ class TestCurtinUtilities(
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
         self.assertEqual(
-            "%smetadata/latest/by-id/%s/" % (
+            "%sMAAS/metadata/latest/by-id/%s/" % (
                 primary_rack.url, node.system_id),
             yaml_conf['late_commands']['maas'][2])
         self.assertTrue('debconf_selections' in yaml_conf)
@@ -1130,7 +1130,7 @@ class TestCurtinUtilities(
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
         self.assertEqual(
-            "%smetadata/latest/by-id/%s/" % (
+            "%sMAAS/metadata/latest/by-id/%s/" % (
                 primary_rack.url, node.system_id),
             yaml_conf['late_commands']['maas'][2])
         self.assertTrue('debconf_selections' in yaml_conf)
@@ -1145,7 +1145,8 @@ class TestCurtinUtilities(
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
         self.assertEqual(
-            "%smetadata/latest/by-id/%s/" % (primary_rack.url, node.system_id),
+            "%sMAAS/metadata/latest/by-id/%s/" % (
+                primary_rack.url, node.system_id),
             yaml_conf['late_commands']['maas'][2])
         self.assertTrue('debconf_selections' in yaml_conf)
 

@@ -97,7 +97,7 @@ class TestNodeAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/nodes/node-name/',
+            '/MAAS/api/2.0/nodes/node-name/',
             reverse('node_handler', args=['node-name']))
 
     @staticmethod

@@ -91,7 +91,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/discovery/', get_discoveries_uri())
+            '/MAAS/api/2.0/discovery/', get_discoveries_uri())
 
     def get_api_results(self, *args, **kwargs):
         uri = get_discoveries_uri()
@@ -317,7 +317,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
     def test_handler_path(self):
         discovery = factory.make_Discovery()
         self.assertEqual(
-            '/api/2.0/discovery/%s/' % discovery.discovery_id,
+            '/MAAS/api/2.0/discovery/%s/' % discovery.discovery_id,
             get_discovery_uri(discovery))
 
     def test_read(self):

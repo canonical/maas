@@ -134,7 +134,7 @@ class TestEventsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/events/', reverse('events_handler'))
+            '/MAAS/api/2.0/events/', reverse('events_handler'))
 
     def test_GET_query_without_events_returns_empty_list(self):
         # If there are no nodes to list, the "query" op returns an empty list.

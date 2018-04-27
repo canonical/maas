@@ -45,7 +45,7 @@ class TestDevicesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/devices/', reverse('devices_handler'))
+            '/MAAS/api/2.0/devices/', reverse('devices_handler'))
 
     def test_POST_creates_device(self):
         hostname = factory.make_name('host')
@@ -275,7 +275,7 @@ class TestDeviceAPI(APITestCase.ForUser):
     def test_handler_path(self):
         system_id = factory.make_name('system-id')
         self.assertEqual(
-            '/api/2.0/devices/%s/' % system_id,
+            '/MAAS/api/2.0/devices/%s/' % system_id,
             reverse('device_handler', args=[system_id]))
 
     def test_POST_method_without_op_not_allowed(self):

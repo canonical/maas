@@ -48,7 +48,8 @@ class TestNetworksAPI(APITestCase.ForUser):
         return interface
 
     def test_handler_path(self):
-        self.assertEqual('/api/2.0/networks/', reverse('networks_handler'))
+        self.assertEqual(
+            '/MAAS/api/2.0/networks/', reverse('networks_handler'))
 
     def test_POST_returns_410(self):
         self.become_admin()

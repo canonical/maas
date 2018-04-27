@@ -125,7 +125,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/machines/machine-name/',
+            '/MAAS/api/2.0/machines/machine-name/',
             reverse('machine_handler', args=['machine-name']))
 
     @staticmethod

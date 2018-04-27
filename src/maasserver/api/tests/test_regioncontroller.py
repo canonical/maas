@@ -17,7 +17,7 @@ class TestRegionControllerAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/regioncontrollers/region-name/',
+            '/MAAS/api/2.0/regioncontrollers/region-name/',
             reverse('regioncontroller_handler', args=['region-name']))
 
     @staticmethod
@@ -50,7 +50,7 @@ class TestRegionControllersAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/regioncontrollers/',
+            '/MAAS/api/2.0/regioncontrollers/',
             reverse('regioncontrollers_handler'))
 
     def test_read_returns_limited_fields(self):

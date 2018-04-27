@@ -37,7 +37,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
     def test_hander_path(self):
         node = factory.make_Node()
         self.assertEqual(
-            '/api/2.0/nodes/%s/results/' % node.system_id,
+            '/MAAS/api/2.0/nodes/%s/results/' % node.system_id,
             self.get_script_results_uri(node))
 
     def test_GET(self):
@@ -226,7 +226,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
     def test_hander_path(self):
         script_set = self.make_scriptset()
         self.assertEqual(
-            '/api/2.0/nodes/%s/results/%s/' % (
+            '/MAAS/api/2.0/nodes/%s/results/%s/' % (
                 script_set.node.system_id, self.get_id(script_set)),
             self.get_script_result_uri(script_set))
 
@@ -253,7 +253,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             'started': fmt_time(script_set.started),
             'ended': fmt_time(script_set.ended),
             'runtime': script_set.runtime,
-            'resource_uri': '/api/2.0/nodes/%s/results/%d/' % (
+            'resource_uri': '/MAAS/api/2.0/nodes/%s/results/%d/' % (
                 script_set.node.system_id, script_set.id),
             }, parsed_result)
         for result in results:
@@ -302,7 +302,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             'started': fmt_time(script_set.started),
             'ended': fmt_time(script_set.ended),
             'runtime': script_set.runtime,
-            'resource_uri': '/api/2.0/nodes/%s/results/%d/' % (
+            'resource_uri': '/MAAS/api/2.0/nodes/%s/results/%d/' % (
                 script_set.node.system_id, script_set.id),
             }, parsed_result)
         for result in results:
@@ -365,7 +365,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             'started': fmt_time(script_set.started),
             'ended': fmt_time(script_set.ended),
             'runtime': script_set.runtime,
-            'resource_uri': '/api/2.0/nodes/%s/results/%d/' % (
+            'resource_uri': '/MAAS/api/2.0/nodes/%s/results/%d/' % (
                 script_set.node.system_id, script_set.id),
             }, parsed_result)
         for result in results:

@@ -25,7 +25,7 @@ class TestSSHKeysImportAction(MAASTestCase):
         action_bases = (SSHKeysImportAction,)
         action_ns = {
             "action": {'method': 'POST'},
-            "handler": {'uri': b'/api/2.0/sshkeys/', 'params': []},
+            "handler": {'uri': b'/MAAS/api/2.0/sshkeys/', 'params': []},
             "profile": {'credentials': make_api_credentials()}
             }
         action_class = type("import", action_bases, action_ns)

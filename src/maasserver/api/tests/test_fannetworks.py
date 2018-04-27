@@ -35,7 +35,7 @@ class TestFanNetworksAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/fannetworks/', get_fannetworks_uri())
+            '/MAAS/api/2.0/fannetworks/', get_fannetworks_uri())
 
     def test_read(self):
         # Create specific fan networks so creation doesn't fail because of
@@ -111,7 +111,7 @@ class TestFanNetworkAPI(APITestCase.ForUser):
     def test_handler_path(self):
         fannetwork = factory.make_FanNetwork()
         self.assertEqual(
-            '/api/2.0/fannetworks/%s/' % fannetwork.id,
+            '/MAAS/api/2.0/fannetworks/%s/' % fannetwork.id,
             get_fannetwork_uri(fannetwork))
 
     def test_read(self):

@@ -39,7 +39,7 @@ class TestDomainsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/domains/', get_domains_uri())
+            '/MAAS/api/2.0/domains/', get_domains_uri())
 
     def test_read(self):
         for _ in range(3):
@@ -140,7 +140,7 @@ class TestDomainAPI(APITestCase.ForUser):
     def test_handler_path(self):
         domain = factory.make_Domain()
         self.assertEqual(
-            '/api/2.0/domains/%s/' % domain.id,
+            '/MAAS/api/2.0/domains/%s/' % domain.id,
             get_domain_uri(domain))
 
     def test_read(self):

@@ -43,7 +43,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         return reverse('scripts_handler', args=[])
 
     def test_hander_path(self):
-        self.assertEqual('/api/2.0/scripts/', self.get_scripts_uri())
+        self.assertEqual('/MAAS/api/2.0/scripts/', self.get_scripts_uri())
 
     def test_POST(self):
         self.become_admin()
@@ -245,7 +245,7 @@ class TestScriptAPI(APITestCase.ForUser):
         else:
             name = script.id
         self.assertEqual(
-            '/api/2.0/scripts/%s' % name, self.get_script_uri(script))
+            '/MAAS/api/2.0/scripts/%s' % name, self.get_script_uri(script))
 
     def test_GET(self):
         script = factory.make_Script()
@@ -278,7 +278,7 @@ class TestScriptAPI(APITestCase.ForUser):
             'may_reboot': script.may_reboot,
             'recommission': script.recommission,
             'default': script.default,
-            'resource_uri': '/api/2.0/scripts/%s' % script.name,
+            'resource_uri': '/MAAS/api/2.0/scripts/%s' % script.name,
             }, parsed_result)
         self.assertItemsEqual(
             [rev.id for rev in script.script.previous_versions()],
@@ -324,7 +324,7 @@ class TestScriptAPI(APITestCase.ForUser):
             'may_reboot': script.may_reboot,
             'recommission': script.recommission,
             'default': script.default,
-            'resource_uri': '/api/2.0/scripts/%s' % script.name,
+            'resource_uri': '/MAAS/api/2.0/scripts/%s' % script.name,
             }, parsed_result)
         self.assertItemsEqual(
             [rev.id for rev in script.script.previous_versions()],

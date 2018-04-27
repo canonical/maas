@@ -37,7 +37,7 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/dnsresources/', get_dnsresources_uri())
+            '/MAAS/api/2.0/dnsresources/', get_dnsresources_uri())
 
     def test_read(self):
         for _ in range(3):
@@ -228,7 +228,7 @@ class TestDNSResourceAPI(APITestCase.ForUser):
     def test_handler_path(self):
         dnsresource = factory.make_DNSResource()
         self.assertEqual(
-            '/api/2.0/dnsresources/%s/' % dnsresource.id,
+            '/MAAS/api/2.0/dnsresources/%s/' % dnsresource.id,
             get_dnsresource_uri(dnsresource))
 
     def test_read(self):

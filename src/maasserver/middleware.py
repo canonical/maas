@@ -62,8 +62,6 @@ from provisioningserver.utils.shell import ExternalProcessError
 # responses.
 RETRY_AFTER_SERVICE_UNAVAILABLE = 10
 
-SIMPLESTREAMS_URL_PREFIX = '/images-stream/'
-
 PUBLIC_URL_PREFIXES = [
     # Login page: must be visible to anonymous users.
     reverse('login'),
@@ -83,15 +81,15 @@ PUBLIC_URL_PREFIXES = [
     # API calls are protected by piston.
     settings.API_URL_PREFIX,
     # Static resources are publicly visible.
-    settings.STATIC_URL_PREFIX,
+    settings.STATIC_URL,
     # Boot resources simple streams endpoint; no login.
-    SIMPLESTREAMS_URL_PREFIX,
+    settings.SIMPLESTREAMS_URL_PREFIX,
 ] + [reverse('merge', args=[filename]) for filename in MERGE_VIEWS]
 
 
-def is_public_path(path_info):
-    """Whether a request.path_info is publicly accessible."""
-    return any(path_info.startswith(prefix) for prefix in PUBLIC_URL_PREFIXES)
+def is_public_path(path):
+    """Whether a request.path is publicly accessible."""
+    return any(path.startswith(prefix) for prefix in PUBLIC_URL_PREFIXES)
 
 
 class AccessMiddleware:
@@ -107,7 +105,7 @@ class AccessMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if is_public_path(request.path_info):
+        if is_public_path(request.path):
             return self.get_response(request)
 
         if request.user.is_anonymous:
@@ -371,7 +369,7 @@ class RPCErrorsMiddleware:
                 raise
 
     def process_exception(self, request, exception):
-        if request.path_info.startswith(settings.API_URL_PREFIX):
+        if request.path.startswith(settings.API_URL_PREFIX):
             # Not a path we're handling exceptions for.
             # APIRPCErrorsMiddleware handles all the API request RPC
             # errors.
@@ -396,7 +394,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
         }
 
     def process_exception(self, request, exception):
-        if not request.path_info.startswith(settings.API_URL_PREFIX):
+        if not request.path.startswith(settings.API_URL_PREFIX):
             # Not a path we're handling exceptions for.
             # RPCErrorsMiddleware handles non-API requests.
             return None

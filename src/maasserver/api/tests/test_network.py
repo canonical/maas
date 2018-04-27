@@ -28,7 +28,8 @@ class TestNetwork(APITestCase.ForUser):
     def test_handler_path(self):
         subnet = factory.make_Subnet()
         self.assertEqual(
-            '/api/2.0/networks/subnet-%d/' % subnet.id, self.get_url(subnet))
+            '/MAAS/api/2.0/networks/subnet-%d/' % subnet.id,
+            self.get_url(subnet))
 
     def test_POST_is_prohibited(self):
         self.become_admin()

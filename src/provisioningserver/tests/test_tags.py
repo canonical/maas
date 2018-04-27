@@ -511,8 +511,8 @@ class TestTagUpdating(MAASTestCase):
         self.assertThat(
             get,
             MockCallsMatch(
-                call('/api/2.0/nodes/system-1/', op='details'),
-                call('/api/2.0/nodes/system-2/', op='details')))
+                call('/MAAS/api/2.0/nodes/system-1/', op='details'),
+                call('/MAAS/api/2.0/nodes/system-2/', op='details')))
 
     def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
         client = self.fake_client()
@@ -531,7 +531,7 @@ class TestTagUpdating(MAASTestCase):
             client, rack_id, name, tag_definition,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
-        url = '/api/2.0/tags/%s/' % (name,)
+        url = '/MAAS/api/2.0/tags/%s/' % (name,)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True,
             rack_controller=rack_id, definition=tag_definition,
@@ -557,7 +557,7 @@ class TestTagUpdating(MAASTestCase):
             client, rack_id, name, wrong_tag_definition,
             ['add-system-id'], ['remove-1', 'remove-2'])
         # self.assertEqual({'added': 1, 'removed': 2}, result)
-        url = '/api/2.0/tags/%s/' % (name,)
+        url = '/MAAS/api/2.0/tags/%s/' % (name,)
         self.assertEqual({}, result)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True,
@@ -607,7 +607,7 @@ class TestTagUpdating(MAASTestCase):
             [{"system_id": "system-id1"}, {"system_id": "system-id2"}],
             tag_name, tag_definition, tag_nsmap,
             self.fake_client())
-        tag_url = '/api/2.0/tags/%s/' % (tag_name,)
+        tag_url = '/MAAS/api/2.0/tags/%s/' % (tag_name,)
         self.assertThat(
             mock_post,
             MockCalledOnceWith(

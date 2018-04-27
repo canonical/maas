@@ -47,13 +47,13 @@ class TestURIs(MAASServerTestCase):
     def test_notifications_handler_path(self):
         self.assertThat(
             get_notifications_uri(),
-            Equals("/api/2.0/notifications/"))
+            Equals("/MAAS/api/2.0/notifications/"))
 
     def test_notification_handler_path(self):
         notification = factory.make_Notification()
         self.assertThat(
             get_notification_uri(notification),
-            Equals("/api/2.0/notifications/%s/" % notification.id))
+            Equals("/MAAS/api/2.0/notifications/%s/" % notification.id))
 
 
 def MatchesNotification(notification):

@@ -26,7 +26,7 @@ class TestRackControllerAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/rackcontrollers/rack-name/',
+            '/MAAS/api/2.0/rackcontrollers/rack-name/',
             reverse('rackcontroller_handler', args=['rack-name']))
 
     @staticmethod
@@ -102,7 +102,8 @@ class TestRackControllersAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/rackcontrollers/', reverse('rackcontrollers_handler'))
+            '/MAAS/api/2.0/rackcontrollers/',
+            reverse('rackcontrollers_handler'))
 
     def test_read_returns_limited_fields(self):
         self.become_admin()

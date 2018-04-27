@@ -148,7 +148,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/machines/', reverse('machines_handler'))
+            '/MAAS/api/2.0/machines/', reverse('machines_handler'))
 
     def test_POST_creates_machine(self):
         # The API allows a non-admin logged-in user to create a Machine.

@@ -35,7 +35,7 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
     def test_hander_path(self):
         dhcp_snippet = factory.make_DHCPSnippet()
         self.assertEqual(
-            '/api/2.0/dhcp-snippets/%s/' % dhcp_snippet.id,
+            '/MAAS/api/2.0/dhcp-snippets/%s/' % dhcp_snippet.id,
             self.get_dhcp_snippet_uri(dhcp_snippet))
 
     def test_read_by_id(self):
@@ -76,7 +76,7 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         # Generate some history
         dhcp_snippet.value = dhcp_snippet.value.update(factory.make_string())
         dhcp_snippet.save()
-        uri = '/api/2.0/dhcp-snippets/%s/' % dhcp_snippet.name
+        uri = '/MAAS/api/2.0/dhcp-snippets/%s/' % dhcp_snippet.name
         response = self.client.get(uri)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -276,7 +276,7 @@ class TestDHCPSnippetsAPI(APITestCase.ForUser):
 
     def test_hander_path(self):
         self.assertEqual(
-            '/api/2.0/dhcp-snippets/', self.get_dhcp_snippets_uri())
+            '/MAAS/api/2.0/dhcp-snippets/', self.get_dhcp_snippets_uri())
 
     def test_read(self):
         for _ in range(3):

@@ -27,7 +27,6 @@ from distro_info import UbuntuDistroInfo
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.test.client import RequestFactory
 from django.utils import timezone
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
@@ -126,6 +125,7 @@ from maasserver.models.rdns import RDNS
 from maasserver.models.switch import Switch
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
+from maasserver.testing.testclient import MAASSensibleRequestFactory
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import (
     get_one,
@@ -212,7 +212,7 @@ class Factory(maastesting.factory.Factory):
             ('GET' or 'POST').
         :param cookies: A `dict` with the cookies for the request.
         """
-        rf = RequestFactory()
+        rf = MAASSensibleRequestFactory()
         request = rf.get(path)
         request.method = method
         request._messages = Messages()

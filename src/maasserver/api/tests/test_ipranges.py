@@ -37,7 +37,7 @@ class TestIPRangesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/ipranges/', get_ipranges_uri())
+            '/MAAS/api/2.0/ipranges/', get_ipranges_uri())
 
     def test_read(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -164,7 +164,7 @@ class TestIPRangeAPI(APITestCase.ForUser):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
         self.assertEqual(
-            '/api/2.0/ipranges/%s/' % iprange.id,
+            '/MAAS/api/2.0/ipranges/%s/' % iprange.id,
             get_iprange_uri(iprange))
 
     def test_read(self):

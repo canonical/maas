@@ -85,7 +85,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/pods/', reverse('pods_handler'))
+            '/MAAS/api/2.0/pods/', reverse('pods_handler'))
 
     def test_read_lists_pods(self):
         factory.make_BMC()
@@ -222,7 +222,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
     def test_handler_path(self):
         pod_id = random.randint(0, 10)
         self.assertEqual(
-            '/api/2.0/pods/%s/' % pod_id,
+            '/MAAS/api/2.0/pods/%s/' % pod_id,
             reverse('pod_handler', args=[pod_id]))
 
     def test_GET_reads_pod(self):

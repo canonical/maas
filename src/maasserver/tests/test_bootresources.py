@@ -24,6 +24,7 @@ from unittest.mock import (
     Mock,
     sentinel,
 )
+from urllib.parse import urljoin
 
 from crochet import wait_for
 from django.conf import settings
@@ -32,7 +33,6 @@ from django.db import (
     transaction,
 )
 from django.http import StreamingHttpResponse
-from django.test.client import Client
 from fixtures import (
     FakeLogger,
     Fixture,
@@ -83,6 +83,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.testing.testclient import MAASSensibleClient
 from maasserver.utils import (
     absolute_reverse,
     get_maas_user_agent,
@@ -562,7 +563,7 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
         mock_get_new_connection = self.patch(
             bootresources.ConnectionWrapper, '_get_new_connection')
 
-        client = Client()
+        client = MAASSensibleClient()
         response = client.get(url)
         self.read_response(response)
         self.assertThat(mock_get_new_connection, MockCalledOnceWith())
@@ -590,7 +591,7 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
         self.patch(
             bootresources, 'ConnectionWrapper', AssertConnectionWrapper)
 
-        client = Client()
+        client = MAASSensibleClient()
         response = client.get(url)
         self.read_response(response)
 
@@ -1988,7 +1989,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         are_cluster_func.return_value = cluster_answer
 
     def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
-        _, maas_url_path = self.set_maas_url()
+        maas_url, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
         self.patch_are_functions(service, False, True)
@@ -2003,13 +2004,13 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         until you import boot images into the region. Visit the
         <a href="%s">boot images</a> page to start the import.
         """
-        images_link = maas_url_path + '/#/images'
+        images_link = maas_url + urljoin(maas_url_path, '/MAAS/#/images')
         self.assertEqual(
             normalise_whitespace(error_expected % images_link),
             normalise_whitespace(error_observed))
 
     def test__adds_warning_if_boot_image_import_not_started(self):
-        _, maas_url_path = self.set_maas_url()
+        maas_url, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
         self.patch_are_functions(service, False, False)
@@ -2023,7 +2024,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         provision without boot images. Visit the <a href="%s">boot images</a>
         page to start the import.
         """
-        images_link = maas_url_path + '/#/images'
+        images_link = maas_url + urljoin(maas_url_path, '/MAAS/#/images')
         self.assertEqual(
             normalise_whitespace(error_expected % images_link),
             normalise_whitespace(error_observed))

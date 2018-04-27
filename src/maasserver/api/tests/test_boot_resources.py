@@ -124,7 +124,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/boot-resources/',
+            '/MAAS/api/2.0/boot-resources/',
             reverse('boot_resources_handler'))
 
     def test_GET_returns_boot_resources_list(self):
@@ -425,7 +425,7 @@ class TestBootResourceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/boot-resources/3/',
+            '/MAAS/api/2.0/boot-resources/3/',
             reverse('boot_resource_handler', args=['3']))
 
     def test_GET_returns_boot_resource(self):
@@ -498,7 +498,7 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/boot-resources/3/upload/5/',
+            '/MAAS/api/2.0/boot-resources/3/upload/5/',
             reverse('boot_resource_file_upload_handler', args=['3', '5']))
 
     def test_PUT_resource_file_writes_content(self):

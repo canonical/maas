@@ -44,7 +44,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_User())
         Config.objects.set_config('completed_intro', False)
         response = self.client.get(reverse('settings'))
-        self.assertEqual('/', extract_redirect(response))
+        self.assertEqual(reverse('index'), extract_redirect(response))
 
     def test_settings_redirects_to_settings_user(self):
         admin = factory.make_admin()
@@ -244,7 +244,7 @@ class SettingsTest(MAASServerTestCase):
         self.client.login(user=factory.make_admin())
         response = self.client.get(reverse('settings_general'))
         doc = fromstring(response.content)
-        license_keys = doc.cssselect('a[href="/settings/license-keys/"]')
+        license_keys = doc.cssselect('a[href="/MAAS/settings/license-keys/"]')
         self.assertEqual(
             0, len(license_keys), "Didn't hide the license key section.")
 
@@ -257,7 +257,7 @@ class SettingsTest(MAASServerTestCase):
             'gen_all_known_operating_systems').return_value = [osystem]
         response = self.client.get(reverse('settings_general'))
         doc = fromstring(response.content)
-        license_keys = doc.cssselect('a[href="/settings/license-keys/"]')
+        license_keys = doc.cssselect('a[href="/MAAS/settings/license-keys/"]')
         self.assertEqual(
             1, len(license_keys), "Didn't show the license key section.")
 

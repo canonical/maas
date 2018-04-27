@@ -114,11 +114,11 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase.ForUser):
 
     def test_files_handler_path(self):
         self.assertEqual(
-            '/api/2.0/files/', reverse('files_handler'))
+            '/MAAS/api/2.0/files/', reverse('files_handler'))
 
     def test_file_handler_path(self):
         self.assertEqual(
-            '/api/2.0/files/filename/',
+            '/MAAS/api/2.0/files/filename/',
             reverse('file_handler', args=['filename']))
 
     def test_add_file_succeeds(self):

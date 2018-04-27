@@ -25,11 +25,11 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
 
     def test_sslkeys_handler_path(self):
         self.assertEqual(
-            '/api/2.0/account/prefs/sslkeys/', reverse('sslkeys_handler'))
+            '/MAAS/api/2.0/account/prefs/sslkeys/', reverse('sslkeys_handler'))
 
     def test_sslkey_handler_path(self):
         self.assertEqual(
-            '/api/2.0/account/prefs/sslkeys/key/',
+            '/MAAS/api/2.0/account/prefs/sslkeys/key/',
             reverse('sslkey_handler', args=['key']))
 
     def test_list_works(self):
