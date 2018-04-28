@@ -3423,7 +3423,8 @@ class Node(CleanSave, TimestampedModel):
                 found_gateways, IPADDRESS_FAMILY.IPv6)
         return DefaultGateways(gateway_ipv4, gateway_ipv6)
 
-    def get_default_dns_servers(self, ipv4=True, ipv6=True):
+    def get_default_dns_servers(
+            self, ipv4=True, ipv6=True, default_region_ip=None):
         """Return the default DNS servers for this node."""
         # Circular imports.
         from maasserver.dns.zonegenerator import get_dns_server_addresses
@@ -3451,7 +3452,8 @@ class Node(CleanSave, TimestampedModel):
             # region IP address.
             maas_dns_servers = get_dns_server_addresses(
                 rack_controller=self.get_boot_rack_controller(),
-                ipv4=ipv4, ipv6=ipv6, include_alternates=True)
+                ipv4=ipv4, ipv6=ipv6, include_alternates=True,
+                default_region_ip=default_region_ip)
         else:
             # Choose an address consistent with the primary address-family
             # in use, as indicated by the presence (or not) of a gateway.
@@ -3462,8 +3464,8 @@ class Node(CleanSave, TimestampedModel):
                 rack_controller=self.get_boot_rack_controller(),
                 ipv4=(ipv4 and gateways.ipv4 is not None),
                 ipv6=(ipv6 and gateways.ipv6 is not None),
-                include_alternates=True)
-        return list(set([str(ip) for ip in maas_dns_servers]))
+                include_alternates=True, default_region_ip=default_region_ip)
+        return list(OrderedDict.fromkeys([str(ip) for ip in maas_dns_servers]))
 
     def get_boot_purpose(self):
         """

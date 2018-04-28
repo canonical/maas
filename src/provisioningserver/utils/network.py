@@ -1429,7 +1429,7 @@ def get_source_address(destination_ip: IPAddressOrNetwork):
         used for communication with the specified destination.
     """
     if isinstance(destination_ip, IPNetwork):
-        destination_ip = IPAddress(destination_ip.first + 1)
+        destination_ip = IPAddress(next(destination_ip.iter_hosts()))
     else:
         destination_ip = make_ipaddress(destination_ip)
     if destination_ip.is_ipv4_mapped():

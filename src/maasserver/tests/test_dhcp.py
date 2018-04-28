@@ -11,7 +11,12 @@ from unittest.mock import ANY
 
 from crochet import wait_for
 from django.core.exceptions import ValidationError
-from maasserver import dhcp
+from maasserver import (
+    dhcp,
+    dhcp as dhcp_module,
+    server_address as server_address_module,
+)
+from maasserver.dhcp import get_default_dns_servers
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -798,6 +803,48 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
             dhcp.get_ntp_server_addresses_for_rack, rack)
         self.assertThat(count, Equals(1))
         self.assertThat(result, Not(Equals({})))
+
+
+class TestGetDefaultDNSServers(MAASServerTestCase):
+    """Tests for `get_default_dns_servers`."""
+
+    def test__returns_default_region_ip_if_no_url_found(self):
+        mock_get_source_address = self.patch(dhcp_module, 'get_source_address')
+        mock_get_source_address.return_value = '10.0.0.1'
+        vlan = factory.make_VLAN()
+        rack_controller = factory.make_RackController(
+            interface=False, url='')
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        servers = get_default_dns_servers(rack_controller, subnet)
+        self.assertThat(servers, Equals([IPAddress('10.0.0.1')]))
+
+    def test__returns_address_from_region_url_if_url_specified(self):
+        mock_get_source_address = self.patch(dhcp_module, 'get_source_address')
+        mock_get_source_address.return_value = '10.0.0.1'
+        vlan = factory.make_VLAN()
+        rack_controller = factory.make_RackController(
+            interface=False, url='http://192.168.0.1:5240/MAAS/')
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        servers = get_default_dns_servers(rack_controller, subnet)
+        self.assertThat(servers, Equals([IPAddress('192.168.0.1')]))
+
+    def test__chooses_alternate_from_known_reachable_subnet(self):
+        mock_get_source_address = self.patch(dhcp_module, 'get_source_address')
+        mock_get_source_address.return_value = '10.0.0.1'
+        vlan = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        mock_get_maas_id = self.patch(server_address_module, 'get_maas_id')
+        mock_get_maas_id.return_value = r1.system_id
+        r2 = factory.make_RegionRackController(interface=False)
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r2)
+        address = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        servers = get_default_dns_servers(r1, subnet)
+        self.assertThat(servers, Equals(
+            [IPAddress('10.0.0.1'), IPAddress(address.ip)]))
 
 
 class TestMakeSubnetConfig(MAASServerTestCase):

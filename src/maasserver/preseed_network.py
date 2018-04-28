@@ -21,6 +21,7 @@ from provisioningserver.utils.netplan import (
     get_netplan_bond_parameters,
     get_netplan_bridge_parameters,
 )
+from provisioningserver.utils.network import get_source_address
 import yaml
 
 
@@ -465,6 +466,17 @@ class NodeNetworkConfiguration:
         self.addr_family_present = defaultdict(bool)
 
         self.gateways = self.node.get_default_gateways()
+        if self.gateways.ipv4 is not None:
+            dest_ip = self.gateways.ipv4.gateway_ip
+        elif self.gateways.ipv6 is not None:
+            dest_ip = self.gateways.ipv6.gateway_ip
+        else:
+            dest_ip = None
+        if dest_ip is not None:
+            default_source_ip = get_source_address(dest_ip)
+        else:
+            default_source_ip = None
+
         self.routes = StaticRoute.objects.all()
 
         interfaces = Interface.objects.all_interfaces_parents_first(self.node)
@@ -492,7 +504,8 @@ class NodeNetworkConfiguration:
         if not self.addr_family_present[6]:
             self.addr_family_present[4] = True
         default_dns_servers = self.node.get_default_dns_servers(
-            ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6])
+            ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6],
+            default_region_ip=default_source_ip)
         # Ensure the machine's primary domain always comes first in the list.
         search_list = [self.node.domain.name] + [
             name

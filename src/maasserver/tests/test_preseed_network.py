@@ -8,6 +8,10 @@ __all__ = []
 import random
 from textwrap import dedent
 
+from maasserver import (
+    preseed_network as preseed_network_module,
+    server_address as server_address_module,
+)
 from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -980,6 +984,64 @@ class TestNetplan(MAASServerTestCase):
                     },
                     {
                         'address': ['127.0.0.2'],
+                        'search': ['maas'],
+                        'type': 'nameserver'
+                    }
+                ],
+            }
+        }
+        self.expectThat(v1, Equals(expected_v1))
+
+    def test__ha__default_dns(self):
+        node = factory.make_Node()
+        mock_get_source_address = self.patch(
+            preseed_network_module, 'get_source_address')
+        mock_get_source_address.return_value = '10.0.0.1'
+        vlan = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        mock_get_maas_id = self.patch(server_address_module, 'get_maas_id')
+        mock_get_maas_id.return_value = r1.system_id
+        r2 = factory.make_RegionRackController(interface=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r2)
+        subnet = factory.make_Subnet(
+            cidr='10.0.0.0/24', gateway_ip='10.0.0.1',
+            dns_servers=[])
+        r2_address = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        vlan = factory.make_VLAN()
+        factory.make_Subnet(
+            cidr='10.0.1.0/24', gateway_ip='10.0.1.1',
+            dns_servers=[])
+        node_eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05", vlan=vlan)
+        node.boot_interface = node_eth0
+        node.save()
+        factory.make_StaticIPAddress(
+            interface=node_eth0, subnet=subnet, ip='10.0.0.4',
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        # XXX: the netplan (v2) currently doesn't include default DNS servers.
+        # See launchpad bug #1664806.
+        v1 = self._render_v1_dict(node)
+        expected_v1 = {
+            'network': {
+                'version': 1,
+                'config': [
+                    {
+                        'id': 'eth0',
+                        'mac_address': '00:01:02:03:04:05',
+                        'mtu': 1500,
+                        'name': 'eth0',
+                        'subnets': [{
+                            'address': '10.0.0.4/24',
+                            'gateway': '10.0.0.1',
+                            'type': 'static',
+                        }],
+                        'type': 'physical'
+                    },
+                    {
+                        'address': ['10.0.0.1', r2_address.ip],
                         'search': ['maas'],
                         'type': 'nameserver'
                     }

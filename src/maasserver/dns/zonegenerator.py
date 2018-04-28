@@ -118,7 +118,8 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
 
 
 def get_dns_server_addresses(
-        rack_controller=None, ipv4=True, ipv6=True, include_alternates=False):
+        rack_controller=None, ipv4=True, ipv6=True, include_alternates=False,
+        default_region_ip=None):
     """Return the DNS server's IP addresses.
 
     That address is derived from the config maas_url or rack_controller.url.
@@ -132,6 +133,8 @@ def get_dns_server_addresses(
     :param ipv4: Include IPv4 server addresses?
     :param ipv6: Include IPv6 server addresses?
     :param include_alternates: Include IP addresses from other regions?
+    :param default_region_ip: The default source IP address to be used, if a
+        specific URL is not defined.
     :return: List of IPAddress to use.  Loopback addresses are removed from the
         list, unless there are no non-loopback addresses.
 
@@ -139,7 +142,8 @@ def get_dns_server_addresses(
     try:
         iplist = get_maas_facing_server_addresses(
             rack_controller, ipv4=ipv4, ipv6=ipv6,
-            include_alternates=include_alternates)
+            include_alternates=include_alternates,
+            default_region_ip=default_region_ip)
     except socket.error as e:
         raise UnresolvableHost(
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "

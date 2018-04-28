@@ -40,7 +40,7 @@ def get_maas_facing_server_host(rack_controller=None, default_region_ip=None):
 
 def get_maas_facing_server_addresses(
         rack_controller=None, ipv4=True, ipv6=True, link_local=False,
-        include_alternates=False):
+        include_alternates=False, default_region_ip=None):
     """Return addresses for the MAAS server.
 
     The address is taken from the configured MAAS URL or `controller.url`.
@@ -60,13 +60,16 @@ def get_maas_facing_server_addresses(
     :param link_local: Include link-local addresses?   Defaults to `False`.
     :param include_alternates: Include secondary region controllers on the same
         subnet?  Defaults to `False`.
+    :param default_region_ip: The default source IP address to be used, if a
+        specific URL is not defined.
     :return: IP addresses as a list: [IPAddress, ...]  If the configured URL
         uses a hostname, this function will resolve that hostname.
     :raise UnresolvableHost: if no IP addresses could be found for
         the hostname.
 
     """
-    hostname = get_maas_facing_server_host(rack_controller)
+    hostname = get_maas_facing_server_host(
+        rack_controller, default_region_ip=default_region_ip)
     if ipv6 or ipv4:
         addresses = resolve_hostname(
             hostname, 0 if (ipv6 and ipv4) else 4 if ipv4 else 6)
