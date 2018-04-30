@@ -50,12 +50,9 @@ class TestZoneForm(MAASServerTestCase):
         zone = reload_object(zone)
         self.assertEqual(new_description, zone.description)
 
-    def test_disallows_renaming_default_zone(self):
+    def test_allows_renaming_default_zone(self):
         zone = Zone.objects.get_default_zone()
         form = ZoneForm(
             data={'name': factory.make_name('zone')},
             instance=zone)
-        self.assertFalse(form.is_valid())
-        self.assertEqual(
-            {'name': ["This zone is the default zone, it cannot be renamed."]},
-            form.errors)
+        self.assertTrue(form.is_valid())

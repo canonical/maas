@@ -2009,16 +2009,6 @@ class ZoneForm(MAASModelForm):
             'description',
             )
 
-    def clean_name(self):
-        new_name = self.cleaned_data['name']
-        renaming_instance = (
-            self.instance is not None and self.instance.is_default() and
-            self.instance.name != new_name)
-        if renaming_instance:
-            raise forms.ValidationError(
-                "This zone is the default zone, it cannot be renamed.")
-        return self.cleaned_data['name']
-
 
 class ResourcePoolForm(MAASModelForm):
 

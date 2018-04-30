@@ -10,7 +10,6 @@ import json
 
 from django.conf import settings
 from maasserver.models import Zone
-from maasserver.models.zone import DEFAULT_ZONE_NAME
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
@@ -84,13 +83,13 @@ class TestZoneAPI(APITestCase.ForUser):
     def test_PUT_rejects_change_of_default_zone_name(self):
         self.become_admin()
         zone = Zone.objects.get_default_zone()
-
+        new_name = factory.make_name('zone')
         response = self.client.put(
             get_zone_uri(zone),
-            {'name': factory.make_name('zone')})
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+            {'name': new_name})
+        self.assertEqual(http.client.OK, response.status_code)
         zone = reload_object(zone)
-        self.assertEqual(DEFAULT_ZONE_NAME, zone.name)
+        self.assertEqual(new_name, zone.name)
 
     def test_PUT_changing_name_maintains_foreign_keys(self):
         self.become_admin()
