@@ -3,7 +3,7 @@
 {% block title %}Login{% endblock %}
 {% block layout-modifiers %}
     modal-content login
-    {% if no_users %}
+    {% if no_users and not external_auth_url %}
         no-users
     {% endif %}
 {% endblock %}
@@ -12,7 +12,7 @@
     {% endblock %}
     <div class="p-strip">
         <div class="row">
-    {% if no_users %}
+    {% if no_users and not external_auth_url %}
         <div class="col-8">
             <h1>No admin user has been created yet</h1>
             <p>Use the "init" administration command to create one:</p>
