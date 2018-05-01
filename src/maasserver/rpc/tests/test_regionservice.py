@@ -545,6 +545,7 @@ class TestRackClient(MAASTestCase):
     @inlineCallbacks
     def test__call__returns_cache_value(self):
         conn = DummyConnection()
+        conn.ident = factory.make_name("ident")
         client = RackClient(conn, {})
         call_cache = client._getCallCache()
         power_types = {
@@ -568,6 +569,7 @@ class TestRackClient(MAASTestCase):
     @inlineCallbacks
     def test__call__adds_result_to_cache(self):
         conn = DummyConnection()
+        conn.ident = factory.make_name('ident')
         self.patch(conn, 'callRemote').return_value = (
             succeed(sentinel.power_types))
         client = RackClient(conn, {})
@@ -581,6 +583,7 @@ class TestRackClient(MAASTestCase):
     @inlineCallbacks
     def test__call__doesnt_add_result_to_cache_for_not_cache_call(self):
         conn = DummyConnection()
+        conn.ident = factory.make_name('ident')
         self.patch(conn, 'callRemote').return_value = (
             succeed(sentinel.boot_images))
         client = RackClient(conn, {})

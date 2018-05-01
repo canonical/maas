@@ -83,6 +83,23 @@ class RegionWorkerServiceMaker:
         import crochet
         crochet.no_setup()
 
+    def _reconfigureLogging(self):
+        # Reconfigure the logging based on the debug mode of Django.
+        from django.conf import settings
+        if settings.DEBUG:
+            # In debug mode, force logging to debug mode.
+            logger.set_verbosity(3)
+
+            # When not in the developer environment, patch Django to not
+            # use the debug cursor. This is needed or Django will store in
+            # memory every SQL query made.
+            from provisioningserver.config import is_dev_environment
+            if not is_dev_environment():
+                from django.db.backends.base import base
+                from django.db.backends.utils import CursorWrapper
+                base.BaseDatabaseWrapper.make_debug_cursor = (
+                    lambda self, cursor: CursorWrapper(cursor, self))
+
     def makeService(self, options):
         """Construct the MAAS Region service."""
         register_sigusr2_thread_dump_handler()
@@ -93,6 +110,9 @@ class RegionWorkerServiceMaker:
         self._configureDjango()
         self._configureReactor()
         self._configureCrochet()
+
+        # Reconfigure the logging if required.
+        self._reconfigureLogging()
 
         # Should the import services run in this worker.
         import_services = False
@@ -149,6 +169,9 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
         self._configureCrochet()
         self._ensureConnection()
 
+        # Reconfigure the logging if required.
+        self._reconfigureLogging()
+
         # Populate the region's event-loop with services.
         from maasserver import eventloop
         eventloop.loop.populate(master=True)
@@ -182,6 +205,9 @@ class RegionAllInOneServiceMaker(RegionMasterServiceMaker):
         self._configureReactor()
         self._configureCrochet()
         self._ensureConnection()
+
+        # Reconfigure the logging if required.
+        self._reconfigureLogging()
 
         # Populate the region's event-loop with services.
         from maasserver import eventloop

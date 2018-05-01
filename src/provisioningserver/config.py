@@ -140,6 +140,7 @@ from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
     Number,
     Set,
+    StringBool,
 )
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils import typed
@@ -787,6 +788,11 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     cluster_uuid = ConfigurationOption(
         "cluster_uuid", "The UUID for this cluster controller",
         UUIDString(if_missing=UUID_NOT_SET))
+
+    # Debug options.
+    debug = ConfigurationOption(
+        "debug", "Enable debug mode for detailed error and log reporting.",
+        StringBool(if_missing=False))
 
 
 def is_dev_environment():

@@ -78,3 +78,7 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "actions performed. Requires debug to also be True. mode for detailed "
         "error and log reporting.",
         StringBool(if_missing=False))
+    debug_http = ConfigurationOption(
+        "debug_http",
+        "Enable HTTP debugging. Logs all HTTP requests and HTTP responses.",
+        StringBool(if_missing=False))

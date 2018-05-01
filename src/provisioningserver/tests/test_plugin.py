@@ -15,6 +15,7 @@ import provisioningserver
 from provisioningserver import (
     logger,
     plugin as plugin_module,
+    settings,
 )
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.plugin import (
@@ -96,7 +97,31 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
 
-    def test_makeService(self):
+    def test_makeService_not_in_debug(self):
+        """
+        Only the site service is created when no options are given.
+        """
+        self.patch(settings, "DEBUG", False)
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options, clock=None)
+        self.assertIsInstance(service, MultiService)
+        expected_services = [
+            "dhcp_probe", "networks_monitor", "image_download",
+            "lease_socket_service", "node_monitor", "ntp", "rpc", "rpc-ping",
+            "tftp", "image_service", "service_monitor",
+            ]
+        self.assertThat(service.namedServices, KeysEqual(*expected_services))
+        self.assertEqual(
+            len(service.namedServices), len(service.services),
+            "Not all services are named.")
+        self.assertEqual(service, provisioningserver.services)
+        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+        self.assertThat(
+            logger.configure, MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD))
+
+    def test_makeService_in_debug(self):
         """
         Only the site service is created when no options are given.
         """
@@ -117,7 +142,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
         self.assertThat(
             logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
+                3, logger.LoggingMode.TWISTD))
 
     def test_makeService_with_EXPERIMENTAL_tftp_offload_service(self):
         """

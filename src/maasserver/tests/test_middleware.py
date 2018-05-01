@@ -259,13 +259,6 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         middleware = DebuggingLoggerMiddleware(get_response)
         return middleware(request)
 
-    def test_debugging_logger_does_not_log_request_if_info_level(self):
-        logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
-        self.process_request(request)
-        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertThat(logger.output, Not(Contains(debug_output)))
-
     def test_debugging_logger_does_not_log_response_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
         request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
@@ -277,7 +270,19 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         self.assertThat(
             logger.output, Not(Contains(debug_output)))
 
+    def test_debugging_logger_does_not_log_response_if_no_debug_http(self):
+        logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
+        request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
+        response = HttpResponse(
+            content="test content",
+            content_type=b"text/plain; charset=utf-8")
+        self.process_request(request, response)
+        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
+        self.assertThat(
+            logger.output, Not(Contains(debug_output)))
+
     def test_debugging_logger_logs_request(self):
+        self.patch(settings, "DEBUG_HTTP", True)
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = factory.make_fake_request("/MAAS/api/2.0/nodes/")
         request.content = "test content"
@@ -286,6 +291,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         self.assertThat(logger.output, Contains(debug_output))
 
     def test_debugging_logger_logs_response(self):
+        self.patch(settings, "DEBUG_HTTP", True)
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = factory.make_fake_request("foo")
         response = HttpResponse(
@@ -297,6 +303,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
             Contains(response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_debugging_logger_logs_binary_response(self):
+        self.patch(settings, "DEBUG_HTTP", True)
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = factory.make_fake_request("foo")
         response = HttpResponse(

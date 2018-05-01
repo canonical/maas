@@ -151,7 +151,7 @@ def install_database_unpool(maxthreads=max_threads_for_database_pool):
 def deferToDatabase(func, *args, **kwargs):
     """Call `func` in a thread where database activity is permitted."""
     if settings.DEBUG and getattr(settings, 'DEBUG_QUERIES', False):
-        func = count_queries(log.msg)(func)
+        func = count_queries(log.debug)(func)
     return threads.deferToThreadPool(
         reactor, reactor.threadpoolForDatabase,
         func, *args, **kwargs)

@@ -120,7 +120,7 @@ class TestConfigurationSet(MAASTestCase):
             value = random.randint(0, 60)
         elif self.option == "num_workers":
             value = random.randint(1, 16)
-        elif self.option in ["debug", "debug_queries"]:
+        elif self.option in ["debug", "debug_queries", "debug_http"]:
             value = random.choice(['true', 'false'])
         else:
             value = factory.make_name("foobar")

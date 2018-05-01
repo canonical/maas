@@ -12,7 +12,10 @@ from errno import ENOPROTOOPT
 import socket
 from socket import error as socket_error
 
-from provisioningserver import logger
+from provisioningserver import (
+    logger,
+    settings,
+)
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.monkey import (
     add_patches_to_twisted,
@@ -204,7 +207,11 @@ class ProvisioningServiceMaker:
         add_patches_to_twisted()
 
         self._configureCrochet()
-        self._configureLogging(options["verbosity"])
+        if settings.DEBUG:
+            # Always log at debug level in debug mode.
+            self._configureLogging(3)
+        else:
+            self._configureLogging(options["verbosity"])
 
         with ClusterConfiguration.open() as config:
             tftp_root = config.tftp_root

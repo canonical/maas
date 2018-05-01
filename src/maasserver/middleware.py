@@ -318,13 +318,13 @@ class DebuggingLoggerMiddleware:
              six.text_type(meta)))
 
     def __call__(self, request):
-        if logger.isEnabledFor(self.log_level):
+        if settings.DEBUG_HTTP and logger.isEnabledFor(self.log_level):
             header = " Request dump ".center(79, "#")
             logger.log(
                 self.log_level, "%s\n%s", header,
                 self._build_request_repr(request))
         response = self.get_response(request)
-        if logger.isEnabledFor(self.log_level):
+        if settings.DEBUG_HTTP and logger.isEnabledFor(self.log_level):
             header = " Response dump ".center(79, "#")
             content = getattr(response, "content", "{no content}")
             try:

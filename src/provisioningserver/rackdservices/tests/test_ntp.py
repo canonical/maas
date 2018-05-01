@@ -24,6 +24,7 @@ from maastesting.twisted import (
 from provisioningserver import services
 from provisioningserver.rackdservices import ntp
 from provisioningserver.rpc import (
+    clusterservice,
     exceptions,
     region,
 )
@@ -139,6 +140,9 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
 
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_region_is_not_available(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(clusterservice.log, 'debug')
         self.useFixture(MAASRootFixture())
         service = ntp.RackNetworkTimeProtocolService(
             StubClusterClientService(), reactor)
@@ -152,6 +156,9 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
 
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_rack_is_not_recognised(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(clusterservice.log, 'debug')
         self.useFixture(MAASRootFixture())
         rpc_service, protocol = yield prepareRegion(self)
         protocol.GetControllerType.side_effect = exceptions.NoSuchNode
@@ -166,6 +173,9 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
 
     @inlineCallbacks
     def test_is_silent_does_nothing_but_saves_config_when_is_region(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(clusterservice.log, 'debug')
         self.useFixture(MAASRootFixture())
         rpc_service, _ = yield prepareRegion(self, is_region=True)
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
@@ -202,6 +212,10 @@ class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
 
     @inlineCallbacks
     def test__tryUpdate_logs_errors_from_broken_method(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(clusterservice.log, 'debug')
+
         rpc_service, _ = yield prepareRegion(self)
         self.patch_autospec(ntp, "configure_rack")  # No-op configuration.
 

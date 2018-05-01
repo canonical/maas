@@ -43,10 +43,11 @@ def _get_local_timezone(tzfilename='/etc/timezone'):
 # temporary measure to prevent conflicts during MAAS 2.0 development.
 ENABLE_HA = True if int(os.environ.get('ENABLE_HA', 0)) == 1 else False
 
-# Debugging: Detailed error reporting and log all query counts and time
-# when enabled.
+# Debugging: Detailed error reporting, log all query counts and time
+# when enabled, and optional log all HTTP requests and responses.
 DEBUG = False
 DEBUG_QUERIES = False
+DEBUG_HTTP = False
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -114,9 +115,13 @@ try:
         }
         DEBUG = config.debug
         DEBUG_QUERIES = config.debug_queries
+        DEBUG_HTTP = config.debug_http
         if DEBUG_QUERIES and not DEBUG:
             # For debug queries to work debug most also be on, so Django will
             # track the queries made.
+            DEBUG = True
+        if DEBUG_HTTP and not DEBUG:
+            # For HTTP debugging debug mode must also be on.
             DEBUG = True
 except:
     # The regiond.conf will attempt to be loaded when the 'maas' command

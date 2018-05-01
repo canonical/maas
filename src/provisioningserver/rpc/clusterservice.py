@@ -936,6 +936,23 @@ class ClusterClient(Cluster):
         log.msg("Host certificate: %r" % self.hostCertificate)
         log.msg("Peer certificate: %r" % self.peerCertificate)
 
+    def dispatchCommand(self, box):
+        """Override to provide log message in debug mode."""
+        log.debug(
+            "[RPC received] {command} - {box}",
+            command=box[amp.COMMAND], box=box)
+        return super(ClusterClient, self).dispatchCommand(box)
+
+
+class RegionClient(common.Client):
+    """A `common.Client` for communication from rack to region."""
+
+    def __call__(self, cmd, *args, **kwargs):
+        log.debug(
+            "[RPC sent] {command} - {cmd_kwargs}",
+            command=cmd.__name__, cmd_kwargs=kwargs)
+        return super(RegionClient, self).__call__(cmd, *args, **kwargs)
+
 
 class ClusterClientService(TimerService, object):
     """A cluster controller RPC client service.
@@ -977,7 +994,7 @@ class ClusterClientService(TimerService, object):
         super(ClusterClientService, self).startService()
 
     def getClient(self):
-        """Returns a :class:`common.Client` connected to a region.
+        """Returns a :class:`RegionClient` connected to a region.
 
         The client is chosen at random.
 
@@ -988,11 +1005,11 @@ class ClusterClientService(TimerService, object):
         if len(conns) == 0:
             raise exceptions.NoConnectionsAvailable()
         else:
-            return common.Client(random.choice(conns))
+            return RegionClient(random.choice(conns))
 
     @deferred
     def getClientNow(self):
-        """Returns a `Defer` that resolves to a :class:`common.Client`
+        """Returns a `Defer` that resolves to a :class:`RegionClient`
         connected to a region.
 
         If a connection already exists to the region then this method
@@ -1009,8 +1026,8 @@ class ClusterClientService(TimerService, object):
             return self._tryUpdate().addCallback(call, self.getClient)
 
     def getAllClients(self):
-        """Return a list of all connected :class:`common.Client`s."""
-        return [common.Client(conn) for conn in self.connections.values()]
+        """Return a list of all connected :class:`RegionClient`s."""
+        return [RegionClient(conn) for conn in self.connections.values()]
 
     def _tryUpdate(self):
         """Attempt to refresh outgoing connections.

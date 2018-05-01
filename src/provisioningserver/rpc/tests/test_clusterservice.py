@@ -94,6 +94,7 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClientService,
     executeScanNetworksSubprocess,
     get_scan_all_networks_args,
+    RegionClient,
     spawnProcessAndNullifyStdout,
 )
 from provisioningserver.rpc.interfaces import IConnection
@@ -843,7 +844,7 @@ class TestClusterClientService(MAASTestCase):
         }
         self.assertIn(
             service.getClient(), {
-                common.Client(conn)
+                RegionClient(conn)
                 for conn in service.connections.values()
             })
 
@@ -865,7 +866,7 @@ class TestClusterClientService(MAASTestCase):
         client = yield service.getClientNow()
         self.assertIn(
             client, {
-                common.Client(conn)
+                RegionClient(conn)
                 for conn in service.connections.values()
             })
 
@@ -886,7 +887,7 @@ class TestClusterClientService(MAASTestCase):
         client = yield service.getClientNow()
         self.assertIn(
             client, {
-                common.Client(conn)
+                RegionClient(conn)
                 for conn in service.connections.values()
             })
 
@@ -936,7 +937,7 @@ class TestClusterClientService(MAASTestCase):
         service.connections[uuid2] = c2
         clients = service.getAllClients()
         self.assertItemsEqual(clients, {
-            common.Client(c1), common.Client(c2),
+            RegionClient(c1), RegionClient(c2),
         })
 
     def test_getAllClients_when_there_are_no_connections(self):
