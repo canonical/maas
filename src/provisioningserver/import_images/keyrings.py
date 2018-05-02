@@ -10,7 +10,11 @@ import hashlib
 import os
 
 from provisioningserver.import_images.helpers import maaslog
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
+
+
+log = LegacyLogger()
 
 
 @typed
@@ -21,7 +25,7 @@ def write_keyring(keyring_path, keyring_data: bytes):
     :param keyring_data: The data to write to the keyring_file, as a
         base64-encoded string.
     """
-    maaslog.debug("Writing keyring %s to disk.", keyring_path)
+    log.debug("Writing keyring {path} to disk.", path=keyring_path)
     with open(keyring_path, 'wb') as keyring_file:
         keyring_file.write(keyring_data)
 

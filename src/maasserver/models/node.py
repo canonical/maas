@@ -185,7 +185,10 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.refresh import (
     get_sys_info,
     refresh,
@@ -236,6 +239,7 @@ from twisted.internet.defer import (
 from twisted.internet.threads import deferToThread
 
 
+log = LegacyLogger()
 maaslog = get_maas_logger("node")
 
 
@@ -2947,7 +2951,8 @@ class Node(CleanSave, TimestampedModel):
 
     def set_netboot(self, on=True):
         """Set netboot on or off."""
-        maaslog.debug("%s: Turning on netboot for node", self.hostname)
+        log.debug(
+            "{hostname}: Turning on netboot for node", hostname=self.hostname)
         self.netboot = on
         self.save()
 

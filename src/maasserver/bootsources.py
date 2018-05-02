@@ -40,7 +40,10 @@ from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -51,6 +54,7 @@ from simplestreams import util as sutil
 from twisted.internet.defer import inlineCallbacks
 
 
+log = LegacyLogger()
 maaslog = get_maas_logger("bootsources")
 
 
@@ -145,9 +149,9 @@ def _update_cache(source, descriptions):
         bootsource = BootSource.objects.get(url=source["url"])
     except BootSource.DoesNotExist:
         # The record was deleted while we were fetching the description.
-        maaslog.debug(
-            "Image descriptions at %s are no longer needed; discarding.",
-            source["url"])
+        log.debug(
+            "Image descriptions at {url} are no longer needed; discarding.",
+            url=source["url"])
     else:
         if bootsource.compare_dict_without_selections(source):
             if descriptions.is_empty():
@@ -212,13 +216,13 @@ def _update_cache(source, descriptions):
                     image_ids = {
                         image.id for _, image in current_images.items()}
                     BootSourceCache.objects.filter(id__in=image_ids).delete()
-            maaslog.debug(
-                "Image descriptions for %s have been updated.",
-                source["url"])
+            log.debug(
+                "Image descriptions for {url} have been updated.",
+                url=source["url"])
         else:
-            maaslog.debug(
-                "Image descriptions for %s are outdated; discarding.",
-                source["url"])
+            log.debug(
+                "Image descriptions for {url} are outdated; discarding.",
+                url=source["url"])
 
 
 @asynchronous(timeout=FOREVER)

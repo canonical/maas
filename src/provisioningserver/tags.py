@@ -19,11 +19,15 @@ import urllib.request
 
 import bson
 from lxml import etree
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
 
 
+log = LegacyLogger()
 maaslog = get_maas_logger("tag_processing")
 
 
@@ -94,9 +98,9 @@ def post_updated_nodes(
     :param removed: Set of nodes to remove
     """
     path = '/MAAS/api/2.0/tags/%s/' % (tag_name,)
-    maaslog.debug(
-        "Updating nodes for %s, adding %s removing %s"
-        % (tag_name, len(added), len(removed)))
+    log.debug(
+        "Updating nodes for {name}, adding {adding} removing {removing}",
+        name=tag_name, adding=added, removing=removed)
     try:
         return process_response(client.post(
             path, op='update_nodes', as_json=True,
@@ -272,9 +276,9 @@ def gen_node_details(client, batches):
 
 def process_all(client, rack_id, tag_name, tag_definition, system_ids,
                 xpath, batch_size=None):
-    maaslog.debug(
-        "processing %d system_ids for tag %s.",
-        len(system_ids), tag_name)
+    log.debug(
+        "Processing {nums} system_ids for tag {name}.",
+        nums=len(system_ids), name=tag_name)
 
     if batch_size is None:
         batch_size = DEFAULT_BATCH_SIZE

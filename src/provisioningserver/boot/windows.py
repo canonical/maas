@@ -92,7 +92,6 @@ def request_node_info_by_mac_address(mac_address):
     :type mac_address: unicode
     """
     if mac_address is None:
-        maaslog.debug("Cannot determine node; MAC address is unknown.")
         return succeed(None)
 
     client = getRegionClient()
@@ -100,7 +99,6 @@ def request_node_info_by_mac_address(mac_address):
 
     def eb_request_node_info(failure):
         failure.trap(NoSuchNode)
-        maaslog.debug("Node doesn't exist for MAC address: %s", mac_address)
         return None
 
     return d.addErrback(eb_request_node_info)

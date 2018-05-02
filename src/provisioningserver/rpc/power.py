@@ -414,9 +414,9 @@ def maaslog_report_failure(node, failure):
             "%s: Could not query power state: %s.",
             node['hostname'], failure.getErrorMessage())
     elif failure.check(NoSuchNode):
-        maaslog.debug(
-            "%s: Could not update power state: "
-            "no such node.", node['hostname'])
+        log.debug(
+            "{hostname}: Could not update power state: "
+            "no such node.", hostname=node['hostname'])
     else:
         maaslog.error(
             "%s: Failed to refresh power state: %s",
@@ -434,10 +434,10 @@ def query_node(node, clock):
     Logs to maaslog as errors and power states change.
     """
     if node['system_id'] in power_action_registry:
-        maaslog.debug(
-            "%s: Skipping query power status, "
+        log.debug(
+            "{hostname}: Skipping query power status, "
             "power action already in progress.",
-            node['hostname'])
+            hostname=node['hostname'])
         return succeed(None)
     else:
         d = get_power_state(

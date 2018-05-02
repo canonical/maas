@@ -213,6 +213,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
     )
 
     def test_unhandled_errors_logged_and_do_not_cause_disconnection(self):
+        self.patch(common.log, 'debug')
         protocol = common.RPCProtocol()
         protocol.makeConnection(StringTransport())
         # Poke a request into the dispatcher that will always fail.
@@ -239,6 +240,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
 class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
 
     def test_unhandled_errors_do_not_cause_disconnection(self):
+        self.patch(common.log, 'debug')
         protocol = common.RPCProtocol()
         protocol.makeConnection(StringTransport())
         # Ensure that the superclass dispatchCommand() will fail.

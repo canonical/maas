@@ -673,13 +673,6 @@ class RegionServer(Region):
         log.msg("Rack controller '%s' disconnected." % self.ident)
         super(RegionServer, self).connectionLost(reason)
 
-    def dispatchCommand(self, box):
-        """Override to provide log message in debug mode."""
-        log.debug(
-            "[RPC received] {command} - {box}",
-            command=box[amp.COMMAND], box=box)
-        return super(RegionServer, self).dispatchCommand(box)
-
 
 class RackClient(common.Client):
     """A `common.Client` for communication from region to rack."""
@@ -714,16 +707,10 @@ class RackClient(common.Client):
         """
         call_cache = self._getCallCache()
         if cmd not in self.cache_calls:
-            log.debug(
-                "[RPC to {ident}] {command} - {cmd_kwargs}",
-                ident=self.ident, command=cmd.__name__, cmd_kwargs=kwargs)
             return super(RackClient, self).__call__(cmd, *args, **kwargs)
         if cmd in call_cache:
             # Call has already been made over this connection, just return
             # the original result.
-            log.debug(
-                "[RPC to {ident}] {command} - {cmd_kwargs}",
-                ident=self.ident, command=cmd.__name__, cmd_kwargs=kwargs)
             return succeed(copy.deepcopy(call_cache[cmd]))
         else:
             # First time this call has been made so cache the result so
@@ -734,9 +721,6 @@ class RackClient(common.Client):
                 call_cache[cmd] = result
                 return result
 
-            log.debug(
-                "[RPC to {ident}] {command} - {cmd_kwargs}",
-                ident=self.ident, command=cmd.__name__, cmd_kwargs=kwargs)
             d = super(RackClient, self).__call__(cmd, *args, **kwargs)
             d.addCallback(cb_cache)
             return d

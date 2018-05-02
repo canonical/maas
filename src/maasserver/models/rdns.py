@@ -24,10 +24,10 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import LegacyLogger
 
 
-maaslog = get_maas_logger("RDNS")
+log = LegacyLogger()
 
 
 class RDNSManager(Manager):
@@ -51,10 +51,10 @@ class RDNSManager(Manager):
         """
         entry = self.get_current_entry(ip, observer)
         if entry is not None:
-            maaslog.debug(
-                "Deleted reverse DNS entry: '%s' (resolved to %s)." % (
-                    entry.ip, ", ".join(
-                        ('%r' % hostname for hostname in entry.hostnames))))
+            log.debug(
+                "Deleted reverse DNS entry: '{ip}' (resolved to {res}).",
+                ip=entry.ip, res=", ".join(
+                    ('%r' % hostname for hostname in entry.hostnames)))
             entry.delete()
 
     def set_current_entry(self, ip: str, results: List[str], observer):
@@ -75,9 +75,9 @@ class RDNSManager(Manager):
                 ip=ip, hostname=preferred_hostname, hostnames=results,
                 observer=observer)
             rdns.save()
-            maaslog.debug(
-                "New reverse DNS entry: '%s' resolves to %s." % (
-                    ip, ", ".join(('%r' % result for result in results))))
+            log.debug(
+                "New reverse DNS entry: '{ip}' resolves to {res}.",
+                ip=ip, res=", ".join(('%r' % result for result in results)))
         else:
             # Always update the 'updated' date, so we know when the last time
             # we saw this hostname was.
@@ -92,9 +92,10 @@ class RDNSManager(Manager):
                 updated.append("hostnames")
             # If something significant changed, log it.
             if len(updated) > 1:
-                maaslog.debug(
-                    "Reverse DNS entry updated: '%s' resolves to %s." % (
-                        ip, ", ".join(('%r' % result for result in results))))
+                log.debug(
+                    "Reverse DNS entry updated: '{ip}' resolves to {res}.",
+                    ip=ip, res=", ".join(
+                        ('%r' % result for result in results)))
             entry.save(update_fields=updated)
 
 

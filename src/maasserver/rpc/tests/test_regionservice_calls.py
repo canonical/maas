@@ -823,7 +823,7 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_send_event_logs_if_unknown_node(self):
-        maaslog = self.patch(events_module, 'maaslog')
+        log = self.patch(events_module, 'log')
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
@@ -844,7 +844,7 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
             yield eventloop.reset()
 
         self.assertThat(
-            maaslog.debug, MockCalledOnceWith(
+            log.debug, MockCalledOnceWith(
                 "Event '%s: %s' sent for non-existent node '%s'.",
                 name, event_description, system_id))
 
@@ -974,7 +974,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_send_event_mac_address_logs_if_unknown_node(self):
-        maaslog = self.patch(events_module, 'maaslog')
+        log = self.patch(events_module, 'log')
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
@@ -994,7 +994,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
             yield eventloop.reset()
 
         self.assertThat(
-            maaslog.debug, MockCalledOnceWith(
+            log.debug, MockCalledOnceWith(
                 "Event '%s: %s' sent for non-existent node with MAC address "
                 "'%s'.", name, event_description, mac_address))
 

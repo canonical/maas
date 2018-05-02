@@ -51,7 +51,7 @@ class NodePowerMonitorService(TimerService, object):
         try:
             client = getRegionClient()
         except NoConnectionsAvailable:
-            maaslog.debug(
+            log.debug(
                 "Cannot monitor nodes' power status; region not available.")
         else:
             d = self.query_nodes(client)

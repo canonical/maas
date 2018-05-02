@@ -154,7 +154,7 @@ class DHCPProbeService(TimerService):
 
     @inlineCallbacks
     def try_probe_dhcp(self):
-        maaslog.debug("Running periodic DHCP probe.")
+        log.debug("Running periodic DHCP probe.")
         try:
             yield self.probe_dhcp()
         except Exception as error:
@@ -163,4 +163,4 @@ class DHCPProbeService(TimerService):
                 str(error))
             self.err(error, "Unable to probe for DHCP servers.")
         else:
-            maaslog.debug("Finished periodic DHCP probe.")
+            log.debug("Finished periodic DHCP probe.")

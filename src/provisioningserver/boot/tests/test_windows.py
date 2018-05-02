@@ -8,7 +8,6 @@
 __all__ = []
 
 import io
-import logging
 import os
 import shutil
 from unittest import mock
@@ -17,7 +16,6 @@ from unittest.mock import (
     sentinel,
 )
 
-from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
@@ -157,23 +155,15 @@ class TestRequestNodeInfoByMACAddress(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__returns_None_when_MAC_is_None(self):
-        logger = self.useFixture(FakeLogger("maas", logging.DEBUG))
         d = windows_module.request_node_info_by_mac_address(None)
         self.assertThat(extract_result(d), Is(None))
-        self.assertDocTestMatches(
-            "Cannot determine node; MAC address is unknown.",
-            logger.output)
 
     def test__returns_None_when_node_not_found(self):
-        logger = self.useFixture(FakeLogger("maas", logging.DEBUG))
         client = self.patch(windows_module, "getRegionClient").return_value
         client.side_effect = always_fail_with(NoSuchNode())
         mac = factory.make_mac_address()
         d = windows_module.request_node_info_by_mac_address(mac)
         self.assertThat(extract_result(d), Is(None))
-        self.assertDocTestMatches(
-            "Node doesn't exist for MAC address: %s" % mac,
-            logger.output)
 
     def test__returns_output_from_RequestNodeInfoByMACAddress(self):
         client = self.patch(windows_module, "getRegionClient").return_value

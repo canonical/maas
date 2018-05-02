@@ -17,12 +17,12 @@ from maasserver.models import (
     Node,
 )
 from maasserver.utils.orm import transactional
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.utils.twisted import synchronous
 
 
-maaslog = get_maas_logger("region.events")
+log = LegacyLogger()
 
 
 @synchronous
@@ -54,7 +54,7 @@ def send_event(system_id, type_name, description, timestamp):
         # entirely possible the cluster has started sending events for a node
         # that we don't know about yet. This is most likely to happen when a
         # new node is trying to enlist.
-        maaslog.debug(
+        log.debug(
             "Event '%s: %s' sent for non-existent node '%s'.",
             type_name, description, system_id)
     else:
@@ -83,7 +83,7 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
         # entirely possible the cluster has started sending events for a node
         # that we don't know about yet. This is most likely to happen when a
         # new node is trying to enlist.
-        maaslog.debug(
+        log.debug(
             "Event '%s: %s' sent for non-existent node with MAC "
             "address '%s'.", type_name, description, mac_address)
     else:

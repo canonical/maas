@@ -951,13 +951,12 @@ class TestServiceMonitor(MAASTestCase):
         mock_getServiceState.return_value = succeed(
             ServiceState(SERVICE_STATE.ON, expected_process_state))
 
-        with FakeLogger(
-                "maas.service_monitor", level=logging.DEBUG) as maaslog:
-            yield service_monitor._ensureService(service)
-        self.assertDocTestMatches(
-            "Service '%s' is %s and '%s'." % (
-                service.service_name, state, expected_process_state),
-            maaslog.output)
+        log = self.patch(service_monitor_module, 'log')
+        yield service_monitor._ensureService(service)
+        self.assertThat(log.debug, MockCalledOnceWith(
+            "Service '{name}' is {state} and '{process}'.",
+            name=service.service_name, state=state,
+            process=expected_process_state))
 
     @inlineCallbacks
     def test___ensureService_allows_dead_for_off_service(self):
@@ -969,13 +968,12 @@ class TestServiceMonitor(MAASTestCase):
         mock_getServiceState.return_value = succeed(
             ServiceState(SERVICE_STATE.DEAD, "Result: exit-code"))
 
-        with FakeLogger(
-                "maas.service_monitor", level=logging.DEBUG) as maaslog:
-            yield service_monitor._ensureService(service)
-        self.assertDocTestMatches(
-            "Service '%s' is %s and '%s'." % (
-                service.service_name, SERVICE_STATE.DEAD, "Result: exit-code"),
-            maaslog.output)
+        log = self.patch(service_monitor_module, 'log')
+        yield service_monitor._ensureService(service)
+        self.assertThat(log.debug, MockCalledOnceWith(
+            "Service '{name}' is {state} and '{process}'.",
+            name=service.service_name, state=SERVICE_STATE.DEAD,
+            process="Result: exit-code"))
 
     @inlineCallbacks
     def test___ensureService_logs_mismatch_for_dead_process_state(self):

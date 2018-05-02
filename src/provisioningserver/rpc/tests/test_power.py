@@ -993,17 +993,6 @@ class TestPowerQueryAsync(MAASTestCase):
         )))
 
     @inlineCallbacks
-    def test_query_all_nodes_logs_skip_if_node_in_action_registry(self):
-        node = self.make_node()
-        power.power_action_registry[node['system_id']] = sentinel.action
-        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
-            yield power.query_all_nodes([node])
-        self.assertDocTestMatches(
-            "hostname-...: Skipping query power status, "
-            "power action already in progress.",
-            maaslog.output)
-
-    @inlineCallbacks
     def test_query_all_nodes_skips_nodes_in_action_registry(self):
         nodes = self.make_nodes()
 
@@ -1113,7 +1102,6 @@ class TestPowerQueryAsync(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            hostname-...: Could not update power state: no such node.
             hostname-...: Power state has changed from ... to ...
             """,
             maaslog.output)

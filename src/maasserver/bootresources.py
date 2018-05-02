@@ -260,9 +260,9 @@ class SimpleStreamsHandler:
             'format': "index:1.0"
             }
         data = sutil.dump_data(index) + b"\n"
-        maaslog.debug(
-            "Simplestreams product index: %s.",
-            data.decode("utf-8", "replace"))
+        log.debug(
+            "Simplestreams product index: {index}.",
+            index=data.decode("utf-8", "replace"))
         return self.get_json_response(data)
 
     def get_product_item(self, resource, resource_set, rfile):
@@ -569,8 +569,9 @@ class BootResourceStore(ObjectStore):
         if resource_set is None:
             resource_set = BootResourceSet(resource=resource, version=version)
         resource_set.label = product['label']
-        maaslog.debug(
-            "Got boot resource set id=%s %s.", resource_set.id, resource_set)
+        log.debug(
+            "Got boot resource set id={id} {set}.",
+            id=resource_set.id, set=resource_set)
         resource_set.save()
         return resource_set
 
@@ -585,8 +586,9 @@ class BootResourceStore(ObjectStore):
         if rfile is None:
             rfile = BootResourceFile(
                 resource_set=resource_set, filename=filename)
-        maaslog.debug(
-            "Got boot resource file id=%s %s.", rfile.id, rfile)
+        log.debug(
+            "Got boot resource file id={id} {set}.",
+            id=rfile.id, set=rfile)
         rfile.filetype = filetype
         rfile.extra = {}
 
@@ -699,8 +701,8 @@ class BootResourceStore(ObjectStore):
                 sha256=sha256, total_size=total_size,
                 content=largeobject)
             needs_saving = True
-            maaslog.debug(
-                "New large file created %s.", largefile)
+            log.debug(
+                "New large file created {lf}.", lf=largefile)
 
         # A largefile now exists for this resource file. Its either a new
         # largefile or an existing one that already existed in the database.
@@ -736,7 +738,7 @@ class BootResourceStore(ObjectStore):
         else:
             ident = self.get_resource_file_log_identifier(
                 rfile, resource_set, resource)
-            maaslog.debug('Boot image already up-to-date %s.', ident)
+            log.debug('Boot image already up-to-date {ident}.', ident=ident)
 
     def write_content_thread(self, rid, reader):
         """Writes the data from the given reader, into the object storage
@@ -752,7 +754,7 @@ class BootResourceStore(ObjectStore):
         rfile, ident = get_rfile_and_ident()
         cksummer = sutil.checksummer(
             {'sha256': rfile.largefile.sha256})
-        maaslog.debug("Finalizing boot image %s.", ident)
+        log.debug("Finalizing boot image {ident}.", ident=ident)
 
         # Ensure that the size of the largefile starts at zero.
         rfile.largefile.size = 0
@@ -802,7 +804,7 @@ class BootResourceStore(ObjectStore):
             maaslog.error(msg)
             transactional(rfile.delete)()
         else:
-            maaslog.debug('Finalized boot image %s.', ident)
+            log.debug('Finalized boot image {ident}.', ident=ident)
 
     def perform_write(self):
         """Performs all writing of content into the object storage.
@@ -894,9 +896,9 @@ class BootResourceStore(ObjectStore):
                             self._other_resources_exists(
                                 os, arch, subarch, series)):
                         # It was selected for removal.
-                        maaslog.debug(
-                            "Deleting boot image %s.",
-                            self.get_resource_identity(delete_resource))
+                        log.debug(
+                            "Deleting boot image {ident}.",
+                            ident=self.get_resource_identity(delete_resource))
                         delete_resource.delete()
                     else:
                         msg = (
@@ -911,9 +913,9 @@ class BootResourceStore(ObjectStore):
                 else:
                     # No resource set on the boot resource so it should be
                     # removed as it has not files.
-                    maaslog.debug(
-                        "Deleting boot image %s.",
-                        self.get_resource_identity(delete_resource))
+                    log.debug(
+                        "Deleting boot image {ident}.",
+                        ident=self.get_resource_identity(delete_resource))
                     delete_resource.delete()
 
     @transactional
@@ -929,16 +931,18 @@ class BootResourceStore(ObjectStore):
                 if not resource_set.complete:
                     # At this point all resource sets should be complete.
                     # Delete the extras that are not.
-                    maaslog.debug(
-                        "Deleting incomplete resourceset %s.", resource_set)
+                    log.debug(
+                        "Deleting incomplete resourceset {set}.",
+                        set=resource_set)
                     resource_set.delete()
                 else:
                     # It is complete, only keep the newest complete set.
                     if not found_complete:
                         found_complete = True
                     else:
-                        maaslog.debug(
-                            "Deleting obsolete resourceset %s.", resource_set)
+                        log.debug(
+                            "Deleting obsolete resourceset {set}.",
+                            set=resource_set)
                         resource_set.delete()
 
         # Cleanup the resources that don't have sets. This is done because
@@ -948,8 +952,8 @@ class BootResourceStore(ObjectStore):
         for resource in BootResource.objects.filter(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED):
             if not resource.sets.exists():
-                maaslog.debug(
-                    "Deleting empty resource %s.", resource)
+                log.debug(
+                    "Deleting empty resource {res}.", res=resource)
                 resource.delete()
 
     @transactional
@@ -974,12 +978,12 @@ class BootResourceStore(ObjectStore):
         # of the synced resources. The actual cause of this issue is unknown,
         # but we want to handle the case or all the images will be deleted and
         # no nodes will be able to be provisioned.
-        maaslog.debug(
-            "Finalize will delete %d images(s).",
-            len(self._resources_to_delete))
-        maaslog.debug(
-            "Finalize will save %d new images(s).",
-            len(self._content_to_finalize))
+        log.debug(
+            "Finalize will delete {num} images(s).",
+            num=len(self._resources_to_delete))
+        log.debug(
+            "Finalize will save {num} new images(s).",
+            num=len(self._content_to_finalize))
         if (self._resources_to_delete == self._init_resources_to_delete and
                 len(self._content_to_finalize) == 0):
             error_msg = (
@@ -1140,7 +1144,7 @@ def download_all_boot_resources(
     :param notify: Instance of `Deferred` that is called when all the metadata
         has been downloaded and the image data download has been started.
     """
-    maaslog.debug("Initializing BootResourceStore.")
+    log.debug("Initializing BootResourceStore.")
     if store is None:
         store = BootResourceStore()
     assert isinstance(store, BootResourceStore)
@@ -1186,11 +1190,11 @@ def download_all_boot_resources(
     with lock:
         stopped = stop
     if stopped:
-        maaslog.debug(
+        log.debug(
             "Finalizing BootResourceStore was cancelled before starting.")
         store.cancel_finalize(notify=notify)
     else:
-        maaslog.debug("Finalizing BootResourceStore.")
+        log.debug("Finalizing BootResourceStore.")
         with lock:
             finalizing = True
         store.finalize(notify=notify)
@@ -1253,7 +1257,7 @@ def _import_resources(notify=None):
 
     def eb_import(failure):
         failure.trap(DatabaseLockNotHeld)
-        maaslog.debug("Skipping import as another import is already running.")
+        maaslog.info("Skipping import as another import is already running.")
 
     return d.addCallbacks(cb_import, eb_import)
 
@@ -1464,7 +1468,7 @@ class ImportResourcesService(TimerService, object):
         if auto:
             return _import_resources_in_thread()
         else:
-            maaslog.debug(
+            maaslog.info(
                 "Skipping periodic import of boot resources; "
                 "it has been disabled.")
 

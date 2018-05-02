@@ -249,6 +249,13 @@ class RPCProtocol(amp.AMP, object):
         super(RPCProtocol, self).connectionLost(reason)
         self.onConnectionLost.callback(None)
 
+    def _sendBoxCommand(self, command, box, requiresAnswer=True):
+        """Override `_sendBoxCommand` to log the sent RPC message."""
+        box[amp.COMMAND] = command
+        log.debug("[RPC -> sent] {box}", box=box)
+        return super(RPCProtocol, self)._sendBoxCommand(
+            command, box, requiresAnswer=requiresAnswer)
+
     def dispatchCommand(self, box):
         """Call up, but coerce errors into non-fatal failures.
 
@@ -261,6 +268,8 @@ class RPCProtocol(amp.AMP, object):
         wrap them with :class:`amp.RemoteAmpError`. This prevents the
         disconnecting behaviour.
         """
+        log.debug("[RPC <- received] {box}", box=box)
+
         d = super(RPCProtocol, self).dispatchCommand(box)
 
         def coerce_error(failure):
@@ -279,6 +288,27 @@ class RPCProtocol(amp.AMP, object):
                     command_ref.encode("ascii"), fatal=False, local=failure))
 
         return d.addErrback(coerce_error)
+
+    def _safeEmit(self, box):
+        """
+        Override `_safeEmit` to log the RPC response.
+        """
+        log.debug("[RPC -> responding] {box}", box=box)
+        return super(RPCProtocol, self)._safeEmit(box)
+
+    def _answerReceived(self, box):
+        """
+        Override `_answerRecieved` to log recieving RPC response.
+        """
+        log.debug("[RPC <- recieved] {box}", box=box)
+        return super(RPCProtocol, self)._answerReceived(box)
+
+    def _errorReceived(self, box):
+        """
+        Override `_errorReceived` to log recieving RPC response.
+        """
+        log.debug("[RPC <- error] {box}", box=box)
+        return super(RPCProtocol, self)._errorReceived(box)
 
     def unhandledError(self, failure):
         """Terminal errback, after application code has seen the failure.

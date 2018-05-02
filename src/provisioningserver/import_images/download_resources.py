@@ -55,7 +55,9 @@ def insert_file(store, name, tag, checksums, size, content_source):
         the directory managed by `store` and has a filename based on `tag`,
         not logical name.
     """
-    maaslog.debug("Inserting file %s (tag=%s, size=%s).", name, tag, size)
+    log.debug(
+        "Inserting file {name} (tag={tag}, size={size}).",
+        name=name, tag=tag, size=size)
     store.insert(tag, content_source, checksums, mutable=False, size=size)
     # XXX jtv 2014-04-24 bug=1313580: Isn't _fullpath meant to be private?
     return [(store._fullpath(tag), name)]
@@ -81,7 +83,9 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
         as tuples of (path, logical name).  The path lies in the directory
         managed by `store` and has a filename based on `tag`, not logical name.
     """
-    maaslog.debug("Inserting archive %s (tag=%s, size=%s).", name, tag, size)
+    log.debug(
+        "Inserting archive {name} (tag={tag}, size={size}).",
+        name=name, tag=tag, size=size)
     extracted_files = []
     cache_dir = store._fullpath('')
     # Check if the archive has already been extracted. This is done by scanning
@@ -101,8 +105,9 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
 
     # If no files with the given tag were found we need to extract them.
     if extracted_files == []:
-        maaslog.debug(
-            "Extracting archive %s (tag=%s, size=%s).", name, tag, size)
+        log.debug(
+            "Extracting archive {name} (tag={tag}, size={size}).",
+            name=name, tag=tag, size=size)
         archive_path = store._fullpath(tag)
         store.insert(tag, content_source, checksums, mutable=False, size=size)
         with tarfile.open(archive_path, 'r|*') as tar:

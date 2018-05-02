@@ -18,7 +18,10 @@ from subprocess import (
 )
 from textwrap import dedent
 
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.utils import (
     parse_key_value_file,
     typed,
@@ -30,6 +33,7 @@ from provisioningserver.utils.shell import (
 )
 
 
+log = LegacyLogger()
 maaslog = get_maas_logger("dhcp.omshell")
 
 
@@ -168,8 +172,9 @@ class Omshell:
         # The only caveat of this change is that the remove() method in this
         # class has to be able to deal with legacy host mappings (using IP as
         # the key) and new host mappings (using the MAC as the key).
-        maaslog.debug(
-            "Creating host mapping %s->%s" % (mac_address, ip_address))
+        log.debug(
+            "Creating host mapping {mac}->{ip}",
+            mac=mac_address, ip=ip_address)
         name = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}
@@ -211,8 +216,9 @@ class Omshell:
         # The only caveat of this change is that the remove() method in this
         # class has to be able to deal with legacy host mappings (using IP as
         # the key) and new host mappings (using the MAC as the key).
-        maaslog.debug(
-            "Modifing host mapping %s->%s" % (mac_address, ip_address))
+        log.debug(
+            "Modifing host mapping {mac}->{ip}",
+            mac=mac_address, ip=ip_address)
         name = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}
@@ -254,7 +260,7 @@ class Omshell:
         # This is achieved by sending both the IP and the MAC: one of them will
         # be the key for the mapping (it will be the IP if the record was
         # created with by an old version of MAAS and the MAC otherwise).
-        maaslog.debug("Removing host mapping key=%s" % mac_address)
+        log.debug("Removing host mapping key={mac}", mac=mac_address)
         mac_address = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}

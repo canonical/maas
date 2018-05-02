@@ -26,7 +26,10 @@ from collections import (
 import enum
 import os
 
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.utils import (
     snappy,
     typed,
@@ -43,6 +46,7 @@ from twisted.internet.defer import (
 from twisted.internet.utils import getProcessOutputAndValue
 
 
+log = LegacyLogger()
 maaslog = get_maas_logger("service_monitor")
 
 
@@ -548,9 +552,11 @@ class ServiceMonitor:
                     service.service_name, state.active_state.value,
                     expected_process_state, state.process_state)
             else:
-                maaslog.debug(
-                    "Service '%s' is %s and '%s'.", service.service_name,
-                    state.active_state, state.process_state)
+                log.debug(
+                    "Service '{name}' is {state} and '{process}'.",
+                    name=service.service_name,
+                    state=state.active_state,
+                    process=state.process_state)
         else:
             # Service is not at its expected active state. Log the action that
             # will be taken to place the service in its correct state.

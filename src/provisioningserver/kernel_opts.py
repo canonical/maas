@@ -14,9 +14,13 @@ import os
 import curtin
 from netaddr import IPAddress
 from provisioningserver.drivers import ArchitectureRegistry
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 
 
+log = LegacyLogger()
 maaslog = get_maas_logger("kernel_opts")
 
 
@@ -154,7 +158,7 @@ def compose_kernel_command_line(params):
         options.append(cmdline_sep)
         options.append(params.extra_opts)
     kernel_opts = ' '.join(options)
-    maaslog.debug(
-        '%s: kernel parameters %s "%s"' %
-        (cmdline_sep, params.hostname, kernel_opts))
+    log.debug(
+        '{hostname}: kernel parameters {cmdline} "{opts}"',
+        hostname=params.hostname, cmdline=cmdline_sep, opts=kernel_opts)
     return kernel_opts

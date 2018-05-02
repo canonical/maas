@@ -9,12 +9,14 @@ __all__ = [
 ]
 
 from functools import partial
-import logging
 
 from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
 from maasserver.rpc import getAllClients
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.cluster import (
     PowerCycle,
     PowerDriverCheck,
@@ -33,7 +35,7 @@ from twisted.internet.defer import DeferredList
 from twisted.protocols.amp import UnhandledCommand
 
 
-logger = logging.getLogger(__name__)
+log = LegacyLogger()
 maaslog = get_maas_logger("power")
 
 
@@ -54,7 +56,9 @@ def power_node(command, client, system_id, hostname, power_info):
         fire when the `command` call completes.
 
     """
-    maaslog.debug("%s: Asking rack controller to power on/off node.", hostname)
+    log.debug(
+        "{hostname}: Asking rack controller to power on/off node.",
+        hostname=hostname)
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerOn can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -98,8 +102,9 @@ def power_cycle(client, system_id, hostname, power_info):
         fire when the `PowerCycle` call completes.
 
     """
-    maaslog.debug(
-        "%s: Asking rack controller(s) to power cycle node.", hostname)
+    log.debug(
+        "{hostname}: Asking rack controller(s) to power cycle node.",
+        hostname=hostname)
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerCycle can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -139,8 +144,9 @@ def power_query(client, system_id, hostname, power_info):
         fire when the `PowerQuery` call completes.
 
     """
-    maaslog.debug(
-        "%s: Asking rack controller(s) to power query node.", hostname)
+    log.debug(
+        "{hostname}: Asking rack controller(s) to power query node.",
+        hostname=hostname)
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerQuery can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -180,7 +186,7 @@ def power_driver_check(client, power_type):
         # The region hasn't been upgraded to support this method yet, so give
         # up. Returning an empty list indicates that the power driver is OK, so
         # the power attempt will continue and any errors will be caught later.
-        logger.warning(
+        log.msg(
             "Unable to query cluster for power packages. Cluster does not"
             "support the PowerDriverCheck RPC method. Returning OK.")
         return []

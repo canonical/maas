@@ -142,6 +142,7 @@ class TestDHCPProbeService(MAASTestCase):
                     "Unable to probe for DHCP servers: %s",
                     error_message))
             self.assertThat(logger.output, DocTestMatches(
+                "Running periodic DHCP probe.\n..."
                 "Unable to probe for DHCP servers.\n..."
                 "Traceback... "))
 
