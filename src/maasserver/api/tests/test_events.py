@@ -28,6 +28,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils import ignore_unused
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
+from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from provisioningserver.events import AUDIT
 from testtools.matchers import (
@@ -79,9 +80,9 @@ class TestEventToDict(APITestCase.ForUser):
     def test__node_not_None(self):
         event = factory.make_Event()
         self.assertThat(event_to_dict(event), MatchesDict({
-            "username": Equals(event.user.username),
+            "username": Equals(event.owner),
             "node": Equals(event.node.system_id),
-            "hostname": Equals(event.node.hostname),
+            "hostname": Equals(event.hostname),
             "id": Equals(event.id),
             "level": Equals(event.type.level_str),
             "created": Equals(
@@ -91,13 +92,16 @@ class TestEventToDict(APITestCase.ForUser):
             }))
 
     def test__node_and_user_is_None(self):
-        event = factory.make_Event()
-        event.node = None
-        event.user = None
+        user = factory.make_User()
+        node = factory.make_Node()
+        event = factory.make_Event(node=node, user=user)
+        node.delete()
+        user.delete()
+        event = reload_object(event)
         self.assertThat(event_to_dict(event), MatchesDict({
-            "username": Equals(event.username),
+            "username": Equals(event.owner),
             "node": Equals(None),
-            "hostname": Equals(event.node_hostname),
+            "hostname": Equals(event.hostname),
             "id": Equals(event.id),
             "level": Equals(event.type.level_str),
             "created": Equals(
@@ -109,9 +113,9 @@ class TestEventToDict(APITestCase.ForUser):
     def test__type_level_AUDIT(self):
         event = factory.make_Event()
         self.assertThat(event_to_dict(event), MatchesDict({
-            "username": Equals(event.user.username),
+            "username": Equals(event.owner),
             "node": Equals(event.node.system_id),
-            "hostname": Equals(event.node.hostname),
+            "hostname": Equals(event.hostname),
             "id": Equals(event.id),
             "level": Equals(event.type.level_str),
             "created": Equals(
@@ -624,6 +628,28 @@ class TestEventsAPI(APITestCase.ForUser):
                 'op': 'query',
                 'level': 'DEBUG',
                 'owner': user2.username,
+            })
+        parsed_result = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            [expected_event.id], extract_event_ids(parsed_result))
+        self.assertEqual(1, parsed_result['count'])
+
+    def test_GET_query_with_owner_after_delete_returns_matching_events(self):
+        # Only events for user will be returned
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        nodes = [factory.make_Node(owner=user1) for _ in range(2)]
+        events = [factory.make_Event(node=node, user=user1) for node in nodes]
+        expected_event = factory.make_Event(user=user2)
+        user2_username = user2.username
+        user2.delete()
+        expected_event = reload_object(expected_event)
+        events.append(expected_event)
+        response = self.client.get(
+            reverse('events_handler'), {
+                'op': 'query',
+                'level': 'DEBUG',
+                'owner': user2_username,
             })
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(

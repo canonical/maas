@@ -137,11 +137,26 @@ class Event(CleanSave, TimestampedModel):
         return ENDPOINT_CHOICES[self.endpoint][1]
 
     @property
-    def render_audit_description(self):
+    def owner(self):
         if self.username:
-            return self.description % {'username': self.username}
+            return self.username
+        elif self.user is not None:
+            return self.user.username
         else:
-            return self.description % {'username': self.user.username}
+            return 'unknown'
+
+    @property
+    def hostname(self):
+        if self.node_hostname:
+            return self.node_hostname
+        elif self.node is not None:
+            return self.node.hostname
+        else:
+            return 'unknown'
+
+    @property
+    def render_audit_description(self):
+        return self.description % {'username': self.owner}
 
     def __str__(self):
         return "%s (node=%s, type=%s, created=%s)" % (

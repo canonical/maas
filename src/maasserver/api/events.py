@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from django.db.models import Q
 from formencode.validators import Int
 from maasserver.api.nodes import filtered_nodes_list_from_request
 from maasserver.api.support import (
@@ -37,15 +38,11 @@ DEFAULT_EVENT_LOG_LIMIT = 100
 def event_to_dict(event):
     """Convert `Event` to a dictionary."""
     return dict(
-        username=(
-            event.user.username
-            if event.user is not None else event.username),
+        username=(event.owner),
         node=(
             event.node.system_id
             if event.node is not None else None),
-        hostname=(
-            event.node.hostname
-            if event.node is not None else event.node_hostname),
+        hostname=(event.hostname),
         id=event.id,
         level=event.type.level_str,
         created=event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
@@ -157,7 +154,7 @@ class EventsHandler(OperationsHandler):
 
         # Filter events for owner.
         if owner is not None:
-            events = events.filter(user__username=owner)
+            events = events.filter(Q(user__username=owner) | Q(username=owner))
 
         # Future feature:
         # This is where we would filter for events 'since last node deployment'
