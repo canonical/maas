@@ -304,6 +304,10 @@ class StatusWorkerService(TimerService, object):
         activity_name = message['name']
         description = message['description']
         result = message.get('result', None)
+        # LP:1701352 - If no exit code is given by the client default to
+        # 0(pass) unless the signal is fail then set to 1(failure). This allows
+        # a Curtin failure to cause the ScriptResult to fail.
+        default_exit_status = 1 if result in ['FAIL', 'FAILURE'] else 0
 
         # Add this event to the node event log.
         add_event_to_node_event_log(
@@ -335,7 +339,9 @@ class StatusWorkerService(TimerService, object):
                 compression=sent_file.get('compression', None),
                 encoding=sent_file['encoding'],
                 content=sent_file['content'])
-            process_file(results, script_set, script_name, content, sent_file)
+            process_file(
+                results, script_set, script_name, content, sent_file,
+                default_exit_status)
 
         # Commit results to the database.
         for script_result, args in results.items():

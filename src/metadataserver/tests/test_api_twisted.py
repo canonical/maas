@@ -46,7 +46,10 @@ from metadataserver.api_twisted import (
     StatusHandlerResource,
     StatusWorkerService,
 )
-from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from metadataserver.models import NodeKey
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -548,6 +551,37 @@ class TestStatusWorkerService(MAASServerTestCase):
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
         self.assertIsNotNone(reload_object(node).owner)
 
+    def test_status_installation_failure_fails_script_result(self):
+        # Regression test for LP:1701352
+        user = factory.make_User()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING, owner=user)
+        node.current_installation_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.INSTALLATION)
+        node.save()
+        script_result = factory.make_ScriptResult(
+            script_set=node.current_installation_script_set,
+            script_name=CURTIN_INSTALL_LOG, status=SCRIPT_STATUS.RUNNING)
+        content = factory.make_bytes()
+        payload = {
+            'event_type': 'finish',
+            'result': 'FAILURE',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+            'timestamp': datetime.utcnow(),
+            'files': [
+                {
+                    "path": CURTIN_INSTALL_LOG,
+                    "encoding": "base64",
+                    "content": encode_as_base64(content),
+                }
+            ]
+        }
+        self.processMessage(node, payload)
+        self.assertEqual(
+            SCRIPT_STATUS.FAILED, reload_object(script_result).status)
+
     def test_status_commissioning_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
@@ -809,7 +843,7 @@ class TestStatusWorkerService(MAASServerTestCase):
 
     def test_status_with_results_no_exit_status_defaults_to_zero(self):
         """Adding a script result should succeed without a return code defaults
-        it to zero."""
+        it to zero when passing."""
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING,
             with_empty_script_sets=True)
@@ -821,7 +855,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         encoded_content = encode_as_base64(bz2.compress(contents))
         payload = {
             'event_type': 'finish',
-            'result': 'FAILURE',
+            'result': 'OK',
             'origin': 'curtin',
             'name': 'commissioning',
             'description': 'Commissioning',

@@ -508,6 +508,28 @@ class TestHelpers(MAASServerTestCase):
             },
             value)
 
+    def test_uses_default_exit_status_when_undef(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        output = factory.make_string()
+        exit_status = random.randint(0, 255)
+        request = {
+            'script_result_id': script_result.id,
+            'script_version_id': script_result.script.script_id,
+        }
+
+        process_file(
+            results, script_result.script_set,
+            factory.make_name('script_name'), output, request, exit_status)
+
+        self.assertDictEqual(
+            {
+                'exit_status': exit_status,
+                'output': output,
+                'script_version_id': script_result.script.script_id,
+            },
+            results[script_result])
+
     def test_stores_script_version(self):
         results = {}
         script_name = factory.make_name('script_name')
