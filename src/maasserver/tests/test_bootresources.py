@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver.bootresources."""
@@ -66,6 +66,7 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
+    BootSource,
     Config,
     LargeFile,
     signals,
@@ -1709,7 +1710,7 @@ class TestImportImages(MAASTransactionServerTestCase):
     def test__import_resources_calls_functions_with_correct_parameters(self):
         write_all_keyrings = self.patch(
             bootresources, 'write_all_keyrings')
-        write_all_keyrings.return_value = [sentinel.source]
+        write_all_keyrings.return_value = []
         image_descriptions = self.patch(
             bootresources, 'download_all_image_descriptions')
         descriptions = Mock()
@@ -1739,15 +1740,13 @@ class TestImportImages(MAASTransactionServerTestCase):
             MockCalledOnceWith(ANY, []))
         self.expectThat(
             image_descriptions,
-            MockCalledOnceWith(
-                [sentinel.source], get_maas_user_agent()))
+            MockCalledOnceWith([], get_maas_user_agent()))
         self.expectThat(
             map_products,
             MockCalledOnceWith(descriptions))
         self.expectThat(
             download_all_boot_resources,
-            MockCalledOnceWith(
-                [sentinel.source], sentinel.mapping, notify=None))
+            MockCalledOnceWith([], sentinel.mapping, notify=None))
         self.expectThat(
             set_global_default_releases,
             MockCalledOnceWith())
@@ -1792,6 +1791,99 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.assertThat(
             boot_images.RackControllersImporter.run,
             MockCalledOnceWith())
+
+    def test__restarts_import_if_source_changed(self):
+        # Regression test for LP:1766370
+        self.patch(signals.bootsources, "post_commit_do")
+        boot_source = factory.make_BootSource(
+            keyring_data=factory.make_bytes())
+        factory.make_BootSourceSelection(boot_source=boot_source)
+
+        def write_all_keyrings(directory, sources):
+            for source in sources:
+                source['keyring'] = factory.make_name('keyring')
+            return sources
+
+        mock_write_all_keyrings = self.patch(
+            bootresources, 'write_all_keyrings')
+        mock_write_all_keyrings.side_effect = write_all_keyrings
+
+        def image_descriptions(*args, **kwargs):
+            # Simulate user changing sources
+            if not image_descriptions.called:
+                BootSource.objects.all().delete()
+                boot_source = factory.make_BootSource(
+                    keyring_data=factory.make_bytes())
+                factory.make_BootSourceSelection(boot_source=boot_source)
+                image_descriptions.called = True
+
+            class Ret:
+                def is_empty(self):
+                    return False
+            return Ret()
+
+        image_descriptions.called = False
+        mock_image_descriptions = self.patch(
+            bootresources, 'download_all_image_descriptions')
+        mock_image_descriptions.side_effect = image_descriptions
+        descriptions = Mock()
+        descriptions.is_empty.return_value = False
+        image_descriptions.return_value = descriptions
+        map_products = self.patch(
+            bootresources, 'map_products')
+        map_products.return_value = sentinel.mapping
+        self.patch(bootresources, 'download_all_boot_resources')
+        self.patch(bootresources, 'set_global_default_releases')
+
+        bootresources._import_resources()
+
+        # write_all_keyrings is called once per
+        self.assertEqual(2, mock_write_all_keyrings.call_count)
+
+    def test__restarts_import_if_selection_changed(self):
+        # Regression test for LP:1766370
+        self.patch(signals.bootsources, "post_commit_do")
+        boot_source = factory.make_BootSource(
+            keyring_data=factory.make_bytes())
+        factory.make_BootSourceSelection(boot_source=boot_source)
+
+        def write_all_keyrings(directory, sources):
+            for source in sources:
+                source['keyring'] = factory.make_name('keyring')
+            return sources
+
+        mock_write_all_keyrings = self.patch(
+            bootresources, 'write_all_keyrings')
+        mock_write_all_keyrings.side_effect = write_all_keyrings
+
+        def image_descriptions(*args, **kwargs):
+            # Simulate user adding a selection.
+            if not image_descriptions.called:
+                factory.make_BootSourceSelection(boot_source=boot_source)
+                image_descriptions.called = True
+
+            class Ret:
+                def is_empty(self):
+                    return False
+            return Ret()
+
+        image_descriptions.called = False
+        mock_image_descriptions = self.patch(
+            bootresources, 'download_all_image_descriptions')
+        mock_image_descriptions.side_effect = image_descriptions
+        descriptions = Mock()
+        descriptions.is_empty.return_value = False
+        image_descriptions.return_value = descriptions
+        map_products = self.patch(
+            bootresources, 'map_products')
+        map_products.return_value = sentinel.mapping
+        self.patch(bootresources, 'download_all_boot_resources')
+        self.patch(bootresources, 'set_global_default_releases')
+
+        bootresources._import_resources()
+
+        # write_all_keyrings is called once per
+        self.assertEqual(2, mock_write_all_keyrings.call_count)
 
 
 class TestImportResourcesInThread(MAASTestCase):

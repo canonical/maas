@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resources."""
@@ -1258,11 +1258,8 @@ def _import_resources(notify=None):
     return d.addCallbacks(cb_import, eb_import)
 
 
-@synchronous
-@with_connection
-@synchronised(locks.import_images.TRY)  # TRY is important; read docstring.
-def _import_resources_with_lock(notify=None):
-    """Import boot resources once the `import_images` lock is held.
+def _import_resources_without_lock(notify=None):
+    """Import boot resources once the `import_images` without a lock.
 
     This should *not* be called in a transaction; it will manage transactions
     itself, and attempt to keep them short.
@@ -1324,15 +1321,42 @@ def _import_resources_with_lock(notify=None):
 
         successful = download_all_boot_resources(
             sources, product_mapping, notify=notify)
-        if successful:
-            set_global_default_releases()
+
+    if successful:
+        set_global_default_releases()
+        # LP:1766370 - Check if the user updated boot sources or boot
+        # source selections while imports are running. If so restart
+        # the import process to make sure all user selected options
+        # are downloaded.
+        current_sources = get_boot_sources()
+        new_selections = (len(sources) != len(current_sources))
+        for old, current in zip(sources, current_sources):
+            # Keyring is added by write_all_keyrings above. It is the
+            # temporary path of the GPG keyring file extracted from the
+            # database.
+            old.pop('keyring', None)
+            current.pop('keyring', None)
+            if current != old:
+                new_selections = True
+                break
+        if new_selections:
+            _import_resources_without_lock(notify)
+        else:
             maaslog.info(
                 "Finished importing of boot images from %d source(s).",
                 len(sources))
-        else:
-            maaslog.warning(
-                "Importing of boot images from %d source(s) was cancelled.",
-                len(sources))
+    else:
+        maaslog.warning(
+            "Importing of boot images from %d source(s) was cancelled.",
+            len(sources))
+
+
+@synchronous
+@with_connection
+@synchronised(locks.import_images.TRY)  # TRY is important; read docstring.
+def _import_resources_with_lock(notify=None):
+    """Import boot resources once the `import_images` lock is held."""
+    return _import_resources_without_lock(notify)
 
 
 def _import_resources_in_thread(notify=None):
