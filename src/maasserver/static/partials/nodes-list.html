@@ -124,62 +124,64 @@
                         </form>
                     </div>
                     <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test' || tabs[tab].actionOption.name === 'deploy' || tabs[tab].actionOption.name === 'release' || tabs[tab].actionOption.name === 'set-zone' || tabs[tab].actionOption.name === 'set-pool'">
-                        <form class="p-form">
-                            <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
-                                <div class="p-form__control u-clearfix">
-                                    <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH"></input>
+                        <div class="row">
+                            <form class="p-form">
+                                <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'test'">
+                                    <div class="p-form__control u-clearfix">
+                                        <input id="{$ tab $}-enableSSH" type="checkbox" data-ng-model="tabs[tab].commissionOptions.enableSSH"></input>
+                                    </div>
+                                    <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
                                 </div>
-                                <label class="p-form__label" for="{$ tab $}-enableSSH">Allow SSH access and prevent machine powering off</label>
-                            </div>
-                            <div class="p-form__group u-no-margin--left ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
-                                <div class="p-form__control u-clearfix">
-                                    <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
+                                <div class="p-form__group u-no-margin--left ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
+                                    <div class="p-form__control u-clearfix">
+                                        <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div data-ng-if="tabs[tab].actionOption.name === 'release'">
-                                <div data-maas-release-options="tabs[tab].releaseOptions"></div>
-                            </div>
-                            <div class="p-form__group col-5 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
-                                <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
-                                <div class="p-form__control u-clearfix">
-                                    <select name="zone" id="{$ tab $}-zone3" data-ng-model="tabs[tab].zoneSelection" data-ng-options="zone as zone.name for zone in zones">
-                                        <option value="" disabled="disabled">Choose a zone</option>
-                                    </select>
+                                <div data-ng-if="tabs[tab].actionOption.name === 'release'">
+                                    <div data-maas-release-options="tabs[tab].releaseOptions"></div>
                                 </div>
-                            </div>
-                            <div class="ng-hide" data-ng-show="MAAS_config.is_premium && tabs[tab].actionOption.name === 'set-pool'">
-                                <div class="row">
-                                    <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
-                                        <li class="p-inline-list__item col-3">
-                                            <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked"></input>
-                                            <label for="pool-select">Select pool</label>
-                                        </li>
-                                        <li class="p-inline-list__item">
-                                            <input type="radio" name="pool-action" id="pool-create" data-ng-model="tabs[tab].poolAction" value="create-pool"></input>
-                                            <label for="pool-create">Create pool</label>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'select-pool'">
-                                    <div class="col-5 p-form__group">
-                                        <label for="{$ tab $}-pool3">Pool</label>
-                                        <select name="pool" id="{$ tab $}-pool3" data-ng-model="tabs[tab].poolSelection" data-ng-options="pool as pool.name for pool in pools">
-                                            <option value="" disabled="disabled">Select pool</option>
+                                <div class="p-form__group col-5 ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-zone'">
+                                    <label for="{$ tab $}-zone3" class="p-form__label">Select Zone</label>
+                                    <div class="p-form__control u-clearfix">
+                                        <select name="zone" id="{$ tab $}-zone3" data-ng-model="tabs[tab].zoneSelection" data-ng-options="zone as zone.name for zone in zones">
+                                            <option value="" disabled="disabled">Choose a zone</option>
                                         </select>
                                     </div>
                                 </div>
-                                <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'create-pool'">
-                                    <div class="col-5 p-form__group">
-                                        <label for="{$ tab $}-pool4">Pool name</label>
-                                        <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name"></input>
-                                        <label for="{$ tab $}-pool5">Users</label>
-                                        <span id="{$ tab $}-pool5" data-maas-resource-pool-access="users" data-ng-model="tabs[tab].newPool.users" data-collection="users" class="tags--inline"></span>
-                                        <label for="{$ tab $}-pool6">Groups</label>
-                                        <span id="{$ tab $}-pool6" data-maas-resource-pool-access="groups" data-ng-model="tabs[tab].newPool.groups" data-collection="groups" class="tags--inline"></span>
+                                <div class="ng-hide" data-ng-show="MAAS_config.is_premium && tabs[tab].actionOption.name === 'set-pool'">
+                                    <div class="row">
+                                        <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
+                                            <li class="p-inline-list__item col-3">
+                                                <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked"></input>
+                                                <label for="pool-select">Select pool</label>
+                                            </li>
+                                            <li class="p-inline-list__item">
+                                                <input type="radio" name="pool-action" id="pool-create" data-ng-model="tabs[tab].poolAction" value="create-pool"></input>
+                                                <label for="pool-create">Create pool</label>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'select-pool'">
+                                        <div class="col-5 p-form__group">
+                                            <label for="{$ tab $}-pool3">Pool</label>
+                                            <select name="pool" id="{$ tab $}-pool3" data-ng-model="tabs[tab].poolSelection" data-ng-options="pool as pool.name for pool in pools">
+                                                <option value="" disabled="disabled">Select pool</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'create-pool'">
+                                        <div class="col-5 p-form__group">
+                                            <label for="{$ tab $}-pool4">Pool name</label>
+                                            <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name"></input>
+                                            <label for="{$ tab $}-pool5">Users</label>
+                                            <span id="{$ tab $}-pool5" data-maas-resource-pool-access="users" data-ng-model="tabs[tab].newPool.users" data-collection="users" class="tags--inline"></span>
+                                            <label for="{$ tab $}-pool6">Groups</label>
+                                            <span id="{$ tab $}-pool6" data-maas-resource-pool-access="groups" data-ng-model="tabs[tab].newPool.groups" data-collection="groups" class="tags--inline"></span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <div class="row u-align--right" data-ng-if="tabs[tab].actionOption.name !== 'commission' && tabs[tab].actionOption.name !== 'test'">
@@ -281,22 +283,24 @@
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="isActionError(tab)">
                 <div class="col-12">
-                    <p data-ng-hide="isDeployError(tab) || isSSHKeyError(tab)"
-                        class="page-header__message page-header__message--error ng-hide">
-                        {$ tabs[tab].actionErrorCount $}
-                        <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                        cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, update your selection.
-                    </p>
-                    <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError(tab)">
-                        {$ tabs[tab].selectedItems.length $}
-                        <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                        cannot be {$ tabs[tab].actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="#/images">images page</a>.
-                    </p>
-                    <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isSSHKeyError(tab)">
-                        {$ tabs[tab].selectedItems.length $}
-                        <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                        cannot be {$ tabs[tab].actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
-                    </p>
+                    <div class="row">
+                        <p data-ng-hide="isDeployError(tab) || isSSHKeyError(tab)"
+                            class="page-header__message page-header__message--error ng-hide">
+                            {$ tabs[tab].actionErrorCount $}
+                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                            cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, update your selection.
+                        </p>
+                        <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError(tab)">
+                            {$ tabs[tab].selectedItems.length $}
+                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                            cannot be {$ tabs[tab].actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="#/images">images page</a>.
+                        </p>
+                        <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isSSHKeyError(tab)">
+                            {$ tabs[tab].selectedItems.length $}
+                            <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                            cannot be {$ tabs[tab].actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                        </p>
+                    </div>
                 </div>
             </section>
             <section class="page-header__section row u-no-margin--top ng-hide" data-ng-show="tabs[tab].actionProgress.showing_confirmation">
@@ -495,11 +499,13 @@
 
         <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="isActionError('devices')">
-            <p class="page-header__message page-header__message--error">
-                {$ tabs.devices.actionErrorCount $}
-                <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
-                cannot be {$ tabs.devices.actionOption.sentence $}. To proceed, update your selection.
-            </p>
+            <div class="row">
+                <p class="page-header__message page-header__message--error">
+                    {$ tabs.devices.actionErrorCount $}
+                    <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
+                    cannot be {$ tabs.devices.actionOption.sentence $}. To proceed, update your selection.
+                </p>
+            </div>
         </div>
 
         <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
@@ -629,53 +635,57 @@
         <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')">
             <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-            <form class="p-form p-form--inline">
-                <div class="ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'set-zone'">
-                    <div class="p-form__group">
-                        <label for="zone2" class="p-form__label">Select Zone</label>
-                        <div class="p-form__group-input">
-                            <select name="zone" id="zone2"
-                                data-ng-model="tabs.controllers.zoneSelection"
-                                data-ng-options="zone as zone.name for zone in zones">
-                                <option value="" disabled="disabled">Choose a zone</option>
-                            </select>
+            <div class="row" data-ng-if="tabs.controllers.actionOption.name === 'set-zone' || tabs.controllers.actionOption.name === 'test'">
+                <form class="p-form p-form--inline">
+                    <div class="ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'set-zone'">
+                        <div class="p-form__group">
+                            <label for="zone2" class="p-form__label">Select Zone</label>
+                            <div class="p-form__control">
+                                <select name="zone" id="zone2"
+                                    data-ng-model="tabs.controllers.zoneSelection"
+                                    data-ng-options="zone as zone.name for zone in zones">
+                                    <option value="" disabled="disabled">Choose a zone</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'test'">
-                    <div class="p-form__group">
-                        <input id="enable_SSH" type="checkbox"
-                            data-ng-model="tabs.controllers.commissionOptions.enableSSH">
-                        <label class="p-form__label" for="enable_SSH">Allow SSH access and prevent machine from powering off</label>
+                    <div class="ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'test'">
+                        <div class="p-form__group">
+                            <input id="enable_SSH" type="checkbox"
+                                data-ng-model="tabs.controllers.commissionOptions.enableSSH">
+                            <label class="p-form__label" for="enable_SSH">Allow SSH access and prevent machine from powering off</label>
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
 
-            <div class="page-header__controls p-strip u-align--right" data-ng-if="tabs.controllers.actionOption.name !== 'test'">
-                <button class="p-button--base" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
-                <button class="p-button--positive" data-ng-click="actionGo('controllers')">
-                    <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    </span>
-                    <span data-ng-if="tabs.controllers.actionOption.name === 'on'">Power on {$ tabs.controllers.selectedItems.length $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    </span>
-                    <span data-ng-if="tabs.controllers.actionOption.name === 'off'">Power off {$ tabs.controllers.selectedItems.length $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    </span>
-                    <span data-ng-if="tabs.controllers.actionOption.name === 'delete'">Delete {$ tabs.controllers.selectedItems.length $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    </span>
-                    <span data-ng-if="tabs.controllers.actionOption.name === 'import-images'">Import images for {$ tabs.controllers.selectedItems.length $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    </span>
-                </button>
+            <div class="row">
+                <div class="page-header__controls u-align--right" data-ng-if="tabs.controllers.actionOption.name !== 'test'">
+                    <button class="p-button--base" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
+                    <button class="p-button--positive" data-ng-click="actionGo('controllers')">
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'on'">Power on {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'off'">Power off {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'delete'">Delete {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'import-images'">Import images for {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="row">
-            <div class="page-header__section ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
+        <div class="page-header__section ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
+            <div class="row">
                 <form class="p-form">
                     <div class="col-8">
                         <div class="p-form__group">
@@ -688,41 +698,48 @@
         </div>
 
         <div class="page-header__section col-12" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
-            <div class="page-header__controls p-strip u-align--right">
-                <button class="p-button--base" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
-                <button class="p-button--positive" data-ng-click="actionGo('controllers')">
-                    <span>Test {$ tabs.controllers.selectedItems.length $}
-                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    </span>
-                </button>
+            <div class="row">
+                <div class="page-header__controls p-strip u-align--right">
+                    <button class="p-button--base" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
+                    <button class="p-button--positive" data-ng-click="actionGo('controllers')">
+                        <span>Test {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="isActionError('controllers')">
-            <form class="p-form p-form--inline">
-                <p class="page-header__message page-header__message--error">
-                    {$ tabs.controllers.actionErrorCount $}
-                    <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                    cannot be {$ tabs.controllers.actionOption.sentence $}. To proceed, update your selection.
-                </p>
-            </form>
+            <div class="row">
+                <div class="p-form p-form--inline">
+                    <p class="page-header__message page-header__message--error">
+                        <i class="p-icon--error">Error: </i>
+                        {$ tabs.controllers.actionErrorCount $}
+                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        cannot be {$ tabs.controllers.actionOption.sentence $}. To proceed, update your selection.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="hasActionsInProgress('controllers') || hasActionsFailed('controllers')">
-            <form class="p-form p-form--inline">
-                <p class="page-header__message" data-ng-show="hasActionsInProgress('controllers')">
-                    <i class="p-icon--spinner u-animation--spin u-margin--right-small"></i>
-                    {$ tabs.controllers.actionProgress.completed $} of {$ tabs.controllers.actionProgress.total $}
-                    controllers have been {$ tabs.controllers.actionOption.sentence $}.
-                </p>
-                <div class="p-notification--negative" data-ng-repeat="(error, controllers) in tabs.controllers.actionProgress.errors">
-                    <p class="p-notification__response">
-                        <span class="p-notification__status">Error:</span> The {$ tabs.controllers.actionOption.title.toLowerCase() $} action for {$ controllers.length $} <span data-ng-pluralize count="controllers.length" when="{'one': 'controller', 'other': 'controllers'}"></span> failed with error: {$ error $}
+            <div class="row">
+                <form class="p-form p-form--inline">
+                    <p class="page-header__message" data-ng-show="hasActionsInProgress('controllers')">
+                        <i class="p-icon--spinner u-animation--spin u-margin--right-small"></i>
+                        {$ tabs.controllers.actionProgress.completed $} of {$ tabs.controllers.actionProgress.total $}
+                        controllers have been {$ tabs.controllers.actionOption.sentence $}.
                     </p>
-                </div>
-            </form>
+                    <div class="p-notification--negative" data-ng-repeat="(error, controllers) in tabs.controllers.actionProgress.errors">
+                        <p class="p-notification__response">
+                            <span class="p-notification__status">Error:</span> The {$ tabs.controllers.actionOption.title.toLowerCase() $} action for {$ controllers.length $} <span data-ng-pluralize count="controllers.length" when="{'one': 'controller', 'other': 'controllers'}"></span> failed with error: {$ error $}
+                        </p>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -1055,7 +1072,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                     <tr class="p-table__row"
                         data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"
-                        data-ng-class="{ 'table--error': !supportsAction(controller, 'controllers'), selected: controller.$selected }">
+                        data-ng-class="{ 'table--error': !supportsAction(controller, 'controllers'), 'is-active': controller.$selected }">
                         <td class="p-table__cell" aria-label="FQDN">
                             <span class="u-float--left">
                                 <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-checked="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
