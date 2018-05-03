@@ -16,7 +16,8 @@
         <div class="col-4 ng-hide" data-ng-show="currentpage === 'machines'">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls u-float--right">
-                <div data-ng-hide="tabs.machines.selectedItems.length">
+                <div data-ng-if="isSuperUser()"
+                     data-ng-hide="tabs.machines.selectedItems.length">
                     <div data-maas-cta="addHardwareOptions"
                         data-ng-model="addHardwareOption"
                         data-ng-change="addHardwareOptionChanged()" data-default-title="Add hardware">
