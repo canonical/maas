@@ -217,6 +217,20 @@ angular.module('MAAS').controller('PodsListController', [
             return UsersManager.isSuperUser();
         };
 
+        // Return true if at least a rack controller is connected to the
+        // region controller.
+        $scope.isRackControllerConnected = function() {
+            // If powerTypes exist then a rack controller is connected.
+            return $scope.powerTypes.length > 0;
+        };
+
+        // Return true when the add pod buttons can be clicked.
+        $scope.canAddPod = function() {
+            return (
+                $scope.isRackControllerConnected() &&
+                    $scope.isSuperUser());
+        };
+
         // Return the title of the power type.
         $scope.getPowerTypeTitle = function(power_type) {
             var i;

@@ -142,6 +142,48 @@ describe("PodsListController", function() {
         });
     });
 
+    describe("isRackControllerConnected", function() {
+        it("returns false no powerTypes", function() {
+            var controller = makeController();
+            $scope.powerTypes = [];
+            expect($scope.isRackControllerConnected()).toBe(false);
+        });
+
+        it("returns true if powerTypes", function() {
+            var controller = makeController();
+            $scope.powerTypes = [{}];
+            expect($scope.isRackControllerConnected()).toBe(true);
+        });
+    });
+
+    describe("canAddPod", function() {
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canAddPod()).toBe(false);
+        });
+
+        it("returns false if rack disconnected", function() {
+            var controller = makeController();
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(false);
+            expect($scope.canAddPod()).toBe(false);
+        });
+
+        it("returns true if super user, rack connected", function() {
+            var controller = makeController();
+            spyOn($scope, "isSuperUser").and.returnValue(true);
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canAddPod()).toBe(true);
+        });
+    });
+
     describe("toggleChecked", function() {
 
         var controller, pod;
