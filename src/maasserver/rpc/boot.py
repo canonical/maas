@@ -166,16 +166,28 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
     return final_params
 
 
-def get_boot_config_for_machine(machine, configs):
+def get_boot_config_for_machine(machine, configs, purpose):
     """Get the correct operating system and series based on the purpose
     of the booting machine.
     """
-    purpose = machine.get_boot_purpose()
     _, subarch = machine.split_arch()
     precise = False
     if purpose == "commissioning":
-        osystem = configs['commissioning_osystem']
-        series = configs['commissioning_distro_series']
+        # LP: #1768321 - Fix a regression introduced by, and really fix
+        # the issue that LP: #1730525 was meant to fix. This ensures that
+        # when DISK_ERASING, or when ENTERING_RESCUE_MODE on a deployed
+        # machine it uses the OS from the deployed system for the
+        # ephemeral environment.
+        if machine.osystem == "ubuntu" and (
+                machine.status == NODE_STATUS.DISK_ERASING or (
+                machine.status == NODE_STATUS.ENTERING_RESCUE_MODE and
+                machine.previous_status == NODE_STATUS.DEPLOYED)):
+            osystem = machine.get_osystem(default=configs['default_osystem'])
+            series = machine.get_distro_series(
+                default=configs['default_distro_series'])
+        else:
+            osystem = configs['commissioning_osystem']
+            series = configs['commissioning_distro_series']
     else:
         osystem = machine.get_osystem(default=configs['default_osystem'])
         series = machine.get_distro_series(
@@ -201,12 +213,20 @@ def get_boot_config_for_machine(machine, configs):
     # hardware enablement kernels(i.e a highbank hwe-t kernel on precise)
     # we give precedence to any kernel defined in the subarchitecture field
 
+    # If the machine is deployed, hardcode the use of the Minimum HWE Kernel
+    # This is to ensure that machines can always do testing regardless of
+    # what they were deployed with, using the defaults from the settings
+    testing_from_deployed = (
+        machine.previous_status == NODE_STATUS.DEPLOYED and
+        machine.status == NODE_STATUS.TESTING and purpose == "commissioning")
+    if testing_from_deployed:
+        subarch = (subarch if not configs['default_min_hwe_kernel']
+                   else configs['default_min_hwe_kernel'])
     # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
     # the deployment ephemeral env) when deploying precise, provided that
     # it uses the commissioning distro_series and hwe kernels are not
     # needed.
-    kernel_validated = False
-    if subarch == "generic" and machine.hwe_kernel and not precise:
+    elif subarch == "generic" and machine.hwe_kernel and not precise:
         subarch = machine.hwe_kernel
     elif(subarch == "generic" and
          purpose == "commissioning" and
@@ -217,29 +237,6 @@ def get_boot_config_for_machine(machine, configs):
                 osystem, series)
         except ValidationError:
             subarch = "no-such-kernel"
-        kernel_validated = True
-
-    # LP:1730525 - If entering the ephemeral environment from a deployed
-    # OS subarch will be machine.hwe_kernel. If a newer version of Ubuntu
-    # was deployed then the commissioning OS hwe_kernel will not be
-    # available. Use the hwe kernel instead of the ga.
-    if purpose == "commissioning" and not kernel_validated:
-        try:
-            subarch = validate_hwe_kernel(
-                subarch, machine.min_hwe_kernel, machine.architecture,
-                osystem, series)
-        except ValidationError:
-            try:
-                # Get the default kernel.
-                subarch = validate_hwe_kernel(
-                    None, machine.min_hwe_kernel, machine.architecture,
-                    osystem, series)
-            except ValidationError:
-                subarch = "no-such-kernel"
-            else:
-                # Switch to hwe-
-                subarch = subarch.replace('ga-', 'hwe-')
-
     return osystem, series, subarch
 
 
@@ -274,7 +271,6 @@ def get_config(
 
     configs = Config.objects.get_configs([
         'commissioning_osystem',
-        'commissioning_distro_series',
         'commissioning_distro_series',
         'enable_third_party_drivers',
         'default_min_hwe_kernel',
@@ -351,7 +347,7 @@ def get_config(
             event_log_pxe_request(machine, purpose)
 
         osystem, series, subarch = get_boot_config_for_machine(
-            machine, configs)
+            machine, configs, purpose)
 
         # We don't care if the kernel opts is from the global setting or a tag,
         # just get the options
