@@ -17,14 +17,14 @@
       box-shadow: 0 5px 10px rgba(0,0,0,.2);
       max-height: 300px;
       transition: max-height .3s ease-in;
-      overflow: scroll;
+      overflow-y: scroll;
+      overflow-x: visible;
 
       .suggestion-list {
         margin: 0;
         clear: both;
         min-width: 160px;
         width: 100%;
-        overflow-y: scroll;
         box-sizing: border-box;
 
         .suggestion-item {
