@@ -1792,13 +1792,13 @@ class TestStaticRouteListener(
         dv = DeferredValue()
         listener.register("staticroute", lambda *args: dv.set(args))
         staticroute = yield deferToDatabase(
-            self.create_staticroute)
+            self.create_staticroute, {'metric': 9})
         yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_staticroute,
                 staticroute.id,
-                {'metric': random.randint(0, 500)})
+                {'metric': random.randint(10, 500)})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % staticroute.id), dv.value)
         finally:
