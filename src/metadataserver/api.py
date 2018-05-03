@@ -221,7 +221,9 @@ def add_event_to_node_event_log(
         event_description="'%s' %s" % (origin, description), created=created)
 
 
-def process_file(results, script_set, script_name, content, request):
+def process_file(
+        results, script_set, script_name, content, request,
+        default_exit_status=None):
     """Process a file sent to MAAS over the metadata service."""
 
     script_result_id = get_optional_param(
@@ -277,7 +279,10 @@ def process_file(results, script_set, script_name, content, request):
             if exit_status is not None:
                 break
         if exit_status is None:
-            exit_status = 0
+            if default_exit_status is None:
+                exit_status = 0
+            else:
+                exit_status = default_exit_status
 
         results[script_result] = {
             'exit_status': exit_status,
