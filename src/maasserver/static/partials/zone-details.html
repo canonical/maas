@@ -64,7 +64,7 @@
                     <h2>Availability zone</h2>
                 </div>
                 <div class="col-6">
-                    <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
+                    <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
                 </div>
             </div>
             <div class="row form p-form--stacked" data-ng-if="editSummary != true">
