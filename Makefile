@@ -445,9 +445,9 @@ $(scss_output): bin/node-sass $(scss_input) $(scss_deps)
 clean-styles:
 	$(RM) $(scss_output)
 
-javascript: $(javascript_output)
+javascript: node_modules $(javascript_output)
 
-force-javascript: clean-javascript $(javascript_output)
+force-javascript: clean-javascript node_modules $(javascript_output)
 
 lander-javascript: force-javascript
 	git update-index -q --no-assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
@@ -455,8 +455,8 @@ lander-javascript: force-javascript
 
 # The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
 # even if all four output files are out-of-date.
-$(subst .,%,$(javascript_output)): bin/webpack $(javascript_deps)
-	bin/webpack
+$(subst .,%,$(javascript_output)): $(javascript_deps)
+	node_modules/.bin/webpack
 	@touch --no-create $(strip $(javascript_output))
 	@git update-index -q --assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
 
@@ -817,14 +817,16 @@ phony := $(sort $(strip $(phony)))
 # secondary so that Make knows this too.
 #
 
-define secondary
+define secondary_binaries
   bin/py bin/buildout
   bin/node-sass
   bin/webpack
   bin/sphinx bin/sphinx-build
 endef
 
-.SECONDARY: $(sort $(strip $(secondary)))
+secondary = $(sort $(strip $(secondary_binaries)))
+
+.SECONDARY: $(secondary)
 
 #
 # Functions.
