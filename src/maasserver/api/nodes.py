@@ -670,7 +670,7 @@ class NodesHandler(OperationsHandler):
 
 
 class OwnerDataMixin:
-    """Mixin that adds the owner_data classmethod and proves set_owner_data
+    """Mixin that adds the owner_data classmethod and provides set_owner_data
     to the handler."""
 
     @classmethod

@@ -99,8 +99,11 @@ class PodHandler(OperationsHandler):
         """Update a specific Pod.
 
         :param name: Name for the pod (optional).
+        :type name: unicode
         :param cpu_over_commit_ratio: CPU over commit ratio (optional).
+        :type cpu_over_commit_ratio: unicode
         :param memory_over_commit_ratio: Memory over commit ratio (optional).
+        :type memory_over_commit_ratio: unicode
 
         Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
         re-added to change the type.
@@ -174,17 +177,23 @@ class PodHandler(OperationsHandler):
         All fields below are optional:
 
         :param cores: Minimum number of CPU cores.
+        :type cores: unicode
         :param memory: Minimum amount of memory (MiB).
+        :type memory: unicode
         :param cpu_speed: Minimum amount of CPU speed (MHz).
+        :type cpu_speed: unicode
         :param architecture: Architecture for the machine. Must be an
             architecture that the pod supports.
+        :param architecture: unicode
         :param storage: A list of storage constraint identifiers, in the form:
             <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
         :type storage: unicode
         :param hostname: Hostname for the newly composed machine.
         :type hostname: unicode
         :param domain: ID of domain to place the newly composed machine in.
+        :type domain: unicode
         :param zone: ID of zone place the newly composed machine in.
+        :type zone: unicode
 
         Returns 404 if the pod is not found.
         Returns 403 if the user does not have permission to compose machine.
@@ -209,6 +218,7 @@ class PodHandler(OperationsHandler):
         """Add a tag to Pod.
 
         :param tag: The tag being added.
+        :type tag: unicode
 
         Returns 404 if the Pod is not found.
         Returns 403 if the user is not allowed to update the Pod.
@@ -229,6 +239,7 @@ class PodHandler(OperationsHandler):
         """Remove a tag from Pod.
 
         :param tag: The tag being removed.
+        :type tag: unicode
 
         Returns 404 if the Pod is not found.
         Returns 403 if the user is not allowed to update the Pod.
@@ -273,14 +284,22 @@ class PodsHandler(OperationsHandler):
     def create(self, request):
         """Create a Pod.
 
-        :param type: Type of pod to create (rsd, virsh).
+        :param type: Type of pod to create (rsd, virsh) (required).
+        :type name: unicode
+        :param power_address: Address for power control of the pod (required).
+        :type power_address: unicode
+        :param power_user: User for power control of the pod
+            (required for rsd).
+        :type power_user: unicode
+        :param power_pass: Password for power control of the pod
+            (required for rsd).
+        :type power_pass: unicode
         :param name: Name for the pod (optional).
+        :type name: unicode
         :param zone: Name of the zone for the pod (optional).
-        :param tags: A tag or tags (separated by comma) for the pod.
-        :param cpu_over_commit_ratio: CPU over commit ratio for the
-            pod (optional).
-        :param memory_over_commit_ratio: Memory over commit ratio for
-            the pod (optional).
+        :type zone: unicode
+        :param tags: A tag or tags (separated by comma) for the pod (optional).
+        :type tags: unicode
 
         Returns 503 if the pod could not be discovered.
         Returns 404 if the pod is not found.
