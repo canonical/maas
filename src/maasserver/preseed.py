@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation."""
@@ -433,6 +433,14 @@ def get_curtin_image(node):
         raise ClusterUnavailable(
             "Unable to get RPC connection for rack controller '%s' (%s)" %
             (rack_controller.hostname, rack_controller.system_id))
+    # A matching subarch may be a newer subarch which contains support for
+    # an older one. e.g Xenial hwe-16.04 will match for ga-16.04. First
+    # try to find the subarch we are deploying, if that isn't found allow
+    # a newer version.
+    for image in images:
+        if (image['purpose'] == 'xinstall' and
+                image['subarchitecture'] == subarch):
+            return image
     for image in images:
         if image['purpose'] == 'xinstall':
             return image
