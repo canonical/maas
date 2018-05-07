@@ -3002,6 +3002,13 @@ class Node(CleanSave, TimestampedModel):
                 self.save()
             maaslog.error(
                 "%s: Marking node failed: %s", self.hostname, comment)
+            if new_status == NODE_STATUS.FAILED_DEPLOYMENT:
+                # Avoid circular imports
+                from maasserver.preseed import get_curtin_merged_config
+                log.debug(
+                    "Node '{hostname}' failed deployment with curtin "
+                    "config: {config()}", hostname=self.hostname,
+                    config=lambda: get_curtin_merged_config(self))
         elif self.status == NODE_STATUS.NEW:
             # Silently ignore, failing a new node makes no sense.
             pass
