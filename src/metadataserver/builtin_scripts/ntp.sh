@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 # ntp - Run ntp clock set to verify NTP connectivity.
 #
@@ -35,9 +35,13 @@
 
 source /etc/os-release
 
+function has_bin() {
+    which $1 >/dev/null
+    echo $?
+}
+
 if [ $VERSION_ID == "14.04" ]; then
-    which ntpq >/dev/null
-    if [ $? -ne 0 ]; then
+    if [ $(has_bin ntpd) -ne 0 ]; then
 	echo -en 'Warning: NTP configuration is not supported in Trusty. ' 1>&2
 	echo -en 'Running with the default NTP configuration.\n\n' 1>&2
 	sudo -n apt-get install -q -y ntp
@@ -45,13 +49,23 @@ if [ $VERSION_ID == "14.04" ]; then
     ntpq -np
     sudo -n service ntp stop
     sudo -n timeout 10 ntpd -gq
-    ret=$?
     sudo -n service ntp start
-else
+elif [ $(has_bin ntpd) -eq 0 ]; then
+    echo -en 'INFO: ntpd detected.\n\n' 1>&2
     ntpq -np
     sudo -n systemctl stop ntp.service
     sudo -n timeout 10 ntpd -gq
     ret=$?
     sudo -n systemctl start ntp.service
+elif [ $(has_bin chronyc) -eq 0 ]; then
+    echo -en 'INFO: chrony detected.\n\n' 1>&2
+    chronyc status
+    chronyc sources
+elif [ $(has_bin timedatectl) -eq 0 ]; then
+    echo -en 'INFO: timesyncd detected.\n\n' 1>&2
+    timedatectl status
+    sudo -n systemctl status systemd-timesyncd.service
+else
+    echo -en 'ERROR: Unable to detect NTP service!\n\n' 1>&2
+    exit 1
 fi
-exit $ret
