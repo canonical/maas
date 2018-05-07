@@ -1539,10 +1539,28 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             'get_boot_images_for').return_value = []
         self.assertRaises(MissingBootImage, get_curtin_image, node)
 
-    def test_get_curtin_image_returns_xinstall_image(self):
-        node = factory.make_Node()
+    def test_get_curtin_image_returns_xinstall_image_for_subarch(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        node = factory.make_Node(architecture=('%s/%s' % (arch, subarch)))
         other_images = [make_rpc_boot_image() for _ in range(3)]
-        xinstall_image = make_rpc_boot_image(purpose='xinstall')
+        xinstall_image = make_rpc_boot_image(
+            purpose='xinstall', architecture=arch, subarchitecture=subarch)
+        other_xinstall_image = make_rpc_boot_image(
+            purpose='xinstall', architecture=arch)
+        images = other_images + [xinstall_image, other_xinstall_image]
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = images
+        self.assertEqual(xinstall_image, get_curtin_image(node))
+
+    def test_get_curtin_image_returns_xinstall_image_for_newer(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        node = factory.make_Node(architecture=('%s/%s' % (arch, subarch)))
+        other_images = [make_rpc_boot_image() for _ in range(3)]
+        xinstall_image = make_rpc_boot_image(
+            purpose='xinstall', architecture=arch)
         images = other_images + [xinstall_image]
         self.patch(
             preseed_module,

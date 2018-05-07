@@ -303,9 +303,11 @@ class RepoWriter(BasicMirrorWriter):
             # MAAS uses the 'generic' subarch when it doesn't know which
             # subarch to use. This happens during enlistment and commissioning.
             # Allow the 'generic' kflavor to own the 'generic' hardlink. The
-            # generic kernel should always be the ga kernel.
-            if (item['subarch'].startswith('ga-') and
-                    item.get('kflavor') == 'generic'):
+            # generic kernel should always be the ga kernel for xenial+,
+            # hwe-<first letter of release> for older releases.
+            if (item.get('kflavor') == 'generic' and (
+                    item['subarch'].startswith('ga-') or
+                    item['subarch'] == 'hwe-%s' % item['release'][0])):
                 subarches = {item['subarch'], 'generic'}
             else:
                 subarches = {item['subarch']}
