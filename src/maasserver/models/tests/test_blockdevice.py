@@ -431,17 +431,26 @@ class TestBlockDevice(MAASServerTestCase):
         block_device.delete()
         self.assertIsNone(reload_object(block_device))
 
+    def test_create_partition(self):
+        node = factory.make_Node(with_boot_disk=False)
+        disk = factory.make_PhysicalBlockDevice(node=node)
+        partition = disk.create_partition()
+        self.assertEqual(partition.partition_table.block_device, disk)
+        available_size = disk.get_available_size()
+        self.assertTrue(
+            available_size >= 0 and available_size < PARTITION_ALIGNMENT_SIZE,
+            "Should create a partition for the entire disk.")
+
+    def test_create_partition_raises_ValueError(self):
+        disk = factory.make_PhysicalBlockDevice(node=factory.make_Node())
+        factory.make_PartitionTable(block_device=disk)
+        with ExpectedException(ValueError):
+            disk.create_partition()
+
     def test_create_partition_if_boot_disk_returns_None_if_not_boot_disk(self):
         node = factory.make_Node()
         not_boot_disk = factory.make_PhysicalBlockDevice(node=node)
         self.assertIsNone(not_boot_disk.create_partition_if_boot_disk())
-
-    def test_create_partition_if_boot_disk_raises_ValueError(self):
-        node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
-        factory.make_PartitionTable(block_device=boot_disk)
-        with ExpectedException(ValueError):
-            boot_disk.create_partition_if_boot_disk()
 
     def test_create_partition_if_boot_disk_creates_partition(self):
         node = factory.make_Node(with_boot_disk=False)

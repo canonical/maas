@@ -281,20 +281,22 @@ class BlockDevice(CleanSave, TimestampedModel):
         boot_disk = self.node.get_boot_disk()
         return boot_disk.id == self.id
 
+    def create_partition(self):
+        """Creates a partition that uses the whole disk."""
+        if self.get_partitiontable() is not None:
+            raise ValueError(
+                "Cannot call create_partition_if_boot_disk when a "
+                "partition table already exists on the block device.")
+        # Circular imports.
+        from maasserver.models.partitiontable import PartitionTable
+        partition_table = PartitionTable.objects.create(block_device=self)
+        return partition_table.add_partition()
+
     def create_partition_if_boot_disk(self):
         """Creates a partition that uses the whole disk if this block device
         is the boot disk."""
         if self.is_boot_disk():
-            # Cannot already have partition table.
-            partition_table = self.get_partitiontable()
-            if partition_table is not None:
-                raise ValueError(
-                    "Cannot call create_partition_if_boot_disk when a "
-                    "partition table already exists on the block device.")
-            # Circular imports.
-            from maasserver.models.partitiontable import PartitionTable
-            partition_table = PartitionTable.objects.create(block_device=self)
-            return partition_table.add_partition()
+            return self.create_partition()
         else:
             return None
 

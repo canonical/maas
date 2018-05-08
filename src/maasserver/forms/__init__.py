@@ -71,6 +71,7 @@ __all__ = [
 
 from collections import Counter
 from functools import partial
+from itertools import chain
 import json
 import re
 
@@ -2926,6 +2927,12 @@ def _move_boot_disk_to_partitions(block_devices, partitions):
             return
 
 
+def _get_partitions_for_devices(block_devices):
+    """Create and return partitions for specified block devices."""
+    return [
+        block_device.create_partition() for block_device in block_devices]
+
+
 class CreateCacheSetForm(Form):
     """For validaing and saving a new Bcache Cache Set."""
 
@@ -3368,12 +3375,20 @@ class CreateRaidForm(Form):
             id__in=self.cleaned_data['block_devices']))
         partitions = list(Partition.objects.filter(
             id__in=self.cleaned_data['partitions']))
-        _move_boot_disk_to_partitions(block_devices, partitions)
         spare_devices = list(BlockDevice.objects.filter(
             id__in=self.cleaned_data['spare_devices']))
         spare_partitions = list(Partition.objects.filter(
             id__in=self.cleaned_data['spare_partitions']))
-        _move_boot_disk_to_partitions(spare_devices, spare_partitions)
+        boot_disk = self.node.get_boot_disk()
+        if boot_disk.id in chain(
+                self.cleaned_data['block_devices'],
+                self.cleaned_data['spare_devices']):
+            # if the raid is bootable, create partitions for all disks
+            partitions.extend(_get_partitions_for_devices(block_devices))
+            spare_partitions.extend(_get_partitions_for_devices(spare_devices))
+            # don't use raw devices anymore
+            block_devices = []
+            spare_devices = []
 
         return RAID.objects.create_raid(
             name=self.cleaned_data['name'],

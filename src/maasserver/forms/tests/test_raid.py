@@ -198,21 +198,13 @@ class TestCreateRaidForm(MAASServerTestCase):
 
     def test_raid_creation_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        bds = [
-            factory.make_PhysicalBlockDevice(node=node)
-            for _ in range(10)
-        ]
+        bds = [factory.make_PhysicalBlockDevice(node=node) for _ in range(10)]
+        partitions = []
+        block_devices = [bd.id for bd in bds[:5]]
         for bd in bds[5:]:
-            factory.make_PartitionTable(block_device=bd)
-        block_devices = [
-            bd.id
-            for bd in bds
-            if bd.get_partitiontable() is None
-        ]
-        partitions = [
-            bd.get_partitiontable().add_partition().id
-            for bd in bds[5:]
-        ]
+            partition_table = factory.make_PartitionTable(block_device=bd)
+            partition = partition_table.add_partition()
+            partitions.append(partition.id)
         form = CreateRaidForm(node=node, data={
             'name': 'md1',
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,
@@ -223,23 +215,8 @@ class TestCreateRaidForm(MAASServerTestCase):
         raid = form.save()
         self.assertEqual('md1', raid.name)
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
-        block_devices = [
-            bd.id
-            for bd in bds
-            if bd.get_partitiontable() is None and not bd.is_boot_disk()
-        ]
-        self.assertItemsEqual(
-            block_devices,
-            [fs.block_device.id
-             for fs in raid.filesystems.exclude(block_device=None)])
-        partitions = [
-            bd.get_partitiontable().partitions.first().id
-            for bd in [bds[0]] + bds[5:]
-        ]
-        self.assertItemsEqual(
-            partitions,
-            [fs.partition.id
-             for fs in raid.filesystems.exclude(partition=None)])
+        self.assertCountEqual(raid.filesystems.exclude(block_device=None), [])
+        self.assertEqual(raid.filesystems.exclude(partition=None).count(), 10)
 
     def test_raid_creation_without_storage_fails(self):
         node = factory.make_Node()
