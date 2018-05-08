@@ -16,7 +16,10 @@ from provisioningserver import (
     logger,
     settings,
 )
-from provisioningserver.config import ClusterConfiguration
+from provisioningserver.config import (
+    ClusterConfiguration,
+    is_dev_environment,
+)
 from provisioningserver.monkey import (
     add_patches_to_twisted,
     add_patches_to_txtftp,
@@ -190,6 +193,14 @@ class ProvisioningServiceMaker:
         yield self._makeImageService(tftp_root)
         yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)
 
+    def _loadSettings(self):
+        # Load the settings from rackd.conf.
+        with ClusterConfiguration.open() as config:
+            settings.DEBUG = config.debug
+        # Debug mode is always on in the development environment.
+        if is_dev_environment():
+            settings.DEBUG = True
+
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.
         # In other words, this makes crochet.setup() a no-op.
@@ -206,6 +217,7 @@ class ProvisioningServiceMaker:
         add_patches_to_txtftp()
         add_patches_to_twisted()
 
+        self._loadSettings()
         self._configureCrochet()
         if settings.DEBUG:
             # Always log at debug level in debug mode.

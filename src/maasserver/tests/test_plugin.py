@@ -98,6 +98,16 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         self.assertEqual("Hill", service_maker.description)
 
     @asynchronous(timeout=5)
+    def test_makeService_configures_pserv_debug(self):
+        options = Options()
+        service_maker = RegionWorkerServiceMaker("Harry", "Hill")
+        mock_pserv = self.patch(service_maker, '_configurePservSettings')
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service_maker.makeService(options)
+        self.assertThat(mock_pserv, MockCalledOnceWith())
+
+    @asynchronous(timeout=5)
     def test_makeService_without_import_services(self):
         options = Options()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
@@ -190,6 +200,18 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         self.assertEqual("Hill", service_maker.description)
 
     @asynchronous(timeout=5)
+    def test_makeService_configures_pserv_debug(self):
+        options = Options()
+        service_maker = RegionMasterServiceMaker("Harry", "Hill")
+        mock_pserv = self.patch(service_maker, '_configurePservSettings')
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service_maker.makeService(options)
+        self.assertThat(mock_pserv, MockCalledOnceWith())
+
+    @asynchronous(timeout=5)
     def test_makeService(self):
         options = Options()
         service_maker = RegionMasterServiceMaker("Harry", "Hill")
@@ -260,6 +282,18 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
+
+    @asynchronous(timeout=5)
+    def test_makeService_configures_pserv_debug(self):
+        options = Options()
+        service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
+        mock_pserv = self.patch(service_maker, '_configurePservSettings')
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
+        service_maker.makeService(options)
+        self.assertThat(mock_pserv, MockCalledOnceWith())
 
     @asynchronous(timeout=5)
     def test_makeService(self):

@@ -69,6 +69,13 @@ class RegionWorkerServiceMaker:
         import django
         django.setup()
 
+    def _configurePservSettings(self):
+        # Configure the provisioningserver settings based on the Django
+        # django settings.
+        from django.conf import settings as django_settings
+        from provisioningserver import settings
+        settings.DEBUG = django_settings.DEBUG
+
     def _configureReactor(self):
         # Disable all database connections in the reactor.
         from maasserver.utils.orm import disable_all_database_connections
@@ -108,6 +115,7 @@ class RegionWorkerServiceMaker:
         self._configureThreads()
         self._configureLogging(options["verbosity"])
         self._configureDjango()
+        self._configurePservSettings()
         self._configureReactor()
         self._configureCrochet()
 
@@ -165,6 +173,7 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
         self._configureThreads()
         self._configureLogging(options["verbosity"])
         self._configureDjango()
+        self._configurePservSettings()
         self._configureReactor()
         self._configureCrochet()
         self._ensureConnection()
@@ -202,6 +211,7 @@ class RegionAllInOneServiceMaker(RegionMasterServiceMaker):
         self._configureThreads()
         self._configureLogging(options["verbosity"])
         self._configureDjango()
+        self._configurePservSettings()
         self._configureReactor()
         self._configureCrochet()
         self._ensureConnection()

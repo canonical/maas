@@ -104,6 +104,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(settings, "DEBUG", False)
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        self.patch(service_maker, '_loadSettings')
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
@@ -127,6 +128,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         """
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        self.patch(service_maker, '_loadSettings')
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
