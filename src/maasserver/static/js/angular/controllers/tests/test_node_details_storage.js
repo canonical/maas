@@ -3075,7 +3075,7 @@ describe("NodeStorageController", function() {
 
         it("calls updateDisk with new name for logical volume", function() {
             var controller = makeController();
-            var name = "vg0-lvnew"
+            var name = "vg0-lvnew";
             var disk = {
                 name: name,
                 type: "virtual",
@@ -3098,26 +3098,26 @@ describe("NodeStorageController", function() {
             expect(MachinesManager.updateDisk).toHaveBeenCalled();
         });
 
-        it("calls updateDisk with new name for parition", function() {
+        it("calls updateFilesystem for partition", function() {
             var controller = makeController();
-            var name = "vda-part1";
+            var name = makeName("name");
             var disk = {
-                name: name,
+                name: "",
                 type: "partition",
-                block_id: makeInteger(0, 100),
-                partition_id: makeInteger(0, 100),
                 $options: {
-                    fstype: "",
-                    mountPoint: "",
-                    mountOptions: ""
+                    mountPoint: ""
                 },
+                original: {
+                    name: name
+                }
             };
-            spyOn(MachinesManager, "updateDisk");
+            spyOn(MachinesManager, "updateFilesystem");
 
             $scope.availableConfirmEdit(disk);
             expect(disk.name).toBe(name);
-            expect(MachinesManager.updateDisk).toHaveBeenCalled();
-         });
+            expect(MachinesManager.updateFilesystem).toHaveBeenCalled();
+        });
+
     });
 
     describe("canCreateBcache", function() {
