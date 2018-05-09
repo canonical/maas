@@ -55,8 +55,10 @@ def send_event(system_id, type_name, description, timestamp):
         # that we don't know about yet. This is most likely to happen when a
         # new node is trying to enlist.
         log.debug(
-            "Event '%s: %s' sent for non-existent node '%s'.",
-            type_name, description, system_id)
+            "Event '{type}: {description}' sent for non-existent "
+            "node '{node_id}'.",
+            type=type_name, description=description,
+            node_id=system_id)
     else:
         Event.objects.create(
             node=node, type=event_type, description=description,
@@ -84,8 +86,9 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
         # that we don't know about yet. This is most likely to happen when a
         # new node is trying to enlist.
         log.debug(
-            "Event '%s: %s' sent for non-existent node with MAC "
-            "address '%s'.", type_name, description, mac_address)
+            "Event '{type}: {description}' sent for non-existent "
+            "node with MAC address '{mac}'.",
+            type=type_name, description=description, mac=mac_address)
     else:
         Event.objects.create(
             node=interface.node, type=event_type, description=description,

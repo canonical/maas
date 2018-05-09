@@ -845,8 +845,9 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
 
         self.assertThat(
             log.debug, MockCalledOnceWith(
-                "Event '%s: %s' sent for non-existent node '%s'.",
-                name, event_description, system_id))
+                "Event '{type}: {description}' sent for "
+                "non-existent node '{node_id}'.",
+                type=name, description=event_description, node_id=system_id))
 
 
 class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
@@ -995,8 +996,9 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
 
         self.assertThat(
             log.debug, MockCalledOnceWith(
-                "Event '%s: %s' sent for non-existent node with MAC address "
-                "'%s'.", name, event_description, mac_address))
+                "Event '{type}: {description}' sent for non-existent node "
+                "with MAC address '{mac}'.",
+                type=name, description=event_description, mac=mac_address))
 
 
 class TestRegionProtocol_UpdateServices(MAASTransactionServerTestCase):
