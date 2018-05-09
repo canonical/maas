@@ -2007,7 +2007,7 @@ class Node(CleanSave, TimestampedModel):
         )
 
         if not user.has_perm(NODE_PERMISSION.EDIT, self):
-            # You can't enter rescue mode on a node you don't own,
+            # You can't enter test mode on a node you don't own,
             # unless you're an admin.
             raise PermissionDenied()
 
@@ -4217,6 +4217,14 @@ class Node(CleanSave, TimestampedModel):
             # Let the exception bubble up, since the UI or API will have to
             # deal with it.
             raise
+
+        # If the power state cannot be queried(manual power type) transition
+        # to the previous state right away.
+        if not self.get_effective_power_info().can_be_queried:
+            if self.previous_status != NODE_STATUS.DEPLOYED:
+                self.owner = None
+            self.status = self.previous_status
+            self.save()
 
     def _as(self, model):
         """Create a `model` that shares underlying storage with `self`.

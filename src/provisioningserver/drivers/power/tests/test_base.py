@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power`."""
@@ -402,6 +402,18 @@ class TestPowerDriverPowerAction(MAASTestCase):
         method = getattr(driver, self.action)
         with ExpectedException(PowerError):
             yield method(system_id, context)
+
+    @inlineCallbacks
+    def test_doesnt_power_query_if_unqueryable(self):
+        system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
+        driver = make_power_driver(wait_time=[0])
+        driver.queryable = False
+        self.patch(driver, self.action_func)
+        mock_query = self.patch(driver, 'power_query')
+        method = getattr(driver, self.action)
+        yield method(system_id, context)
+        self.assertThat(mock_query, MockNotCalled())
 
 
 class TestPowerDriverCycle(MAASTestCase):
