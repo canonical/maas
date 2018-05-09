@@ -63,10 +63,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--migrate-conflicting-options', default=False,
             dest='migrate_conflicting_options', action='store_true',
-            help="Causes any options that conflict with MAAS-managed options "
-                 "to be deleted from the BIND configuration and moved to the "
-                 "MAAS-managed configuration. Requires the MAAS database to "
-                 "be configured and running.")
+            help="**This option is now deprecated**. It no longer has any "
+                 "effect and it may be removed in a future release.")
 
     def read_file(self, config_path):
         """Open the named file and return its contents as a string."""
@@ -113,27 +111,36 @@ class Command(BaseCommand):
         if 'forwarders' in options_block:
             bind_forwarders = options_block['forwarders']
 
+            delete_forwarders = False
             if not dry_run:
-                config, created = Config.objects.get_or_create(
-                    name='upstream_dns',
-                    defaults={'value': ' '.join(bind_forwarders)})
-                if not created:
-                    # A configuration value already exists, so add the
-                    # additional values we found in the configuration file to
-                    # MAAS.
-                    if config.value is None:
-                        config.value = ''
-                    maas_forwarders = OrderedDict.fromkeys(
-                        config.value.split())
-                    maas_forwarders.update(bind_forwarders)
-                    config.value = ' '.join(maas_forwarders)
-                    config.save()
+                try:
+                    config, created = Config.objects.get_or_create(
+                        name='upstream_dns',
+                        defaults={'value': ' '.join(bind_forwarders)})
+                    if not created:
+                        # A configuration value already exists, so add the
+                        # additional values we found in the configuration
+                        # file to MAAS.
+                        if config.value is None:
+                            config.value = ''
+                        maas_forwarders = OrderedDict.fromkeys(
+                            config.value.split())
+                        maas_forwarders.update(bind_forwarders)
+                        config.value = ' '.join(maas_forwarders)
+                        config.save()
+                    delete_forwarders = True
+                except:
+                    pass
             else:
                 stdout.write(
                     "// Append to MAAS forwarders: %s\n"
                     % ' '.join(bind_forwarders))
 
-            del options_block['forwarders']
+            # Only delete forwarders from the config if MAAS was able to
+            # migrate the options. Otherwise leave them in the original
+            # config.
+            if delete_forwarders:
+                del options_block['forwarders']
 
     def migrate_dnssec_validation(self, options_block, dry_run, stdout):
         """Remove existing dnssec-validation from the options block.
@@ -148,19 +155,23 @@ class Command(BaseCommand):
             dnssec_validation = options_block['dnssec-validation']
 
             if not dry_run:
-                config, created = Config.objects.get_or_create(
-                    name='dnssec_validation',
-                    defaults={'value': dnssec_validation})
-                if not created:
-                    # Update the MAAS configuration to reflect the new setting
-                    # found in the configuration file.
-                    config.value = dnssec_validation
-                    config.save()
+                try:
+                    config, created = Config.objects.get_or_create(
+                        name='dnssec_validation',
+                        defaults={'value': dnssec_validation})
+                    if not created:
+                        # Update the MAAS configuration to reflect the new
+                        # setting found in the configuration file.
+                        config.value = dnssec_validation
+                        config.save()
+                except:
+                    pass
             else:
                 stdout.write(
                     "// Set MAAS dnssec_validation to: %s\n"
                     % dnssec_validation)
-
+            # Always attempt to delete this option as MAAS will always create
+            # a default for it.
             del options_block['dnssec-validation']
 
     def back_up_existing_file(self, config_path):
@@ -199,8 +210,6 @@ class Command(BaseCommand):
         stdout = options.get('stdout')
         if stdout is None:
             stdout = sys.stdout
-        migrate_conflicting_options = options.get(
-            'migrate_conflicting_options')
 
         options_file = self.read_file(config_path)
         config_dict = self.parse_file(config_path, options_file)
@@ -211,9 +220,10 @@ class Command(BaseCommand):
         # Modify the configuration (if necessary).
         self.set_up_include_statement(options_block, config_path)
 
-        if migrate_conflicting_options:
-            self.migrate_forwarders(options_block, dry_run, stdout)
-            self.migrate_dnssec_validation(options_block, dry_run, stdout)
+        # Attempt to migrate the conflicting options if there's
+        # database connection.
+        self.migrate_forwarders(options_block, dry_run, stdout)
+        self.migrate_dnssec_validation(options_block, dry_run, stdout)
 
         # Re-parse the new configuration, so we can detect any changes.
         new_content = make_isc_string(config_dict)
