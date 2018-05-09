@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Storage Controller
@@ -824,7 +824,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             return available;
         };
 
-        // Update the currect mode for the available section and the all
+        // Update the current mode for the available section and the all
         // selected value.
         $scope.updateAvailableSelection = function(force) {
             if(angular.isUndefined(force)) {
@@ -1064,11 +1064,6 @@ angular.module('MAAS').controller('NodeStorageController', [
             var params = {
                 name: disk.name
             };
-            // Only take the disk's name if it is a parition as
-            // these params are passed to update_disk.
-            if(disk.type === "partition") {
-                params.name = params.name.split('-')[0];
-            }
 
             // Do nothing if not valid.
             if($scope.isNameInvalid(disk) ||
@@ -1101,8 +1096,15 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
 
             // Save the options.
-            MachinesManager.updateDisk(
-                $scope.node, disk.block_id, params);
+            if(disk.type === "partition") {
+                MachinesManager.updateFilesystem(
+                    $scope.node, disk.block_id, disk.partition_id,
+                    params.fstype, params.mount_point,
+                    params.mount_options, params.tags);
+            } else {
+                MachinesManager.updateDisk(
+                    $scope.node, disk.block_id, params);
+            }
 
             // Set the options on the object so no flicker occurs while waiting
             // for the new object to be received.
@@ -1112,7 +1114,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             disk.tags = disk.$options.tags;
             disk.$options = {};
 
-            // If the mount_point is set the we need to transition this to
+            // If the mount_point is set then we need to transition this to
             // the filesystem section.
             if(angular.isString(disk.mount_point) && disk.mount_point !== "") {
                 $scope.filesystems.push({
