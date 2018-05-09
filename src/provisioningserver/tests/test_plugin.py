@@ -22,6 +22,9 @@ from provisioningserver.plugin import (
     Options,
     ProvisioningServiceMaker,
 )
+from provisioningserver.rackdservices.dhcp_probe_service import (
+    DHCPProbeService,
+)
 from provisioningserver.rackdservices.image import BootImageEndpointService
 from provisioningserver.rackdservices.image_download_service import (
     ImageDownloadService,
@@ -105,7 +108,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "networks_monitor", "image_download",
+            "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "rpc", "rpc-ping",
             "tftp", "image_service", "service_monitor",
             ]
@@ -129,7 +132,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "networks_monitor", "image_download",
+            "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "rpc", "rpc-ping",
             "tftp", "image_service", "service_monitor",
             ]
@@ -188,13 +191,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
         networks_monitor = service.getServiceNamed("networks_monitor")
         self.assertIsInstance(networks_monitor, RackNetworksMonitoringService)
 
-    # XXX blake_r: #1768575 - Disabled DHCP probing service.
-    # def test_dhcp_probe_service(self):
-    #     options = Options()
-    #     service_maker = ProvisioningServiceMaker("Spike", "Milligan")
-    #     service = service_maker.makeService(options, clock=None)
-    #     dhcp_probe = service.getServiceNamed("dhcp_probe")
-    #     self.assertIsInstance(dhcp_probe, DHCPProbeService)
+    def test_dhcp_probe_service(self):
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Spike", "Milligan")
+        service = service_maker.makeService(options, clock=None)
+        dhcp_probe = service.getServiceNamed("dhcp_probe")
+        self.assertIsInstance(dhcp_probe, DHCPProbeService)
 
     def test_service_monitor_service(self):
         options = Options()

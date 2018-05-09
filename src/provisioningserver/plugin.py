@@ -183,11 +183,7 @@ class ProvisioningServiceMaker:
         # Other services that make up the MAAS Region Controller.
         yield self._makeRPCPingService(rpc_service, clock=clock)
         yield self._makeNetworksMonitoringService(rpc_service, clock=clock)
-        # XXX blake_r: #1768575 - DHCP probing service using `socket.bind`
-        # with authbind and uvloop causes `socket.bind` to block indefinitely.
-        # Disable the DHCP probing service until its moved to use its own
-        # subprocess.
-        # yield self._makeDHCPProbeService(rpc_service)
+        yield self._makeDHCPProbeService(rpc_service)
         yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
