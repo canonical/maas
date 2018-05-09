@@ -177,6 +177,9 @@ class CurtinStorageGenerator:
                                 self.operations["mount"].append(
                                     partition_filesystem)
 
+        for filesystem in self.node.special_filesystems.filter(acquired=True):
+            self.operations["mount"].append(filesystem)
+
     def _requires_format_operation(self, filesystem):
         """Return True if the filesystem requires a format operation."""
         return (
@@ -605,11 +608,20 @@ class CurtinStorageGenerator:
         """Generate mount operation for `filesystem` and place in
         `storage_config`."""
         device_or_partition = filesystem.get_parent()
-        stanza = {
-            "id": "%s_mount" % device_or_partition.get_name(),
-            "type": "mount",
-            "device": "%s_format" % device_or_partition.get_name(),
-        }
+        stanza = {"type": "mount"}
+        if device_or_partition == self.node:
+            # this is a special filesystem
+            mount_id = filesystem.mount_point.lstrip('/').replace(
+                '/', '-')
+            mount_id += '_mount'
+            stanza.update(
+                {"id": mount_id,
+                 "fstype": filesystem.fstype,
+                 "spec": filesystem.fstype})
+        else:
+            stanza.update(
+                {"id": "%s_mount" % device_or_partition.get_name(),
+                 "device": "%s_format" % device_or_partition.get_name()})
         if filesystem.uses_mount_point:
             stanza["path"] = filesystem.mount_point
         if filesystem.mount_options is not None:

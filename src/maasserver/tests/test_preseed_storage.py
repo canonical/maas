@@ -71,6 +71,36 @@ class AssertStorageConfigMixin:
             self.fail("Storage configurations differ.")
 
 
+class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - fstype: ramfs
+            id: mnt-ramfs_mount
+            path: /mnt/ramfs
+            spec: ramfs
+            type: mount
+          - fstype: tmpfs
+            id: mnt-tmpfs_mount
+            path: /mnt/tmpfs
+            spec: tmpfs
+            options: noexec,size=1024k
+            type: mount
+    """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_Filesystem(
+            node=node, fstype='tmpfs', mount_options='noexec,size=1024k',
+            mount_point='/mnt/tmpfs')
+        factory.make_Filesystem(
+            node=node, fstype='ramfs', mount_options=None,
+            mount_point='/mnt/ramfs')
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
 class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
     STORAGE_CONFIG = dedent("""\
