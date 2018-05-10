@@ -154,10 +154,12 @@ def _write_config(server, state):
     dhcpd_config, interfaces_config = state.get_config(server)
     try:
         sudo_write_file(
-            server.config_filename, dhcpd_config.encode("utf-8"))
+            server.config_filename, dhcpd_config.encode("utf-8"),
+            mode=0o640)
         sudo_write_file(
             server.interfaces_filename,
-            interfaces_config.encode("utf-8"))
+            interfaces_config.encode("utf-8"),
+            mode=0o640)
     except ExternalProcessError as e:
         # ExternalProcessError.__str__ contains a generic failure message
         # as well as the command and its error output. On the other hand,

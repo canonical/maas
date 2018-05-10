@@ -574,10 +574,12 @@ class TestConfigureDHCP(MAASTestCase):
             MockCallsMatch(
                 call(
                     self.server.config_filename,
-                    expected_config.encode("utf-8")),
+                    expected_config.encode("utf-8"),
+                    mode=0o640),
                 call(
                     self.server.interfaces_filename,
-                    interface["name"].encode("utf-8")),
+                    interface["name"].encode("utf-8"),
+                    mode=0o640),
                 ))
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
@@ -623,10 +625,12 @@ class TestConfigureDHCP(MAASTestCase):
             MockCallsMatch(
                 call(
                     self.server.config_filename,
-                    expected_config.encode("utf-8")),
+                    expected_config.encode("utf-8"),
+                    mode=0o640),
                 call(
                     self.server.interfaces_filename,
-                    interface["name"].encode("utf-8")),
+                    interface["name"].encode("utf-8"),
+                    mode=0o640),
                 ))
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
@@ -673,10 +677,12 @@ class TestConfigureDHCP(MAASTestCase):
             MockCallsMatch(
                 call(
                     self.server.config_filename,
-                    expected_config.encode("utf-8")),
+                    expected_config.encode("utf-8"),
+                    mode=0o640),
                 call(
                     self.server.interfaces_filename,
-                    interface["name"].encode("utf-8")),
+                    interface["name"].encode("utf-8"),
+                    mode=0o640),
                 ))
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
@@ -730,10 +736,12 @@ class TestConfigureDHCP(MAASTestCase):
             MockCallsMatch(
                 call(
                     self.server.config_filename,
-                    expected_config.encode("utf-8")),
+                    expected_config.encode("utf-8"),
+                    mode=0o640),
                 call(
                     self.server.interfaces_filename,
-                    interface["name"].encode("utf-8")),
+                    interface["name"].encode("utf-8"),
+                    mode=0o640),
                 ))
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
@@ -801,10 +809,12 @@ class TestConfigureDHCP(MAASTestCase):
             MockCallsMatch(
                 call(
                     self.server.config_filename,
-                    expected_config.encode("utf-8")),
+                    expected_config.encode("utf-8"),
+                    mode=0o640),
                 call(
                     self.server.interfaces_filename,
-                    interface["name"].encode("utf-8")),
+                    interface["name"].encode("utf-8"),
+                    mode=0o640),
                 ))
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
@@ -876,10 +886,12 @@ class TestConfigureDHCP(MAASTestCase):
             MockCallsMatch(
                 call(
                     self.server.config_filename,
-                    expected_config.encode("utf-8")),
+                    expected_config.encode("utf-8"),
+                    mode=0o640),
                 call(
                     self.server.interfaces_filename,
-                    interface["name"].encode("utf-8")),
+                    interface["name"].encode("utf-8"),
+                    mode=0o640),
                 ))
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
