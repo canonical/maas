@@ -6,6 +6,12 @@ menuentry 'Local' {
     {{if kernel_params.osystem == "windows"}}
     search --set=root --file /efi/Microsoft/Boot/bootmgfw.efi
     chainloader /efi/Microsoft/Boot/bootmgfw.efi
+    {{elif kernel_params.osystem == "centos"}}
+    search --set=root --file /efi/centos/grubx64.efi
+    chainloader /efi/centos/grubx64.efi
+    {{elif kernel_params.osystem == "rhel"}}
+    search --set=root --file /efi/redhat/grubx64.efi
+    chainloader /efi/redhat/grubx64.efi
     {{else}}
     search --set=root --file /efi/ubuntu/grubx64.efi
     chainloader /efi/ubuntu/grubx64.efi
