@@ -198,9 +198,10 @@ class TestTagAPI(APITestCase.ForUser):
             ])
 
         # Because of fields `status_action`, `status_message`,
-        # `default_gateways`, and `health_status` the number of queries is not
-        # the same but it is proportional to the number of machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 4))
+        # `default_gateways`, `health_status` and 'special_filesystems' the
+        # number of queries is not the same but it is proportional to the
+        # number of machines.
+        self.assertEquals(num_queries1, num_queries2 - (3 * 5))
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -260,7 +261,7 @@ class TestTagAPI(APITestCase.ForUser):
         # Because of fields `status_action`, `status_message`,
         # `default_gateways`, and `health_status` the number of queries is not
         # the same but it is proportional to the number of machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 4))
+        self.assertEquals(num_queries1, num_queries2 - (3 * 5))
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()

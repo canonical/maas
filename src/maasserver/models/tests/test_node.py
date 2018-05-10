@@ -1361,6 +1361,42 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(osystem=osystem, distro_series=series)
         self.assertEqual(license_key, node.get_effective_license_key())
 
+    def test_get_effective_special_filesystems_acquired(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        filesystem = factory.make_Filesystem(
+            node=node, fstype='tmpfs', acquired=True)
+        factory.make_Filesystem(node=node, fstype='tmpfs', acquired=False)
+        self.assertCountEqual(
+            node.get_effective_special_filesystems(), [filesystem])
+
+    def test_get_effective_special_filesystems_acquired_prev(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED)
+        filesystem = factory.make_Filesystem(
+            node=node, fstype='tmpfs', acquired=True)
+        factory.make_Filesystem(node=node, fstype='tmpfs', acquired=False)
+        self.assertCountEqual(
+            node.get_effective_special_filesystems(), [filesystem])
+
+    def test_get_effective_special_filesystems_not_acquired(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_Filesystem(node=node, fstype='tmpfs', acquired=True)
+        filesystem = factory.make_Filesystem(
+            node=node, fstype='tmpfs', acquired=False)
+        self.assertCountEqual(
+            node.get_effective_special_filesystems(), [filesystem])
+
+    def test_get_effective_special_filesystems_not_acquired_prev(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE,
+            previous_status=NODE_STATUS.ALLOCATED)
+        factory.make_Filesystem(node=node, fstype='tmpfs', acquired=True)
+        filesystem = factory.make_Filesystem(
+            node=node, fstype='tmpfs', acquired=False)
+        self.assertCountEqual(
+            node.get_effective_special_filesystems(), [filesystem])
+
     # Deleting Node deletes BMC. Regression for lp:1586555.
     def test_delete_node_deletes_owned_bmc(self):
         node = factory.make_Node()

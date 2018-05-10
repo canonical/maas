@@ -1643,21 +1643,33 @@ class TestMachineHandler(MAASServerTestCase):
             name: Equals(value) for name, value in expected.items()
         }))
 
-    def test_get_includes_special_filesystems(self):
+    def test_get_includes_not_acquired_special_filesystems(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})
         machine = factory.make_Node(owner=owner)
-        filesystems = [
-            factory.make_Filesystem(node=machine),
-            factory.make_Filesystem(node=machine),
-        ]
+        filesystem = factory.make_Filesystem(
+            node=machine, label='not-acquired', acquired=False)
+        factory.make_Filesystem(node=machine, label='acquired', acquired=True)
         self.assertThat(
             handler.get({"system_id": machine.system_id}),
             ContainsDict({
-                "special_filesystems": Equals([
-                    handler.dehydrate_filesystem(filesystem)
-                    for filesystem in filesystems
-                ]),
+                "special_filesystems": Equals(
+                    [handler.dehydrate_filesystem(filesystem)])
+            }))
+
+    def test_get_includes_acquired_special_filesystems(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        machine = factory.make_Node(owner=owner, status=NODE_STATUS.DEPLOYED)
+        factory.make_Filesystem(
+            node=machine, label='not-acquired', acquired=False)
+        filesystem = factory.make_Filesystem(
+            node=machine, label='acquired', acquired=True)
+        self.assertThat(
+            handler.get({"system_id": machine.system_id}),
+            ContainsDict({
+                "special_filesystems": Equals(
+                    [handler.dehydrate_filesystem(filesystem)])
             }))
 
     def test_list(self):

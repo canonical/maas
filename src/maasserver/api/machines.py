@@ -785,7 +785,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 'mount_point': filesystem.mount_point,
                 'mount_options': filesystem.mount_options,
             }
-            for filesystem in machine.special_filesystems.all()
+            for filesystem in machine.get_effective_special_filesystems()
         ]
 
     @operation(idempotent=False)

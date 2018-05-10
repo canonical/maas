@@ -2589,6 +2589,36 @@ class Node(CleanSave, TimestampedModel):
                 power_type, power_params,
             )
 
+    def get_effective_special_filesystems(self):
+        """Return special filesystems for the node."""
+        deployed_statuses = {
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.DEPLOYING,
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.FAILED_DEPLOYMENT,
+            NODE_STATUS.RELEASING,
+            NODE_STATUS.FAILED_RELEASING,
+            NODE_STATUS.DISK_ERASING,
+            NODE_STATUS.FAILED_DISK_ERASING}
+        testing_statuses = {
+            NODE_STATUS.RESCUE_MODE,
+            NODE_STATUS.ENTERING_RESCUE_MODE,
+            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+            NODE_STATUS.EXITING_RESCUE_MODE,
+            NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+            NODE_STATUS.TESTING,
+            NODE_STATUS.FAILED_TESTING}
+        before_testing_statuses = {
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.FAILED_DEPLOYMENT,
+            NODE_STATUS.FAILED_RELEASING,
+            NODE_STATUS.FAILED_DISK_ERASING}
+        acquired = (
+            self.status in deployed_statuses or
+            (self.status in testing_statuses and
+             self.previous_status in before_testing_statuses))
+        return self.special_filesystems.filter(acquired=acquired)
+
     @staticmethod
     @asynchronous
     @inlineCallbacks

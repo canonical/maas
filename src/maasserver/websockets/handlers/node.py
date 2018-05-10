@@ -314,7 +314,7 @@ class NodeHandler(TimestampedModelHandler):
                 data["storage_layout_issues"] = obj.storage_layout_issues()
                 data["special_filesystems"] = [
                     self.dehydrate_filesystem(filesystem)
-                    for filesystem in obj.special_filesystems.order_by("id")
+                    for filesystem in obj.get_effective_special_filesystems()
                 ]
                 data["grouped_storages"] = self.get_grouped_storages(
                     physical_blockdevices)

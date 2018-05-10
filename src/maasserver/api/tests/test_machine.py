@@ -1901,6 +1901,54 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
                 ]),
             }))
 
+    def test__only_acquired_special_filesystems(self):
+        self.become_admin()
+        machine = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        factory.make_Filesystem(
+            node=machine, fstype=self.fstype, label='not-acquired')
+        filesystem = factory.make_Filesystem(
+            node=machine, fstype=self.fstype, label='acquired', acquired=True)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            json_load_bytes(response.content),
+            ContainsDict({
+                "special_filesystems": MatchesListwise([
+                    ContainsDict({
+                        "fstype": Equals(filesystem.fstype),
+                        "label": Equals(filesystem.label),
+                        "mount_options": Equals(filesystem.mount_options),
+                        "mount_point": Equals(filesystem.mount_point),
+                        "uuid": Equals(filesystem.uuid),
+                    }),
+                ]),
+            }))
+
+    def test__only_not_acquired_special_filesystems(self):
+        self.become_admin()
+        machine = factory.make_Node(status=NODE_STATUS.READY)
+        filesystem = factory.make_Filesystem(
+            node=machine, fstype=self.fstype, label='not-acquired')
+        factory.make_Filesystem(
+            node=machine, fstype=self.fstype, label='acquired', acquired=True)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            json_load_bytes(response.content),
+            ContainsDict({
+                "special_filesystems": MatchesListwise([
+                    ContainsDict({
+                        "fstype": Equals(filesystem.fstype),
+                        "label": Equals(filesystem.label),
+                        "mount_options": Equals(filesystem.mount_options),
+                        "mount_point": Equals(filesystem.mount_point),
+                        "uuid": Equals(filesystem.uuid),
+                    }),
+                ]),
+            }))
+
     def assertCanMountFilesystem(self, machine):
         mount_point = factory.make_absolute_path()
         mount_options = factory.make_name("options")
