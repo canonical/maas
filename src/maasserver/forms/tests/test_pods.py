@@ -77,10 +77,13 @@ def make_pod_with_hints():
         "amd64/generic", "i386/generic", "arm64/generic",
         "armhf/generic"
     ]
-    pod = factory.make_Pod(architectures=architectures)
-    pod.hints.cores = random.randint(8, 16)
-    pod.hints.memory = random.randint(4096, 8192)
-    pod.hints.cpu_speed = random.randint(2000, 3000)
+    pod = factory.make_Pod(
+        architectures=architectures, cores=random.randint(8, 16),
+        memory=random.randint(4096, 8192),
+        cpu_speed=random.randint(2000, 3000))
+    pod.hints.cores = pod.cores
+    pod.hints.memory = pod.memory
+    pod.hints.cpu_speed = pod.cpu_speed
     pod.hints.save()
     return pod
 
@@ -916,6 +919,44 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             MatchesStructure(
                 domain=Equals(domain),
                 zone=Equals(zone))))
+
+    def test__compose_check_over_commit_ratios_raises_error_for_cores(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        pod.cores = 0
+        pod.save()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        error = self.assertRaises(PodProblem, form.compose)
+        self.assertEqual(
+            "CPU over commit ratio is %s and there are %s "
+            "available resources. " %
+            (pod.cpu_over_commit_ratio, pod.cores), str(error))
+
+    def test__compose_check_over_commit_ratios_raises_error_for_memory(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        pod.memory = 0
+        pod.save()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        error = self.assertRaises(PodProblem, form.compose)
+        self.assertEqual(
+            "Memory over commit ratio is %s and there are %s "
+            "available resources." %
+            (pod.memory_over_commit_ratio, pod.memory), str(error))
 
     def test__compose_handles_timeout_error(self):
         request = MagicMock()

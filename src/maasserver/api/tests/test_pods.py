@@ -198,13 +198,16 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
             for _ in range(3)
         ]
+        cores = random.randint(8, 16)
+        memory = random.randint(4096, 8192)
         cpu_speed = random.randint(2000, 3000)
         pod = factory.make_Pod(
-            architectures=architectures, cpu_speed=cpu_speed)
+            architectures=architectures, cores=cores,
+            memory=memory, cpu_speed=cpu_speed)
         pod.capabilities = [Capabilities.COMPOSABLE]
         pod.save()
-        pod.hints.cores = random.randint(8, 16)
-        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.cores = pod.cores
+        pod.hints.memory = pod.memory
         pod.hints.save()
         return pod
 

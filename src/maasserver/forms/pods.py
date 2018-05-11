@@ -414,12 +414,22 @@ class ComposeMachineForm(forms.Form):
             skip_commissioning=None):
         """Compose the machine.
 
-        Internal operation of this form is asynchronously. It will block the
+        Internal operation of this form is asynchronous. It will block the
         calling thread until the asynchronous operation is complete. Adjust
         `timeout` to minimize the maximum wait for the asynchronous operation.
         """
+
         if skip_commissioning is None:
             skip_commissioning = self.get_value_for('skip_commissioning')
+
+        def check_over_commit_ratios(result):
+            # Check over commit ratios.
+            over_commit_message = self.pod.check_over_commit_ratios(
+                requested_cores=self.get_value_for('cores'),
+                requested_memory=self.get_value_for('memory'))
+            if over_commit_message:
+                raise PodProblem(over_commit_message)
+            return result
 
         def create_and_sync(result):
             discovered_machine, pod_hints = result
@@ -437,6 +447,9 @@ class ComposeMachineForm(forms.Form):
             d = deferToDatabase(transactional(self.pod.get_client_identifiers))
             d.addCallback(getClientFromIdentifiers)
             d.addCallback(
+                partial(deferToDatabase, transactional(
+                    check_over_commit_ratios)))
+            d.addCallback(
                 compose_machine, self.pod.power_type,
                 self.pod.power_parameters, self.get_requested_machine(),
                 pod_id=self.pod.id, name=self.pod.name)
@@ -452,6 +465,9 @@ class ComposeMachineForm(forms.Form):
                     pod_id, name):
                 """Wrapper to get the client."""
                 d = getClientFromIdentifiers(client_idents)
+                d.addCallback(
+                    partial(deferToDatabase, transactional(
+                        check_over_commit_ratios)))
                 d.addCallback(
                     compose_machine, pod_type, parameters, request,
                     pod_id=pod_id, name=name)

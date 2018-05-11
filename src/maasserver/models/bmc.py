@@ -156,7 +156,7 @@ class BMC(CleanSave, TimestampedModel):
     #  4. Total cores in the Pod.
     #  5. Fastest CPU speed in the Pod.
     #  6. Total amount of memory in the Pod.
-    #  7. Total about in bytes of local storage available in the Pod.
+    #  7. Total amount in bytes of local storage available in the Pod.
     #  8. Total number of available local disks in the Pod.
     #  9. The resource pool machines in the pod should belong to by default.
     #  10. The zone of the Pod.
@@ -501,16 +501,28 @@ class Pod(BMC):
             tags.remove(tag)
             self.tags = tags
 
-    @property
-    def cpu_over_commit_ratio_percentage(self):
-        """Return the CPU over commit percentage."""
-        return ((self.cores * self.cpu_over_commit_ratio) / self.cores) * 100
-
-    @property
-    def memory_over_commit_ratio_percentage(self):
-        """Return the memory over commit percentage."""
-        return (
-            (self.memory * self.memory_over_commit_ratio) / self.memory) * 100
+    def check_over_commit_ratios(self, requested_cores, requested_memory):
+        """Checks that requested cpu cores and memory are within the
+        currently available resources capped by the over commit ratios."""
+        message = ''
+        used_cores = self.get_used_cores()
+        used_memory = self.get_used_memory()
+        over_commit_cores = self.cores * self.cpu_over_commit_ratio
+        potential_cores = used_cores + requested_cores
+        over_commit_memory = self.memory * self.memory_over_commit_ratio
+        potential_memory = used_memory + requested_memory
+        if (over_commit_cores - potential_cores) < 0:
+            message = (
+                "CPU over commit ratio is %s and there are %s "
+                "available resources. " % (
+                    self.cpu_over_commit_ratio, (self.cores - used_cores)))
+        if (over_commit_memory - potential_memory) < 0:
+            message += (
+                "Memory over commit ratio is %s and there are %s "
+                "available resources." % (
+                    self.memory_over_commit_ratio,
+                    (self.memory - used_memory)))
+        return message
 
     def _find_existing_machine(self, discovered_machine, mac_machine_map):
         """Find a `Machine` in `mac_machine_map` based on the interface MAC
@@ -944,7 +956,7 @@ class Pod(BMC):
     def get_used_cores(self, machines=None):
         """Get the number of used cores in the pod.
 
-        :param machines: Deployed machines on this clusted. Only used when
+        :param machines: Deployed machines on this pod. Only used when
             the deployed machines have already been pulled from the database
             and no extra query needs to be performed.
         """
@@ -958,7 +970,7 @@ class Pod(BMC):
     def get_used_memory(self, machines=None):
         """Get the amount of used memory in the pod.
 
-        :param machines: Deployed machines on this clusted. Only used when
+        :param machines: Deployed machines on this pod. Only used when
             the deployed machines have already been pulled from the database
             and no extra query needs to be performed.
         """
@@ -972,7 +984,7 @@ class Pod(BMC):
     def get_used_local_storage(self, machines=None):
         """Get the amount of used local storage in the pod.
 
-        :param machines: Deployed machines on this clusted. Only used when
+        :param machines: Deployed machines on this pod. Only used when
             the deployed machines have already been pulled from the database
             and no extra query needs to be performed.
         """
