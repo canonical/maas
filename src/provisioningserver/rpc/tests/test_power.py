@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module:`~provisioningserver.rpc.power`."""
@@ -10,6 +10,7 @@ import random
 from unittest.mock import (
     ANY,
     call,
+    MagicMock,
     sentinel,
 )
 
@@ -19,6 +20,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
+    MockNotCalled,
 )
 from maastesting.testcase import (
     MAASTestCase,
@@ -244,6 +246,37 @@ class TestChangePowerState(MAASTestCase):
                 system_id, hostname, power_change))
 
     @inlineCallbacks
+    def test__return_none_when_unqueryable(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if not driver.queryable
+        ])
+        power_change = 'on'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_driver_available').return_value = True
+        get_item = self.patch(PowerDriverRegistry, 'get_item')
+        get_item.return_value = MagicMock()
+        get_item.return_value.queryable = False
+        perform_power_driver_query = self.patch(
+            power, 'perform_power_driver_query')
+        perform_power_driver_query.return_value = succeed(power_change)
+        self.patch(power, 'power_change_success')
+        yield self.patch_rpc_methods()
+
+        result = yield power.change_power_state(
+            system_id, hostname, power_driver.name, power_change, context)
+
+        self.expectThat(get_item, MockCalledWith(power_driver.name))
+        self.expectThat(perform_power_driver_query, MockNotCalled())
+        self.expectThat(power.power_change_success, MockNotCalled())
+        self.expectThat(result, Equals(None))
+
+    @inlineCallbacks
     def test__calls_power_driver_on_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -267,7 +300,7 @@ class TestChangePowerState(MAASTestCase):
         result = yield power.change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
 
-        self.expectThat(get_item, MockCalledOnceWith(power_driver.name))
+        self.expectThat(get_item, MockCalledWith(power_driver.name))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
                 system_id, hostname, power_driver.name, context))
@@ -300,7 +333,7 @@ class TestChangePowerState(MAASTestCase):
         result = yield power.change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
 
-        self.expectThat(get_item, MockCalledOnceWith(power_driver.name))
+        self.expectThat(get_item, MockCalledWith(power_driver.name))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
                 system_id, hostname, power_driver.name, context))
@@ -333,7 +366,7 @@ class TestChangePowerState(MAASTestCase):
         result = yield power.change_power_state(
             system_id, hostname, power_driver.name, power_change, context)
 
-        self.expectThat(get_item, MockCalledOnceWith(power_driver.name))
+        self.expectThat(get_item, MockCalledWith(power_driver.name))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
                 system_id, hostname, power_driver.name, context))

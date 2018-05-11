@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Base power driver."""
@@ -384,6 +384,10 @@ class PowerDriver(PowerDriverBase):
                 # Wait before retrying.
                 yield pause(waiting_time, self.clock)
             else:
+                # LP:1768659 - If the power driver isn't queryable(manual)
+                # checking the power state will always fail.
+                if not self.queryable:
+                    return
                 # Wait before checking state.
                 yield pause(waiting_time, self.clock)
                 # Try to get power state.

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Power control."""
@@ -284,6 +284,9 @@ def change_power_state(
     yield perform_power_driver_change(
         system_id, hostname, power_type, power_change, context)
     if power_type not in PowerDriverRegistry:
+        returnValue(None)
+    power_driver = PowerDriverRegistry.get_item(power_type)
+    if not power_driver.queryable:
         returnValue(None)
     new_power_state = yield perform_power_driver_query(
         system_id, hostname, power_type, context)

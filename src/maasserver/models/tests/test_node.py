@@ -4315,6 +4315,19 @@ class TestNode(MAASServerTestCase):
             reload_object(node).status,
             Equals(NODE_STATUS.EXITING_RESCUE_MODE))
 
+    def test_stop_rescue_mode_manual_power_cycles_node_and_sets_status(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE, power_type='manual',
+            previous_status=NODE_STATUS.DEPLOYED)
+        admin = factory.make_admin()
+        mock_node_power_cycle = self.patch(node, '_power_cycle')
+        node.stop_rescue_mode(admin)
+
+        self.expectThat(mock_node_power_cycle, MockCalledOnceWith())
+        self.expectThat(
+            reload_object(node).status,
+            Equals(NODE_STATUS.DEPLOYED))
+
     def test_stop_rescue_mode_logs_and_raises_errors(self):
         admin = factory.make_admin()
         node = factory.make_Node(
