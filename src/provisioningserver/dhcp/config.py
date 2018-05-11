@@ -94,14 +94,17 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
             if method.path_prefix:
                 url += method.path_prefix
             url += '/%s' % method.bootloader_path
-            output += CONDITIONAL_BOOTLOADER.substitute(
-                ipv6=ipv6, rack_ip=rack_ip, url=url,
-                behaviour=next(behaviour),
-                arch_octet=method.arch_octet,
-                bootloader=method.bootloader_path,
-                path_prefix=method.path_prefix,
-                name=method.name,
-                ).strip() + ' '
+            if isinstance(method.arch_octet, str):
+                method.arch_octet = [method.arch_octet]
+            for arch_octet in method.arch_octet:
+                output += CONDITIONAL_BOOTLOADER.substitute(
+                    ipv6=ipv6, rack_ip=rack_ip, url=url,
+                    behaviour=next(behaviour),
+                    arch_octet=arch_octet,
+                    bootloader=method.bootloader_path,
+                    path_prefix=method.path_prefix,
+                    name=method.name,
+                    ).strip() + ' '
 
     # The PXEBootMethod is used in an else statement for the generated
     # dhcpd config. This ensures that a booting node that does not

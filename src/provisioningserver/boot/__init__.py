@@ -282,7 +282,10 @@ class BootMethod(metaclass=ABCMeta):
             isinstance(element, str) for element in self.bootloader_arches)
         assert isinstance(self.bootloader_files, list) and all(
             isinstance(element, str) for element in self.bootloader_files)
-        assert isinstance(self.arch_octet, str) or self.arch_octet is None
+        assert isinstance(self.arch_octet, str) or (isinstance(
+            self.arch_octet, list) and all(
+                isinstance(element, str)
+                for element in self.arch_octet)) or self.arch_octet is None
 
     @lru_cache(1)
     def get_template_dir(self):

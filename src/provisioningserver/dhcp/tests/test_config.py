@@ -523,7 +523,10 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 self.assertThat(output, Contains("else"))
                 self.assertThat(output, Contains(method.bootloader_path))
             elif method.arch_octet is not None:
-                self.assertThat(output, Contains(method.arch_octet))
+                if isinstance(method.arch_octet, list):
+                    self.assertThat(output, ContainsAll(method.arch_octet))
+                else:
+                    self.assertThat(output, Contains(method.arch_octet))
                 self.assertThat(output, Contains(method.bootloader_path))
             else:
                 # No DHCP configuration is rendered for boot methods that have
@@ -537,7 +540,10 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 self.assertThat(output, Contains("else"))
                 self.assertThat(output, Contains(method.bootloader_path))
             elif method.arch_octet is not None:
-                self.assertThat(output, Contains(method.arch_octet))
+                if isinstance(method.arch_octet, list):
+                    self.assertThat(output, ContainsAll(method.arch_octet))
+                else:
+                    self.assertThat(output, Contains(method.arch_octet))
                 self.assertThat(output, Contains(method.bootloader_path))
             else:
                 # No DHCP configuration is rendered for boot methods that have
