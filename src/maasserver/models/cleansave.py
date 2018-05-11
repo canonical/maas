@@ -93,6 +93,17 @@ class CleanSave:
         new._state._changed_fields = {}
         return new
 
+    def refresh_from_db(self, using=None, fields=None):
+        super().refresh_from_db(using=using, fields=fields)
+        # Revert the changed-state for the fields that we reload, so
+        # that they will be saved if changed later.
+        if fields is None:
+            self._state._changed_fields = {}
+        else:
+            for field in fields:
+                if field in self._state._changed_fields:
+                    del self._state._changed_fields[field]
+
     def __marked_changed(self, name, old_value, new_value):
         """Marks the field changed or not depending on the values."""
         if old_value != new_value:

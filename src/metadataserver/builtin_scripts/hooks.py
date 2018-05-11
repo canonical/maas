@@ -517,6 +517,9 @@ def update_node_physical_block_devices(node, output, exit_status):
         block_device = get_matching_block_device(
             previous_block_devices, serial, id_path)
         if block_device is not None:
+            # Refresh, since it might have been temporarily renamed
+            # above.
+            block_device.refresh_from_db()
             # Already exists for the node. Keep the original object so the
             # ID doesn't change and if its set to the boot_disk that FK will
             # not need to be updated.

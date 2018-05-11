@@ -1001,6 +1001,19 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             "FIRMWARE_VERSION": firmware_version,
             }
 
+    def test__idempotent_block_devices(self):
+        devices = [self.make_block_device() for _ in range(3)]
+        device_names = [device['NAME'] for device in devices]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(node, json_output, 0)
+        created_names = [
+            device.name
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+            ]
+        self.assertItemsEqual(device_names, created_names)
+
     def test__does_nothing_when_exit_status_is_not_zero(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)

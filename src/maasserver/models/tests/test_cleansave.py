@@ -76,6 +76,54 @@ class TestCleanSave(MAASLegacyServerTestCase):
         obj.field = None
         self.assertEquals({}, obj._state._changed_fields)
 
+    def test_field_not_marked_changed_when_refresh_from_db(self):
+        obj = CleanSaveTestModel.objects.create()
+        duplicate = CleanSaveTestModel.objects.get(id=obj.id)
+        duplicate.field = 'test'
+        duplicate.save()
+
+        obj.refresh_from_db()
+        self.assertEquals('test', obj.field)
+        self.assertEquals({}, obj._state._changed_fields)
+
+    def test_field_not_marked_changed_when_refresh_from_db_no_fields(self):
+        obj = CleanSaveTestModel.objects.create()
+        duplicate = CleanSaveTestModel.objects.get(id=obj.id)
+        duplicate.field = 'test'
+        duplicate.save()
+
+        obj.refresh_from_db(fields=[])
+        self.assertEquals(None, obj.field)
+        self.assertEquals({}, obj._state._changed_fields)
+
+    def test_field_not_marked_changed_when_refresh_with_changed_fields(self):
+        obj = CleanSaveTestModel.objects.create()
+        duplicate = CleanSaveTestModel.objects.get(id=obj.id)
+        duplicate.field = 'test'
+        duplicate.save()
+
+        obj.refresh_from_db(fields=['field'])
+        self.assertEquals('test', obj.field)
+        self.assertEquals({}, obj._state._changed_fields)
+
+    def test_field_not_marked_changed_when_refresh_with_same_fields(self):
+        obj = CleanSaveTestModel.objects.create()
+
+        obj.refresh_from_db(fields=['field'])
+        self.assertEquals(None, obj.field)
+        self.assertEquals({}, obj._state._changed_fields)
+
+    def test_field_marked_changed_when_refresh_from_db_with_no_fields(self):
+        obj = CleanSaveTestModel.objects.create()
+        duplicate = CleanSaveTestModel.objects.get(id=obj.id)
+        duplicate.field = 'test'
+        duplicate.save()
+
+        obj.field = 'test'
+        obj.refresh_from_db(fields=[])
+        self.assertEquals('test', obj.field)
+        self.assertEquals({'field': None}, obj._state._changed_fields)
+
     def test_field_marked_changed_rel_id_for_new_obj(self):
         related = GenericTestModel.objects.create(field='')
         obj = CleanSaveTestModel()
