@@ -1240,9 +1240,6 @@
                                                             on-change="vlanChangedForm"
                                                             options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.$maasForm.getValue('fabric')">
                                                         </maas-obj-field>
-                                                        <maas-obj-field type="options" key="ip_assignment" label="IP Assignment" label-width="2" input-width="5"
-                                                            disable-label="false"
-                                                            options="assignment.name as assignment.text for assignment in ipAssignments"></maas-obj-field>
                                                         <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
                                                             disable-label="false" label-width="2" input-width="5"
                                                             data-ng-if="editInterface.$maasForm.getValue('fabric')"
