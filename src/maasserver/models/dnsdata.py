@@ -69,15 +69,17 @@ class HostnameRRsetMapping:
 
     def __init__(
             self, system_id=None, rrset: set=None, node_type=None,
-            dnsresource_id=None):
+            dnsresource_id=None, user_id=None):
         self.system_id = system_id
         self.node_type = node_type
         self.dnsresource_id = dnsresource_id
+        self.user_id = user_id
         self.rrset = set() if rrset is None else rrset.copy()
 
     def __repr__(self):
-        return "HostnameRRSetMapping(%r, %r, %r, %r)" % (
-            self.system_id, self.rrset, self.node_type, self.dnsresource_id)
+        return "HostnameRRSetMapping(%r, %r, %r, %r, %r)" % (
+            self.system_id, self.rrset, self.node_type, self.dnsresource_id,
+            self.user_id)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -153,6 +155,7 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 domain.name,
                 node.system_id,
                 node.node_type,
+                node.user_id,
                 dnsdata.id,
                 """ + ttl_clause + """ AS ttl,
                 dnsdata.rrtype,
@@ -173,6 +176,7 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                         nd.hostname AS hostname,
                         nd.system_id AS system_id,
                         nd.node_type AS node_type,
+                        nd.owner_id AS user_id ,
                         nd.domain_id AS domain_id,
                         CONCAT(nd.hostname, '.', dom.name) AS fqdn
                     FROM maasserver_node AS nd
@@ -220,7 +224,7 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         mapping = defaultdict(HostnameRRsetMapping)
         cursor.execute(sql_query, (domain.id,))
         for (dnsresource_id, name, d_name, system_id, node_type,
-                dnsdata_id, ttl, rrtype, rrdata) in cursor.fetchall():
+             user_id, dnsdata_id, ttl, rrtype, rrdata) in cursor.fetchall():
             if name == '@' and d_name != domain.name:
                 name, d_name = d_name.split('.', 1)
                 # Since we don't allow more than one label in dnsresource
@@ -228,14 +232,16 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 assert d_name == domain.name, (
                     "Invalid domain; expected '%s' == '%s'" % (
                         d_name, domain.name))
-            mapping[name].node_type = node_type
-            mapping[name].system_id = system_id
+            entry = mapping[name]
+            entry.node_type = node_type
+            entry.system_id = system_id
+            entry.user_id = user_id
             if with_ids:
-                mapping[name].dnsresource_id = dnsresource_id
+                entry.dnsresource_id = dnsresource_id
                 rrtuple = (ttl, rrtype, rrdata, dnsdata_id)
             else:
                 rrtuple = (ttl, rrtype, rrdata)
-            mapping[name].rrset.add(rrtuple)
+            entry.rrset.add(rrtuple)
         return mapping
 
 

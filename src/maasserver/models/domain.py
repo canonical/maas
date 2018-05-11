@@ -376,24 +376,24 @@ class Domain(CleanSave, TimestampedModel):
         ip_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             self, raw_ttl=True)
         for hostname, info in ip_mapping.items():
-            hostname = hostname[:-len(self.name) - 1]
-            rr_mapping[hostname].dnsresource_id = info.dnsresource_id
+            entry = rr_mapping[hostname[:-len(self.name) - 1]]
+            entry.dnsresource_id = info.dnsresource_id
             if info.system_id is not None:
-                rr_mapping[hostname].system_id = info.system_id
-                rr_mapping[hostname].node_type = info.node_type
+                entry.system_id = info.system_id
+                entry.node_type = info.node_type
+            if info.user_id is not None:
+                entry.user_id = info.user_id
             for ip in info.ips:
-                if IPAddress(ip).version == 6:
-                    rr_mapping[hostname].rrset.add(
-                        (info.ttl, 'AAAA', ip, None))
-                else:
-                    rr_mapping[hostname].rrset.add(
-                        (info.ttl, 'A', ip, None))
+                record_type = 'AAAA' if IPAddress(ip).version == 6 else 'A'
+                entry.rrset.add((info.ttl, record_type, ip, None))
+
         data = []
         for hostname, info in rr_mapping.items():
             data += [{
                 'name': hostname,
                 'system_id': info.system_id,
                 'node_type': info.node_type,
+                'user_id': info.user_id,
                 'dnsresource_id': info.dnsresource_id,
                 'ttl': ttl,
                 'rrtype': rrtype,

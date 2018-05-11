@@ -381,6 +381,8 @@ class DomainTest(MAASServerTestCase):
             hostname = hostname[:-len(domain.name) - 1]
             if info.system_id is not None:
                 rr_map[hostname].system_id = info.system_id
+            if info.user_id is not None:
+                rr_map[hostname].user_id = info.user_id
             for ip in info.ips:
                 if IPAddress(ip).version == 4:
                     rr_map[hostname].rrset.add((info.ttl, 'A', ip, None))
@@ -392,6 +394,7 @@ class DomainTest(MAASServerTestCase):
                 'name': name,
                 'system_id': info.system_id,
                 'node_type': info.node_type,
+                'user_id': info.user_id,
                 'dnsresource_id': info.dnsresource_id,
                 'ttl': ttl,
                 'rrtype': rrtype,
@@ -417,3 +420,17 @@ class DomainTest(MAASServerTestCase):
         expected = self.render_rrdata(domain, for_list=False)
         actual = domain.render_json_for_related_rrdata(for_list=False)
         self.assertItemsEqual(expected, actual)
+
+    def test_render_json_for_related_rrdata_includes_user_id(self):
+        domain = factory.make_Domain()
+        node_name = factory.make_name('node')
+        user = factory.make_User()
+        factory.make_Node_with_Interface_on_Subnet(
+            hostname=node_name, domain=domain, owner=user)
+        dnsrr = factory.make_DNSResource(domain=domain, name=node_name)
+        factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
+        expected = self.render_rrdata(domain, for_list=False)
+        actual = domain.render_json_for_related_rrdata(for_list=True)
+        self.assertEqual(actual, expected)
+        for record in actual:
+            self.assertEqual(record['user_id'], user.id)

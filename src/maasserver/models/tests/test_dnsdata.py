@@ -287,6 +287,17 @@ class TestDNSDataMapping(MAASServerTestCase):
         actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
         self.assertEqual(expected_mapping, actual)
 
+    def test_get_hostname_dnsdata_mapping_includes_node_owner_id(self):
+        domain = Domain.objects.get_default_domain()
+        user = factory.make_User()
+        node_name = factory.make_name("node")
+        factory.make_Node_with_Interface_on_Subnet(
+            hostname=node_name, domain=domain, owner=user)
+        dnsrr = factory.make_DNSResource(domain=domain, name=node_name)
+        factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
+        mapping = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        self.assertEqual(mapping[node_name].user_id, user.id)
+
     def test_get_hostname_dnsdata_mapping_returns_mapping_at_domain(self):
         parent = Domain.objects.get_default_domain()
         name = factory.make_name("node")

@@ -64,6 +64,7 @@ _mapping_base_fields = (
     'fqdn',
     'system_id',
     'node_type',
+    'user_id',
     'ttl',
     'ip',
 )
@@ -96,17 +97,18 @@ class HostnameIPMapping:
 
     def __init__(
             self, system_id=None, ttl=None, ips: set=None, node_type=None,
-            dnsresource_id=None):
+            dnsresource_id=None, user_id=None):
         self.system_id = system_id
         self.node_type = node_type
         self.ttl = ttl
         self.ips = set() if ips is None else ips.copy()
         self.dnsresource_id = dnsresource_id
+        self.user_id = user_id
 
     def __repr__(self):
-        return "HostnameIPMapping(%r, %r, %r, %r, %r)" % (
+        return "HostnameIPMapping(%r, %r, %r, %r, %r, %r)" % (
             self.system_id, self.ttl, self.ips, self.node_type,
-            self.dnsresource_id)
+            self.dnsresource_id, self.user_id)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -335,6 +337,7 @@ class StaticIPAddressManager(Manager):
                 COALESCE(dnsrr.fqdn, node.fqdn) AS fqdn,
                 node.system_id,
                 node.node_type,
+                staticip.user_id,
                 """ + ttl_clause + """ AS ttl,
                 staticip.ip,
                 dnsrr.id AS dnsresource_id
@@ -374,6 +377,7 @@ class StaticIPAddressManager(Manager):
                     dom.name as dom_name,
                     nd.system_id,
                     nd.node_type,
+                    nd.owner_id AS user_id,
                     nd.domain_id,
                     nd.address_ttl,
                     dom.ttl,
@@ -461,13 +465,16 @@ class StaticIPAddressManager(Manager):
             # TTL.  It is left as an exercise for the admin to make sure that
             # the any non-default TTL applied to the Node and DNSResource are
             # equal.
+            entry = mapping[fqdn]
             if result.system_id is not None:
-                mapping[fqdn].node_type = result.node_type
-                mapping[fqdn].system_id = result.system_id
+                entry.node_type = result.node_type
+                entry.system_id = result.system_id
             if result.ttl is not None:
-                mapping[fqdn].ttl = result.ttl
-            mapping[fqdn].ips.add(result.ip)
-            mapping[fqdn].dnsresource_id = result.dnsresource_id
+                entry.ttl = result.ttl
+            if result.user_id is not None:
+                entry.user_id = result.user_id
+            entry.ips.add(result.ip)
+            entry.dnsresource_id = result.dnsresource_id
         return mapping
 
     def get_hostname_ip_mapping(self, domain_or_subnet, raw_ttl=False):
@@ -501,6 +508,7 @@ class StaticIPAddressManager(Manager):
                 CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
+                staticip.user_id,
                 """ + ttl_clause + """ AS ttl,
                 staticip.ip,
                 COALESCE(
@@ -594,6 +602,7 @@ class StaticIPAddressManager(Manager):
                 CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
+                node.owner_id AS user_id,
                 """ + ttl_clause + """ AS ttl,
                 staticip.ip,
                 interface.name,
@@ -655,14 +664,17 @@ class StaticIPAddressManager(Manager):
         # interface IPs.  See Bug#1584850
         for result in cursor.fetchall():
             result = MappingQueryResult(*result)
-            mapping[result.fqdn].node_type = result.node_type
-            mapping[result.fqdn].system_id = result.system_id
-            mapping[result.fqdn].ttl = result.ttl
+            entry = mapping[result.fqdn]
+            entry.node_type = result.node_type
+            entry.system_id = result.system_id
+            if result.user_id is not None:
+                entry.user_id = result.user_id
+            entry.ttl = result.ttl
             if result.is_boot:
                 iface_is_boot[result.fqdn] = True
             # If we have an IP on the right interface type, save it.
             if result.is_boot == iface_is_boot[result.fqdn]:
-                mapping[result.fqdn].ips.add(result.ip)
+                entry.ips.add(result.ip)
         # Next, get all the addresses, on all the interfaces, and add the ones
         # that are not already present on the FQDN as $IFACE.$FQDN.  Exclude
         # any discovered addresses once there are any non-discovered addresses.
@@ -675,11 +687,14 @@ class StaticIPAddressManager(Manager):
             # node, then consider adding the IP.
             if result.assigned or not assigned_ips[result.fqdn]:
                 if result.ip not in mapping[result.fqdn].ips:
-                    name = "%s.%s" % (result.iface_name, result.fqdn)
-                    mapping[name].node_type = result.node_type
-                    mapping[name].system_id = result.system_id
-                    mapping[name].ttl = result.ttl
-                    mapping[name].ips.add(result.ip)
+                    entry = mapping[
+                        "%s.%s" % (result.iface_name, result.fqdn)]
+                    entry.node_type = result.node_type
+                    entry.system_id = result.system_id
+                    if result.user_id is not None:
+                        entry.user_id = result.user_id
+                    entry.ttl = result.ttl
+                    entry.ips.add(result.ip)
         return mapping
 
     def filter_by_ip_family(self, family):

@@ -61,6 +61,8 @@ class TestDomainHandler(MAASServerTestCase):
             name = name[:-domainname_len - 1]
             if info.system_id is not None:
                 rr_map[name].system_id = info.system_id
+            if info.user_id is not None:
+                rr_map[name].user_id = info.user_id
             for ip in info.ips:
                 if IPAddress(ip).version == 4:
                     rr_map[name].rrset.add((info.ttl, 'A', ip, None))
@@ -72,6 +74,7 @@ class TestDomainHandler(MAASServerTestCase):
                 'name': hostname,
                 'system_id': info.system_id,
                 'node_type': info.node_type,
+                'user_id': info.user_id,
                 'dnsresource_id': info.dnsresource_id,
                 'ttl': ttl,
                 'rrtype': rrtype,
@@ -94,7 +97,7 @@ class TestDomainHandler(MAASServerTestCase):
         return data
 
     def test_get(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         handler = DomainHandler(user, {})
         domain = factory.make_Domain()
         factory.make_DNSData(domain=domain)
@@ -103,6 +106,25 @@ class TestDomainHandler(MAASServerTestCase):
         self.assertEqual(
             self.dehydrate_domain(domain),
             handler.get({"id": domain.id}))
+
+    def test_get_normal_user_only_owned_entries(self):
+        user = factory.make_User()
+        other_user = factory.make_User()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        hostname1 = factory.make_name("node")
+        factory.make_Node_with_Interface_on_Subnet(
+            hostname=hostname1, domain=domain, owner=user)
+        dnsrr1 = factory.make_DNSResource(domain=domain, name=hostname1)
+        factory.make_DNSData(dnsresource=dnsrr1, ip_addresses=True)
+        hostname2 = factory.make_name("node")
+        factory.make_Node_with_Interface_on_Subnet(
+            hostname=hostname2, domain=domain, owner=other_user)
+        dnsrr2 = factory.make_DNSResource(domain=domain, name=hostname2)
+        factory.make_DNSData(dnsresource=dnsrr2, ip_addresses=True)
+        details = handler.get({"id": domain.id})
+        for entry in details['rrsets']:
+            self.assertEqual(entry['user_id'], user.id)
 
     def test_list(self):
         user = factory.make_User()

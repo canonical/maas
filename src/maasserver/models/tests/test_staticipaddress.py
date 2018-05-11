@@ -382,6 +382,22 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
         self.assertEqual(expected_mapping, mapping)
 
+    def test_get_hostname_ip_mapping_includes_user_id(self):
+        user = factory.make_User()
+        domain = Domain.objects.get_default_domain()
+        node_name = factory.make_name("node")
+        node = factory.make_Node(
+            hostname=node_name, domain=domain, owner=user, interface=True)
+        boot_interface = node.get_boot_interface()
+        subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=boot_interface, user=user)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
+        fqdn = '{}.{}'.format(node.hostname, domain.name)
+        self.assertEqual(mapping[fqdn].user_id, user.id)
+
     def test_get_hostname_ip_mapping_returns_all_mappings_for_subnet(self):
         domain = Domain.objects.get_default_domain()
         expected_mapping = {}
