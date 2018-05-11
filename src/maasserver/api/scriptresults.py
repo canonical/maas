@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `ScriptResults`."""
@@ -290,6 +290,18 @@ class NodeScriptResultHandler(OperationsHandler):
         script_set.delete()
         return rc.DELETED
 
+    def __make_file_title(self, script_result, filetype, extention=None):
+        title = script_result.name
+        if extention is not None:
+            title = '%s.%s' % (title, extention)
+        if script_result.physical_blockdevice and filetype == 'txt':
+            title = '%s - /dev/%s' % (
+                title, script_result.physical_blockdevice.name)
+        elif script_result.physical_blockdevice:
+            title = '%s-%s' % (
+                title, script_result.physical_blockdevice.name)
+        return title
+
     @operation(idempotent=True)
     def download(self, request, system_id, id):
         """Download a compressed tar containing all results.
@@ -331,32 +343,34 @@ class NodeScriptResultHandler(OperationsHandler):
                 script_set, filters, hardware_type):
             mtime = time.mktime(script_result.updated.timetuple())
             if output == 'combined':
-                files[script_result.name] = script_result.output
-                times[script_result.name] = mtime
+                title = self.__make_file_title(script_result, filetype)
+                files[title] = script_result.output
+                times[title] = mtime
             elif output == 'stdout':
-                filename = '%s.out' % script_result.name
-                files[filename] = script_result.stdout
-                times[filename] = mtime
+                title = self.__make_file_title(script_result, filetype, 'out')
+                files[title] = script_result.stdout
+                times[title] = mtime
             elif output == 'stderr':
-                filename = '%s.err' % script_result.name
-                files[filename] = script_result.stderr
-                times[filename] = mtime
+                title = self.__make_file_title(script_result, filetype, 'err')
+                files[title] = script_result.stderr
+                times[title] = mtime
             elif output == 'result':
-                filename = '%s.yaml' % script_result.name
-                files[filename] = script_result.result
-                times[filename] = mtime
+                title = self.__make_file_title(script_result, filetype, 'yaml')
+                files[title] = script_result.result
+                times[title] = mtime
             elif output == 'all':
-                files[script_result.name] = script_result.output
-                times[script_result.name] = mtime
-                filename = '%s.out' % script_result.name
-                files[filename] = script_result.stdout
-                times[filename] = mtime
-                filename = '%s.err' % script_result.name
-                files[filename] = script_result.stderr
-                times[filename] = mtime
-                filename = '%s.yaml' % script_result.name
-                files[filename] = script_result.result
-                times[filename] = mtime
+                title = self.__make_file_title(script_result, filetype)
+                files[title] = script_result.output
+                times[title] = mtime
+                title = self.__make_file_title(script_result, filetype, 'out')
+                files[title] = script_result.stdout
+                times[title] = mtime
+                title = self.__make_file_title(script_result, filetype, 'err')
+                files[title] = script_result.stderr
+                times[title] = mtime
+                title = self.__make_file_title(script_result, filetype, 'yaml')
+                files[title] = script_result.result
+                times[title] = mtime
 
         if filetype == 'txt' and len(files) == 1:
             # Just output the result with no break to allow for piping.

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the script result API."""
@@ -21,6 +21,7 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
+    HARDWARE_TYPE,
     HARDWARE_TYPE_CHOICES,
     RESULT_TYPE_CHOICES,
 )
@@ -679,3 +680,24 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             })
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEquals(script_result.output, response.content)
+
+    def test_download_shows_results_from_all_disks(self):
+        # Regression test for #LP:1755060
+        script = factory.make_Script(hardware_type=HARDWARE_TYPE.STORAGE)
+        script_set = self.make_scriptset()
+        script_results = []
+        for _ in range(3):
+            bd = factory.make_PhysicalBlockDevice(node=script_set.node)
+            script_results.append(factory.make_ScriptResult(
+                script_set=script_set, script=script,
+                physical_blockdevice=bd))
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set), {'op': 'download'})
+
+        for script_result in script_results:
+            title = '%s - /dev/%s' % (
+                script_result.name, script_result.physical_blockdevice.name)
+            title = title.encode()
+            self.assertIn(title, response.content)
+            self.assertIn(script_result.output, response.content)
