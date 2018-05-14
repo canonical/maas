@@ -54,6 +54,12 @@ EVENTS_LUU = (
     ('delete', 'unlink', 'OLD'),
 )
 
+# Event names: link/unlink.
+EVENTS_LU = (
+    ('insert', 'link', 'NEW'),
+    ('delete', 'unlink', 'OLD'),
+)
+
 
 def register_triggers(
         table, event_prefix, params=None, fields=None, events=None,

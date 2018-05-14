@@ -27,6 +27,7 @@ from crochet import TimeoutError
 from django.core.exceptions import ValidationError
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
+from maasserver.config import IS_PREMIUM
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -39,7 +40,10 @@ from maasserver.exceptions import (
     NodeActionError,
     StaticIPAddressExhaustion,
 )
-from maasserver.models import Zone
+from maasserver.models import (
+    ResourcePool,
+    Zone,
+)
 from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
@@ -221,6 +225,27 @@ class SetZone(NodeAction):
         """See `NodeAction.execute`."""
         zone = Zone.objects.get(id=zone_id)
         self.node.set_zone(zone)
+
+
+class SetPool(NodeAction):
+    """Set the resource pool of a node."""
+    name = "set-pool"
+    display = "Set resource pool"
+    display_sentence = "Pool set"
+    actionable_statuses = ALL_STATUSES
+    permission = NODE_PERMISSION.EDIT
+    node_permission = NODE_PERMISSION.ADMIN
+    for_type = {NODE_TYPE.MACHINE}
+
+    def execute(self, pool_id=None, new_pool=None):
+        """See `NodeAction.execute`."""
+        if pool_id is not None:
+            pool = ResourcePool.objects.get(id=pool_id)
+        else:
+            pool = ResourcePool.objects.create(name=new_pool['name'])
+
+        self.node.pool = pool
+        self.node.save()
 
 
 class Commission(NodeAction):
@@ -657,6 +682,12 @@ ACTION_CLASSES = (
     Lock,
     Unlock,
     SetZone,
+)
+if IS_PREMIUM:
+    ACTION_CLASSES += (
+        SetPool,
+    )
+ACTION_CLASSES += (
     ImportImages,
     Delete,
 )

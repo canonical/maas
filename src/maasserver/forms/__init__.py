@@ -967,7 +967,10 @@ class AdminNodeForm(NodeForm):
         label="Physical zone", required=False,
         initial=Zone.objects.get_default_zone,
         queryset=Zone.objects.all(), to_field_name='name')
-
+    pool = forms.ModelChoiceField(
+        label="Resource pool", required=False,
+        initial=ResourcePool.objects.get_default_resource_pool,
+        queryset=ResourcePool.objects.all(), to_field_name='name')
     cpu_count = forms.IntegerField(
         required=False, initial=0, label="CPU Count")
     memory = forms.IntegerField(
@@ -1046,6 +1049,9 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         zone = self.cleaned_data.get('zone')
         if zone:
             machine.zone = zone
+        pool = self.cleaned_data.get('pool')
+        if pool:
+            machine.pool = pool
         WithPowerTypeMixin.set_values(self, machine)
         if kwargs.get('commit', True):
             machine.save(*args, **kwargs)

@@ -23,6 +23,7 @@ from maasserver.enum import (
 )
 from maasserver.triggers import (
     EVENTS_IUD,
+    EVENTS_LU,
     EVENTS_LUU,
     register_procedure,
     register_trigger,
@@ -948,6 +949,43 @@ DOMAIN_NODE_NOTIFY = dedent("""\
     """)
 
 
+POOL_NODE_INSERT_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION {}() RETURNS trigger AS $$
+    BEGIN
+      PERFORM pg_notify('resourcepool_update',CAST({} AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+POOL_NODE_UPDATE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION {}() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.pool_id != NEW.pool_id THEN
+        PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
+        PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+      ELSIF OLD.node_type != NEW.node_type THEN
+        -- NODE_TYPE.MACHINE = 0
+        IF OLD.node_type = 0 OR NEW.node_type = 0 THEN
+          IF NEW.pool_id IS NOT NULL THEN
+            PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+          ELSIF OLD.pool_id IS NOT NULL THEN
+            PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
+          END IF;
+        END IF;
+      ELSIF OLD.status != NEW.status THEN
+        -- NODE_STATUS.READY = 4
+        IF OLD.status = 4 OR NEW.status = 4 THEN
+          PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -1254,6 +1292,22 @@ def register_websocket_triggers():
         events=EVENTS_LUU
     )
 
+    register_procedure(POOL_NODE_INSERT_NOTIFY.format(
+        'resourcepool_link_notify', 'NEW.pool_id'))
+    register_procedure(POOL_NODE_INSERT_NOTIFY.format(
+        'resourcepool_unlink_notify', 'OLD.pool_id'))
+    register_procedure(POOL_NODE_UPDATE_NOTIFY.format(
+        'node_resourcepool_update_notify'))
+    register_triggers(
+        "maasserver_node",
+        "resourcepool",
+        events=EVENTS_LU
+    )
+    register_trigger(
+        'maasserver_node',
+        "node_resourcepool_update_notify",
+        event='update', fields=['pool_id', 'status'])
+
     # Config table
     register_procedure(
         render_notification_procedure(
@@ -1547,6 +1601,18 @@ def register_websocket_triggers():
         render_notification_procedure(
             'zone_delete_notify', 'zone_delete', 'OLD.id'))
     register_triggers("maasserver_zone", "zone")
+
+    # ResourcePool table
+    register_procedure(
+        render_notification_procedure(
+            'resourcepool_create_notify', 'resourcepool_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'resourcepool_update_notify', 'resourcepool_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'resourcepool_delete_notify', 'resourcepool_delete', 'OLD.id'))
+    register_triggers("maasserver_resourcepool", "resourcepool")
 
     # Service table
     register_procedure(

@@ -9,11 +9,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
     'DevicesManager', 'MachinesManager', 'ControllersManager', 'ZonesManager',
     'GeneralManager', 'UsersManager', 'TagsManager', 'DomainsManager',
     'ManagerHelperService', 'ServicesManager', 'ErrorService',
-    'ValidationService', 'ScriptsManager', function(
+    'ValidationService', 'ScriptsManager', 'ResourcePoolsManager', function(
         $scope, $rootScope, $routeParams, $location, $interval, DevicesManager,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, DomainsManager, ManagerHelperService,
-        ServicesManager, ErrorService, ValidationService, ScriptsManager) {
+        ServicesManager, ErrorService, ValidationService, ScriptsManager,
+        ResourcePoolsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -88,6 +89,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             zone: {
                 selected: null,
                 options: ZonesManager.getItems()
+            },
+            pool: {
+                selected: null,
+                options: ResourcePoolsManager.getItems()
             },
             tags: []
         };
@@ -232,6 +237,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.summary.zone.selected = ZonesManager.getItemFromList(
                     $scope.node.zone.id);
             }
+            if(angular.isObject($scope.node.pool)) {
+                $scope.summary.pool.selected = (
+                    ResourcePoolsManager.getItemFromList($scope.node.pool.id));
+            }
             $scope.summary.architecture.selected = $scope.node.architecture;
             $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
             $scope.summary.tags = angular.copy($scope.node.tags);
@@ -337,6 +346,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.zone.id", updateSummary);
             $scope.$watchCollection(
                 $scope.summary.zone.options, updateSummary);
+
+            // Update the summary when the node or the resouce pool list is
+            // updated.
+            $scope.$watch("node.pool.id", updateSummary);
+            $scope.$watchCollection(
+                $scope.summary.pool.options, updateSummary);
 
             // Update the power when the node power_type or power_parameters
             // are updated.
@@ -817,6 +832,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Copy the node and make the changes.
             var node = angular.copy($scope.node);
             node.zone = angular.copy($scope.summary.zone.selected);
+            node.pool = angular.copy($scope.summary.pool.selected);
             node.architecture = $scope.summary.architecture.selected;
             if($scope.summary.min_hwe_kernel.selected === null) {
                 node.min_hwe_kernel = "";
@@ -1108,6 +1124,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             TagsManager,
             DomainsManager,
             ServicesManager,
+            ResourcePoolsManager,
         ].concat(page_managers)).then(function() {
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already

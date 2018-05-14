@@ -49,6 +49,7 @@ from maasserver.node_action import (
     Release,
     RescueMode,
     RPC_EXCEPTIONS,
+    SetPool,
     SetZone,
     Test,
     Unlock,
@@ -765,6 +766,29 @@ class TestSetZoneAction(MAASServerTestCase):
         device = factory.make_Device(owner=factory.make_User())
         action = SetZone(device, factory.make_User())
         self.assertFalse(action.is_actionable())
+
+
+class TestSetPoolAction(MAASServerTestCase):
+
+    def test_SetPool_sets_pool(self):
+        user = factory.make_admin()
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
+        node = factory.make_Node(status=NODE_STATUS.NEW, pool=pool1)
+        action = SetPool(node, user)
+        action.execute(pool_id=pool2.id)
+        self.assertEqual(reload_object(node).pool.id, pool2.id)
+
+    def test_SetPool_with_create(self):
+        user = factory.make_admin()
+        pool = factory.make_ResourcePool()
+        node = factory.make_Node(status=NODE_STATUS.NEW, pool=pool)
+        action = SetPool(node, user)
+        name = factory.make_string()
+        action.execute(new_pool={'name': name})
+        node = reload_object(node)
+        self.assertNotEqual(node.pool, pool)
+        self.assertEqual(node.pool.name, name)
 
 
 class TestPowerOnAction(MAASServerTestCase):

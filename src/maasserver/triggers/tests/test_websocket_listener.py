@@ -15,7 +15,9 @@ from maasserver.enum import (
     BMC_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
+    NODE_STATUS,
     NODE_TYPE,
+    NODE_TYPE_CHOICES,
 )
 from maasserver.listener import PostgresListenerService
 from maasserver.models import ControllerInfo
@@ -449,6 +451,218 @@ class TestZoneListener(
             yield deferToDatabase(self.delete_zone, zone.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % zone.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestResourcePoolListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the resource pool
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            pool = yield deferToDatabase(self.create_resource_pool)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_resource_pool, pool.id,
+                {'description': factory.make_name('description')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_resource_pool, pool.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_machine(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_node, {'node_type': NODE_TYPE.MACHINE,
+                                   'pool': pool})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_machine(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        node = yield deferToDatabase(
+            self.create_node, {'node_type': NODE_TYPE.MACHINE,
+                               'pool': pool})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_node, node.system_id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_machine_pool(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dvs = dv1, dv2 = [DeferredValue(), DeferredValue()]
+        listener.register("resourcepool", lambda *args: dvs.pop(0).set(args))
+        pool1 = yield deferToDatabase(self.create_resource_pool)
+        pool2 = yield deferToDatabase(self.create_resource_pool)
+        node = yield deferToDatabase(
+            self.create_node, {'node_type': NODE_TYPE.MACHINE,
+                               'pool': pool1})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node, node.system_id, {'pool': pool2})
+            yield dv1.get(timeout=2)
+            yield dv2.get(timeout=2)
+            values = sorted([dv1.value, dv2.value])
+            pool_ids = sorted(str(pool.id) for pool in [pool1, pool2])
+            self.assertEqual(('update', '%s' % pool_ids[0]), values[0])
+            self.assertEqual(('update', '%s' % pool_ids[1]), values[1])
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_machine_status_to_ready(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        initial_status = random.choice([
+            NODE_STATUS.COMMISSIONING, NODE_STATUS.RELEASING])
+        initial_status = NODE_STATUS.BROKEN
+        node = yield deferToDatabase(
+            self.create_node, {'node_type': NODE_TYPE.MACHINE,
+                               'status': initial_status,
+                               'pool': pool})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node, node.system_id,
+                {'status': NODE_STATUS.READY})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_machine_status_from_ready(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        node = yield deferToDatabase(
+            self.create_node, {'node_type': NODE_TYPE.MACHINE,
+                               'status': NODE_STATUS.READY,
+                               'pool': pool})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node, node.system_id,
+                {'status': NODE_STATUS.COMMISSIONING})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_machine_node_type_to_machine(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        initial_node_type = random.choice([
+            node_type for node_type, _ in NODE_TYPE_CHOICES
+            if node_type != NODE_TYPE.MACHINE])
+        node = yield deferToDatabase(
+            self.create_node, {'node_type': initial_node_type})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node, node.system_id,
+                {'node_type': NODE_TYPE.MACHINE, 'pool': pool})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_machine_node_type_from_machine(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        pool = yield deferToDatabase(self.create_resource_pool)
+        new_node_type = random.choice([
+            node_type for node_type, _ in NODE_TYPE_CHOICES
+            if node_type != NODE_TYPE.MACHINE])
+        node = yield deferToDatabase(
+            self.create_node,
+            {'node_type': NODE_TYPE.MACHINE, 'pool_id': pool.id})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node, node.system_id,
+                {'node_type': new_node_type, 'pool_id': None})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pool.id), dv.value)
         finally:
             yield listener.stopService()
 

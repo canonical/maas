@@ -9,11 +9,12 @@ angular.module('MAAS').controller('NodesListController', [
     'MachinesManager', 'DevicesManager', 'ControllersManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService',
     'ZonesManager', 'UsersManager', 'ServicesManager', 'ScriptsManager',
-    'SwitchesManager',
+    'SwitchesManager', 'ResourcePoolsManager',
     function($scope, $interval, $rootScope, $routeParams, $location,
         MachinesManager, DevicesManager, ControllersManager, GeneralManager,
         ManagerHelperService, SearchService, ZonesManager, UsersManager,
-        ServicesManager, ScriptsManager, SwitchesManager) {
+        ServicesManager, ScriptsManager, SwitchesManager,
+        ResourcePoolsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -30,6 +31,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.MAAS_config = MAAS_config;
         $scope.machines = MachinesManager.getItems();
         $scope.zones = ZonesManager.getItems();
+        $scope.pools = ResourcePoolsManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.controllers = ControllersManager.getItems();
         $scope.switches = SwitchesManager.getItems();
@@ -94,6 +96,56 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.machines.commissioningSelection = [];
         $scope.tabs.machines.testSelection = [];
 
+        // Pools tab.
+        $scope.tabs.pools = {};
+        $scope.tabs.pools.pagetitle = "Pools";
+        $scope.tabs.pools.currentpage = "pools";
+        $scope.tabs.pools.manager = ResourcePoolsManager;
+        $scope.tabs.pools.actionOption = false;
+        $scope.tabs.pools.newPool = {};
+        $scope.addPool = function() {
+            $scope.tabs.pools.actionOption = true;
+        };
+        $scope.cancelAddPool = function() {
+            $scope.tabs.pools.actionOption = false;
+            $scope.tabs.pools.newPool = {};
+        };
+        $scope.tabs.pools.activeTarget = null;
+        $scope.tabs.pools.activeTargetAction = null;
+        $scope.tabs.pools.actionErrorMessage = null;
+        $scope.tabs.pools.initiatePoolAction = function(pool, action) {
+            let tab = $scope.tabs.pools;
+            // reset state in case of switching between deletes
+            tab.cancelPoolAction();
+            tab.activeTargetAction = action;
+            tab.activeTarget = pool;
+        };
+        $scope.tabs.pools.cancelPoolAction = function() {
+            let tab = $scope.tabs.pools;
+            tab.activeTargetAction = null;
+            tab.activeTarget = null;
+            tab.actionErrorMessage = null;
+        };
+        $scope.tabs.pools.isPoolAction = function(pool, action) {
+            let tab = $scope.tabs.pools;
+            return (
+                action === undefined || tab.activeTargetAction === action) &&
+                tab.activeTarget !== null &&
+                tab.activeTarget.id === pool.id;
+        };
+        $scope.tabs.pools.actionConfirmDeletePool = function() {
+            let tab = $scope.tabs.pools;
+            tab.manager.deleteItem(tab.activeTarget).then(
+                tab.cancelPoolAction,
+                function(error) {
+                    $scope.tabs.pools.actionErrorMessage = error;
+                });
+        };
+
+        $scope.tabs.pools.isDefaultPool = function(pool) {
+            return pool.id === 0;
+        };
+
         // Device tab.
         $scope.tabs.devices = {};
         $scope.tabs.devices.pagetitle = "Devices";
@@ -152,6 +204,9 @@ angular.module('MAAS').controller('NodesListController', [
             affected_nodes: 0
         };
         $scope.tabs.controllers.zoneSelection = null;
+        $scope.tabs.controllers.poolSelection = null;
+        $scope.tabs.controllers.poolAction = 'select-pool';
+        $scope.tabs.controllers.newPool = {};
         $scope.tabs.controllers.syncStatuses = {};
         $scope.tabs.controllers.addController = false;
         $scope.tabs.controllers.registerUrl = MAAS_config.register_url;
@@ -777,7 +832,7 @@ angular.module('MAAS').controller('NodesListController', [
         // commissioning scripts.
         var page_managers = [$scope.tabs[$scope.currentpage].manager];
         if($scope.currentpage === "machines" ||
-                $scope.currentpage === "controllers") {
+           $scope.currentpage === "controllers") {
             page_managers.push(ScriptsManager);
         }
 
@@ -785,7 +840,7 @@ angular.module('MAAS').controller('NodesListController', [
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
         ManagerHelperService.loadManagers($scope, [
-            GeneralManager, ZonesManager, UsersManager,
+            GeneralManager, ZonesManager, UsersManager, ResourcePoolsManager,
             ServicesManager].concat(page_managers)).then(function() {
                 $scope.loading = false;
             });

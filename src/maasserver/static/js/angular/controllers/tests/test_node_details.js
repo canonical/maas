@@ -39,13 +39,14 @@ describe("NodeDetailsController", function() {
     var MachinesManager, ControllersManager, ServicesManager;
     var DevicesManager, GeneralManager, UsersManager, DomainsManager;
     var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
-    var ScriptsManager;
+    var ScriptsManager, ResourcePoolsManager;
     var webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
         DevicesManager = $injector.get("DevicesManager");
         ControllersManager = $injector.get("ControllersManager");
         ZonesManager = $injector.get("ZonesManager");
+        ResourcePoolsManager = $injector.get("ResourcePoolsManager");
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
         TagsManager = $injector.get("TagsManager");
@@ -71,9 +72,21 @@ describe("NodeDetailsController", function() {
         return zone;
     }
 
+    // Make a fake resource pool.
+    function makeResourcePool() {
+        var pool = {
+            id: makeInteger(0, 10000),
+            name: makeName("pool")
+        };
+        ResourcePoolsManager._items.push(pool);
+        return pool;
+    }
+
+
     // Make a fake node.
     function makeNode() {
         var zone = makeZone();
+        var pool = makeResourcePool();
         var node = {
             system_id: makeName("system_id"),
             hostname: makeName("hostname"),
@@ -81,6 +94,7 @@ describe("NodeDetailsController", function() {
             actions: [],
             architecture: "amd64/generic",
             zone: angular.copy(zone),
+            pool: angular.copy(pool),
             node_type: 0,
             power_type: "",
             power_parameters: null,
@@ -159,7 +173,8 @@ describe("NodeDetailsController", function() {
             ManagerHelperService: ManagerHelperService,
             ServicesManager: ServicesManager,
             ErrorService: ErrorService,
-            ScriptsManager: ScriptsManager
+            ScriptsManager: ScriptsManager,
+            ResourcePoolsManager: ResourcePoolsManager,
         });
 
         // Since the osSelection directive is not used in this test the
@@ -229,6 +244,10 @@ describe("NodeDetailsController", function() {
                 selected: null,
                 options: GeneralManager.getData("min_hwe_kernels")
             },
+            pool: {
+                selected: null,
+                options: ResourcePoolsManager.getItems()
+            },
             zone: {
                 selected: null,
                 options: ZonesManager.getItems()
@@ -241,6 +260,8 @@ describe("NodeDetailsController", function() {
             GeneralManager.getData("min_hwe_kernels"));
         expect($scope.summary.zone.options).toBe(
             ZonesManager.getItems());
+        expect($scope.summary.pool.options).toBe(
+            ResourcePoolsManager.getItems());
     });
 
     it("sets initial values for power section", function() {
@@ -273,8 +294,8 @@ describe("NodeDetailsController", function() {
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
-                DomainsManager, ServicesManager, MachinesManager,
-                ScriptsManager]);
+                DomainsManager, ServicesManager, ResourcePoolsManager,
+                MachinesManager, ScriptsManager]);
     });
 
     it("calls loadManagers for device", function() {
@@ -283,7 +304,8 @@ describe("NodeDetailsController", function() {
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
-                DomainsManager, ServicesManager, DevicesManager]);
+                DomainsManager, ServicesManager, ResourcePoolsManager,
+                DevicesManager]);
     });
 
     it("calls loadManagers for controller", function() {
@@ -292,8 +314,8 @@ describe("NodeDetailsController", function() {
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
-                DomainsManager, ServicesManager, ControllersManager,
-                ScriptsManager]);
+                DomainsManager, ServicesManager, ResourcePoolsManager,
+                ControllersManager, ScriptsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -514,6 +536,7 @@ describe("NodeDetailsController", function() {
             "node.architecture",
             "node.min_hwe_kernel",
             "node.zone.id",
+            "node.pool.id",
             "node.power_type",
             "node.power_parameters",
             "node.service_ids"
@@ -522,6 +545,7 @@ describe("NodeDetailsController", function() {
             $scope.summary.architecture.options,
             $scope.summary.min_hwe_kernel.options,
             $scope.summary.zone.options,
+            $scope.summary.pool.options,
             "power_types"
         ]);
     });
@@ -1771,6 +1795,7 @@ describe("NodeDetailsController", function() {
         function configureSummary() {
             $scope.summary.editing = true;
             $scope.summary.zone.selected = makeZone();
+            $scope.summary.pool.selected = makeResourcePool();
             $scope.summary.architecture.selected = makeName("architecture");
             $scope.summary.tags = [
                 { text: makeName("tag") },
@@ -1826,6 +1851,7 @@ describe("NodeDetailsController", function() {
             $scope.node = node;
             configureSummary();
             var newZone = $scope.summary.zone.selected;
+            var newPool = $scope.summary.pool.selected;
             var newArchitecture = $scope.summary.architecture.selected;
             var newTags = [];
             angular.forEach($scope.summary.tags, function(tag) {
@@ -1836,6 +1862,7 @@ describe("NodeDetailsController", function() {
             var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode.zone).toEqual(newZone);
             expect(calledWithNode.zone).not.toBe(newZone);
+            expect(calledWithNode.pool).not.toBe(newPool);
             expect(calledWithNode.architecture).toBe(newArchitecture);
             expect(calledWithNode.tags).toEqual(newTags);
         });

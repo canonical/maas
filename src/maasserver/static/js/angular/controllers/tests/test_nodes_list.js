@@ -39,8 +39,8 @@ describe("NodesListController", function() {
 
     // Load the required managers.
     var MachinesManager, DevicesManager, ControllersManager, GeneralManager,
-        SwitchesManager;
-    var ZonesManager, UsersManager, ServicesManager;
+        SwitchesManager, ZonesManager, UsersManager, ServicesManage,
+        ResourcePoolsManager;
     var ManagerHelperService, SearchService;
     var ScriptsManager;
     beforeEach(inject(function($injector) {
@@ -55,6 +55,7 @@ describe("NodesListController", function() {
         SearchService = $injector.get("SearchService");
         ScriptsManager = $injector.get("ScriptsManager");
         SwitchesManager = $injector.get("SwitchesManager");
+        ResourcePoolsManager = $injector.get("ResourcePoolsManager");
     }));
 
     // Mock the websocket connection to the region
@@ -181,6 +182,7 @@ describe("NodesListController", function() {
         var controller = makeController();
         expect($scope.machines).toBe(MachinesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
+        expect($scope.pools).toBe(ResourcePoolsManager.getItems());
         expect($scope.controllers).toBe(ControllersManager.getItems());
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.addHardwareOption).toBeNull();
@@ -235,6 +237,7 @@ describe("NodesListController", function() {
                     ManagerHelperService.loadManagers
                 ).toHaveBeenCalledWith(
                     $scope, [GeneralManager, ZonesManager, UsersManager,
+                    ResourcePoolsManager,
                     ServicesManager].concat(page_managers));
             });
         });
@@ -380,6 +383,7 @@ describe("NodesListController", function() {
                 }
                 expect(tabScope.actionErrorCount).toBe(0);
                 expect(tabScope.zoneSelection).toBeNull();
+                expect(tabScope.poolSelection).toBeNull();
 
                 // Only the nodes tab uses the osSelection and
                 // commissionOptions fields.
@@ -1465,6 +1469,71 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].zoneSelection).toBeNull();
                 });
             });
+
+            describe("actionSetPool", function () {
+                it("calls performAction with pool",
+                    function() {
+                        var controller = makeController();
+                        var spy = spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(
+                            $q.defer().promise);
+                        var object = makeObject(tab);
+                        var tabScope = $scope.tabs[tab];
+                        tabScope.actionOption = { name: "set-pool" };
+                        tabScope.selectedItems = [object];
+                        tabScope.poolAction = 'select-pool';
+                        tabScope.poolSelection = { id: 1 };
+                        $scope.actionGo(tab);
+                        expect(spy).toHaveBeenCalledWith(
+                            object, "set-pool", { pool_id: 1 });
+                });
+
+                it("calls performAction with new pool data",
+                    function() {
+                        var controller = makeController();
+                        var spy = spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(
+                            $q.defer().promise);
+                        var object = makeObject(tab);
+                        var newPoolData = {
+                            name: 'pool',
+                            description: 'desc',
+                        };
+                        var tabScope = $scope.tabs[tab];
+                        tabScope.actionOption = { name: "set-pool" };
+                        tabScope.selectedItems = [object];
+                        tabScope.poolSelection = null;
+                        tabScope.poolAction = 'create-pool';
+                        tabScope.newPool = newPoolData;
+                        $scope.actionGo(tab);
+                        expect(spy).toHaveBeenCalledWith(
+                            object, "set-pool", {'new_pool': newPoolData});
+                });
+
+                it("clears action option when successfully complete",
+                        function() {
+                    var controller = makeController();
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    spyOn(
+                        $scope, 'hasActionsFailed').and.returnValue(false);
+                    spyOn(
+                        $scope, 'hasActionsInProgress').and.returnValue(false);
+                    var object = makeObject(tab);
+                    $scope.tabs[tab].manager._items.push(object);
+                    $scope.tabs[tab].manager._selectedItems.push(object);
+                    $scope.tabs[tab].actionOption = { name: "set-pool" };
+                    $scope.tabs[tab].poolSelection = { id: 1 };
+                    $scope.actionGo(tab);
+                    defer.resolve();
+                    $scope.$digest();
+                    expect($scope.tabs[tab].poolSelection).toBeNull();
+                });
+            });
         });
     });
 
@@ -1685,6 +1754,27 @@ describe("NodesListController", function() {
         });
     });
 
+    describe('tab(pools)', function() {
+        it('sets the actionOption when addPool is called', function() {
+            makeController();
+            var poolsTab = $scope.tabs.pools;
+            expect(poolsTab.actionOption).toBe(false);
+            $scope.addPool();
+            expect(poolsTab.actionOption).toBe(true);
+        });
+
+        it('resets actionOption and newPool when cancelAddPool is called',
+           function() {
+            makeController();
+            var poolsTab = $scope.tabs.pools;
+            $scope.addPool();
+            poolsTab.newPool = {'name': 'mypool'},
+            $scope.cancelAddPool();
+            expect(poolsTab.actionOption).toBe(false);
+            expect(poolsTab.newPool).toEqual({});
+        });
+    });
+
     describe("addHardwareOptionChanged", function() {
 
         it("calls show in addHardwareScope", function() {
@@ -1772,6 +1862,80 @@ describe("NodesListController", function() {
         it("is false if switches is not specified", function() {
             var controller = makeController();
             expect($scope.showswitches).toBe(false);
+        });
+    });
+
+    describe("resource pools listing", function() {
+        it("sets active target with initiatePoolAction", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 1, name: 'foo'};
+            tab.initiatePoolAction(pool, 'action');
+            expect(tab.activeTargetAction).toEqual('action');
+            expect(tab.activeTarget).toEqual(pool);
+        });
+
+        it("unsets target with cancelPoolAction", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            tab.initiatePoolAction({id: 1, name: 'foo'}, 'action');
+            tab.cancelPoolAction();
+            expect(tab.activeTargetAction).toBe(null);
+            expect(tab.activeTarget).toBe(null);
+        });
+
+        it("reports isPoolAction false when no action", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 1, name: 'foo'};
+            expect(tab.isPoolAction(pool, 'action')).toBe(false);
+        });
+
+        it("reports isPoolAction true when action on the pool", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 1, name: 'foo'};
+            tab.initiatePoolAction(pool, 'action');
+            expect(tab.isPoolAction(pool, 'action')).toBe(true);
+        });
+
+        it("reports isPoolAction true with any action", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 1, name: 'foo'};
+            tab.initiatePoolAction(pool, 'action');
+            expect(tab.isPoolAction(pool)).toBe(true);
+        });
+
+        it("reports isPoolAction false when action on other pool", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool1 = {id: 1, name: 'foo'};
+            var pool2 = {id: 2, name: 'bar'};
+            tab.initiatePoolAction(pool1, 'action');
+            expect(tab.isPoolAction(pool2, 'action')).toBe(false);
+        });
+
+        it("reports isPoolAction false when different action", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 1, name: 'foo'};
+            tab.initiatePoolAction(pool, 'action');
+            expect(tab.isPoolAction(pool, 'other-action')).toBe(false);
+        });
+
+        it("reports isDefaultPool false", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 1, name: 'foo'};
+            expect(tab.isDefaultPool(pool)).toBe(false);
+        });
+
+        it("reports isDefaultPool true", function() {
+            makeController();
+            var tab = $scope.tabs.pools;
+            var pool = {id: 0, name: 'foo'};
+            expect(tab.isDefaultPool(pool)).toBe(true);
         });
     });
 });

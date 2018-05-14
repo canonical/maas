@@ -33,6 +33,17 @@
             </div>
         </div>
 
+        <div class="page-header__controls u-no-margin--top" data-ng-show="currentpage === 'pools'">
+            <div class="page-header__controls u-no-margin--top">
+              <button class="p-button--neutral"
+                      data-ng-click="addPool()"
+                      data-ng-hide="tabs.pools.actionOption">Add pool</button>
+              <button class="p-button--neutral ng-hide"
+                      data-ng-click="cancelAddPool()"
+                      data-ng-show="tabs.pools.actionOption">Cancel add pool</button>
+            </div>
+        </div>
+
         <div class="col-4" data-ng-show="currentpage === 'devices' || currentpage === 'controllers'">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls u-no-margin--top" data-ng-show="currentpage === 'devices'">
@@ -86,6 +97,38 @@
             </div>
         </div>
     </div>
+
+    <div class="page-header__dropdown u-no-margin--top ng-hide" data-ng-show="tabs.pools.actionOption">
+      <maas-obj-form obj="tabs.pools.newPool" manager="tabs.pools.manager" manager-method="createItem"
+                     inline="false" save-on-blur="false" after-save="cancelAddPool">
+        <section class="page-header__section row">
+          <hr>
+          <div class="p-form p-form--stacked ng-scope">
+            <div class="col-6">
+              <maas-obj-field
+                type="text" key="name" label="Name (required)" subtle="false"
+                placeholder="Name (required)" label-width="2" input-width="3">
+              </maas-obj-field>
+              <maas-obj-field
+                type="textarea" key="description" label="Description" subtle="false"
+                label-width="2" input-width="3" class="u-no-margin--left">
+              </maas-obj-field>
+            </div>
+          </div>
+        </section>
+
+        <section class="page-header_section row">
+          <div class="page-header__controls p-strip u-align--right u-no-padding--bottom">
+            <hr>
+            <button class="p-button--base u-no-margin--top" type="button" data-ng-click="cancelAddPool()">
+              Cancel
+            </button>
+            <button class="p-button--positive u-no-margin--top" maas-obj-save>Add pool</button>
+          </div>
+        </section>
+      </maas-obj-form>
+    </div>
+
     <div data-ng-repeat="tab in ['machines', 'switches', 'devices']" data-ng-class="{ 'u-hide': !tabs[tab].actionOption }">
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <div class="page-header__dropdown">
@@ -929,21 +972,48 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
         </div>
     </div>
     <div class="row ng-hide"  data-ng-show="MAAS_config.is_premium && currentpage === 'pools'">
-        <div class="p-table__wrapper">
-            <table class="p-table--sortable p-table--pools">
+        <div class="p-table__wrapper row">
+            <table class="p-table--sortable p-table-expanding p-table--pools">
                 <thead>
                     <tr class="p-table__row">
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
-                        <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
-                        <th class="p-table__cell" role="columnheader">Actions</th>
+                        <th class="p-table__cell col-3" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
+                        <th class="p-table__cell col-2" role="columnheader" data-ng-click="sortTable('machine_total_count', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Machines</th>
+                        <th class="p-table__cell col-5" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
+                        <th class="p-table__cell col-2 u-align--right">Actions</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
-                    <tr class="p-table__row"
-                        data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name">
-                        <td class="p-table__cell" aria-label="Name">{$ pool.name $}</td>
-                        <td class="p-table__cell" aria-label="Description">{$ pool.description $}</td>
-                        <td class="p-table__cell" aria-label="Actions">...</td>
+                <tbody>
+                    <tr class="p-table__row u-no-margin--top"
+                        data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name"
+                        data-ng-class="{'is-active': tabs.pools.isPoolAction(pool, 'delete')}">
+                        <td class="p-table__cell col-3" aria-label="Name">{$ pool.name $}</td>
+                        <td class="p-table__cell col-2" aria-label="Machine count">{$ pool.machine_ready_count $} of {$ pool.machine_total_count $} Ready</td>
+                        <td class="p-table__cell col-5" aria-label="Description">{$ pool.description $}</td>
+                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions">
+                          <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)">
+                            <i class="p-icon--delete" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">Delete</i>
+                          </button>
+                        </td>
+                        <td class="is-active p-table-expanding__panel col-12" col-span="3"
+                            data-ng-if="tabs.pools.isPoolAction(pool, 'delete')">
+                          <hr />
+                          <div class="row u-no-margin--top">
+                            <div class="col-6">
+                              <p data-ng-if="tabs.pools.actionErrorMessage">
+                                <span class="p-icon--warning">Warning:</span> {$ tabs.pools.actionErrorMessage $}
+                              </p>
+                              <p data-ng-if="!tabs.pools.actionErrorMessage">
+                                Are you sure you want to remove this resource pool?
+                              </p>
+                            </div>
+                            <div class="col-6">
+                              <span class="u-float--right">
+                                <button class="p-button--base" type="button" data-ng-click="tabs.pools.cancelPoolAction()">Cancel</button>
+                                <button class="p-button--negative" data-ng-click="tabs.pools.actionConfirmDeletePool()">Remove</button>
+                              </span>
+                            </div>
+                          </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>

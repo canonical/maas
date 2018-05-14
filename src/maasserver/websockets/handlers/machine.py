@@ -108,6 +108,7 @@ class MachineHandler(NodeHandler):
                 'interface_set__ip_addresses__subnet__vlan__fabric')
             .prefetch_related('interface_set__vlan__fabric')
             .prefetch_related('tags')
+            .prefetch_related('pool')
         )
         allowed_methods = [
             'list',
@@ -183,6 +184,7 @@ class MachineHandler(NodeHandler):
             "memory",
             "power_state",
             "domain",
+            "pool",
             "zone",
         ]
         listen_channels = [
@@ -199,6 +201,10 @@ class MachineHandler(NodeHandler):
         """Add extra fields to `data`."""
         data = super(MachineHandler, self).dehydrate(
             obj, data, for_list=for_list)
+        data.update({
+            "locked": obj.locked,
+            "pool": self.dehydrate_pool(obj.pool),
+        })
 
         if obj.is_machine or not for_list:
             boot_interface = obj.get_boot_interface()
@@ -318,6 +324,8 @@ class MachineHandler(NodeHandler):
         new_params["power_parameters"] = params.get("power_parameters")
         if "zone" in params:
             new_params["zone"] = params["zone"]["name"]
+        if "pool" in params:
+            new_params["pool"] = params["pool"]["name"]
         if "domain" in params:
             new_params["domain"] = params["domain"]["name"]
         if "min_hwe_kernel" in params:

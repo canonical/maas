@@ -398,6 +398,10 @@ class Handler(metaclass=HandlerMetaclass):
                         raise HandlerValidationError(e.message_dict)
                     except AttributeError:
                         raise HandlerValidationError({"__all__": e.message})
+                # Refetch the object to get any annotations added to the
+                # queryset.
+                obj = self.get_object({
+                    self._meta.pk: getattr(obj, self._meta.pk)})
                 return self.full_dehydrate(obj)
             else:
                 raise HandlerValidationError(form.errors)

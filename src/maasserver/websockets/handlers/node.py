@@ -73,7 +73,7 @@ def node_prefetch(queryset, *args):
     return (
         queryset
         .select_related(
-            'boot_interface', 'owner', 'zone', 'domain', 'bmc', *args)
+            'boot_interface', 'owner', 'zone', 'pool', 'domain', 'bmc', *args)
         .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
         .prefetch_related('blockdevice_set__virtualblockdevice')
@@ -119,7 +119,7 @@ class NodeHandler(TimestampedModelHandler):
         }
 
     def dehydrate_pool(self, pool):
-        """Return zone name."""
+        """Return pool name."""
         if pool is None:
             return None
         return {
