@@ -33,6 +33,7 @@ from maasserver.models import (
     Filesystem,
     Interface,
     Pod,
+    ResourcePool,
     Subnet,
     Tag,
     VLAN,
@@ -581,6 +582,15 @@ class AcquireNodeForm(RenamableFieldsForm):
             'invalid_list': "Invalid parameter: must list physical zones.",
             })
 
+    pool = forms.CharField(label="Resource pool", required=False)
+
+    not_in_pool = ValidatorMultipleChoiceField(
+        validator=MODEL_NAME_VALIDATOR,
+        label="Not in resource pool", required=False,
+        error_messages={
+            'invalid_list': "Invalid parameter: must list resource pools.",
+            })
+
     storage = forms.CharField(
         validators=[storage_validator], label="Storage", required=False)
 
@@ -670,6 +680,28 @@ class AcquireNodeForm(RenamableFieldsForm):
         if nonexistent_names:
             error_msg = "No such zone(s): %s." % ', '.join(nonexistent_names)
             set_form_error(self, self.get_field_name('not_in_zone'), error_msg)
+            return None
+        return value
+
+    def clean_pool(self):
+        value = self.cleaned_data[self.get_field_name('pool')]
+        if value:
+            nonexistent_names = detect_nonexistent_names(ResourcePool, [value])
+            if nonexistent_names:
+                error_msg = "No such pool: '%s'." % value
+                set_form_error(self, self.get_field_name('pool'), error_msg)
+                return None
+            return value
+        return None
+
+    def clean_not_in_pool(self):
+        value = self.cleaned_data[self.get_field_name('not_in_pool')]
+        if not value:
+            return None
+        nonexistent_names = detect_nonexistent_names(ResourcePool, value)
+        if nonexistent_names:
+            error_msg = "No such pool(s): %s." % ', '.join(nonexistent_names)
+            set_form_error(self, self.get_field_name('not_in_pool'), error_msg)
             return None
         return value
 
@@ -770,6 +802,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         filtered_nodes = self.filter_by_mem(filtered_nodes)
         filtered_nodes = self.filter_by_tags(filtered_nodes)
         filtered_nodes = self.filter_by_zone(filtered_nodes)
+        filtered_nodes = self.filter_by_pool(filtered_nodes)
         filtered_nodes = self.filter_by_subnets(filtered_nodes)
         filtered_nodes = self.filter_by_vlans(filtered_nodes)
         filtered_nodes = self.filter_by_fabrics(filtered_nodes)
@@ -879,6 +912,18 @@ class AcquireNodeForm(RenamableFieldsForm):
         if not_in_zone:
             not_in_zones = Zone.objects.filter(name__in=not_in_zone)
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
+        return filtered_nodes
+
+    def filter_by_pool(self, filtered_nodes):
+        pool_name = self.cleaned_data.get(self.get_field_name('pool'))
+        if pool_name:
+            pool = ResourcePool.objects.get(name=pool_name)
+            filtered_nodes = filtered_nodes.filter(pool=pool)
+        not_in_pool = self.cleaned_data.get(self.get_field_name('not_in_pool'))
+        if not_in_pool:
+            pools_to_exclude = ResourcePool.objects.filter(
+                name__in=not_in_pool)
+            filtered_nodes = filtered_nodes.exclude(pool__in=pools_to_exclude)
         return filtered_nodes
 
     def filter_by_tags(self, filtered_nodes):

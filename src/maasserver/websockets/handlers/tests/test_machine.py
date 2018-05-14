@@ -313,8 +313,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "extra_macs",
                 "fabrics",
                 "fqdn",
+                "has_logs",
                 "link_type",
-                "locked",
                 "metadata",
                 "node_type_display",
                 "osystem",
@@ -332,7 +332,6 @@ class TestMachineHandler(MAASServerTestCase):
                 "testing_script_count",
                 "testing_status",
                 "testing_status_tooltip",
-                "has_logs",
             ]
             for key in list(data):
                 if key not in allowed_fields:
@@ -504,10 +503,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 8,
+            queries_one, 9,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 8,
+            queries_total, 9,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
@@ -536,7 +535,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 48,
+            queries, 47,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):
@@ -1908,6 +1907,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(interface=True)
         node_data = self.dehydrate_node(node, handler)
         new_zone = factory.make_Zone()
+        new_pool = factory.make_ResourcePool()
         new_hostname = factory.make_name("hostname")
         new_architecture = make_usable_architecture(self)
         power_id = factory.make_name('power_id')
@@ -1918,6 +1918,9 @@ class TestMachineHandler(MAASServerTestCase):
         node_data["architecture"] = new_architecture
         node_data["zone"] = {
             "name": new_zone.name,
+        }
+        node_data["pool"] = {
+            "name": new_pool.name,
         }
         node_data["power_type"] = "virsh"
         node_data["power_parameters"] = {
@@ -1930,6 +1933,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.expectThat(updated_node["hostname"], Equals(new_hostname))
         self.expectThat(updated_node["architecture"], Equals(new_architecture))
         self.expectThat(updated_node["zone"]["id"], Equals(new_zone.id))
+        self.expectThat(updated_node["pool"]["id"], Equals(new_pool.id))
         self.expectThat(updated_node["power_type"], Equals("virsh"))
         self.expectThat(updated_node["power_parameters"], Equals({
             'power_id': power_id,

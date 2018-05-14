@@ -314,7 +314,6 @@ script_result_handler = RestrictedResource(
 script_results_handler = RestrictedResource(
     NodeScriptResultsHandler, authentication=api_auth)
 
-
 # Admin handlers.
 commissioning_script_handler = AdminRestrictedResource(
     CommissioningScriptHandler, authentication=api_auth)

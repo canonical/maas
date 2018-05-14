@@ -231,6 +231,21 @@ describe("nodesFilter", function() {
         expect(nodesFilter(nodes, "zone:first")).toEqual([matchingNode]);
     });
 
+    it("matches using pool mapping function", function() {
+        var matchingNode = {
+            pool: {
+                name: "pool1"
+            }
+        };
+        var otherNode = {
+            pool: {
+                name: "pool2"
+            }
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "pool:pool1")).toEqual([matchingNode]);
+    });
+
     it("matches using pod mapping function", function() {
         var matchingNode = {
             pod: {

@@ -46,6 +46,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
@@ -327,6 +328,21 @@ class TransactionalHelpersMixin:
     def delete_zone(self, id):
         zone = Zone.objects.get(id=id)
         zone.delete()
+
+    @transactional
+    def create_resource_pool(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_ResourcePool(**params)
+
+    @transactional
+    def update_resource_pool(self, id, params, **kwargs):
+        return apply_update_to_model(ResourcePool, id, params, **kwargs)
+
+    @transactional
+    def delete_resource_pool(self, id):
+        pool = ResourcePool.objects.get(id=id)
+        pool.delete()
 
     @transactional
     def create_tag(self, params=None):

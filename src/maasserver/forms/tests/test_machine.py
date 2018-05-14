@@ -364,6 +364,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'zone',
                 'power_type',
                 'power_parameters',
+                'pool',
             ],
             list(form.fields))
 
