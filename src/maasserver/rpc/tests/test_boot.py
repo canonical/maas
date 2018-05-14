@@ -153,6 +153,8 @@ class TestGetConfig(MAASServerTestCase):
         node = self.make_node_with_extra(
             status=NODE_STATUS.DEPLOYED, netboot=False)
         node.boot_cluster_ip = local_ip
+        node.osystem = factory.make_name('osystem')
+        node.distro_series = factory.make_name('distro_series')
         node.save()
         mac = node.get_boot_interface().mac_address
         config = get_config(
@@ -162,8 +164,8 @@ class TestGetConfig(MAASServerTestCase):
             "system_id": node.system_id,
             "arch": node.split_arch()[0],
             "subarch": node.split_arch()[1],
-            "osystem": '',
-            "release": '',
+            "osystem": node.osystem,
+            "release": node.distro_series,
             "kernel": '',
             "initrd": '',
             "boot_dtb": '',
