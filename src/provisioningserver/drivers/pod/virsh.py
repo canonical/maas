@@ -41,6 +41,7 @@ from provisioningserver.utils import (
     shell,
     typed,
 )
+from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -687,9 +688,10 @@ class VirshSSH(pexpect.spawn):
 
     def attach_interface(self, domain, network):
         """Attach new network interface on `domain` to `network`."""
+        mac = generate_mac_address()
         self.run([
             'attach-interface', domain, 'network', network,
-            '--model', 'virtio', '--config'])
+            '--mac', mac, '--model', 'virtio', '--config'])
 
     def get_domain_capabilities(self):
         """Return the domain capabilities.

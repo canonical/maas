@@ -947,9 +947,12 @@ class TestVirshSSH(MAASTestCase):
         domain = factory.make_name('domain')
         network = factory.make_name('network')
         mock_run = self.patch(virsh.VirshSSH, "run")
+        fake_mac = factory.make_mac_address()
+        self.patch(virsh, 'generate_mac_address').return_value = fake_mac
         conn.attach_interface(domain, network)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-interface', domain, 'network', network,
+            '--mac', fake_mac,
             '--model', 'virtio', '--config']))
 
     def test_get_domain_capabilities_for_kvm(self):

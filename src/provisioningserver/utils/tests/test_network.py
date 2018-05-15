@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import itertools
 import random
 import socket
 from socket import (
@@ -52,6 +53,7 @@ from provisioningserver.utils.network import (
     find_ip_via_arp,
     find_mac_via_arp,
     format_eui,
+    generate_mac_address,
     get_all_addresses_for_interface,
     get_all_interface_addresses,
     get_all_interface_source_addresses,
@@ -94,6 +96,7 @@ from testtools.matchers import (
     MatchesDict,
     MatchesSetwise,
     Not,
+    StartsWith,
 )
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -2314,3 +2317,17 @@ class TestGetSourceAddress(MAASTestCase):
     def test__returns_appropriate_address_for_global_ip(self):
         self.assertThat(
             get_source_address("8.8.8.8"), Not(Is(None)))
+
+
+class TestGenerateMACAddress(MAASTestCase):
+
+    def test__starts_with_virsh_prefix(self):
+        self.assertThat(generate_mac_address(), StartsWith("52:54:00:"))
+
+    def test__never_the_same(self):
+        random_macs = [
+            generate_mac_address()
+            for _ in range(10)
+        ]
+        for mac1, mac2 in itertools.permutations(random_macs, 2):
+            self.expectThat(mac1, Not(Equals(mac2)))

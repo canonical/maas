@@ -22,6 +22,7 @@ __all__ = [
 import codecs
 from collections import namedtuple
 from operator import attrgetter
+import random
 import re
 import socket
 from socket import (
@@ -1452,3 +1453,14 @@ def get_source_address(destination_ip: IPAddressOrNetwork):
             # configured. Could also happen if a network or broadcast address
             # is passed in, or we otherwise cannot route to the destination.
             return None
+
+
+def generate_mac_address():
+    """Generate a random MAC address."""
+    mac = [
+        0x52, 0x54, 0x00,
+        random.randint(0x00, 0xff),
+        random.randint(0x00, 0xff),
+        random.randint(0x00, 0xff)
+    ]
+    return ':'.join(map(lambda byte: "%02x" % byte, mac))
