@@ -331,7 +331,7 @@ class TestImportBootImages(MAASTestCase):
                 UpdateLastImageSync, system_id=get_maas_id()))
 
     @inlineCallbacks
-    def test_update_last_image_sync_not_performed(self):
+    def test_update_last_image_sync_always_updated(self):
         get_maas_id = self.patch(boot_images, "get_maas_id")
         get_maas_id.return_value = factory.make_string()
         getRegionClient = self.patch(boot_images, "getRegionClient")
@@ -340,8 +340,12 @@ class TestImportBootImages(MAASTestCase):
         yield boot_images._import_boot_images(sentinel.sources)
         self.assertThat(
             _run_import, MockCalledOnceWith(sentinel.sources, None, None))
-        self.assertThat(getRegionClient, MockNotCalled())
-        self.assertThat(get_maas_id, MockNotCalled())
+        self.assertThat(getRegionClient, MockCalledOnceWith())
+        self.assertThat(get_maas_id, MockCalledOnceWith())
+        client = getRegionClient.return_value
+        self.assertThat(
+            client, MockCalledOnceWith(
+                UpdateLastImageSync, system_id=get_maas_id()))
 
     @inlineCallbacks
     def test_update_last_image_sync_end_to_end(self):

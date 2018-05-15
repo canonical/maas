@@ -300,6 +300,12 @@ class TestRegisterRackController(MAASServerTestCase):
                 for name, interface in interfaces.items()
             )))
 
+    def test_sets_version_of_controller(self):
+        version = "1.10.2"
+        node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
+        register(system_id=node.system_id, version=version)
+        self.assertEquals(version, node.as_rack_controller().version)
+
     def test_updates_interfaces(self):
         # Interfaces are set on existing rack controllers.
         rack_controller = factory.make_RackController()

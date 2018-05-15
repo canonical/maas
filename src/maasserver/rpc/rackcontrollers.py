@@ -19,6 +19,7 @@ from maasserver import (
 )
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
+    ControllerInfo,
     Domain,
     Node,
     NodeGroupToRackController,
@@ -141,25 +142,19 @@ def register(
     rackcontroller = node.as_rack_controller()
 
     # Update `rackcontroller.url` from the given URL, if it has changed.
-    update_fields = []
     if url is not None:
-        if is_loopback and rackcontroller.url != '':
-            # There used to be a URL, and now it's localhost, set it to None.
+        if is_loopback:
             rackcontroller.url = ''
-            update_fields.append("url")
-        elif not is_loopback and rackcontroller.url != url.geturl():
-            # There is a non-loopback URL, and it's different than what the
-            # database has.  Change it.
+        elif not is_loopback:
             rackcontroller.url = url.geturl()
-            update_fields.append("url")
-        # else:
-        # The URL is already the correct value, no need to change anything.
     if rackcontroller.owner is None:
         rackcontroller.owner = worker_user.get_worker_user()
-        update_fields.append("owner")
-    rackcontroller.save(update_fields=update_fields)
+    rackcontroller.save()
     # Update interfaces, if requested.
     rackcontroller.update_interfaces(interfaces, create_fabrics=create_fabrics)
+    # Update the version.
+    if version is not None:
+        ControllerInfo.objects.set_version(rackcontroller, version)
     return rackcontroller
 
 

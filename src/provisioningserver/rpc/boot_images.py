@@ -148,10 +148,9 @@ def _import_boot_images(sources, http_proxy=None, https_proxy=None):
     Helper for `import_boot_images`.
     """
     proxies = dict(http_proxy=http_proxy, https_proxy=https_proxy)
-    imported = yield deferToThread(_run_import, sources, **proxies)
-    if imported:
-        yield touch_last_image_sync_timestamp().addErrback(
-            log.err, "Failure touching last image sync timestamp.")
+    yield deferToThread(_run_import, sources, **proxies)
+    yield touch_last_image_sync_timestamp().addErrback(
+        log.err, "Failure touching last image sync timestamp.")
 
 
 def is_import_boot_images_running():
