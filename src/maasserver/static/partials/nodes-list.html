@@ -34,7 +34,8 @@
         </div>
 
         <div class="page-header__controls u-no-margin--top" data-ng-show="currentpage === 'pools'">
-            <div class="page-header__controls u-no-margin--top">
+            <div class="page-header__controls u-no-margin--top"
+                 data-ng-show="isSuperUser()">
               <button class="p-button--neutral"
                       data-ng-click="addPool()"
                       data-ng-hide="tabs.pools.actionOption">Add pool</button>
@@ -979,7 +980,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <th class="p-table__cell col-3" role="columnheader" data-ng-click="sortTable('name', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Name</th>
                         <th class="p-table__cell col-2" role="columnheader" data-ng-click="sortTable('machine_total_count', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'name', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Machines</th>
                         <th class="p-table__cell col-5" role="columnheader" data-ng-click="sortTable('description', 'pools')" data-ng-class="{'is-sorted': tabs.pools.predicate === 'description', 'sort-asc': tabs.pools.reverse === false, 'sort-desc': tabs.pools.reverse === true}">Description</th>
-                        <th class="p-table__cell col-2 u-align--right">Actions</th>
+                        <th class="p-table__cell col-2 u-align--right" data-ng-show="isSuperUser()">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -989,7 +990,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <td class="p-table__cell col-3" aria-label="Name">{$ pool.name $}</td>
                         <td class="p-table__cell col-2" aria-label="Machine count">{$ pool.machine_ready_count $} of {$ pool.machine_total_count $} Ready</td>
                         <td class="p-table__cell col-5" aria-label="Description">{$ pool.description $}</td>
-                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions">
+                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="isSuperUser()">
                           <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)">
                             <i class="p-icon--delete" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">Delete</i>
                           </button>
