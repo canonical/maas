@@ -755,6 +755,17 @@ class TestSetZoneAction(MAASServerTestCase):
         action.execute(zone_id=zone2.id)
         self.assertEqual(node.zone.id, zone2.id)
 
+    def test_is_acionable_true_for_owned_device(self):
+        user = factory.make_User()
+        device = factory.make_Device(owner=user)
+        action = SetZone(device, user)
+        self.assertTrue(action.is_actionable())
+
+    def test_is_acionable_false_not_owner(self):
+        device = factory.make_Device(owner=factory.make_User())
+        action = SetZone(device, factory.make_User())
+        self.assertFalse(action.is_actionable())
+
 
 class TestPowerOnAction(MAASServerTestCase):
 

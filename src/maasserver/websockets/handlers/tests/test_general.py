@@ -176,7 +176,9 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_device_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertEqual([], handler.device_actions({}))
+        self.assertItemsEqual(
+            ['set-zone', 'delete'],
+            [action['name'] for action in handler.device_actions({})])
 
     def test_region_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})

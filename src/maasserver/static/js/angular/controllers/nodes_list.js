@@ -40,6 +40,19 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.loading = true;
 
         $scope.tabs = {};
+        $scope.pluralize = function(tab) {
+            var singulars = {
+                'machines': 'machine',
+                'switches': 'switch',
+                'devices': 'device',
+                'controllers': 'controller',
+            };
+            var verb = singulars[tab];
+            if ($scope.tabs[tab].selectedItems.length > 1) {
+                verb = tab;
+            };
+            return verb;
+        };
         // Machines tab.
         $scope.tabs.machines = {};
         $scope.tabs.machines.pagetitle = "Machines";

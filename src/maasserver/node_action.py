@@ -129,13 +129,18 @@ class NodeAction(metaclass=ABCMeta):
         """
         if self.node.node_type not in self.for_type:
             return False
-        elif (self.node_permission == NODE_PERMISSION.ADMIN and
-                not self.user.is_superuser):
-            return False
         elif self.node.locked and not self.allowed_when_locked:
             return False
         elif self.node.node_type == NODE_TYPE.MACHINE:
-            return self.node.status in self.actionable_statuses
+            admin_perm = (
+                self.node_permission == NODE_PERMISSION.ADMIN and
+                not self.user.is_superuser)
+            if admin_perm:
+                return False
+            elif self.node.node_type == NODE_TYPE.MACHINE:
+                return self.node.status in self.actionable_statuses
+        elif self.node.node_type == NODE_TYPE.DEVICE:
+            return self.user.is_superuser or self.user == self.node.owner
 
         return True
 

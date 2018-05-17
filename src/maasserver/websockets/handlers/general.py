@@ -125,15 +125,19 @@ class GeneralHandler(Handler):
 
     def _node_actions(self, params, node_type):
         # Only admins can perform controller actions
-        if (not reload_object(self.user).is_superuser and node_type in [
+        user = reload_object(self.user)
+        if (not user.is_superuser and node_type in [
                 NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER]):
             return []
 
         actions = OrderedDict()
         for name, action in ACTIONS_DICT.items():
-            if (action.node_permission == NODE_PERMISSION.ADMIN and
-                    not reload_object(self.user).is_superuser):
+            admin_condition = (
+                node_type == NODE_TYPE.MACHINE and
+                action.node_permission == NODE_PERMISSION.ADMIN and
+                not user.is_superuser)
+            if admin_condition:
                 continue
             elif node_type in action.for_type:
                 actions[name] = action

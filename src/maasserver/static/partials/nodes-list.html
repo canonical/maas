@@ -86,7 +86,7 @@
             </div>
         </div>
     </div>
-    <div data-ng-repeat="tab in ['machines', 'switches']" data-ng-class="{ 'u-hide': !tabs[tab].actionOption }">
+    <div data-ng-repeat="tab in ['machines', 'switches', 'devices']" data-ng-class="{ 'u-hide': !tabs[tab].actionOption }">
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <div class="page-header__dropdown">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -186,53 +186,37 @@
                     <div class="col-12">
                         <button class="p-button--base" type="button" data-ng-click="actionCancel(tab)">Cancel</button>
                         <button data-ng-class="tabs[tab].actionOption.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo(tab)" data-ng-hide="hasActionsFailed(tab)">
-                            <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'acquire'">Acquire {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'deploy'">Deploy {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'release'">Release {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'release'">Release {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'set-zone'">Set zone for {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'set-zone'">Set zone for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'set-pool'">Set pool for {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'set-pool'">Set pool for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'on'">Power on {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'on'">Power on {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'off'">Power off {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'off'">Power off {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'abort'">Abort action for {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'abort'">Abort action for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-broken'">Mark {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as broken
+                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-broken'">Mark {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $} as broken
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
+                            <span data-ng-if="tabs[tab].actionOption.name === 'mark-fixed'">Mark {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $} as fixed
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'override-failed-testing'">Override failed testing on {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'lock'">Lock {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'unlock'">Unlock {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
-                            <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $}
-                                <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            <span data-ng-if="tabs[tab].actionOption.name === 'delete'">Delete {$ tabs[tab].selectedItems.length $} {$ pluralize(tab) $}
                             </span>
                         </button>
                         <button class="p-button--neutral" data-ng-click="actionGo(tab)" data-ng-show="hasActionsFailed(tab)">Retry</button>
@@ -463,60 +447,6 @@
                 Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="#/images">images page</a>.
             </p>
         </section>
-    </div>
-
-    <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-    <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !tabs.devices.actionOption }">
-        <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-        <div class="page-header__section col-12 ng-hide" data-ng-hide="isActionError('devices') || hasActionsInProgress('devices')">
-            <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-            <form class="p-form p-form--inline">
-                <div class="ng-hide" data-ng-show="tabs.devices.actionOption.name === 'set-zone'">
-                    <div class="p-form__group">
-                        <label class="p-form__label" for="zone1">Set zone</label>
-                        <select name="zone" id="zone1"
-                            data-ng-model="tabs.devices.zoneSelection"
-                            data-ng-options="zone as zone.name for zone in zones">
-                            <option value="" disabled="disabled">Choose a zone</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="page-header__controls p-strip u-align--right">
-                    <button class="p-button--base" type="button" data-ng-click="actionCancel('devices')">Cancel</button>
-                    <button class="p-button--positive" data-ng-click="actionGo('devices')">
-                        <span data-ng-if="tabs.devices.actionOption.name === 'set-zone'">Set zone for {$ tabs.devices.selectedItems.length $}
-                            <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
-                        </span>
-                        <span data-ng-if="tabs.devices.actionOption.name === 'delete'">Delete {$ tabs.devices.selectedItems.length $}
-                            <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-        <div class="page-header__section col-12 ng-hide" data-ng-show="isActionError('devices')">
-            <div class="row">
-                <p class="page-header__message page-header__message--error">
-                    {$ tabs.devices.actionErrorCount $}
-                    <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
-                    cannot be {$ tabs.devices.actionOption.sentence $}. To proceed, update your selection.
-                </p>
-            </div>
-        </div>
-
-        <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
-        <div class="page-header__section col-12 ng-hide" data-ng-show="hasActionsInProgress('devices') || hasActionsFailed('devices')">
-            <p class="page-header__message" data-ng-show="hasActionsInProgress('devices')">
-                <i class="p-icon--spinner u-animation--spin"></i>
-                {$ tabs.devices.actionProgress.completed $} of {$ tabs.devices.actionProgress.total $}
-                devices have been {$ tabs.devices.actionOption.sentence $}.
-            </p>
-            <div data-ng-repeat="(error, devices) in tabs.devices.actionProgress.errors">
-                <span class="p-icon--error">Error: </span>The {$ tabs.devices.actionOption.title.toLowerCase() $} action for {$ devices.length $} <span data-ng-pluralize count="devices.length" when="{'one': 'device', 'other': 'devices'}"></span> failed with error: {$ error $}
-            </div>
-        </div>
     </div>
 
     <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->

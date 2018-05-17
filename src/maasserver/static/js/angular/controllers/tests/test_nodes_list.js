@@ -1178,6 +1178,19 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].actionOption).toBeNull();
                 });
 
+                it("supports pluralization of names based on tab", function() {
+                    var singulars = {
+                        'machines': 'machine',
+                        'switches': 'switch',
+                        'devices': 'device',
+                        'controllers': 'controller',
+                    };
+                    var controller = makeController();
+                    expect($scope.pluralize(tab)).toEqual(singulars[tab]);
+                    $scope.tabs[tab].selectedItems.length = 2;
+                    expect($scope.pluralize(tab)).toEqual(tab);
+                });
+
                 it("resets actionProgress", function() {
                     var controller = makeController();
                     $scope.tabs[tab].actionProgress.total = makeInteger(0, 10);
