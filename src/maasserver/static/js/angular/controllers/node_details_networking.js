@@ -589,8 +589,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // (it can't be changed when the node is in any state other
         // than Ready or Broken and the user is not a superuser)
         $scope.isAllNetworkingDisabled = function() {
-            if (!$scope.isSuperUser()) {
-                // If the user is not a superuser, disable the networking panel.
+            if (!$scope.isSuperUser() && !$scope.$parent.isDevice) {
+                // If the user is not a superuser and not looking at a
+                // device, disable the networking panel.
                 return true;
             }
             if ($scope.$parent.isController || $scope.$parent.isDevice) {

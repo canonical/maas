@@ -357,10 +357,6 @@ class DeviceHandler(NodeHandler):
 
     def update_interface(self, params):
         """Update the interface."""
-        # Only admin users can perform update.
-        if not reload_object(self.user).is_superuser:
-            raise HandlerPermissionError()
-
         device = self.get_object(params)
         interface = Interface.objects.get(
             node=device, id=params["interface_id"])
@@ -375,10 +371,6 @@ class DeviceHandler(NodeHandler):
 
     def delete_interface(self, params):
         """Delete the interface."""
-        # Only admin users can perform delete.
-        if not reload_object(self.user).is_superuser:
-            raise HandlerPermissionError()
-
         node = self.get_object(params)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.delete()

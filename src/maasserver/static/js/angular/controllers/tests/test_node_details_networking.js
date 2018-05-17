@@ -3170,11 +3170,21 @@ describe("NodeNetworkingController", function() {
     describe("isAllNetworkingDisabled", function() {
 
         it("returns true if the user is not a superuser " +
-           "and the non-controller node is ready",
+           "and the node is not a device",
             function() {
             var controller = makeController();
+            $parentScope.isDevice = false;
             $scope.isSuperUser = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(true);
+        });
+
+        it("returns false if the user is not a superuser " +
+           "and the node is not a device",
+            function() {
+            var controller = makeController();
+            $parentScope.isDevice = true;
+            $scope.isSuperUser = function() { return false; };
+            expect($scope.isAllNetworkingDisabled()).toBe(false);
         });
 
         it("returns false when a non-controller node state " +

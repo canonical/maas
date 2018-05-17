@@ -818,7 +818,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertEqual(1, len(auto_ip))
 
     @transactional
-    def test_update_interface_updates(self):
+    def test_update_interface_updates_admin(self):
         user = factory.make_admin()
         node = factory.make_Node(interface=False, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {})
@@ -867,6 +867,37 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             self.assertEqual(data[0]['ip_address'], new_ip_address)
 
     @transactional
+    def test_update_interface_updates_non_admin(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            owner=user, interface=False, node_type=NODE_TYPE.DEVICE)
+        handler = DeviceHandler(user, {})
+        name = factory.make_name("eth")
+        mac_address = factory.make_mac_address()
+        ip_assignment = DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC
+        params = {
+            "system_id": node.system_id,
+            "name": name,
+            "mac_address": mac_address,
+            "ip_assignment": ip_assignment,
+            }
+        handler.create_interface(params)
+        interface = node.interface_set.first()
+        self.assertIsNotNone(interface)
+        new_mac_address = factory.make_mac_address()
+        new_params = {
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "name": name,
+            "mac_address": new_mac_address,
+            "ip_assignment": ip_assignment,
+        }
+        handler.update_interface(new_params)
+        data = self.dehydrate_device(node, user)['interfaces']
+        self.assertEqual(1, len(data))
+        self.assertEqual(data[0]['mac_address'], new_mac_address)
+
+    @transactional
     def test_update_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()
         handler = DeviceHandler(user, {})
@@ -908,9 +939,21 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertItemsEqual(updated_node["tags"], new_tags)
 
     @transactional
-    def test_delete_interface(self):
+    def test_delete_interface_admin(self):
         user = factory.make_admin()
         node = factory.make_Node(node_type=NODE_TYPE.DEVICE)
+        handler = DeviceHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        handler.delete_interface({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            })
+        self.assertIsNone(reload_object(interface))
+
+    @transactional
+    def test_delete_interface_non_admin(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         handler.delete_interface({
