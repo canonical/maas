@@ -243,8 +243,9 @@ def get_config(
         purpose = machine.get_boot_purpose()
 
         # Log the request into the event log for that machine.
-        if (machine.status == NODE_STATUS.ENTERING_RESCUE_MODE and
-                purpose == 'commissioning'):
+        if (machine.status in [
+                NODE_STATUS.ENTERING_RESCUE_MODE,
+                NODE_STATUS.RESCUE_MODE] and purpose == 'commissioning'):
             event_log_pxe_request(machine, 'rescue')
         else:
             event_log_pxe_request(machine, purpose)
