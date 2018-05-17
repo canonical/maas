@@ -234,7 +234,7 @@
                 <h2 class="u-float--left">VLAN Summary</h2>
             </div>
             <div class="col-6">
-                <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary">Edit</button>
+                <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary && isSuperUser()">Edit</button>
             </div>
         </div>
         <div class="p-form p-form--stacked row" data-ng-if="!vlanDetails.editSummary">

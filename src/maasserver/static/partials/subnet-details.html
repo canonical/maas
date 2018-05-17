@@ -75,7 +75,7 @@
                     <h2 class="u-float--left">Subnet summary</h2>
                 </div>
                 <div class="col-4">
-                    <div class="u-align--right" data-ng-show="isSuperUser()">
+                    <div class="u-align--right" data-ng-if="isSuperUser()">
                         <button type="button" name="button" class="p-button--neutral" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
                     </div>
                 </div>

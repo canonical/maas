@@ -77,7 +77,7 @@
                     <h2>Fabric summary</h2>
                 </div>
                 <div class="col-6">
-                    <button type="p-button" name="p-button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
+                    <button type="p-button" name="p-button" class="p-button--neutral u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true && isSuperUser()">Edit</button>
                 </div>
             </div>
             <div class="form p-form--stacked row" data-ng-if="editSummary != true">
