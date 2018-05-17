@@ -1100,7 +1100,7 @@ class KeyForm(MAASModelForm):
             self._errors.setdefault('key', self.error_class()).extend(error)
 
 
-class SSHKeyForm(KeyForm):
+class SSHKeyForm(MAASModelForm):
     key = UnstrippedCharField(
         label="Public key",
         widget=forms.Textarea(attrs={'rows': '5', 'cols': '30'}),
@@ -1109,6 +1109,10 @@ class SSHKeyForm(KeyForm):
     class Meta:
         model = SSHKey
         fields = ["key"]
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.instance.user = user
 
     def save(self, endpoint, request):
         sshkey = super(SSHKeyForm, self).save()

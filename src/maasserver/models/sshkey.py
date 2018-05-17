@@ -114,13 +114,6 @@ class SSHKey(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         verbose_name = "SSH key"
-        unique_together = ('user', 'key', 'keysource')
-
-    def unique_error_message(self, model_class, unique_check):
-        if unique_check == ('user', 'key', 'keysource'):
-                return "This key has already been added for this user."
-        return super(
-            SSHKey, self).unique_error_message(model_class, unique_check)
 
     def __str__(self):
         return self.key
@@ -134,3 +127,20 @@ class SSHKey(CleanSave, TimestampedModel):
         if key_size is None:
             key_size = DEFAULT_KEY_DISPLAY
         return mark_safe(get_html_display_for_key(self.key, key_size))
+
+    def clean(self, *args, **kwargs):
+        """Make sure there are no duplicate keys.
+
+        Note that this could have been done with Meta.unique_together,
+        but it doesn't work for big keys, since the long text strings
+        can't be indexed.
+        """
+        super().clean(*args, **kwargs)
+        if not self._state.has_changed('key'):
+            return
+
+        existing_key = SSHKey.objects.filter(
+            keysource=self.keysource, user=self.user, key=self.key)
+        if existing_key.exists():
+            raise ValidationError(
+                'This key has already been added for this user.')
