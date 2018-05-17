@@ -32,13 +32,13 @@
                         </button>
                     </div>
                 </td>
-                <td class="is-active p-table-expanding__panel col-12" col-span="6" data-ng-if="isIPRangeInDeleteMode(iprange)">
+                <td class="is-active p-table-expanding__panel col-12 p-table--action-cell" col-span="6" data-ng-if="isIPRangeInDeleteMode(iprange)">
                     <hr />
                     <div class="row u-no-margin--top">
-                        <div class="col-6">
-                            <p><span class="p-icon--warning">Warning:</span> Ensure all in-use IP addresses are registered in MAAS before releasing this range to avoid potential collisions. Are you sure you want to remove this IP range?</p>
+                        <div class="col-9 u-wrap">
+                            <span class="p-icon--warning">Warning:</span> Ensure all in-use IP addresses are registered in MAAS before releasing this range to avoid potential collisions. Are you sure you want to remove this IP range?
                         </div>
-                        <div class="col-6">
+                        <div class="col-3">
                             <span class="u-float--right">
                                 <button class="p-button--base" type="button" data-ng-click="ipRangeCancelDelete()">Cancel</button>
                                 <button class="p-button--negative" data-ng-click="ipRangeConfirmDelete()">Remove</button>
