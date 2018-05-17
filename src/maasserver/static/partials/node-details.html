@@ -1035,7 +1035,7 @@
                                         data-ng-click="toggleInterfaceSelect(interface)"
                                         data-ng-disabled="isDisabled()">
                                     </span>
-                                    <span data-ng-if="!isEditing(interface)" data-ng-show="tableInfo.column == 'name'" title="{$ interface.name $}">{$ interface.name $}</span>
+                                    <span data-ng-if="!isEditing(interface) || interface.type === 'vlan'" data-ng-show="tableInfo.column == 'name'" title="{$ interface.name $}">{$ interface.name $}</span>
                                     <span class="ng-hide" data-ng-show="tableInfo.column == 'mac'" title="{$ interface.mac_address $}">{$ interface.mac_address $}</span>
                                     <input type="text" class="p-form-validation__input u-no-margin--top"
                                         data-ng-if="isEditing(interface) && interface.type !== 'vlan'"
@@ -1045,12 +1045,12 @@
                                 <td class="table-col--7" aria-label="Boot interface">
                                     <span class="u-align--center u-hide u-show--large">
                                         <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
-                                            data-ng-if="!isController && isBootInterface(interface)"
+                                            data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)"
                                             class="u-no-margin--right">
                                         <label for="{$ interface.name $}"></label>
                                     </span>
-                                    <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface)">Yes</span>
-                                    <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface)">No</span>
+                                    <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
+                                    <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
                                 </td>
                                 <td class="table-col--9" aria-label="Type">
                                     <span data-ng-if="!isEditing(interface)" title="{$ getInterfaceTypeText(interface) $}">{$ getInterfaceTypeText(interface) $}</span>
@@ -1237,36 +1237,31 @@
                                                             options="fabric as fabric.name for fabric in fabrics"></maas-obj-field>
                                                         <maas-obj-field type="options" key="vlan" label="VLAN" label-width="2" input-width="5"
                                                             disable-label="false"
-                                                            data-ng-show="editInterface.$maasForm.getValue('fabric')"
-                                                            disabled="isController || interface.type === 'physical' || interface.type === 'bond'"
+                                                            data-ng-show="!isController && editInterface.$maasForm.getValue('fabric')"
                                                             on-change="vlanChangedForm"
                                                             options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.$maasForm.getValue('fabric')">
                                                         </maas-obj-field>
                                                         <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
                                                             disable-label="false" label-width="2" input-width="5"
-                                                            data-ng-show="editInterface.$maasForm.getValue('fabric')"
-                                                            disabled="isController"
+                                                            data-ng-show="!isController && editInterface.$maasForm.getValue('fabric')"
                                                             on-change="subnetChangedForm"
                                                             options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.$maasForm.getValue('vlan')">
                                                             </maas-obj-field>
                                                         <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
                                                             data-ng-init="editInterface.subnet = editInterface.defaultSubnet" label-width="2" input-width="5"
-                                                            data-ng-if="editInterface.$maasForm.getValue('ip_assignment') === 'static'"
+                                                            data-ng-if="!isController && editInterface.$maasForm.getValue('ip_assignment') === 'static'"
                                                             on-change="subnetChangedForm"
-                                                            disabled="isController"
                                                             disable-label="false"
                                                             options="subnet as getSubnetText(subnet) for subnet in subnets"></maas-obj-field>
                                                         <maas-obj-field type="options" key="mode" label="IP mode" label-width="2" input-width="5"
                                                             disable-label="false"
-                                                            data-ng-if="editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
+                                                            data-ng-if="!isController && editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
                                                             options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface.$maasForm"
-                                                            disabled="isController"
                                                             on-change="modeChangedForm">
                                                             </maas-obj-field>
                                                         <maas-obj-field type="text" key="ip_address" label="IP address" placeholder="IP Address" label-width="two" input-width="three"
                                                             disable-label="false" input-class="table__input u-margin--none"
-                                                            data-ng-if="(editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static')"
-                                                            disabled="isController">
+                                                            data-ng-if="!isController && editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static'">
                                                             </maas-obj-field>
                                                     </div>
                                                 </div>
