@@ -478,6 +478,20 @@ class TestGetConfig(MAASServerTestCase):
         self.assertThat(
             event_log_pxe_request, MockCalledOnceWith(node, 'rescue'))
 
+    def test__uses_rescue_mode_reboot_purpose(self):
+        # Regression test for LP:1749210
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(status=NODE_STATUS.RESCUE_MODE)
+        mac = node.get_boot_interface().mac_address
+        event_log_pxe_request = self.patch_autospec(
+            boot_module, 'event_log_pxe_request')
+        get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertThat(
+            event_log_pxe_request, MockCalledOnceWith(node, 'rescue'))
+
     def test__calls_event_log_pxe_request(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()

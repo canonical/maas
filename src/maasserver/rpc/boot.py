@@ -180,8 +180,10 @@ def get_boot_config_for_machine(machine, configs, purpose):
         # ephemeral environment.
         if machine.osystem == "ubuntu" and (
                 machine.status == NODE_STATUS.DISK_ERASING or (
-                machine.status == NODE_STATUS.ENTERING_RESCUE_MODE and
-                machine.previous_status == NODE_STATUS.DEPLOYED)):
+                machine.status in [
+                    NODE_STATUS.ENTERING_RESCUE_MODE,
+                    NODE_STATUS.RESCUE_MODE,
+                ] and machine.previous_status == NODE_STATUS.DEPLOYED)):
             osystem = machine.get_osystem(default=configs['default_osystem'])
             series = machine.get_distro_series(
                 default=configs['default_distro_series'])
@@ -340,8 +342,9 @@ def get_config(
             }
 
         # Log the request into the event log for that machine.
-        if (machine.status == NODE_STATUS.ENTERING_RESCUE_MODE and
-                purpose == 'commissioning'):
+        if (machine.status in [
+                NODE_STATUS.ENTERING_RESCUE_MODE,
+                NODE_STATUS.RESCUE_MODE] and purpose == 'commissioning'):
             event_log_pxe_request(machine, 'rescue')
         else:
             event_log_pxe_request(machine, purpose)
