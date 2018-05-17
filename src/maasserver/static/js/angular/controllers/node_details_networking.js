@@ -600,7 +600,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 return false;
             }
             if (angular.isObject($scope.node) &&
-                    ["Ready", "Allocated", "Broken"].indexOf(
+                    ["New", "Ready", "Allocated", "Broken"].indexOf(
                         $scope.node.status) === -1) {
                 // If a non-controller node is not ready allocated, or broken,
                 // disable networking panel.

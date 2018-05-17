@@ -3188,16 +3188,19 @@ describe("NodeNetworkingController", function() {
         });
 
         it("returns false when a non-controller node state " +
-           "is 'Ready' or 'Broken' and we are a superuser",
+           "is 'New', 'Ready', 'Allocated' or 'Broken' and we are a superuser",
             function() {
             var controller = makeController();
             $scope.isSuperUser = function() { return true; };
+            $scope.node = {status: "New"};
+            expect($scope.isAllNetworkingDisabled()).toBe(false);
             $scope.node = {status: "Ready"};
+            expect($scope.isAllNetworkingDisabled()).toBe(false);
+            $scope.node = {status: "Allocated"};
             expect($scope.isAllNetworkingDisabled()).toBe(false);
             $scope.node = {status: "Broken"};
             expect($scope.isAllNetworkingDisabled()).toBe(false);
-            ["New",
-             "Commissioning",
+            ["Commissioning",
              "Failed commissioning",
              "Missing",
              "Reserved",
