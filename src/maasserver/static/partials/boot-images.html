@@ -12,7 +12,7 @@
         <div class="row" data-ng-if="isSuperUser() && !source.tooMany">
             <h3 class="p-heading--five">Choose source</h3>
         </div>
-        <div class="row">
+        <div class="row" data-ng-if="isSuperUser() && !source.tooMany">
             <div class="col-2">
                 <input type="radio" data-ng-model="source.source_type" id="source_maas" value="maas.io" data-ng-change="sourceChanged()" data-ng-disabled="saving">
                 <label class="u-no-margin--top" for="source_maas">maas.io</label>
