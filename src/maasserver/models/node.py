@@ -464,9 +464,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ]))
         if perm == NODE_PERMISSION.VIEW:
-            pools = ResourcePool.objects.get_user_resource_pools(user)
-            return nodes.filter(
-                Q(owner__isnull=True, pool__in=pools) | Q(owner=user))
+            return nodes.filter(Q(owner__isnull=True) | Q(owner=user))
         elif perm == NODE_PERMISSION.EDIT:
             return nodes.filter(owner=user)
         elif perm == NODE_PERMISSION.ADMIN:
@@ -1598,10 +1596,6 @@ class Node(CleanSave, TimestampedModel):
         if self.is_machine:
             if not self.pool:
                 self.pool = ResourcePool.objects.get_default_resource_pool()
-            elif self.owner and not ResourcePool.objects.user_can_access_pool(
-                    self.owner, self.pool):
-                raise ValidationError(
-                    "User doesn't have access to the resource pool")
         elif self.pool:
             raise ValidationError(
                 {'pool': ["Can't assign to a resource pool."]})

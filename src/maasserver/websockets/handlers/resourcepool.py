@@ -48,13 +48,6 @@ class ResourcePoolHandler(TimestampedModelHandler):
             "resourcepool",
         ]
 
-    def create(self, params):
-        if 'users' in params:
-            params['users'] = [user['id'] for user in params['users']]
-        if 'groups' in params:
-            params['groups'] = [group['id'] for group in params['groups']]
-        return super().create(params)
-
     def delete(self, parameters):
         """Delete this resource pool."""
         pool = self.get_object(parameters)

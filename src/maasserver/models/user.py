@@ -87,11 +87,6 @@ def create_user(sender, instance, created, **kwargs):
         # Create initial authorisation token.
         profile.create_authorisation_token()
 
-        # Assign the user to the default group
-        from maasserver.models import UserGroup
-        default_group = UserGroup.objects.get_default_usergroup()
-        default_group.add(instance)
-
 
 def get_creds_tuple(token):
     """Return API credentials as tuple, as used in :class:`MAASOAuth`.

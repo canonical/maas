@@ -428,14 +428,3 @@ class TestNodeVisibility(MAASServerTestCase):
         self.assertItemsEqual(
             [own_node, unowned_node],
             Node.objects.get_nodes(own_node.owner, NODE_PERMISSION.VIEW))
-
-    def test_user_sees_unowned_nodes_in_own_pools(self):
-        user = factory.make_User()
-        other_user = factory.make_User()
-        pool = factory.make_ResourcePool(users=[user, other_user])
-        unowned_node = factory.make_Node(pool=pool)
-        factory.make_Node(owner=other_user, pool=pool)
-        # unowned node in other pool
-        factory.make_Node(pool=factory.make_ResourcePool())
-        self.assertItemsEqual(
-            [unowned_node], Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))

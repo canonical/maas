@@ -96,7 +96,6 @@ from maasserver.models import (
     RegionControllerProcessEndpoint,
     RegionRackRPCConnection,
     ResourcePool,
-    Role,
     RootKey,
     Service,
     Space,
@@ -106,7 +105,6 @@ from maasserver.models import (
     StaticRoute,
     Subnet,
     Tag,
-    UserGroup,
     VersionedTextFile,
     VirtualBlockDevice,
     VLAN,
@@ -1021,54 +1019,18 @@ class Factory(maastesting.factory.Factory):
         user.userprofile.save()
         return user
 
-    def make_UserGroup(self, name=None, description=None,
-                       local=True, users=()):
-        if name is None:
-            name = self.make_name('usergroup')
-        if description is None:
-            description = self.make_string()
-        group = UserGroup(name=name, description=description, local=local)
-        group.save()
-        for user in users:
-            group.add(user)
-        return group
-
-    def make_ResourcePool(self, name=None, description=None,
-                          nodes=None, users=None, groups=None):
+    def make_ResourcePool(self, name=None, description=None, nodes=None):
         if name is None:
             name = self.make_name('resourcepool')
         if description is None:
             description = self.make_string()
         pool = ResourcePool(name=name, description=description)
         pool.save()
-        if users is not None:
-            for user in users:
-                pool.grant_user(user)
-        if groups is not None:
-            for group in groups:
-                pool.grant_group(group)
-        # add nodes last, as owner might need access granted to the pool first
         if nodes is not None:
             for node in nodes:
                 node.pool = pool
                 node.save()
         return pool
-
-    def make_Role(self, name=None, description=None, pools=None, users=None,
-                  groups=None):
-        if name is None:
-            name = self.make_name('role')
-        if description is None:
-            description = self.make_string()
-        role = Role(name=name, description=description)
-        role.save()
-        if pools:
-            role.resource_pools.add(*pools)
-        if users:
-            role.users.add(*users)
-        if groups:
-            role.groups.add(*groups)
-        return role
 
     def make_KeySource(self, protocol=None, auth_id=None, auto_update=False):
         if protocol is None:

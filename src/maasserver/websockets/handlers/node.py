@@ -27,7 +27,6 @@ from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
@@ -693,9 +692,7 @@ class NodeHandler(TimestampedModelHandler):
 
         can_access_node = (
             self.user.is_superuser or obj.owner == self.user or
-            (obj.owner is None and obj.pool is not None and
-             ResourcePool.objects.user_can_access_pool(
-                 self.user, obj.pool)))
+            obj.owner is None)
         if can_access_node:
             return obj.as_self()
         raise HandlerDoesNotExistError(params[self._meta.pk])
