@@ -112,6 +112,7 @@ class UserHandler(OperationsHandler):
         )
 
     def read(self, request, username):
+        """Return user details."""
         return get_object_or_404(User, username=username)
 
     @admin_method
