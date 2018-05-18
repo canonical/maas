@@ -1,8 +1,14 @@
-maas (2.4.0~rc1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.4.0~rc2-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 03 May 2018 03:50:59 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 18 May 2018 14:27:47 -0400
+
+maas (2.4.0~rc1-6959-gd7a158fc3-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 11 May 2018 14:34:52 -0400
 
 maas (2.4.0~beta3-6929-g62682abf5-0ubuntu1) bionic; urgency=medium
 
