@@ -4,7 +4,6 @@
 """Configuration for the MAAS region."""
 
 __all__ = [
-    "IS_PREMIUM",
     "RegionConfiguration",
 ]
 
@@ -22,9 +21,6 @@ from provisioningserver.utils.config import (
     ExtendedURL,
     UnicodeString,
 )
-
-
-IS_PREMIUM = False
 
 
 class RegionConfigurationMeta(ConfigurationMeta):

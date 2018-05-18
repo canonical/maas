@@ -16,10 +16,8 @@
             <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</th>
             <th>
               <span role="columnheader" data-ng-click="selectColumnOrSort('owner', 'owner_pool')" data-ng-class="{'is-active': table.visibleColumns['owner_pool'] === 'owner', 'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Owner">Owner</span>
-              <span data-ng-if="MAAS_config.is_premium">
-                |
-                <span role="columnheader" data-ng-click="selectColumnOrSort('pool', 'owner_pool')" data-ng-class="{'is-active': table.visibleColumns['owner_pool'] === 'pool', 'is-sorted': table.predicate === 'pool', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Pool">Pool</span>
-              </span>
+              |
+              <span role="columnheader" data-ng-click="selectColumnOrSort('pool', 'owner_pool')" data-ng-class="{'is-active': table.visibleColumns['owner_pool'] === 'pool', 'is-sorted': table.predicate === 'pool', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Pool">Pool</span>
             </th>
             <th role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right" title="Cores">Cores</th>
             <th role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right" title="RAM (GiB)">RAM (GiB)</th>
