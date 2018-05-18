@@ -57,32 +57,11 @@ class TestResourcePoolHandler(MAASServerTestCase):
             data['name'] for data in handler.list({})]
         self.assertEqual(['default', pool.name], returned_pool_names)
 
-    def test_create(self):
-        handler = ResourcePoolHandler(factory.make_admin(), {})
-        user1 = factory.make_User()
-        user2 = factory.make_User()
-        group1 = factory.make_UserGroup()
-        group2 = factory.make_UserGroup()
-        result = handler.create(
-            {'name': factory.make_name('pool'),
-             'description': factory.make_name('description'),
-             'users': [{'id': user1.id}, {'id': user2.id}],
-             'groups': [{'id': group1.id}, {'id': group2.id}]})
-        pool = ResourcePool.objects.get(id=result['id'])
-        self.assertCountEqual(pool.users, [user1, user2])
-        self.assertCountEqual(pool.groups, [group1, group2])
-
     def test_create_annotations(self):
         handler = ResourcePoolHandler(factory.make_admin(), {})
-        user1 = factory.make_User()
-        user2 = factory.make_User()
-        group1 = factory.make_UserGroup()
-        group2 = factory.make_UserGroup()
         result = handler.create(
             {'name': factory.make_name('pool'),
-             'description': factory.make_name('description'),
-             'users': [{'id': user1.id}, {'id': user2.id}],
-             'groups': [{'id': group1.id}, {'id': group2.id}]})
+             'description': factory.make_name('description')})
         self.assertEqual(0, result['machine_total_count'])
         self.assertEqual(0, result['machine_ready_count'])
 

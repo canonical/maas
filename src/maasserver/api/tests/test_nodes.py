@@ -323,8 +323,8 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
             extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_pool_filters_by_pool(self):
-        pool1 = factory.make_ResourcePool(users=[self.user])
-        pool2 = factory.make_ResourcePool(users=[self.user])
+        pool1 = factory.make_ResourcePool()
+        pool2 = factory.make_ResourcePool()
         node1 = factory.make_Node(pool=pool1)
         factory.make_Node(pool=pool2)
 
@@ -335,9 +335,8 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
             [node1.system_id], extract_system_ids_from_nodes(node_list))
 
     def test_node_list_without_pool_does_not_filter(self):
-        user = self.user
         nodes = [
-            factory.make_Node(pool=factory.make_ResourcePool(users=[user]))
+            factory.make_Node(pool=factory.make_ResourcePool())
             for _ in range(3)]
 
         query = RequestFixture({}, '', self.user)

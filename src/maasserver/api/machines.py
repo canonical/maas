@@ -1672,10 +1672,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "architecture": architecture,
                     "storage": storage,
                 }
-                # Only match allocation if Pod's zone matches.
-                pods = Pod.objects.filter(
-                    Q(default_pool__role__users=request.user) |
-                    Q(default_pool__role__groups__users=request.user))
+                pods = Pod.objects.all()
                 if zone is not None:
                     pods = pods.filter(zone__name=zone)
                 if pods:

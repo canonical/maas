@@ -6,7 +6,6 @@
 __all__ = []
 
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models import (
     FileStorage,
@@ -139,20 +138,6 @@ class UserProfileTest(MAASServerTestCase):
         self.assertEqual(reload_object(node).owner, new_user)
         self.assertEqual(reload_object(ipaddress).user, new_user)
         self.assertEqual(reload_object(iprange).user, new_user)
-
-    def test_transfer_resources_missing_target_access(self):
-        user = factory.make_User()
-        pool = factory.make_ResourcePool(users=[user])
-        node = factory.make_Node(owner=user, pool=pool)
-        new_user = factory.make_User()
-        error = self.assertRaises(
-            ValidationError, user.userprofile.transfer_resources, new_user)
-        self.assertEqual(
-            error.message,
-            "Can't transfer machines to new user, user missing access target"
-            " resource pool(s)")
-        # owner didn't change
-        self.assertEqual(reload_object(node).owner, user)
 
     def test_manager_all_users(self):
         users = set(factory.make_User() for _ in range(3))

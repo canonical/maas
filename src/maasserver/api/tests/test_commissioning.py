@@ -326,10 +326,6 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             owner=factory.make_User(), with_empty_script_sets=True)
         for script_result in node.current_commissioning_script_set:
             self.store_result(script_result, exit_status=0)
-        node = factory.make_Node(
-            pool=factory.make_ResourcePool(), with_empty_script_sets=True)
-        for script_result in node.current_commissioning_script_set:
-            self.store_result(script_result, exit_status=0)
 
         url = reverse('node_results_handler')
         response = self.client.get(url)

@@ -40,8 +40,6 @@ __all__ = [
     "list_all_usable_architectures",
     "MAASForm",
     "MachineForm",
-    "ManageResourcePoolsAssociationForm",
-    "ManageUserGroupsForm",
     "NetworksListingForm",
     "NewUserCreationForm",
     "NetworkDiscoveryForm",
@@ -64,7 +62,6 @@ __all__ = [
     "UpdateRaidForm",
     "UpdateVirtualBlockDeviceForm",
     "UpdateVolumeGroupForm",
-    "UserGroupForm",
     "WindowsForm",
     "ZoneForm",
     ]
@@ -160,7 +157,6 @@ from maasserver.models import (
     SSHKey,
     SSLKey,
     Tag,
-    UserGroup,
     VirtualBlockDevice,
     VolumeGroup,
     Zone,
@@ -193,8 +189,6 @@ from maasserver.utils.osystems import (
     validate_min_hwe_kernel,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.worker_user import user_name as worker_username
-from metadataserver.nodeinituser import user_name as node_init_username
 from netaddr import (
     IPNetwork,
     valid_ipv6,
@@ -1416,54 +1410,6 @@ class DeleteUserForm(Form):
         help_text="Transfer resources owned by the user to this user.")
 
 
-class UserGroupForm(MAASModelForm):
-    """Form for managing a user group."""
-
-    class Meta:
-        model = UserGroup
-        fields = (
-            'name',
-            'description',
-            'local',
-            )
-
-    def clean(self):
-        if self.is_update and not self.instance.local:
-            raise ValidationError("Can't edit non-local group")
-        return super().clean()
-
-    def clean_local(self):
-        new_local = self.cleaned_data['local']
-        if self.is_update and new_local != self.instance.local:
-            raise ValidationError("Can't change user group type")
-
-        # if not specified, apply the field default (when creating an object)
-        if not self.is_update and 'local' not in self.data:
-            self.cleaned_data['local'] = self.fields['local'].initial
-        return self.cleaned_data['local']
-
-
-class ManageUserGroupsForm(Form):
-    """A form to add/remove users with groups."""
-
-    user = forms.ModelMultipleChoiceField(
-        queryset=User.objects.filter(is_active=True).exclude(
-            username__in=(worker_username, node_init_username)),
-        label="User group to add/remove ", required=True)
-
-
-class ManageResourcePoolsAssociationForm(Form):
-    """A form to grant/revoke access to resource pools.
-
-    It's used to manage user and user groups association with resource pools.
-
-    """
-
-    pool = forms.ModelMultipleChoiceField(
-        queryset=ResourcePool.objects.all(),
-        label="Resource pool to grant/revoke access to", required=True)
-
-
 class ConfigForm(Form):
     """A base class for forms that save the content of their fields into
     Config objects.
@@ -2029,28 +1975,6 @@ class ResourcePoolForm(MAASModelForm):
             'name',
             'description',
             )
-
-    def save(self):
-        pool = super().save()
-        user_ids = set(self.data.getlist('users'))
-        if user_ids:
-            self._update_linked(
-                pool.users, pool.grant_user, pool.revoke_user, User, user_ids)
-        group_ids = set(self.data.getlist('groups'))
-        if group_ids:
-            self._update_linked(
-                pool.groups, pool.grant_group, pool.revoke_group, UserGroup,
-                group_ids)
-        return pool
-
-    def _update_linked(self, current_set, grant, revoke, model, ids):
-        current_ids = set(current_set.values_list('id', flat=True))
-        to_add = model.objects.filter(id__in=(ids - current_ids))
-        to_remove = model.objects.filter(id__in=(current_ids - ids))
-        for entry in to_remove:
-            revoke(entry)
-        for entry in to_add:
-            grant(entry)
 
 
 class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):

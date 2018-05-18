@@ -9,12 +9,9 @@ from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_NAME,
     ResourcePool,
 )
-from maasserver.models.role import Role
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.worker_user import get_worker_user
-from metadataserver.nodeinituser import get_node_init_user
 
 
 class TestResourcePoolManager(MAASServerTestCase):
@@ -33,61 +30,6 @@ class TestResourcePoolManager(MAASServerTestCase):
         self.assertEqual(
             ResourcePool.objects.get_default_resource_pool().name,
             DEFAULT_RESOURCEPOOL_NAME)
-
-    def test_get_user_resource_pools_user_in_role(self):
-        user = factory.make_User()
-        default_pool = ResourcePool.objects.get_default_resource_pool()
-        pool1 = factory.make_ResourcePool()
-        pool2 = factory.make_ResourcePool()
-        factory.make_ResourcePool()  # a pool the user doesn't have access to
-        factory.make_Role(users=[user], pools=[pool1, pool2])
-        self.assertCountEqual(
-            ResourcePool.objects.get_user_resource_pools(user),
-            [default_pool, pool1, pool2])
-
-    def test_get_user_resource_pools_user_group_in_role(self):
-        user = factory.make_User()
-        default_pool = ResourcePool.objects.get_default_resource_pool()
-        pool1 = factory.make_ResourcePool()
-        pool2 = factory.make_ResourcePool()
-        factory.make_ResourcePool()  # a pool the user doesn't have access to
-        group = factory.make_UserGroup(users=[user])
-        factory.make_Role(groups=[group], pools=[pool1, pool2])
-        self.assertCountEqual(
-            ResourcePool.objects.get_user_resource_pools(user),
-            [default_pool, pool1, pool2])
-
-    def test_get_user_resource_pools_role_direct_and_via_group(self):
-        user = factory.make_User()
-        group = factory.make_UserGroup(users=[user])
-        default_pool = ResourcePool.objects.get_default_resource_pool()
-        pool1 = factory.make_ResourcePool()
-        pool2 = factory.make_ResourcePool()
-        factory.make_Role(users=[user], pools=[pool1])
-        factory.make_Role(groups=[group], pools=[pool2])
-        self.assertCountEqual(
-            ResourcePool.objects.get_user_resource_pools(user),
-            [default_pool, pool1, pool2])
-
-    def test_user_can_access_pool(self):
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        manager = ResourcePool.objects
-        self.assertFalse(manager.user_can_access_pool(user, pool))
-        pool.grant_user(user)
-        self.assertTrue(manager.user_can_access_pool(user, pool))
-
-    def test_user_can_access_pool_worker_user(self):
-        user = get_worker_user()
-        pool = factory.make_ResourcePool()
-        self.assertTrue(
-            ResourcePool.objects.user_can_access_pool(user, pool))
-
-    def test_user_can_access_pool_node_init_user(self):
-        user = get_node_init_user()
-        pool = factory.make_ResourcePool()
-        self.assertTrue(
-            ResourcePool.objects.user_can_access_pool(user, pool))
 
 
 class TestResourcePool(MAASServerTestCase):
@@ -108,30 +50,10 @@ class TestResourcePool(MAASServerTestCase):
     def test_is_default_false(self):
         self.assertFalse(factory.make_ResourcePool().is_default())
 
-    def test_users(self):
-        user1 = factory.make_User()
-        user2 = factory.make_User()
-        factory.make_User()
-        pool = factory.make_ResourcePool(users=[user1, user2])
-        self.assertCountEqual(pool.users, [user1, user2])
-
-    def test_groups(self):
-        group1 = factory.make_UserGroup()
-        group2 = factory.make_UserGroup()
-        factory.make_UserGroup()
-        pool = factory.make_ResourcePool(groups=[group1, group2])
-        self.assertCountEqual(pool.groups, [group1, group2])
-
     def test_delete(self):
         pool = factory.make_ResourcePool()
         pool.delete()
         self.assertIsNone(reload_object(pool))
-
-    def test_delete_removes_role(self):
-        pool = factory.make_ResourcePool()
-        role = pool.role_set.first()
-        pool.delete()
-        self.assertIsNone(reload_object(role))
 
     def test_delete_default_fails(self):
         pool = ResourcePool.objects.get_default_resource_pool()
@@ -141,80 +63,3 @@ class TestResourcePool(MAASServerTestCase):
         pool = ResourcePool.objects.get_default_resource_pool()
         factory.make_Node(pool=pool)
         self.assertRaises(ValidationError, pool.delete)
-
-    def test_create_adds_predefined_role(self):
-        name = factory.make_name()
-        pool = factory.make_ResourcePool(name=name)
-        role = Role.objects.get(name='role-{}'.format(name))
-        self.assertCountEqual(role.resource_pools.all(), [pool])
-
-    def test_grant_user(self):
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        pool.grant_user(user)
-        self.assertIn(
-            pool,
-            ResourcePool.objects.get_user_resource_pools(user))
-
-    def test_revoke_user(self):
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        pool.grant_user(user)
-        pool.revoke_user(user)
-        self.assertNotIn(
-            pool, ResourcePool.objects.get_user_resource_pools(user))
-
-    def test_revoke_user_with_machine_in_pool_fail(self):
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        pool = factory.make_ResourcePool(users=[user], nodes=[node])
-        # default_pool = ResourcePool.objects.get_default_resource_pool()
-        self.assertRaises(ValidationError, pool.revoke_user, user)
-
-    def test_revoke_user_with_machine_access_via_group(self):
-        user = factory.make_User()
-        group = factory.make_UserGroup(users=[user])
-        pool = factory.make_ResourcePool(groups=[group], users=[user])
-        factory.make_Node(owner=user, pool=pool)
-        pool.revoke_user(user)
-        self.assertIn(pool, ResourcePool.objects.get_user_resource_pools(user))
-
-    def test_grant_group(self):
-        user = factory.make_User()
-        group = factory.make_UserGroup(users=[user])
-        pool = factory.make_ResourcePool()
-        pool.grant_group(group)
-        self.assertIn(
-            pool, ResourcePool.objects.get_user_resource_pools(user))
-
-    def test_revoke_group(self):
-        user = factory.make_User()
-        group = factory.make_UserGroup(users=[user])
-        pool = factory.make_ResourcePool(groups=[group])
-        pool.revoke_group(group)
-        self.assertNotIn(
-            pool, ResourcePool.objects.get_user_resource_pools(user))
-
-    def test_revoke_group_with_owned_machine_fail(self):
-        user = factory.make_User()
-        group = factory.make_UserGroup(users=[user])
-        pool = factory.make_ResourcePool(groups=[group])
-        factory.make_Node(owner=user, pool=pool)
-        self.assertRaises(ValidationError, pool.revoke_group, group)
-
-    def test_revoke_group_with_machine_direct_access(self):
-        user = factory.make_User()
-        group = factory.make_UserGroup(users=[user])
-        pool = factory.make_ResourcePool(groups=[group], users=[user])
-        factory.make_Node(owner=user, pool=pool)
-        pool.revoke_group(group)
-        self.assertIn(pool, ResourcePool.objects.get_user_resource_pools(user))
-
-    def test_revoke_group_with_machine_other_group_access(self):
-        user = factory.make_User()
-        group1 = factory.make_UserGroup(users=[user])
-        group2 = factory.make_UserGroup(users=[user])
-        pool = factory.make_ResourcePool(groups=[group1, group2])
-        factory.make_Node(owner=user, pool=pool)
-        pool.revoke_group(group1)
-        self.assertIn(pool, ResourcePool.objects.get_user_resource_pools(user))
