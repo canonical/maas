@@ -209,6 +209,8 @@ def filtered_nodes_list_from_request(request, model=None):
         the nodes in the domain will be returned.
     :param zone: An optional name for a physical zone. Only events relating to
         the nodes in the zone will be returned.
+    :param pool: An optional name for a resource pool. Only nodes belonging
+        to the pool will be returned.
     :param agent_name: An optional agent name.  Only events relating to the
         nodes with matching agent names will be returned.
     """
@@ -239,6 +241,9 @@ def filtered_nodes_list_from_request(request, model=None):
     match_zone_name = request.GET.get('zone', None)
     if match_zone_name is not None:
         nodes = nodes.filter(zone__name=match_zone_name)
+    match_pool_name = request.GET.get('pool', None)
+    if match_pool_name is not None:
+        nodes = nodes.filter(pool__name=match_pool_name)
     match_agent_name = request.GET.get('agent_name', None)
     if match_agent_name is not None:
         nodes = nodes.filter(agent_name=match_agent_name)
@@ -592,6 +597,10 @@ class NodesHandler(OperationsHandler):
         :param zone: An optional name for a physical zone. Only nodes relating
             to the nodes in the zone will be returned.
         :type zone: unicode
+
+        :param pool: An optional name for a resource pool. Only nodes belonging
+            to the pool will be returned.
+        :type pool: unicode
 
         :param agent_name: An optional agent name.  Only nodes relating to the
             nodes with matching agent names will be returned.

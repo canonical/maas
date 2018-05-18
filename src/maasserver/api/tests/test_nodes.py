@@ -127,8 +127,10 @@ def extract_system_ids_from_nodes(nodes):
 
 
 class RequestFixture:
-    def __init__(self, dict, fields):
-        self.user = factory.make_User()
+    def __init__(self, dict, fields, user=None):
+        if user is None:
+            user = factory.make_User()
+        self.user = user
         self.GET = get_overridden_query_dict(dict, QueryDict(''), fields)
 
 
@@ -314,6 +316,31 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
                  for _ in range(3)]
 
         query = RequestFixture({}, '')
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
+
+        self.assertSequenceEqual(
+            [node.system_id for node in nodes],
+            extract_system_ids_from_nodes(node_list))
+
+    def test_node_list_with_pool_filters_by_pool(self):
+        pool1 = factory.make_ResourcePool(users=[self.user])
+        pool2 = factory.make_ResourcePool(users=[self.user])
+        node1 = factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+
+        query = RequestFixture({'pool': pool1.name}, 'pool', self.user)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
+
+        self.assertSequenceEqual(
+            [node1.system_id], extract_system_ids_from_nodes(node_list))
+
+    def test_node_list_without_pool_does_not_filter(self):
+        user = self.user
+        nodes = [
+            factory.make_Node(pool=factory.make_ResourcePool(users=[user]))
+            for _ in range(3)]
+
+        query = RequestFixture({}, '', self.user)
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertSequenceEqual(

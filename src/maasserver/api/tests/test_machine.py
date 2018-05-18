@@ -203,6 +203,20 @@ class TestMachineAPI(APITestCase.ForUser):
                 parsed_result['zone']['name'],
                 parsed_result['zone']['description']])
 
+    def test_GET_returns_pool(self):
+        pool = factory.make_ResourcePool()
+        machine = factory.make_Node(pool=pool)
+        pool.grant_user(self.user)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(http.client.OK, response.status_code)
+        result = json_load_bytes(response.content)
+        self.assertEqual(
+            result['pool'],
+            {'id': pool.id,
+             'name': pool.name,
+             'description': pool.description,
+             'resource_uri': reverse('resourcepool_handler', args=[pool.id])})
+
     def test_GET_returns_boot_interface(self):
         machine = factory.make_Node(interface=True)
         machine.boot_interface = machine.interface_set.first()
