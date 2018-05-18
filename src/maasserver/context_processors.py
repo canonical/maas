@@ -8,10 +8,7 @@ __all__ = [
     ]
 
 from django.conf import settings
-from maasserver.config import (
-    IS_PREMIUM,
-    RegionConfiguration,
-)
+from maasserver.config import RegionConfiguration
 from maasserver.models import (
     Config,
     RegionController,
@@ -50,6 +47,5 @@ def global_options(request):
         'completed_intro': Config.objects.get_config('completed_intro'),
         'user_completed_intro': user_completed_intro,
         'analytics_user_id': analytics_user_id,
-        'maas_uuid': uuid,
-        'is_premium': IS_PREMIUM
+        'maas_uuid': uuid
     }

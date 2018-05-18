@@ -27,7 +27,6 @@ from crochet import TimeoutError
 from django.core.exceptions import ValidationError
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
-from maasserver.config import IS_PREMIUM
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -682,12 +681,7 @@ ACTION_CLASSES = (
     Lock,
     Unlock,
     SetZone,
-)
-if IS_PREMIUM:
-    ACTION_CLASSES += (
-        SetPool,
-    )
-ACTION_CLASSES += (
+    SetPool,
     ImportImages,
     Delete,
 )

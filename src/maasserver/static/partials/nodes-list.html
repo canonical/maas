@@ -191,7 +191,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="ng-hide" data-ng-show="MAAS_config.is_premium && tabs[tab].actionOption.name === 'set-pool'">
+                            <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-pool'">
                                 <div class="row">
                                     <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
                                         <li class="p-inline-list__item col-3">
@@ -802,7 +802,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                     </li>
                                 </ul>
                             </li>
-                            <li class="ng-hide" data-ng-show="MAAS_config.is_premium && (tabs.machines.metadata.pool.length > 0)">
+                            <li class="ng-hide" data-ng-show="tabs.machines.metadata.pool.length > 0">
                                 <a href="" class="sidebar__link maas-accordion-tab">Resource pools <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="pool in tabs.machines.metadata.pool | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('pool', pool.name, 'machines') }">
@@ -972,7 +972,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             </table>
         </div>
     </div>
-    <div class="row ng-hide"  data-ng-show="MAAS_config.is_premium && currentpage === 'pools'">
+    <div class="row ng-hide"  data-ng-show="currentpage === 'pools'">
         <div class="p-table__wrapper row">
             <table class="p-table--sortable p-table-expanding p-table--pools">
                 <thead>
