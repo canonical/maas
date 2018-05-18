@@ -1414,6 +1414,16 @@ describe("NodeDetailsController", function() {
             expect($scope.canEdit()).toBe(false);
         });
 
+        it("returns true if not super user but device", function() {
+            var controller = makeController();
+            $scope.isDevice = true;
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
+            expect($scope.canEdit()).toBe(true);
+        });
+
         it("returns true if controller", function() {
             var controller = makeController();
             $scope.isController = true;

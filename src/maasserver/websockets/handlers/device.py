@@ -430,10 +430,6 @@ class DeviceHandler(NodeHandler):
 
     def update(self, params):
         """Update the object from params."""
-        # Only admin users can perform update.
-        if not reload_object(self.user).is_superuser:
-            raise HandlerPermissionError()
-
         data = super().update(params)
         if 'tags' in params:
             device_obj = Device.objects.get(system_id=data['system_id'])

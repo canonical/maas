@@ -34,7 +34,6 @@ from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerError,
-    HandlerPermissionError,
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.device import DeviceHandler
@@ -898,14 +897,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertEqual(data[0]['mac_address'], new_mac_address)
 
     @transactional
-    def test_update_raise_permissions_error_for_non_admin(self):
-        user = factory.make_User()
-        handler = DeviceHandler(user, {})
-        self.assertRaises(
-            HandlerPermissionError,
-            handler.update, {})
-
-    @transactional
     def test_update_does_not_raise_validation_error_for_invalid_arch(self):
         user = factory.make_admin()
         handler = DeviceHandler(user, {})
@@ -937,6 +928,46 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertEqual(updated_node["hostname"], new_hostname)
         self.assertEqual(updated_node["zone"]["id"], new_zone.id)
         self.assertItemsEqual(updated_node["tags"], new_tags)
+
+    @transactional
+    def test_update_updates_node_non_admin_update_own(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        node = factory.make_Node(
+            owner=user, interface=True, node_type=NODE_TYPE.DEVICE)
+        node_data = self.dehydrate_device(node, user)
+        new_zone = factory.make_Zone()
+        new_hostname = factory.make_name("hostname")
+        new_tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        node_data["hostname"] = new_hostname
+        node_data["zone"] = {
+            "name": new_zone.name,
+        }
+        node_data["tags"] = new_tags
+        updated_node = handler.update(node_data)
+        self.assertEqual(updated_node["hostname"], new_hostname)
+        self.assertEqual(updated_node["zone"]["id"], new_zone.id)
+        self.assertItemsEqual(updated_node["tags"], new_tags)
+
+    @transactional
+    def test_update_updates_node_non_admin_not_update_own(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        handler = DeviceHandler(user1, {})
+        node = factory.make_Node(
+            owner=user2, interface=True, node_type=NODE_TYPE.DEVICE)
+        node_data = self.dehydrate_device(node, user1)
+        new_zone = factory.make_Zone()
+        new_hostname = factory.make_name("hostname")
+        node_data["hostname"] = new_hostname
+        node_data["zone"] = {
+            "name": new_zone.name,
+        }
+        self.assertRaises(
+            HandlerDoesNotExistError, handler.update, node_data)
 
     @transactional
     def test_delete_interface_admin(self):

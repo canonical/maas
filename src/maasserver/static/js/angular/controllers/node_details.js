@@ -695,6 +695,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
+            // Devices can be edited, since either the user is a super
+            // user, or he owns the device (since he can't see devices
+            // that he doesn't own).
+            if ($scope.isDevice) {
+                return true;
+            }
             return (
                 $scope.isRackControllerConnected() &&
                     $scope.isSuperUser() &&
