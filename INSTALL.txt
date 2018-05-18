@@ -243,27 +243,18 @@ The first thing to do is to install LXD and ZFS::
 Create a LXC profile for MAAS
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, lets create a container profile by copying the default::
+First, create a container profile for MAAS::
 
- $ lxc profile copy default maas
+ $ lxc profile create maas
 
 Second, bind the NIC inside the container (eth0) against the bridge on the
 physical host (br0)::
 
  $ lxc profile device set maas eth0 parent br0
 
-Third, edit the container profile (`lxc profile edit maas`) with::
+Finally, create a root disk for the container to use::
 
-  config:
-    raw.lxc: |-
-      lxc.cgroup.devices.allow = c 10:237 rwm
-      lxc.aa_profile = unconfined
-      lxc.cgroup.devices.allow = b 7:* rwm
-    security.privileged: "true"
-
-And lastly, ensure that the LXC container has loop devices added::
-
-  for i in `seq 0 7`; do lxc profile device add maas loop$i unix-block path=/dev/loop$i; done
+ $ lxc profile device add maas root disk path=/ pool=default
 
 Launch LXD container
 ^^^^^^^^^^^^^^^^^^^^
