@@ -119,6 +119,7 @@ angular.module('MAAS').controller('NodesListController', [
             tab.cancelPoolAction();
             tab.activeTargetAction = action;
             tab.activeTarget = pool;
+            tab.editingPool = pool;  // used by maas-obj-form for editing
         };
         $scope.tabs.pools.cancelPoolAction = function() {
             let tab = $scope.tabs.pools;
@@ -132,6 +133,9 @@ angular.module('MAAS').controller('NodesListController', [
                 action === undefined || tab.activeTargetAction === action) &&
                 tab.activeTarget !== null &&
                 tab.activeTarget.id === pool.id;
+        };
+        $scope.tabs.pools.actionConfirmEditPool = function() {
+            $scope.tabs.pools.cancelPoolAction();
         };
         $scope.tabs.pools.actionConfirmDeletePool = function() {
             let tab = $scope.tabs.pools;
