@@ -19,12 +19,14 @@ describe("AddHardwareController", function() {
         $q = $injector.get("$q");
     }));
 
-    // Load the ZonesManager, MachinesManager, RegionConnection,
-    // DomainManager, and mock the websocket connection.
-    var ZonesManager, MachinesManager, GeneralManager, DomainsManager;
+    // Load the ZonesManager, ResourcePoolManager, MachinesManager,
+    // RegionConnection, DomainManager, and mock the websocket connection.
+    var ZonesManager, ResorucePoolManager, MachinesManager, GeneralManager,
+        DomainsManager;
     var RegionConnection, ManagerHelperService, webSocket;
     beforeEach(inject(function($injector) {
         ZonesManager = $injector.get("ZonesManager");
+        ResourcePoolsManager = $injector.get("ResourcePoolsManager");
         MachinesManager = $injector.get("MachinesManager");
         GeneralManager = $injector.get("GeneralManager");
         DomainsManager = $injector.get("DomainsManager");
@@ -69,6 +71,7 @@ describe("AddHardwareController", function() {
             $timeout: $timeout,
             $http: $http,
             ZonesManager: ZonesManager,
+            ResourcePoolsManager: ResourcePoolsManager,
             MachinesManager: MachinesManager,
             GeneralManager: GeneralManager,
             DomainsManager: DomainsManager,
@@ -100,6 +103,7 @@ describe("AddHardwareController", function() {
         var controller = makeController();
         expect($scope.viewable).toBe(false);
         expect($scope.zones).toBe(ZonesManager.getItems());
+        expect($scope.pools).toBe(ResourcePoolsManager.getItems());
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.architectures).toEqual([]);
         expect($scope.hwe_kernels).toEqual([]);
@@ -371,6 +375,7 @@ describe("AddHardwareController", function() {
         it("returns true if zone is null", function() {
             var controller = makeControllerWithMachine();
             $scope.machine.zone = null;
+            $scope.machine.pool = null;
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {};
             $scope.machine.macs[0].mac = '00:11:22:33:44:55';
@@ -381,6 +386,7 @@ describe("AddHardwareController", function() {
         it("returns true if architecture is empty", function() {
             var controller = makeControllerWithMachine();
             $scope.machine.zone = {};
+            $scope.machine.pool = {};
             $scope.machine.architecture = '';
             $scope.machine.power.type = {};
             $scope.machine.macs[0].mac = '00:11:22:33:44:55';
@@ -446,6 +452,7 @@ describe("AddHardwareController", function() {
         it("returns false if all is correct", function() {
             var controller = makeControllerWithMachine();
             $scope.machine.zone = {};
+            $scope.machine.pool = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {};
             $scope.machine.macs[0].mac = '00:11:22:33:44:55';
@@ -456,6 +463,7 @@ describe("AddHardwareController", function() {
         it("returns false if all is correct and mac[1] is blank", function() {
             var controller = makeControllerWithMachine();
             $scope.machine.zone = {};
+            $scope.machine.pool = {};
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {};
             $scope.machine.macs[0].mac = '00:11:22:33:44:55';
@@ -572,6 +580,10 @@ describe("AddHardwareController", function() {
                 id: 1,
                 name: makeName("zone")
             };
+            $scope.machine.pool = {
+                id: 2,
+                name: makeName("pool")
+            };
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {
                 name: "virsh"
@@ -617,6 +629,10 @@ describe("AddHardwareController", function() {
                 zone: {
                     id: $scope.machine.zone.id,
                     name: $scope.machine.zone.name
+                },
+                pool: {
+                    id: $scope.machine.pool.id,
+                    name: $scope.machine.pool.name
                 }
             });
         });
