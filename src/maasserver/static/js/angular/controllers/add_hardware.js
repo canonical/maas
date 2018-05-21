@@ -5,11 +5,12 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$q', '$scope', '$http', 'ZonesManager', 'MachinesManager',
-    'GeneralManager', 'DomainsManager', 'RegionConnection',
-    'ManagerHelperService', 'ValidationService', function(
-        $q, $scope, $http, ZonesManager, MachinesManager,
-        GeneralManager, DomainsManager, RegionConnection,
+    '$q', '$scope', '$http', 'ZonesManager', 'ResourcePoolsManager',
+    'MachinesManager', 'GeneralManager', 'DomainsManager',
+    'RegionConnection', 'ManagerHelperService', 'ValidationService',
+    function(
+        $q, $scope, $http, ZonesManager, ResourcePoolsManager,
+        MachinesManager, GeneralManager, DomainsManager, RegionConnection,
         ManagerHelperService, ValidationService) {
 
         // Set the addHardwareScope in the parent, so it can call functions
@@ -21,6 +22,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.viewable = false;
         $scope.model = 'machine';
         $scope.zones = ZonesManager.getItems();
+        $scope.pools = ResourcePoolsManager.getItems();
         $scope.domains = DomainsManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
         $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
@@ -263,6 +265,15 @@ angular.module('MAAS').controller('AddHardwareController', [
             }
         }
 
+        // Get the default resource pools from loaded pools.
+        function defaultResourcePool() {
+            if($scope.pools.length === 0) {
+                return null;
+            } else {
+                return $scope.pools[0];
+            }
+        }
+
         // Get the default architecture from the loaded architectures.
         function defaultArchitecture() {
             if($scope.architectures.length === 0) {
@@ -298,6 +309,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                     domain: cloneMachine.domain,
                     macs: [newMAC()],
                     zone: cloneMachine.zone,
+                    pool: cloneMachine.pool,
                     architecture: cloneMachine.architecture,
                     min_hwe_kernel: cloneMachine.min_hwe_kernel,
                     power: {
@@ -313,6 +325,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 domain: DomainsManager.getDefaultDomain(),
                 macs: [newMAC()],
                 zone: defaultZone(),
+                pool: defaultResourcePool(),
                 architecture: defaultArchitecture(),
                 min_hwe_kernel: $scope.default_min_hwe_kernel.text,
                 power: {
@@ -367,6 +380,10 @@ angular.module('MAAS').controller('AddHardwareController', [
                 zone: {
                     id: machine.zone.id,
                     name: machine.zone.name
+                },
+                pool: {
+                    id: machine.pool.id,
+                    name: machine.pool.name
                 }
             };
         }
@@ -500,6 +517,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             in_error = (
                 $scope.machine === null ||
                 $scope.machine.zone === null ||
+                $scope.machine.pool === null ||
                 $scope.machine.architecture === '' ||
                 $scope.machine.power.type === null ||
                 $scope.invalidName($scope.machine));

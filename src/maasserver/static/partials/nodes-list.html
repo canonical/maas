@@ -408,6 +408,13 @@
                             data-ng-options="zone as zone.name for zone in zones">
                         </select>
                     </div>
+                    <div class="p-form__group">
+                        <label for="pool-select" class="p-form__label col-2">Resource pool</label>
+                        <select name="pool" id="pool-select" class="col-3"
+                            data-ng-model="machine.pool"
+                            data-ng-options="pool as pool.name for pool in pools">
+                        </select>
+                    </div>
                     <div class="p-form__group" data-ng-repeat="mac in machine.macs">
                         <label for="mac-address" class="p-form__label col-2"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span>&nbsp;</label>
                         <div class="p-form__group-input col-3 p-search-box">
