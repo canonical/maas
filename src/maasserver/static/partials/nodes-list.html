@@ -216,10 +216,6 @@
                                     <div class="col-5 p-form__group">
                                         <label for="{$ tab $}-pool4">Pool name</label>
                                         <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name"></input>
-                                        <label for="{$ tab $}-pool5">Users</label>
-                                        <span id="{$ tab $}-pool5" data-maas-resource-pool-access="users" data-ng-model="tabs[tab].newPool.users" data-collection="users" class="tags--inline"></span>
-                                        <label for="{$ tab $}-pool6">Groups</label>
-                                        <span id="{$ tab $}-pool6" data-maas-resource-pool-access="groups" data-ng-model="tabs[tab].newPool.groups" data-collection="groups" class="tags--inline"></span>
                                     </div>
                                 </div>
                             </form>
@@ -981,6 +977,9 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
     </div>
     <div class="row ng-hide"  data-ng-show="currentpage === 'pools'">
         <div class="p-table__wrapper row">
+          <maas-obj-form obj="tabs.pools.editingPool" manager="tabs.pools.manager"
+                         manager-method="updateItem" after-save="tabs.pools.actionConfirmEditPool"
+                         inline="false" save-on-blur="false">
             <table class="p-table--sortable p-table-expanding p-table--pools">
                 <thead>
                     <tr class="p-table__row">
@@ -993,31 +992,68 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 <tbody>
                     <tr class="p-table__row u-no-margin--top"
                         data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name"
-                        data-ng-class="{'is-active': tabs.pools.isPoolAction(pool, 'delete')}">
-                        <td class="p-table__cell col-3" aria-label="Name">{$ pool.name $}</td>
-                        <td class="p-table__cell col-2" aria-label="Machine count">{$ pool.machine_ready_count $} of {$ pool.machine_total_count $} Ready</td>
-                        <td class="p-table__cell col-5" aria-label="Description">{$ pool.description $}</td>
-                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="isSuperUser()">
-                          <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)">
-                            <i class="p-icon--delete" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">Delete</i>
-                          </button>
+                        data-ng-class="{'is-active': tabs.pools.isPoolAction(pool)}">
+                        <td class="p-table__cell col-3" aria-label="Name">
+                          <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.name $}</span>
+                          <maas-obj-field
+                            ng-if="tabs.pools.isPoolAction(pool, 'edit')"
+                            type="text" key="name" disable-label="true" subtle="false"
+                            placeholder="Name (required)">
                         </td>
-                        <td class="is-active p-table-expanding__panel col-12" col-span="3"
-                            data-ng-if="tabs.pools.isPoolAction(pool, 'delete')">
+                        <td class="p-table__cell col-2" aria-label="Machine count">
+                          {$ pool.machine_ready_count $} of {$ pool.machine_total_count $} Ready
+                        </td>
+                        <td class="p-table__cell col-5" aria-label="Description">
+                          <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.description $}</span>
+                        </td>
+                        <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="isSuperUser()">
+                          <span data-ng-hide="tabs.pools.isPoolAction(pool)">
+                            <button class="p-button--base is-small">
+                              <i class="p-icon--edit" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">Edit</i>
+                            </button>
+                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)">
+                              <i class="p-icon--delete" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">Delete</i>
+                            </button>
+                          </span>
+                        </td>
+                        <td class="is-active p-table-expanding__panel col-12" col-span="4"
+                            data-ng-if="tabs.pools.isPoolAction(pool)">
+                          <div class="row" data-ng-if="tabs.pools.isPoolAction(pool, 'edit')">
+                            <div class="col-6">
+                              <div class="p-form-group">
+                                <maas-obj-field
+                                  type="textarea" key="description" label="Description" inline="true"
+                                  subtle="false" input-width="12" class="u-no-margin--left">
+                                </maas-obj-field>
+                              </div>
+                            </div>
+                          </div>
                           <hr />
                           <div class="row u-no-margin--top">
                             <div class="col-6">
                               <p data-ng-if="tabs.pools.actionErrorMessage">
                                 <span class="p-icon--warning">Warning:</span> {$ tabs.pools.actionErrorMessage $}
                               </p>
-                              <p data-ng-if="!tabs.pools.actionErrorMessage">
+                              <p data-ng-if="!tabs.pools.actionErrorMessage && tabs.pools.isPoolAction(pool, 'delete')">
                                 Are you sure you want to remove this resource pool?
                               </p>
                             </div>
                             <div class="col-6">
                               <span class="u-float--right">
-                                <button class="p-button--base" type="button" data-ng-click="tabs.pools.cancelPoolAction()">Cancel</button>
-                                <button class="p-button--negative" data-ng-click="tabs.pools.actionConfirmDeletePool()">Remove</button>
+                                <button class="p-button--base" type="button"
+                                        data-ng-click="tabs.pools.cancelPoolAction()">
+                                  Cancel
+                                </button>
+                                <button class="p-button--positive" type="button"
+                                        data-ng-if="tabs.pools.isPoolAction(pool, 'edit')"
+                                        maas-obj-save>
+                                  Save
+                                </button>
+                                <button class="p-button--negative" type="button"
+                                        data-ng-if="tabs.pools.isPoolAction(pool, 'delete')"
+                                        data-ng-click="tabs.pools.actionConfirmDeletePool()">
+                                  Remove
+                                </button>
                               </span>
                             </div>
                           </div>
@@ -1025,6 +1061,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </tr>
                 </tbody>
             </table>
+          </maas-obj-form>
         </div>
     </div>
     <div class="row ng-hide"  data-ng-show="currentpage === 'controllers'">
