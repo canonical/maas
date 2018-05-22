@@ -35,7 +35,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         auth_url = Config.objects.get_config('external_auth_url')
         if auth_url:
             request.external_auth_info = ExternalAuthInfo(
-                'macaroon', 'https://example.com')
+                'macaroon', 'https://example.com', 'domain')
         else:
             request.external_auth_info = None
         return request

@@ -6,12 +6,16 @@ from datetime import (
     timedelta,
 )
 import json
-from unittest import mock
+from unittest import (
+    mock,
+    TestCase,
+)
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
+    _get_authentication_caveat,
     _get_macaroon_oven_key,
     _IDClient,
     APIError,
@@ -467,7 +471,7 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
             self.client.get('/accounts/discharge-request/'), response)
         mock_auth_request.assert_called_with(
             mock_bakery, auth_endpoint='https://auth.example.com',
-            req_headers={'cookie': ''})
+            auth_domain='', req_headers={'cookie': ''})
 
     def test_discharge_request_strip_url_trailing_slash(self):
         Config.objects.set_config(
@@ -499,3 +503,23 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(), {'id': user.id, 'username': user.username})
+
+
+class TestGetAuthenticationCaveat(TestCase):
+
+    def test_caveat(self):
+        caveat = _get_authentication_caveat(
+            'https://example.com', domain='mydomain')
+        self.assertEqual(caveat.location, 'https://example.com')
+        self.assertEqual(caveat.condition, 'is-authenticated-user @mydomain')
+
+    def test_caveat_no_domain(self):
+        caveat = _get_authentication_caveat('https://example.com')
+        self.assertEqual(caveat.location, 'https://example.com')
+        self.assertEqual(caveat.condition, 'is-authenticated-user')
+
+    def test_caveat_empty_domain(self):
+        caveat = _get_authentication_caveat(
+            'https://example.com', domain='')
+        self.assertEqual(caveat.location, 'https://example.com')
+        self.assertEqual(caveat.condition, 'is-authenticated-user')

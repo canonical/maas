@@ -181,6 +181,8 @@ class TestCmdInit(MAASTestCase):
         self.check_output_mock = self.patch(init.subprocess, 'check_output')
         self.check_output_mock.return_value = json.dumps(
             {'external_auth_url': ''})
+        # avoid printouts
+        self.patch(sys, "stdout", StringIO())
 
     def test_defaults(self):
         options = self.parser.parse_args([])
