@@ -9,7 +9,10 @@ __all__ = [
 
 from operator import attrgetter
 
-from django.db.models import Sum
+from django.db.models import (
+    Q,
+    Sum,
+)
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -19,7 +22,6 @@ from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
-    GPT_REQUIRED_SIZE,
     INITIAL_PARTITION_OFFSET,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
@@ -35,7 +37,8 @@ class CurtinStorageGenerator:
     def __init__(self, node):
         self.node = node
         self.boot_disk = node.get_boot_disk()
-        self.boot_disk_first_partition = None
+        self.grub_device_ids = []
+        self.boot_first_partitions = []
         self.operations = {
             "disk": [],
             "partition": [],
@@ -53,6 +56,7 @@ class CurtinStorageGenerator:
 
         # Add all the items to operations.
         self._add_disk_and_filesystem_group_operations()
+        self._find_grub_devices()
         self._add_partition_operations()
         self._add_format_and_mount_operations()
 
@@ -117,18 +121,13 @@ class CurtinStorageGenerator:
     def _requires_prep_partition(self, block_device):
         """Return True if block device requires the prep partition."""
         arch, _ = self.node.split_arch()
-        return (
-            self.boot_disk.id == block_device.id and
-            arch == "ppc64el")
+        return arch == "ppc64el" and block_device.id in self.grub_device_ids
 
     def _requires_bios_grub_partition(self, block_device):
         """Return True if block device requires the bios_grub partition."""
         arch, _ = self.node.split_arch()
         bios_boot_method = self.node.get_bios_boot_method()
-        return (
-            arch == "amd64" and
-            bios_boot_method != "uefi" and
-            block_device.size >= GPT_REQUIRED_SIZE)
+        return arch == "amd64" and bios_boot_method != "uefi"
 
     def _add_partition_operations(self):
         """Add all the partition operations.
@@ -145,10 +144,14 @@ class CurtinStorageGenerator:
                 partitions = list(partition_table.partitions.order_by('id'))
                 for idx, partition in enumerate(partitions):
                     # If this is the first partition and prep or bios_grub
-                    # partition is required then set boot_disk_first_partition
-                    # so partition creation can occur in the correct order.
-                    if (requires_prep or requires_bios_grub) and idx == 0:
-                        self.boot_disk_first_partition = partition
+                    # partition is required then track this as a first
+                    # partition for boot
+                    is_boot_partition = (
+                        (requires_prep or requires_bios_grub) and
+                        block_device.id in self.grub_device_ids and
+                        idx == 0)
+                    if is_boot_partition:
+                        self.boot_first_partitions.append(partition)
                     self.operations["partition"].append(partition)
 
     def _add_format_and_mount_operations(self):
@@ -187,6 +190,25 @@ class CurtinStorageGenerator:
             filesystem.filesystem_group_id is None and
             filesystem.cache_set is None)
 
+    def _find_grub_devices(self):
+        """Save which devices should have grub installed."""
+        for raid in self.operations["raid"]:
+            partition_ids, block_devices_ids = zip(
+                *raid.filesystems.values_list('partition', 'block_device'))
+            partition_ids = set(partition_ids)
+            partition_ids.discard(None)
+            block_devices_ids = set(block_devices_ids)
+            block_devices_ids.discard(None)
+            devices = PhysicalBlockDevice.objects.filter(
+                Q(id__in=block_devices_ids) |
+                Q(partitiontable__partitions__in=partition_ids))
+            devices = list(devices.values_list('id', flat=True))
+            if self.boot_disk.id in devices:
+                self.grub_device_ids = devices
+
+        if not self.grub_device_ids:
+            self.grub_device_ids = [self.boot_disk.id]
+
     def _generate_disk_operations(self):
         """Generate all disk operations."""
         for block_device in self.operations["disk"]:
@@ -221,30 +243,33 @@ class CurtinStorageGenerator:
         add_prep_partition = False
         add_bios_grub_partition = False
         partition_table = block_device.get_partitiontable()
+        bios_boot_method = self.node.get_bios_boot_method()
+        node_arch, _ = self.node.split_arch()
+        should_install_grub = block_device.id in self.grub_device_ids
+
         if partition_table is not None:
             disk_operation["ptable"] = self._get_ptable_type(
                 partition_table)
-        elif block_device.id == self.boot_disk.id:
-            bios_boot_method = self.node.get_bios_boot_method()
-            node_arch, _ = self.node.split_arch()
-            if bios_boot_method in [
-                    "uefi", "powernv", "powerkvm"]:
-                disk_operation["ptable"] = "gpt"
-                if node_arch == "ppc64el":
-                    add_prep_partition = True
-            elif (block_device.size >= GPT_REQUIRED_SIZE and
-                    node_arch == "amd64"):
-                disk_operation["ptable"] = "gpt"
-                add_bios_grub_partition = True
-            else:
-                disk_operation["ptable"] = "msdos"
+        elif should_install_grub:
+            gpt_table = (
+                bios_boot_method in ["uefi", "powernv", "powerkvm"] or
+                (bios_boot_method != "uefi" and node_arch == "amd64"))
+            disk_operation["ptable"] = "gpt" if gpt_table else "msdos"
+            add_prep_partition = (
+                node_arch == "ppc64el" and
+                bios_boot_method in ("uefi", "powernv", "powerkvm"))
+
+        # always add a boot partition for GPT without UEFI
+        add_bios_grub_partition = (
+            disk_operation.get("ptable") == "gpt" and
+            node_arch == "amd64" and bios_boot_method != "uefi")
 
         # Set this disk to be the grub device if it's the boot disk and doesn't
         # require a prep partition. When a prep partition is required grub
         # must be installed on that partition and not in the partition header
         # of that disk.
         requires_prep = self._requires_prep_partition(block_device)
-        if self.boot_disk.id == block_device.id and not requires_prep:
+        if should_install_grub and not requires_prep:
             disk_operation["grub_device"] = True
         self.storage_config.append(disk_operation)
 
@@ -304,20 +329,13 @@ class CurtinStorageGenerator:
     def _generate_partition_operations(self):
         """Generate all partition operations."""
         for partition in self.operations["partition"]:
-            if partition == self.boot_disk_first_partition:
+            if partition in self.boot_first_partitions:
                 # This is the first partition in the boot disk and add prep
                 # partition at the beginning of the partition table.
                 device_name = partition.partition_table.block_device.get_name()
                 if self._requires_prep_partition(
                         partition.partition_table.block_device):
                     self._generate_prep_partition(device_name)
-                elif self._requires_bios_grub_partition(
-                        partition.partition_table.block_device):
-                    self._generate_bios_grub_partition(device_name)
-                else:
-                    raise ValueError(
-                        "boot_disk_first_partition set when prep and "
-                        "bios_grub partition are not required.")
                 self._generate_partition_operation(
                     partition, include_initial=False)
             else:
@@ -459,12 +477,11 @@ class CurtinStorageGenerator:
         }
         for filesystem in filesystem_group.filesystems.all():
             block_or_partition = filesystem.get_parent()
+            name = block_or_partition.get_name()
             if filesystem.fstype == FILESYSTEM_TYPE.RAID:
-                raid_operation["devices"].append(
-                    block_or_partition.get_name())
+                raid_operation["devices"].append(name)
             elif filesystem.fstype == FILESYSTEM_TYPE.RAID_SPARE:
-                raid_operation["spare_devices"].append(
-                    block_or_partition.get_name())
+                raid_operation["spare_devices"].append(name)
         raid_operation["devices"] = sorted(raid_operation["devices"])
         raid_operation["spare_devices"] = sorted(
             raid_operation["spare_devices"])
