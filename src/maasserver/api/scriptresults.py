@@ -13,6 +13,7 @@ from collections import OrderedDict
 from email.utils import format_datetime
 from io import BytesIO
 import os
+import re
 import tarfile
 import time
 
@@ -339,10 +340,15 @@ class NodeScriptResultHandler(OperationsHandler):
             except ValidationError as e:
                 raise MAASAPIValidationError(e)
 
+        bin_regex = re.compile('.+\.tar(\..+)?')
         for script_result in filter_script_results(
                 script_set, filters, hardware_type):
             mtime = time.mktime(script_result.updated.timetuple())
-            if output == 'combined':
+            if bin_regex.search(script_result.name) is not None:
+                # Binary files only have one output
+                files[script_result.name] = script_result.output
+                times[script_result.name] = mtime
+            elif output == 'combined':
                 title = self.__make_file_title(script_result, filetype)
                 files[title] = script_result.output
                 times[title] = mtime
@@ -382,7 +388,10 @@ class NodeScriptResultHandler(OperationsHandler):
                 dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
                 binary.write(
                     ('%s %s %s\n' % (dashes, filename, dashes)).encode())
-                binary.write(content)
+                if bin_regex.search(filename) is not None:
+                    binary.write(b'Binary file')
+                else:
+                    binary.write(content)
                 binary.write(b'\n')
             return HttpResponse(
                 binary.getvalue(), content_type='application/binary')
@@ -393,8 +402,8 @@ class NodeScriptResultHandler(OperationsHandler):
                 script_set.id)
             with tarfile.open(mode='w:xz', fileobj=binary) as tar:
                 for filename, content in files.items():
-                    tarinfo = tarfile.TarInfo(
-                        name=os.path.join(root_dir, filename))
+                    tarinfo = tarfile.TarInfo(name=os.path.join(
+                        root_dir, os.path.basename(filename)))
                     tarinfo.size = len(content)
                     tarinfo.mode = 0o644
                     tarinfo.mtime = times[filename]

@@ -87,7 +87,6 @@ describe("NodeResultsController", function() {
         } else {
             loadManager.and.returnValue($q.defer().promise);
         }
-
         // Start the connection so a valid websocket is created in the
         // RegionConnection.
         RegionConnection.connect("");
@@ -432,6 +431,28 @@ describe("NodeResultsController", function() {
             $scope.updateLogOutput();
             expect($scope.logOutput).toEqual(
                 "BUG: Unknown log status " + installation_result.status);
+        });
+
+        it("sets install id to ScriptResult /tmp/install.log", function() {
+            var defer = $q.defer();
+            var loadItems_defer = $q.defer();
+            var controller = makeController(loadItems_defer);
+            $scope.section = {area: "logs"};
+            MachinesManager._activeItem = node;
+            webSocket.returnData.push(makeFakeResponse([]));
+            var manager = NodeResultsManagerFactory.getManager(node);
+            spyOn(manager, "loadItems").and.returnValue(defer.promise);
+            manager.installation_results = [];
+            var i;
+            for(i = 0; i < 3; i ++) {
+                manager.installation_results.push(makeResult());
+            }
+            var installation_result = pickItem(manager.installation_results);
+            installation_result.name = '/tmp/install.log';
+            defer.resolve();
+            loadItems_defer.resolve();
+            $rootScope.$digest();
+            expect($scope.logs.availableOptions[0].id, installation_result.id);
         });
     });
 
