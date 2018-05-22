@@ -83,6 +83,7 @@ class PodForm(MAASModelForm):
             'name',
             'tags',
             'zone',
+            'default_pool',
             'cpu_over_commit_ratio',
             'memory_over_commit_ratio',
         ]
@@ -95,6 +96,11 @@ class PodForm(MAASModelForm):
         label="Physical zone", required=False,
         initial=Zone.objects.get_default_zone,
         queryset=Zone.objects.all(), to_field_name='name')
+
+    default_pool = forms.ModelChoiceField(
+        label="Default pool of created machines", required=False,
+        initial=lambda: ResourcePool.objects.get_default_resource_pool().name,
+        queryset=ResourcePool.objects.all(), to_field_name='name')
 
     cpu_over_commit_ratio = forms.FloatField(
         label="CPU over commit ratio", initial=1, required=False,
@@ -134,10 +140,7 @@ class PodForm(MAASModelForm):
                 self.initial['type'] = self.instance.power_type
         if instance is not None:
             self.initial['zone'] = instance.zone.name
-            self.initial['cpu_over_commit_ratio'] = (
-                instance.cpu_over_commit_ratio)
-            self.initial['memory_over_commit_ratio'] = (
-                instance.memory_over_commit_ratio)
+            self.initial['default_pool'] = instance.default_pool.name
 
     def _clean_fields(self):
         """Override to dynamically add fields based on the value of `type`
@@ -199,25 +202,10 @@ class PodForm(MAASModelForm):
             if existing_obj is not None:
                 self.instance = existing_obj
             self.instance = super(PodForm, self).save(commit=False)
-            if tags:
-                self.instance.tags = tags
-            if zone:
-                self.instance.zone = zone
-            if cpu_over_commit_ratio:
-                self.instance.cpu_over_commit_ratio = cpu_over_commit_ratio
-            if memory_over_commit_ratio:
-                self.instance.memory_over_commit_ratio = (
-                    memory_over_commit_ratio)
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
             return self.instance
 
-        tags = self.cleaned_data.get('tags')
-        zone = self.cleaned_data.get('zone')
-        cpu_over_commit_ratio = self.cleaned_data.get(
-            'cpu_over_commit_ratio')
-        memory_over_commit_ratio = self.cleaned_data.get(
-            'memory_over_commit_ratio')
         power_type = self.cleaned_data['type']
         # Set power_parameters to the generated param_fields.
         power_parameters = {

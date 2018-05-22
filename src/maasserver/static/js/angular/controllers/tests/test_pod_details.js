@@ -36,6 +36,7 @@ describe("PodDetailsController", function() {
     // Load the required managers.
     var PodsManager, UsersManager, GeneralManager, DomainsManager;
     var ZonesManager, ManagerHelperService, ErrorService;
+    var ResourcePoolsManager;
     beforeEach(inject(function($injector) {
         PodsManager = $injector.get("PodsManager");
         UsersManager = $injector.get("UsersManager");
@@ -45,6 +46,7 @@ describe("PodDetailsController", function() {
         MachinesManager = $injector.get("MachinesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
+        ResourcePoolsManager = $injector.get("ResourcePoolsManager");
     }));
 
     // Mock the websocket connection to the region
@@ -102,7 +104,8 @@ describe("PodDetailsController", function() {
             ZonesManager: ZonesManager,
             MachinesManager: MachinesManager,
             ManagerHelperService: ManagerHelperService,
-            ErrorService: ErrorService
+            ErrorService: ErrorService,
+            ResourcePoolsManager: ResourcePoolsManager
         });
 
         return controller;
@@ -156,6 +159,7 @@ describe("PodDetailsController", function() {
         expect($scope.power_types).toBe(GeneralManager.getData('power_types'));
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
+        expect($scope.pools).toBe(ResourcePoolsManager.getItems());
         expect($scope.editing).toBe(false);
     });
 
@@ -170,7 +174,8 @@ describe("PodDetailsController", function() {
                     UsersManager,
                     DomainsManager,
                     ZonesManager,
-                    MachinesManager
+                    MachinesManager,
+                    ResourcePoolsManager
                 ]);
         });
 

@@ -34,13 +34,14 @@ describe("PodsListController", function() {
 
     // Load the required managers.
     var PodsManager, UsersManager, GeneralManager;
-    var ZonesManager, ManagerHelperService;
+    var ZonesManager, ManagerHelperService, ResourcePoolsManager;
     beforeEach(inject(function($injector) {
         PodsManager = $injector.get("PodsManager");
         UsersManager = $injector.get("UsersManager");
         GeneralManager = $injector.get("GeneralManager");
         ZonesManager = $injector.get("ZonesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
+        ResourcePoolsManager = $injector.get("ResourcePoolsManager");
     }));
 
     // Mock the websocket connection to the region
@@ -108,6 +109,7 @@ describe("PodsListController", function() {
         expect($scope.add.open).toBe(false);
         expect($scope.powerTypes).toBe(GeneralManager.getData('power_types'));
         expect($scope.zones).toBe(ZonesManager.getItems());
+        expect($scope.pools).toBe(ResourcePoolsManager.getItems());
     });
 
     it("calls loadManagers with PodsManager, UsersManager, \
@@ -115,7 +117,8 @@ describe("PodsListController", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [
-                    PodsManager, UsersManager, GeneralManager, ZonesManager]);
+                    PodsManager, UsersManager, GeneralManager, ZonesManager,
+                    ResourcePoolsManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -497,16 +500,33 @@ describe("PodsListController", function() {
             return zone;
         }
 
+        function makePool(id) {
+            var pool = {
+                name: makeName("pool")
+            };
+            if(angular.isDefined(id)) {
+                pool.id = id;
+            } else {
+                pool.id = makeInteger(1, 100);
+            }
+            return pool;
+        }
+
         it("sets add.open to true", function() {
             var controller = makeController();
             var zero = makeZone(0);
             ZonesManager._items.push(makeZone());
             ZonesManager._items.push(zero);
+            var defaultPool = makePool(0);
+            ResourcePoolsManager._items.push(makePool());
+            ResourcePoolsManager._items.push(defaultPool);
             $scope.addPod();
             expect($scope.add.open).toBe(true);
             expect($scope.add.obj.cpu_over_commit_ratio).toBe(1);
             expect($scope.add.obj.memory_over_commit_ratio).toBe(1);
+            expect($scope.add.obj.default_pool).toBe(0);
             expect(ZonesManager.getDefaultZone()).toBe(zero);
+            expect(ResourcePoolsManager.getDefaultPool()).toBe(defaultPool);
         });
     });
 
