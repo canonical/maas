@@ -157,6 +157,10 @@ class Capabilities:
     # for virtual pod.
     OVER_COMMIT = 'over_commit'
 
+    # Pod has a multiple storage pools, that can be used when composing
+    # a new machine.
+    STORAGE_POOLS = 'storage_pools'
+
 
 class BlockDeviceType:
     """Different types of block devices."""
@@ -202,6 +206,11 @@ class DiscoveredMachineBlockDevice(AttrHelperMixin):
         converter=converter_obj(str, optional=True), default=None)
     type = attr.ib(converter=str, default=BlockDeviceType.PHYSICAL)
 
+    # Optional id of the storage pool this block device exists on. Only
+    # used when the Pod supports STORAGE_POOLS.
+    storage_pool = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
+
     # Used when `type` is set to `BlockDeviceType.ISCSI`. The pod driver must
     # define an `iscsi_target` or it will not create the device for the
     # discovered machine.
@@ -224,6 +233,19 @@ class DiscoveredMachine(AttrHelperMixin):
         converter=converter_obj(dict), default=attr.Factory(dict))
     tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
     hostname = attr.ib(converter=str, default=None)
+
+
+@attr.s
+class DiscoveredPodStoragePool(AttrHelperMixin):
+    """Discovered pod storage pool.
+
+    Provide information on the storage pool.
+    """
+    id = attr.ib(converter=str)
+    name = attr.ib(converter=str)
+    path = attr.ib(converter=str)
+    type = attr.ib(converter=str)
+    storage = attr.ib(converter=int)
 
 
 @attr.s
@@ -259,6 +281,9 @@ class DiscoveredPod(AttrHelperMixin):
         converter=converter_list(DiscoveredMachine),
         default=attr.Factory(list))
     tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
+    storage_pools = attr.ib(
+        converter=converter_list(DiscoveredPodStoragePool),
+        default=attr.Factory(list))
 
 
 @attr.s

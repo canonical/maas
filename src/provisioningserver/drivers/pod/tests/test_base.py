@@ -19,6 +19,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachineInterface,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodStoragePool,
     get_error_message,
     JSON_POD_DRIVER_SCHEMA,
     PodActionError,
@@ -278,6 +279,15 @@ class TestDiscoveredClasses(MAASTestCase):
             factory.make_name("tag")
             for _ in range(3)
         ]
+        storage_pools = [
+            DiscoveredPodStoragePool(
+                id=factory.make_name("id"),
+                name=factory.make_name("name"),
+                storage=random.randint(4096, 8192),
+                type='dir',
+                path='/var/%s' % factory.make_name("dir"))
+            for _ in range(3)
+        ]
         for _ in range(3):
             cores = random.randint(1, 8)
             cpu_speed = random.randint(1000, 2000)
@@ -305,7 +315,8 @@ class TestDiscoveredClasses(MAASTestCase):
                         model=None, serial=None,
                         size=random.randint(512, 1024),
                         type=BlockDeviceType.ISCSI,
-                        iscsi_target=self.make_iscsi_target()))
+                        iscsi_target=self.make_iscsi_target(),
+                        storage_pool=factory.make_name("pool")))
             tags = [
                 factory.make_name("tag")
                 for _ in range(3)
@@ -322,7 +333,7 @@ class TestDiscoveredClasses(MAASTestCase):
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, local_disks=local_disks,
             iscsi_storage=iscsi_storage, hints=hints,
-            machines=machines, tags=tags)
+            machines=machines, tags=tags, storage_pools=storage_pools)
         self.assertThat(pod.asdict(), MatchesDict({
             "architectures": Equals(["amd64/generic"]),
             "cores": Equals(cores),
@@ -367,7 +378,8 @@ class TestDiscoveredClasses(MAASTestCase):
                             "tags": Equals(block_device.tags),
                             "id_path": Equals(block_device.id_path),
                             "type": Equals(block_device.type),
-                            "iscsi_target": Equals(block_device.iscsi_target)
+                            "iscsi_target": Equals(block_device.iscsi_target),
+                            "storage_pool": Equals(block_device.storage_pool),
                         })
                         for block_device in machine.block_devices
                     ]),
@@ -376,6 +388,16 @@ class TestDiscoveredClasses(MAASTestCase):
                 for machine in machines
             ]),
             "tags": Equals(tags),
+            "storage_pools": MatchesListwise([
+                MatchesDict({
+                    "id": Equals(pool.id),
+                    "name": Equals(pool.name),
+                    "storage": Equals(pool.storage),
+                    "type": Equals(pool.type),
+                    "path": Equals(pool.path),
+                })
+                for pool in storage_pools
+            ])
         }))
 
     def test_pod_fromdict(self):

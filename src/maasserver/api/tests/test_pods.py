@@ -102,8 +102,10 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
             [pod.get('id') for pod in parsed_result])
 
     def test_read_returns_limited_fields(self):
-        factory.make_Pod(capabilities=[
+        pod = factory.make_Pod(capabilities=[
             Capabilities.FIXED_LOCAL_STORAGE, Capabilities.ISCSI_STORAGE])
+        for _ in range(3):
+            factory.make_PodStoragePool(pod=pod)
         response = self.client.get(reverse('pods_handler'))
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
@@ -120,7 +122,8 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'zone',
                 'available',
                 'cpu_over_commit_ratio',
-                'memory_over_commit_ratio'
+                'memory_over_commit_ratio',
+                'storage_pools',
             ],
             list(parsed_result[0]))
         self.assertItemsEqual(
@@ -150,6 +153,17 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'iscsi_storage',
             ],
             list(parsed_result[0]['available']))
+        self.assertItemsEqual(
+            [
+                'id',
+                'name',
+                'type',
+                'path',
+                'total',
+                'used',
+                'available',
+            ],
+            list(parsed_result[0]['storage_pools'][0]))
 
     def test_create_requires_admin(self):
         response = self.client.post(

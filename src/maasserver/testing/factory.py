@@ -91,6 +91,7 @@ from maasserver.models import (
     PartitionTable,
     PhysicalBlockDevice,
     Pod,
+    PodStoragePool,
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
@@ -1943,7 +1944,7 @@ class Factory(maastesting.factory.Factory):
     def make_PhysicalBlockDevice(
             self, node=None, name=None, size=None, block_size=None,
             tags=None, model=None, serial=None, id_path=None,
-            formatted_root=False, firmware_version=None):
+            formatted_root=False, firmware_version=None, storage_pool=None):
         if node is None:
             node = self.make_Node()
         if name is None:
@@ -1974,7 +1975,7 @@ class Factory(maastesting.factory.Factory):
         block_device = PhysicalBlockDevice.objects.create(
             node=node, name=name, size=size, block_size=block_size,
             tags=tags, model=model, serial=serial, id_path=id_path,
-            firmware_version=firmware_version)
+            firmware_version=firmware_version, storage_pool=storage_pool)
         if formatted_root:
             partition = self.make_Partition(
                 partition_table=(
@@ -2300,6 +2301,25 @@ class Factory(maastesting.factory.Factory):
         key = RootKey(material=material, expiration=expiration)
         key.save()
         return key
+
+    def make_PodStoragePool(
+            self, pod=None, name=None, pool_id=None, pool_type=None,
+            path=None, storage=None):
+        if pod is None:
+            pod = self.make_Pod()
+        if name is None:
+            name = self.make_name('name')
+        if pool_id is None:
+            pool_id = self.make_name('pool_id')
+        if pool_type is None:
+            pool_type = random.choice(['dir', 'lvm'])
+        if path is None:
+            path = '/var/lib/%s' % name
+        if storage is None:
+            storage = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        return PodStoragePool.objects.create(
+            pod=pod, name=name, pool_id=pool_id, pool_type=pool_type,
+            path=path, storage=storage)
 
 
 # Create factory singleton.

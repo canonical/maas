@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model export and helpers for maasserver."""
@@ -57,6 +57,7 @@ __all__ = [
     'PhysicalInterface',
     'Pod',
     'PodHints',
+    'PodStoragePool',
     'RackController',
     'RAID',
     'RDNS',
@@ -165,6 +166,7 @@ from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
+from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.rdns import RDNS
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (

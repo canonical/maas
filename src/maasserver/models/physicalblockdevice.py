@@ -9,12 +9,17 @@ __all__ = [
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import CharField
+from django.db.models import (
+    CharField,
+    ForeignKey,
+    SET_NULL,
+)
 from maasserver import DefaultMeta
 from maasserver.models.blockdevice import (
     BlockDevice,
     BlockDeviceManager,
 )
+from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.utils.converters import human_readable_bytes
 
 
@@ -49,6 +54,13 @@ class PhysicalBlockDevice(BlockDevice):
     firmware_version = CharField(
         max_length=255, blank=True, null=True,
         help_text="Firmware version of block device.")
+
+    # Only used when the machine is composed in a Pod that supports
+    # storage pool.
+    storage_pool = ForeignKey(
+        PodStoragePool, blank=True, null=True, on_delete=SET_NULL,
+        related_name='block_devices', help_text=(
+            "Storage pool that this block device belongs to"))
 
     def clean(self):
         if not self.id_path and not (self.model and self.serial):

@@ -57,6 +57,7 @@ from maasserver.models.node import (
 )
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
+from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
@@ -163,6 +164,7 @@ class BMC(CleanSave, TimestampedModel):
     #  11. The tags of the Pod.
     #  12. CPU over commit ratio multiplier ('over_commit' capabilities).
     #  13. Memory over commit ratio multiplier ('over_commit' capabilities).
+    #  14. Default storage pool.
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
     architectures = ArrayField(
@@ -188,6 +190,9 @@ class BMC(CleanSave, TimestampedModel):
         default=1, validators=[MinValueValidator(0)])
     memory_over_commit_ratio = FloatField(
         default=1, validators=[MinValueValidator(0)])
+    default_storage_pool = ForeignKey(
+        PodStoragePool, null=True, blank=True,
+        related_name='+', on_delete=SET_NULL)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -532,6 +537,14 @@ class Pod(BMC):
                 return mac_machine_map[interface.mac_address]
         return None
 
+    def _get_storage_pool_by_id(self, pool_id):
+        """Get the `PodStoragePool` base on the `pool_id`."""
+        # Finding storage pool in python instead of using the database, so
+        # preloaded data is used. This prevents un-needed database queries.
+        for pool in self.storage_pools.all():
+            if pool.pool_id == pool_id:
+                return pool
+
     def _create_physical_block_device(self, discovered_bd, machine, name=None):
         """Create's a new `PhysicalBlockDevice` for `machine`."""
         if name is None:
@@ -542,6 +555,10 @@ class Pod(BMC):
             model = ""
         if serial is None:
             serial = ""
+        storage_pool = None
+        if discovered_bd.storage_pool:
+            storage_pool = self._get_storage_pool_by_id(
+                discovered_bd.storage_pool)
         return PhysicalBlockDevice.objects.create(
             node=machine,
             name=name,
@@ -550,7 +567,8 @@ class Pod(BMC):
             serial=serial,
             size=discovered_bd.size,
             block_size=discovered_bd.block_size,
-            tags=discovered_bd.tags)
+            tags=discovered_bd.tags,
+            storage_pool=storage_pool)
 
     def _create_iscsi_block_device(self, discovered_bd, machine, name=None):
         """Create's a new `ISCSIBlockDevice` for `machine`.
@@ -844,6 +862,15 @@ class Pod(BMC):
         existing_bd.size = discovered_bd.size
         existing_bd.block_size = discovered_bd.block_size
         existing_bd.tags = discovered_bd.tags
+
+        # Update or remove the storage pool on physical block devices.
+        if isinstance(existing_bd, PhysicalBlockDevice):
+            if discovered_bd.storage_pool:
+                existing_bd.storage_pool = self._get_storage_pool_by_id(
+                    discovered_bd.storage_pool)
+            elif existing_bd.storage_pool:
+                existing_bd.storage_pool = None
+
         existing_bd.save()
 
     def _sync_interfaces(self, interfaces, existing_machine):
@@ -930,6 +957,46 @@ class Pod(BMC):
                 "%s: machine %s no longer exists and was deleted." % (
                     self.name, remove_machine.hostname))
 
+    def sync_storage_pools(self, discovered_storage_pools):
+        """Sync the storage pools for the pod."""
+        storage_pools_by_id = {
+            pool.pool_id: pool
+            for pool in self.storage_pools.all()
+        }
+        possible_default = None
+        for discovered_pool in discovered_storage_pools:
+            pool = storage_pools_by_id.pop(
+                discovered_pool.id, None)
+            if pool:
+                pool.name = discovered_pool.name
+                pool.pool_type = discovered_pool.type
+                pool.path = discovered_pool.path
+                pool.storage = discovered_pool.storage
+                pool.save()
+            else:
+                pool = PodStoragePool.objects.create(
+                    pod=self, pool_id=discovered_pool.id,
+                    name=discovered_pool.name,
+                    pool_type=discovered_pool.type,
+                    path=discovered_pool.path,
+                    storage=discovered_pool.storage)
+                podlog.info(
+                    "%s: discovered new storage pool: %s" % (
+                        self.name, discovered_pool.name))
+            if possible_default is None:
+                possible_default = pool
+        if not self.default_storage_pool and possible_default:
+            self.default_storage_pool = possible_default
+            self.save()
+        elif self.default_storage_pool in storage_pools_by_id.values():
+            self.default_storage_pool = possible_default
+            self.save()
+        for _, pool in storage_pools_by_id.items():
+            pool.delete()
+            podlog.warning(
+                "%s: storage pool %s no longer exists and was deleted." % (
+                    self.name, pool.name))
+
     def sync(self, discovered_pod, commissioning_user):
         """Sync the pod and machines from the `discovered_pod`.
 
@@ -949,6 +1016,7 @@ class Pod(BMC):
         self.tags = list(set(self.tags).union(discovered_pod.tags))
         self.save()
         self.sync_hints(discovered_pod.hints)
+        self.sync_storage_pools(discovered_pod.storage_pools)
         self.sync_machines(discovered_pod.machines, commissioning_user)
         podlog.info(
             "%s: finished syncing discovered information" % self.name)

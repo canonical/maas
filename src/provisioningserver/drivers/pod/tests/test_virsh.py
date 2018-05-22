@@ -5,12 +5,12 @@
 
 __all__ = []
 
-from collections import OrderedDict
 import random
 from textwrap import dedent
 from unittest.mock import (
     ANY,
     call,
+    MagicMock,
     sentinel,
 )
 
@@ -27,6 +27,7 @@ from maastesting.testcase import (
 import pexpect
 from provisioningserver.drivers.pod import (
     Capabilities,
+    DiscoveredPodStoragePool,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -95,25 +96,43 @@ SAMPLE_POOLLIST = dedent("""
     """)
 
 SAMPLE_POOLINFO = dedent("""
-    Name:           default
-    UUID:           59edc0cb-4635-449a-80e2-2c8a59afa327
-    State:          running
-    Persistent:     yes
-    Autostart:      yes
-    Capacity:       452.96 GiB
-    Allocation:     279.12 GiB
-    Available:      %s GiB
+    <pool type='dir'>
+        <name>default</name>
+        <uuid>59edc0cb-4635-449a-80e2-2c8a59afa327</uuid>
+        <capacity unit='bytes'>486362096599</capacity>
+        <allocation unit='bytes'>0</allocation>
+        <available unit='bytes'>486362096599</available>
+        <source>
+        </source>
+        <target>
+            <path>/var/lib/libvirt/images</path>
+            <permissions>
+                <mode>0711</mode>
+                <owner>0</owner>
+                <group>0</group>
+            </permissions>
+        </target>
+    </pool>
     """)
 
-SAMPLE_POOLINFO_TB = dedent("""
-    Name:           default
-    UUID:           59edc0cb-4635-449a-80e2-2c8a59afa327
-    State:          running
-    Persistent:     yes
-    Autostart:      yes
-    Capacity:       2.21 TiB
-    Allocation:     880.64 GiB
-    Available:      1.35 TiB
+SAMPLE_POOLINFO_FULL = dedent("""
+    <pool type='dir'>
+        <name>default</name>
+        <uuid>59edc0cb-4635-449a-80e2-2c8a59afa327</uuid>
+        <capacity unit='bytes'>486362096599</capacity>
+        <allocation unit='bytes'>486362096599</allocation>
+        <available unit='bytes'>0</available>
+        <source>
+        </source>
+        <target>
+            <path>/var/lib/libvirt/images</path>
+            <permissions>
+                <mode>0711</mode>
+                <owner>0</owner>
+                <group>0</group>
+            </permissions>
+        </target>
+    </pool>
     """)
 
 SAMPLE_IFLIST = dedent("""
@@ -488,7 +507,9 @@ class TestVirshSSH(MAASTestCase):
         self.assertItemsEqual(['default'], expected)
 
     def test_list_machine_block_devices(self):
-        block_devices = ('vda', 'vdb')
+        block_devices = (
+            ('vda', '/var/lib/libvirt/images/example1.qcow2'),
+            ('vdb', '/var/lib/libvirt/images/example2.qcow2'))
         conn = self.configure_virshssh(SAMPLE_DOMBLKLIST)
         expected = conn.list_machine_block_devices(
             factory.make_name('machine'))
@@ -542,51 +563,33 @@ class TestVirshSSH(MAASTestCase):
         expected = conn.get_machine_memory(factory.make_name('machine'))
         self.assertEqual(int(1048576 / 1024), expected)
 
-    def test_get_pod_pool_size_map(self):
+    def test_get_pod_storage_pools(self):
         conn = self.configure_virshssh(SAMPLE_POOLINFO)
         pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
         pools_mock.return_value = [
             factory.make_name('pool') for _ in range(3)]
-        expected = conn.get_pod_pool_size_map('Capacity')
-        capacity = int(452.96 * 2**30)
-        self.assertEqual({
-            pool: capacity
-            for pool in pools_mock.return_value
-        }, expected)
+        expected = [
+            DiscoveredPodStoragePool(
+                id="59edc0cb-4635-449a-80e2-2c8a59afa327", type='dir',
+                name=pool_name, storage=452.96 * 2**30,
+                path='/var/lib/libvirt/images')
+            for pool_name in pools_mock.return_value
+        ]
+        self.assertEqual(expected, conn.get_pod_storage_pools())
 
-    def test_get_pod_pool_size_map_terabytes(self):
-        conn = self.configure_virshssh(SAMPLE_POOLINFO_TB)
-        pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
-        pools_mock.return_value = [
-            factory.make_name('pool') for _ in range(3)]
-        expected = conn.get_pod_pool_size_map('Capacity')
-        capacity = int(2.21 * 2**40)
-        self.assertEqual({
-            pool: capacity
-            for pool in pools_mock.return_value
-        }, expected)
-
-    def test_get_pod_local_storage(self):
-        conn = self.configure_virshssh(SAMPLE_POOLINFO)
-        pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
-        pools_mock.return_value = [
-            factory.make_name('pool') for _ in range(3)]
-        expected = conn.get_pod_local_storage()
-        self.assertEqual(int(452.96 * 3 * 2**30), expected)
-
-    def test_get_pod_local_storage_no_pool(self):
+    def test_get_pod_storage_pools_no_pool(self):
         conn = self.configure_virshssh(SAMPLE_POOLINFO)
         pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
         pools_mock.return_value = []
-        self.assertRaises(PodInvalidResources, conn.get_pod_local_storage)
+        self.assertEqual([], conn.get_pod_storage_pools())
 
     def test_get_pod_available_local_storage(self):
-        conn = self.configure_virshssh(SAMPLE_POOLINFO % '200')
+        conn = self.configure_virshssh(SAMPLE_POOLINFO)
         pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
         pools_mock.return_value = [
             factory.make_name('pool') for _ in range(3)]
         expected = conn.get_pod_available_local_storage()
-        self.assertEqual(int(200 * 3 * 2**30), expected)
+        self.assertEqual(int(452.96 * 3 * 2**30), expected)
 
     def test_get_machine_local_storage(self):
         conn = self.configure_virshssh(SAMPLE_DOMBLKINFO)
@@ -628,7 +631,16 @@ class TestVirshSSH(MAASTestCase):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
-        local_storage = random.randint(4096, 8192)
+        storage_pools = [
+            DiscoveredPodStoragePool(
+                id=factory.make_name('uuid'),
+                type='dir',
+                name=factory.make_name('pool'),
+                storage=random.randint(4096, 8192),
+                path='/var/lib/libvirt/images')
+            for _ in range(3)
+        ]
+        local_storage = sum(pool.storage for pool in storage_pools)
         mock_get_pod_arch = self.patch(
             virsh.VirshSSH, 'get_pod_arch')
         mock_get_pod_cpu_count = self.patch(
@@ -637,23 +649,25 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, 'get_pod_cpu_speed')
         mock_get_pod_memory = self.patch(
             virsh.VirshSSH, 'get_pod_memory')
-        mock_get_pod_local_storage = self.patch(
-            virsh.VirshSSH, 'get_pod_local_storage')
+        mock_get_pod_storage_pools = self.patch(
+            virsh.VirshSSH, 'get_pod_storage_pools')
         mock_get_pod_arch.return_value = architecture
         mock_get_pod_cpu_count.return_value = cores
         mock_get_pod_cpu_speed.return_value = cpu_speed
         mock_get_pod_memory.return_value = memory
-        mock_get_pod_local_storage.return_value = local_storage
+        mock_get_pod_storage_pools.return_value = storage_pools
 
         discovered_pod = conn.get_pod_resources()
         self.assertEquals([architecture], discovered_pod.architectures)
         self.assertEquals([
             Capabilities.COMPOSABLE,
             Capabilities.DYNAMIC_LOCAL_STORAGE,
-            Capabilities.OVER_COMMIT], discovered_pod.capabilities)
+            Capabilities.OVER_COMMIT,
+            Capabilities.STORAGE_POOLS], discovered_pod.capabilities)
         self.assertEquals(cores, discovered_pod.cores)
         self.assertEquals(cpu_speed, discovered_pod.cpu_speed)
         self.assertEquals(memory, discovered_pod.memory)
+        self.assertEquals(storage_pools, discovered_pod.storage_pools)
         self.assertEquals(local_storage, discovered_pod.local_storage)
 
     def test__get_pod_hints(self):
@@ -688,9 +702,30 @@ class TestVirshSSH(MAASTestCase):
         architecture = factory.make_name('arch')
         cores = random.randint(1, 8)
         memory = random.randint(4096, 8192)
-        devices = [
-            factory.make_name('device') for _ in range(3)
+        storage_pool_names = [
+            factory.make_name('storage')
+            for _ in range(3)
         ]
+        storage_pools = [
+            DiscoveredPodStoragePool(
+                id=factory.make_name('uuid'),
+                type='dir',
+                name=name,
+                storage=random.randint(4096, 8192),
+                path='/var/lib/libvirt/%s/' % name)
+            for name in storage_pool_names
+        ]
+        device_names = [
+            factory.make_name('device')
+            for _ in range(3)
+        ]
+        devices = []
+        for name in device_names:
+            pool = random.choice(storage_pools)
+            name = factory.make_name('device')
+            devices.append((
+                name,
+                pool.path + '/' + name))
         device_tags = [
             [
                 factory.make_name('tag')
@@ -704,6 +739,8 @@ class TestVirshSSH(MAASTestCase):
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)
         ]
+        mock_get_pod_storage_pools = self.patch(
+            virsh.VirshSSH, 'get_pod_storage_pools')
         mock_get_machine_arch = self.patch(
             virsh.VirshSSH, 'get_machine_arch')
         mock_get_machine_cpu_count = self.patch(
@@ -718,6 +755,7 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, 'get_machine_local_storage')
         mock_list_machine_mac_addresses = self.patch(
             virsh.VirshSSH, 'list_machine_mac_addresses')
+        mock_get_pod_storage_pools.return_value = storage_pools
         mock_get_machine_arch.return_value = architecture
         mock_get_machine_cpu_count.return_value = cores
         mock_get_machine_memory.return_value = memory
@@ -761,15 +799,38 @@ class TestVirshSSH(MAASTestCase):
         architecture = factory.make_name('arch')
         cores = random.randint(1, 8)
         memory = random.randint(4096, 8192)
-        devices = [
-            factory.make_name('device') for _ in range(3)
+        storage_pool_names = [
+            factory.make_name('storage')
+            for _ in range(3)
         ]
+        storage_pools = [
+            DiscoveredPodStoragePool(
+                id=factory.make_name('uuid'),
+                type='dir',
+                name=name,
+                storage=random.randint(4096, 8192),
+                path='/var/lib/libvirt/%s/' % name)
+            for name in storage_pool_names
+        ]
+        device_names = [
+            factory.make_name('device')
+            for _ in range(3)
+        ]
+        devices = []
+        for name in device_names:
+            pool = random.choice(storage_pools)
+            name = factory.make_name('device')
+            devices.append((
+                name,
+                pool.path + '/' + name))
         local_storage = [
             random.randint(4096, 8192) for _ in range(2)
         ] + [None]  # Last storage device is bad.
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)
         ]
+        mock_get_pod_storage_pools = self.patch(
+            virsh.VirshSSH, 'get_pod_storage_pools')
         mock_get_machine_arch = self.patch(
             virsh.VirshSSH, 'get_machine_arch')
         mock_get_machine_cpu_count = self.patch(
@@ -784,6 +845,7 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, 'get_machine_local_storage')
         mock_list_machine_mac_addresses = self.patch(
             virsh.VirshSSH, 'list_machine_mac_addresses')
+        mock_get_pod_storage_pools.return_value = storage_pools
         mock_get_machine_arch.return_value = architecture
         mock_get_machine_cpu_count.return_value = cores
         mock_get_machine_memory.return_value = memory
@@ -829,19 +891,22 @@ class TestVirshSSH(MAASTestCase):
 
     def test_get_usable_pool(self):
         conn = self.configure_virshssh('')
-        pools = OrderedDict([(
-            factory.make_name("pool"),
-            random.randint(i * 1000, (i + 1) * 1000))
-            for i in range(3)
-        ])
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
         disk = RequestedMachineBlockDevice(
             size=random.randint(
-                list(pools.values())[0] + 1, list(pools.values())[1] - 1),
+                pools[0].available + 1, pools[1].available - 1),
             tags=[])
         self.patch(
-            virsh.VirshSSH, "get_pod_pool_size_map").return_value = pools
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
         self.assertEqual(
-            list(pools.keys())[1],
+            pools[1].name,
             conn.get_usable_pool(disk))
 
     def test_create_local_volume_returns_None(self):
@@ -856,7 +921,7 @@ class TestVirshSSH(MAASTestCase):
         self.patch(virsh.VirshSSH, "list_pools").return_value = tagged_pools
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_run.side_effect = (
-            SAMPLE_POOLINFO % '0', SAMPLE_POOLINFO % '200', None)
+            SAMPLE_POOLINFO_FULL, SAMPLE_POOLINFO, None)
         disk = RequestedMachineBlockDevice(size=4096, tags=tagged_pools)
         used_pool, _ = conn.create_local_volume(disk)
         self.assertEqual(tagged_pools[1], used_pool)
@@ -1498,6 +1563,8 @@ class TestVirshPodDriver(MAASTestCase):
             factory.make_name('machine')
             for _ in range(3)
         ]
+        mock_pod = MagicMock()
+        mock_pod.storage_pools = sentinel.storage_pools
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = True
         mock_list_pools = self.patch(virsh.VirshSSH, 'list_pools')
@@ -1506,6 +1573,7 @@ class TestVirshPodDriver(MAASTestCase):
             virsh.VirshSSH, 'create_storage_pool')
         mock_get_pod_resources = self.patch(
             virsh.VirshSSH, 'get_pod_resources')
+        mock_get_pod_resources.return_value = mock_pod
         mock_get_pod_hints = self.patch(
             virsh.VirshSSH, 'get_pod_hints')
         mock_list_machines = self.patch(virsh.VirshSSH, 'list_machines')
@@ -1523,9 +1591,9 @@ class TestVirshPodDriver(MAASTestCase):
             mock_list_machines, MockCalledOnceWith())
         self.expectThat(
             mock_get_discovered_machine, MockCallsMatch(
-                call(machines[0]),
-                call(machines[1]),
-                call(machines[2])))
+                call(machines[0], storage_pools=sentinel.storage_pools),
+                call(machines[1], storage_pools=sentinel.storage_pools),
+                call(machines[2], storage_pools=sentinel.storage_pools)))
         self.expectThat(['virtual'], Equals(discovered_pod.tags))
         self.expectThat(driver.default_storage_pool, Equals('default'))
 

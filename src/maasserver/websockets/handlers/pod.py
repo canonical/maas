@@ -58,6 +58,7 @@ class PodHandler(TimestampedModelHandler):
             'memory',
             'power_type',
             'power_parameters',
+            'default_storage_pool',
         ]
         listen_channels = [
             "pod",
@@ -94,6 +95,14 @@ class PodHandler(TimestampedModelHandler):
         data["composed_machines_count"] = obj.node_set.filter(
             node_type=NODE_TYPE.MACHINE).count()
         data["hints"] = self.dehydrate_hints(obj.hints)
+        if not for_list:
+            storage_pools = obj.storage_pools.all()
+            if len(storage_pools) > 0:
+                pools_data = []
+                for pool in storage_pools:
+                    pools_data.append(self.dehydrate_storage_pool(pool))
+                data["storage_pools"] = pools_data
+                data["default_storage_pool"] = obj.default_storage_pool.pool_id
         return data
 
     def dehydrate_total(self, obj):
@@ -169,6 +178,19 @@ class PodHandler(TimestampedModelHandler):
             'iscsi_storage': hints.iscsi_storage,
             'iscsi_storage_gb': '%.1f' % (
                 hints.iscsi_storage / (1024 ** 3)),
+        }
+
+    def dehydrate_storage_pool(self, pool):
+        """Dehydrate PodStoragePool."""
+        used = pool.get_used_storage()
+        return {
+            'id': pool.pool_id,
+            'name': pool.name,
+            'type': pool.pool_type,
+            'path': pool.path,
+            'total': pool.storage,
+            'used': used,
+            'available': pool.storage - used,
         }
 
     @asynchronous

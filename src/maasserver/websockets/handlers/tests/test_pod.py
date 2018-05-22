@@ -91,11 +91,15 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod = factory.make_Pod(
             architectures=architectures, capabilities=[
                 Capabilities.FIXED_LOCAL_STORAGE, Capabilities.ISCSI_STORAGE,
-                Capabilities.COMPOSABLE])
+                Capabilities.COMPOSABLE, Capabilities.STORAGE_POOLS])
         pod.hints.cores = random.randint(8, 16)
         pod.hints.memory = random.randint(4096, 8192)
         pod.hints.cpu_speed = random.randint(2000, 3000)
         pod.hints.save()
+        for _ in range(3):
+            pool = factory.make_PodStoragePool(pod)
+        pod.default_storage_pool = pool
+        pod.save()
         return pod
 
     def make_compose_machine_result(self, pod):
@@ -109,7 +113,19 @@ class TestPodHandler(MAASTransactionServerTestCase):
             cpu_speed=random.randint(1000, 3000), local_storage=0)
         return composed_machine, pod_hints
 
-    def dehydrate_pod(self, pod, admin=True):
+    def dehydrate_storage_pool(self, pool):
+        used = pool.get_used_storage()
+        return {
+            'id': pool.pool_id,
+            'name': pool.name,
+            'type': pool.pool_type,
+            'path': pool.path,
+            'total': pool.storage,
+            'used': used,
+            'available': pool.storage - used,
+        }
+
+    def dehydrate_pod(self, pod, admin=True, for_list=True):
         data = {
             "id": pod.id,
             "name": pod.name,
@@ -186,13 +202,19 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     1024 ** 3))
         if admin:
             data.update(pod.power_parameters)
+        if not for_list and pod.storage_pools.all():
+            data["storage_pools"] = [
+                self.dehydrate_storage_pool(pool)
+                for pool in pod.storage_pools.all()
+            ]
+            data["default_storage_pool"] = pod.default_storage_pool.pool_id
         return data
 
     def test_get(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {})
         pod = self.make_pod_with_hints()
-        expected_data = self.dehydrate_pod(pod)
+        expected_data = self.dehydrate_pod(pod, for_list=False)
         result = handler.get({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
 
@@ -200,8 +222,16 @@ class TestPodHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         handler = PodHandler(user, {})
         pod = self.make_pod_with_hints()
-        expected_data = self.dehydrate_pod(pod, admin=False)
+        expected_data = self.dehydrate_pod(pod, admin=False, for_list=False)
         result = handler.get({"id": pod.id})
+        self.assertThat(result, Equals(expected_data))
+
+    def test_list(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {})
+        pod = self.make_pod_with_hints()
+        expected_data = [self.dehydrate_pod(pod, for_list=True)]
+        result = handler.list({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
 
     @wait_for_reactor
@@ -213,7 +243,8 @@ class TestPodHandler(MAASTransactionServerTestCase):
         mock_discover_and_sync_pod = self.patch(
             PodForm, 'discover_and_sync_pod')
         mock_discover_and_sync_pod.return_value = succeed(pod)
-        expected_data = yield deferToDatabase(self.dehydrate_pod, pod)
+        expected_data = yield deferToDatabase(
+            self.dehydrate_pod, pod, for_list=False)
         observed_data = yield handler.refresh({"id": pod.id})
         self.assertThat(
             mock_discover_and_sync_pod, MockCalledOnceWith())

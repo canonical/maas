@@ -28,6 +28,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachineInterface,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodStoragePool,
     PodDriver,
 )
 from provisioningserver.logger import get_maas_logger
@@ -37,7 +38,6 @@ from provisioningserver.rpc.utils import (
     create_node,
 )
 from provisioningserver.utils import (
-    convert_size_to_bytes,
     shell,
     typed,
 )
@@ -57,6 +57,12 @@ maaslog = get_maas_logger("drivers.pod.virsh")
 XPATH_ARCH = "/domain/os/type/@arch"
 XPATH_BOOT = "/domain/os/boot"
 XPATH_OS = "/domain/os"
+
+XPATH_POOL_TYPE = "/pool/@type"
+XPATH_POOL_AVAILABLE = "/pool/available"
+XPATH_POOL_CAPACITY = "/pool/capacity"
+XPATH_POOL_PATH = "/pool/target/path"
+XPATH_POOL_UUID = "/pool/uuid"
 
 
 DOM_TEMPLATE = dedent("""\
@@ -340,10 +346,10 @@ class VirshSSH(pexpect.spawn):
 
     def list_machine_block_devices(self, machine):
         """Lists all devices for VM."""
-        keys = ['Device', 'Target']
+        keys = ['Device', 'Target', 'Source']
         output = self.run(['domblklist', machine, '--details'])
         devices = self.get_column_values(output, keys)
-        return [d[1] for d in devices if d[0] == 'disk']
+        return [(d[1], d[2]) for d in devices if d[0] == 'disk']
 
     def get_machine_state(self, machine):
         """Gets the VM state."""
@@ -408,40 +414,52 @@ class VirshSSH(pexpect.spawn):
         # Memory in MiB.
         return int(KiB / 1024)
 
-    def get_pod_pool_size_map(self, key, disk=None, default_pool=None):
-        """Return the mapping for a size calculation based on key."""
-        pools = {}
+    def get_pod_storage_pools(
+            self, disk=None, default_pool=None, with_available=False):
+        """Get the storage pools information."""
+        pools = []
         for pool in self.list_pools(default_pool, disk):
-            output = self.run(['pool-info', pool]).strip()
+            output = self.run(['pool-dumpxml', pool]).strip()
             if output is None:
                 # Skip if cannot get more information.
                 continue
-            pools[pool] = convert_size_to_bytes(
-                self.get_key_value(output, key))
-        return pools
 
-    def get_pod_local_storage(self):
-        """Gets the total local storage for the pod."""
-        pools = self.get_pod_pool_size_map("Capacity")
-        if len(pools) == 0:
-            maaslog.error("Failed to get pod local storage")
-            raise PodInvalidResources(
-                "Pod does not have a storage pool defined. "
-                "Please add a storage pool.")
-        return sum(pools.values())
+            doc = etree.XML(output)
+            evaluator = etree.XPathEvaluator(doc)
+            pool_capacity = int(evaluator(XPATH_POOL_CAPACITY)[0].text)
+            pool_path = evaluator(XPATH_POOL_PATH)[0].text
+            pool_type = evaluator(XPATH_POOL_TYPE)[0]
+            pool_uuid = evaluator(XPATH_POOL_UUID)[0].text
+            pool = DiscoveredPodStoragePool(
+                id=pool_uuid, name=pool, path=pool_path,
+                type=pool_type, storage=pool_capacity)
+
+            if with_available:
+                # Use `setattr` because `DiscoveredPodStoragePool` doesn't have
+                # an available attribute and its only needed for the driver
+                # to perform calculations. This prevents this information from
+                # being sent to the region, which isn't needed.
+                pool_available = int(evaluator(XPATH_POOL_AVAILABLE)[0].text)
+                setattr(pool, 'available', pool_available)
+
+            pools.append(pool)
+        return pools
 
     def get_pod_available_local_storage(self):
         """Gets the available local storage for the pod."""
         pools = self.list_pools()
         local_storage = 0
         for pool in pools:
-            output = self.run(['pool-info', pool]).strip()
+            output = self.run(['pool-dumpxml', pool]).strip()
             if output is None:
                 maaslog.error(
                     "Failed to get available pod local storage")
                 return None
-            local_storage += convert_size_to_bytes(
-                self.get_key_value(output, "Available"))
+
+            doc = etree.XML(output)
+            evaluator = etree.XPathEvaluator(doc)
+            pool_capacity = int(evaluator(XPATH_POOL_AVAILABLE)[0].text)
+            local_storage += pool_capacity
         # Local storage in bytes.
         return local_storage
 
@@ -481,6 +499,12 @@ class VirshSSH(pexpect.spawn):
         # name, that MAAS understands.
         return ARCH_FIX.get(arch, arch)
 
+    def find_storage_pool(self, source, storage_pools):
+        """Find the storage pool for `source`."""
+        for pool in storage_pools:
+            if source.startswith(pool.path):
+                return pool
+
     def get_pod_resources(self):
         """Get the pod resources."""
         discovered_pod = DiscoveredPod(
@@ -492,11 +516,14 @@ class VirshSSH(pexpect.spawn):
             Capabilities.COMPOSABLE,
             Capabilities.DYNAMIC_LOCAL_STORAGE,
             Capabilities.OVER_COMMIT,
+            Capabilities.STORAGE_POOLS,
         ]
         discovered_pod.cores = self.get_pod_cpu_count()
         discovered_pod.cpu_speed = self.get_pod_cpu_speed()
         discovered_pod.memory = self.get_pod_memory()
-        discovered_pod.local_storage = self.get_pod_local_storage()
+        discovered_pod.storage_pools = self.get_pod_storage_pools()
+        discovered_pod.local_storage = sum(
+            pool.storage for pool in discovered_pod.storage_pools)
         return discovered_pod
 
     def get_pod_hints(self):
@@ -513,7 +540,8 @@ class VirshSSH(pexpect.spawn):
             self.get_pod_available_local_storage())
         return discovered_pod_hints
 
-    def get_discovered_machine(self, machine, request=None):
+    def get_discovered_machine(
+            self, machine, request=None, storage_pools=None):
         """Gets the discovered machine."""
         # Discovered machine.
         discovered_machine = DiscoveredMachine(
@@ -529,10 +557,14 @@ class VirshSSH(pexpect.spawn):
             'power_id': machine,
         }
 
+        # Load storage pools if needed.
+        if storage_pools is None:
+            storage_pools = self.get_pod_storage_pools()
+
         # Discover block devices.
         block_devices = []
         devices = self.list_machine_block_devices(machine)
-        for idx, device in enumerate(devices):
+        for idx, (device, source) in enumerate(devices):
             # Block device.
             # When request is provided map the tags from the request block
             # devices to the discovered block devices. This ensures that
@@ -551,10 +583,15 @@ class VirshSSH(pexpect.spawn):
                     "device '%s' is missing its storage backing." % (
                         machine, device))
                 return None
+
+            # Find the storage pool for this block device. Virsh doesn't
+            # tell you this information.
+            storage_pool = self.find_storage_pool(source, storage_pools)
             block_devices.append(
                 DiscoveredMachineBlockDevice(
                     model=None, serial=None, size=size,
-                    id_path="/dev/%s" % device, tags=tags))
+                    id_path="/dev/%s" % device, tags=tags,
+                    storage_pool=storage_pool.id))
         discovered_machine.block_devices = block_devices
 
         # Discover interfaces.
@@ -634,10 +671,11 @@ class VirshSSH(pexpect.spawn):
 
     def get_usable_pool(self, disk, default_pool=None):
         """Return the pool that has enough space for `disk.size`."""
-        pools = self.get_pod_pool_size_map("Available", disk, default_pool)
-        for pool, available in pools.items():
-            if disk.size <= available:
-                return pool
+        pools = self.get_pod_storage_pools(
+            disk, default_pool, with_available=True)
+        for pool in pools:
+            if disk.size <= pool.available:
+                return pool.name
         return None
 
     def create_local_volume(self, disk, default_pool=None):
@@ -972,7 +1010,8 @@ class VirshPodDriver(PodDriver):
         virtual_machines = yield deferToThread(conn.list_machines)
         for vm in virtual_machines:
             discovered_machine = yield deferToThread(
-                conn.get_discovered_machine, vm)
+                conn.get_discovered_machine, vm,
+                storage_pools=discovered_pod.storage_pools)
             if discovered_machine is not None:
                 discovered_machine.cpu_speed = discovered_pod.cpu_speed
                 machines.append(discovered_machine)

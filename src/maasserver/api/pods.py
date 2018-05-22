@@ -42,6 +42,7 @@ DISPLAYED_POD_FIELDS = (
     'zone',
     'cpu_over_commit_ratio',
     'memory_over_commit_ratio',
+    'storage_pools',
     )
 
 
@@ -93,6 +94,22 @@ class PodHandler(OperationsHandler):
         for key, value in cls.total(pod).items():
             result[key] = value - used[key]
         return result
+
+    @classmethod
+    def storage_pools(cls, pod):
+        pools = []
+        for pool in pod.storage_pools.all():
+            used = pool.get_used_storage()
+            pools.append({
+                'id': pool.pool_id,
+                'name': pool.name,
+                'type': pool.pool_type,
+                'path': pool.path,
+                'total': pool.storage,
+                'used': used,
+                'available': pool.storage - used,
+            })
+        return pools
 
     @admin_method
     def update(self, request, id):

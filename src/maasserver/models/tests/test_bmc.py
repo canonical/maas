@@ -55,6 +55,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachineInterface,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodStoragePool,
 )
 from provisioningserver.rpc.cluster import DecomposeMachine
 from testtools.matchers import (
@@ -567,7 +568,7 @@ class TestPod(MAASServerTestCase):
 
     def make_discovered_block_device(
             self, model=None, serial=None, id_path=None, target=None,
-            block_type=BlockDeviceType.PHYSICAL):
+            block_type=BlockDeviceType.PHYSICAL, storage_pools=None):
         if block_type == BlockDeviceType.PHYSICAL:
             if id_path is None:
                 if model is None:
@@ -583,6 +584,9 @@ class TestPod(MAASServerTestCase):
                     factory.make_name('host'), factory.make_name('target'))
         else:
             raise ValueError("Unknown block_type: %s" % block_type)
+        storage_pool = None
+        if storage_pools is not None:
+            storage_pool = random.choice(storage_pools).id
         return DiscoveredMachineBlockDevice(
             model=model,
             serial=serial,
@@ -595,6 +599,7 @@ class TestPod(MAASServerTestCase):
             id_path=id_path,
             type=block_type,
             iscsi_target=target,
+            storage_pool=storage_pool
         )
 
     def make_discovered_interface(self, mac_address=None):
@@ -608,11 +613,13 @@ class TestPod(MAASServerTestCase):
             ]
         )
 
-    def make_discovered_machine(self, block_devices=None, interfaces=None):
+    def make_discovered_machine(
+            self, block_devices=None, interfaces=None, storage_pools=None):
         if block_devices is None:
             block_devices = [
                 self.make_discovered_block_device(
-                    block_type=BlockDeviceType.PHYSICAL)
+                    block_type=BlockDeviceType.PHYSICAL,
+                    storage_pools=storage_pools)
                 for _ in range(3)
             ] + [
                 self.make_discovered_block_device(
@@ -643,10 +650,24 @@ class TestPod(MAASServerTestCase):
             ],
         )
 
-    def make_discovered_pod(self, machines=None):
+    def make_discovered_storage_pool(self):
+        name = factory.make_name("name")
+        return DiscoveredPodStoragePool(
+            id=factory.make_name("id"),
+            name=name,
+            storage=random.randint(10 * 1024 ** 3, 100 * 1024 ** 3),
+            type=factory.make_name("type"),
+            path='/var/lib/%s' % name)
+
+    def make_discovered_pod(self, machines=None, storage_pools=None):
+        if storage_pools is None:
+            storage_pools = [
+                self.make_discovered_storage_pool()
+                for _ in range(3)
+            ]
         if machines is None:
             machines = [
-                self.make_discovered_machine()
+                self.make_discovered_machine(storage_pools=storage_pools)
                 for _ in range(3)
             ]
         return DiscoveredPod(
@@ -661,6 +682,7 @@ class TestPod(MAASServerTestCase):
                 memory=random.randint(8192, 8192 * 2),
                 local_storage=random.randint(10000, 20000),
             ),
+            storage_pools=storage_pools,
             machines=machines)
 
     def test_create_with_default_pool(self):
@@ -737,6 +759,19 @@ class TestPod(MAASServerTestCase):
                     local_storage=Equals(discovered.hints.local_storage),
                     local_disks=Equals(discovered.hints.local_disks),
                 ),
+                default_storage_pool=MatchesStructure(
+                    pool_id=Equals(discovered.storage_pools[0].id)
+                ),
+                storage_pools=MatchesSetwiseWithAll(*[
+                    MatchesStructure(
+                        name=Equals(pool.name),
+                        pool_id=Equals(pool.id),
+                        pool_type=Equals(pool.type),
+                        path=Equals(pool.path),
+                        storage=Equals(pool.storage),
+                    )
+                    for pool in discovered.storage_pools
+                ])
             ))
 
     def test_sync_pod_creates_new_machines_connected_to_default_vlan(self):
@@ -787,7 +822,9 @@ class TestPod(MAASServerTestCase):
                             tags=MatchesSetwise(*[
                                 Equals(tag)
                                 for tag in bd.tags
-                            ])
+                            ]),
+                            storage_pool=Equals(
+                                pod._get_storage_pool_by_id(bd.storage_pool)),
                         )
                         for idx, bd in enumerate(machine.block_devices)
                         if bd.type == BlockDeviceType.PHYSICAL
@@ -969,7 +1006,9 @@ class TestPod(MAASServerTestCase):
                             tags=MatchesSetwise(*[
                                 Equals(tag)
                                 for tag in bd.tags
-                            ])
+                            ]),
+                            storage_pool=Equals(
+                                pod._get_storage_pool_by_id(bd.storage_pool)),
                         )
                         for idx, bd in enumerate(machine.block_devices)
                         if bd.type == BlockDeviceType.PHYSICAL
