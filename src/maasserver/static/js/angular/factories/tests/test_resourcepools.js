@@ -32,4 +32,11 @@ describe("ResourcePoolsManager", function() {
         expect(ResourcePoolsManager._pk).toBe("id");
         expect(ResourcePoolsManager._handler).toBe("resourcepool");
     });
+
+    it("getDefaultPool returns pool with id = 0", function() {
+        var defaultPool = makeResourcePool(0);
+        ResourcePoolsManager._items.push(makeResourcePool());
+        ResourcePoolsManager._items.push(defaultPool);
+        expect(ResourcePoolsManager.getDefaultPool()).toBe(defaultPool);
+    });
 });

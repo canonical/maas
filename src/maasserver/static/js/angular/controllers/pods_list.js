@@ -7,9 +7,9 @@
 angular.module('MAAS').controller('PodsListController', [
     '$scope', '$rootScope',
     'PodsManager', 'UsersManager', 'GeneralManager', 'ZonesManager',
-    'ManagerHelperService', function(
+    'ManagerHelperService', 'ResourcePoolsManager', function(
         $scope, $rootScope, PodsManager, UsersManager, GeneralManager,
-        ZonesManager, ManagerHelperService) {
+        ZonesManager, ManagerHelperService, ResourcePoolsManager) {
 
         // Set title and page.
         $rootScope.title = "Pods";
@@ -55,6 +55,7 @@ angular.module('MAAS').controller('PodsListController', [
         };
         $scope.powerTypes = GeneralManager.getData("power_types");
         $scope.zones = ZonesManager.getItems();
+        $scope.pools = ResourcePoolsManager.getItems();
 
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked() {
@@ -202,6 +203,8 @@ angular.module('MAAS').controller('PodsListController', [
         $scope.addPod = function() {
             $scope.add.open = true;
             $scope.add.obj.zone = ZonesManager.getDefaultZone().id;
+            $scope.add.obj.default_pool = (
+                ResourcePoolsManager.getDefaultPool().id);
             $scope.add.obj.cpu_over_commit_ratio = 1;
             $scope.add.obj.memory_over_commit_ratio = 1;
         };
@@ -245,7 +248,8 @@ angular.module('MAAS').controller('PodsListController', [
 
         // Load the required managers for this controller.
         ManagerHelperService.loadManagers($scope, [
-            PodsManager, UsersManager, GeneralManager, ZonesManager]).then(
+            PodsManager, UsersManager, GeneralManager, ZonesManager,
+            ResourcePoolsManager]).then(
             function() {
                 $scope.loading = false;
             });

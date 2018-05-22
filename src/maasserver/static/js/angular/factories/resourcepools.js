@@ -28,5 +28,15 @@ angular.module('MAAS').factory(
 
         ResourcePoolsManager.prototype = new Manager();
 
+        // Return the default pool.
+        ResourcePoolsManager.prototype.getDefaultPool = function() {
+            var i;
+            for(i=0;i<this._items.length;i++) {
+                if(this._items[i].id === 0) {
+                    return this._items[i];
+                }
+            }
+        };
+
         return new ResourcePoolsManager();
     }]);

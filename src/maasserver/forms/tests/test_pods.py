@@ -30,6 +30,8 @@ from maasserver.forms.pods import (
 )
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
+from maasserver.models.resourcepool import ResourcePool
+from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -90,29 +92,21 @@ def make_pod_with_hints():
 
 class TestPodForm(MAASTransactionServerTestCase):
 
+    def setUp(self):
+        super().setUp()
+        self.request = MagicMock()
+        self.request.user = factory.make_User()
+
     def make_pod_info(self):
         # Use virsh pod type as the required fields are specific to the
         # type of pod being created.
         pod_type = 'virsh'
         pod_ip_adddress = factory.make_ipv4_address()
         pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
-        pod_password = factory.make_name('password')
-        pod_default_storage_pool = factory.make_name('default_pool')
-        pod_tags = [
-            factory.make_name("tag")
-            for _ in range(3)
-        ]
-        pod_cpu_over_commit_ratio = random.randint(0, 10)
-        pod_memory_over_commit_ratio = random.randint(0, 10)
         return {
             'type': pod_type,
             'power_address': pod_power_address,
-            'power_pass': pod_password,
-            'default_storage_pool': pod_default_storage_pool,
             'ip_address': pod_ip_adddress,
-            'tags': ",".join(pod_tags),
-            'cpu_over_commit_ratio': pod_cpu_over_commit_ratio,
-            'memory_over_commit_ratio': pod_memory_over_commit_ratio,
         }
 
     def fake_pod_discovery(self):
@@ -147,6 +141,7 @@ class TestPodForm(MAASTransactionServerTestCase):
                 'tags',
                 'type',
                 'zone',
+                'default_pool',
                 'cpu_over_commit_ratio',
                 'memory_over_commit_ratio',
             ], list(form.fields))
@@ -154,29 +149,13 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_creates_pod_with_discovered_information(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
-        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        pod_info['zone'] = zone.name
-        request = MagicMock()
-        request.user = factory.make_User()
-        form = PodForm(data=pod_info, request=request)
+        form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertThat(pod, MatchesStructure(
-            architectures=Equals(['amd64/generic']),
-            name=MatchesAll(Not(Is(None)), Not(Equals(''))),
-            cores=Equals(discovered_pod.cores),
-            memory=Equals(discovered_pod.memory),
-            cpu_speed=Equals(discovered_pod.cpu_speed),
-            zone=Equals(zone),
-            power_type=Equals(pod_info['type']),
-            power_parameters=Equals({
-                'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
-            }),
-            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
-        ))
+        self.assertEqual(discovered_pod.cores, pod.cores)
+        self.assertEqual(discovered_pod.memory, pod.memory)
+        self.assertEqual(discovered_pod.cpu_speed, pod.cpu_speed)
         routable_racks = [
             relation.rack_controller
             for relation in pod.routable_rack_relationships.all()
@@ -190,38 +169,103 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
-    def test_creates_pod_with_name(self):
+    def test_creates_pod_with_only_required(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
-        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        pod_info['zone'] = zone.name
-        request = MagicMock()
-        request.user = factory.make_User()
-        pod_name = factory.make_name('pod')
-        pod_info['name'] = pod_name
-        form = PodForm(data=pod_info, request=request)
+        form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertThat(pod, MatchesStructure(
             architectures=Equals(['amd64/generic']),
-            name=Equals(pod_name),
+            name=MatchesAll(Not(Is(None)), Not(Equals(''))),
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
-            zone=Equals(zone),
+            zone=Equals(Zone.objects.get_default_zone()),
+            default_pool=Equals(
+                ResourcePool.objects.get_default_resource_pool()),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
+                'power_pass': '',
+                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
 
+    def test_creates_pod_with_name(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        pod_name = factory.make_name('pod')
+        pod_info['name'] = pod_name
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(pod_name, pod.name)
+
+    def test_creates_pod_with_power_parameters(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        pod_info['power_pass'] = factory.make_name('pass')
+        pod_info['default_storage_pool'] = factory.make_name('storage')
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(
+            pod_info['power_address'], pod.power_parameters['power_address'])
+        self.assertEqual(
+            pod_info['power_pass'], pod.power_parameters['power_pass'])
+        self.assertEqual(
+            pod_info['default_storage_pool'],
+            pod.power_parameters['default_storage_pool'])
+
+    def test_creates_pod_with_overcommit(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        pod_info['cpu_over_commit_ratio'] = random.randint(0, 10)
+        pod_info['memory_over_commit_ratio'] = random.randint(0, 10)
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(
+            pod_info['cpu_over_commit_ratio'], pod.cpu_over_commit_ratio)
+        self.assertEqual(
+            pod_info['memory_over_commit_ratio'], pod.memory_over_commit_ratio)
+
+    def test_creates_pod_with_tags(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        tags = [factory.make_name('tag'), factory.make_name('tag')]
+        pod_info['tags'] = ','.join(tags)
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertItemsEqual(tags, pod.tags)
+
+    def test_creates_pod_with_zone(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        zone = factory.make_Zone()
+        pod_info['zone'] = zone.name
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(zone.id, pod.zone.id)
+
+    def test_creates_pod_with_default_pool(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        pool = factory.make_ResourcePool()
+        pod_info['default_pool'] = pool.name
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(pool.id, pod.default_pool.id)
+
     @wait_for_reactor
     @inlineCallbacks
-    def test_creates_pod_with_discovered_information_in_twisted(self):
+    def test_creates_pod_with_in_twisted(self):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = succeed(
@@ -229,15 +273,15 @@ class TestPodForm(MAASTransactionServerTestCase):
         zone = yield deferToDatabase(factory.make_Zone)
         pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.name
-        request = MagicMock()
-        request.user = yield deferToDatabase(factory.make_User)
-        form = yield deferToDatabase(PodForm, data=pod_info, request=request)
+        pod_info['name'] = factory.make_name('pod')
+        form = yield deferToDatabase(
+            PodForm, data=pod_info, request=self.request)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
         pod = yield form.save()
         self.assertThat(pod, MatchesStructure(
             architectures=Equals(['amd64/generic']),
-            name=MatchesAll(Not(Is(None)), Not(Equals(''))),
+            name=Equals(pod_info['name']),
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
@@ -245,8 +289,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
+                'power_pass': '',
+                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -269,50 +313,13 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_creates_pod_with_name_in_twisted(self):
-        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
-            self.fake_pod_discovery)
-        pods_module.discover_pod.return_value = succeed(
-            pods_module.discover_pod.return_value)
-        zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        pod_info['zone'] = zone.name
-        pod_name = factory.make_name('pod')
-        pod_info['name'] = pod_name
-        request = MagicMock()
-        request.user = yield deferToDatabase(factory.make_User)
-        form = yield deferToDatabase(PodForm, data=pod_info, request=request)
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-        pod = yield form.save()
-        self.assertThat(pod, MatchesStructure(
-            architectures=Equals(['amd64/generic']),
-            name=Equals(pod_name),
-            cores=Equals(discovered_pod.cores),
-            memory=Equals(discovered_pod.memory),
-            cpu_speed=Equals(discovered_pod.cpu_speed),
-            zone=Equals(zone),
-            power_type=Equals(pod_info['type']),
-            power_parameters=Equals({
-                'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
-            }),
-            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
-        ))
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_doesnt_create_pod_when_discovery_fails_in_twisted(self):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery)
         pods_module.discover_pod.return_value = fail(factory.make_exception())
-        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = yield deferToDatabase(self.make_pod_info)
-        pod_info['zone'] = zone.name
-        request = MagicMock()
-        request.user = yield deferToDatabase(factory.make_User)
-        form = yield deferToDatabase(PodForm, data=pod_info, request=request)
+        form = yield deferToDatabase(
+            PodForm, data=pod_info, request=self.request)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
         with ExpectedException(PodProblem):
@@ -325,12 +332,8 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_prevents_duplicate_pod(self):
         discovered_pod, _, _ = self.fake_pod_discovery()
-        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        pod_info['zone'] = zone.name
-        request = MagicMock()
-        request.user = factory.make_User()
-        form = PodForm(data=pod_info, request=request)
+        form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         new_form = PodForm(data=pod_info)
@@ -339,37 +342,54 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_takes_over_bmc_with_pod(self):
         discovered_pod, _, _ = self.fake_pod_discovery()
-        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        pod_info['zone'] = zone.name
         bmc = factory.make_BMC(
-            zone=zone, tags=pod_info['tags'].split(','),
             power_type=pod_info['type'],
             power_parameters={
                 'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
+                'power_pass': '',
+                'default_storage_pool': '',
             })
-        request = MagicMock()
-        request.user = factory.make_User()
-        form = PodForm(data=pod_info, request=request)
+        form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEquals(bmc.id, pod.id)
         self.assertEquals(BMC_TYPE.POD, reload_object(bmc).bmc_type)
 
+    def test_updates_existing_pod_minimal(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        zone = factory.make_Zone()
+        pool = factory.make_ResourcePool()
+        cpu_over_commit = random.randint(0, 10)
+        memory_over_commit = random.randint(0, 10)
+        orig_pod = factory.make_Pod(
+            pod_type=pod_info['type'], zone=zone, default_pool=pool,
+            cpu_over_commit_ratio=cpu_over_commit,
+            memory_over_commit_ratio=memory_over_commit)
+        new_name = factory.make_name("pod")
+        pod_info['name'] = new_name
+        form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(new_name, pod.name)
+        self.assertEqual(zone, pod.zone)
+        self.assertEqual(pool, pod.default_pool)
+        self.assertEqual(cpu_over_commit, pod.cpu_over_commit_ratio)
+        self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
+
     def test_updates_existing_pod(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
         zone = factory.make_Zone()
+        pool = factory.make_ResourcePool()
         pod_info = self.make_pod_info()
         pod_info['zone'] = zone.name
+        pod_info['default_pool'] = pool.name
         orig_pod = factory.make_Pod(pod_type=pod_info['type'])
         new_name = factory.make_name("pod")
         pod_info['name'] = new_name
-        request = MagicMock()
-        request.user = factory.make_User()
-        form = PodForm(data=pod_info, request=request, instance=orig_pod)
+        form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertThat(pod, MatchesStructure(
@@ -381,11 +401,12 @@ class TestPodForm(MAASTransactionServerTestCase):
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
             zone=Equals(zone),
+            default_pool=Equals(pool),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
+                'power_pass': '',
+                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -410,16 +431,16 @@ class TestPodForm(MAASTransactionServerTestCase):
         pods_module.discover_pod.return_value = succeed(
             pods_module.discover_pod.return_value)
         zone = yield deferToDatabase(factory.make_Zone)
+        pool = yield deferToDatabase(factory.make_ResourcePool)
         pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.name
+        pod_info['default_pool'] = pool.name
         orig_pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
         new_name = factory.make_name("pod")
         pod_info['name'] = new_name
-        request = MagicMock()
-        request.user = yield deferToDatabase(factory.make_User)
         form = yield deferToDatabase(
-            PodForm, data=pod_info, request=request, instance=orig_pod)
+            PodForm, data=pod_info, request=self.request, instance=orig_pod)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
         pod = yield form.save()
@@ -435,8 +456,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
-                'power_pass': pod_info['power_pass'],
-                'default_storage_pool': pod_info['default_storage_pool'],
+                'power_pass': '',
+                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -463,9 +484,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         zone = factory.make_Zone()
         pod_info = self.make_pod_info()
         orig_pod = factory.make_Pod(zone=zone, pod_type=pod_info['type'])
-        request = MagicMock()
-        request.user = factory.make_User()
-        form = PodForm(data=pod_info, request=request, instance=orig_pod)
+        form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
         pod = form.discover_and_sync_pod()
         self.assertThat(pod, MatchesStructure(
             id=Equals(orig_pod.id),
@@ -504,10 +523,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod_info = yield deferToDatabase(self.make_pod_info)
         orig_pod = yield deferToDatabase(
             factory.make_Pod, zone=zone, pod_type=pod_info['type'])
-        request = MagicMock()
-        request.user = yield deferToDatabase(factory.make_User)
         form = yield deferToDatabase(
-            PodForm, data=pod_info, request=request, instance=orig_pod)
+            PodForm, data=pod_info, request=self.request, instance=orig_pod)
         pod = yield form.discover_and_sync_pod()
         self.assertThat(pod, MatchesStructure(
             id=Equals(orig_pod.id),
@@ -541,9 +558,7 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_raises_unable_to_discover_because_no_racks(self):
         self.patch(pods_module, "discover_pod").return_value = ({}, {})
-        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        pod_info['zone'] = zone.name
         form = PodForm(data=pod_info)
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
@@ -556,9 +571,7 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_raises_unable_to_discover_because_no_racks_in_twisted(self):
         self.patch(pods_module, "discover_pod").return_value = succeed(
             ({}, {}))
-        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = yield deferToDatabase(self.make_pod_info)
-        pod_info['zone'] = zone.name
         form = yield deferToDatabase(PodForm, data=pod_info)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
@@ -580,9 +593,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.patch(pods_module, "discover_pod").return_value = ({}, {
             failed_rack.system_id: exc,
         })
-        zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        pod_info['zone'] = zone.name
         form = PodForm(data=pod_info)
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
@@ -596,9 +607,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.patch(pods_module, "discover_pod").return_value = succeed(({}, {
             failed_rack.system_id: exc,
         }))
-        zone = yield deferToDatabase(factory.make_Zone)
         pod_info = yield deferToDatabase(self.make_pod_info)
-        pod_info['zone'] = zone.name
         form = yield deferToDatabase(PodForm, data=pod_info)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
