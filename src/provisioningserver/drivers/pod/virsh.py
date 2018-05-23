@@ -11,7 +11,7 @@ __all__ = [
 import string
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
-import uuid
+from uuid import uuid4
 
 from lxml import etree
 import pexpect
@@ -65,7 +65,7 @@ XPATH_POOL_PATH = "/pool/target/path"
 XPATH_POOL_UUID = "/pool/uuid"
 
 
-DOM_TEMPLATE = dedent("""\
+DOM_TEMPLATE_AMD64 = dedent("""\
     <domain type='{type}'>
       <name>{name}</name>
       <uuid>{uuid}</uuid>
@@ -112,6 +112,104 @@ DOM_TEMPLATE = dedent("""\
     </domain>
     """)
 
+DOM_TEMPLATE_ARM64 = dedent("""\
+    <domain type='{type}'>
+      <name>{name}</name>
+      <uuid>{uuid}</uuid>
+      <memory unit='MiB'>{memory}</memory>
+      <vcpu>{cores}</vcpu>
+      <cpu mode='host-passthrough'/>
+      <os>
+        <type arch='{arch}' machine='virt'>hvm</type>
+        <loader readonly='yes' type='pflash'>
+          /usr/share/AAVMF/AAVMF_CODE.fd
+        </loader>
+        <loader readonly='yes' type='pflash'>
+          /usr/share/AAVMF/AAVMF_CODE.fd
+        </loader>
+        <nvram template='/usr/share/AAVMF/AAVMF_CODE.fd'>
+          /var/lib/libvirt/qemu/nvram/{name}_VARS.fd
+        </nvram>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+        <gic version='3'/>
+      </features>
+      <clock offset="utc"/>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <devices>
+        <emulator>{emulator}</emulator>
+        <controller type='pci' index='0' model='pcie-root'/>
+        <serial type='pty'>
+          <target port='0'/>
+        </serial>
+        <console type='pty'>
+          <target type='serial' port='0'/>
+        </console>
+        <input type='mouse' bus='ps2'/>
+        <input type='keyboard' bus='ps2'/>
+      </devices>
+    </domain>
+    """)
+
+
+DOM_TEMPLATE_PPC64 = dedent("""\
+    <domain type='{type}'>
+      <name>{name}</name>
+      <uuid>{uuid}</uuid>
+      <memory unit='MiB'>{memory}</memory>
+      <vcpu>{cores}</vcpu>
+      <cpu mode='host-passthrough'/>
+      <os>
+        <type arch='{arch}'>hvm</type>
+      </os>
+      <clock offset="utc"/>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <devices>
+        <emulator>{emulator}</emulator>
+        <controller type='pci' index='0' model='pci-root'/>
+        <serial type='pty'>
+          <target port='0'/>
+        </serial>
+        <console type='pty'>
+          <target type='serial' port='0'/>
+        </console>
+        <input type='mouse' bus='ps2'/>
+        <input type='keyboard' bus='ps2'/>
+      </devices>
+    </domain>
+    """)
+
+DOM_TEMPLATE_S390X = dedent("""
+    <domain type='{type}'>
+      <name>{name}</name>
+      <uuid>{uuid}</uuid>
+      <memory unit='MiB'>{memory}</memory>
+      <vcpu>{cores}</vcpu>
+      <os>
+        <type arch="{arch}">hvm</type>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <devices>
+        <console type='pty' tty='/dev/pts/3'>
+          <source path='/dev/pts/3'/>
+          <target type='sclp' port='0'/>
+          <alias name='console0'/>
+        </console>
+      </devices>
+    </domain>
+    """)
+
 
 # Virsh stores the architecture with a different
 # label then MAAS. This maps virsh architecture to
@@ -121,6 +219,8 @@ ARCH_FIX = {
     'ppc64': 'ppc64el/generic',
     'ppc64le': 'ppc64el/generic',
     'i686': 'i386/generic',
+    'aarch64': 'arm64/generic',
+    's390x': 's390x/generic',
     }
 ARCH_FIX_REVERSE = {
     value: key
@@ -285,10 +385,11 @@ class VirshSSH(pexpect.spawn):
 
     def get_key_value(self, data, key):
         """Return value based off of key."""
-        data = data.strip().splitlines()
-        for d in data:
-            if key == d.split(':')[0].strip():
-                return d.split(':')[1].strip()
+        if data is not None:
+            data = data.strip().splitlines()
+            for d in data:
+                if key == d.split(':')[0].strip():
+                    return d.split(':')[1].strip()
 
     def get_key_value_unitless(self, data, key):
         """Return value based off of key with unit (if any) stripped off."""
@@ -352,46 +453,49 @@ class VirshSSH(pexpect.spawn):
     def get_pod_cpu_count(self):
         """Gets number of CPUs in the pod."""
         output = self.run(['nodeinfo']).strip()
-        if output is None:
+        cpu_count = self.get_key_value(output, "CPU(s)")
+        if cpu_count is None:
             maaslog.error("Failed to get pod CPU count")
-            return None
-        return int(self.get_key_value(output, "CPU(s)"))
+            return 0
+        return int(cpu_count)
 
     def get_machine_cpu_count(self, machine):
         """Gets the VM CPU count."""
         output = self.run(['dominfo', machine]).strip()
-        if output is None:
+        cpu_count = self.get_key_value(output, "CPU(s)")
+        if cpu_count is None:
             maaslog.error("%s: Failed to get machine CPU count", machine)
-            return None
-        return int(self.get_key_value(output, "CPU(s)"))
+            return 0
+        return int(cpu_count)
 
     def get_pod_cpu_speed(self):
         """Gets CPU speed (MHz) in the pod."""
         output = self.run(['nodeinfo']).strip()
-        if output is None:
+        cpu_speed = self.get_key_value_unitless(output, "CPU frequency")
+        if cpu_speed is None:
             maaslog.error("Failed to get pod CPU speed")
-            return None
-        return int(self.get_key_value_unitless(output, "CPU frequency"))
+            return 0
+        return int(cpu_speed)
 
     def get_pod_memory(self):
         """Gets the total memory of the pod."""
         output = self.run(['nodeinfo']).strip()
-        if output is None:
+        KiB = self.get_key_value_unitless(output, "Memory size")
+        if KiB is None:
             maaslog.error("Failed to get pod memory")
-            return None
-        KiB = int(self.get_key_value_unitless(output, "Memory size"))
+            return 0
         # Memory in MiB.
-        return int(KiB / 1024)
+        return int(int(KiB) / 1024)
 
     def get_machine_memory(self, machine):
         """Gets the VM memory."""
         output = self.run(['dominfo', machine]).strip()
-        if output is None:
+        KiB = self.get_key_value_unitless(output, "Max memory")
+        if KiB is None:
             maaslog.error("%s: Failed to get machine memory", machine)
-            return None
-        KiB = int(self.get_key_value_unitless(output, "Max memory"))
+            return 0
         # Memory in MiB.
-        return int(KiB / 1024)
+        return int(int(KiB) / 1024)
 
     def get_pod_storage_pools(self, with_available=False):
         """Get the storage pools information."""
@@ -456,10 +560,11 @@ class VirshSSH(pexpect.spawn):
     def get_pod_arch(self):
         """Gets architecture of the pod."""
         output = self.run(['nodeinfo']).strip()
-        if output is None:
-            maaslog.error("Failed to get pod architecture")
-            return None
         arch = self.get_key_value(output, "CPU model")
+        if arch is None:
+            maaslog.error("Failed to get pod architecture")
+            raise PodInvalidResources(
+                "Pod architecture is not supported: %s" % arch)
         return ARCH_FIX.get(arch, arch)
 
     def get_machine_arch(self, machine):
@@ -695,7 +800,7 @@ class VirshSSH(pexpect.spawn):
         usable_pool = self.get_usable_pool(disk, default_pool)
         if usable_pool is None:
             return None
-        volume = str(uuid.uuid4())
+        volume = str(uuid4())
         self.run([
             'vol-create-as', usable_pool, volume, str(disk.size),
             '--allocation', '0', '--format', 'raw'])
@@ -831,11 +936,20 @@ class VirshSSH(pexpect.spawn):
         # Construct the domain XML.
         domain_params = self.get_domain_capabilities()
         domain_params['name'] = request.hostname
-        domain_params['uuid'] = str(uuid.uuid4())
+        domain_params['uuid'] = str(uuid4())
         domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
         domain_params['cores'] = str(request.cores)
         domain_params['memory'] = str(request.memory)
-        domain_xml = DOM_TEMPLATE.format(**domain_params)
+
+        # Set the template.
+        if domain_params['arch'] == 'aarch64':
+            domain_xml = DOM_TEMPLATE_ARM64.format(**domain_params)
+        elif domain_params['arch'] in ('ppc64', 'ppc64le'):
+            domain_xml = DOM_TEMPLATE_PPC64.format(**domain_params)
+        elif domain_params['arch'] == 's390x':
+            domain_xml = DOM_TEMPLATE_S390X.format(**domain_params)
+        else:
+            domain_xml = DOM_TEMPLATE_AMD64.format(**domain_params)
 
         # Define the domain in virsh.
         with NamedTemporaryFile() as f:

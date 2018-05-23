@@ -13,7 +13,7 @@ from unittest.mock import (
     MagicMock,
     sentinel,
 )
-import uuid
+from uuid import uuid4
 
 from lxml import etree
 from maastesting.factory import factory
@@ -35,7 +35,14 @@ from provisioningserver.drivers.pod import (
     virsh,
     virsh as virsh_module,
 )
-from provisioningserver.drivers.pod.virsh import VirshPodDriver
+from provisioningserver.drivers.pod.virsh import (
+    ARCH_FIX_REVERSE,
+    DOM_TEMPLATE_AMD64,
+    DOM_TEMPLATE_ARM64,
+    DOM_TEMPLATE_PPC64,
+    DOM_TEMPLATE_S390X,
+    VirshPodDriver,
+)
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils.shell import (
     get_env_with_locale,
@@ -352,7 +359,7 @@ class VirshRunFake:
                  capacity=None, allocation=None, available=None,
                  path=None):
         if pool_uuid is None:
-            pool_uuid = str(uuid.uuid4())
+            pool_uuid = str(uuid4())
         if capacity is None:
             capacity = random.randint(10000000000, 1000000000000)
         if allocation is None:
@@ -614,25 +621,53 @@ class TestVirshSSH(MAASTestCase):
         expected = conn.get_pod_cpu_count()
         self.assertEqual(8, expected)
 
+    def test_get_pod_cpu_count_returns_zero_if_info_not_available(self):
+        conn = self.configure_virshssh('')
+        expected = conn.get_pod_cpu_count()
+        self.assertEqual(0, expected)
+
     def test_get_machine_cpu_count(self):
         conn = self.configure_virshssh(SAMPLE_DOMINFO)
         expected = conn.get_machine_cpu_count(factory.make_name('machine'))
         self.assertEqual(1, expected)
+
+    def test_get_machine_cpu_count_returns_zero_if_info_not_available(self):
+        conn = self.configure_virshssh('')
+        expected = conn.get_machine_cpu_count(factory.make_name('machine'))
+        self.assertEqual(0, expected)
 
     def test_get_pod_cpu_speed(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
         expected = conn.get_pod_cpu_speed()
         self.assertEqual(2400, expected)
 
+    def test_get_pod_cpu_speed_returns_zero_if_info_not_available(self):
+        conn = self.configure_virshssh(SAMPLE_NODEINFO)
+        mock_get_key_value_unitless = self.patch(
+            virsh.VirshSSH, "get_key_value_unitless")
+        mock_get_key_value_unitless.return_value = None
+        expected = conn.get_pod_cpu_speed()
+        self.assertEqual(0, expected)
+
     def test_get_pod_memory(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
         expected = conn.get_pod_memory()
         self.assertEqual(int(16307176 / 1024), expected)
 
+    def test_get_pod_memory_returns_zero_if_info_not_available(self):
+        conn = self.configure_virshssh('')
+        expected = conn.get_pod_memory()
+        self.assertEqual(0, expected)
+
     def test_get_machine_memory(self):
         conn = self.configure_virshssh(SAMPLE_DOMINFO)
         expected = conn.get_machine_memory(factory.make_name('machine'))
         self.assertEqual(int(1048576 / 1024), expected)
+
+    def test_get_machine_memory_returns_zero_if_info_not_available(self):
+        conn = self.configure_virshssh('')
+        expected = conn.get_machine_memory(factory.make_name('machine'))
+        self.assertEqual(0, expected)
 
     def test_get_pod_storage_pools(self):
         conn = virsh.VirshSSH()
@@ -681,6 +716,10 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
         expected = conn.get_pod_arch()
         self.assertEqual('amd64/generic', expected)
+
+    def test_get_pod_arch_raises_error_if_not_found(self):
+        conn = self.configure_virshssh('')
+        self.assertRaises(PodInvalidResources, conn.get_pod_arch)
 
     def test_get_machine_arch_returns_valid(self):
         arch = factory.make_name('arch')
@@ -1299,18 +1338,31 @@ class TestVirshSSH(MAASTestCase):
             PodInvalidResources, conn.create_domain, request, )
         self.assertEqual("not enough space for disk 0.", str(error))
 
-    def test_create_domain_calls_correct_methods(self):
+    def test_create_domain_calls_correct_methods_with_amd64_arch(self):
         conn = self.configure_virshssh('')
         request = make_requested_machine()
         request.block_devices = request.block_devices[:1]
         request.interfaces = request.interfaces[:1]
         disk_info = (factory.make_name('pool'), factory.make_name('vol'))
-        self.patch(
-            virsh.VirshSSH, "create_local_volume").return_value = disk_info
-        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = {
+        domain_params = {
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
+        self.patch(
+            virsh.VirshSSH, "create_local_volume").return_value = disk_info
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params)
+        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid.return_value = str(uuid4())
+        domain_params['name'] = request.hostname
+        domain_params['uuid'] = mock_uuid.return_value
+        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params['cores'] = str(request.cores)
+        domain_params['memory'] = str(request.memory)
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
         self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
@@ -1321,6 +1373,192 @@ class TestVirshSSH(MAASTestCase):
         mock_discovered = self.patch(virsh.VirshSSH, "get_discovered_machine")
         mock_discovered.return_value = sentinel.discovered
         observed = conn.create_domain(request)
+
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(tmpfile.write, MockCallsMatch(
+            call(DOM_TEMPLATE_AMD64.format(**domain_params).encode('utf-8')),
+            call(b'\n')))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(['define', ANY]))
+        self.assertThat(
+            mock_attach_disk,
+            MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
+        self.assertThat(
+            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+        self.assertThat(
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_discovered, MockCalledOnceWith(ANY, request=request))
+        self.assertEquals(sentinel.discovered, observed)
+
+    def test_create_domain_calls_correct_methods_with_arm64_arch(self):
+        conn = self.configure_virshssh('')
+        request = make_requested_machine()
+        request.architecture = "arm64/generic"
+        request.block_devices = request.block_devices[:1]
+        request.interfaces = request.interfaces[:1]
+        disk_info = (factory.make_name('pool'), factory.make_name('vol'))
+        domain_params = {
+            "type": "kvm",
+            "emulator": "/usr/bin/qemu-system-x86_64",
+        }
+        self.patch(
+            virsh.VirshSSH, "create_local_volume").return_value = disk_info
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params)
+        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid.return_value = str(uuid4())
+        domain_params['name'] = request.hostname
+        domain_params['uuid'] = mock_uuid.return_value
+        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params['cores'] = str(request.cores)
+        domain_params['memory'] = str(request.memory)
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
+        mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_set_machine_autostart = self.patch(
+            virsh.VirshSSH, "set_machine_autostart")
+        mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
+        mock_discovered = self.patch(virsh.VirshSSH, "get_discovered_machine")
+        mock_discovered.return_value = sentinel.discovered
+        observed = conn.create_domain(request)
+
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(tmpfile.write, MockCallsMatch(
+            call(DOM_TEMPLATE_ARM64.format(**domain_params).encode('utf-8')),
+            call(b'\n')))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(['define', ANY]))
+        self.assertThat(
+            mock_attach_disk,
+            MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
+        self.assertThat(
+            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+        self.assertThat(
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_discovered, MockCalledOnceWith(ANY, request=request))
+        self.assertEquals(sentinel.discovered, observed)
+
+    def test_create_domain_calls_correct_methods_with_ppc64_arch(self):
+        conn = self.configure_virshssh('')
+        request = make_requested_machine()
+        request.architecture = "ppc64el/generic"
+        request.block_devices = request.block_devices[:1]
+        request.interfaces = request.interfaces[:1]
+        disk_info = (factory.make_name('pool'), factory.make_name('vol'))
+        domain_params = {
+            "type": "kvm",
+            "emulator": "/usr/bin/qemu-system-x86_64",
+        }
+        self.patch(
+            virsh.VirshSSH, "create_local_volume").return_value = disk_info
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params)
+        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid.return_value = str(uuid4())
+        domain_params['name'] = request.hostname
+        domain_params['uuid'] = mock_uuid.return_value
+        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params['cores'] = str(request.cores)
+        domain_params['memory'] = str(request.memory)
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
+        mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_set_machine_autostart = self.patch(
+            virsh.VirshSSH, "set_machine_autostart")
+        mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
+        mock_discovered = self.patch(virsh.VirshSSH, "get_discovered_machine")
+        mock_discovered.return_value = sentinel.discovered
+        observed = conn.create_domain(request)
+
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(tmpfile.write, MockCallsMatch(
+            call(DOM_TEMPLATE_PPC64.format(**domain_params).encode('utf-8')),
+            call(b'\n')))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(['define', ANY]))
+        self.assertThat(
+            mock_attach_disk,
+            MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
+        self.assertThat(
+            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+        self.assertThat(
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname))
+        self.assertThat(
+            mock_discovered, MockCalledOnceWith(ANY, request=request))
+        self.assertEquals(sentinel.discovered, observed)
+
+    def test_create_domain_calls_correct_methods_with_s390x_arch(self):
+        conn = self.configure_virshssh('')
+        request = make_requested_machine()
+        request.architecture = "s390x/generic"
+        request.block_devices = request.block_devices[:1]
+        request.interfaces = request.interfaces[:1]
+        disk_info = (factory.make_name('pool'), factory.make_name('vol'))
+        domain_params = {
+            "type": "kvm",
+            "emulator": "/usr/bin/qemu-system-x86_64",
+        }
+        self.patch(
+            virsh.VirshSSH, "create_local_volume").return_value = disk_info
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params)
+        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid.return_value = str(uuid4())
+        domain_params['name'] = request.hostname
+        domain_params['uuid'] = mock_uuid.return_value
+        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params['cores'] = str(request.cores)
+        domain_params['memory'] = str(request.memory)
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
+        mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_set_machine_autostart = self.patch(
+            virsh.VirshSSH, "set_machine_autostart")
+        mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
+        mock_discovered = self.patch(virsh.VirshSSH, "get_discovered_machine")
+        mock_discovered.return_value = sentinel.discovered
+        observed = conn.create_domain(request)
+
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(tmpfile.write, MockCallsMatch(
+            call(DOM_TEMPLATE_S390X.format(**domain_params).encode('utf-8')),
+            call(b'\n')))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
         self.assertThat(mock_run, MockCalledOnceWith(['define', ANY]))
         self.assertThat(
             mock_attach_disk,
