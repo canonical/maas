@@ -393,11 +393,10 @@ class VirshSSH(pexpect.spawn):
         # Memory in MiB.
         return int(KiB / 1024)
 
-    def get_pod_storage_pools(
-            self, disk=None, default_pool=None, with_available=False):
+    def get_pod_storage_pools(self, with_available=False):
         """Get the storage pools information."""
         pools = []
-        for pool in self.list_pools(default_pool, disk):
+        for pool in self.list_pools():
             output = self.run(['pool-dumpxml', pool]).strip()
             if output is None:
                 # Skip if cannot get more information.

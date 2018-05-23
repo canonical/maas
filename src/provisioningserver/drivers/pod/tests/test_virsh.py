@@ -13,6 +13,7 @@ from unittest.mock import (
     MagicMock,
     sentinel,
 )
+import uuid
 
 from lxml import etree
 from maastesting.factory import factory
@@ -317,6 +318,88 @@ SAMPLE_CAPABILITY_QEMU = dedent("""\
     """)
 
 
+POOLINFO_TEMPLATE = dedent("""
+    <pool type='dir'>
+        <name>{name}</name>
+        <uuid>{uuid}</uuid>
+        <capacity unit='bytes'>{capacity}</capacity>
+        <allocation unit='bytes'>{allocation}</allocation>
+        <available unit='bytes'>{available}</available>
+        <source>
+        </source>
+        <target>
+            <path>{path}</path>
+            <permissions>
+                <mode>0711</mode>
+                <owner>0</owner>
+                <group>0</group>
+            </permissions>
+        </target>
+    </pool>
+    """)
+
+
+class VirshRunFake:
+    """Fake for running virtlib command.
+
+    It can be used to patch VirshSSH.run.
+    """
+
+    def __init__(self):
+        self.pools = []
+
+    def add_pool(self, name, active=True, autostart=True, pool_uuid=None,
+                 capacity=None, allocation=None, available=None,
+                 path=None):
+        if pool_uuid is None:
+            pool_uuid = str(uuid.uuid4())
+        if capacity is None:
+            capacity = random.randint(10000000000, 1000000000000)
+        if allocation is None:
+            allocation = random.randint(0, capacity)
+        if available is None:
+            available = capacity - allocation
+        if path is None:
+            path = 'var/lib/virtlib/' + factory.make_name('images')
+        self.pools.append({
+            'name': name,
+            'active': active,
+            'autostart': autostart,
+            'uuid': pool_uuid,
+            'capacity': capacity,
+            'allocation': allocation,
+            'available': available,
+            'path': path,
+        })
+
+    def __call__(self, args):
+        command = args.pop(0)
+        func = getattr(self, 'cmd_' + command.replace('-', '_'))
+        return func(*args)
+
+    def cmd_pool_list(self):
+        template = ' {name: <21}{state: <11}{autostart}'
+        lines = [
+            template.format(name='Name', state='State', autostart='Autostart')]
+        lines.append('-------------------------------------------')
+        lines.extend(
+            template.format(
+                name=pool['name'],
+                state='active' if pool['active'] else 'inactive',
+                autostart='yes' if pool['autostart'] else 'no',
+            )
+            for pool in self.pools)
+        return '\n'.join(lines)
+
+    def cmd_pool_dumpxml(self, pool_name):
+        for pool in self.pools:
+            if pool['name'] == pool_name:
+                break
+        else:
+            raise RuntimeError('No pool named ' + pool_name)
+        return POOLINFO_TEMPLATE.format(**pool)
+
+
 def make_requested_machine():
     block_devices = [
         RequestedMachineBlockDevice(
@@ -552,16 +635,17 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(int(1048576 / 1024), expected)
 
     def test_get_pod_storage_pools(self):
-        conn = self.configure_virshssh(SAMPLE_POOLINFO)
-        pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
-        pools_mock.return_value = [
-            factory.make_name('pool') for _ in range(3)]
+        conn = virsh.VirshSSH()
+        fake_runner = VirshRunFake()
+        [fake_runner.add_pool(factory.make_name('pool')) for _ in range(3)]
+        run_mock = self.patch(virsh.VirshSSH, 'run')
+        run_mock.side_effect = fake_runner
         expected = [
             DiscoveredPodStoragePool(
-                id="59edc0cb-4635-449a-80e2-2c8a59afa327", type='dir',
-                name=pool_name, storage=452.96 * 2**30,
-                path='/var/lib/libvirt/images')
-            for pool_name in pools_mock.return_value
+                id=pool['uuid'], type='dir',
+                name=pool['name'], storage=pool['capacity'],
+                path=pool['path'])
+            for pool in fake_runner.pools
         ]
         self.assertEqual(expected, conn.get_pod_storage_pools())
 
