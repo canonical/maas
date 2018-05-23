@@ -1904,7 +1904,6 @@ class TestMachineHandler(MAASServerTestCase):
         power_id = factory.make_name('power_id')
         power_pass = factory.make_name('power_pass')
         power_address = factory.make_ipv4_address()
-        default_storage_pool = factory.make_name('default_pool')
         node_data["hostname"] = new_hostname
         node_data["architecture"] = new_architecture
         node_data["zone"] = {
@@ -1918,7 +1917,6 @@ class TestMachineHandler(MAASServerTestCase):
             'power_id': power_id,
             'power_pass': power_pass,
             'power_address': power_address,
-            'default_storage_pool': default_storage_pool,
         }
         updated_node = handler.update(node_data)
         self.expectThat(updated_node["hostname"], Equals(new_hostname))
@@ -1930,7 +1928,6 @@ class TestMachineHandler(MAASServerTestCase):
             'power_id': power_id,
             'power_pass': power_pass,
             'power_address': power_address,
-            'default_storage_pool': default_storage_pool,
         }))
 
     def test_update_adds_tags_to_node(self):

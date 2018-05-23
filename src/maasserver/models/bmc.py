@@ -964,6 +964,8 @@ class Pod(BMC):
             for pool in self.storage_pools.all()
         }
         possible_default = None
+        upgrade_default_pool = self.power_parameters.get(
+            'default_storage_pool')
         for discovered_pool in discovered_storage_pools:
             pool = storage_pools_by_id.pop(
                 discovered_pool.id, None)
@@ -985,8 +987,14 @@ class Pod(BMC):
                         self.name, discovered_pool.name))
             if possible_default is None:
                 possible_default = pool
+            if (upgrade_default_pool is not None and
+                    upgrade_default_pool == pool.name):
+                possible_default = pool
         if not self.default_storage_pool and possible_default:
             self.default_storage_pool = possible_default
+            if upgrade_default_pool is not None:
+                self.power_parameters = self.power_parameters.copy()
+                self.power_parameters.pop('default_storage_pool', None)
             self.save()
         elif self.default_storage_pool in storage_pools_by_id.values():
             self.default_storage_pool = possible_default

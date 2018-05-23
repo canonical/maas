@@ -883,6 +883,17 @@ class TestPod(MAASServerTestCase):
             mock_start_commissioning.call_count,
             Equals(len(discovered.machines)))
 
+    def test_sync_pod_upgrades_default_storage_pool(self):
+        discovered = self.make_discovered_pod(machines=[])
+        discovered_default = discovered.storage_pools[2]
+        pod = factory.make_Pod(parameters={
+            'default_storage_pool': discovered_default.name
+        })
+        pod.sync(discovered, factory.make_User())
+        self.assertThat(
+            pod.default_storage_pool.name, Equals(discovered_default.name))
+        self.assertThat(pod.power_parameters, Equals({}))
+
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
         discovered_machine = self.make_discovered_machine()

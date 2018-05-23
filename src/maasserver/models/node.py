@@ -1184,10 +1184,6 @@ class Node(CleanSave, TimestampedModel):
         bmc_parameters = {}
         if self.bmc and self.bmc.power_parameters:
             bmc_parameters = self.bmc.power_parameters
-            # Remove default_storage_pool if node is part of a Virsh pod.
-            if (self.bmc.bmc_type == BMC_TYPE.POD and
-                    self.power_type == 'virsh'):
-                bmc_parameters.pop('default_storage_pool', None)
         return {**bmc_parameters, **instance_parameters}
 
     @power_parameters.setter

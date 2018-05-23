@@ -316,33 +316,12 @@ class VirshSSH(pexpect.spawn):
         machines = machines.strip().splitlines()
         return [m for m in machines if m.startswith(self.dom_prefix)]
 
-    def list_pools(self, default_pool=None, disk=None):
-        """Lists all pools in the pod.
-
-        Filters pools with disk tags first and default_pool second, if set.
-        """
+    def list_pools(self):
+        """Lists all pools in the pod."""
         keys = ['Name']
         output = self.run(['pool-list'])
         pools = self.get_column_values(output, keys)
-        pool_names = [p[0] for p in pools]
-        if disk:
-            pools = [
-                tag
-                for tag in disk.tags
-                if tag in pool_names
-            ]
-            return pools if pools else pool_names
-        if default_pool:
-            pools = [
-                pool_name
-                for pool_name in pool_names
-                if pool_name == default_pool
-            ]
-            if not len(pools):
-                raise VirshError(
-                    "Default storage pool '%s' doesn't exist." % default_pool)
-            return pools
-        return pool_names
+        return [p[0] for p in pools]
 
     def list_machine_block_devices(self, machine):
         """Lists all devices for VM."""
@@ -671,12 +650,46 @@ class VirshSSH(pexpect.spawn):
 
     def get_usable_pool(self, disk, default_pool=None):
         """Return the pool that has enough space for `disk.size`."""
-        pools = self.get_pod_storage_pools(
-            disk, default_pool, with_available=True)
+        pools = self.get_pod_storage_pools(with_available=True)
+        filtered_pools = [
+            pool
+            for pool in pools
+            if pool.name in disk.tags
+        ]
+        if filtered_pools:
+            for pool in filtered_pools:
+                if disk.size <= pool.available:
+                    return pool.name
+            raise PodInvalidResources(
+                "Not enough storage space on storage pools: %s" % (
+                    ', '.join([pool.name for pool in filtered_pools])))
+        if default_pool:
+            filtered_pools = [
+                pool
+                for pool in pools
+                if pool.id == default_pool
+            ]
+            if not filtered_pools:
+                filtered_pools = [
+                    pool
+                    for pool in pools
+                    if pool.name == default_pool
+                ]
+            if filtered_pools:
+                default_pool = filtered_pools[0]
+                if disk.size <= default_pool.available:
+                    return default_pool.name
+                raise PodInvalidResources(
+                    "Not enough space in default storage pool: %s" % (
+                        default_pool.name))
+            raise VirshError(
+                "Default storage pool '%s' doesn't exist." % default_pool)
         for pool in pools:
             if disk.size <= pool.available:
                 return pool.name
-        return None
+        raise PodInvalidResources(
+            "Not enough storage space on any storage pools: %s" % (
+                ', '.join([pool.name for pool in pools])))
 
     def create_local_volume(self, disk, default_pool=None):
         """Create a local volume with `disk.size`."""
@@ -877,11 +890,7 @@ class VirshPodDriver(PodDriver):
         make_setting_field(
             'power_id', "Virsh VM ID", scope=SETTING_SCOPE.NODE,
             required=True),
-        make_setting_field(
-            'default_storage_pool', "Default storage pool (optional)",
-            scope=SETTING_SCOPE.BMC, required=False),
     ]
-    default_storage_pool = None
     ip_extractor = make_ip_extractor(
         'power_address', IP_EXTRACTOR_PATTERNS.URL)
 
@@ -987,18 +996,6 @@ class VirshPodDriver(PodDriver):
         if not len(pools):
             yield deferToThread(conn.create_storage_pool)
 
-        # Check and set default storage pool.
-        self.default_storage_pool = context.get('default_storage_pool')
-        if self.default_storage_pool:
-            try:
-                yield deferToThread(
-                    conn.list_pools, self.default_storage_pool)
-            except VirshError:
-                # Set the default_storage_pool to None since
-                # one wasn't found and raise the error.
-                self.default_storage_pool = None
-                raise
-
         # Discover pod resources.
         discovered_pod = yield deferToThread(conn.get_pod_resources)
 
@@ -1027,8 +1024,10 @@ class VirshPodDriver(PodDriver):
     def compose(self, system_id, context, request):
         """Compose machine."""
         conn = yield self.get_virsh_connection(context)
+        default_pool = context.get(
+            'default_storage_pool_id', context.get('default_storage_pool'))
         created_machine = yield deferToThread(
-            conn.create_domain, request, self.default_storage_pool)
+            conn.create_domain, request, default_pool)
         hints = yield deferToThread(conn.get_pod_hints)
         return created_machine, hints
 

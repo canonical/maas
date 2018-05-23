@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 from unittest.mock import (
+    ANY,
     call,
     MagicMock,
 )
@@ -41,6 +42,7 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnce,
+    MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
@@ -83,6 +85,10 @@ def make_pod_with_hints():
         architectures=architectures, cores=random.randint(8, 16),
         memory=random.randint(4096, 8192),
         cpu_speed=random.randint(2000, 3000))
+    for _ in range(3):
+        pool = factory.make_PodStoragePool(pod)
+    pod.default_storage_pool = pool
+    pod.save()
     pod.hints.cores = pod.cores
     pod.hints.memory = pod.memory
     pod.hints.cpu_speed = pod.cpu_speed
@@ -189,7 +195,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': '',
-                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -208,7 +213,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info['power_pass'] = factory.make_name('pass')
-        pod_info['default_storage_pool'] = factory.make_name('storage')
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
@@ -216,9 +220,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             pod_info['power_address'], pod.power_parameters['power_address'])
         self.assertEqual(
             pod_info['power_pass'], pod.power_parameters['power_pass'])
-        self.assertEqual(
-            pod_info['default_storage_pool'],
-            pod.power_parameters['default_storage_pool'])
 
     def test_creates_pod_with_overcommit(self):
         self.fake_pod_discovery()
@@ -290,7 +291,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': '',
-                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -348,7 +348,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters={
                 'power_address': pod_info['power_address'],
                 'power_pass': '',
-                'default_storage_pool': '',
             })
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
@@ -406,7 +405,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': '',
-                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -457,7 +455,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
                 'power_pass': '',
-                'default_storage_pool': '',
             }),
             ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
@@ -826,6 +823,33 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 memory=Equals(1024),
                 cpu_speed=Equals(300))))
         self.assertThat(mock_commissioning, MockCalledOnce())
+
+    def test__compose_sends_default_storage_pool_id(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        self.patch(Machine, "start_commissioning")
+
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        form.compose()
+        self.assertThat(mock_compose_machine, MockCalledOnceWith(
+            ANY, pod.power_type, {
+                'default_storage_pool_id': pod.default_storage_pool.pool_id,
+            },
+            form.get_requested_machine(), pod_id=pod.id, name=pod.name))
 
     def test__compose_duplicated_hostname(self):
         factory.make_Node(hostname='test')

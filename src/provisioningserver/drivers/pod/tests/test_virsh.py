@@ -494,18 +494,6 @@ class TestVirshSSH(MAASTestCase):
         expected = conn.list_pools()
         self.assertItemsEqual(names, expected)
 
-    def test_list_pools_filters_on_default_pool(self):
-        conn = self.configure_virshssh(SAMPLE_POOLLIST)
-        expected = conn.list_pools(default_pool='ubuntu')
-        self.assertItemsEqual(['ubuntu'], expected)
-
-    def test_list_pools_filters_on_disk_tags(self):
-        conn = self.configure_virshssh(SAMPLE_POOLLIST)
-        disk = RequestedMachineBlockDevice(
-            size=random.randint(1000, 2000), tags=['default'])
-        expected = conn.list_pools(default_pool='ubuntu', disk=disk)
-        self.assertItemsEqual(['default'], expected)
-
     def test_list_machine_block_devices(self):
         block_devices = (
             ('vda', '/var/lib/libvirt/images/example1.qcow2'),
@@ -908,6 +896,124 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(
             pools[1].name,
             conn.get_usable_pool(disk))
+
+    def test_get_usable_pool_filters_on_disk_tags(self):
+        conn = self.configure_virshssh('')
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
+        selected_pool = random.choice(pools)
+        disk = RequestedMachineBlockDevice(
+            size=selected_pool.available,
+            tags=[selected_pool.name])
+        self.patch(
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
+        self.assertEqual(
+            selected_pool.name,
+            conn.get_usable_pool(disk))
+
+    def test_get_usable_pool_filters_on_disk_tags_raises_invalid(self):
+        conn = self.configure_virshssh('')
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
+        selected_pool = random.choice(pools)
+        disk = RequestedMachineBlockDevice(
+            size=selected_pool.available + 1,
+            tags=[selected_pool.name])
+        self.patch(
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
+        self.assertRaises(
+            PodInvalidResources, conn.get_usable_pool, disk)
+
+    def test_get_usable_pool_filters_on_default_pool_id(self):
+        conn = self.configure_virshssh('')
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
+        selected_pool = random.choice(pools)
+        disk = RequestedMachineBlockDevice(
+            size=selected_pool.available,
+            tags=[])
+        self.patch(
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
+        self.assertEqual(
+            selected_pool.name,
+            conn.get_usable_pool(disk, selected_pool.id))
+
+    def test_get_usable_pool_filters_on_default_pool_id_raises_invalid(self):
+        conn = self.configure_virshssh('')
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
+        selected_pool = random.choice(pools)
+        disk = RequestedMachineBlockDevice(
+            size=selected_pool.available + 1,
+            tags=[])
+        self.patch(
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
+        self.assertRaises(
+            PodInvalidResources, conn.get_usable_pool, disk, selected_pool.id)
+
+    def test_get_usable_pool_filters_on_default_pool_name(self):
+        conn = self.configure_virshssh('')
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
+        selected_pool = random.choice(pools)
+        disk = RequestedMachineBlockDevice(
+            size=selected_pool.available,
+            tags=[])
+        self.patch(
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
+        self.assertEqual(
+            selected_pool.name,
+            conn.get_usable_pool(disk, selected_pool.name))
+
+    def test_get_usable_pool_filters_on_default_pool_name_raises_invalid(self):
+        conn = self.configure_virshssh('')
+        pools = []
+        for i in range(3):
+            pool = DiscoveredPodStoragePool(
+                id=factory.make_name('id'), name=factory.make_name('pool'),
+                path='/var/lib/libvirt/images', type='dir',
+                storage=random.randint(i * 1000, (i + 1) * 1000))
+            setattr(pool, 'available', pool.storage)
+            pools.append(pool)
+        selected_pool = random.choice(pools)
+        disk = RequestedMachineBlockDevice(
+            size=selected_pool.available + 1,
+            tags=[])
+        self.patch(
+            virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
+        self.assertRaises(
+            PodInvalidResources, conn.get_usable_pool,
+            disk, selected_pool.name)
 
     def test_create_local_volume_returns_None(self):
         conn = self.configure_virshssh('')
@@ -1535,29 +1641,12 @@ class TestVirshPodDriver(MAASTestCase):
             yield driver.discover(system_id, context)
 
     @inlineCallbacks
-    def test_discover_errors_on_incorrect_default_storage_pool(self):
-        driver = VirshPodDriver()
-        system_id = factory.make_name('system_id')
-        context = {
-            'power_address': factory.make_name('power_address'),
-            'power_pass': factory.make_name('power_pass'),
-            'default_storage_pool': factory.make_name('non-existent-pool')
-        }
-        mock_login = self.patch(virsh.VirshSSH, 'login')
-        mock_login.return_value = True
-        mock_run = self.patch(virsh.VirshSSH, 'run')
-        mock_run.return_value = SAMPLE_POOLLIST
-        with ExpectedException(virsh.VirshError):
-            yield driver.discover(system_id, context)
-
-    @inlineCallbacks
     def test_discover(self):
         driver = VirshPodDriver()
         system_id = factory.make_name('system_id')
         context = {
             'power_address': factory.make_name('power_address'),
             'power_pass': factory.make_name('power_pass'),
-            'default_storage_pool': 'default'
         }
         machines = [
             factory.make_name('machine')
@@ -1595,7 +1684,6 @@ class TestVirshPodDriver(MAASTestCase):
                 call(machines[1], storage_pools=sentinel.storage_pools),
                 call(machines[2], storage_pools=sentinel.storage_pools)))
         self.expectThat(['virtual'], Equals(discovered_pod.tags))
-        self.expectThat(driver.default_storage_pool, Equals('default'))
 
     @inlineCallbacks
     def test_compose(self):

@@ -430,6 +430,10 @@ class ComposeMachineForm(forms.Form):
             self.pod.sync_hints(pod_hints)
             return created_machine
 
+        power_parameters = self.pod.power_parameters.copy()
+        if self.pod.default_storage_pool is not None:
+            power_parameters['default_storage_pool_id'] = (
+                self.pod.default_storage_pool.pool_id)
         if isInIOThread():
             # Running under the twisted reactor, before the work from inside.
             d = deferToDatabase(transactional(self.pod.get_client_identifiers))
@@ -439,7 +443,7 @@ class ComposeMachineForm(forms.Form):
                     check_over_commit_ratios)))
             d.addCallback(
                 compose_machine, self.pod.power_type,
-                self.pod.power_parameters, self.get_requested_machine(),
+                power_parameters, self.get_requested_machine(),
                 pod_id=self.pod.id, name=self.pod.name)
             d.addCallback(
                 partial(deferToDatabase, transactional(create_and_sync)))
@@ -465,7 +469,7 @@ class ComposeMachineForm(forms.Form):
                 result = wrap_compose_machine(
                     self.pod.get_client_identifiers(),
                     self.pod.power_type,
-                    self.pod.power_parameters,
+                    power_parameters,
                     self.get_requested_machine(),
                     pod_id=self.pod.id,
                     name=self.pod.name).wait(timeout)
