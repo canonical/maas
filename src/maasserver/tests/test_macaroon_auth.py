@@ -63,6 +63,12 @@ class TestIDClient(MAASServerTestCase):
         self.assertEqual(caveat.location, 'https://example.com')
         self.assertEqual(caveat.condition, 'is-authenticated-user')
 
+    def test_identity_from_context_with_domain(self):
+        client = _IDClient('https://example.com', auth_domain='mydomain')
+        _, [caveat] = client.identity_from_context(None)
+        self.assertEqual(caveat.location, 'https://example.com')
+        self.assertEqual(caveat.condition, 'is-authenticated-user @mydomain')
+
 
 class TestIDMClient(MAASServerTestCase):
 

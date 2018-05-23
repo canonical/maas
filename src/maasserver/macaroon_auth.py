@@ -318,8 +318,9 @@ def validate_user_external_auth(user, now=datetime.utcnow, client=None):
 
 class _IDClient(bakery.IdentityClient):
 
-    def __init__(self, auth_endpoint):
+    def __init__(self, auth_endpoint, auth_domain=None):
         self.auth_endpoint = auth_endpoint
+        self.auth_domain = auth_domain
 
     def declared_identity(self, ctx, declared):
         username = declared.get('username')
@@ -329,20 +330,20 @@ class _IDClient(bakery.IdentityClient):
 
     def identity_from_context(self, ctx):
         return None, [
-            checkers.Caveat(
-                condition='is-authenticated-user',
-                location=self.auth_endpoint)]
+            _get_authentication_caveat(
+                self.auth_endpoint, domain=self.auth_domain)]
 
 
 def _get_bakery(request):
     auth_endpoint = request.external_auth_info.url
+    auth_domain = request.external_auth_info.domain
     return bakery.Bakery(
         key=_get_macaroon_oven_key(),
         root_key_store=KeyStore(MACAROON_LIFESPAN),
         location=request.build_absolute_uri('/'),
         locator=httpbakery.ThirdPartyLocator(
             allow_insecure=not auth_endpoint.startswith('https:')),
-        identity_client=_IDClient(auth_endpoint),
+        identity_client=_IDClient(auth_endpoint, auth_domain=auth_domain),
         authorizer=bakery.ACLAuthorizer(
             get_acl=lambda ctx, op: [bakery.EVERYONE]))
 
@@ -389,7 +390,7 @@ def _get_macaroon_oven_key():
 
 def _get_macaroon_caveats_ops(auth_endpoint, auth_domain):
     """Return a 2-tuple with lists of caveats and operations for a macaroon."""
-    caveats = [_get_authentication_caveat(auth_endpoint, auth_domain)]
+    caveats = [_get_authentication_caveat(auth_endpoint, domain=auth_domain)]
     ops = [bakery.LOGIN_OP]
     return caveats, ops
 
