@@ -135,9 +135,9 @@ def _coerce_to_int(string: str) -> int:
 
 
 def get_version_tuple(maas_version: str) -> MAASVersion:
-    version_parts = maas_version.split('-', 1)
+    version_parts = re.split(r'[-|+]', maas_version, 1)
     short_version = version_parts[0]
-    major_minor_point = re.sub(r'~.*', '', short_version).split('.')
+    major_minor_point = re.sub(r'~.*', '', short_version).split('.', 2)
     for i in range(3):
         try:
             major_minor_point[i] = _coerce_to_int(major_minor_point[i])
@@ -167,9 +167,10 @@ def get_version_tuple(maas_version: str) -> MAASVersion:
         qualifier_type_version = qualifier_types.get(qualifier_type, 0)
     revno = 0
     git_rev = ''
-    # If we find a '-g', that means the extended info indicates a git revision.
-    if '-g' in extended_info:
-        revno, git_rev = extended_info.split('-')[0:2]
+    # If we find a '-g' or '.g', that means the extended info indicates a
+    # git revision.
+    if '-g' in extended_info or '.g' in extended_info:
+        revno, git_rev = re.split(r'[-|.|+]', extended_info)[0:2]
         # Strip any non-numeric characters from the revno, just in case.
         revno = _coerce_to_int(revno)
         # Remove anything that doesn't look like a hexadecimal character.
