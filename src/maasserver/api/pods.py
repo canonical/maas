@@ -43,6 +43,7 @@ DISPLAYED_POD_FIELDS = (
     'cpu_over_commit_ratio',
     'memory_over_commit_ratio',
     'storage_pools',
+    'default_pool',
     )
 
 
@@ -117,17 +118,26 @@ class PodHandler(OperationsHandler):
     def update(self, request, id):
         """Update a specific Pod.
 
-        :param name: Name for the pod (optional).
+        :param name: Name for the pod
         :type name: unicode
-        :param default_pool: Default resource pool to add composed machines.
-        :tyoe default_pool: unicode
-        :param cpu_over_commit_ratio: CPU over commit ratio (optional).
+        :param default_pool: Default resource pool that composed machines
+            get assigned to by default.
+        :type default_pool: unicode
+        :param cpu_over_commit_ratio: CPU over commit ratio
         :type cpu_over_commit_ratio: unicode
-        :param memory_over_commit_ratio: Memory over commit ratio (optional).
+        :param memory_over_commit_ratio: Memory over commit ratio
         :type memory_over_commit_ratio: unicode
         :param default_storage_pool: Default storage pool (used when pod has
             storage pools).
         :type default_storage_pool: unicode
+        :param power_address: Address for power control of the pod
+        :type power_address: unicode
+        :param power_pass: Password for power control of the pod
+        :type power_pass: unicode
+        :param zone: Name of the zone for the pod
+        :type zone: unicode
+        :param tags: A tag or tags (separated by comma) for the pod.
+        :type tags: unicode
 
         Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
         re-added to change the type.
@@ -322,6 +332,9 @@ class PodsHandler(OperationsHandler):
         :type name: unicode
         :param zone: Name of the zone for the pod (optional).
         :type zone: unicode
+        :param default_pool: Default resource pool that composed machines
+            get assigned to by default (optional).
+        :type default_pool: unicode
         :param tags: A tag or tags (separated by comma) for the pod (optional).
         :type tags: unicode
 
