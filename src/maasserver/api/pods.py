@@ -98,6 +98,7 @@ class PodHandler(OperationsHandler):
     @classmethod
     def storage_pools(cls, pod):
         pools = []
+        default_id = pod.default_storage_pool_id
         for pool in pod.storage_pools.all():
             used = pool.get_used_storage()
             pools.append({
@@ -108,6 +109,7 @@ class PodHandler(OperationsHandler):
                 'total': pool.storage,
                 'used': used,
                 'available': pool.storage - used,
+                'default': pool.id == default_id
             })
         return pools
 
@@ -117,10 +119,15 @@ class PodHandler(OperationsHandler):
 
         :param name: Name for the pod (optional).
         :type name: unicode
+        :param default_pool: Default resource pool to add composed machines.
+        :tyoe default_pool: unicode
         :param cpu_over_commit_ratio: CPU over commit ratio (optional).
         :type cpu_over_commit_ratio: unicode
         :param memory_over_commit_ratio: Memory over commit ratio (optional).
         :type memory_over_commit_ratio: unicode
+        :param default_storage_pool: Default storage pool (used when pod has
+            storage pools).
+        :type default_storage_pool: unicode
 
         Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
         re-added to change the type.

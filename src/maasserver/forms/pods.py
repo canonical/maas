@@ -41,6 +41,7 @@ from maasserver.models import (
     Machine,
     Node,
     Pod,
+    PodStoragePool,
     RackController,
     ResourcePool,
     Zone,
@@ -52,7 +53,10 @@ from maasserver.node_constraint_filter_forms import (
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
+from maasserver.utils.threads import (
+    callOutToDatabase,
+    deferToDatabase,
+)
 import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
@@ -86,6 +90,7 @@ class PodForm(MAASModelForm):
             'default_pool',
             'cpu_over_commit_ratio',
             'memory_over_commit_ratio',
+            'default_storage_pool',
         ]
 
     name = forms.CharField(
@@ -109,6 +114,10 @@ class PodForm(MAASModelForm):
     memory_over_commit_ratio = forms.FloatField(
         label="Memory over commit ratio", initial=1, required=False,
         min_value=0, max_value=10)
+
+    default_storage_pool = forms.ModelChoiceField(
+        label="Default storage pool", required=False,
+        queryset=PodStoragePool.objects.none(), to_field_name='pool_id')
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         self.is_new = instance is None
@@ -141,6 +150,11 @@ class PodForm(MAASModelForm):
         if instance is not None:
             self.initial['zone'] = instance.zone.name
             self.initial['default_pool'] = instance.default_pool.name
+            self.fields['default_storage_pool'].queryset = (
+                instance.storage_pools.all())
+            if instance.default_storage_pool:
+                self.initial['default_storage_pool'] = (
+                    instance.default_storage_pool.pool_id)
 
     def _clean_fields(self):
         """Override to dynamically add fields based on the value of `type`
@@ -431,9 +445,12 @@ class ComposeMachineForm(forms.Form):
             return created_machine
 
         power_parameters = self.pod.power_parameters.copy()
-        if self.pod.default_storage_pool is not None:
-            power_parameters['default_storage_pool_id'] = (
-                self.pod.default_storage_pool.pool_id)
+
+        def _set_default_pool_id():
+            if self.pod.default_storage_pool is not None:
+                power_parameters['default_storage_pool_id'] = (
+                    self.pod.default_storage_pool.pool_id)
+
         if isInIOThread():
             # Running under the twisted reactor, before the work from inside.
             d = deferToDatabase(transactional(self.pod.get_client_identifiers))
@@ -441,6 +458,7 @@ class ComposeMachineForm(forms.Form):
             d.addCallback(
                 partial(deferToDatabase, transactional(
                     check_over_commit_ratios)))
+            d.addCallback(callOutToDatabase, _set_default_pool_id)
             d.addCallback(
                 compose_machine, self.pod.power_type,
                 power_parameters, self.get_requested_machine(),
@@ -465,6 +483,7 @@ class ComposeMachineForm(forms.Form):
                     pod_id=pod_id, name=name)
                 return d
 
+            _set_default_pool_id()
             try:
                 result = wrap_compose_machine(
                     self.pod.get_client_identifiers(),

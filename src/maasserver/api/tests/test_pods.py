@@ -162,6 +162,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'total',
                 'used',
                 'available',
+                'default',
             ],
             list(parsed_result[0]['storage_pools'][0]))
 

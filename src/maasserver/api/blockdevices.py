@@ -57,6 +57,7 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'partition_table_type',
     'partitions',
     'firmware_version',
+    'storage_pool',
 )
 
 
@@ -203,6 +204,14 @@ class BlockDeviceHandler(OperationsHandler):
         else:
             # No partitions on the block device.
             return []
+
+    @classmethod
+    def storage_pool(cls, block_device):
+        block_device = block_device.actual_instance
+        if (isinstance(block_device, PhysicalBlockDevice) and
+                block_device.storage_pool is not None):
+            return block_device.storage_pool.pool_id
+        return None
 
     def read(self, request, system_id, id):
         """Read block device on node.

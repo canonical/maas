@@ -51,6 +51,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodStoragePool,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -124,7 +125,17 @@ class TestPodForm(MAASTransactionServerTestCase):
             hints=DiscoveredPodHints(
                 cores=random.randint(2, 4), memory=random.randint(1024, 4096),
                 local_storage=random.randint(1024, 1024 * 1024),
-                cpu_speed=random.randint(2048, 4048)))
+                cpu_speed=random.randint(2048, 4048)),
+            storage_pools=[
+                DiscoveredPodStoragePool(
+                    id=factory.make_name('pool_id'),
+                    name=factory.make_name('name'),
+                    type=factory.make_name('type'),
+                    path='/var/lib/path/%s' % factory.make_name('path'),
+                    storage=random.randint(1024, 1024 * 1024),
+                )
+                for _ in range(3)
+            ])
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
@@ -150,6 +161,7 @@ class TestPodForm(MAASTransactionServerTestCase):
                 'default_pool',
                 'cpu_over_commit_ratio',
                 'memory_over_commit_ratio',
+                'default_storage_pool',
             ], list(form.fields))
 
     def test_creates_pod_with_discovered_information(self):
@@ -421,6 +433,23 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
+    def test_updates_default_storage_pool(self):
+        discovered_pod, _, _ = (
+            self.fake_pod_discovery())
+        default_storage_pool = random.choice(discovered_pod.storage_pools)
+        pod = factory.make_Pod(pod_type='virsh')
+        pod.sync(discovered_pod, self.request.user)
+        form = PodForm(data={
+            'default_storage_pool': default_storage_pool.id,
+            'power_address': 'qemu:///system',
+        }, request=self.request, instance=pod)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertThat(pod, MatchesStructure(
+            default_storage_pool=MatchesStructure(
+                pool_id=Equals(default_storage_pool.id)),
+        ))
+
     @wait_for_reactor
     @inlineCallbacks
     def test_updates_existing_pod_in_twisted(self):
@@ -474,6 +503,30 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.assertItemsEqual(not_routable_racks, failed_racks)
 
         yield deferToDatabase(validate_rack_routes)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_updates_default_storage_pool_in_twisted(self):
+        discovered_pod, _, _ = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods_module.discover_pod.return_value = succeed(
+            pods_module.discover_pod.return_value)
+        default_storage_pool = random.choice(discovered_pod.storage_pools)
+        pod = yield deferToDatabase(
+            factory.make_Pod, pod_type='virsh')
+        yield deferToDatabase(pod.sync, discovered_pod, self.request.user)
+        form = yield deferToDatabase(
+            PodForm, data={
+                'default_storage_pool': default_storage_pool.id,
+                'power_address': 'qemu:///system',
+            }, request=self.request, instance=pod)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+        pod = yield form.save()
+        self.assertThat(pod, MatchesStructure(
+            default_storage_pool=MatchesStructure(
+                pool_id=Equals(default_storage_pool.id)),
+        ))
 
     def test_discover_and_sync_existing_pod(self):
         discovered_pod, discovered_racks, failed_racks = (

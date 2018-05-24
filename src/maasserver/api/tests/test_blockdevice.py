@@ -145,6 +145,21 @@ class TestBlockDevices(APITestCase.ForUser):
             "mount_point": filesystem.mount_point,
             }, parsed_devices[1]['filesystem'])
 
+    def test_read_returns_storage_pool(self):
+        node = factory.make_Node(with_boot_disk=False)
+        pool = factory.make_PodStoragePool()
+        factory.make_PhysicalBlockDevice(
+            node=node, storage_pool=pool)
+
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
+        self.assertEqual(
+            parsed_devices[0]['storage_pool'], pool.pool_id)
+
     def test_read_returns_partition_type(self):
         node = factory.make_Node(with_boot_disk=False)
         block_device = factory.make_PhysicalBlockDevice(node=node)
