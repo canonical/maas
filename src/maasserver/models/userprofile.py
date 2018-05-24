@@ -65,7 +65,7 @@ class UserProfile(CleanSave, Model):
     # Set to true when the user has completed the intro page of the Web UI.
     completed_intro = BooleanField(default=False)
     # Last time the user was chacked with the external authentication source
-    auth_last_check = DateTimeField(null=True, auto_now_add=True)
+    auth_last_check = DateTimeField(blank=True, null=True)
     # Whether the user is local or comes from the external authentication
     # source
     is_local = BooleanField(default=True)

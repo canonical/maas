@@ -10,6 +10,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.models import User
+import maasserver.api.auth
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -38,6 +39,12 @@ def get_user_uri(user):
 
 
 class TestUsers(APITestCase.ForUser):
+
+    def setUp(self):
+        self.mock_validate = self.patch(
+            maasserver.api.auth, 'validate_user_external_auth')
+        self.mock_validate.return_value = True
+        super().setUp()
 
     def test_handler_path(self):
         self.assertEqual(

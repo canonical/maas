@@ -7,6 +7,7 @@ __all__ = []
 
 import json
 
+import attr
 from django.core.exceptions import ValidationError
 from django.core.management.base import (
     BaseCommand,
@@ -17,6 +18,16 @@ from django.db import DEFAULT_DB_ALIAS
 from maascli.init import add_idm_options
 from maasserver.management.commands.createadmin import read_input
 from maasserver.models import Config
+
+
+@attr.s
+class AuthDetails:
+
+    url = attr.ib(default=None)
+    domain = attr.ib(default='')
+    user = attr.ib(default='')
+    key = attr.ib(default='')
+    admin_group = attr.ib(default='')
 
 
 class InvalidURLError(CommandError):
@@ -33,18 +44,18 @@ def prompt_for_external_auth_url(existing_url):
     return new_url
 
 
-def read_agent_file(agent_file):
-    """Read a .agent file with external auth details."""
+def update_auth_details_from_agent_file(agent_file, auth_details):
+    """Read a .agent file and return auth details."""
     details = json.load(agent_file)
     agent_file.close()
     try:
         agent_details = details.get('agents', []).pop(0)
     except IndexError:
         raise ValueError('No agent users found')
-    auth_url = agent_details.get('url')
-    auth_user = agent_details.get('username')
-    auth_key = details.get('key', {}).get('private')
-    return auth_url, auth_user, auth_key
+    # update the passed auth details
+    auth_details.url = agent_details.get('url')
+    auth_details.user = agent_details.get('username')
+    auth_details.key = details.get('key', {}).get('private')
 
 
 valid_url = URLValidator(schemes=('http', 'https'))
@@ -61,16 +72,17 @@ def is_valid_auth_url(auth_url):
 def get_auth_config(config_manager):
     config_keys = [
         'external_auth_url', 'external_auth_domain', 'external_auth_user',
-        'external_auth_key']
+        'external_auth_key', 'external_auth_admin_group']
     return {key: config_manager.get_config(key) for key in config_keys}
 
 
-def set_auth_config(config_manager, auth_url, auth_domain, auth_user,
-                    auth_key):
-    config_manager.set_config('external_auth_url', auth_url)
-    config_manager.set_config('external_auth_domain', auth_domain)
-    config_manager.set_config('external_auth_user', auth_user)
-    config_manager.set_config('external_auth_key', auth_key)
+def set_auth_config(config_manager, auth_details):
+    config_manager.set_config('external_auth_url', auth_details.url)
+    config_manager.set_config('external_auth_domain', auth_details.domain)
+    config_manager.set_config('external_auth_user', auth_details.user)
+    config_manager.set_config('external_auth_key', auth_details.key)
+    config_manager.set_config(
+        'external_auth_admin_group', auth_details.admin_group)
 
 
 class Command(BaseCommand):
@@ -89,40 +101,46 @@ class Command(BaseCommand):
             print(json.dumps(get_auth_config(config_manager)))
             return
 
-        auth_url, auth_domain, auth_user, auth_key = None, '', '', ''
+        auth_details = AuthDetails()
 
         agent_file = options.get('idm_agent_file')
         if agent_file:
-            auth_url, auth_user, auth_key = read_agent_file(agent_file)
-            auth_domain = _get_or_prompt(
+            update_auth_details_from_agent_file(agent_file, auth_details)
+            auth_details.domain = _get_or_prompt(
                 options, 'idm_domain',
                 "Users domain for external authentication backend "
                 "(leave blank for empty): ", replace_none=True)
-            set_auth_config(
-                config_manager, auth_url, auth_domain, auth_user, auth_key)
+            auth_details.admin_group = _get_or_prompt(
+                options, 'idm_admin_group',
+                "Group of users whose members are made admins in MAAS "
+                "(leave blank for empty): ")
+            set_auth_config(config_manager, auth_details)
             return
 
-        auth_url = options.get('idm_url')
-        if auth_url is None:
+        auth_details.url = options.get('idm_url')
+        if auth_details.url is None:
             existing_url = config_manager.get_config('external_auth_url')
-            auth_url = prompt_for_external_auth_url(existing_url)
-        if auth_url == 'none':
-            auth_url = ''
-        if auth_url:
-            if not is_valid_auth_url(auth_url):
+            auth_details.url = prompt_for_external_auth_url(existing_url)
+        if auth_details.url == 'none':
+            auth_details.url = ''
+        if auth_details.url:
+            if not is_valid_auth_url(auth_details.url):
                 raise InvalidURLError(
                     "Please enter a valid http or https URL.")
-            auth_domain = _get_or_prompt(
+            auth_details.domain = _get_or_prompt(
                 options, 'idm_domain',
                 "Users domain for external authentication backend "
                 "(leave blank for empty): ", replace_none=True)
-            auth_user = _get_or_prompt(
+            auth_details.user = _get_or_prompt(
                 options, 'idm_user', "Username for IDM API access: ")
-            auth_key = _get_or_prompt(
+            auth_details.key = _get_or_prompt(
                 options, 'idm_key', "Private key for IDM API access: ")
+            auth_details.admin_group = _get_or_prompt(
+                options, 'idm_admin_group',
+                "Group of users whose members are made admins in MAAS "
+                "(leave blank for empty): ")
 
-        set_auth_config(
-            config_manager, auth_url, auth_domain, auth_user, auth_key)
+        set_auth_config(config_manager, auth_details)
 
 
 def _get_or_prompt(options, option, message, replace_none=False):

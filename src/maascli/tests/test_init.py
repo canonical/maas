@@ -56,6 +56,11 @@ class TestAddIdmOptions(MAASTestCase):
         self.assertEqual(
             'my-agent-file-content', options.idm_agent_file.read())
 
+    def test_add_idm_options_idm_admin_group(self):
+        options = self.parser.parse_args(
+            ['--idm-admin-group', 'admins'])
+        self.assertEqual('admins', options.idm_admin_group)
+
 
 class TestCreateAdminOptions(MAASTestCase):
 

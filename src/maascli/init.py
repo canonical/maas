@@ -27,6 +27,9 @@ def add_idm_options(parser):
     parser.add_argument(
         '--idm-agent-file', type=argparse.FileType('r'),
         help="Agent file containing IDM authentication information")
+    parser.add_argument(
+        '--idm-admin-group', default=None, metavar='IDM_ADMIN_GROUP',
+        help="Group of users whose members are made admins in MAAS")
 
 
 def add_create_admin_options(parser):
@@ -78,6 +81,8 @@ def configure_authentication(options):
         cmd.extend(['--idm-key', options.idm_key])
     if options.idm_agent_file is not None:
         cmd.extend(['--idm-agent-file', options.idm_agent_file.name])
+    if options.idm_admin_group is not None:
+        cmd.extend(['--idm-admin-group', options.idm_admin_group])
     subprocess.call(cmd)
 
 
