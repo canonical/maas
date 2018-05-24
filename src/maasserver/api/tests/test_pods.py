@@ -120,7 +120,8 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'zone',
                 'available',
                 'cpu_over_commit_ratio',
-                'memory_over_commit_ratio'
+                'memory_over_commit_ratio',
+                'default_pool',
             ],
             list(parsed_result[0]))
         self.assertItemsEqual(
@@ -164,6 +165,17 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(parsed_result['type'], pod_info['type'])
+
+    def test_create_creates_pod_with_default_resource_pool(self):
+        self.become_admin()
+        discovered_pod, _, _ = self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        pool = factory.make_ResourcePool()
+        pod_info['default_pool'] = pool.name
+        response = self.client.post(reverse('pods_handler'), pod_info)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(pool.id, parsed_result['default_pool']['id'])
 
     def test_create_duplicate_provides_nice_error(self):
         self.become_admin()
@@ -241,6 +253,38 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         response = self.client.put(get_pod_uri(pod))
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_PUT_updates(self):
+        self.become_admin()
+        pod = factory.make_Pod(pod_type='virsh')
+        new_name = factory.make_name('pod')
+        new_tags = [factory.make_name('tag'), factory.make_name('tag')]
+        new_pool = factory.make_ResourcePool()
+        new_zone = factory.make_Zone()
+        new_power_parameters = {
+            'default_storage_pool': factory.make_name('storage-pool'),
+            'power_address': 'qemu+ssh://1.2.3.4/system',
+            'power_pass': factory.make_name('pass'),
+        }
+        discovered_pod, _, _ = self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod), {
+            'name': new_name,
+            'tags': ','.join(new_tags),
+            'default_storage_pool': new_power_parameters[
+                'default_storage_pool'],
+            'power_address': new_power_parameters['power_address'],
+            'power_pass': new_power_parameters['power_pass'],
+            'zone': new_zone.name,
+            'default_pool': new_pool.name,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        pod.refresh_from_db()
+        self.assertEqual(new_name, pod.name)
+        self.assertEqual(new_pool, pod.default_pool)
+        self.assertItemsEqual(new_tags, pod.tags)
+        self.assertEqual(new_power_parameters, pod.power_parameters)
+        self.assertEqual(new_zone, pod.zone)
 
     def test_PUT_updates_discovers_syncs_and_returns_pod(self):
         self.become_admin()
