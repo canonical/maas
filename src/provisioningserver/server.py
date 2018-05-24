@@ -5,17 +5,17 @@
 
 # Install the asyncio reactor with uvloop. This must be done before any other
 # twisted code is imported.
+import asyncio
 import sys
 
 from twisted.internet import asyncioreactor
 
-# XXX blake_r: LP: #1768575 - Disable uvloop on the rackd process because
-# forking with uvloop from authbind causes the rackd to lock up.
-# try:
-#     import uvloop
-#     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-# except ImportError:
-#     pass
+
+try:
+    import uvloop
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+except ImportError:
+    pass
 asyncioreactor.install()
 
 

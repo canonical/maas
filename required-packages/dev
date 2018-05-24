@@ -1,4 +1,5 @@
 archdetect-deb
+authbind
 avahi-utils
 bash
 build-essential

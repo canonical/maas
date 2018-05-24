@@ -53,4 +53,11 @@ if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
     fi
 fi
 
+if [ "$1" = "upgrade" ]; then
+    MAAS_UID="`id -u maas`"
+    if [ -f /etc/authbind/byuid/$MAAS_UID ]; then
+        rm -rf /etc/authbind/byuid/$MAAS_UID
+    fi
+fi
+
 #DEBHELPER#

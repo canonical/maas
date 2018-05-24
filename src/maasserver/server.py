@@ -13,37 +13,20 @@ os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
 
 
-def installUvloop():
-    """Install uvloop to asyncio to use."""
-    # XXX blake_r: LP: #1768575 - This is only done for the regiond, the rackd
-    # uses the standard asyncio reactor. Once rackd removes the need for
-    # authbind then it can be moved back into the region and this can be
-    # removed.
-    import asyncio
-    try:
-        import uvloop
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    except ImportError:
-        pass
-
-
 def runMasterServices():
     """Run the maas-regiond master services."""
-    installUvloop()
     from provisioningserver.server import runService
     runService("maas-regiond-master")
 
 
 def runAllInOneServices():
     """Run the maas-regiond all-in-one services."""
-    installUvloop()
     from provisioningserver.server import runService
     runService("maas-regiond-all")
 
 
 def runWorkerServices():
     """Run the worker service."""
-    installUvloop()
     from provisioningserver.server import runService
     runService("maas-regiond-worker")
 
