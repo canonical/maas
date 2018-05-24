@@ -261,6 +261,27 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(new_name, parsed_output['name'])
         self.assertEqual(discovered_pod.cores, parsed_output['total']['cores'])
 
+    def test_PUT_update_minimal(self):
+        self.become_admin()
+        pod_info = self.make_pod_info()
+        power_parameters = {
+            'default_storage_pool': factory.make_name(),
+            'power_address': pod_info['power_address'],
+            'power_pass': pod_info['power_pass'],
+        }
+        pod = factory.make_Pod(
+            pod_type=pod_info['type'], parameters=power_parameters)
+        new_name = factory.make_name('pool')
+        self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod), {
+            'name': new_name,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        pod.refresh_from_db()
+        self.assertEqual(new_name, pod.name)
+        self.assertEqual(power_parameters, pod.power_parameters)
+
     def test_refresh_requires_admin(self):
         pod = factory.make_Pod()
         response = self.client.post(get_pod_uri(pod), {

@@ -151,10 +151,14 @@ class PodForm(MAASModelForm):
         # selected type for the pod.
         if len(self.errors) == 0:
             driver_fields = get_driver_parameters_from_json(
-                self.drivers_orig, None, scope=SETTING_SCOPE.BMC)
+                self.drivers_orig, scope=SETTING_SCOPE.BMC)
             self.param_fields = (
                 driver_fields[self.cleaned_data['type']].field_dict)
             self.fields.update(self.param_fields)
+            if not self.is_new:
+                for key, value in self.instance.power_parameters.items():
+                    if key not in self.data:
+                        self.data[key] = value
             super(PodForm, self)._clean_fields()
 
     def clean(self):

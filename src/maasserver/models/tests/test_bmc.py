@@ -1459,8 +1459,8 @@ class TestPodDelete(MAASTransactionServerTestCase):
         yield pod.async_delete()
         self.assertThat(
             client, MockCalledOnceWith(
-                DecomposeMachine, type=pod.power_type, context={},
-                pod_id=pod.id, name=pod.name))
+                DecomposeMachine, type=pod.power_type,
+                context=pod.power_parameters, pod_id=pod.id, name=pod.name))
         decomposable_machine = yield deferToDatabase(
             reload_object, decomposable_machine)
         delete_machine = yield deferToDatabase(reload_object, delete_machine)
