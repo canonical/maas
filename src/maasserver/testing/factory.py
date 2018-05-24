@@ -610,7 +610,10 @@ class Factory(maastesting.factory.Factory):
         if pod_type is None:
             pod_type = 'virsh'
         if parameters is None:
-            parameters = {}
+            parameters = {
+                'power_address': 'qemu+ssh://{}/system'.format(
+                    self.make_ip_address())
+            }
         pod = Pod(
             power_type=pod_type, power_parameters=parameters,
             ip_address=ip_address, **kwargs)

@@ -85,7 +85,7 @@ def make_pod_with_hints():
     pod = factory.make_Pod(
         architectures=architectures, cores=random.randint(8, 16),
         memory=random.randint(4096, 8192),
-        cpu_speed=random.randint(2000, 3000))
+        cpu_speed=random.randint(2000, 3000), parameters={})
     for _ in range(3):
         pool = factory.make_PodStoragePool(pod)
     pod.default_storage_pool = pool
@@ -369,18 +369,22 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_updates_existing_pod_minimal(self):
         self.fake_pod_discovery()
-        pod_info = self.make_pod_info()
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
         cpu_over_commit = random.randint(0, 10)
         memory_over_commit = random.randint(0, 10)
+        power_parameters = {
+            'power_address': 'qemu+ssh://1.2.3.4/system',
+            'power_pass': 'pass',
+        }
         orig_pod = factory.make_Pod(
-            pod_type=pod_info['type'], zone=zone, default_pool=pool,
+            pod_type='virsh', zone=zone, default_pool=pool,
             cpu_over_commit_ratio=cpu_over_commit,
-            memory_over_commit_ratio=memory_over_commit)
+            memory_over_commit_ratio=memory_over_commit,
+            parameters=power_parameters)
         new_name = factory.make_name("pod")
-        pod_info['name'] = new_name
-        form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
+        form = PodForm(
+            data={'name': new_name}, request=self.request, instance=orig_pod)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(new_name, pod.name)
@@ -388,6 +392,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(pool, pod.default_pool)
         self.assertEqual(cpu_over_commit, pod.cpu_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
+        self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
+        self.assertEqual(power_parameters, pod.power_parameters)
 
     def test_updates_existing_pod(self):
         discovered_pod, discovered_racks, failed_racks = (
@@ -533,7 +539,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.fake_pod_discovery())
         zone = factory.make_Zone()
         pod_info = self.make_pod_info()
-        orig_pod = factory.make_Pod(zone=zone, pod_type=pod_info['type'])
+        power_parameters = {'power_address': pod_info['power_address']}
+        orig_pod = factory.make_Pod(
+            zone=zone, pod_type=pod_info['type'],
+            parameters=power_parameters)
         form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
         pod = form.discover_and_sync_pod()
         self.assertThat(pod, MatchesStructure(
@@ -546,8 +555,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             cpu_speed=Equals(discovered_pod.cpu_speed),
             zone=Equals(zone),
             power_type=Equals(pod_info['type']),
-            power_parameters=Equals({}),
-            ip_address=Is(None),
+            power_parameters=Equals(power_parameters),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
         routable_racks = [
             relation.rack_controller
@@ -571,8 +580,10 @@ class TestPodForm(MAASTransactionServerTestCase):
             pods_module.discover_pod.return_value)
         zone = yield deferToDatabase(factory.make_Zone)
         pod_info = yield deferToDatabase(self.make_pod_info)
+        power_parameters = {'power_address': pod_info['power_address']}
         orig_pod = yield deferToDatabase(
-            factory.make_Pod, zone=zone, pod_type=pod_info['type'])
+            factory.make_Pod, zone=zone, pod_type=pod_info['type'],
+            parameters=power_parameters)
         form = yield deferToDatabase(
             PodForm, data=pod_info, request=self.request, instance=orig_pod)
         pod = yield form.discover_and_sync_pod()
@@ -586,8 +597,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             cpu_speed=Equals(discovered_pod.cpu_speed),
             zone=Equals(zone),
             power_type=Equals(pod_info['type']),
-            power_parameters=Equals({}),
-            ip_address=Is(None),
+            power_parameters=Equals(power_parameters),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
 
         def validate_rack_routes():

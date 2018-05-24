@@ -9,14 +9,12 @@ import random
 from unittest.mock import MagicMock
 
 from crochet import wait_for
-from maasserver.enum import NODE_TYPE
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.pod import (
     ComposeMachineForm,
     PodHandler,
@@ -113,116 +111,22 @@ class TestPodHandler(MAASTransactionServerTestCase):
             cpu_speed=random.randint(1000, 3000), local_storage=0)
         return composed_machine, pod_hints
 
-    def dehydrate_storage_pool(self, pool):
-        used = pool.get_used_storage()
-        return {
-            'id': pool.pool_id,
-            'name': pool.name,
-            'type': pool.pool_type,
-            'path': pool.path,
-            'total': pool.storage,
-            'used': used,
-            'available': pool.storage - used,
-        }
-
-    def dehydrate_pod(self, pod, admin=True, for_list=True):
-        data = {
-            "id": pod.id,
-            "name": pod.name,
-            "cpu_speed": pod.cpu_speed,
-            "type": pod.power_type,
-            "ip_address": pod.ip_address,
-            "updated": dehydrate_datetime(pod.updated),
-            "created": dehydrate_datetime(pod.created),
-            "composed_machines_count": pod.node_set.filter(
-                node_type=NODE_TYPE.MACHINE).count(),
-            "total": {
-                "cores": pod.cores,
-                "memory": pod.memory,
-                'memory_gb': '%.1f' % (pod.memory / 1024.0),
-                "local_storage": pod.local_storage,
-                'local_storage_gb': '%.1f' % (pod.local_storage / (1024 ** 3)),
-                },
-            "used": {
-                "cores": pod.get_used_cores(),
-                "memory": pod.get_used_memory(),
-                'memory_gb': '%.1f' % (pod.get_used_memory() / 1024.0),
-                "local_storage": pod.get_used_local_storage(),
-                'local_storage_gb': '%.1f' % (
-                    pod.get_used_local_storage() / (1024 ** 3)),
-                },
-            "available": {
-                "cores": pod.cores - pod.get_used_cores(),
-                "memory": pod.memory - pod.get_used_memory(),
-                'memory_gb': '%.1f' % (
-                    (pod.memory - pod.get_used_memory()) / 1024.0),
-                "local_storage": (
-                    pod.local_storage - pod.get_used_local_storage()),
-                'local_storage_gb': '%.1f' % (
-                    (pod.local_storage - pod.get_used_local_storage()) / (
-                        (1024 ** 3))),
-                },
-            "default_pool": pod.default_pool.id,
-            "capabilities": pod.capabilities,
-            "architectures": pod.architectures,
-            "hints": {
-                'cores': pod.hints.cores,
-                'cpu_speed': pod.hints.cpu_speed,
-                'memory': pod.hints.memory,
-                'memory_gb': '%.1f' % (pod.hints.memory / 1024.0),
-                'local_storage': pod.hints.local_storage,
-                'local_storage_gb': '%.1f' % (
-                    pod.hints.local_storage / (1024 ** 3)),
-                'local_disks': pod.hints.local_disks,
-                'iscsi_storage': pod.hints.iscsi_storage,
-                'iscsi_storage_gb': '%.1f' % (
-                    pod.hints.iscsi_storage / (1024 ** 3)),
-                },
-            "tags": pod.tags,
-            "zone": pod.zone.id,
-            "cpu_over_commit_ratio": pod.cpu_over_commit_ratio,
-            "memory_over_commit_ratio": pod.memory_over_commit_ratio
-            }
-        if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
-            data['total']['local_disks'] = pod.local_disks
-            data['used']['local_disks'] = pod.get_used_local_disks()
-            data['available']['local_disks'] = (
-                pod.local_disks - pod.get_used_local_disks())
-        if Capabilities.ISCSI_STORAGE in pod.capabilities:
-            data['total']['iscsi_storage'] = pod.iscsi_storage
-            data['total']['iscsi_storage_gb'] = '%.1f' % (
-                pod.iscsi_storage / (1024 ** 3))
-            data['used']['iscsi_storage'] = pod.get_used_iscsi_storage()
-            data['used']['iscsi_storage_gb'] = '%.1f' % (
-                pod.get_used_iscsi_storage() / (1024 ** 3))
-            data['available']['iscsi_storage'] = (
-                pod.iscsi_storage - pod.get_used_iscsi_storage())
-            data['available']['iscsi_storage_gb'] = '%.1f' % (
-                (pod.iscsi_storage - pod.get_used_iscsi_storage()) / (
-                    1024 ** 3))
-        if admin:
-            data.update(pod.power_parameters)
-        if not for_list and pod.storage_pools.all():
-            data["storage_pools"] = [
-                self.dehydrate_storage_pool(pool)
-                for pool in pod.storage_pools.all()
-            ]
-            data["default_storage_pool"] = pod.default_storage_pool.pool_id
-        return data
-
     def test_get(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {})
         pod = self.make_pod_with_hints()
-        expected_data = self.dehydrate_pod(pod, for_list=False)
+        expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
+        self.assertItemsEqual(expected_data.keys(), result.keys())
+        for key in expected_data:
+            self.assertEqual(expected_data[key], result[key], key)
         self.assertThat(result, Equals(expected_data))
 
     def test_get_as_standard_user(self):
         user = factory.make_User()
         handler = PodHandler(user, {})
         pod = self.make_pod_with_hints()
-        expected_data = self.dehydrate_pod(pod, admin=False, for_list=False)
+        expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
 
@@ -230,7 +134,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         admin = factory.make_admin()
         handler = PodHandler(admin, {})
         pod = self.make_pod_with_hints()
-        expected_data = [self.dehydrate_pod(pod, for_list=True)]
+        expected_data = [handler.full_dehydrate(pod, for_list=True)]
         result = handler.list({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
 
@@ -244,10 +148,13 @@ class TestPodHandler(MAASTransactionServerTestCase):
             PodForm, 'discover_and_sync_pod')
         mock_discover_and_sync_pod.return_value = succeed(pod)
         expected_data = yield deferToDatabase(
-            self.dehydrate_pod, pod, for_list=False)
+            handler.full_dehydrate, pod, for_list=False)
         observed_data = yield handler.refresh({"id": pod.id})
         self.assertThat(
             mock_discover_and_sync_pod, MockCalledOnceWith())
+        self.assertItemsEqual(expected_data.keys(), observed_data.keys())
+        for key in expected_data:
+            self.assertEqual(expected_data[key], observed_data[key], key)
         self.assertEqual(expected_data, observed_data)
 
     @wait_for_reactor
