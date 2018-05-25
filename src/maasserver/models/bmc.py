@@ -661,6 +661,10 @@ class Pod(BMC):
         if zone is None:
             zone = self.zone
 
+        pool = kwargs.pop('pool', None)
+        if pool is None:
+            pool = self.default_pool
+
         # Create the machine.
         machine = Machine(
             hostname=discovered_machine.hostname,
@@ -671,7 +675,7 @@ class Pod(BMC):
             memory=discovered_machine.memory,
             power_state=discovered_machine.power_state,
             creation_type=creation_type,
-            pool=self.default_pool,
+            pool=pool,
             zone=zone, **kwargs)
         machine.bmc = self
         machine.instance_power_parameters = discovered_machine.power_parameters

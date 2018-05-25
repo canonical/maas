@@ -228,6 +228,9 @@ class PodHandler(OperationsHandler):
         :type domain: unicode
         :param zone: ID of zone place the newly composed machine in.
         :type zone: unicode
+        :param pool: ID of resource pool to place the newly composed machine
+            in.
+        :type pool: unicode
 
         Returns 404 if the pod is not found.
         Returns 403 if the user does not have permission to compose machine.

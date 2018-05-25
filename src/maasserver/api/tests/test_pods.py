@@ -404,6 +404,8 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
     def test_compose_composes_with_defaults(self):
         self.become_admin()
         pod = self.make_pod_with_hints()
+        pod.default_pool = factory.make_ResourcePool()
+        pod.save()
 
         # Mock the RPC client.
         client = MagicMock()
@@ -427,6 +429,39 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         parsed_machine = json_load_bytes(response.content)
         self.assertItemsEqual(
             parsed_machine.keys(), ['resource_uri', 'system_id'])
+        machine = Machine.objects.get(system_id=parsed_machine['system_id'])
+        self.assertEqual(machine.pool, pod.default_pool)
+
+    def test_compose_composes_with_pool(self):
+        self.become_admin()
+        pod = self.make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(pods, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        self.patch(Machine, "start_commissioning")
+
+        pool = factory.make_ResourcePool()
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'compose',
+            'pool': pool.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_machine = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            parsed_machine.keys(), ['resource_uri', 'system_id'])
+        machine = Machine.objects.get(system_id=parsed_machine['system_id'])
+        self.assertEqual(machine.pool, pool)
 
     def test_compose_raises_error_when_to_large_request(self):
         self.become_admin()
