@@ -707,6 +707,15 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     IsInstance(MinValueValidator),
                     MatchesStructure(limit_value=Equals(300))))))
 
+    def test__sets_up_pool_default(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        pool = factory.make_ResourcePool()
+        pod.default_pool = pool
+        pod.save()
+        form = ComposeMachineForm(request=request, pod=pod)
+        self.assertEqual(pool, form.initial['pool'])
+
     def test__get_requested_machine_uses_all_initial_values(self):
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -940,6 +949,54 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             MatchesStructure(
                 domain=Equals(domain),
                 zone=Equals(zone))))
+
+    def test__compose_sets_resource_pool(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        pool = factory.make_ResourcePool()
+        form = ComposeMachineForm(data={
+            "pool": pool.id,
+            "skip_commissioning": 'true',
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        created_machine = form.compose()
+        self.assertEqual(pool, created_machine.pool)
+
+    def test__compose_uses_default_pool(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        pod.default_pool = factory.make_ResourcePool()
+        pod.save()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        form = ComposeMachineForm(data={
+            "skip_commissioning": 'true',
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        created_machine = form.compose()
+        self.assertEqual(pod.default_pool, created_machine.pool)
 
     def test__compose_check_over_commit_ratios_raises_error_for_cores(self):
         request = MagicMock()

@@ -359,6 +359,9 @@ class ComposeMachineForm(forms.Form):
         self.fields['zone'] = ModelChoiceField(
             required=False, queryset=Zone.objects.all())
         self.initial['zone'] = Zone.objects.get_default_zone()
+        self.fields['pool'] = ModelChoiceField(
+            required=False, queryset=ResourcePool.objects.all())
+        self.initial['pool'] = self.pod.default_pool
         self.fields['storage'] = CharField(
             validators=[storage_validator], required=False)
         self.initial['storage'] = 'root:8(local)'
@@ -430,6 +433,7 @@ class ComposeMachineForm(forms.Form):
                 skip_commissioning=skip_commissioning,
                 creation_type=creation_type,
                 domain=self.get_value_for('domain'),
+                pool=self.get_value_for('pool'),
                 zone=self.get_value_for('zone'))
             self.pod.sync_hints(pod_hints)
             return created_machine

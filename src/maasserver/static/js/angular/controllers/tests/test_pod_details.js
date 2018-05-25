@@ -63,6 +63,7 @@ describe("PodDetailsController", function() {
     function makePod() {
         var pod = {
             id: podId++,
+            default_pool: 0,
             $selected: false,
             capabilities: []
         };
@@ -74,6 +75,10 @@ describe("PodDetailsController", function() {
     var pod, $routeParams;
     beforeEach(function() {
         pod = makePod();
+        domain = {id: 0};
+        DomainsManager._items.push(domain);
+        zone = {id: 0};
+        ZonesManager._items.push(domain);
         $routeParams = {
             id: pod.id
         };
@@ -402,6 +407,14 @@ describe("PodDetailsController", function() {
             var controller = makeController();
             $scope.composeMachine();
             expect($scope.action.option).toBe($scope.compose.action);
+        });
+
+        it("sets action.options to compose.action", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.pod.default_pool = 42;
+            $scope.composeMachine();
+            $scope.$digest();
+            expect($scope.compose.obj.pool).toBe(42);
         });
     });
 
