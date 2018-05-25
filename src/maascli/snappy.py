@@ -27,6 +27,7 @@ import threading
 import time
 
 from maascli.command import Command
+from maascli.configfile import MAASConfiguration
 from maascli.init import (
     add_create_admin_options,
     add_idm_options,
@@ -35,7 +36,6 @@ from maascli.init import (
 )
 import netifaces
 import tempita
-import yaml
 
 
 OPERATION_MODES = """\
@@ -225,60 +225,10 @@ def sighup_supervisord():
             break
 
 
-def get_config_data():
-    """Return the configuration data from `regiond.conf`."""
-    regiond_conf_path = os.path.join(os.environ['SNAP_DATA'], 'regiond.conf')
-    if os.path.exists(regiond_conf_path):
-        with open(regiond_conf_path, 'r') as fp:
-            data = yaml.safe_load(fp)
-        if data is None:
-            data = {}
-        return data
-    else:
-        return {}
-
-
-def get_config_value(config_name):
-    """Return the configuration value for `config_name`."""
-    # We always read from regiond.conf. As the database options only exists
-    # in that file and maas_url will always be the same in rackd.conf.
-    config_data = get_config_data()
-    return config_data.get(config_name, None)
-
-
-def print_config_value(config_name, hidden=False):
+def print_config_value(config, key, hidden=False):
     """Print the configuration value to stdout."""
-    if hidden:
-        print_msg("%s=(hidden)" % config_name)
-    else:
-        config_value = get_config_value(config_name)
-        print_msg("%s=%s" % (config_name, config_value))
-
-
-def write_config_data(config_data, config_file):
-    """Write the configuration data to `regiond.conf`."""
-    regiond_conf_path = os.path.join(os.environ['SNAP_DATA'], config_file)
-    with open(regiond_conf_path, 'w') as fp:
-        fp.write(yaml.safe_dump(config_data, default_flow_style=False))
-
-
-def update_config_value(config_name, config_value):
-    """Update the configuration to new value."""
-    config_data = get_config_data()
-    if config_value is None:
-        config_data.pop(config_name, None)
-    else:
-        config_data[config_name] = config_value
-    write_config_data(config_data, 'regiond.conf')
-    # maas_url also gets set in rackd.conf.
-    if config_name == 'maas_url':
-        if config_value is None:
-            config_data = {}
-        else:
-            config_data = {
-                'maas_url': config_value
-            }
-        write_config_data(config_data, 'rackd.conf')
+    template = '{key}=(hidden)' if hidden else '{key}={value}'
+    print_msg(template.format(key=key, value=config.get(key)))
 
 
 def get_rpc_secret():
@@ -313,6 +263,7 @@ def print_config(
         parsable=False, show_database_password=False, show_secret=False):
     """Print the config output."""
     current_mode = get_current_mode()
+    config = MAASConfiguration().get()
     if parsable:
         print_msg('mode=%s' % current_mode)
     else:
@@ -320,25 +271,25 @@ def print_config(
     if current_mode != 'none':
         if not parsable:
             print_msg('Settings:')
-        print_config_value('maas_url')
+        print_config_value(config, 'maas_url')
         if current_mode in ['region+rack', 'region']:
-            print_config_value('database_host')
-            print_config_value('database_name')
-            print_config_value('database_user')
+            print_config_value(config, 'database_host')
+            print_config_value(config, 'database_name')
+            print_config_value(config, 'database_user')
             print_config_value(
-                'database_pass', hidden=(not show_database_password))
+                config, 'database_pass', hidden=(not show_database_password))
         if current_mode == 'rack':
             secret = "(hidden)"
             if show_secret:
                 secret = get_rpc_secret()
             print_msg('secret=%s' % secret)
         if current_mode != 'rack':
-            if get_config_value('num_workers'):
-                print_config_value('num_workers')
-            if get_config_value('debug'):
-                print_config_value('debug')
-            if get_config_value('debug_queries'):
-                print_config_value('debug_queries')
+            if 'num_workers' in config:
+                print_config_value(config, 'num_workers')
+            if 'debug' in config:
+                print_config_value(config, 'debug')
+            if 'debug_queries' in config:
+                print_config_value(config, 'debug_queries')
 
 
 def drop_privileges():
@@ -447,7 +398,7 @@ def migrate_db(capture=False):
 
 def init_db():
     """Initialize the database."""
-    config_data = get_config_data()
+    config_data = MAASConfiguration().get()
     db_path = os.path.join(os.environ['SNAP_COMMON'], 'db')
     if os.path.exists(db_path):
         shutil.rmtree(db_path)
@@ -731,14 +682,12 @@ class cmd_init(SnappyCommand):
             perform_work('Stopping services', stop_services)
 
         # Configure the settings.
-        update_config_value('maas_url', maas_url)
-        for name, value in [
-                ('database_host', database_host),
-                ('database_name', database_name),
-                ('database_user', database_user),
-                ('database_pass', database_pass),
-                ]:
-            update_config_value(name, value)
+        MAASConfiguration().update(
+            {'maas_url': maas_url,
+             'database_host': database_host,
+             'database_name': database_name,
+             'database_user': database_user,
+             'database_pass': database_pass})
         set_rpc_secret(rpc_secret)
 
         # Finalize the Initialization.
@@ -899,6 +848,8 @@ class cmd_config(SnappyCommand):
         if os.getuid() != 0:
             raise SystemExit("The 'config' command must be run by root.")
 
+        config_manager = MAASConfiguration()
+
         # Hidden option only called by the run-supervisord script. Renders
         # the initial supervisord.conf based on the current mode.
         if options.render:
@@ -963,13 +914,13 @@ class cmd_config(SnappyCommand):
                         random.choice(
                             string.ascii_uppercase + string.digits)
                         for _ in range(10))
-                    write_config_data({
-                        'maas_url': options.maas_url,
-                        'database_host': options.database_host,
-                        'database_name': options.database_name,
-                        'database_user': options.database_user,
-                        'database_pass': options.database_pass,
-                    }, 'regiond.conf')
+                    MAASConfiguration().write_to_file(
+                        {'maas_url': options.maas_url,
+                         'database_host': options.database_host,
+                         'database_name': options.database_name,
+                         'database_user': options.database_user,
+                         'database_pass': options.database_pass},
+                        'regiond.conf')
 
                     # Initialize the database before starting the services.
                     perform_work('Initializing database', init_db)
@@ -978,38 +929,47 @@ class cmd_config(SnappyCommand):
                     set_current_mode(options.mode)
                     restart_required = True
 
+            current_config = config_manager.get()
             if current_mode != running_mode:
                 # Update all the settings since the mode changed.
                 for flag in self.setting_flags:
                     flag_value = getattr(options, flag)
-                    if get_config_value(flag) != flag_value:
-                        update_config_value(flag, flag_value)
+                    if current_config.get(flag) != flag_value:
+                        config_manager.update({flag: flag_value})
                         restart_required = True
                 set_rpc_secret(options.secret)
             else:
                 # Only update the passed settings.
                 for flag in self.setting_flags:
                     flag_value = getattr(options, flag)
-                    if (flag_value is not None and
-                            get_config_value(flag) != flag_value):
-                        update_config_value(flag, flag_value)
+                    should_update = (
+                        flag_value is not None and
+                        current_config.get(flag) != flag_value)
+                    if should_update:
+                        config_manager.update({flag: flag_value})
                         restart_required = True
                 if options.secret is not None:
                     set_rpc_secret(options.secret)
+
+            # fetch config again, as it might have changed
+            current_config = config_manager.get()
 
             # Update any optional settings.
             for flag, flag_info in self.optional_flags.items():
                 flag_value = getattr(options, flag)
                 if flag_info['type'] != 'store_true':
-                    if (flag_value is not None and
-                            get_config_value(flag_info['config']) != (
-                                flag_value)):
-                        update_config_value(flag_info['config'], flag_value)
+                    flag_key = flag_info['config']
+                    should_update = (
+                        flag_value is not None and
+                        current_config.get(flag_key) != flag_value)
+                    if should_update:
+                        config_manager.update({flag_key, flag_value})
                         restart_required = True
                 elif flag_value:
+                    flag_key = flag_info['config']
                     flag_value = flag_info['set_value']
-                    if get_config_value(flag_info['config']) != flag_value:
-                        update_config_value(flag_info['config'], flag_value)
+                    if current_config.get(flag_key) != flag_value:
+                        config_manager.update({flag_key: flag_value})
                         restart_required = True
 
             # Restart the supervisor as its required.
