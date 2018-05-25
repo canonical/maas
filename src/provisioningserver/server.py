@@ -6,6 +6,8 @@
 # Install the asyncio reactor with uvloop. This must be done before any other
 # twisted code is imported.
 import asyncio
+import os
+import signal
 import sys
 
 from twisted.internet import asyncioreactor
@@ -26,7 +28,10 @@ from twisted.scripts._twistd_unix import ServerOptions, UnixApplicationRunner
 # Load the available MAAS plugins.
 twistd_plugins = []
 try:
-    from provisioningserver.plugin import ProvisioningServiceMaker
+    from provisioningserver.plugin import (
+        ProvisioningServiceMaker,
+        ProvisioningHTTPServiceMaker,
+    )
 except ImportError:
     pass
 else:
@@ -34,6 +39,9 @@ else:
     twistd_plugins.append(
         ProvisioningServiceMaker(
             "maas-rackd", "The MAAS Rack Controller daemon."))
+    twistd_plugins.append(
+        ProvisioningHTTPServiceMaker(
+            "maas-rackd-http", "The MAAS Rack Controller HTTP daemon."))
 
 try:
     from maasserver.plugin import (
@@ -87,4 +95,13 @@ def runService(service):
 
 def run():
     """Run the maas-rackd service."""
+    # HTTP workers are spawned with environment so it knows that it would only
+    # be a worker.
+    if os.environ.get('MAAS_RACKD_PROCESS_MODE') == 'http':
+        # Ignore interrupt on the workers. The master will kill them directly.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        runService('maas-rackd-http')
+        return
+
+    # Run the main rackd process.
     runService('maas-rackd')

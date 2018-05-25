@@ -777,6 +777,12 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
             accept_python=True, if_missing=get_tentative_data_path(
                 "/var/lib/maas/boot-resources/current")))
 
+    # HTTP options.
+    http_workers = ConfigurationOption(
+        "http_workers",
+        "Number of HTTP workers to run for serving boot images.",
+        Number(min=1, if_missing=2))
+
     # GRUB options.
 
     @property

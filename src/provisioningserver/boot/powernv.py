@@ -21,7 +21,6 @@ from provisioningserver.boot.pxe import (
 )
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import typed
-from tftp.backend import FilesystemReader
 
 # The pxelinux.cfg path is prefixed with the architecture for the
 # PowerNV nodes. This prefix is set by the path-prefix dhcpd option.
@@ -120,6 +119,10 @@ class PowerNVBootMethod(BootMethod):
             parameters generated in another component (for example, see
             `TFTPBackend.get_config_reader`) won't cause this to break.
         """
+        # Delayed import; prevent twisted reactor from being
+        # installed to early.
+        from tftp.backend import FilesystemReader
+
         if path is not None:
             # This is a request for a static file, not a configuration file.
             # The prefix was already trimmed by `match_path` so we need only
