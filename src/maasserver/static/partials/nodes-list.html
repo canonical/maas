@@ -825,7 +825,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <a href class="sidebar__link maas-accordion-tab">Fabrics <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="fabric in tabs.machines.metadata.fabrics | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('fabrics', fabric.name, 'machines') }">
-                                        <a href="" data-ng-click="toggleFilter('fabrics', fabric.name, 'machines')">{$ fabric.name $} ({$ fabric.count $})</a>
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('fabrics', fabric.name, 'machines')">{$ fabric.name $} ({$ fabric.count $})</a>
                                     </li>
                                 </ul>
                             </li>
@@ -833,7 +833,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <a href class="sidebar__link maas-accordion-tab">Spaces <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="space in tabs.machines.metadata.spaces | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('spaces', space.name, 'machines') }">
-                                        <a href="" data-ng-click="toggleFilter('spaces', space.name, 'machines')">{$ space.name $} ({$ space.count $})</a>
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('spaces', space.name, 'machines')">{$ space.name $} ({$ space.count $})</a>
                                     </li>
                                 </ul>
                             </li>
@@ -841,7 +841,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <a href class="sidebar__link maas-accordion-tab">Zones <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="zone in tabs.machines.metadata.zone | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'machines') }">
-                                        <a href="" data-ng-click="toggleFilter('zone', zone.name, 'machines')">{$ zone.name $} ({$ zone.count $})</a>
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('zone', zone.name, 'machines')">{$ zone.name $} ({$ zone.count $})</a>
                                     </li>
                                 </ul>
                             </li>
@@ -860,7 +860,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <a href class="sidebar__link maas-accordion-tab">Owner <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="owner in tabs.devices.metadata.owner | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'devices') }">
-                                        <a href="" class="accordion__tab-link" data-ng-click="toggleFilter('owner', owner.name, 'devices')">{$ owner.name $} ({$ owner.count $})</a>
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('owner', owner.name, 'devices')">{$ owner.name $} ({$ owner.count $})</a>
                                     </li>
                                 </ul>
                             </li>
@@ -868,7 +868,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <a href class="sidebar__link maas-accordion-tab">Tags <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="tag in tabs.devices.metadata.tags | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'devices') }">
-                                        <a href="" class="accordion__tab-link" data-ng-click="toggleFilter('tags', tag.name, 'devices')">{$ tag.name $} ({$ tag.count $})</a>
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('tags', tag.name, 'devices')">{$ tag.name $} ({$ tag.count $})</a>
                                     </li>
                                 </ul>
                             </li>
@@ -876,7 +876,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <a href class="sidebar__link maas-accordion-tab">Zones <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="zone in tabs.devices.metadata.zone | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'devices') }">
-                                        <a href="" class="accordion__tab-link" data-ng-click="toggleFilter('zone', zone.name, 'devices')">{$ zone.name $} ({$ zone.count $})</a>
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('zone', zone.name, 'devices')">{$ zone.name $} ({$ zone.count $})</a>
                                     </li>
                                 </ul>
                             </li>

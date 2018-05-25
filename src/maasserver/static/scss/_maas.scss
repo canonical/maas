@@ -127,6 +127,10 @@
     }
   }
 
+  .sidebar__content .sidebar__second-level .is-active {
+    background-position-y: 0.9rem;
+  }
+
   .u-float--none {
     float: none !important;
   }
