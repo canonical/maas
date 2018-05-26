@@ -714,8 +714,8 @@ class MachineForm(NodeForm):
         This needs to be done on the fly so that we can pass a dynamic list of
         usable operating systems and distro_series.
         """
-        osystems = list_all_usable_osystems()
-        releases = list_all_usable_releases(osystems)
+        releases = list_all_usable_releases()
+        osystems = list_all_usable_osystems(releases)
         if self.has_owner:
             os_choices = list_osystem_choices(osystems)
             distro_choices = list_release_choices(releases)
@@ -1544,9 +1544,8 @@ class DeployForm(ConfigForm):
         """This create the field with os/release. This is needed by the UI
         to filter the releases based on the OS selection. The API uses the
         field defined in settings.py"""
-        usable_oses = list_all_usable_osystems()
         release_choices = list_release_choices(
-            list_all_usable_releases(usable_oses), include_default=False)
+            list_all_usable_releases(), include_default=False)
         if len(release_choices) == 0:
             release_choices = [('---', '--- No Usable Release ---')]
         field = forms.ChoiceField(

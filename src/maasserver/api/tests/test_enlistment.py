@@ -9,13 +9,13 @@ import http.client
 import json
 
 from django.conf import settings
+from maasserver.clusterrpc import boot_images
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
 )
 from maasserver.fields import MAC
 from maasserver.models import (
-    Config,
     Domain,
     Machine,
     Node,
@@ -24,10 +24,7 @@ from maasserver.models.node import PowerInfo
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.utils import (
-    osystems,
-    strip_domain,
-)
+from maasserver.utils import strip_domain
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
@@ -43,14 +40,14 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         super().setUp()
         self.patch(Node, 'get_effective_power_info').return_value = (
             PowerInfo(False, False, False, None, None))
-        commissioning_osystem = Config.objects.get_config(
-            name='commissioning_osystem')
-        commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
-        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
-            'name': commissioning_osystem,
-            'releases': [{'name': commissioning_series}],
-        }]
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, release = ubuntu.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': osystem,
+                'release': release,
+                'purpose': 'xinstall',
+                }]
 
     def test_POST_create_creates_machine(self):
         architecture = make_usable_architecture(self)
@@ -315,14 +312,14 @@ class MachineHostnameEnlistmentTest(APITestCase.ForAnonymousAndUserAndAdmin):
         super().setUp()
         self.patch(Node, 'get_effective_power_info').return_value = (
             PowerInfo(False, False, False, None, None))
-        commissioning_osystem = Config.objects.get_config(
-            name='commissioning_osystem')
-        commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
-        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
-            'name': commissioning_osystem,
-            'releases': [{'name': commissioning_series}],
-        }]
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, release = ubuntu.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': osystem,
+                'release': release,
+                'purpose': 'xinstall',
+                }]
 
     def test_created_machine_gets_default_domain_appended(self):
         hostname_without_domain = factory.make_name('hostname')
@@ -588,14 +585,14 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
         super().setUp()
         self.patch(Node, 'get_effective_power_info').return_value = (
             PowerInfo(False, False, False, None, None))
-        commissioning_osystem = Config.objects.get_config(
-            name='commissioning_osystem')
-        commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
-        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
-            'name': commissioning_osystem,
-            'releases': [{'name': commissioning_series}],
-        }]
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, release = ubuntu.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': osystem,
+                'release': release,
+                'purpose': 'xinstall',
+                }]
 
     def test_POST_sets_power_type_if_admin(self):
         response = self.client.post(

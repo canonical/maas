@@ -1919,11 +1919,14 @@ class Node(CleanSave, TimestampedModel):
         old_status = self.status
         self.status = NODE_STATUS.COMMISSIONING
         self.owner = user
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'default_min_hwe_kernel'])
         # Set min_hwe_kernel to default_min_hwe_kernel.
         # This makes sure that the min_hwe_kernel is up to date
         # with what is stored in the settings.
-        self.min_hwe_kernel = Config.objects.get_config(
-            'default_min_hwe_kernel')
+        self.min_hwe_kernel = config['default_min_hwe_kernel']
         self.save()
 
         try:
@@ -1932,7 +1935,7 @@ class Node(CleanSave, TimestampedModel):
             # Deferred it returns for the asynchronous (post-commit) bits.
             starting = self._start(
                 user, commissioning_user_data, old_status,
-                allow_power_cycle=True)
+                allow_power_cycle=True, config=config)
         except Exception as error:
             self.status = old_status
             self.save()
@@ -2680,10 +2683,12 @@ class Node(CleanSave, TimestampedModel):
         """
         # Generate the user data based on the global options and the passed
         # configuration.
-        use_secure_erase = Config.objects.get_config(
-            'disk_erase_with_secure_erase')
-        use_quick_erase = Config.objects.get_config(
-            'disk_erase_with_quick_erase')
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'disk_erase_with_secure_erase', 'disk_erase_with_quick_erase'])
+        use_secure_erase = config['disk_erase_with_secure_erase']
+        use_quick_erase = config['disk_erase_with_quick_erase']
         if secure_erase is not None:
             use_secure_erase = secure_erase
         if quick_erase is not None:
@@ -2710,7 +2715,8 @@ class Node(CleanSave, TimestampedModel):
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
             starting = self._start(
-                user, disk_erase_user_data, old_status, allow_power_cycle=True)
+                user, disk_erase_user_data, old_status, allow_power_cycle=True,
+                config=config)
         except Exception as error:
             # We always mark the node as failed here, although we could
             # potentially move it back to the state it was in previously. For
@@ -3792,7 +3798,7 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def _start(
             self, user, user_data=None, old_status=None,
-            allow_power_cycle=False):
+            allow_power_cycle=False, config=None):
         """Request on given user's behalf that the node be started up.
 
         :param user: Requesting user.
@@ -3816,36 +3822,47 @@ class Node(CleanSave, TimestampedModel):
             powered on manually.
         """
         # Avoid circular imports.
-        from maasserver.utils.osystems import list_all_usable_osystems
+        from maasserver.clusterrpc.boot_images import (
+            get_common_available_boot_images)
         from metadataserver.models import NodeUserData
 
         if not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
 
-        # Whenever booting the MAAS ephemeral environment make sure the
-        # configured operating system is available before starting.
-        if self.status in COMMISSIONING_LIKE_STATUSES:
-            osystems = list_all_usable_osystems()
-            commissioning_osystem = Config.objects.get_config(
-                name='commissioning_osystem')
-            commissioning_series = Config.objects.get_config(
-                name='commissioning_distro_series')
-            releases = []
-            for osystem in osystems:
-                if osystem['name'] == commissioning_osystem:
-                    releases = osystem['releases']
-                    break
-            release_not_found = True
-            for release in releases:
-                if release['name'] == commissioning_series:
-                    release_not_found = False
-                    break
-            if release_not_found:
-                raise ValidationError(
-                    'Ephemeral operating system %s %s is unavailable.' % (
-                        commissioning_osystem, commissioning_series
-                        ))
+        # Validate that the operating system being booted and deployed are
+        # available before booting. Checks for the allocated and deployed
+        # state as validation occurs before transitioning.
+        deployment_like_status = [NODE_STATUS.DEPLOYING, NODE_STATUS.ALLOCATED]
+        if self.status in COMMISSIONING_LIKE_STATUSES + deployment_like_status:
+            if config is None:
+                config = Config.objects.get_configs([
+                    'commissioning_osystem', 'commissioning_distro_series',
+                    'default_osystem', 'default_distro_series',
+                ])
+            osystems = defaultdict(set)
+            for image in get_common_available_boot_images():
+                if image['purpose'] == 'xinstall':
+                    osystems[image['osystem']].add(image['release'])
+            if self.status in deployment_like_status:
+                osystem = self.get_osystem(default=config['default_osystem'])
+                distro_series = self.get_distro_series(
+                    default=config['default_distro_series'])
+                os_releases = osystems.get(osystem, [])
+                if distro_series not in os_releases:
+                    raise ValidationError(
+                        'Deployment operating system %s %s is unavailable.' % (
+                            osystem, distro_series))
+            # Non-Ubuntu deployments use the commissioning OS during deployment
+            if (self.status in COMMISSIONING_LIKE_STATUSES or
+                    (self.status in deployment_like_status and
+                        self.osystem != 'ubuntu')):
+                os_releases = osystems.get(config['commissioning_osystem'], [])
+                if config['commissioning_distro_series'] not in os_releases:
+                    raise ValidationError(
+                        'Ephemeral operating system %s %s is unavailable.' % (
+                            config['commissioning_osystem'],
+                            config['commissioning_distro_series']))
 
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the

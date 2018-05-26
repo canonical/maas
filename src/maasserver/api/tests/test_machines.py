@@ -53,11 +53,9 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
-from maasserver.utils import (
-    ignore_unused,
-    osystems,
-)
+from maasserver.utils import ignore_unused
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
@@ -235,14 +233,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_POST_handles_error_when_unable_to_access_bmc(self):
         # Regression test for LP1600328
-        commissioning_osystem = Config.objects.get_config(
-            name='commissioning_osystem')
-        commissioning_series = Config.objects.get_config(
-            name='commissioning_distro_series')
-        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
-            'name': commissioning_osystem,
-            'releases': [{'name': commissioning_series}],
-        }]
+        make_usable_osystem(self)
         self.become_admin()
         power_address = factory.make_ip_address()
         power_id = factory.make_name('power_id')

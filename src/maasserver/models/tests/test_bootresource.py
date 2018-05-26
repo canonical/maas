@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BootResource`."""
@@ -10,7 +10,6 @@ from datetime import datetime
 import random
 
 from django.core.exceptions import ValidationError
-from maasserver.clusterrpc import osystems
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -25,6 +24,7 @@ from maasserver.models.bootresource import (
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.testing.os import make_osystem
 
 
 class TestBootResourceManager(MAASServerTestCase):
@@ -801,9 +801,7 @@ class TestBootResource(MAASServerTestCase):
 
     def test_validation_allows_any_uploaded_name_slash_with_supported_os(self):
         osystem = factory.make_name('osystem')
-        self.patch(
-            osystems, 'gen_all_known_operating_systems').return_value = [
-                {'name': osystem}]
+        make_osystem(self, osystem)
         name = '%s/%s' % (osystem, factory.make_name('release'))
         arch = '%s/%s' % (
             factory.make_name('arch'), factory.make_name('subarch'))

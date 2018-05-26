@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The general handler for the WebSocket connection."""
@@ -100,8 +100,8 @@ class GeneralHandler(Handler):
 
     def osinfo(self, params):
         """Return all available operating systems and releases information."""
-        osystems = list_all_usable_osystems()
-        releases = list_all_usable_releases(osystems)
+        releases = list_all_usable_releases()
+        osystems = list_all_usable_osystems(releases)
         kernels = list_all_usable_hwe_kernels(releases)
         return {
             "osystems": list_osystem_choices(osystems, include_default=False),

@@ -136,7 +136,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils import osystems
 from maasserver.utils.orm import (
     get_one,
     post_commit,
@@ -1807,9 +1806,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         Config.objects.set_config('disk_erase_with_secure_erase', True)
         Config.objects.set_config('disk_erase_with_quick_erase', True)
         with post_commit_hooks:
@@ -1830,9 +1827,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         Config.objects.set_config('disk_erase_with_secure_erase', False)
         Config.objects.set_config('disk_erase_with_quick_erase', False)
         with post_commit_hooks:
@@ -1853,9 +1848,11 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'disk_erase_with_secure_erase', 'disk_erase_with_quick_erase'])
         with post_commit_hooks:
             node.start_disk_erasing(owner)
         self.expectThat(node.owner, Equals(owner))
@@ -1864,23 +1861,27 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             node_start,
             MockCalledOnceWith(
-                owner, ANY, NODE_STATUS.ALLOCATED, allow_power_cycle=True))
+                owner, ANY, NODE_STATUS.ALLOCATED, allow_power_cycle=True,
+                config=config))
 
     def test_start_disk_erasing_logs_user_request(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'disk_erase_with_secure_erase', 'disk_erase_with_quick_erase'])
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.start_disk_erasing(owner)
         self.assertThat(
             node_start,
             MockCalledOnceWith(
-                owner, ANY, NODE_STATUS.ALLOCATED, allow_power_cycle=True))
+                owner, ANY, NODE_STATUS.ALLOCATED, allow_power_cycle=True,
+                config=config))
         self.assertThat(register_event, MockCalledOnceWith(
             owner, EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
             action='start disk erasing', comment=None))
@@ -1933,6 +1934,10 @@ class TestNode(MAASServerTestCase):
             node_module, 'generate_user_data_for_status')
         node_start = self.patch(node, '_start')
         node_start.side_effect = factory.make_exception()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'disk_erase_with_secure_erase', 'disk_erase_with_quick_erase'])
 
         try:
             with transaction.atomic():
@@ -1945,7 +1950,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             node_start, MockCalledOnceWith(
                 admin, generate_user_data_for_status.return_value,
-                NODE_STATUS.ALLOCATED, allow_power_cycle=True))
+                NODE_STATUS.ALLOCATED, allow_power_cycle=True, config=config))
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
     def test_start_disk_erasing_sets_status_on_post_commit_error(self):
@@ -2664,9 +2669,11 @@ class TestNode(MAASServerTestCase):
             interface=True, status=NODE_STATUS.NEW, power_type='manual')
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'default_min_hwe_kernel'])
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -2676,7 +2683,8 @@ class TestNode(MAASServerTestCase):
         }
         self.assertAttributes(node, expected_attrs)
         self.assertThat(node_start, MockCalledOnceWith(
-            admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True))
+            admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True,
+            config=config))
 
     def test_start_commissioning_sets_options(self):
         rack = factory.make_RackController()
@@ -2685,9 +2693,7 @@ class TestNode(MAASServerTestCase):
             bmc_connected_to=rack)
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         admin = factory.make_admin()
         enable_ssh = factory.pick_bool()
         skip_bmc_config = factory.pick_bool()
@@ -2709,9 +2715,11 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'default_min_hwe_kernel'])
         user_data = factory.make_string().encode('ascii')
         generate_user_data_for_status = self.patch(
             node_module, 'generate_user_data_for_status')
@@ -2720,14 +2728,13 @@ class TestNode(MAASServerTestCase):
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         self.assertThat(node_start, MockCalledOnceWith(
-            admin, user_data, NODE_STATUS.NEW, allow_power_cycle=True))
+            admin, user_data, NODE_STATUS.NEW, allow_power_cycle=True,
+            config=config))
 
     def test_start_commissioning_sets_min_hwe_kernel_when_not_set(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         user_data = factory.make_string().encode('ascii')
         generate_user_data_for_status = self.patch(
             node_module, 'generate_user_data_for_status')
@@ -2742,9 +2749,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.READY, min_hwe_kernel='ga-16.04')
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         user_data = factory.make_string().encode('ascii')
         generate_user_data_for_status = self.patch(
             node_module, 'generate_user_data_for_status')
@@ -2761,9 +2766,11 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON)
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'default_min_hwe_kernel'])
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -2775,15 +2782,14 @@ class TestNode(MAASServerTestCase):
         self.assertAttributes(node, expected_attrs)
         self.expectThat(node.owner, Equals(admin))
         self.assertThat(node_start, MockCalledOnceWith(
-            admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True))
+            admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True,
+            config=config))
 
     def test_start_commissioning_adds_commissioning_script_set(self):
         # Test for when there are no testing scripts
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
 
         with post_commit_hooks:
             node.start_commissioning(factory.make_admin())
@@ -2799,9 +2805,7 @@ class TestNode(MAASServerTestCase):
             script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
 
         with post_commit_hooks:
             node.start_commissioning(factory.make_admin())
@@ -2814,9 +2818,7 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_adds_selected_scripts(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         commissioning_scripts = [
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
             for _ in range(10)
@@ -2862,9 +2864,7 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_clears_storage_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         clear_storage = self.patch_autospec(
             node, '_clear_full_storage_configuration')
         admin = factory.make_admin()
@@ -2875,9 +2875,7 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_doesnt_clear_storage_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         clear_storage = self.patch_autospec(
             node, '_clear_full_storage_configuration')
         admin = factory.make_admin()
@@ -2888,9 +2886,7 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_calls__clear_networking_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         clear_networking = self.patch_autospec(
             node, '_clear_networking_configuration')
         admin = factory.make_admin()
@@ -2901,9 +2897,7 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_doesnt_call__clear_networking(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         clear_networking = self.patch_autospec(
             node, '_clear_networking_configuration')
         admin = factory.make_admin()
@@ -2939,6 +2933,10 @@ class TestNode(MAASServerTestCase):
             node_module, 'generate_user_data_for_status')
         node_start = self.patch(node, '_start')
         node_start.side_effect = factory.make_exception()
+        config = Config.objects.get_configs([
+            'commissioning_osystem', 'commissioning_distro_series',
+            'default_osystem', 'default_distro_series',
+            'default_min_hwe_kernel'])
 
         try:
             with transaction.atomic():
@@ -2952,7 +2950,7 @@ class TestNode(MAASServerTestCase):
             node_start,
             MockCalledOnceWith(
                 admin, generate_user_data_for_status.return_value,
-                NODE_STATUS.NEW, allow_power_cycle=True))
+                NODE_STATUS.NEW, allow_power_cycle=True, config=config))
         self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
@@ -2975,9 +2973,7 @@ class TestNode(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -3109,21 +3105,18 @@ class TestNode(MAASServerTestCase):
                 factory.make_admin())
 
     def test_start_commissioning_sets_owner(self):
-        commissioning_osystem, _ = Config.objects.get_or_create(
-            name='commissioning_osystem')
-        commissioning_osystem.value = factory.make_name('osystem')
-        commissioning_osystem.save()
-        commissioning_series, _ = Config.objects.get_or_create(
-            name='commissioning_distro_series')
-        commissioning_series.value = factory.make_name('series')
-        commissioning_series.save()
-        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
-            'name': commissioning_osystem.value,
-            'releases': [{'name': commissioning_series.value}],
-        }]
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type='manual',
             enable_ssh=True)
+        br = factory.make_default_ubuntu_release_bootable(
+            arch=node.architecture)
+        os_name, release = br.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': os_name,
+                'release': release,
+                'purpose': 'xinstall',
+            }]
         node_start = self.patch(node, 'start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
@@ -3138,6 +3131,19 @@ class TestNode(MAASServerTestCase):
         }
         self.expectThat(node.owner, Equals(admin))
         self.assertAttributes(node, expected_attrs)
+
+    def test_start_commissioning_requires_commissioning_os(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.NEW, power_type='manual',
+            enable_ssh=True)
+        node_start = self.patch(node, 'start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = (
+            lambda user, user_data, old_status: post_commit())
+        admin = factory.make_admin()
+        self.assertRaises(
+            ValidationError, node.start_commissioning, admin)
+        post_commit_hooks.reset()  # Ignore these for now.
 
     def test_abort_commissioning_unsets_owner(self):
         node = factory.make_Node(
@@ -3810,6 +3816,30 @@ class TestNode(MAASServerTestCase):
         self.assertIsNotNone(node.current_installation_script_set)
         node.current_installation_script_set.scriptresult_set.get(
             script_name=CURTIN_INSTALL_LOG)
+
+    def test_start_deployment_requires_deployment_os(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ALLOCATED)
+        node.osystem = factory.make_name('osystem')
+        node.distro_series = factory.make_name('distro')
+        admin = factory.make_admin()
+        self.assertRaises(
+            ValidationError, node._start, admin)
+
+    def test_start_deployment_requires_commissioning_os_for_non_ubuntu(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ALLOCATED)
+        node.osystem = factory.make_name('osystem')
+        node.distro_series = factory.make_name('distro')
+        admin = factory.make_admin()
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': node.osystem,
+                'release': node.distro_series,
+                'purpose': 'xinstall',
+            }]
+        self.assertRaises(
+            ValidationError, node._start, admin)
 
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
@@ -6145,10 +6175,20 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Make sure that the maas_server address is of the same addr family.
         gethost = self.patch(server_address, "get_maas_facing_server_host")
         gethost.return_value = str(IPAddress(network.first + 1))
+        # Validation during start requires an OS to be set
+        ubuntu = factory.make_default_ubuntu_release_bootable()
+        osystem, distro_series = ubuntu.name.split('/')
+        self.patch(
+            boot_images, 'get_common_available_boot_images').return_value = [{
+                'osystem': osystem,
+                'release': distro_series,
+                'purpose': 'xinstall',
+                }]
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY, with_boot_disk=True,
             bmc_connected_to=bmc_connected_to, power_type=power_type,
-            power_state=power_state, cidr=cidr)
+            power_state=power_state, cidr=cidr, osystem=osystem,
+            distro_series=distro_series)
         node.acquire(user)
         return node
 

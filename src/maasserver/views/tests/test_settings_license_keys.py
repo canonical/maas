@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver license key settings views."""
@@ -6,49 +6,70 @@
 __all__ = []
 
 import http.client
+import random
 
 from django.conf import settings
 from lxml.html import fromstring
 from maasserver import forms
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import LicenseKey
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
 from maasserver.views.settings_license_keys import LICENSE_KEY_ANCHOR
+from provisioningserver.drivers.osystem import (
+    OperatingSystemRegistry,
+    WindowsOS,
+)
+from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
 from testtools.matchers import ContainsAll
 
 
-def make_osystem_requiring_license_key(osystem=None, distro_series=None):
+def make_osystem_requiring_license_key(testcase, osystem=None, release=None):
     if osystem is None:
         osystem = factory.make_name('osystem')
-    if distro_series is None:
-        distro_series = factory.make_name('distro_series')
-    rpc_release = make_rpc_release(
-        distro_series, requires_license_key=True)
-    rpc_osystem = make_rpc_osystem(osystem, releases=[rpc_release])
-    return rpc_osystem
+    if release is None:
+        release = random.choice(REQUIRE_LICENSE_KEY)
+    distro_series = '%s/%s' % (osystem, release)
+    drv = WindowsOS()
+    drv.title = osystem
+    OperatingSystemRegistry.register_item(osystem, drv)
+    factory.make_BootResource(
+        name=distro_series, rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+        extra={'title': drv.get_release_title(release)})
+    testcase.addCleanup(
+        OperatingSystemRegistry.unregister_item, osystem)
+    return {
+        'name': osystem,
+        'title': osystem,
+        'default_release': release,
+        'default_commissioning_release': None,
+        'releases': [{
+            'name': distro_series,
+            'title': drv.get_release_title(release),
+            'requires_license_key': True,
+            'can_commission': False,
+            }]
+        }
 
 
 class LicenseKeyListingTest(MAASServerTestCase):
 
-    def make_license_key_with_os(self, osystem=None, distro_series=None,
-                                 license_key=None):
+    def make_license_key_with_os(
+            self, osystem=None, release=None, license_key=None):
+        if release is None:
+            release = random.choice(REQUIRE_LICENSE_KEY)
         license_key = factory.make_LicenseKey(
-            osystem=osystem, distro_series=distro_series,
+            osystem=osystem, distro_series=release,
             license_key=license_key)
         osystem = make_osystem_requiring_license_key(
-            license_key.osystem, license_key.distro_series)
+            self, license_key.osystem, license_key.distro_series)
         return license_key, osystem
 
     def make_license_keys(self, count):
@@ -58,7 +79,6 @@ class LicenseKeyListingTest(MAASServerTestCase):
             key, osystem = self.make_license_key_with_os()
             keys.append(key)
             osystems.append(osystem)
-        patch_usable_osystems(self, osystems=osystems)
         self.patch(
             settings_view,
             'gen_all_known_operating_systems').return_value = osystems
@@ -120,8 +140,7 @@ class LicenseKeyAddTest(MAASServerTestCase):
 
     def test_can_create_license_key(self):
         self.client.login(user=factory.make_admin())
-        osystem = make_osystem_requiring_license_key()
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem = make_osystem_requiring_license_key(self)
         self.patch(forms, 'validate_license_key').return_value = True
         series = osystem['default_release']
         key = factory.make_name('key')
@@ -149,10 +168,10 @@ class LicenseKeyEditTest(MAASServerTestCase):
 
     def test_can_update_license_key(self):
         self.client.login(user=factory.make_admin())
-        key = factory.make_LicenseKey()
-        osystem = make_osystem_requiring_license_key(
-            key.osystem, key.distro_series)
-        patch_usable_osystems(self, osystems=[osystem])
+        key = factory.make_LicenseKey(
+            distro_series=random.choice(REQUIRE_LICENSE_KEY))
+        make_osystem_requiring_license_key(
+            self, key.osystem, key.distro_series)
         self.patch(forms, 'validate_license_key').return_value = True
         new_key = factory.make_name('key')
         edit_link = reverse(

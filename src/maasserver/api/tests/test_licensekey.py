@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `LicenseKey` API."""
@@ -6,22 +6,39 @@
 __all__ = []
 
 import http.client
+import random
 
 from maasserver import forms
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models.licensekey import LicenseKey
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
+from provisioningserver.drivers.osystem import (
+    OperatingSystemRegistry,
+    WindowsOS,
+)
+from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
+
+
+def make_os(testcase):
+    osystem = factory.make_name('osystem')
+    release = random.choice(REQUIRE_LICENSE_KEY)
+    distro_series = '%s/%s' % (osystem, release)
+    drv = WindowsOS()
+    drv.title = osystem
+    OperatingSystemRegistry.register_item(osystem, drv)
+    factory.make_BootResource(
+        name=distro_series, rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+        extra={'title': drv.get_release_title(release)})
+    testcase.addCleanup(
+        OperatingSystemRegistry.unregister_item, osystem)
+    return osystem, release
 
 
 class TestLicenseKey(APITestCase.ForUser):
@@ -32,11 +49,9 @@ class TestLicenseKey(APITestCase.ForUser):
         return reverse('license_key_handler', args=[osystem, distro_series])
 
     def make_license_key_with_os(self, license_key=None):
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem, release = make_os(self)
         license_key = factory.make_LicenseKey(
-            osystem=osystem['name'], distro_series=release['name'],
+            osystem=osystem, distro_series=release,
             license_key=license_key)
         return license_key
 
@@ -191,40 +206,36 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
 
     def test_POST_creates_license_key(self):
         self.become_admin()
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem, release = make_os(self)
         self.patch_autospec(forms, 'validate_license_key').return_value = True
         params = {
-            'osystem': osystem['name'],
-            'distro_series': release['name'],
+            'osystem': osystem,
+            'distro_series': release,
             'license_key': factory.make_name('key'),
         }
         response = self.client.post(reverse('license_keys_handler'), params)
         self.assertEqual(http.client.OK, response.status_code)
         license_key = LicenseKey.objects.get(
-            osystem=params['osystem'], distro_series=params['distro_series'])
+            osystem=osystem, distro_series=release)
         self.assertAttributes(license_key, params)
 
     def test_POST_supports_combined_distro_series(self):
         # API allows specifying only distro_series containing both
         # os and series in the "os/series" form.
         self.become_admin()
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem, release = make_os(self)
         self.patch_autospec(forms, 'validate_license_key').return_value = True
         params = {
-            'distro_series': "%s/%s" % (osystem['name'], release['name']),
+            'distro_series': "%s/%s" % (osystem, release),
             'license_key': factory.make_name('key'),
         }
         response = self.client.post(reverse('license_keys_handler'), params)
         self.assertEqual(http.client.OK, response.status_code)
         license_key = LicenseKey.objects.get(
-            osystem=osystem['name'], distro_series=release['name'])
+            osystem=osystem, distro_series=release)
         expected_params = {
-            'osystem': osystem['name'],
-            'distro_series': release['name'],
+            'osystem': osystem,
+            'distro_series': release,
             'license_key': params['license_key'],
         }
         self.assertAttributes(license_key, expected_params)
@@ -233,12 +244,10 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
         # If osystem is not specified and distro_series is not in the
         # osystem/release form, API call fails.
         self.become_admin()
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem, release = make_os(self)
         self.patch_autospec(forms, 'validate_license_key').return_value = True
         params = {
-            'distro_series': release['name'],
+            'distro_series': release,
             'license_key': factory.make_name('key'),
         }
         response = self.client.post(reverse('license_keys_handler'), params)

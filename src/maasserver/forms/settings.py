@@ -1,4 +1,4 @@
-# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -34,7 +34,6 @@ from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
-    list_all_usable_releases,
     list_commissioning_choices,
     list_hwe_kernel_choices,
     list_osystem_choices,
@@ -98,8 +97,7 @@ def make_default_distro_series_field(*args, **kwargs):
     default_usable_os = get_default_usable_osystem(default_osystem)
     release_choices = [('---', '--- No Usable Release ---')]
     if default_usable_os is not None:
-        releases = list_all_usable_releases(
-            [default_usable_os])[default_osystem]
+        releases = default_usable_os['releases']
         valid_release_choices = list_choices_for_releases(releases)
         if len(valid_release_choices) > 0:
             release_choices = valid_release_choices

@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node actions."""
@@ -325,34 +325,28 @@ class TestCommissionAction(MAASServerTestCase):
             interface=True, status=self.status,
             power_type='manual', power_state=POWER_STATE.ON)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         admin = factory.make_admin()
         action = Commission(node, admin)
         with post_commit_hooks:
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertThat(
-            node_start,
-            MockCalledOnceWith(admin, ANY, ANY, allow_power_cycle=True))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, ANY, ANY, allow_power_cycle=True, config=ANY))
 
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(
             interface=True, status=self.status,
             power_type='manual', power_state=POWER_STATE.OFF)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = (
-            lambda user, user_data, old_status, allow_power_cycle: (
-                post_commit()))
+        node_start.side_effect = lambda *args, **kwargs: post_commit()
         admin = factory.make_admin()
         action = Commission(node, admin)
         with post_commit_hooks:
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertThat(
-            node_start,
-            MockCalledOnceWith(admin, ANY, ANY, allow_power_cycle=True))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, ANY, ANY, allow_power_cycle=True, config=ANY))
 
 
 class TestTest(MAASServerTestCase):
@@ -700,6 +694,7 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="", subnet=subnet,
             interface=interface)
+        make_usable_osystem(self)
 
         # Pre-claim the only addresses.
         with transaction.atomic():
@@ -981,7 +976,7 @@ class TestReleaseAction(MAASServerTestCase):
         self.assertThat(
             node_start, MockCalledOnceWith(
                 user, user_data=ANY, old_status=old_status,
-                allow_power_cycle=True))
+                allow_power_cycle=True, config=ANY))
 
     def test_Release_passes_secure_erase_and_quick_erase(self):
         user = factory.make_User()

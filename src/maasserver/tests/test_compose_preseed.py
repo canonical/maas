@@ -545,7 +545,6 @@ class TestComposePreseed(MAASServerTestCase):
     def test_compose_preseed_with_osystem_compose_preseed(self):
         os_name = factory.make_name('os')
         osystem = make_osystem(self, os_name, [BOOT_IMAGE_PURPOSE.XINSTALL])
-        make_usable_osystem(self, os_name)
         compose_preseed_orig = osystem.compose_preseed
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = compose_preseed_orig
@@ -577,7 +576,6 @@ class TestComposePreseed(MAASServerTestCase):
         # it, compose_preseed() simply passes the exception up.
         os_name = factory.make_name('os')
         osystem = make_osystem(self, os_name, [BOOT_IMAGE_PURPOSE.XINSTALL])
-        make_usable_osystem(self, os_name)
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = NoSuchOperatingSystem
         rack_controller = factory.make_RackController()

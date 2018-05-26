@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `LicenseKeyForm`."""
@@ -6,30 +6,48 @@
 __all__ = []
 
 from operator import itemgetter
+import random
 
 from maasserver import forms
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from provisioningserver.drivers.osystem import (
+    OperatingSystemRegistry,
+    WindowsOS,
+)
+from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
 
 
 class TestLicenseKeyForm(MAASServerTestCase):
     """Tests for `LicenseKeyForm`."""
 
-    def make_os_with_license_key(self):
+    def make_os_with_license_key(
+            self, osystem=None, osystem_title=None, release=None):
         """Makes a fake operating system that has a release that requires a
         license key."""
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        return osystem, release
+        if osystem is None:
+            osystem = factory.make_name('osystem')
+        if osystem_title is None:
+            osystem_title = osystem + '_title'
+        if release is None:
+            release = random.choice(REQUIRE_LICENSE_KEY)
+        distro_series = '%s/%s' % (osystem, release)
+        drv = WindowsOS()
+        drv.title = osystem_title
+        OperatingSystemRegistry.register_item(osystem, drv)
+        factory.make_BootResource(
+            name=distro_series, rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            extra={'title': drv.get_release_title(release)})
+        self.addCleanup(
+            OperatingSystemRegistry.unregister_item, osystem)
+        return (
+            {'name': osystem, 'title': osystem_title},
+            {'name': release, 'title': drv.get_release_title(release)},
+        )
 
     def test_creates_license_key(self):
         osystem, release = self.make_os_with_license_key()
@@ -106,25 +124,8 @@ class TestLicenseKeyForm(MAASServerTestCase):
         form = LicenseKeyForm()
         self.assertNotIn(('', 'Default OS'), form.fields['osystem'].choices)
 
-    def test_includes_osystem_in_choices(self):
-        osystems = []
-        for _ in range(3):
-            release = make_rpc_release(requires_license_key=True)
-            osystems.append(make_rpc_osystem(releases=[release]))
-        patch_usable_osystems(self, osystems=osystems)
-        choices = [
-            (osystem['name'], osystem['title'])
-            for osystem in osystems
-            ]
-        form = LicenseKeyForm()
-        self.assertItemsEqual(choices, form.fields['osystem'].choices)
-
     def test_includes_all_osystems_sorted(self):
-        osystems = []
-        for _ in range(3):
-            release = make_rpc_release(requires_license_key=True)
-            osystems.append(make_rpc_osystem(releases=[release]))
-        patch_usable_osystems(self, osystems=osystems)
+        osystems = [self.make_os_with_license_key()[0] for _ in range(3)]
         choices = [
             (osystem['name'], osystem['title'])
             for osystem in sorted(osystems, key=itemgetter('title'))
@@ -133,11 +134,8 @@ class TestLicenseKeyForm(MAASServerTestCase):
         self.assertEqual(choices, form.fields['osystem'].choices)
 
     def test_includes_only_osystems_that_require_license_keys(self):
-        osystems = []
-        for _ in range(2):
-            release = make_rpc_release(requires_license_key=True)
-            osystems.append(make_rpc_osystem(releases=[release]))
-        patch_usable_osystems(self, osystems=osystems + [make_rpc_osystem()])
+        osystems = [self.make_os_with_license_key()[0] for _ in range(2)]
+        factory.make_BootResource()
         choices = [
             (osystem['name'], osystem['title'])
             for osystem in sorted(osystems, key=itemgetter('title'))
@@ -150,26 +148,16 @@ class TestLicenseKeyForm(MAASServerTestCase):
         self.assertNotIn(
             ('', 'Default OS Release'), form.fields['distro_series'].choices)
 
-    def test_includes_all_distro_series(self):
-        releases = [
-            make_rpc_release(requires_license_key=True) for _ in range(3)]
-        osystem = make_rpc_osystem(releases=releases)
-        patch_usable_osystems(self, osystems=[osystem])
-        choices = [
-            ('%s/%s' % (osystem['name'], release['name']), release['title'])
-            for release in releases
-            ]
-        form = LicenseKeyForm()
-        self.assertItemsEqual(choices, form.fields['distro_series'].choices)
-
     def test_includes_only_distro_series_that_require_license_keys(self):
+        osystem = factory.make_name('osystem')
+        osystem_title = factory.make_name('osystem_title')
         releases = [
-            make_rpc_release(requires_license_key=True) for _ in range(3)]
-        no_key_release = make_rpc_release()
-        osystem = make_rpc_osystem(releases=releases + [no_key_release])
-        patch_usable_osystems(self, osystems=[osystem])
+            self.make_os_with_license_key(osystem, osystem_title, release)[1]
+            for release in REQUIRE_LICENSE_KEY
+        ]
+        factory.make_BootResource()
         choices = [
-            ('%s/%s' % (osystem['name'], release['name']), release['title'])
+            ('%s/%s' % (osystem, release['name']), release['title'])
             for release in releases
             ]
         form = LicenseKeyForm()

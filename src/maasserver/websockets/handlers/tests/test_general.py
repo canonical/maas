@@ -146,7 +146,8 @@ class TestGeneralHandler(MAASServerTestCase):
                 (osystem["name"], osystem["title"]),
             ],
             "releases": releases,
-            "kernels": {},
+            "kernels": {'ubuntu': {
+                'bionic': [('hwe-18.04', 'bionic (hwe-18.04)')]}},
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(
                 "default_distro_series"),

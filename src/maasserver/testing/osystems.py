@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for operating systems in testing."""
@@ -10,13 +10,18 @@ __all__ = [
 
 from random import randint
 
+from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import Node
 from maasserver.testing.factory import factory
-from maasserver.utils import osystems as osystems_module
+from provisioningserver.drivers.osystem import (
+    CustomOS,
+    OperatingSystemRegistry,
+)
 
 
 def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
@@ -35,10 +40,23 @@ def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
         make_rpc_release(release)
         for release in releases
         ]
-    # If this is being used to test commissioning make sure the default
-    # Ubuntu release is bootable for every known architecture.
-    for node in Node.objects.all():
-        factory.make_default_ubuntu_release_bootable(node.split_arch()[0])
+    if osystem_name not in OperatingSystemRegistry:
+        OperatingSystemRegistry.register_item(osystem_name, CustomOS())
+        testcase.addCleanup(
+            OperatingSystemRegistry.unregister_item, osystem_name)
+    # Make sure the commissioning Ubuntu release and all created releases
+    # are available to all architectures.
+    architectures = [
+        node.architecture for node in Node.objects.distinct('architecture')]
+    if len(architectures) == 0:
+        architectures.append('%s/generic' % factory.make_name('arch'))
+    for arch in architectures:
+        factory.make_default_ubuntu_release_bootable(arch.split('/')[0])
+        for release in releases:
+            factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+                name=('%s/%s' % (osystem_name, release)),
+                architecture=arch)
     return make_rpc_osystem(osystem_name, releases=rpc_releases)
 
 
@@ -59,9 +77,24 @@ def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
             make_osystem_with_releases(testcase)
             for _ in range(randint(start, 2))
             ]
+    os_releases = []
+    for osystem in osystems:
+        for release in osystem['releases']:
+            os_releases.append({
+                'osystem': osystem['name'],
+                'release': release['name'],
+                'purpose': 'xinstall',
+                })
+    # Make sure the Commissioning release is always available.
+    ubuntu = factory.make_default_ubuntu_release_bootable()
+    os_releases.append({
+        'osystem': ubuntu.name.split('/')[0],
+        'release': ubuntu.name.split('/')[1],
+        'purpose': 'xinstall',
+        })
     testcase.patch(
-        osystems_module,
-        'gen_all_known_operating_systems').return_value = osystems
+        boot_images,
+        'get_common_available_boot_images').return_value = os_releases
 
 
 def make_usable_osystem(testcase, osystem_name=None, releases=None):

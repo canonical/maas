@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource."""
@@ -38,6 +38,7 @@ from maasserver.utils.orm import (
     get_first,
     get_one,
 )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.twisted import undefined
 
 # Names on boot resources have a specific meaning depending on the type
@@ -484,13 +485,9 @@ class BootResource(CleanSave, TimestampedModel):
         """
         if self.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
             if '/' in self.name:
-                # Avoid circular dependency
-                from maasserver.clusterrpc.osystems import (
-                    gen_all_known_operating_systems,
-                )
-                osystem = self.name.split('/')[0]
-                if osystem not in {
-                        i['name'] for i in gen_all_known_operating_systems()}:
+                os_name = self.name.split('/')[0]
+                osystem = OperatingSystemRegistry.get_item(os_name)
+                if osystem is None:
                     raise ValidationError(
                         "%s boot resource cannot contain a '/' in it's name "
                         "unless it starts with a supported operating system."

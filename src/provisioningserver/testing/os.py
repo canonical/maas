@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for testing operating systems-related code."""
 
@@ -9,6 +9,7 @@ __all__ = [
 
 from maastesting.factory import factory
 from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
     OperatingSystem,
     OperatingSystemRegistry,
 )
@@ -19,7 +20,7 @@ class FakeOS(OperatingSystem):
     name = ""
     title = ""
 
-    def __init__(self, name, purpose, releases=None):
+    def __init__(self, name, purpose=None, releases=None):
         self.name = name
         self.title = name
         self.purpose = purpose
@@ -32,7 +33,10 @@ class FakeOS(OperatingSystem):
             self.fake_list = releases
 
     def get_boot_image_purposes(self, *args):
-        return self.purpose
+        if self.purpose is None:
+            return [BOOT_IMAGE_PURPOSE.XINSTALL]
+        else:
+            return self.purpose
 
     def get_supported_releases(self):
         return self.fake_list
@@ -44,10 +48,10 @@ class FakeOS(OperatingSystem):
         return release
 
 
-def make_osystem(testcase, osystem, purpose):
+def make_osystem(testcase, osystem, purpose=None, releases=None):
     """Makes the operating system class and registers it."""
     if osystem not in OperatingSystemRegistry:
-        fake = FakeOS(osystem, purpose)
+        fake = FakeOS(osystem, purpose, releases)
         OperatingSystemRegistry.register_item(fake.name, fake)
         testcase.addCleanup(
             OperatingSystemRegistry.unregister_item, osystem)

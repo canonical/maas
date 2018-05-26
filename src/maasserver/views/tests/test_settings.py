@@ -6,14 +6,12 @@
 __all__ = []
 
 import http.client
+import random
 from unittest import skip
 
 from django.contrib.auth.models import User
 from lxml.html import fromstring
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import (
     Config,
     PackageRepository,
@@ -27,14 +25,15 @@ from maasserver.testing import (
     get_prefixed_form_data,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import (
-    make_usable_osystem,
-    patch_usable_osystems,
-)
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
-from maasserver.views import settings as settings_view
+from provisioningserver.drivers.osystem import (
+    OperatingSystemRegistry,
+    WindowsOS,
+)
+from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
 from provisioningserver.events import AUDIT
 
 
@@ -217,11 +216,9 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_commissioning_POST(self):
         self.client.login(user=factory.make_admin())
-        release = make_rpc_release(can_commission=True)
-        osystem = make_rpc_osystem('ubuntu', releases=[release])
-        patch_usable_osystems(self, [osystem])
+        ubuntu = factory.make_default_ubuntu_release_bootable()
 
-        new_commissioning = release['name']
+        new_commissioning = ubuntu.name.split('/')[1]
         response = self.client.post(
             reverse('settings_general'),
             get_prefixed_form_data(
@@ -250,11 +247,17 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_shows_license_keys_if_OS_supporting_keys(self):
         self.client.login(user=factory.make_admin())
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        self.patch(
-            settings_view,
-            'gen_all_known_operating_systems').return_value = [osystem]
+        osystem = factory.make_name('osystem')
+        release = random.choice(REQUIRE_LICENSE_KEY)
+        distro_series = '%s/%s' % (osystem, release)
+        drv = WindowsOS()
+        drv.title = osystem
+        OperatingSystemRegistry.register_item(osystem, drv)
+        factory.make_BootResource(
+            name=distro_series, rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            extra={'title': drv.get_release_title(release)})
+        self.addCleanup(
+            OperatingSystemRegistry.unregister_item, osystem)
         response = self.client.get(reverse('settings_general'))
         doc = fromstring(response.content)
         license_keys = doc.cssselect('a[href="/MAAS/settings/license-keys/"]')

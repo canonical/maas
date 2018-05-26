@@ -56,6 +56,7 @@ from maasserver.utils.django_urls import reverse
 from maasserver.utils.osystems import (
     get_osystem_from_osystems,
     get_release_from_osystem,
+    list_all_usable_osystems,
 )
 from maasserver.views import process_form
 from metadataserver.enum import SCRIPT_TYPE
@@ -219,7 +220,7 @@ def set_license_key_titles(license_key, osystems):
 
 def show_license_keys():
     """Return True when license keys should be shown."""
-    osystems = list(gen_all_known_operating_systems())
+    osystems = list_all_usable_osystems()
     return has_osystems_supporting_license_keys(osystems)
 
 

@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.utils.osystems`."""
@@ -10,7 +10,6 @@ import random
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
-from maasserver.clusterrpc import osystems
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
@@ -24,7 +23,6 @@ from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import osystems as osystems_module
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_from_db,
@@ -51,36 +49,40 @@ from maastesting.matchers import (
 
 class TestOsystems(MAASServerTestCase):
 
-    def patch_gen_all_known_operating_systems(self, osystems):
-        self.patch(
-            osystems_module,
-            'gen_all_known_operating_systems').return_value = osystems
-
     def test_list_all_usable_osystems(self):
-        osystems = [make_rpc_osystem() for _ in range(3)]
-        self.patch_gen_all_known_operating_systems(osystems)
-        self.assertItemsEqual(osystems, list_all_usable_osystems())
+        custom_os = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            extra={'title': factory.make_name('title')})
+        factory.make_default_ubuntu_release_bootable()
+        # Bootloader to be ignored.
+        factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, bootloader_type='uefi')
 
-    def test_list_all_usable_osystems_sorts_title(self):
-        osystems = [make_rpc_osystem() for _ in range(3)]
-        self.patch_gen_all_known_operating_systems(osystems)
-        self.assertEqual(
-            sorted(osystems, key=itemgetter('title')),
-            list_all_usable_osystems())
-
-    def test_list_all_usable_osystems_removes_os_without_releases(self):
-        osystems = [make_rpc_osystem() for _ in range(3)]
-        without_releases = make_rpc_osystem(releases=[])
-        self.patch_gen_all_known_operating_systems(
-            osystems + [without_releases])
-        self.assertItemsEqual(osystems, list_all_usable_osystems())
-
-    def test_list_all_usable_osystems_removes_bootloaders(self):
-        osystems = [make_rpc_osystem() for _ in range(3)]
-        bootloaders = [make_rpc_osystem(name='bootloader') for _ in range(3)]
-        self.patch_gen_all_known_operating_systems(
-            osystems + bootloaders)
-        self.assertItemsEqual(osystems, list_all_usable_osystems())
+        self.assertItemsEqual([
+            {
+                'name': 'custom',
+                'title': 'Custom',
+                'default_commissioning_release': None,
+                'default_release': '',
+                'releases': [{
+                    'name': custom_os.name,
+                    'title': custom_os.extra['title'],
+                    'can_commission': False,
+                    'requires_license_key': False,
+                    }],
+            },
+            {
+                'name': 'ubuntu',
+                'title': 'Ubuntu',
+                'default_commissioning_release': 'bionic',
+                'default_release': 'bionic',
+                'releases': [{
+                    'name': 'bionic',
+                    'title': 'Ubuntu 18.04 LTS "Bionic Beaver"',
+                    'can_commission': True,
+                    'requires_license_key': False,
+                }],
+            }], list_all_usable_osystems())
 
     def test_list_osystem_choices_includes_default(self):
         self.assertEqual(
@@ -108,8 +110,8 @@ class TestOsystems(MAASServerTestCase):
 
 class TestReleases(MAASServerTestCase):
 
-    def make_release_choice(self, osystem, release, include_asterisk=False):
-        key = '%s/%s' % (osystem['name'], release['name'])
+    def make_release_choice(self, os_name, release, include_asterisk=False):
+        key = '%s/%s' % (os_name, release['name'])
         title = release['title']
         if not title:
             title = release['name']
@@ -118,57 +120,27 @@ class TestReleases(MAASServerTestCase):
         return (key, title)
 
     def test_list_all_usable_releases(self):
-        releases = [make_rpc_release() for _ in range(3)]
-        osystem = make_rpc_osystem(releases=releases)
-        self.assertItemsEqual(
-            releases, list_all_usable_releases([osystem])[osystem['name']])
-
-    def test_list_all_usable_releases_sorts(self):
-        releases = [make_rpc_release() for _ in range(3)]
-        osystem = make_rpc_osystem(releases=releases)
-        releases = sorted(releases, key=itemgetter('title'))
-        self.assertEqual(
-            releases, list_all_usable_releases([osystem])[osystem['name']])
-
-    def test_list_all_usable_releases_finds_title_in_boot_resource_table(self):
-        release = make_rpc_release()
-        osystem = make_rpc_osystem(releases=[release])
-        title = factory.make_name('title')
-        factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED,
-            name='%s/%s' % (osystem['name'], release['name']),
-            extra={'title': title})
-        self.assertEquals(
-            title,
-            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
-
-    def test_list_all_usable_releases_finds_title_for_custom(self):
-        # Regression test for LP:1683440
-        release = make_rpc_release()
-        osystem = make_rpc_osystem(
-            name='custom', releases=[release])
-        title = factory.make_name('title')
-        factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=release['name'],
-            extra={'title': title})
-        self.assertEquals(
-            title,
-            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
-
-    def test_list_all_usable_releases_finds_uploaded_with_osystem(self):
-        release = make_rpc_release()
-        osystem = make_rpc_osystem(releases=[release])
-        title = factory.make_name('title')
-        self.patch(
-            osystems, 'gen_all_known_operating_systems').return_value = [
-                {'name': osystem['name']}]
-        factory.make_BootResource(
+        custom_os = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
-            name='%s/%s' % (osystem['name'], release['name']),
-            extra={'title': title})
-        self.assertEquals(
-            title,
-            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
+            extra={'title': factory.make_name('title')})
+        factory.make_default_ubuntu_release_bootable()
+        # Bootloader to be ignored.
+        factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, bootloader_type='uefi')
+        self.assertDictEqual({
+            'custom': [{
+                'name': custom_os.name,
+                'title': custom_os.extra['title'],
+                'can_commission': False,
+                'requires_license_key': False,
+                }],
+            'ubuntu': [{
+                'name': 'bionic',
+                'title': 'Ubuntu 18.04 LTS "Bionic Beaver"',
+                'can_commission': True,
+                'requires_license_key': False,
+                }],
+        }, dict(list_all_usable_releases()))
 
     def test_list_all_releases_requiring_keys(self):
         releases = [
@@ -210,59 +182,56 @@ class TestReleases(MAASServerTestCase):
         self.assertEqual([], list_release_choices({}, include_default=False))
 
     def test_list_release_choices(self):
-        releases = [make_rpc_release() for _ in range(3)]
-        osystem = make_rpc_osystem(releases=releases)
+        for _ in range(3):
+            factory.make_BootResource(name='custom/%s' % factory.make_name())
         choices = [
-            self.make_release_choice(osystem, release)
-            for release in releases
+            self.make_release_choice('custom', release)
+            for release in list_all_usable_releases()['custom']
             ]
         self.assertItemsEqual(
             choices,
             list_release_choices(
-                list_all_usable_releases([osystem]),
-                include_default=False))
+                list_all_usable_releases(), include_default=False))
 
     def test_list_release_choices_fallsback_to_name(self):
-        releases = [make_rpc_release() for _ in range(3)]
+        for _ in range(3):
+            factory.make_BootResource(name='custom/%s' % factory.make_name())
+        releases = list_all_usable_releases()['custom']
         for release in releases:
             release['title'] = ""
-        osystem = make_rpc_osystem(releases=releases)
         choices = [
-            self.make_release_choice(osystem, release)
+            self.make_release_choice('custom', release)
             for release in releases
             ]
         self.assertItemsEqual(
             choices,
             list_release_choices(
-                list_all_usable_releases([osystem]),
-                include_default=False))
+                list_all_usable_releases(), include_default=False))
 
     def test_list_release_choices_sorts(self):
-        releases = [make_rpc_release() for _ in range(3)]
-        osystem = make_rpc_osystem(releases=releases)
+        for _ in range(3):
+            factory.make_BootResource(name='custom/%s' % factory.make_name())
+        releases = list_all_usable_releases()['custom']
         choices = [
-            self.make_release_choice(osystem, release)
+            self.make_release_choice('custom', release)
             for release in sorted(releases, key=itemgetter('title'))
             ]
         self.assertEqual(
             choices,
             list_release_choices(
-                list_all_usable_releases([osystem]),
-                include_default=False))
+                list_all_usable_releases(), include_default=False))
 
     def test_list_release_choices_includes_requires_key_asterisk(self):
-        releases = [
-            make_rpc_release(requires_license_key=True) for _ in range(3)]
-        osystem = make_rpc_osystem(releases=releases)
+        factory.make_BootResource(name='windows/win2016')
+        releases = list_all_usable_releases()['windows']
         choices = [
-            self.make_release_choice(osystem, release, include_asterisk=True)
+            self.make_release_choice('windows', release, include_asterisk=True)
             for release in releases
             ]
         self.assertItemsEqual(
             choices,
             list_release_choices(
-                list_all_usable_releases([osystem]),
-                include_default=False))
+                list_all_usable_releases(), include_default=False))
 
     def test_get_distro_series_initial(self):
         releases = [make_rpc_release() for _ in range(3)]
@@ -414,6 +383,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             error.message)
 
     def test__raises_error_if_not_supported_release(self):
+        factory.make_Node()
         osystem = make_usable_osystem(self)
         release = factory.make_name("release")
         error = self.assertRaises(
@@ -425,6 +395,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             error.message)
 
     def test__returns_osystem_and_release_with_license_key_stripped(self):
+        factory.make_Node()
         osystem = make_usable_osystem(self)
         release = osystem['default_release']
         self.assertEqual(

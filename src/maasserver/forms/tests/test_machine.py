@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node forms."""
@@ -8,10 +8,6 @@ __all__ = []
 from crochet import TimeoutError
 from maasserver import forms
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
 from maasserver.forms import (
     AdminMachineForm,
     BLANK_CHOICE,
@@ -33,6 +29,7 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
 )
+from provisioningserver.testing.os import make_osystem
 
 
 class TestMachineForm(MAASServerTestCase):
@@ -240,17 +237,19 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem = factory.make_name('osystem')
+        release = factory.make_name('release')
+        distro_series = '%s/%s' % (osystem, release)
+        make_osystem(self, osystem, [release])
+        factory.make_BootResource(name=distro_series)
         license_key = factory.make_name('key')
         mock_validate = self.patch(forms, 'validate_license_key')
         mock_validate.return_value = False
         form = MachineForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'osystem': osystem,
+            'distro_series': distro_series,
             'license_key': license_key,
             },
             instance=node)
@@ -261,16 +260,18 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem = factory.make_name('osystem')
+        release = factory.make_name('release')
+        distro_series = '%s/%s' % (osystem, release)
+        make_osystem(self, osystem, [release])
+        factory.make_BootResource(name=distro_series)
         license_key = factory.make_name('key')
         mock_validate_for = self.patch(forms, 'validate_license_key_for')
         mock_validate_for.return_value = False
         form = MachineForm(data={
             'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'osystem': osystem,
+            'distro_series': distro_series,
             'license_key': license_key,
             },
             instance=node)
@@ -281,16 +282,18 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem = factory.make_name('osystem')
+        release = factory.make_name('release')
+        distro_series = '%s/%s' % (osystem, release)
+        make_osystem(self, osystem, [release])
+        factory.make_BootResource(name=distro_series)
         license_key = factory.make_name('key')
         mock_validate_for = self.patch(forms, 'validate_license_key_for')
         mock_validate_for.side_effect = NoConnectionsAvailable()
         form = MachineForm(data={
             'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'osystem': osystem,
+            'distro_series': distro_series,
             'license_key': license_key,
             },
             instance=node)
@@ -301,16 +304,18 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem = factory.make_name('osystem')
+        release = factory.make_name('release')
+        distro_series = '%s/%s' % (osystem, release)
+        make_osystem(self, osystem, [release])
+        factory.make_BootResource(name=distro_series)
         license_key = factory.make_name('key')
         mock_validate_for = self.patch(forms, 'validate_license_key_for')
         mock_validate_for.side_effect = TimeoutError()
         form = MachineForm(data={
             'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'osystem': osystem,
+            'distro_series': distro_series,
             'license_key': license_key,
             },
             instance=node)
@@ -321,16 +326,18 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
+        osystem = factory.make_name('osystem')
+        release = factory.make_name('release')
+        distro_series = '%s/%s' % (osystem, release)
+        make_osystem(self, osystem, [release])
+        factory.make_BootResource(name=distro_series)
         license_key = factory.make_name('key')
         mock_validate_for = self.patch(forms, 'validate_license_key_for')
         mock_validate_for.side_effect = NoSuchOperatingSystem()
         form = MachineForm(data={
             'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'osystem': osystem,
+            'distro_series': distro_series,
             'license_key': license_key,
             },
             instance=node)

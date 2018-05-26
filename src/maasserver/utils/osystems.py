@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for working with operating systems."""
 
@@ -19,12 +19,13 @@ __all__ = [
     'validate_hwe_kernel',
     ]
 
+from collections import OrderedDict
 from operator import itemgetter
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import (
     BootResource,
     BootSourceCache,
@@ -34,13 +35,77 @@ from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.twisted import undefined
 
 
-def list_all_usable_osystems():
+def list_all_usable_releases():
+    """Return all releases for all operating systems that can be used."""
+    distro_series = {}
+    seen_releases = set()
+    for br in BootResource.objects.filter(bootloader_type=None):
+        # An OS can have multiple boot resource for one release. e.g Ubuntu
+        # Bionic has ga-18.04 and ga-18.04-lowlatency. This list should only
+        # contain one entry per OS.
+        if br.name in seen_releases:
+            continue
+        seen_releases.add(br.name)
+
+        if '/' in br.name:
+            os_name, release = br.name.split('/')
+        else:
+            os_name = 'custom'
+            release = br.name
+
+        osystem = OperatingSystemRegistry.get_item(os_name)
+        if osystem is not None:
+            title = osystem.get_release_title(release)
+            can_commission = (
+                release in osystem.get_supported_commissioning_releases())
+            requires_license_key = osystem.requires_license_key(release)
+        else:
+            title = br.name
+            can_commission = requires_license_key = False
+
+        if br.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            # User may set the title of an uploaded resource.
+            if 'title' in br.extra:
+                title = br.extra['title']
+            else:
+                title = release
+
+        if os_name not in distro_series:
+            distro_series[os_name] = []
+        distro_series[os_name].append({
+            'name': release,
+            'title': title,
+            'can_commission': can_commission,
+            'requires_license_key': requires_license_key,
+        })
+    for osystem, releases in distro_series.items():
+        distro_series[osystem] = sorted(releases, key=itemgetter('title'))
+    return OrderedDict(sorted(distro_series.items()))
+
+
+def list_all_usable_osystems(releases=None):
     """Return all operating systems that can be used for nodes."""
-    osystems = [
-        osystem
-        for osystem in gen_all_known_operating_systems()
-        if len(osystem['releases']) > 0 and osystem['name'] != 'bootloader'
-        ]
+    if releases is None:
+        releases = list_all_usable_releases()
+    osystems = []
+    for os_name, releases in releases.items():
+        osystem = OperatingSystemRegistry.get_item(os_name)
+        if osystem:
+            default_commissioning_release = (
+                osystem.get_default_commissioning_release())
+            default_release = osystem.get_default_release()
+            title = osystem.title
+        else:
+            default_commissioning_release = ''
+            default_release = ''
+            title = os_name
+        osystems.append({
+            'name': os_name,
+            'title': title,
+            'default_commissioning_release': default_commissioning_release,
+            'default_release': default_release,
+            'releases': releases,
+        })
     return sorted(osystems, key=itemgetter('title'))
 
 
@@ -61,41 +126,6 @@ def list_osystem_choices(osystems, include_default=True):
     return sorted(list(set(choices)))
 
 
-def list_all_usable_releases(osystems):
-    """Return dictionary of usable `releases` for each operating system."""
-    distro_series = {}
-    titles = {}
-    # Look up any titles stored with the BootResource, use those over the title
-    # the rack gives us.
-    for resource in BootResource.objects.exclude(extra={}):
-        if 'title' in resource.extra and resource.extra['title'] != '':
-            # All BootResources which originate from a SimpleStream have
-            # their name set to osystem/series
-            # (see BootResourceStore.get_or_create_boot_resource). User
-            # uploaded images set the name to whatever the user specifed.
-            # When custom images are returned by list_all_usable_osystems
-            # the osystem name is 'custom' and the release name to whatever
-            # the user specified.
-            if '/' in resource.name:
-                osystem, release = resource.name.split('/')
-            else:
-                osystem = 'custom'
-                release = resource.name
-            if osystem not in titles:
-                titles[osystem] = {}
-            titles[osystem][release] = resource.extra['title']
-    for osystem in osystems:
-        for release in osystem['releases']:
-            osystem_name = osystem['name']
-            release_name = release['name']
-            if osystem_name in titles and release_name in titles[osystem_name]:
-                release['title'] = titles[osystem_name][release_name]
-        distro_series[osystem['name']] = sorted(
-            [release for release in osystem['releases']],
-            key=itemgetter('title'))
-    return distro_series
-
-
 def list_all_usable_hwe_kernels(releases):
     """Return dictionary of usable `kernels` for each os/release."""
     kernels = {}
@@ -107,6 +137,10 @@ def list_all_usable_hwe_kernels(releases):
             kernels[osystem][release['name']] = list_hwe_kernel_choices(
                 sorted(BootResource.objects.get_usable_hwe_kernels(os_release))
             )
+            if len(kernels[osystem][release['name']]) == 0:
+                kernels[osystem].pop(release['name'])
+        if len(kernels[osystem]) == 0:
+            kernels.pop(osystem)
     return kernels
 
 

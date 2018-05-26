@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BootSourceForm`."""
@@ -9,7 +9,6 @@ import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from maasserver import forms as forms_module
-from maasserver.clusterrpc import osystems
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -21,6 +20,10 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from provisioningserver.drivers.osystem import (
+    CustomOS,
+    OperatingSystemRegistry,
+)
 
 
 class TestBootResourceForm(MAASServerTestCase):
@@ -192,10 +195,10 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_creates_boot_resoures_with_uploaded_rtype(self):
         os = factory.make_name('os')
-        self.patch(
-            osystems, 'gen_all_known_operating_systems').return_value = [
-                {'name': os}]
         series = factory.make_name('series')
+        OperatingSystemRegistry.register_item(os, CustomOS())
+        self.addCleanup(
+            OperatingSystemRegistry.unregister_item, os)
         name = '%s/%s' % (os, series)
         architecture = make_usable_architecture(self)
         upload_type, filetype = self.pick_filetype()
@@ -225,10 +228,10 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_adds_boot_resource_set_to_existing_generated_boot_resource(self):
         os = factory.make_name('os')
-        self.patch(
-            osystems, 'gen_all_known_operating_systems').return_value = [
-                {'name': os}]
         series = factory.make_name('series')
+        OperatingSystemRegistry.register_item(os, CustomOS())
+        self.addCleanup(
+            OperatingSystemRegistry.unregister_item, os)
         name = '%s/%s' % (os, series)
         architecture = make_usable_architecture(self)
         resource = factory.make_usable_boot_resource(
@@ -260,10 +263,10 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_adds_boot_resource_set_to_existing_uploaded_boot_resource(self):
         os = factory.make_name('os')
-        self.patch(
-            osystems, 'gen_all_known_operating_systems').return_value = [
-                {'name': os}]
         series = factory.make_name('series')
+        OperatingSystemRegistry.register_item(os, CustomOS())
+        self.addCleanup(
+            OperatingSystemRegistry.unregister_item, os)
         name = '%s/%s' % (os, series)
         architecture = make_usable_architecture(self)
         resource = factory.make_usable_boot_resource(

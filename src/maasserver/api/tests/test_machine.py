@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Machine API."""
@@ -99,6 +99,7 @@ class MachinesAPILoggedInTest(APITestCase.ForUserAndAdmin):
     def setUp(self):
         super(MachinesAPILoggedInTest, self).setUp()
         self.patch(node_module, 'wait_for_power_command')
+        self.patch(node_module.Node, '_start')
 
     def test_machines_GET_logged_in(self):
         machine = factory.make_Node()
@@ -376,7 +377,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 http.client.BAD_REQUEST,
                 {'distro_series': [
                     "'%s' is not a valid distro_series.  "
-                    "It should be one of: ''." %
+                    "It should be one of: '', 'ubuntu/bionic'." %
                     invalid_distro_series]}
             ),
             (response.status_code, json_load_bytes(response.content)))
@@ -471,24 +472,6 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(response_info['osystem'], osystem)
         self.assertEqual(response_info['distro_series'], distro_series)
-
-    def test_POST_deploy_fails_with_no_boot_source(self):
-        machine = factory.make_Node(
-            owner=self.user, interface=True,
-            power_type='manual',
-            status=NODE_STATUS.READY,
-            architecture=make_usable_architecture(self))
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'deploy'})
-        self.assertEqual(
-            (
-                http.client.BAD_REQUEST,
-                {'distro_series': [
-                    "'%s' is not a valid distro_series.  "
-                    "It should be one of: ''." %
-                    Config.objects.get_config('default_distro_series')]}
-            ),
-            (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_deploy_fails_when_preseed_not_rendered(self):
         mock_get_curtin_merged_config = self.patch(
@@ -1693,6 +1676,9 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
 
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
+        machine.osystem = osystem['name']
+        machine.distro_series = distro_series
+        machine.save()
         response = self.client.post(
             TestMachineAPI.get_machine_uri(machine),
             {
