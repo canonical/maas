@@ -163,7 +163,9 @@ class MacaroonDischargeRequest:
         login(
             request, user,
             backend='maasserver.macaroon_auth.MacaroonAuthorizationBackend')
-        return JsonResponse({'id': user.id, 'username': user.username})
+        return JsonResponse(
+            {attr: getattr(user, attr)
+             for attr in ('id', 'username', 'is_superuser')})
 
 
 class KeyStore:
