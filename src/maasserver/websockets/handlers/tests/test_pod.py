@@ -182,10 +182,10 @@ class TestPodHandler(MAASTransactionServerTestCase):
         handler = PodHandler(user, {})
         pool = yield deferToDatabase(factory.make_ResourcePool)
         pod_info = self.make_pod_info()
-        pod_info['default_pool'] = pool.id
+        pod_info['pool'] = pool.id
         yield deferToDatabase(self.fake_pod_discovery)
         created_pod = yield handler.create(pod_info)
-        self.assertEqual(pool.id, created_pod['default_pool'])
+        self.assertEqual(pool.id, created_pod['pool'])
 
     @wait_for_reactor
     @inlineCallbacks

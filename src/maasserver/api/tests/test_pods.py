@@ -121,7 +121,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'available',
                 'cpu_over_commit_ratio',
                 'memory_over_commit_ratio',
-                'default_pool',
+                'pool',
             ],
             list(parsed_result[0]))
         self.assertItemsEqual(
@@ -171,11 +171,11 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
-        pod_info['default_pool'] = pool.name
+        pod_info['pool'] = pool.name
         response = self.client.post(reverse('pods_handler'), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(pool.id, parsed_result['default_pool']['id'])
+        self.assertEqual(pool.id, parsed_result['pool']['id'])
 
     def test_create_duplicate_provides_nice_error(self):
         self.become_admin()
@@ -275,13 +275,13 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             'power_address': new_power_parameters['power_address'],
             'power_pass': new_power_parameters['power_pass'],
             'zone': new_zone.name,
-            'default_pool': new_pool.name,
+            'pool': new_pool.name,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         pod.refresh_from_db()
         self.assertEqual(new_name, pod.name)
-        self.assertEqual(new_pool, pod.default_pool)
+        self.assertEqual(new_pool, pod.pool)
         self.assertItemsEqual(new_tags, pod.tags)
         self.assertEqual(new_power_parameters, pod.power_parameters)
         self.assertEqual(new_zone, pod.zone)
@@ -393,7 +393,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
     def test_compose_composes_with_defaults(self):
         self.become_admin()
         pod = self.make_pod_with_hints()
-        pod.default_pool = factory.make_ResourcePool()
+        pod.pool = factory.make_ResourcePool()
         pod.save()
 
         # Mock the RPC client.
@@ -419,7 +419,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertItemsEqual(
             parsed_machine.keys(), ['resource_uri', 'system_id'])
         machine = Machine.objects.get(system_id=parsed_machine['system_id'])
-        self.assertEqual(machine.pool, pod.default_pool)
+        self.assertEqual(machine.pool, pod.pool)
 
     def test_compose_composes_with_pool(self):
         self.become_admin()
