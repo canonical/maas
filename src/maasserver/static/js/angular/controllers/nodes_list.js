@@ -102,7 +102,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.pools.currentpage = "pools";
         $scope.tabs.pools.manager = ResourcePoolsManager;
         $scope.tabs.pools.actionOption = false;
-        $scope.tabs.pools.newPool = {};
+        $scope.tabs.pools.newPool = {name: null, description: null};
         $scope.addPool = function() {
             $scope.tabs.pools.actionOption = true;
         };
@@ -215,9 +215,6 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.controllers.addController = false;
         $scope.tabs.controllers.registerUrl = MAAS_config.register_url;
         $scope.tabs.controllers.registerSecret = MAAS_config.register_secret;
-        $scope.tabs.controllers.poolSelection = null;
-        $scope.tabs.controllers.poolAction = 'select-pool';
-        $scope.tabs.controllers.newPool = {};
 
         // Switch tab.
         $scope.tabs.switches = {};
