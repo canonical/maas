@@ -685,7 +685,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         ]
         pool = factory.make_ResourcePool()
         pod = factory.make_Pod(
-            architectures=architectures, default_pool=pool)
+            architectures=architectures, pool=pool)
         pod.hints.cores = random.randint(8, 16)
         pod.hints.memory = random.randint(4096, 8192)
         pod.hints.save()

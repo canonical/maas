@@ -43,7 +43,7 @@ DISPLAYED_POD_FIELDS = (
     'cpu_over_commit_ratio',
     'memory_over_commit_ratio',
     'storage_pools',
-    'default_pool',
+    'pool',
     )
 
 
@@ -120,9 +120,9 @@ class PodHandler(OperationsHandler):
 
         :param name: Name for the pod
         :type name: unicode
-        :param default_pool: Default resource pool that composed machines
-            get assigned to by default.
-        :type default_pool: unicode
+        :param pool: Name of resource pool this pod belongs and that
+            composed machines get assigned to by default.
+        :type pool: unicode
         :param cpu_over_commit_ratio: CPU over commit ratio
         :type cpu_over_commit_ratio: unicode
         :param memory_over_commit_ratio: Memory over commit ratio
@@ -335,9 +335,9 @@ class PodsHandler(OperationsHandler):
         :type name: unicode
         :param zone: Name of the zone for the pod (optional).
         :type zone: unicode
-        :param default_pool: Default resource pool that composed machines
-            get assigned to by default (optional).
-        :type default_pool: unicode
+        :param pool: Name of resource pool this pod belongs and that
+            composed machines get assigned to by default (optional).
+        :type pool: unicode
         :param tags: A tag or tags (separated by comma) for the pod (optional).
         :type tags: unicode
 

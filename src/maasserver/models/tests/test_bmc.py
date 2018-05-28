@@ -685,27 +685,26 @@ class TestPod(MAASServerTestCase):
             storage_pools=storage_pools,
             machines=machines)
 
-    def test_create_with_default_pool(self):
+    def test_create_with_pool(self):
         pool = ResourcePool.objects.get_default_resource_pool()
-        pod = Pod(power_type='virsh', power_parameters={}, default_pool=pool)
+        pod = Pod(power_type='virsh', power_parameters={}, pool=pool)
         pod.save()
-        self.assertEqual(pool, pod.default_pool)
+        self.assertEqual(pool, pod.pool)
 
-    def test_create_with_no_default_pool(self):
+    def test_create_with_no_pool(self):
         pod = Pod(power_type='virsh', power_parameters={})
         pod.save()
         self.assertEqual(
-            ResourcePool.objects.get_default_resource_pool(),
-            pod.default_pool)
+            ResourcePool.objects.get_default_resource_pool(), pod.pool)
 
     def test_save_with_no_pool(self):
         pod = Pod(power_type='virsh', power_parameters={})
-        pod.default_pool = None
+        pod.pool = None
         self.assertRaises(ValidationError, pod.save)
 
-    def test_no_delete_default_pool(self):
+    def test_no_delete_pod_pool(self):
         pool = factory.make_ResourcePool()
-        pod = Pod(power_type='virsh', power_parameters={}, default_pool=pool)
+        pod = Pod(power_type='virsh', power_parameters={}, pool=pool)
         pod.save()
         self.assertRaises(ProtectedError, pool.delete)
 
@@ -926,7 +925,7 @@ class TestPod(MAASServerTestCase):
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertNotEqual(machine.hostname, 'invalid_name')
 
-    def test_create_machine_pod_default_pool(self):
+    def test_create_machine_pod_pool(self):
         discovered_machine = self.make_discovered_machine()
         self.patch(Machine, "set_default_storage_layout")
         self.patch(Machine, "set_initial_networking_configuration")
@@ -936,7 +935,7 @@ class TestPod(MAASServerTestCase):
             fabric=fabric, dhcp_on=True,
             primary_rack=factory.make_RackController())
         pool = factory.make_ResourcePool()
-        pod = factory.make_Pod(default_pool=pool)
+        pod = factory.make_Pod(pool=pool)
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertEqual(pool, machine.pool)
 

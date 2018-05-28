@@ -72,9 +72,9 @@ class PodHandler(TimestampedModelHandler):
             zone = Zone.objects.get(id=params['zone'])
             new_params["zone"] = zone.name
 
-        if "default_pool" in params:
-            pool = ResourcePool.objects.get(id=params['default_pool'])
-            new_params["default_pool"] = pool.name
+        if "pool" in params:
+            pool = ResourcePool.objects.get(id=params['pool'])
+            new_params["pool"] = pool.name
 
         # Cleanup any fields that have a None value.
         new_params = {

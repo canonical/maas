@@ -158,7 +158,7 @@ class TestPodForm(MAASTransactionServerTestCase):
                 'tags',
                 'type',
                 'zone',
-                'default_pool',
+                'pool',
                 'cpu_over_commit_ratio',
                 'memory_over_commit_ratio',
                 'default_storage_pool',
@@ -201,7 +201,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
             zone=Equals(Zone.objects.get_default_zone()),
-            default_pool=Equals(
+            pool=Equals(
                 ResourcePool.objects.get_default_resource_pool()),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
@@ -266,15 +266,15 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertEqual(zone.id, pod.zone.id)
 
-    def test_creates_pod_with_default_pool(self):
+    def test_creates_pod_with_pool(self):
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
-        pod_info['default_pool'] = pool.name
+        pod_info['pool'] = pool.name
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertEqual(pool.id, pod.default_pool.id)
+        self.assertEqual(pool.id, pod.pool.id)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -378,7 +378,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             'power_pass': 'pass',
         }
         orig_pod = factory.make_Pod(
-            pod_type='virsh', zone=zone, default_pool=pool,
+            pod_type='virsh', zone=zone, pool=pool,
             cpu_over_commit_ratio=cpu_over_commit,
             memory_over_commit_ratio=memory_over_commit,
             parameters=power_parameters)
@@ -389,7 +389,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertEqual(new_name, pod.name)
         self.assertEqual(zone, pod.zone)
-        self.assertEqual(pool, pod.default_pool)
+        self.assertEqual(pool, pod.pool)
         self.assertEqual(cpu_over_commit, pod.cpu_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
@@ -402,7 +402,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pool = factory.make_ResourcePool()
         pod_info = self.make_pod_info()
         pod_info['zone'] = zone.name
-        pod_info['default_pool'] = pool.name
+        pod_info['pool'] = pool.name
         orig_pod = factory.make_Pod(pod_type=pod_info['type'])
         new_name = factory.make_name("pod")
         pod_info['name'] = new_name
@@ -418,7 +418,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
             zone=Equals(zone),
-            default_pool=Equals(pool),
+            pool=Equals(pool),
             power_type=Equals(pod_info['type']),
             power_parameters=Equals({
                 'power_address': pod_info['power_address'],
@@ -467,7 +467,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         pool = yield deferToDatabase(factory.make_ResourcePool)
         pod_info = yield deferToDatabase(self.make_pod_info)
         pod_info['zone'] = zone.name
-        pod_info['default_pool'] = pool.name
+        pod_info['pool'] = pool.name
         orig_pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
         new_name = factory.make_name("pod")
@@ -760,7 +760,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request = MagicMock()
         pod = make_pod_with_hints()
         pool = factory.make_ResourcePool()
-        pod.default_pool = pool
+        pod.pool = pool
         pod.save()
         form = ComposeMachineForm(request=request, pod=pod)
         self.assertEqual(pool, form.initial['pool'])
@@ -1050,10 +1050,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         created_machine = form.compose()
         self.assertEqual(pool, created_machine.pool)
 
-    def test__compose_uses_default_pool(self):
+    def test__compose_uses_pod_pool(self):
         request = MagicMock()
         pod = make_pod_with_hints()
-        pod.default_pool = factory.make_ResourcePool()
+        pod.pool = factory.make_ResourcePool()
         pod.save()
 
         # Mock the RPC client.
@@ -1072,7 +1072,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         }, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
-        self.assertEqual(pod.default_pool, created_machine.pool)
+        self.assertEqual(pod.pool, created_machine.pool)
 
     def test__compose_check_over_commit_ratios_raises_error_for_cores(self):
         request = MagicMock()

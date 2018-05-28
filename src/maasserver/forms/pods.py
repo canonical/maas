@@ -87,7 +87,7 @@ class PodForm(MAASModelForm):
             'name',
             'tags',
             'zone',
-            'default_pool',
+            'pool',
             'cpu_over_commit_ratio',
             'memory_over_commit_ratio',
             'default_storage_pool',
@@ -102,7 +102,7 @@ class PodForm(MAASModelForm):
         initial=Zone.objects.get_default_zone,
         queryset=Zone.objects.all(), to_field_name='name')
 
-    default_pool = forms.ModelChoiceField(
+    pool = forms.ModelChoiceField(
         label="Default pool of created machines", required=False,
         initial=lambda: ResourcePool.objects.get_default_resource_pool().name,
         queryset=ResourcePool.objects.all(), to_field_name='name')
@@ -149,7 +149,7 @@ class PodForm(MAASModelForm):
                 self.initial['type'] = self.instance.power_type
         if instance is not None:
             self.initial['zone'] = instance.zone.name
-            self.initial['default_pool'] = instance.default_pool.name
+            self.initial['pool'] = instance.pool.name
             self.fields['default_storage_pool'].queryset = (
                 instance.storage_pools.all())
             if instance.default_storage_pool:
@@ -206,7 +206,7 @@ class PodForm(MAASModelForm):
                         # Convert the BMC to a Pod and set as the instance for
                         # the PodForm.
                         bmc.bmc_type = BMC_TYPE.POD
-                        bmc.default_pool = (
+                        bmc.pool = (
                             ResourcePool.objects.get_default_resource_pool())
                         return bmc.as_pod()
                     else:
@@ -375,7 +375,7 @@ class ComposeMachineForm(forms.Form):
         self.initial['zone'] = Zone.objects.get_default_zone()
         self.fields['pool'] = ModelChoiceField(
             required=False, queryset=ResourcePool.objects.all())
-        self.initial['pool'] = self.pod.default_pool
+        self.initial['pool'] = self.pod.pool
         self.fields['storage'] = CharField(
             validators=[storage_validator], required=False)
         self.initial['storage'] = 'root:8(local)'

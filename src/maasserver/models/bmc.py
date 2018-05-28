@@ -179,7 +179,7 @@ class BMC(CleanSave, TimestampedModel):
     local_disks = IntegerField(blank=False, null=False, default=-1)
     iscsi_storage = BigIntegerField(  # Bytes
         blank=False, null=False, default=-1)
-    default_pool = ForeignKey(
+    pool = ForeignKey(
         ResourcePool, default=None, null=True, blank=True, editable=True,
         on_delete=PROTECT)
     zone = ForeignKey(
@@ -463,16 +463,16 @@ class Pod(BMC):
     _machine_name_re = re.compile(r'[a-z][a-z0-9-]+$', flags=re.I)
 
     def __init__(self, *args, **kwargs):
-        if 'default_pool' not in kwargs:
-            kwargs['default_pool'] = (
+        if 'pool' not in kwargs:
+            kwargs['pool'] = (
                 ResourcePool.objects.get_default_resource_pool())
         super(Pod, self).__init__(
             bmc_type=BMC_TYPE.POD, *args, **kwargs)
 
     def clean(self):
         super().clean()
-        if self.default_pool is None:
-            raise ValidationError('A pod needs to have a default pool')
+        if self.pool is None:
+            raise ValidationError('A pod needs to have a pool')
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('power_type', 'power_parameters', 'ip_address'):
@@ -663,7 +663,7 @@ class Pod(BMC):
 
         pool = kwargs.pop('pool', None)
         if pool is None:
-            pool = self.default_pool
+            pool = self.pool
 
         # Create the machine.
         machine = Machine(

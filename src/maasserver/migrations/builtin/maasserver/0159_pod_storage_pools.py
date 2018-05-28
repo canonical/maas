@@ -13,7 +13,7 @@ import maasserver.models.cleansave
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0157_drop_usergroup_and_role'),
+        ('maasserver', '0158_pod_default_pool_to_pod'),
     ]
 
     operations = [

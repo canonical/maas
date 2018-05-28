@@ -29,7 +29,7 @@ def backwards(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0158_pod_storage_pools'),
+        ('maasserver', '0159_pod_storage_pools'),
     ]
 
     operations = [
