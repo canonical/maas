@@ -145,7 +145,13 @@ angular.module('MAAS').controller('NodesListController', [
                     $scope.tabs.pools.actionErrorMessage = error;
                 });
         };
-
+        $scope.tabs.pools.goToPoolMachines = function(pool) {
+            $scope.clearSearch('machines');
+            $scope.toggleFilter('pool', pool.name, 'machines');
+            $scope.toggleTab('machines');
+            // update the location URL otherwise to match the tab
+            $location.path('/machines');
+        }
         $scope.tabs.pools.isDefaultPool = function(pool) {
             return pool.id === 0;
         };
