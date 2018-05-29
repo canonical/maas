@@ -1937,5 +1937,14 @@ describe("NodesListController", function() {
             var pool = {id: 0, name: 'foo'};
             expect(tab.isDefaultPool(pool)).toBe(true);
         });
+
+        it("switches to the machine tab with pool filter", function() {
+            makeController();
+            var machinesTab = $scope.tabs.machines;
+            var pool = {id: 10, name: 'foo'};
+            $scope.tabs.pools.goToPoolMachines(pool);
+            expect(machinesTab.search).toEqual('pool:(=foo)');
+            expect($location.path()).toEqual('/machines');
+        });
     });
 });

@@ -1001,7 +1001,9 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             placeholder="Name (required)">
                         </td>
                         <td class="p-table__cell col-2" aria-label="Machine count">
-                          {$ pool.machine_ready_count $} of {$ pool.machine_total_count $} Ready
+                          <a data-ng-click="tabs.pools.goToPoolMachines(pool.name)">
+                            {$ pool.machine_ready_count $} of {$ pool.machine_total_count $} Ready
+                          </a>
                         </td>
                         <td class="p-table__cell col-5" aria-label="Description">
                           <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.description $}</span>
