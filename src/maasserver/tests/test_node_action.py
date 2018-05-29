@@ -747,17 +747,6 @@ class TestSetPoolAction(MAASServerTestCase):
         action.execute(pool_id=pool2.id)
         self.assertEqual(reload_object(node).pool.id, pool2.id)
 
-    def test_SetPool_with_create(self):
-        user = factory.make_admin()
-        pool = factory.make_ResourcePool()
-        node = factory.make_Node(status=NODE_STATUS.NEW, pool=pool)
-        action = SetPool(node, user)
-        name = factory.make_string()
-        action.execute(new_pool={'name': name})
-        node = reload_object(node)
-        self.assertNotEqual(node.pool, pool)
-        self.assertEqual(node.pool.name, name)
-
 
 class TestPowerOnAction(MAASServerTestCase):
 

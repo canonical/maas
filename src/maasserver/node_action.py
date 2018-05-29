@@ -236,13 +236,9 @@ class SetPool(NodeAction):
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
 
-    def execute(self, pool_id=None, new_pool=None):
+    def execute(self, pool_id=None):
         """See `NodeAction.execute`."""
-        if pool_id is not None:
-            pool = ResourcePool.objects.get(id=pool_id)
-        else:
-            pool = ResourcePool.objects.create(name=new_pool['name'])
-
+        pool = ResourcePool.objects.get(id=pool_id)
         self.node.pool = pool
         self.node.save()
 

@@ -5,12 +5,12 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$interval', '$rootScope', '$routeParams', '$location',
+    '$q', '$scope', '$interval', '$rootScope', '$routeParams', '$location',
     'MachinesManager', 'DevicesManager', 'ControllersManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService',
     'ZonesManager', 'UsersManager', 'ServicesManager', 'ScriptsManager',
     'SwitchesManager', 'ResourcePoolsManager',
-    function($scope, $interval, $rootScope, $routeParams, $location,
+    function($q, $scope, $interval, $rootScope, $routeParams, $location,
         MachinesManager, DevicesManager, ControllersManager, GeneralManager,
         ManagerHelperService, SearchService, ZonesManager, UsersManager,
         ServicesManager, ScriptsManager, SwitchesManager,
@@ -657,6 +657,13 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.actionGo = function(tabName) {
             var tab = $scope.tabs[tabName];
             var extra = {};
+            var deferred = $q.defer();
+            // Actions can use preAction is to execute before the action
+            // is exectued on all the nodes. We initialize it with a
+            // promise so that later we can always treat it as a
+            // promise, no matter if something is to be executed or not.
+            var preAction = deferred.promise;
+            deferred.resolve();
             var i;
             // Set deploy parameters if a deploy or set zone action.
             if(tab.actionOption.name === "deploy" &&
@@ -684,7 +691,12 @@ angular.module('MAAS').controller('NodesListController', [
             } else if(tab.actionOption.name === "set-pool") {
                 if ((tab.poolAction === 'create-pool') &&
                     (tab.newPool.name !== undefined)) {
-                    extra.new_pool = tab.newPool;
+                    // Create the pool and set the action options with
+                    // the new pool id.
+                    preAction = ResourcePoolsManager.createItem(
+                            {name: tab.newPool.name}).then(function (newPool) {
+                                extra.pool_id = newPool.id
+                            });
                 } else if (angular.isNumber(tab.poolSelection.id)) {
                     // Set the pool parameter.
                     extra.pool_id = tab.poolSelection.id;
@@ -751,23 +763,28 @@ angular.module('MAAS').controller('NodesListController', [
                 extra.quick_erase = tab.releaseOptions.quickErase;
             }
 
-            // Setup actionProgress.
-            resetActionProgress(tabName);
-            tab.actionProgress.total = tab.selectedItems.length;
-
-            // Perform the action on all selected items.
-            angular.forEach(tab.selectedItems, function(node) {
-                tab.manager.performAction(
-                    node, tab.actionOption.name,
-                    extra).then(function() {
-                        tab.actionProgress.completed += 1;
-                        node.action_failed = false;
-                        updateSelectedItems(tabName);
-                    }, function(error) {
-                        addErrorToActionProgress(tabName, error, node);
-                        node.action_failed = true;
-                        updateSelectedItems(tabName);
+            preAction.then(
+                function () {
+                    // Setup actionProgress.
+                    resetActionProgress(tabName);
+                    tab.actionProgress.total = tab.selectedItems.length;
+                    // Perform the action on all selected items.
+                    angular.forEach(tab.selectedItems, function(node) {
+                        tab.manager.performAction(
+                            node, tab.actionOption.name,
+                            extra).then(function() {
+                                tab.actionProgress.completed += 1;
+                                node.action_failed = false;
+                                updateSelectedItems(tabName);
+                            }, function(error) {
+                                addErrorToActionProgress(tabName, error, node);
+                                node.action_failed = true;
+                                updateSelectedItems(tabName);
+                            });
                     });
+                },
+                function (error) {
+                    addErrorToActionProgress(tabName, error);
             });
         };
 
