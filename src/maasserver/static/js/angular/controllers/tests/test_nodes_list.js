@@ -93,6 +93,7 @@ describe("NodesListController", function() {
 
         // Create the controller.
         var controller = $controller("NodesListController", {
+            $q: $q,
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
@@ -1230,6 +1231,7 @@ describe("NodesListController", function() {
                             makeObject(tab)
                             ];
                         $scope.actionGo(tab);
+                        $scope.$digest();
                         expect($scope.tabs[tab].actionProgress.total).toBe(
                             $scope.tabs[tab].selectedItems.length);
                     });
@@ -1243,6 +1245,7 @@ describe("NodesListController", function() {
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.tabs[tab].selectedItems = [object];
                     $scope.actionGo(tab);
+                    $scope.$digest();
                     expect(spy).toHaveBeenCalledWith(
                         object, "start", {});
                 });
@@ -1443,6 +1446,7 @@ describe("NodesListController", function() {
                         $scope.tabs[tab].selectedItems = [object];
                         $scope.tabs[tab].zoneSelection = { id: 1 };
                         $scope.actionGo(tab);
+                        $scope.$digest();
                         expect(spy).toHaveBeenCalledWith(
                             object, "set-zone", { zone_id: 1 });
                 });
@@ -1471,6 +1475,7 @@ describe("NodesListController", function() {
             });
 
             describe("actionSetPool", function () {
+
                 it("calls performAction with pool",
                     function() {
                         var controller = makeController();
@@ -1485,6 +1490,7 @@ describe("NodesListController", function() {
                         tabScope.poolAction = 'select-pool';
                         tabScope.poolSelection = { id: 1 };
                         $scope.actionGo(tab);
+                        $scope.$digest();
                         expect(spy).toHaveBeenCalledWith(
                             object, "set-pool", { pool_id: 1 });
                 });
@@ -1492,13 +1498,18 @@ describe("NodesListController", function() {
                 it("calls performAction with new pool data",
                     function() {
                         var controller = makeController();
-                        var spy = spyOn(
+                        var createDefer = $q.defer();
+                        var createSpy = spyOn(
+                            ResourcePoolsManager,
+                            "createItem").and.returnValue(
+                            createDefer.promise);
+                        var performSpy = spyOn(
                             $scope.tabs[tab].manager,
                             "performAction").and.returnValue(
                             $q.defer().promise);
                         var object = makeObject(tab);
                         var newPoolData = {
-                            name: 'pool',
+                            name: 'my-pool',
                             description: 'desc',
                         };
                         var tabScope = $scope.tabs[tab];
@@ -1508,8 +1519,14 @@ describe("NodesListController", function() {
                         tabScope.poolAction = 'create-pool';
                         tabScope.newPool = newPoolData;
                         $scope.actionGo(tab);
-                        expect(spy).toHaveBeenCalledWith(
-                            object, "set-pool", {'new_pool': newPoolData});
+                        createDefer.resolve({id: 84});
+                        $scope.$digest();
+                        expect(performSpy).toHaveBeenCalledWith(
+                            object, "set-pool", {
+                                pool_id:84
+                            });
+                        expect(createSpy).toHaveBeenCalledWith(
+                            {name: newPoolData.name});
                 });
 
                 it("clears action option when successfully complete",
@@ -1554,6 +1571,7 @@ describe("NodesListController", function() {
                     $scope.tabs.machines.osSelection.osystem = "ubuntu";
                     $scope.tabs.machines.osSelection.release = "ubuntu/trusty";
                     $scope.actionGo("machines");
+                    $scope.$digest();
                     expect(spy).toHaveBeenCalledWith(
                         object, "deploy", {
                             osystem: "ubuntu",
@@ -1623,6 +1641,7 @@ describe("NodesListController", function() {
                         });
                     });
                     $scope.actionGo("machines");
+                    $scope.$digest();
                     expect(spy).toHaveBeenCalledWith(
                         object, "commission", {
                             enable_ssh: true,
@@ -1656,6 +1675,7 @@ describe("NodesListController", function() {
                         });
                     });
                     $scope.actionGo("machines");
+                    $scope.$digest();
                     expect(spy).toHaveBeenCalledWith(
                         object, "test", {
                             enable_ssh: true,
@@ -1701,6 +1721,7 @@ describe("NodesListController", function() {
                     $scope.tabs.machines.releaseOptions.quickErase =
                         quickErase;
                     $scope.actionGo("machines");
+                    $scope.$digest();
                     expect(spy).toHaveBeenCalledWith(
                         object, "release", {
                             erase: true,
