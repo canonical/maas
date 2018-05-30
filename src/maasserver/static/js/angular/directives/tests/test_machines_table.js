@@ -69,7 +69,7 @@ describe("maasMachinesTable", function() {
         var directive = compileDirective();
         var scope = directive.isolateScope();
         expect(scope.table).toEqual({
-          visibleColumns: {fqdn_mac:'fqdn', owner_pool: 'owner'},
+          column: 'fqdn',
           predicate: 'fqdn',
           reverse: false,
           allViewableChecked: false,
@@ -210,34 +210,19 @@ describe("maasMachinesTable", function() {
         it("sets column if different", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            scope.selectColumnOrSort('mac', 'fqdn_mac');
-            var expected = {
-                fqdn_mac: 'mac',
-                owner_pool: 'owner'};
-            expect(scope.table.visibleColumns).toEqual(expected);
+            var column = makeName('column');
+            scope.selectColumnOrSort(column);
+            expect(scope.table.column).toBe(column);
         });
 
         it("calls sortTable if column already set", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var column = makeName('column');
-            var item = makeName('item');
-            scope.table.visibleColumns[item] = column;
+            scope.table.column = column;
             spyOn(scope, "sortTable");
-            scope.selectColumnOrSort(column, item);
+            scope.selectColumnOrSort(column);
             expect(scope.sortTable).toHaveBeenCalledWith(column);
-        });
-
-        it("sets each visible column independently", function() {
-            var directive = compileDirective();
-            var scope = directive.isolateScope();
-            var column = makeName('column');
-            expect(scope.table.visibleColumns).toEqual(
-                {fqdn_mac: 'fqdn', owner_pool: 'owner'});
-            scope.selectColumnOrSort('mac', 'fqdn_mac');
-            scope.selectColumnOrSort('pool', 'owner_pool');
-            expect(scope.table.visibleColumns).toEqual(
-                {fqdn_mac: 'mac', owner_pool: 'pool'});
         });
     });
 
