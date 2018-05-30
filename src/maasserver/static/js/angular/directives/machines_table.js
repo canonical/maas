@@ -40,10 +40,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
 
         // Scope variables.
         scope.table = {
-            visibleColumns: {
-                'fqdn_mac': 'fqdn',
-                'owner_pool': 'owner',
-          },
+          column: 'fqdn',
           predicate: 'fqdn',
           reverse: false,
           allViewableChecked: false,
@@ -106,9 +103,9 @@ angular.module('MAAS').directive('maasMachinesTable', [
         };
 
         // Sets the viewable column or sorts.
-        scope.selectColumnOrSort = function(predicate, item) {
-            if(scope.table.visibleColumns[item] !== predicate) {
-                scope.table.visibleColumns[item] = predicate;
+        scope.selectColumnOrSort = function(predicate) {
+            if(scope.table.column !== predicate) {
+                scope.table.column = predicate;
             } else {
                 scope.sortTable(predicate);
             }

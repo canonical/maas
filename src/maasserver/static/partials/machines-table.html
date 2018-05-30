@@ -7,17 +7,14 @@
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
                     <label class="checkbox-label u-no-margin--top" for="check-all"></label>
                 </div>
-                <span role="columnheader" data-ng-click="selectColumnOrSort('fqdn', 'fqdn_mac')" data-ng-class="{'is-active': table.visibleColumns['fqdn_mac'] === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="FQDN">FQDN</span>
+                <span role="columnheader" data-ng-click="selectColumnOrSort('fqdn')" data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="FQDN">FQDN</span>
                 |
-                <span role="columnheader" data-ng-click="selectColumnOrSort('pxe_mac', 'fqdn_mac')" data-ng-class="{'is-active': table.visibleColumns['fqdn_mac'] === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="MAC">MAC</span>
+                <span role="columnheader" data-ng-click="selectColumnOrSort('pxe_mac')" data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="MAC">MAC</span>
             </th>
             <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">Power</th>
             <th></th>
             <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</th>
-            <th>
-              <span role="columnheader" data-ng-click="selectColumnOrSort('owner', 'owner_pool')" data-ng-class="{'is-active': table.visibleColumns['owner_pool'] === 'owner', 'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Owner">Owner</span>
-              |
-              <span role="columnheader" data-ng-click="selectColumnOrSort('pool', 'owner_pool')" data-ng-class="{'is-active': table.visibleColumns['owner_pool'] === 'pool', 'is-sorted': table.predicate === 'pool', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Pool">Pool</span>
+            <th role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Owner">Owner</th>
             </th>
             <th role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right" title="Cores">Cores</th>
             <th role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" class="u-align--right" title="RAM (GiB)">RAM (GiB)</th>
@@ -27,7 +24,7 @@
     </thead>
     <tbody vs-repeat vs-scroll-parent="window">
         <tr class="p-table__row" data-ng-repeat="node in table.filteredMachines = (table.machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id" data-ng-class="{ 'table--error': machineHasError({ $machine: node }), 'is-active': node.$selected }">
-            <td class="u-align--left" aria-label="FQDN" data-ng-if="table.visibleColumns['fqdn_mac'] === 'fqdn'">
+            <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'">
                 <div class="u-float--left" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="checkbox-label" for="{$ node.fqdn $}"></label>
@@ -37,7 +34,7 @@
                 </span>
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">{$ node.fqdn $}</a>
             </td>
-            <td class="u-align--left" aria-label="MAC" data-ng-if="table.visibleColumns['fqdn_mac'] === 'pxe_mac'">
+            <td class="u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'">
                 <div class="u-float--left" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="checkbox-label" for="{$ node.fqdn $}"></label>
@@ -70,8 +67,7 @@
                     </span>
                 </span>
             </td>
-            <td data-ng-if="table.visibleColumns['owner_pool'] === 'owner'" aria-label="Owner" title="{$ node.owner $}">{$ node.owner $}</td>
-            <td data-ng-if="table.visibleColumns['owner_pool'] === 'pool'" aria-label="Owner" title="{$ node.owner $}">{$ node.pool.name $}</td>
+            <td aria-label="Owner" title="{$ node.owner $}">{$ node.owner $}</td>
             <td class="u-align--right u-hide--small p-table--action-cell" aria-label="CPU">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
