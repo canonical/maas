@@ -765,6 +765,14 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                     </li>
                                 </ul>
                             </li>
+                            <li class="ng-hide" data-ng-show="tabs.machines.metadata.pool.length > 0">
+                                <a href="" class="sidebar__link maas-accordion-tab">Resource pools <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
+                                <ul class="sidebar__second-level">
+                                    <li data-ng-repeat="pool in tabs.machines.metadata.pool | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('pool', pool.name, 'machines') }">
+                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('pool', pool.name, 'machines')">{$ pool.name $} ({$ pool.count $})</a>
+                                    </li>
+                                </ul>
+                            </li>
                             <li class="ng-hide" data-ng-show="tabs.machines.metadata.architecture.length">
                                 <a class="sidebar__link maas-accordion-tab" href="">Architectures <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
                                 <ul class="sidebar__second-level">
@@ -802,14 +810,6 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <ul class="sidebar__second-level">
                                     <li data-ng-repeat="pod in tabs.machines.metadata.pod | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('pod', pod.name, 'machines') }">
                                         <a href="" class="sidebar__link" data-ng-click="toggleFilter('pod', pod.name, 'machines')">{$ pod.name $} ({$ pod.count $})</a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="ng-hide" data-ng-show="tabs.machines.metadata.pool.length > 0">
-                                <a href="" class="sidebar__link maas-accordion-tab">Resource pools <i class="p-icon--plus"></i><i class="p-icon--minus"></i></a>
-                                <ul class="sidebar__second-level">
-                                    <li data-ng-repeat="pool in tabs.machines.metadata.pool | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('pool', pool.name, 'machines') }">
-                                        <a href="" class="sidebar__link" data-ng-click="toggleFilter('pool', pool.name, 'machines')">{$ pool.name $} ({$ pool.count $})</a>
                                     </li>
                                 </ul>
                             </li>
