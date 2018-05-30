@@ -8,7 +8,6 @@ __all__ = []
 import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from maasserver import forms as forms_module
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -131,9 +130,7 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_prevents_reversed_osystem_from_driver(self):
         reserved_name = factory.make_name('name')
-        self.patch(
-            forms_module, 'gen_all_known_operating_systems').return_value = [{
-                'name': reserved_name}]
+        OperatingSystemRegistry.register_item(reserved_name, CustomOS())
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')
@@ -150,6 +147,23 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_prevents_reserved_centos_names(self):
         reserved_name = 'centos%d' % random.randint(0, 99)
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode('utf-8')
+        upload_name = factory.make_name('filename')
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            'name': reserved_name,
+            'title': factory.make_name('title'),
+            'architecture': make_usable_architecture(self),
+            'filetype': upload_type,
+            }
+        form = BootResourceForm(data=data, files={'content': uploaded_file})
+        self.assertFalse(form.is_valid())
+
+    def test_prevents_unsupported_osystem(self):
+        reserved_name = '%s/%s' % (
+            factory.make_name('osystem'), factory.make_name('series'))
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')

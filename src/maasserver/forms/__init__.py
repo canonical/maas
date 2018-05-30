@@ -101,10 +101,7 @@ from maasserver.clusterrpc.driver_parameters import (
     get_driver_parameters,
     get_driver_types,
 )
-from maasserver.clusterrpc.osystems import (
-    gen_all_known_operating_systems,
-    validate_license_key,
-)
+from maasserver.clusterrpc.osystems import validate_license_key
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -193,6 +190,7 @@ from netaddr import (
     IPNetwork,
     valid_ipv6,
 )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
@@ -2294,9 +2292,17 @@ class BootResourceForm(MAASModelForm):
         uploaded. Without this the image would be uploaded as Generated for
         a custom OS which is an invalid boot resource.
         """
+        supported_osystems = [
+            os_name for os_name, _ in OperatingSystemRegistry]
         name = self.cleaned_data['name']
-        if name.startswith('custom/'):
-            name = name[7:]
+        if '/' in name:
+            osystem, release = name.split('/')
+            if osystem == 'custom':
+                name = release
+            elif osystem not in supported_osystems:
+                raise ValidationError(
+                    'Unsupport operating system %s, supported operating '
+                    'systems: %s' % (osystem, supported_osystems))
 
         # Prevent the user from uploading any osystem/release or system name
         # already used in the SimpleStreams.
@@ -2306,8 +2312,9 @@ class BootResourceForm(MAASModelForm):
                 'os', 'release').distinct()
         ]
         reserved_names += [
-            i for name in reserved_names for i in name.split('/')] + [
-            i['name'] for i in gen_all_known_operating_systems()]
+            i for name in reserved_names for i in name.split('/')]
+        # Reserve base operating system names
+        reserved_names += supported_osystems
 
         # Reserve CentOS version names for future MAAS use.
         if name in reserved_names or re.search('^centos\d\d?$', name):
