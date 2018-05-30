@@ -649,6 +649,17 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         self.assertEqual(
             token.secret,
             reporter['reporting']['maas']['token_secret'])
+        self.assertEqual(
+            preseed_module.CURTIN_INSTALL_LOG,
+            reporter['install']['log_file'])
+        self.assertEqual(
+            preseed_module.CURTIN_ERROR_TARFILE,
+            reporter['install']['error_tarfile'])
+        self.assertItemsEqual(
+            [
+                preseed_module.CURTIN_INSTALL_LOG,
+                preseed_module.CURTIN_ERROR_TARFILE,
+            ], reporter['install']['post_files'])
 
     def test__curtin_maas_reporter_without_events_support(self):
         node = factory.make_Node_with_Interface_on_Subnet()

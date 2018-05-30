@@ -4,6 +4,7 @@
 """Preseed generation."""
 
 __all__ = [
+    'CURTIN_ERROR_TARFILE',
     'CURTIN_INSTALL_LOG',
     'compose_enlistment_preseed_url',
     'compose_preseed_url',
@@ -93,6 +94,11 @@ OS_WITH_IPv6_SUPPORT = ['ubuntu']
 # The path to the Curtin installation log. Curtin uploads this file to MAAS
 # with its full path once the deployment is finished.
 CURTIN_INSTALL_LOG = "/tmp/install.log"
+
+
+# The path to where the error_tarfile is located. Curtin uploads this file to
+# MAAS only when an error has occured.
+CURTIN_ERROR_TARFILE = "/tmp/curtin-logs.tar"
 
 
 def get_enlist_preseed(rack_controller=None, default_region_ip=None):
@@ -190,7 +196,8 @@ def curtin_maas_reporter(node, events_support=True):
             },
             'install': {
                 'log_file': CURTIN_INSTALL_LOG,
-                'post_files': [CURTIN_INSTALL_LOG]
+                'error_tarfile': CURTIN_ERROR_TARFILE,
+                'post_files': [CURTIN_INSTALL_LOG, CURTIN_ERROR_TARFILE],
             }
         }
     else:

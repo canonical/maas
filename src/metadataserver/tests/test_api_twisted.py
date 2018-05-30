@@ -582,6 +582,31 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(
             SCRIPT_STATUS.FAILED, reload_object(script_result).status)
 
+    def test_status_POST_files_none_are_ignored(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING, owner=user)
+        node.current_installation_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.INSTALLATION)
+        node.save()
+        payload = {
+            'event_type': 'finish',
+            'result': 'FAILURE',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+            'timestamp': datetime.utcnow(),
+            'files': [
+                {
+                    "path": CURTIN_INSTALL_LOG,
+                    "encoding": "base64",
+                    "content": None,
+                }
+            ]
+        }
+        self.processMessage(node, payload)
+        self.assertEqual(0, len(list(node.current_installation_script_set)))
+
     def test_status_commissioning_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")

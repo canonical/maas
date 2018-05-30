@@ -47,10 +47,18 @@ angular.module('MAAS').controller('NodeResultsController', [
                         $scope.node.status_code === 6 ||
                         $scope.node.status_code === 9 ||
                         $scope.node.status_code === 11)) {
-                $scope.logs.availableOptions.push({
-                    'title': 'Installation output',
-                    'id': $scope.installation_results[0].id
-                });
+                // If installation fails Curtin uploads a tar file of logs, the
+                // UI needs to display the text log file, not the tar.
+                for(i = 0; i < $scope.installation_results.length; i++) {
+                    if($scope.installation_results[i].name ===
+                            "/tmp/install.log") {
+                        $scope.logs.availableOptions.push({
+                            'title': 'Installation output',
+                            'id': $scope.installation_results[i].id
+                        });
+                        break;
+                    }
+                }
             }
             $scope.logs.availableOptions.push({
                 'title': 'Machine output (YAML)',

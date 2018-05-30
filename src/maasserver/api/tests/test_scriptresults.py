@@ -14,6 +14,7 @@ import tarfile
 import time
 
 from maasserver.api.scriptresults import fmt_time
+from maasserver.preseed import CURTIN_ERROR_TARFILE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -701,3 +702,48 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             title = title.encode()
             self.assertIn(title, response.content)
             self.assertIn(script_result.output, response.content)
+
+    def test_download_binary(self):
+        script_set = self.make_scriptset()
+        # If only one file is being downloaded the raw contents is given. This
+        # allows piping of results. When multiple results are given the output
+        # is shown deliminated by the test name. As binary data is usually
+        # unreadable the output isn't shown.
+        curtin_error_tarfile = factory.make_ScriptResult(
+            script_set=script_set, script_name=CURTIN_ERROR_TARFILE)
+        other_result = factory.make_ScriptResult(script_set=script_set)
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set),
+            {
+                'op': 'download',
+                'output': 'all',
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        binary = BytesIO()
+        dashes = '-' * int((80.0 - (2 + len(curtin_error_tarfile.name))) / 2)
+        binary.write(
+            ('%s %s %s\n' % (
+                dashes, curtin_error_tarfile.name, dashes)).encode())
+        binary.write(b'Binary file\n')
+        dashes = '-' * int((80.0 - (2 + len(other_result.name))) / 2)
+        binary.write(
+            ('%s %s %s\n' % (dashes, other_result.name, dashes)).encode())
+        binary.write(other_result.output)
+        binary.write(b'\n')
+        filename = '%s.out' % other_result.name
+        dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
+        binary.write(('%s %s %s\n' % (dashes, filename, dashes)).encode())
+        binary.write(other_result.stdout)
+        binary.write(b'\n')
+        filename = '%s.err' % other_result.name
+        dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
+        binary.write(('%s %s %s\n' % (dashes, filename, dashes)).encode())
+        binary.write(other_result.stderr)
+        binary.write(b'\n')
+        filename = '%s.yaml' % other_result.name
+        dashes = '-' * int((80.0 - (2 + len(filename))) / 2)
+        binary.write(('%s %s %s\n' % (dashes, filename, dashes)).encode())
+        binary.write(other_result.result)
+        binary.write(b'\n')
+        self.assertEquals(binary.getvalue(), response.content)

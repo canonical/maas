@@ -335,13 +335,19 @@ class StatusWorkerService(TimerService, object):
                     "Invalid status for saving files: %d" % node.status)
 
             script_name = sent_file['path']
-            content = self._retrieve_content(
-                compression=sent_file.get('compression', None),
-                encoding=sent_file['encoding'],
-                content=sent_file['content'])
-            process_file(
-                results, script_set, script_name, content, sent_file,
-                default_exit_status)
+            encoding = sent_file.get('encoding')
+            content = sent_file.get('content')
+            compression = sent_file.get('compression')
+            # Only capture files which has sent content. This occurs when
+            # Curtin is instructed to post the error_tarfile and no error
+            # has occured(LP:1772118). Empty files are still captured as
+            # they are sent as the empty string
+            if content is not None:
+                content = self._retrieve_content(
+                    compression, encoding, content)
+                process_file(
+                    results, script_set, script_name, content, sent_file,
+                    default_exit_status)
 
         # Commit results to the database.
         for script_result, args in results.items():
