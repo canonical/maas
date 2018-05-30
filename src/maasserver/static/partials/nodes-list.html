@@ -994,7 +994,9 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name"
                         data-ng-class="{'is-active': tabs.pools.isPoolAction(pool)}">
                         <td class="p-table__cell col-3" aria-label="Name">
-                          <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">{$ pool.name $}</span>
+                          <span ng-if="!tabs.pools.isPoolAction(pool, 'edit')">
+                            {$ pool.name $} <span ng-if="pool.is_default">(default)</span>
+                          </span>
                           <maas-obj-field
                             ng-if="tabs.pools.isPoolAction(pool, 'edit')"
                             type="text" key="name" disable-label="true" subtle="false"

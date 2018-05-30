@@ -25,6 +25,7 @@ class TestResourcePoolHandler(MAASServerTestCase):
             {'id': pool.id,
              'name': pool.name,
              'description': pool.description,
+             'is_default': False,
              'created': dehydrate_datetime(pool.created),
              'updated': dehydrate_datetime(pool.updated),
              'machine_total_count': 0,
@@ -48,6 +49,12 @@ class TestResourcePoolHandler(MAASServerTestCase):
         result = handler.get({"id": pool.id})
         self.assertEqual(2, result['machine_total_count'])
         self.assertEqual(1, result['machine_ready_count'])
+
+    def test_get_is_default(self):
+        pool = ResourcePool.objects.get_default_resource_pool()
+        handler = ResourcePoolHandler(factory.make_User(), {})
+        result = handler.get({"id": pool.id})
+        self.assertTrue(result['is_default'])
 
     def test_list(self):
         user = factory.make_User()
