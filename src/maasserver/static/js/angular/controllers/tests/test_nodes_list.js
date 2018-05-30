@@ -1780,7 +1780,7 @@ describe("NodesListController", function() {
             makeController();
             var poolsTab = $scope.tabs.pools;
             expect(poolsTab.actionOption).toBe(false);
-            $scope.addPool();
+            poolsTab.addPool();
             expect(poolsTab.actionOption).toBe(true);
         });
 
@@ -1788,9 +1788,9 @@ describe("NodesListController", function() {
            function() {
             makeController();
             var poolsTab = $scope.tabs.pools;
-            $scope.addPool();
+            poolsTab.addPool();
             poolsTab.newPool = {'name': 'mypool'},
-            $scope.cancelAddPool();
+            poolsTab.cancelAddPool();
             expect(poolsTab.actionOption).toBe(false);
             expect(poolsTab.newPool).toEqual({});
         });
