@@ -103,10 +103,10 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.pools.manager = ResourcePoolsManager;
         $scope.tabs.pools.actionOption = false;
         $scope.tabs.pools.newPool = {name: null, description: null};
-        $scope.addPool = function() {
+        $scope.tabs.pools.addPool = function() {
             $scope.tabs.pools.actionOption = true;
         };
-        $scope.cancelAddPool = function() {
+        $scope.tabs.pools.cancelAddPool = function() {
             $scope.tabs.pools.actionOption = false;
             $scope.tabs.pools.newPool = {};
         };

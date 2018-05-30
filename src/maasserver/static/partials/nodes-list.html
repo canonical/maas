@@ -37,10 +37,10 @@
             <div class="page-header__controls u-no-margin--top"
                  data-ng-show="isSuperUser()">
               <button class="p-button--neutral"
-                      data-ng-click="addPool()"
+                      data-ng-click="tabs.pools.addPool()"
                       data-ng-hide="tabs.pools.actionOption">Add pool</button>
               <button class="p-button--neutral ng-hide"
-                      data-ng-click="cancelAddPool()"
+                      data-ng-click="tabs.pools.cancelAddPool()"
                       data-ng-show="tabs.pools.actionOption">Cancel add pool</button>
             </div>
         </div>
@@ -101,7 +101,7 @@
 
     <div class="page-header__dropdown u-no-margin--top ng-hide" data-ng-show="tabs.pools.actionOption">
       <maas-obj-form obj="tabs.pools.newPool" manager="tabs.pools.manager" manager-method="createItem"
-                     inline="false" save-on-blur="false" after-save="cancelAddPool">
+                     inline="false" save-on-blur="false" after-save="tabs.pools.cancelAddPool">
         <section class="page-header__section row">
           <hr>
           <div class="p-form p-form--stacked ng-scope">
@@ -121,7 +121,7 @@
         <section class="page-header_section row">
           <div class="page-header__controls p-strip u-align--right u-no-padding--bottom">
             <hr>
-            <button class="p-button--base u-no-margin--top" type="button" data-ng-click="cancelAddPool()">
+            <button class="p-button--base u-no-margin--top" type="button" data-ng-click="tabs.pools.cancelAddPool()">
               Cancel
             </button>
             <button class="p-button--positive u-no-margin--top" maas-obj-save>Add pool</button>
