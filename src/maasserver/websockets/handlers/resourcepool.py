@@ -64,4 +64,5 @@ class ResourcePoolHandler(TimestampedModelHandler):
         """
         for attr in ['machine_total_count', 'machine_ready_count']:
             data[attr] = getattr(obj, attr)
+        data['is_default'] = obj.is_default()
         return data
