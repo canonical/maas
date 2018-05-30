@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom test-case classes."""
@@ -85,10 +85,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         """This should be called by a subclass once other set-up is done."""
         # Avoid circular imports.
         from maasserver.models import signals
-
-        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
-        from maasserver.clusterrpc.testing import driver_parameters
-        self.useFixture(driver_parameters.StaticDriverTypesFixture())
 
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(IntroCompletedFixture())

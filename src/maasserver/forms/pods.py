@@ -127,7 +127,7 @@ class PodForm(MAASModelForm):
         if data is None:
             data = {}
         type_value = data.get('type', self.initial.get('type'))
-        self.drivers_orig = driver_parameters.get_all_power_types_from_racks()
+        self.drivers_orig = driver_parameters.get_all_power_types()
         self.drivers = {
             driver['name']: driver
             for driver in self.drivers_orig

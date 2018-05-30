@@ -366,13 +366,13 @@ class TestAddNOSTypeParameters(MAASServerTestCase):
 
 class TestPowerTypes(MAASTestCase):
     # This is deliberately not using a MAASServerTestCase as that
-    # patches the get_all_power_types_from_racks() function with data
+    # patches the get_all_power_types() function with data
     # that's hidden from tests in here.  Instead the tests patch
     # explicitly here.
 
     def test_get_power_driver_types_transforms_data_to_dict(self):
         mocked = self.patch(
-            driver_parameters, "get_all_power_types_from_racks")
+            driver_parameters, "get_all_power_types")
         mocked.return_value = [
             {
                 "driver_type": "power",
@@ -393,7 +393,7 @@ class TestPowerTypes(MAASTestCase):
 
     def test_get_power_driver_types_passes_args_through(self):
         mocked = self.patch(
-            driver_parameters, "get_all_power_types_from_racks")
+            driver_parameters, "get_all_power_types")
         mocked.return_value = []
         get_driver_types(sentinel.nodegroup, sentinel.ignore_errors)
         self.assertThat(

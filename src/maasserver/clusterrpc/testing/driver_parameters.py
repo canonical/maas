@@ -19,7 +19,7 @@ from testtools import monkey
 class StaticDriverTypesFixture(Fixture):
     """Prevents communication with racks when querying driver types.
 
-    This patches out the `get_all_power_types_from_racks` and
+    This patches out the `get_all_power_types` and
     `get_all_pod_types_from_racks` call. It's a common enough requirement
     that it's been folded into a fixture. This prevents communication with a
     non-existent rack controller when fetching driver types.
@@ -32,13 +32,13 @@ class StaticDriverTypesFixture(Fixture):
         power_types = PowerDriverRegistry.get_schema(
             detect_missing_packages=False)
 
-        @wraps(driver_parameters.get_all_power_types_from_racks)
-        def get_all_power_types_from_racks(
+        @wraps(driver_parameters.get_all_power_types)
+        def get_all_power_types(
                 controllers=None, ignore_errors=True):
             # Callers can mutate this, so deep copy.
             return deepcopy(power_types)
 
         restore = monkey.patch(
-            driver_parameters, 'get_all_power_types_from_racks',
-            get_all_power_types_from_racks)
+            driver_parameters, 'get_all_power_types',
+            get_all_power_types)
         self.addCleanup(restore)

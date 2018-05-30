@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -16,7 +16,7 @@ the UI to display the right parameter fields that correspond to the
 selected power or pod type.  The classes in this module are used to
 associate each power or pod type with a set of parameters.
 
-The power and pod types are retrieved from the rack controllers using
+The power and pod types are retrieved from the PowerDriverRegistry using
 the json schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA and
 provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA respectively.
 To add new parameters requires changes to drivers that run in the rack
@@ -24,7 +24,7 @@ controllers.
 """
 
 __all__ = [
-    'get_all_power_types_from_racks',
+    'get_all_power_types',
     'get_driver_choices',
     'get_driver_parameters',
     ]
@@ -40,6 +40,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
 from provisioningserver.drivers.nos import JSON_NOS_DRIVERS_SCHEMA
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.rpc import cluster
 
 
@@ -174,7 +175,7 @@ def get_driver_parameters_from_json(
 
 def get_driver_parameters(
         initial_power_params=None, skip_check=False):
-    params = get_all_power_types_from_racks()
+    params = get_all_power_types()
     return get_driver_parameters_from_json(
         params, initial_power_params, skip_check)
 
@@ -207,36 +208,32 @@ def get_driver_types(
     :return: Dictionary mapping power type to its description.
     """
     types = dict()
-    params = get_all_power_types_from_racks(
+    params = get_all_power_types(
         controllers=controllers, ignore_errors=ignore_errors)
     for power_type in params:
         types[power_type['name']] = power_type['description']
     return types
 
 
-def get_all_power_types_from_racks(controllers=None, ignore_errors=True):
-    """Query every rack controller and obtain all known power driver types.
+def get_all_power_types(controllers=None, ignore_errors=True):
+    """Query the PowerDriverRegistry and obtain all known power driver types.
 
     :return: a list of power types matching the schema
         provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA or
         provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA
     """
     merged_types = []
-    responses = call_clusters(
-        cluster.DescribePowerTypes, controllers=controllers,
-        ignore_errors=ignore_errors)
-    for response in responses:
-        power_types = response['power_types']
-        for power_type in power_types:
-            driver_type = power_type.get('driver_type', 'power')
-            name = power_type['name']
-            fields = power_type.get('fields', [])
-            description = power_type['description']
-            missing_packages = power_type['missing_packages']
-            queryable = power_type.get('queryable')
-            add_power_driver_parameters(
-                driver_type, name, description, fields, missing_packages,
-                merged_types, queryable=queryable)
+    for power_type in PowerDriverRegistry.get_schema(
+            detect_missing_packages=False):
+        driver_type = power_type.get('driver_type', 'power')
+        name = power_type['name']
+        fields = power_type.get('fields', [])
+        description = power_type['description']
+        missing_packages = power_type['missing_packages']
+        queryable = power_type.get('queryable')
+        add_power_driver_parameters(
+            driver_type, name, description, fields, missing_packages,
+            merged_types, queryable=queryable)
     return sorted(merged_types, key=itemgetter("description"))
 
 
