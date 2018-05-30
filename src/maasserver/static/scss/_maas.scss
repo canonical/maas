@@ -33,6 +33,10 @@
     min-height: 175px;
   }
 
+  .field-description textarea {
+    min-height: initial;
+  }
+
   .p-table-expanding__panel {
     background-color: $color-x-light;
     margin-left: 0 !important;
