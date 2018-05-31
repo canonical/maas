@@ -29,6 +29,7 @@ __all__ = [
     'get_driver_parameters',
     ]
 
+from copy import deepcopy
 from operator import itemgetter
 
 from django import forms
@@ -223,8 +224,9 @@ def get_all_power_types(controllers=None, ignore_errors=True):
         provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA
     """
     merged_types = []
-    for power_type in PowerDriverRegistry.get_schema(
+    for power_type_orig in PowerDriverRegistry.get_schema(
             detect_missing_packages=False):
+        power_type = deepcopy(power_type_orig)
         driver_type = power_type.get('driver_type', 'power')
         name = power_type['name']
         fields = power_type.get('fields', [])
