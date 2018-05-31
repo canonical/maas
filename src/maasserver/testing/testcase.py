@@ -89,6 +89,10 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(IntroCompletedFixture())
 
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
+        from maasserver.clusterrpc.testing import driver_parameters
+        self.useFixture(driver_parameters.StaticDriverTypesFixture())
+
         # XXX: allenap bug=1427628 2015-03-03: These should not be here.
         # Disconnect the status transition event to speed up tests.
         self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', False)
