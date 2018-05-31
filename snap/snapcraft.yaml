@@ -121,7 +121,8 @@ parts:
       - $remove
     prime:
       - $remove
-    install: |
+    override-build: |
+      snapcraftctl build
       ln -s ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
       ln -s ../usr/lib/postgresql/10/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
       ln -s ../usr/lib/postgresql/10/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
