@@ -98,7 +98,8 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Pools tab.
         $scope.tabs.pools = {};
-        $scope.tabs.pools.pagetitle = "Pools";
+        // The Pools tab is actually a sub tab of Machines.
+        $scope.tabs.pools.pagetitle = "Machines";
         $scope.tabs.pools.currentpage = "pools";
         $scope.tabs.pools.manager = ResourcePoolsManager;
         $scope.tabs.pools.actionOption = false;
