@@ -306,6 +306,21 @@ class TestPartition(MAASServerTestCase):
             self.expectThat(idx, Equals(partition.get_partition_number()))
             idx += 1
 
+    def test_get_partition_number_starting_at_2_for_amd64_not_gpt(self):
+        node = factory.make_Node(
+            bios_boot_method="pxe", architecture="amd64/generic")
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(4)
+        ]
+        for idx, partition in enumerate(partitions, 2):
+            self.assertEqual(partition.get_partition_number(), idx)
+
     def test_get_partition_number_returns_starting_at_2_for_ppc64el(self):
         node = factory.make_Node(
             architecture="ppc64el/generic", bios_boot_method="uefi",
