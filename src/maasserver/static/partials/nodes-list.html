@@ -1,4 +1,4 @@
-<header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+<header class="p-strip--light is-shallow is-bordered page-header" data-ng-class="{'u-no-padding--bottom': currentpage === 'machines' || currentpage === 'pools'}" media-query="min-width: 769px">
     <div class="row">
         <div class="col-8">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -7,8 +7,7 @@
                 <span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span>
             </p>
             <p class="page-header__status" data-ng-show="!loading">
-                <ng-pluralize data-ng-if="currentpage === 'machines'" count="machines.length" when="{'one': '{$ machines.length $} machine available', 'other': '{$ machines.length $} machines available'}"></ng-pluralize>
-                <ng-pluralize data-ng-if="currentpage === 'pools'" count="pools.length" when="{'one': '{$ pools.length $} resource pool available', 'other': '{$ pools.length $} resource pools available'}"></ng-pluralize>
+                <ng-pluralize data-ng-if="currentpage === 'machines' || currentpage == 'pools'" count="machines.length" when="{'one': '{$ machines.length $} machine available', 'other': '{$ machines.length $} machines available'}"></ng-pluralize>
                 <ng-pluralize data-ng-if="currentpage === 'devices'" count="devices.length" when="{'one': '{$ devices.length $} device available', 'other': '{$ devices.length $} devices available'}"></ng-pluralize>
                 <ng-pluralize data-ng-if="currentpage === 'controllers'" count="controllers.length" when="{'one': '{$ controllers.length $} controller available', 'other': '{$ controllers.length $} controllers available'}"></ng-pluralize>
             </p>
@@ -729,6 +728,22 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     data-ng-click="tabs.controllers.addController = false">Close</a>
         </div>
     </div>
+    <nav class="p-tabs" data-ng-if="currentpage === 'machines' || currentpage === 'pools'">
+        <ul class="p-tabs__list" role="tablist">
+            <li class="p-tabs__item" role="presentation">
+                <a href="#/machines" class="p-tabs__link" role="tab"
+                    data-ng-class="{ 'is-active': currentpage === 'machines'}">
+                    <ng-pluralize count="machines.length" when="{'one': '{$ machines.length $} Machine', 'other': '{$ machines.length $} Machines'}"></ng-pluralize>
+                </a>
+            </li>
+            <li class="p-tabs__item" role="presentation">
+                <a href="#/pools" class="p-tabs__link" role="tab"
+                    data-ng-class="{ 'is-active': currentpage === 'pools'}">
+                    <ng-pluralize count="pools.length" when="{'one': '{$ pools.length $} Resource pool', 'other': '{$ pools.length $} Resource pools'}"></ng-pluralize>
+                </a>
+            </li>
+        </ul>
+    </nav>
 </header>
 
 <div class="p-strip is-shallow u-no-padding--bottom">
