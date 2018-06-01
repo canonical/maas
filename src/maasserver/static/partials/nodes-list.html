@@ -1019,7 +1019,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         </td>
                         <td data-ng-switch on="pool.machine_total_count" class="p-table__cell col-2" aria-label="Machine count">
                         <span data-ng-switch-when="0"> Empty pool</span>
-                        <a data-ng-switch-default data-ng-click="tabs.pools.goToPoolMachines(pool.name)">
+                        <a data-ng-switch-default data-ng-click="tabs.pools.goToPoolMachines(pool)">
                           {$ pool.machine_ready_count == 0 ? 'Zero' : pool.machine_ready_count $} of {$ pool.machine_total_count $} ready
                         </a>
                         </td>
