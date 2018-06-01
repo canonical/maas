@@ -11,7 +11,7 @@ from django.db import (
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0160_storage_pools_notification'),
+        ('maasserver', '0158_pod_default_pool_to_pod'),
     ]
 
     operations = [
