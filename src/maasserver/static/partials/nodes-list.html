@@ -193,7 +193,7 @@
                             </div>
                             <div class="ng-hide" data-ng-show="tabs[tab].actionOption.name === 'set-pool'">
                                 <div class="row">
-                                    <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
+                                    <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left u-no-margin--top">
                                         <li class="p-inline-list__item col-3">
                                             <input type="radio" name="pool-action" id="pool-select" data-ng-model="tabs[tab].poolAction" value="select-pool" checked="checked"></input>
                                             <label for="pool-select">Select pool</label>
@@ -206,16 +206,16 @@
                                 </div>
                                 <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'select-pool'">
                                     <div class="col-5 p-form__group">
-                                        <label for="{$ tab $}-pool3">Pool</label>
-                                        <select name="pool" id="{$ tab $}-pool3" data-ng-model="tabs[tab].poolSelection" data-ng-options="pool as pool.name for pool in pools">
+                                        <label class="col-2" for="{$ tab $}-pool3">Pool</label>
+                                        <select class="col-3" name="pool" id="{$ tab $}-pool3" data-ng-model="tabs[tab].poolSelection" data-ng-options="pool as pool.name for pool in pools">
                                             <option value="" disabled="disabled">Select pool</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="row ng-hide" data-ng-show="tabs[tab].poolAction === 'create-pool'">
                                     <div class="col-5 p-form__group">
-                                        <label for="{$ tab $}-pool4">Pool name</label>
-                                        <input name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name"></input>
+                                        <label class="col-2" for="{$ tab $}-pool4">Pool name</label>
+                                        <input class="col-3" type="text" name="new-pool" id="{$ tab $}-pool4" data-ng-model="tabs[tab].newPool.name"></input>
                                     </div>
                                 </div>
                             </form>
