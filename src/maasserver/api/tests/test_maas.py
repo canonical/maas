@@ -41,7 +41,8 @@ FORBIDDEN_NAMES = {
     "omapi_key", "rpc_region_certificate",
     "rpc_shared_secret", "commissioning_osystem",
     "active_discovery_last_scan", "uuid", "external_auth_url",
-    "external_auth_user", "external_auth_key", "macaroon_private_key",
+    'external_auth_domain', "external_auth_user", "external_auth_key",
+    "macaroon_private_key",
 }
 
 

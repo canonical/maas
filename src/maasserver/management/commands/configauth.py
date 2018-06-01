@@ -60,12 +60,15 @@ def is_valid_auth_url(auth_url):
 
 def get_auth_config(config_manager):
     config_keys = [
-        'external_auth_url', 'external_auth_user', 'external_auth_key']
+        'external_auth_url', 'external_auth_domain', 'external_auth_user',
+        'external_auth_key']
     return {key: config_manager.get_config(key) for key in config_keys}
 
 
-def set_auth_config(config_manager, auth_url, auth_user, auth_key):
+def set_auth_config(config_manager, auth_url, auth_domain, auth_user,
+                    auth_key):
     config_manager.set_config('external_auth_url', auth_url)
+    config_manager.set_config('external_auth_domain', auth_domain)
     config_manager.set_config('external_auth_user', auth_user)
     config_manager.set_config('external_auth_key', auth_key)
 
@@ -86,12 +89,17 @@ class Command(BaseCommand):
             print(json.dumps(get_auth_config(config_manager)))
             return
 
-        auth_url, auth_user, auth_key = None, '', ''
+        auth_url, auth_domain, auth_user, auth_key = None, '', '', ''
 
         agent_file = options.get('idm_agent_file')
         if agent_file:
             auth_url, auth_user, auth_key = read_agent_file(agent_file)
-            set_auth_config(config_manager, auth_url, auth_user, auth_key)
+            auth_domain = _get_or_prompt(
+                options, 'idm_domain',
+                "Users domain for external authentication backend "
+                "(leave blank for empty): ", replace_none=True)
+            set_auth_config(
+                config_manager, auth_url, auth_domain, auth_user, auth_key)
             return
 
         auth_url = options.get('idm_url')
@@ -104,11 +112,24 @@ class Command(BaseCommand):
             if not is_valid_auth_url(auth_url):
                 raise InvalidURLError(
                     "Please enter a valid http or https URL.")
-            auth_user = options.get('idm_user')
-            auth_key = options.get('idm_key')
-            if not auth_user:
-                auth_user = read_input("Username for IDM API access: ")
-            if not auth_key:
-                auth_key = read_input("Private key for IDM API access: ")
+            auth_domain = _get_or_prompt(
+                options, 'idm_domain',
+                "Users domain for external authentication backend "
+                "(leave blank for empty): ", replace_none=True)
+            auth_user = _get_or_prompt(
+                options, 'idm_user', "Username for IDM API access: ")
+            auth_key = _get_or_prompt(
+                options, 'idm_key', "Private key for IDM API access: ")
 
-        set_auth_config(config_manager, auth_url, auth_user, auth_key)
+        set_auth_config(
+            config_manager, auth_url, auth_domain, auth_user, auth_key)
+
+
+def _get_or_prompt(options, option, message, replace_none=False):
+    """Return a config option either from command line or interactive input."""
+    config = options.get(option)
+    if not config:
+        config = read_input(message)
+    if replace_none and config == 'none':
+        config = ''
+    return config

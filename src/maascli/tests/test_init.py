@@ -33,6 +33,11 @@ class TestAddIdmOptions(MAASTestCase):
             ['--idm-url', 'http://idm.example.com/'])
         self.assertEqual('http://idm.example.com/', options.idm_url)
 
+    def test_add_idm_options_idm_domain(self):
+        options = self.parser.parse_args(
+            ['--idm-domain', 'mydomain'])
+        self.assertEqual('mydomain', options.idm_domain)
+
     def test_add_idm_options_idm_user(self):
         options = self.parser.parse_args(['--idm-user', 'my-user'])
         self.assertEqual('my-user', options.idm_user)

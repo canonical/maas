@@ -112,6 +112,7 @@ def get_default_config():
         'external_auth_url': '',
         'external_auth_user': '',
         'external_auth_key': '',
+        'external_auth_domain': '',
         'macaroon_private_key': None,
     }
 

@@ -124,7 +124,8 @@ class MacaroonAPIAuthentication:
 
         macaroon_bakery = _get_bakery(request)
         return _authorization_request(
-            macaroon_bakery, auth_endpoint=request.external_auth_info.url)
+            macaroon_bakery, auth_endpoint=request.external_auth_info.url,
+            auth_domain=request.external_auth_info.domain)
 
 
 class MacaroonDischargeRequest:
@@ -147,7 +148,8 @@ class MacaroonDischargeRequest:
         except bakery.VerificationError:
             return _authorization_request(
                 macaroon_bakery, req_headers=req_headers,
-                auth_endpoint=request.external_auth_info.url)
+                auth_endpoint=request.external_auth_info.url,
+                auth_domain=request.external_auth_info.domain)
         except bakery.PermissionDenied:
             return HttpResponseForbidden()
 
@@ -316,8 +318,9 @@ def validate_user_external_auth(user, now=datetime.utcnow, client=None):
 
 class _IDClient(bakery.IdentityClient):
 
-    def __init__(self, auth_endpoint):
+    def __init__(self, auth_endpoint, auth_domain=None):
         self.auth_endpoint = auth_endpoint
+        self.auth_domain = auth_domain
 
     def declared_identity(self, ctx, declared):
         username = declared.get('username')
@@ -327,32 +330,36 @@ class _IDClient(bakery.IdentityClient):
 
     def identity_from_context(self, ctx):
         return None, [
-            checkers.Caveat(
-                condition='is-authenticated-user',
-                location=self.auth_endpoint)]
+            _get_authentication_caveat(
+                self.auth_endpoint, domain=self.auth_domain)]
 
 
 def _get_bakery(request):
     auth_endpoint = request.external_auth_info.url
+    auth_domain = request.external_auth_info.domain
     return bakery.Bakery(
         key=_get_macaroon_oven_key(),
         root_key_store=KeyStore(MACAROON_LIFESPAN),
         location=request.build_absolute_uri('/'),
         locator=httpbakery.ThirdPartyLocator(
             allow_insecure=not auth_endpoint.startswith('https:')),
-        identity_client=_IDClient(auth_endpoint),
+        identity_client=_IDClient(auth_endpoint, auth_domain=auth_domain),
         authorizer=bakery.ACLAuthorizer(
             get_acl=lambda ctx, op: [bakery.EVERYONE]))
 
 
 def _authorization_request(bakery, derr=None, auth_endpoint=None,
-                           req_headers=None):
-    """Return a 401 response with a macaroon discharge request."""
+                           auth_domain=None, req_headers=None):
+    """Return a 401 response with a macaroon discharge request.
+
+    Either `derr` or `auth_endpoint` must be specified.
+
+    """
     bakery_version = httpbakery.request_version(req_headers or {})
     if derr:
         caveats, ops = derr.cavs(), derr.ops()
     else:
-        caveats, ops = _get_macaroon_caveats_ops(auth_endpoint)
+        caveats, ops = _get_macaroon_caveats_ops(auth_endpoint, auth_domain)
     expiration = datetime.utcnow() + MACAROON_LIFESPAN
     macaroon = bakery.oven.macaroon(bakery_version, expiration, caveats, ops)
     content, headers = httpbakery.discharge_required_response(
@@ -381,9 +388,16 @@ def _get_macaroon_oven_key():
     return key
 
 
-def _get_macaroon_caveats_ops(auth_endpoint):
+def _get_macaroon_caveats_ops(auth_endpoint, auth_domain):
     """Return a 2-tuple with lists of caveats and operations for a macaroon."""
-    caveats = [
-        checkers.Caveat('is-authenticated-user', location=auth_endpoint)]
+    caveats = [_get_authentication_caveat(auth_endpoint, domain=auth_domain)]
     ops = [bakery.LOGIN_OP]
     return caveats, ops
+
+
+def _get_authentication_caveat(location, domain=''):
+    """Return a Caveat requiring the user to be authenticated."""
+    condition = 'is-authenticated-user'
+    if domain:
+        condition += ' @' + domain
+    return checkers.Caveat(condition, location=location)

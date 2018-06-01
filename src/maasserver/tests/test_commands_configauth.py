@@ -45,7 +45,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
 
     def test_configauth_changes_auth_prompts(self):
         self.read_input.side_effect = [
-            'http://idm.example.com/', 'user@admin', 'private-key', 'group']
+            'http://idm.example.com/', 'mydomain', 'user@admin', 'private-key']
         call_command('configauth')
 
         self.assertEqual(
@@ -89,13 +89,45 @@ class TestChangeAuthCommand(MAASServerTestCase):
             self.assertEqual(auth_user, 'user@admin')
             self.assertEqual(auth_key, 'private-key')
 
-    def test_configauth_interactive_user_key(self):
+    def test_configauth_interactive(self):
         self.read_input.side_effect = [
-            'http://example.com:1234', 'user@admin', 'private-key']
+            'http://example.com:1234', 'mydomain', 'user@admin', 'private-key']
         call_command('configauth')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'mydomain', Config.objects.get_config('external_auth_domain'))
+        self.assertEqual(
+            'user@admin', Config.objects.get_config('external_auth_user'))
+        self.assertEqual(
+            'private-key', Config.objects.get_config('external_auth_key'))
+
+    def test_configauth_interactive_domain(self):
+        self.read_input.return_value = 'mydomain'
+        call_command(
+            'configauth', idm_url='http://example.com:1234',
+            idm_user='user@admin', idm_key='private-key')
+        self.assertEqual(
+            'http://example.com:1234',
+            Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'mydomain', Config.objects.get_config('external_auth_domain'))
+        self.assertEqual(
+            'user@admin', Config.objects.get_config('external_auth_user'))
+        self.assertEqual(
+            'private-key', Config.objects.get_config('external_auth_key'))
+
+    def test_configauth_interactive_empty(self):
+        self.read_input.return_value = ''
+        call_command(
+            'configauth', idm_url='http://example.com:1234',
+            idm_user='user@admin', idm_key='private-key')
+        self.assertEqual(
+            'http://example.com:1234',
+            Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            '', Config.objects.get_config('external_auth_domain'))
         self.assertEqual(
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
@@ -105,10 +137,12 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.read_input.return_value = 'user@admin'
         call_command(
             'configauth', idm_url='http://example.com:1234',
-            idm_key='private-key')
+            idm_domain='mydomain', idm_key='private-key')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'mydomain', Config.objects.get_config('external_auth_domain'))
         self.assertEqual(
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
@@ -118,10 +152,12 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.read_input.return_value = 'private-key'
         call_command(
             'configauth', idm_url='http://example.com:1234',
-            idm_user='user@admin')
+            idm_domain='mydomain', idm_user='user@admin')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'mydomain', Config.objects.get_config('external_auth_domain'))
         self.assertEqual(
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
@@ -136,15 +172,24 @@ class TestChangeAuthCommand(MAASServerTestCase):
             json.dump(config, agent_file)
             agent_file.flush()
             agent_file.seek(0)
-            call_command('configauth', idm_agent_file=agent_file)
+            call_command(
+                'configauth', idm_agent_file=agent_file, idm_domain='mydomain')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'mydomain', Config.objects.get_config('external_auth_domain'))
         self.assertEqual(
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
         self.read_input.assert_not_called()
+
+    def test_configauth_domain_none(self):
+        call_command(
+            'configauth', idm_url='http://example.com:1234',
+            idm_domain='none', idm_user='user@admin', idm_key='private-key')
+        self.assertEqual('', Config.objects.get_config('external_auth_domain'))
 
     def test_configauth_json_empty(self):
         mock_print = self.patch(configauth, 'print')
@@ -154,13 +199,14 @@ class TestChangeAuthCommand(MAASServerTestCase):
         _, [output], kwargs = print_call
         self.assertEqual({}, kwargs)
         self.assertEqual(
-            {'external_auth_url': '', 'external_auth_user': '',
-             'external_auth_key': ''},
+            {'external_auth_url': '', 'external_auth_domain': '',
+             'external_auth_user': '', 'external_auth_key': ''},
             json.loads(output))
 
     def test_configauth_json_full(self):
         Config.objects.set_config(
             'external_auth_url', 'http://idm.example.com/')
+        Config.objects.set_config('external_auth_domain', 'mydomain')
         Config.objects.set_config('external_auth_user', 'maas')
         Config.objects.set_config('external_auth_key', 'secret maas key')
         mock_print = self.patch(configauth, 'print')
@@ -171,6 +217,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.assertEqual({}, kwargs)
         self.assertEqual(
             {'external_auth_url': 'http://idm.example.com/',
+             'external_auth_domain': 'mydomain',
              'external_auth_user': 'maas',
              'external_auth_key': 'secret maas key'},
             json.loads(output))

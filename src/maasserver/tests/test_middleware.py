@@ -648,11 +648,13 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
 
     def test_with_external_auth(self):
         Config.objects.set_config('external_auth_url', 'https://example.com')
+        Config.objects.set_config('external_auth_domain', 'ldap')
         request = factory.make_fake_request('/')
         self.process_request(request)
         self.assertEqual(request.external_auth_info.type, 'macaroon')
         self.assertEqual(
             request.external_auth_info.url, 'https://example.com')
+        self.assertEqual(request.external_auth_info.domain, 'ldap')
 
     def test_with_external_auth_strip_trailing_slash(self):
         Config.objects.set_config('external_auth_url', 'https://example.com/')

@@ -15,6 +15,10 @@ def add_idm_options(parser):
         help=("The URL to the external IDM server to use for "
               "authentication."))
     parser.add_argument(
+        '--idm-domain', default=None, metavar='IDM_DOMAIN',
+        help=("The authentication domain to look up users in for the external "
+              "IDM server."))
+    parser.add_argument(
         '--idm-user', default=None,
         help="The username to access the IDM server API.")
     parser.add_argument(
@@ -66,6 +70,8 @@ def configure_authentication(options):
     cmd = [get_maas_region_bin_path(), 'configauth']
     if options.idm_url is not None:
         cmd.extend(['--idm-url', options.idm_url])
+    if options.idm_domain is not None:
+        cmd.extend(['--idm-domain', options.idm_domain])
     if options.idm_user is not None:
         cmd.extend(['--idm-user', options.idm_user])
     if options.idm_key is not None:
