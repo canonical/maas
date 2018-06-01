@@ -4,14 +4,11 @@ from __future__ import unicode_literals
 
 import datetime
 
-from django.db import (
-    migrations,
-    models,
-)
+from django.db import migrations
 from maasserver.enum import BMC_TYPE
 
 
-def forwards(apps, schema_editor):    
+def forwards(apps, schema_editor):
     BMC = apps.get_model('maasserver', 'BMC')
     Notification = apps.get_model('maasserver', 'Notification')
     for pod in BMC.objects.filter(bmc_type=BMC_TYPE.POD, power_type='virsh'):
@@ -29,7 +26,7 @@ def backwards(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0159_pod_storage_pools'),
+        ('maasserver', '0161_pod_storage_pools'),
     ]
 
     operations = [
