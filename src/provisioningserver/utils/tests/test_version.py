@@ -188,6 +188,12 @@ class TestGetVersionTuple(MAASTestCase):
                 2, 3, 5, 0, 5, 0, '1', '2x.x3.x5x~alpha5Y', 'xxx-g1',
                 'alphaY', False)
         }),
+        ('ci version', {
+            'version': '2.4.0+6981.g011e51b+ci-0ubuntu1',
+            'expected_tuple': (
+                2, 4, 0, 0, 0, 6981, '011e51b', '2.4.0',
+                '6981.g011e51b+ci-0ubuntu1', None, False)
+        }),
     )
 
     def test__returns_expected_tuple(self):
