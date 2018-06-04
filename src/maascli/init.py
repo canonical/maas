@@ -7,6 +7,10 @@ import argparse
 import json
 import os
 import subprocess
+from textwrap import dedent
+
+from maascli.configfile import MAASConfiguration
+from macaroonbakery import httpbakery
 
 
 def add_idm_options(parser):
@@ -69,6 +73,46 @@ def create_admin_account(options):
     subprocess.call(cmd)
 
 
+def create_account_external_auth(auth_config, maas_config,
+                                 bakery_client=None):
+    """Make the user login via external auth to create the first admin."""
+    if bakery_client is None:
+        bakery_client = httpbakery.Client()
+
+    maas_url = maas_config['maas_url'].strip('/')
+
+    failed_msg = ''
+    try:
+        resp = bakery_client.request(
+            'GET', '{}/accounts/discharge-request/'.format(maas_url))
+        if resp.status_code != 200:
+            failed_msg = 'request failed with code {}'.format(
+                resp.status_code)
+    except Exception as e:
+        failed_msg = str(e)
+
+    if failed_msg:
+        print_msg(
+            "An error occurred while waiting for the first user creation: " +
+            failed_msg)
+        return
+
+    result = resp.json()
+    username = result['username']
+    if result['is_superuser']:
+        print_msg("Administrator user '{}' created".format(username))
+    else:
+        admin_group = auth_config['external_auth_admin_group']
+        message = dedent(
+            """\
+            A user with username '{username}' has been created, but it's not
+            a superuser. Please log in to MAAS with a user that belongs to
+            the '{admin_group}' group to create an administrator user.
+            """)
+        print_msg(
+            message.format(username=username, admin_group=admin_group))
+
+
 def configure_authentication(options):
     cmd = [get_maas_region_bin_path(), 'configauth']
     if options.idm_url is not None:
@@ -111,11 +155,13 @@ def print_msg(msg='', newline=True):
 
 
 def init_maas(options):
-        if options.enable_idm:
-            print_msg('Configuring authentication')
-            configure_authentication(options)
+    if options.enable_idm:
+        print_msg('Configuring authentication')
+        configure_authentication(options)
+    if not options.skip_admin:
         auth_config = get_current_auth_config()
-        skip_create_admin = (
-            options.skip_admin or auth_config['external_auth_url'])
-        if not skip_create_admin:
+        if auth_config['external_auth_url']:
+            maas_config = MAASConfiguration().get()
+            create_account_external_auth(auth_config, maas_config)
+        else:
             create_admin_account(options)

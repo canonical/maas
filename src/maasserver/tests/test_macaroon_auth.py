@@ -528,7 +528,9 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
         response = self.client.get('/accounts/discharge-request/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.json(), {'id': user.id, 'username': user.username})
+            response.json(), {
+                'id': user.id, 'username': user.username,
+                'is_superuser': user.is_superuser})
 
     def test_authenticated_user_created(self):
         username = factory.make_string()
@@ -537,7 +539,9 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
         user = User.objects.get(username=username)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.json(), {'id': user.id, 'username': user.username})
+            response.json(), {
+                'id': user.id, 'username': user.username,
+                'is_superuser': user.is_superuser})
 
 
 class TestGetAuthenticationCaveat(TestCase):

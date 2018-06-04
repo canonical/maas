@@ -22,7 +22,6 @@ from testtools.matchers import (
     Contains,
     Not,
 )
-import yaml
 
 
 class TestHelpers(MAASTestCase):
@@ -300,87 +299,23 @@ class TestConfigHelpers(MAASTestCase):
         self.regiond_path = os.path.join(snap_data, 'regiond.conf')
         self.patch(os, 'environ', self.environ)
 
-    def test_get_config_data_returns_empty_dict_when_no_config(self):
-        self.assertEquals({}, snappy.get_config_data())
-
-    def test_get_config_data_returns_empty_dict_when_config_empty(self):
-        open(self.regiond_path, 'w').close()
-        self.assertEquals({}, snappy.get_config_data())
-
-    def test_get_config_data_loads_yaml_data(self):
-        fake_config = {
-            factory.make_name('key'): factory.make_name('value')
-        }
-        with open(self.regiond_path, 'w') as stream:
-            stream.write(yaml.safe_dump(fake_config))
-        self.assertEquals(fake_config, snappy.get_config_data())
-
-    def test_get_config_value_returns_value_from_config(self):
-        key = factory.make_name('key')
-        value = factory.make_name('value')
-        fake_config = {
-            key: value
-        }
-        with open(self.regiond_path, 'w') as stream:
-            stream.write(yaml.safe_dump(fake_config))
-        self.assertEquals(value, snappy.get_config_value(key))
-
-    def test_get_config_value_returns_None_when_missing(self):
-        self.assertIsNone(snappy.get_config_value(factory.make_name('key')))
-
     def test_print_config_value(self):
         mock_print = self.patch(snappy, 'print_msg')
         key = factory.make_name('key')
         value = factory.make_name('value')
-        self.patch(snappy, 'get_config_value').return_value = value
-        snappy.print_config_value(key)
-        self.assertThat(mock_print, MockCalledOnceWith("%s=%s" % (key, value)))
+        config = {key: value}
+        snappy.print_config_value(config, key)
+        self.assertThat(
+            mock_print, MockCalledOnceWith("{}={}".format(key, value)))
 
-    def test_write_config_data(self):
-        filename = factory.make_name('file')
-        fake_config = {
-            factory.make_name('key'): factory.make_name('value')
-        }
-        snappy.write_config_data(fake_config, filename)
-        with open(
-                os.path.join(
-                    self.environ['SNAP_DATA'], filename), 'r') as stream:
-            observed = yaml.safe_load(stream)
-        self.assertEquals(fake_config, observed)
-
-    def test_update_config_value_sets_value_in_config(self):
+    def test_print_config_value_hidden(self):
+        mock_print = self.patch(snappy, 'print_msg')
         key = factory.make_name('key')
         value = factory.make_name('value')
-        snappy.update_config_value(key, value)
-        self.assertEquals(value, snappy.get_config_value(key))
-
-    def test_update_config_value_clears_value(self):
-        key = factory.make_name('key')
-        value = factory.make_name('value')
-        snappy.update_config_value(key, value)
-        snappy.update_config_value(key, None)
-        self.assertIsNone(snappy.get_config_value(key))
-
-    def test_update_config_value_maas_url_goes_into_rackd_conf(self):
-        value = factory.make_name('value')
-        snappy.update_config_value('maas_url', value)
-        with open(
-                os.path.join(
-                    self.environ['SNAP_DATA'], 'rackd.conf'), 'r') as stream:
-            observed = yaml.safe_load(stream)
-        self.assertEquals({
-            'maas_url': value,
-        }, observed)
-
-    def test_update_config_value_maas_url_clears_rackd_conf(self):
-        value = factory.make_name('value')
-        snappy.update_config_value('maas_url', value)
-        snappy.update_config_value('maas_url', None)
-        with open(
-                os.path.join(
-                    self.environ['SNAP_DATA'], 'rackd.conf'), 'r') as stream:
-            observed = yaml.safe_load(stream)
-        self.assertEquals({}, observed)
+        config = {key: value}
+        snappy.print_config_value(config, key, hidden=True)
+        self.assertThat(
+            mock_print, MockCalledOnceWith("{}=(hidden)".format(key)))
 
     def test_get_rpc_secret_returns_secret(self):
         maas_dir = os.path.join(
