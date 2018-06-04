@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from datetime import timedelta
+from datetime import (
+    datetime,
+    timedelta,
+)
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
@@ -35,7 +38,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         auth_url = Config.objects.get_config('external_auth_url')
         if auth_url:
             request.external_auth_info = ExternalAuthInfo(
-                'macaroon', 'https://example.com', 'domain')
+                'macaroon', 'https://example.com', 'domain', 'admins')
         else:
             request.external_auth_info = None
         return request
@@ -59,14 +62,15 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
 
         auth = MAASAPIAuthentication()
         user = factory.make_User()
-        user.userprofile.auth_last_check -= timedelta(days=1)
+        user.userprofile.auth_last_check = (
+            datetime.utcnow() - timedelta(days=1))
         mock_token = mock.Mock(user=user)
         request = self.make_request()
 
         auth.is_valid_request = lambda request: True
         auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertTrue(auth.is_authenticated(request))
-        mock_validate.assert_called()
+        mock_validate.assert_called_with(user, admin_group='admins')
 
     @mock.patch('maasserver.api.auth.validate_user_external_auth')
     def test_is_authenticated_external_auth_validate_fail(self, mock_validate):
@@ -74,14 +78,15 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
 
         auth = MAASAPIAuthentication()
         user = factory.make_User()
-        user.userprofile.auth_last_check -= timedelta(days=1)
+        user.userprofile.auth_last_check = (
+            datetime.utcnow() - timedelta(days=1))
         mock_token = mock.Mock(user=user)
         request = self.make_request()
         auth.is_valid_request = lambda request: True
         auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertFalse(auth.is_authenticated(request))
         # check interval not expired, the user isn't checked
-        mock_validate.assert_called()
+        mock_validate.assert_called_with(user, admin_group='admins')
 
     @mock.patch('maasserver.api.auth.validate_user_external_auth')
     def test_is_authenticated_external_auth_user_local(self, mock_validate):

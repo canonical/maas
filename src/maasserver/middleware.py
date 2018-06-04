@@ -443,7 +443,8 @@ class CSRFHelperMiddleware:
 
 
 # Hold information about external authentication type and configuration
-ExternalAuthInfo = namedtuple('ExternalAuthInfo', ('type', 'url', 'domain'))
+ExternalAuthInfo = namedtuple(
+    'ExternalAuthInfo', ('type', 'url', 'domain', 'admin_group'))
 
 
 class ExternalAuthInfoMiddleware:
@@ -460,15 +461,17 @@ class ExternalAuthInfoMiddleware:
 
     def __call__(self, request):
         configs = Config.objects.get_configs(
-            ['external_auth_url', 'external_auth_domain'])
+            ['external_auth_url', 'external_auth_domain',
+             'external_auth_admin_group'])
         auth_endpoint = configs.get('external_auth_url')
         auth_domain = configs.get('external_auth_domain')
+        auth_admin_group = configs.get('external_auth_admin_group')
         auth_info = None
         if auth_endpoint:
             # strip trailing slashes as js-bakery ends up using double slashes
             # in the URL otherwise
             auth_info = ExternalAuthInfo(
                 type='macaroon', url=auth_endpoint.rstrip('/'),
-                domain=auth_domain)
+                domain=auth_domain, admin_group=auth_admin_group)
         request.external_auth_info = auth_info
         return self.get_response(request)

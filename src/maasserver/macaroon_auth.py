@@ -58,7 +58,8 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
     """An authorization backend getting the user from macaroon identity."""
 
     def authenticate(self, request, identity=None):
-        if not request.external_auth_info or not identity:
+        external_auth_info = request.external_auth_info
+        if not external_auth_info or not identity:
             return
 
         username = identity.id()
@@ -67,7 +68,7 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
             if username not in SYSTEM_USERS and user.userprofile.is_local:
                 return
         except User.DoesNotExist:
-            user = User(username=username, is_superuser=True)
+            user = User(username=username)
             user.save()
 
         if not user.is_active:
@@ -75,6 +76,11 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
             # authenticated from external source, so it should be reactivated
             user.is_active = True
             user.save()
+
+        if not validate_user_external_auth(
+                user, admin_group=external_auth_info.admin_group):
+            return
+
         return user
 
 
@@ -103,14 +109,12 @@ class MacaroonAPIAuthentication:
             user = User.objects.get(username=username)
             if user.userprofile.is_local:
                 return False
-            created = False
         except User.DoesNotExist:
-            user = User(username=username, is_superuser=True)
+            user = User(username=username)
             user.save()
-            created = True
 
-        # Only check the user with IDM again if it wasn't just created
-        if not created and not validate_user_external_auth(user):
+        if not validate_user_external_auth(
+                user, admin_group=request.external_auth_info.admin_group):
             return False
 
         request.user = user
@@ -279,7 +283,8 @@ class IDMClient:
         return self._url
 
 
-def validate_user_external_auth(user, now=datetime.utcnow, client=None):
+def validate_user_external_auth(user, admin_group=None, now=datetime.utcnow,
+                                client=None):
     """Check if a user is authenticated on IDM.
 
     If the IDM_USER_CHECK_INTERVAL has passed since the last check, the user is
@@ -293,7 +298,10 @@ def validate_user_external_auth(user, now=datetime.utcnow, client=None):
 
     now = now()
     profile = user.userprofile
-    if profile.auth_last_check + IDM_USER_CHECK_INTERVAL > now:
+    no_check = (
+        profile.auth_last_check and
+        profile.auth_last_check + IDM_USER_CHECK_INTERVAL > now)
+    if no_check:
         return True
 
     if client is None:
@@ -304,15 +312,20 @@ def validate_user_external_auth(user, now=datetime.utcnow, client=None):
 
     active = True
     try:
-        # don't look at groups for now, we just care that the user is there
-        # (IOW the call doesn't fail)
-        client.get_groups(user.username)
+        groups = client.get_groups(user.username)
     except APIError as error:
         active = False
+        groups = ()
 
     if active ^ user.is_active:
         user.is_active = active
-        user.save()
+    if admin_group:
+        user.is_superuser = admin_group in groups
+    else:
+        # if no admin group is specified, all users are admins
+        user.is_superuser = True
+
+    user.save()
     return active
 
 

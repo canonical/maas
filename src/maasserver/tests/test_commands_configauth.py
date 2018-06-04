@@ -45,7 +45,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
 
     def test_configauth_changes_auth_prompts(self):
         self.read_input.side_effect = [
-            'http://idm.example.com/', 'mydomain', 'user@admin', 'private-key']
+            'http://idm.example.com/', 'mydomain', 'user@admin', 'private-key',
+            'admins']
         call_command('configauth')
 
         self.assertEqual(
@@ -74,7 +75,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             configauth.InvalidURLError,
             call_command, 'configauth', idm_url='example.com')
 
-    def test_read_agent_file(self):
+    def test_update_auth_details(self):
+        auth_details = configauth.AuthDetails()
         config = {
             'key': {'public': 'public-key', 'private': 'private-key'},
             'agents': [
@@ -83,15 +85,16 @@ class TestChangeAuthCommand(MAASServerTestCase):
             json.dump(config, agent_file)
             agent_file.flush()
             agent_file.seek(0)
-            auth_url, auth_user, auth_key = configauth.read_agent_file(
-                agent_file)
-            self.assertEqual(auth_url, 'http://example.com:1234')
-            self.assertEqual(auth_user, 'user@admin')
-            self.assertEqual(auth_key, 'private-key')
+            configauth.update_auth_details_from_agent_file(
+                agent_file, auth_details)
+            self.assertEqual(auth_details.url, 'http://example.com:1234')
+            self.assertEqual(auth_details.user, 'user@admin')
+            self.assertEqual(auth_details.key, 'private-key')
 
     def test_configauth_interactive(self):
         self.read_input.side_effect = [
-            'http://example.com:1234', 'mydomain', 'user@admin', 'private-key']
+            'http://example.com:1234', 'mydomain', 'user@admin', 'private-key',
+            'admins']
         call_command('configauth')
         self.assertEqual(
             'http://example.com:1234',
@@ -102,6 +105,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
+        self.assertEqual(
+            'admins', Config.objects.get_config('external_auth_admin_group'))
 
     def test_configauth_interactive_domain(self):
         self.read_input.return_value = 'mydomain'
@@ -173,7 +178,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             agent_file.flush()
             agent_file.seek(0)
             call_command(
-                'configauth', idm_agent_file=agent_file, idm_domain='mydomain')
+                'configauth', idm_agent_file=agent_file, idm_domain='mydomain',
+                idm_admin_group='admins')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -183,6 +189,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             'user@admin', Config.objects.get_config('external_auth_user'))
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
+        self.assertEqual(
+            'admins', Config.objects.get_config('external_auth_admin_group'))
         self.read_input.assert_not_called()
 
     def test_configauth_domain_none(self):
@@ -200,7 +208,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.assertEqual({}, kwargs)
         self.assertEqual(
             {'external_auth_url': '', 'external_auth_domain': '',
-             'external_auth_user': '', 'external_auth_key': ''},
+             'external_auth_user': '', 'external_auth_key': '',
+             'external_auth_admin_group': ''},
             json.loads(output))
 
     def test_configauth_json_full(self):
@@ -209,6 +218,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
         Config.objects.set_config('external_auth_domain', 'mydomain')
         Config.objects.set_config('external_auth_user', 'maas')
         Config.objects.set_config('external_auth_key', 'secret maas key')
+        Config.objects.set_config('external_auth_admin_group', 'admins')
         mock_print = self.patch(configauth, 'print')
         call_command('configauth', json=True)
         self.read_input.assert_not_called()
@@ -219,7 +229,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             {'external_auth_url': 'http://idm.example.com/',
              'external_auth_domain': 'mydomain',
              'external_auth_user': 'maas',
-             'external_auth_key': 'secret maas key'},
+             'external_auth_key': 'secret maas key',
+             'external_auth_admin_group': 'admins'},
             json.loads(output))
 
 

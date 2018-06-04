@@ -139,6 +139,7 @@ class TestValidateUserExternalAuth(MAASServerTestCase):
         self.assertEqual(self.user.userprofile.auth_last_check, self.now)
         # user is still enabled
         self.assertTrue(self.user.is_active)
+        self.assertTrue(self.user.is_superuser)
 
     def test_system_user_valid_no_check(self):
         client = mock.MagicMock()
@@ -166,6 +167,22 @@ class TestValidateUserExternalAuth(MAASServerTestCase):
         self.assertEqual(self.user.userprofile.auth_last_check, self.now)
         # user is disabled
         self.assertFalse(self.user.is_active)
+
+    def test_user_in_admin_group(self):
+        self.client.get_groups.return_value = ['group1', 'group2']
+        valid = validate_user_external_auth(
+            self.user, admin_group='group2', now=lambda: self.now,
+            client=self.client)
+        self.assertTrue(valid)
+        self.assertTrue(self.user.is_superuser)
+
+    def test_user_not_in_admin_group(self):
+        self.client.get_groups.return_value = ['group1', 'group2']
+        valid = validate_user_external_auth(
+            self.user, admin_group='admins', now=lambda: self.now,
+            client=self.client)
+        self.assertTrue(valid)
+        self.assertFalse(self.user.is_superuser)
 
 
 class MacaroonBakeryMockMixin:
@@ -215,8 +232,12 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
+        Config.objects.set_config('external_auth_admin_group', 'admins')
         self.auth = MacaroonAPIAuthentication()
         self.mock_service_key_request()
+        self.mock_validate = self.patch(
+            maasserver.macaroon_auth, 'validate_user_external_auth')
+        self.mock_validate.return_value = True
 
     def get_request(self):
         request = factory.make_fake_request('/')
@@ -244,8 +265,9 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         self.assertTrue(self.auth.is_authenticated(self.get_request()))
         user = User.objects.get(username=username)
         self.assertIsNotNone(user.id)
-        self.assertTrue(user.is_superuser)
+        self.assertFalse(user.is_superuser)
         self.assertFalse(user.userprofile.is_local)
+        self.mock_validate.assert_called_with(user, admin_group='admins')
 
     def test_is_authenticated_user_exists_but_local(self):
         user = factory.make_User()
@@ -254,24 +276,14 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         self.mock_auth_info(username=user.username)
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
-    @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
-    def test_is_authenticated_no_validate_if_created(self, mock_validate):
-        username = factory.make_string()
-        self.mock_auth_info(username=username)
-        self.assertTrue(self.auth.is_authenticated(self.get_request()))
-        mock_validate.assert_not_called()
-
-    @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
-    def test_is_authenticated_validate_if_exists(self, mock_validate):
-        mock_validate.return_value = True
+    def test_is_authenticated_validate_if_exists(self):
         user = factory.make_User()
         self.mock_auth_info(username=user.username)
         self.assertTrue(self.auth.is_authenticated(self.get_request()))
-        mock_validate.assert_called()
+        self.mock_validate.assert_called()
 
-    @mock.patch('maasserver.macaroon_auth.validate_user_external_auth')
-    def test_is_authenticated_fails_if_not_validated(self, mock_validate):
-        mock_validate.return_value = False
+    def test_is_authenticated_fails_if_not_validated(self):
+        self.mock_validate.return_value = False
         user = factory.make_User()
         self.mock_auth_info(username=user.username)
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
@@ -301,7 +313,11 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
+        Config.objects.set_config('external_auth_admin_group', 'admins')
         self.backend = MacaroonAuthorizationBackend()
+        self.mock_validate = self.patch(
+            maasserver.macaroon_auth, 'validate_user_external_auth')
+        self.mock_validate.return_value = True
 
     def get_request(self):
         request = factory.make_fake_request('/')
@@ -322,8 +338,9 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         user = self.backend.authenticate(self.get_request(), identity=identity)
         self.assertIsNotNone(user.id)
         self.assertEqual(user.username, username)
-        self.assertTrue(user.is_superuser)
+        self.assertFalse(user.is_superuser)
         self.assertFalse(user.userprofile.is_local)
+        self.mock_validate.assert_called_with(user, admin_group='admins')
 
     def test_authenticate_deactived_user_activate(self):
         user = factory.make_User()
@@ -350,6 +367,14 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         identity = SimpleIdentity(user=user.username)
         self.assertIsNone(
             self.backend.authenticate(self.get_request(), identity=identity))
+
+    def test_authenticate_validate_fails(self):
+        self.mock_validate.return_value = False
+        user = factory.make_User()
+        identity = SimpleIdentity(user=user.username)
+        self.assertIsNone(
+            self.backend.authenticate(self.get_request(), identity=identity))
+        self.mock_validate.assert_called_with(user, admin_group='admins')
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):
@@ -451,7 +476,11 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
+        Config.objects.set_config('external_auth_admin_group', 'admins')
         self.mock_service_key_request()
+        self.mock_validate = self.patch(
+            maasserver.macaroon_auth, 'validate_user_external_auth')
+        self.mock_validate.return_value = True
 
     def test_discharge_request(self):
         response = self.client.get('/accounts/discharge-request/')
