@@ -9,6 +9,7 @@ import sys
 from provisioningserver import security
 import provisioningserver.boot.install_grub
 import provisioningserver.cluster_config_command
+import provisioningserver.dns.commands.get_named_conf
 import provisioningserver.dns.commands.setup_dns
 import provisioningserver.register_command
 import provisioningserver.support_dump
@@ -30,6 +31,7 @@ COMMON_COMMANDS = {
     'send-beacons': provisioningserver.utils.send_beacons,
     'scan-network': provisioningserver.utils.scan_network,
     'setup-dns': provisioningserver.dns.commands.setup_dns,
+    'get-named-conf': provisioningserver.dns.commands.get_named_conf,
 }
 
 RACK_ONLY_COMMANDS = {

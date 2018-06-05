@@ -10,7 +10,6 @@ import random
 import time
 
 from django.conf import settings
-from django.core.management import call_command
 import dns.resolver
 from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
@@ -36,7 +35,10 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPAddress
-from provisioningserver.dns.commands import setup_dns
+from provisioningserver.dns.commands import (
+    get_named_conf,
+    setup_dns,
+)
 from provisioningserver.dns.config import (
     compose_config_path,
     DNSConfig,
@@ -123,9 +125,11 @@ class TestDNSServer(MAASServerTestCase):
         setup_dns.run(parser.parse_args([]))
         # Register MAAS-specific DNS configuration files with the
         # system's BIND instance.
-        call_command(
-            'get_named_conf', edit=True,
-            config_path=self.bind.config.conf_file)
+        parser = ArgumentParser()
+        get_named_conf.add_arguments(parser)
+        get_named_conf.run(
+            parser.parse_args(
+                ['--edit', '--config-path', self.bind.config.conf_file]))
         # Reload BIND.
         self.bind.runner.rndc('reload')
 
