@@ -9,6 +9,7 @@ import sys
 from provisioningserver import security
 import provisioningserver.boot.install_grub
 import provisioningserver.cluster_config_command
+import provisioningserver.dns.commands.setup_dns
 import provisioningserver.register_command
 import provisioningserver.support_dump
 import provisioningserver.upgrade_cluster
@@ -28,6 +29,7 @@ COMMON_COMMANDS = {
     'observe-dhcp': provisioningserver.utils.dhcp,
     'send-beacons': provisioningserver.utils.send_beacons,
     'scan-network': provisioningserver.utils.scan_network,
+    'setup-dns': provisioningserver.dns.commands.setup_dns,
 }
 
 RACK_ONLY_COMMANDS = {

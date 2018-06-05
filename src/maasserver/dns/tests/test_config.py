@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from argparse import ArgumentParser
 import random
 import time
 
@@ -35,6 +36,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPAddress
+from provisioningserver.dns.commands import setup_dns
 from provisioningserver.dns.config import (
     compose_config_path,
     DNSConfig,
@@ -116,7 +118,9 @@ class TestDNSServer(MAASServerTestCase):
         # This simulates what should happen when the package is
         # installed:
         # Create MAAS-specific DNS configuration files.
-        call_command('set_up_dns')
+        parser = ArgumentParser()
+        setup_dns.add_arguments(parser)
+        setup_dns.run(parser.parse_args([]))
         # Register MAAS-specific DNS configuration files with the
         # system's BIND instance.
         call_command(

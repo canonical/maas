@@ -34,7 +34,7 @@ bin/py -m provisioningserver.testing.bindfixture -- \
 
 # Create MAAS' DNS config: do not overwrite an existing config file
 # as the writing of the full configuration might have happened already.
-bin/maas-region set_up_dns --no-clobber
+bin/maas-common setup-dns --no-clobber
 
 # Edit the fixture's named.conf to include MAAS' DNS config.
 bin/maas-region get_named_conf \

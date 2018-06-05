@@ -635,7 +635,7 @@ services/%/@supervise: services/%/@deps
 
 # Dependencies for individual services.
 
-services/dns/@deps: bin/py
+services/dns/@deps: bin/py bin/maas-common
 
 services/database/@deps: bin/database
 

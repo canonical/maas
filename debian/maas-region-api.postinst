@@ -79,9 +79,9 @@ if [ "$1" = "configure" ] && [ -z "$2" ]; then
     configure_logging
     configure_libdir
     # Configure DNS
-    # If /etc/bind/maas is empty, set_up_dns.
+    # If /etc/bind/maas is empty, setup dns.
     if [ ! "$(ls -A /etc/bind/maas)" ]; then
-        maas-region set_up_dns
+        /usr/lib/maas/maas-common setup-dns
     fi
     fix_dns_permissions
     edit_named_options
