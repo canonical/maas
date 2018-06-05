@@ -13,13 +13,11 @@ import textwrap
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from maasserver.management.commands.edit_named_options import (
-    Command as command_module,
-)
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
+from provisioningserver.dns.commands import edit_named_options
 from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 from provisioningserver.utils.isc import (
     make_isc_string,
@@ -255,7 +253,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
     def test_repeat_migrations_migrate_nothing(self):
         options_file = self.make_file(
             contents=OPTIONS_FILE_WITH_FORWARDERS_AND_DNSSEC)
-        backup_mock = self.patch(command_module, "back_up_existing_file")
+        backup_mock = self.patch(edit_named_options, "back_up_existing_file")
 
         call_command(
             "edit_named_options", config_path=options_file,
@@ -264,7 +262,8 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         self.assertTrue(backup_mock.called)
         backup_mock.reset_mock()
 
-        write_mock = self.patch(command_module, "write_new_named_conf_options")
+        write_mock = self.patch(
+            edit_named_options, "write_new_named_conf_options")
 
         call_command(
             "edit_named_options", config_path=options_file,
@@ -276,7 +275,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
     def test_repeat_forced_migrations_write_file_anyway(self):
         options_file = self.make_file(
             contents=OPTIONS_FILE_WITH_FORWARDERS_AND_DNSSEC)
-        backup_mock = self.patch(command_module, "back_up_existing_file")
+        backup_mock = self.patch(edit_named_options, "back_up_existing_file")
 
         call_command(
             "edit_named_options", config_path=options_file,
@@ -285,7 +284,8 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         self.assertTrue(backup_mock.called)
         backup_mock.reset_mock()
 
-        write_mock = self.patch(command_module, "write_new_named_conf_options")
+        write_mock = self.patch(
+            edit_named_options, "write_new_named_conf_options")
 
         call_command(
             "edit_named_options", config_path=options_file,

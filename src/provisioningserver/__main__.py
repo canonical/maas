@@ -9,6 +9,7 @@ import sys
 from provisioningserver import security
 import provisioningserver.boot.install_grub
 import provisioningserver.cluster_config_command
+import provisioningserver.dns.commands.edit_named_options
 import provisioningserver.dns.commands.get_named_conf
 import provisioningserver.dns.commands.setup_dns
 import provisioningserver.register_command
@@ -32,6 +33,7 @@ COMMON_COMMANDS = {
     'scan-network': provisioningserver.utils.scan_network,
     'setup-dns': provisioningserver.dns.commands.setup_dns,
     'get-named-conf': provisioningserver.dns.commands.get_named_conf,
+    'edit-named-options': provisioningserver.dns.commands.edit_named_options,
 }
 
 RACK_ONLY_COMMANDS = {
