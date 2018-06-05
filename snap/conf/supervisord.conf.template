@@ -39,14 +39,6 @@ redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/regiond.log
 serverurl=http://localhost:9001
 
-[program:bind9]
-process_name=bind9
-command=%(ENV_SNAP)s/bin/run-named
-stopasgroup=true
-killasgroup=true
-redirect_stderr=true
-stdout_logfile=%(ENV_SNAP_COMMON)s/log/named.log
-
 [program:proxy]
 process_name=proxy
 command=%(ENV_SNAP)s/bin/run-squid
@@ -90,6 +82,14 @@ stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd6.log
 {{endif}}
 
 {{if rackd or regiond}}
+[program:bind9]
+process_name=bind9
+command=%(ENV_SNAP)s/bin/run-named
+stopasgroup=true
+killasgroup=true
+redirect_stderr=true
+stdout_logfile=%(ENV_SNAP_COMMON)s/log/named.log
+
 [program:ntp]
 process_name=ntp
 command=%(ENV_SNAP)s/bin/run-chronyd

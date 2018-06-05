@@ -195,6 +195,7 @@ Description: MAAS python API client (Python 3)
 Package: maas-rack-controller
 Architecture: all
 Depends: avahi-utils,
+         bind9 (>= 1:9.10.3.dfsg.P2-5~),
          bind9utils,
          distro-info,
          freeipmi-tools,
