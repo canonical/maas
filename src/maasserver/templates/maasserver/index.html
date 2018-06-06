@@ -18,7 +18,7 @@
 
     {% include "maasserver/css-conf.html" %}
 </head>
-<body class="has-sticky-footer" data-ng-init="site = '{{ global_options.site_name }}'" data-maas-version-reloader window-width>
+<body class="has-sticky-footer" data-ng-init="site = '{{ global_options.site_name|escapejs }}'" data-maas-version-reloader window-width>
     <header id="navigation" class="p-navigation" data-dropdown-toggle="mobile-nav-toggle" data-dropdown-menu="mobile-nav-menu">
         <div class="p-navigation__banner">
             <div class="p-navigation__logo">
