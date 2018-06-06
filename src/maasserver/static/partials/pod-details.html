@@ -212,36 +212,36 @@
         </div>
     </section>
     <section class="p-strip" data-ng-if="pod && section.area === 'configuration'">
-      <div class="row">
-        <div class="col-10">
-          <h2>Pod configuration</h2>
+        <div class="row">
+            <div class="col-10">
+                <h2>Pod configuration</h2>
+            </div>
+            <div class="col-2">
+                <button class="p-button--neutral u-float--right"
+                    data-ng-if="canEdit() && !editing"
+                    data-ng-click="editPodConfiguration()">Edit</button>
+            </div>
         </div>
-        <div class="col-2">
-          <button class="p-button--neutral u-float--right"
-                data-ng-if="canEdit() && !editing"
-                data-ng-click="editPodConfiguration()">Edit</button>
-        </div>
-      </div>
-      <div class="row">
+        <div class="row">
             <maas-obj-form obj="pod" manager="podManager" manager-method="updateItem"
                 table-form="true" save-on-blur="false" after-save="exitEditPodConfiguration" data-ng-disabled="!editing">
                 <div class="col-6">
-                    <div class="col-6">
-                        <dl>
-                            <dt>Type</dt>
-                            <dd>{$ getPodTypeTitle() $}</dd>
-                        </dl>
-                        <maas-obj-field type="options" key="zone" label="Zone"
-                            subtle="false" placeholder="Choose a zone"
-                            options="zone.id as zone.name for zone in zones"></maas-obj-field>
-                        <maas-obj-field type="options" key="default_pool"
-                            label="Resource pool" subtle="false"
-                            placeholder="Choose a pool"
-                            options="pool.id as pool.name for pool in pools"></maas-obj-field>
-                        <maas-obj-field type="tags" key="tags" label="Tags"
-                            label-width="2" input-width="5"
-                            disable-label="false" placeholder="Add a tag"></maas-obj-field>
+                    <div class="p-form__group">
+                        <label for="type" class="p-form__label col-2">Type</label>
+                        <div class="p-form__control u-no-margin--top col-5">
+                            <input type="text" id="type" disabled="disabled" value="{$ getPodTypeTitle() $}" />
+                        </div>
                     </div>
+                    <maas-obj-field type="options" key="zone" label="Zone"
+                        subtle="false" placeholder="Choose a zone"
+                        options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                    <maas-obj-field type="options" key="default_pool"
+                        label="Resource pool" subtle="false"
+                        placeholder="Choose a pool"
+                        options="pool.id as pool.name for pool in pools"></maas-obj-field>
+                    <maas-obj-field type="tags" key="tags" label="Tags"
+                        label-width="2" input-width="5"
+                        disable-label="false" placeholder="Add a tag"></maas-obj-field>
                 </div>
                 <div class="col-6">
                     <maas-pod-parameters hide-type="true"></maas-pod-parameters>
