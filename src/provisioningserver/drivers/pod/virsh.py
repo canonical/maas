@@ -124,9 +124,6 @@ DOM_TEMPLATE_ARM64 = dedent("""\
         <loader readonly='yes' type='pflash'>
           /usr/share/AAVMF/AAVMF_CODE.fd
         </loader>
-        <loader readonly='yes' type='pflash'>
-          /usr/share/AAVMF/AAVMF_CODE.fd
-        </loader>
         <nvram template='/usr/share/AAVMF/AAVMF_CODE.fd'>
           /var/lib/libvirt/qemu/nvram/{name}_VARS.fd
         </nvram>
