@@ -8,6 +8,7 @@ __all__ = [
     "get_storage_layout_params",
 ]
 
+import json
 import re
 
 from django.conf import settings
@@ -73,6 +74,7 @@ from maasserver.models import (
     Domain,
     ISCSIBlockDevice,
     Machine,
+    NodeMetadata,
     PhysicalBlockDevice,
     Pod,
     RackController,
@@ -1147,7 +1149,7 @@ class AnonMachinesHandler(AnonNodesHandler):
         # Note: this docstring is duplicated below. Be sure to update both.
         """Create a new Machine.
 
-        Adding a server to a MAAS puts it on a path that will wipe its disks
+        Adding a server to MAAS puts it on a path that will wipe its disks
         and re-install its operating system, in the event that it PXE boots.
         In anonymous enlistment (and when the enlistment is done by a
         non-admin), the machine is held in the "New" state for approval by a
@@ -1195,7 +1197,25 @@ class AnonMachinesHandler(AnonNodesHandler):
             power type.
         :type power_parameters_{param1}: unicode
         """
-        return create_machine(request)
+        # BMC enlistment is currently only done for IPMI.
+        # First, check if there is a pre-existing machine within MAAS that
+        # matches the request.
+        power_type = request.data.get('power_type', None)
+        power_parameters = request.data.get('power_parameters', None)
+        machine = None
+        if power_type == 'ipmi' and power_parameters is not None:
+            params = json.loads(power_parameters)
+            machine = Machine.objects.filter(
+                status__in=[NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING],
+                bmc__power_parameters__power_address=(
+                    params['power_address'])).first()
+        if machine is None:
+            machine = create_machine(request)
+        if machine.status == NODE_STATUS.NEW:
+            # Create or update NodeMetadata object for this node.
+            NodeMetadata.objects.update_or_create(
+                node=machine, key='enlisting', defaults={'value': 'True'})
+        return machine
 
     @operation(idempotent=False)
     def accept(self, request):

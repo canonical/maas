@@ -31,6 +31,7 @@ import uuid
 
 from crochet import TimeoutError
 from django.contrib.auth.models import User
+from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import (
     ObjectDoesNotExist,
     PermissionDenied,
@@ -97,7 +98,6 @@ from maasserver.exceptions import (
     PowerProblem,
 )
 from maasserver.fields import (
-    JSONObjectField,
     MAASIPAddressField,
     MAC,
 )
@@ -958,7 +958,7 @@ class Node(CleanSave, TimestampedModel):
 
     # Power parameters specific to this node instance. Global power parameters
     # are stored in this node's BMC.
-    instance_power_parameters = JSONObjectField(
+    instance_power_parameters = JSONField(
         max_length=(2 ** 15), blank=True, default="")
 
     power_state = CharField(

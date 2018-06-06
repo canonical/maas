@@ -10,7 +10,10 @@ __all__ = [
 from functools import partial
 import re
 
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import (
+    ArrayField,
+    JSONField,
+)
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import transaction
@@ -41,7 +44,6 @@ from maasserver.enum import (
     NODE_STATUS,
 )
 from maasserver.exceptions import PodProblem
-from maasserver.fields import JSONObjectField
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.fabric import Fabric
@@ -140,7 +142,7 @@ class BMC(CleanSave, TimestampedModel):
 
     # JSON-encoded set of parameters for power control, limited to 32kiB when
     # encoded as JSON. These apply to all Nodes controlled by this BMC.
-    power_parameters = JSONObjectField(
+    power_parameters = JSONField(
         max_length=(2 ** 15), blank=True, default='')
 
     # Rack controllers that have access to the BMC by routing instead of

@@ -9,6 +9,7 @@ import http.client
 import json
 
 from django.conf import settings
+from maasserver.api import machines as machines_module
 from maasserver.clusterrpc import boot_images
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -19,6 +20,7 @@ from maasserver.models import (
     Domain,
     Machine,
     Node,
+    NodeMetadata,
 )
 from maasserver.models.node import PowerInfo
 from maasserver.testing.api import APITestCase
@@ -31,6 +33,7 @@ from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
+from maastesting.matchers import MockNotCalled
 
 
 class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
@@ -436,6 +439,58 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
                 'description',
             ],
             list(parsed_result['zone']))
+
+    def test_POST_create_returns_machine_with_matching_power_parameters(self):
+        mock_create_machine = self.patch(machines_module, "create_machine")
+        hostname = factory.make_name("hostname")
+        architecture = make_usable_architecture(self)
+        power_type = 'ipmi'
+        power_parameters = {
+            "power_address": factory.make_ip_address(),
+            "power_user": factory.make_name("power-user"),
+            "power_pass": factory.make_name("power-pass"),
+            "power_driver": 'LAN_2_0',
+            "mac_address": '',
+            "power_boot_type": 'auto',
+            }
+        machine = factory.make_Machine(
+            hostname=hostname, status=NODE_STATUS.NEW,
+            architecture=architecture, power_type=power_type,
+            power_parameters=power_parameters)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'hostname': hostname,
+                'architecture': architecture,
+                'power_type': power_type,
+                'mac_addresses': factory.make_mac_address(),
+                'power_parameters': json.dumps(power_parameters),
+            })
+        node_metadata = NodeMetadata.objects.get(key='enlisting')
+        self.assertEqual(node_metadata.value, 'True')
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(mock_create_machine, MockNotCalled())
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)['system_id'])
+
+    def test_POST_create_creates_machine(self):
+        hostname = factory.make_name("hostname")
+        architecture = make_usable_architecture(self)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'hostname': hostname,
+                'architecture': architecture,
+                'power_type': 'manual',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        node_metadata = NodeMetadata.objects.get(key='enlisting')
+        self.assertEqual(node_metadata.value, 'True')
+        [machine] = Machine.objects.filter(hostname=hostname)
+        self.assertEqual(architecture, machine.architecture)
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)['system_id'])
 
 
 class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
