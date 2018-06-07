@@ -42,18 +42,18 @@
                 <table id="events-listing" window-width>
                     <thead data-ng-if="windowWidth >= 769" offset="88" media-query="min-width: 768px">
                         <tr>
-                            <th class="col-9">Event</th>
                             <th class="col-3">Time</th>
+                            <th class="col-9">Event</th>
                         </tr>
                     </thead>
                     <tbody vs-repeat vs-scroll-parent="window">
                         <tr data-ng-repeat="event in events | filter:search | orderByDate:'created':'id' track by event.id">
-                            <td class="col-9" title="{$ getEventText(event) $}">
-                                <span class="p-icon--{$ event.type.level $}"></span>
-                                {$ getEventText(event) $}
-                            </td>
                             <td class="col-3" title="{$ event.created $}">
+                                <span class="p-icon--{$ event.type.level $}"></span>&nbsp;
                                 {$ event.created $}
+                            </td>
+                            <td class="col-9" title="{$ getEventText(event) $}">
+                                {$ getEventText(event) $}
                             </td>
                         </tr>
                     </tbody>
