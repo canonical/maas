@@ -121,12 +121,8 @@ DOM_TEMPLATE_ARM64 = dedent("""\
       <cpu mode='host-passthrough'/>
       <os>
         <type arch='{arch}' machine='virt'>hvm</type>
-        <loader readonly='yes' type='pflash'>
-          /usr/share/AAVMF/AAVMF_CODE.fd
-        </loader>
-        <nvram template='/usr/share/AAVMF/AAVMF_CODE.fd'>
-          /var/lib/libvirt/qemu/nvram/{name}_VARS.fd
-        </nvram>
+        <loader readonly='yes' type='pflash'>{loader}</loader>
+        <nvram template='{nvram_path}'>{nvram_path}/{name}_VARS.fd</nvram>
       </os>
       <features>
         <acpi/>
@@ -940,6 +936,12 @@ class VirshSSH(pexpect.spawn):
 
         # Set the template.
         if domain_params['arch'] == 'aarch64':
+            # LP: #1775728 - Changes in the template are required due to
+            # libvirt validation issues on the XML template. However, this
+            # causes lint issues. We work around these issue by using
+            # template variables instead.
+            domain_params['loader'] = '/usr/share/AAVMF/AAVMF_CODE.fd'
+            domain_params['nvram_path'] = '/var/lib/libvirt/qemu/nvram'
             domain_xml = DOM_TEMPLATE_ARM64.format(**domain_params)
         elif domain_params['arch'] in ('ppc64', 'ppc64le'):
             domain_xml = DOM_TEMPLATE_PPC64.format(**domain_params)
