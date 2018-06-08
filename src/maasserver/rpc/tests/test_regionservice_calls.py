@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 from crochet import wait_for
 from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
+from maasserver.dns.config import get_trusted_networks
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
@@ -80,6 +81,7 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
     GetControllerType,
+    GetDNSConfiguration,
     GetProxies,
     GetTimeConfiguration,
     Identify,
@@ -1359,3 +1361,30 @@ class TestRegionProtocol_GetTimeConfiguration(MAASTransactionServerTestCase):
         arguments = {"system_id": factory.make_name("id")}
         d = call_responder(Region(), GetTimeConfiguration, arguments)
         return assert_fails_with(d, NoSuchNode)
+
+
+class TestRegionProtocol_GetDNSConfiguration(MAASTransactionServerTestCase):
+
+    def test_get_dns_configuration_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            GetDNSConfiguration.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_get_trusted_networks(self):
+        example_networks = [
+            factory.make_ipv4_address(),
+            factory.make_ipv6_address(),
+        ]
+        deferToDatabase = self.patch(regionservice, 'deferToDatabase')
+        deferToDatabase.return_value = succeed(example_networks)
+        system_id = factory.make_name("id")
+        response = yield call_responder(
+            Region(), GetDNSConfiguration, {'system_id': system_id})
+        self.assertThat(response, Equals({
+            'trusted_networks': example_networks,
+        }))
+        self.assertThat(deferToDatabase, MockCalledOnceWith(
+            get_trusted_networks))

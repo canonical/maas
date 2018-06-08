@@ -20,6 +20,7 @@ import uuid
 
 from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
+from maasserver.dns.config import get_trusted_networks
 from maasserver.models.node import RackController
 from maasserver.rpc import (
     boot,
@@ -475,6 +476,19 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.GetTimeConfiguration`.
         """
         return deferToDatabase(nodes.get_time_configuration, system_id)
+
+    @region.GetDNSConfiguration.responder
+    def get_dns_configuration(self, system_id):
+        """Get settings to use for configuring DNS.
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetDNSConfiguration`.
+        """
+        # For consistency `system_id` is passed, but at the moment it is not
+        # used to customise the DNS configuration.
+        d = deferToDatabase(get_trusted_networks)
+        d.addCallback(lambda networks: {'trusted_networks': networks})
+        return d
 
 
 @inlineCallbacks

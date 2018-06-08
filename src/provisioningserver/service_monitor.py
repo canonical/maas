@@ -58,12 +58,8 @@ class DHCPv6Service(DHCPService):
     snap_service_name = "dhcpd6"
 
 
-class NTPServiceOnRack(Service):
-    """Monitored NTP service on a rack controller host."""
-
-    name = "ntp_rack"
-    service_name = "chrony"
-    snap_service_name = "ntp"
+class RackOnlyModeService(Service):
+    """Service that should only run when in rack-only mode."""
 
     def getExpectedState(self):
         try:
@@ -85,10 +81,27 @@ class NTPServiceOnRack(Service):
             return SERVICE_STATE.ANY, None
 
 
+class NTPServiceOnRack(RackOnlyModeService):
+    """Monitored NTP service on a rack controller host."""
+
+    name = "ntp_rack"
+    service_name = "chrony"
+    snap_service_name = "ntp"
+
+
+class DNSServiceOnRack(RackOnlyModeService):
+    """Monitored DNS service on a rack controller host."""
+
+    name = "dns_rack"
+    service_name = "bind9"
+    snap_service_name = "bind9"
+
+
 # Global service monitor for rackd. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
     DHCPv4Service(),
     DHCPv6Service(),
     NTPServiceOnRack(),
+    DNSServiceOnRack(),
 )

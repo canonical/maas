@@ -40,6 +40,7 @@ RACK_SERVICES = frozenset({
     "dhcpd",
     "dhcpd6",
     "ntp_rack",
+    "dns_rack",
 })
 
 # Statuses that should be set on each service when node is marked dead. NOTE
@@ -55,6 +56,7 @@ DEAD_STATUSES = {
     "dhcpd6": SERVICE_STATUS.DEAD,
     "ntp_region": SERVICE_STATUS.DEAD,
     "ntp_rack": SERVICE_STATUS.DEAD,
+    "dns_rack": SERVICE_STATUS.UNKNOWN,
 }
 
 

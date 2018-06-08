@@ -161,6 +161,12 @@ class ProvisioningServiceMaker(ProvisioningServerBase):
         ntp_service.setName("ntp")
         return ntp_service
 
+    def _makeDNSService(self, rpc_service):
+        from provisioningserver.rackdservices import dns
+        dns_service = dns.RackDNSService(rpc_service, reactor)
+        dns_service.setName("dns")
+        return dns_service
+
     def _makeServices(
             self, tftp_root, tftp_port, http_worker_count, clock=reactor):
         # Several services need to make use of the RPC service.
@@ -175,6 +181,7 @@ class ProvisioningServiceMaker(ProvisioningServerBase):
         yield self._makeServiceMonitorService(rpc_service)
         yield self._makeImageDownloadService(rpc_service, tftp_root)
         yield self._makeNetworkTimeProtocolService(rpc_service)
+        yield self._makeDNSService(rpc_service)
         # The following are network-accessible services.
         yield self._makeHTTPImageService(http_worker_count)
         yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)

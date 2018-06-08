@@ -19,6 +19,7 @@ from provisioningserver.service_monitor import (
     DHCPService,
     DHCPv4Service,
     DHCPv6Service,
+    DNSServiceOnRack,
     NTPServiceOnRack,
     service_monitor,
 )
@@ -145,9 +146,57 @@ class TestNTPServiceOnRack_Scenarios(MAASTestCase):
             Equals((self.expected_state, self.expected_info)))
 
 
+class TestDNSServiceOnRack(MAASTestCase):
+
+    def test_name_and_service_name(self):
+        dns = DNSServiceOnRack()
+        self.assertEqual("bind9", dns.service_name)
+        self.assertEqual("dns_rack", dns.name)
+
+
+class TestDNSServiceOnRack_Scenarios(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    scenarios = (
+        ("rack", dict(
+            is_region=False, is_rack=True,
+            expected_state=SERVICE_STATE.ON,
+            expected_info=None,
+        )),
+        ("region", dict(
+            is_region=True, is_rack=False,
+            expected_state=SERVICE_STATE.ANY,
+            expected_info=None,
+        )),
+        ("region+rack", dict(
+            is_region=True, is_rack=True,
+            expected_state=SERVICE_STATE.ANY,
+            expected_info="managed by the region.",
+        )),
+        ("machine", dict(
+            is_region=False, is_rack=False,
+            expected_state=SERVICE_STATE.ANY,
+            expected_info=None,
+        )),
+    )
+
+    def setUp(self):
+        super(TestDNSServiceOnRack_Scenarios, self).setUp()
+        return prepareRegionForGetControllerType(
+            self, is_region=self.is_region, is_rack=self.is_rack)
+
+    @inlineCallbacks
+    def test_getExpectedState(self):
+        dns = DNSServiceOnRack()
+        self.assertThat(
+            (yield dns.getExpectedState()),
+            Equals((self.expected_state, self.expected_info)))
+
+
 class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["dhcpd", "dhcpd6", "ntp_rack"],
+            ["dhcpd", "dhcpd6", "dns_rack", "ntp_rack"],
             service_monitor._services.keys())

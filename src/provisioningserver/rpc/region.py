@@ -16,6 +16,7 @@ __all__ = [
     "GetBootSourcesV2",
     "GetControllerType",
     "GetDiscoveryState",
+    "GetDNSConfiguration",
     "GetProxies",
     "GetTimeConfiguration",
     "Identify",
@@ -596,6 +597,23 @@ class GetTimeConfiguration(amp.Command):
     response = [
         (b"servers", amp.ListOf(amp.Unicode())),
         (b"peers", amp.ListOf(amp.Unicode())),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }
+
+
+class GetDNSConfiguration(amp.Command):
+    """Get settings to use for configuring DNS for a given system identifier.
+
+    :since: 2.5
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+    ]
+    response = [
+        (b"trusted_networks", amp.ListOf(amp.Unicode())),
     ]
     errors = {
         NoSuchNode: b"NoSuchNode",
