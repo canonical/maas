@@ -122,7 +122,7 @@ DOM_TEMPLATE_ARM64 = dedent("""\
       <os>
         <type arch='{arch}' machine='virt'>hvm</type>
         <loader readonly='yes' type='pflash'>{loader}</loader>
-        <nvram template='{nvram_path}'>{nvram_path}/{name}_VARS.fd</nvram>
+        <nvram template='{loader}'>{nvram_path}/{name}_VARS.fd</nvram>
       </os>
       <features>
         <acpi/>
