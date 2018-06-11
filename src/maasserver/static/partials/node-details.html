@@ -172,65 +172,65 @@
                     </form>
                 </div>
             </div>
-            <div class="row ng-hide" data-ng-show="action.showing_confirmation && action.option.name === 'test'">
-                <div class="col-12">
-                    <p>
+            <div class="row u-equal-height ng-hide" data-ng-show="action.showing_confirmation && action.option.name === 'test'">
+                <div class="col-9 u-vertically-center">
+                    <p class="u-remove-max-width">
                         <i class="p-icon--warning">Warning:</i> Node is currently deployed. Are you sure you want to continue to test hardware?
                     </p>
+                </div>
+                <div class="col-3">
                     <div class="u-align--right">
                         <button class="p-button--base" data-ng-click="actionCancel()">No</button>
                         <button class="p-button--neutral" data-ng-click="actionGo()">Yes</button>
                     </div>
                 </div>
             </div>
-            <div class="row ng-hide" data-ng-show="isActionError()">
+            <div class="row u-equal-height ng-hide" data-ng-show="isActionError()">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <div class="col-12">
-                    <div class="p-notification--negative">
-                        <p class="p-notification__response">
-                            <span class="p-notification__status">Error:</span>Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
-                        </p>
-                    </div>
+                <div class="col-9 u-vertically-center">
+                    <p class="u-remove-max-width">
+                        <i class="p-icon--error">Error:</i> Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
+                    </p>
+                </div>
+                <div class="col-3">
                     <div class="u-align--right">
                         <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                         <button class="p-button--neutral" data-ng-click="actionGo()">Retry</button>
                     </div>
                 </div>
             </div>
-            <div class="row ng-hide" data-ng-show="isDeployError()">
+            <div class="row u-equal-height ng-hide" data-ng-show="isDeployError()">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <div class="col-8">
-                    <div class="p-notification--negative">
-                        <p class="p-notification__response">
-                            <span class="p-notification__status">Error:</span> Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
-                        </p>
-                    </div>
+                <div class="col-9 u-vertically-center">
+                    <p class="u-remove-max-width">
+                        <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                    </p>
                 </div>
-                <div class="col-4">
+                <div class="col-3">
                     <div class="u-align--right">
                         <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                     </div>
                 </div>
             </div>
-            <div class="row ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
-                <div class="col-8">
-                    <div class="p-notification--negative">
-                        <p class="p-notification__response">
-                            <span class="p-notification__status">Error:</span> Node cannot be {$ action.option.sentence $}, because power control software for the node is missing from its rack controller. To proceed, install the {$ getPowerErrors() $} on the rack controller.
-                        </p>
-                    </div>
+            <div class="row u-equal-height ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
+                <div class="col-9 u-vertically-center">
+                    <p class="u-remove-max-width">
+                        <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because power control software for the node is missing from its rack controller. To proceed, install the {$ getPowerErrors() $} on the rack controller.
+                    </p>
                 </div>
-                <div class="col-4">
+                <div class="col-3">
                     <div class="u-align--right">
                         <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                     </div>
                 </div>
             </div>
-            <div class="row ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
-                <div class="col-12">
-                    <p>
+            <div class="row u-equal-height ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
+                <div class="col-9 u-vertically-center">
+                    <p class="u-remove-max-width">
                         <i class="p-icon--error">Error:</i> Node cannot be {$ action.option.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
                     </p>
+                </div>
+                <div class="col-3">
                     <div class="u-align--right">
                         <button class="p-button--base" data-ng-click="actionCancel()">Cancel</button>
                     </div>
