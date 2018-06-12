@@ -48,6 +48,14 @@ def is_interesting_scss_change(filename):
         not filename.startswith("."))
 
 
+def is_interesting_js_change(filename):
+    return (
+        filename is not None and
+        filename.endswith(".js") and
+        not filename.startswith(".") and
+        not filename.endswith("min.js"))
+
+
 def is_supervised(dirname):
     return call(("svok", dirname)) == 0
 
@@ -62,8 +70,13 @@ def handle_python_change(event, *services):
 
 
 def handle_scss_change(event):
-    print("<-- {0.pathname} changed; rebuiling CSS.".format(event))
+    print("<-- {0.pathname} changed; rebuilding CSS.".format(event))
     check_call(("make", "-s", "styles"))
+
+
+def handle_js_change(event):
+    print("<-- {0.pathname} changed; rebuilding JavaScript.".format(event))
+    check_call(("make", "-s", "javascript"))
 
 
 def handle_maas_change(event):
@@ -71,6 +84,8 @@ def handle_maas_change(event):
         handle_python_change(event, "regiond")
     if is_interesting_scss_change(event.name):
         handle_scss_change(event)
+    if is_interesting_js_change(event.name):
+        handle_js_change(event)
 
 
 def handle_pserv_change(event):
@@ -104,6 +119,20 @@ class TestReloader(unittest.TestCase):
             }
         observed = {
             filename: is_interesting_scss_change(filename)
+            for filename in expected
+            }
+        self.assertEqual(expected, observed)
+
+    def test_is_interesting_js_change(self):
+        expected = {
+            None: False,
+            "script": False,
+            "module.js": True,
+            "module.min.js": False,
+            ".hidden.js": False,
+            }
+        observed = {
+            filename: is_interesting_js_change(filename)
             for filename in expected
             }
         self.assertEqual(expected, observed)
