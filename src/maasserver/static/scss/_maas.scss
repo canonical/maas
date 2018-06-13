@@ -188,8 +188,7 @@
   .page-header__title-domain {
     display: inline-block;
     width: auto;
-    font-size: 2.25rem;
-    line-height: 1.167;
+    @include vf-heading-4;
   }
 
   //Fix for action buttons in headers

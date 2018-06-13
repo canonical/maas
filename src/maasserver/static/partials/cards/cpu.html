@@ -1,7 +1,7 @@
 <header class="p-card__header">
   <h2 class="p-heading--four">CPU</h2>
-  <h3 class="p-heading--three" data-ng-if="node.cpu_count > 0"><strong>{$ getCPUSubtext() $}</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
-  <h3 class="p-heading--three" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
+  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.cpu_count > 0"><strong>{$ getCPUSubtext() $}</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
+  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.cpu_count === 0"><strong>Unknown</strong> <span class="p-heading--six">({$ node.architecture $})</span></h3>
 </header>
 <div data-ng-controller="NodeResultsController">
   <div data-ng-repeat="test_result in testing_results">

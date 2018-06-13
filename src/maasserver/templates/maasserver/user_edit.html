@@ -9,7 +9,7 @@
     <form method="post">
         <div class="row">
             <div class="col-8">
-                <h2>Settings</h2>
+                <h2 class="p-heading--four">Settings</h2>
                 {% csrf_token %}
                 <ul class="p-list">
                     {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
@@ -30,7 +30,7 @@
 <div class="p-strip">
     <div class="row">
         <div class="col-8" id="password">
-            <h2>Change password</h2>
+            <h2 class="p-heading--four">Change password</h2>
             <form method="post">
                 {% csrf_token %}
                 <ul class="p-list">

@@ -83,7 +83,7 @@
         </div>
         <div class="row" data-ng-if="result.results.length !== 0">
             <div class="col-6">
-                <h2>Metrics</h2>
+                <h2 class="p-heading--four">Metrics</h2>
                 <dl data-ng-repeat="item in result.results">
                     <dt class="p-tooltip p-tooltip--top-center">
                         {$ item.title $}
@@ -95,7 +95,7 @@
         </div>
         <div class="row">
             <div class="col-12">
-                <h2 class="ng-binding">Output</h2>
+                <h2 class="ng-binding p-heading--four">Output</h2>
                 <nav class="p-tabs">
                     <ul class="p-tabs__list">
                         <li class="p-tabs__item">
@@ -104,17 +104,17 @@
                                 data-ng-click="get_result_data('combined')">combined</a>
                         </li>
                         <li class="p-tabs__item">
-                            <a href="" class="p-tabs__link" 
+                            <a href="" class="p-tabs__link"
                                 data-ng-class="{ 'is-active': output === 'stdout' }"
                                 data-ng-click="get_result_data('stdout')">stdout</a>
                         </li>
                         <li class="p-tabs__item">
-                            <a href="" class="p-tabs__link" 
+                            <a href="" class="p-tabs__link"
                                 data-ng-class="{ 'is-active': output === 'stderr' }"
                                 data-ng-click="get_result_data('stderr')">stderr</a>
                         </li>
                         <li class="p-tabs__item">
-                            <a href="" class="p-tabs__link" 
+                            <a href="" class="p-tabs__link"
                                 data-ng-class="{ 'is-active': output === 'result' }"
                                 data-ng-click="get_result_data('result')">yaml</a>
                         </li>

@@ -41,7 +41,7 @@ function doc_homepage(version, doc_prefix) {
 function set_up_version_switcher(selector, doc_prefix) {
     // Create version switcher widget.
     $(selector).replaceWith($('\
-        <h3>Version</h3> \
+        <h3 class="p-heading--four">Version</h3> \
         <select id="id_sidebar_release" name="release"> \
         </select>'));
 

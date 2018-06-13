@@ -231,7 +231,7 @@
     <section class="p-strip is-bordered">
         <div class="row">
             <div class="col-6">
-                <h2 class="u-float--left">VLAN Summary</h2>
+                <h2 class="p-heading--four">VLAN Summary</h2>
             </div>
             <div class="col-6">
                 <button type="button" name="button" class="p-button--neutral u-float--right" data-ng-click="vlanDetails.enterEditSummary()" data-ng-if="!vlanDetails.editSummary && vlanDetails.isSuperUser()">Edit</button>
@@ -358,8 +358,8 @@
     <section class="p-strip">
         <div class="row">
             <div class="col-12">
-                <h2>DHCP</h2>
-                <h4 data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack" class="u-off-screen"> High availability</h4>
+                <h2 class="p-heading--four">DHCP</h2>
+                <h4 data-ng-if="vlanDetails.primaryRack && vlanDetails.secondaryRack" class="u-off-screen p-heading--five"> High availability</h4>
             </div>
         </div>
         <div class="p-form p-form--stacked row">
@@ -420,7 +420,7 @@
     </section>
     <section class="p-strip">
         <div class="row">
-            <h2>Reserved ranges</h2>
+            <h2 class="p-heading--four">Reserved ranges</h2>
         </div>
         <div class="row">
             <maas-ip-ranges vlan="vlanDetails.vlan"></maas-ip-ranges>
@@ -429,7 +429,7 @@
     <section class="p-strip">
         <div class="row">
             <div class="col-12">
-                <h2>Subnets on this VLAN</h2>
+                <h2 class="p-heading--four">Subnets on this VLAN</h2>
             </div>
             <table>
                 <thead>

@@ -49,7 +49,7 @@
     <div class="p-strip is-bordered">
         <div class="row">
             <div id="proxy" class="col-8">
-                <h2>Proxy</h2>
+                <h2 class="p-heading--four">Proxy</h2>
                 <span class="u-text--loading" data-ng-if="loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span>
 
                 <form action="{% url 'settings_network' %}" method="post">
@@ -67,7 +67,7 @@
     <div class="p-strip is-bordered">
         <div class="row">
             <div id="dns" class="col-8">
-                <h2>DNS</h2>
+                <h2 class="p-heading--four">DNS</h2>
                 <form action="{% url 'settings_network' %}" method="post">
                     {% csrf_token %}
                     <ul class="p-list">
@@ -85,7 +85,7 @@
     <div class="p-strip is-bordered">
         <div class="row">
             <div id="ntp" class="col-8">
-                <h2>NTP</h2>
+                <h2 class="p-heading--four">NTP</h2>
                 <form action="{% url 'settings_network' %}" method="post">
                     {% csrf_token %}
                     <ul class="p-list">
@@ -103,7 +103,7 @@
     <div class="p-strip is-bordered">
         <div class="row">
             <div id="network" class="col-8">
-                <h2>Network Discovery</h2>
+                <h2 class="p-heading--four">Network Discovery</h2>
                 <form action="{% url 'settings_network' %}" method="post">
                     {% csrf_token %}
                     <ul class="p-list">

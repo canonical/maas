@@ -6,12 +6,11 @@
     z-index: 5;
 
     &__title {
-      @include vf-heading-2;
+      @include vf-heading-4;
       display: inline-block;
     }
 
     &__status {
-      @include vf-heading-5;
       color: $color-mid-dark;
       display: inline;
       margin-left: 1rem;

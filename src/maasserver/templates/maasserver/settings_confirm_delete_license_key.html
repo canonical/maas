@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="eight-col">
-    <h2>Are you sure you want to delete the license key '{{ license_key_to_delete.osystem }} / {{ license_key_to_delete.distro_series }}'?<br /></h2>
+    <h2 class="p-heading--four">Are you sure you want to delete the license key '{{ license_key_to_delete.osystem }} / {{ license_key_to_delete.distro_series }}'?<br /></h2>
     <p>This action is permanent and can not be undone.</p>
     <form method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />

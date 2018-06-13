@@ -454,8 +454,8 @@
     <section class="p-strip" data-ng-if="section.area === 'configuration'">
         <div class="row">
             <div class="col-10">
-                <h2 data-ng-if="!isController">{$ node.node_type_display $} configuration</h2>
-                <h2 data-ng-if="isController">Controller configuration</h2>
+                <h2 data-ng-if="!isController" class="p-heading--four">{$ node.node_type_display $} configuration</h2>
+                <h2 data-ng-if="isController" class="p-heading--four">Controller configuration</h2>
             </div>
             <div class="col-2">
                 <button class="p-button--neutral u-float--right"
@@ -537,7 +537,7 @@
         </form>
         <div class="row" data-ng-if="!isDevice">
             <div class="col-10">
-                <h2>Power configuration</h2>
+                <h2 class="p-heading--four">Power configuration</h2>
             </div>
             <div class="col-2">
                 <button class="p-button--neutral u-float--right"
@@ -614,7 +614,7 @@
     <section class="p-strip" data-ng-if="section.area === 'services'">
         <div class="row" data-ng-show="node.node_type == 3 || node.node_type == 4">
             <div class="col-12">
-                <h3>Region Controller</h3>
+                <h3 class="p-heading--four">Region Controller</h3>
                 <ul class="p-list-tree" aria-multiselectable="true" role="tablist">
                     <li class="p-list-tree__item">
                         <span>
@@ -649,7 +649,7 @@
         </div>
         <div class="row" data-ng-show="node.node_type == 2 || node.node_type == 4">
             <div class="col-12">
-                <h3>Rack Controller</h3>
+                <h3 class="p-heading--four">Rack Controller</h3>
                 <ul class="p-list-tree" aria-multiselectable="true" role="tablist">
                     <li class="p-list-tree__item p-list-tree__item--group">
                         <span>
@@ -854,7 +854,7 @@
                                 <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface)">
                                     <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
                                         <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
-                                            <h2 data-ng-click="cancel()" class="u-float--left">
+                                            <h2 data-ng-click="cancel()" class="u-float--left p-heading--four">
                                                 <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
                                                 <span data-ng-if="canAddVLAN(newInterface.parent)">Adding VLAN</span>
                                                 <span data-ng-if="isEditing(interface)">Editing {$ interface.name $}</span>
@@ -1115,7 +1115,7 @@
                                 <td class="p-table-expanding__panel col-12" data-ng-class="{ 'u-no-padding': !isShowingAdd() && !isEditing(interface) && !isShowingDeleteConfirm() && !isShowingAdd() || newInterface.saving }" data-ng-if="isInterfaceSelected(interface)">
                                     <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
                                         <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
-                                            <h2 data-ng-click="cancel()" class="u-float--left">
+                                            <h2 data-ng-click="cancel()" class="u-float--left p-heading--four">
                                                 <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
                                                 <span data-ng-if="canAddVLAN(newInterface.parent)">Adding VLAN</span>
                                                 <span data-ng-if="isEditing(interface)">Editing {$ interface.name $}</span>
@@ -1334,7 +1334,7 @@
                                 <td class="p-table-expanding__panel col-12">
                                     <div class="row" data-ng-if="windowWidth <= 768">
                                         <div class="col-8">
-                                            <h2 data-ng-click="cancel()" class="col-8">&lsaquo;&nbsp;&nbsp;
+                                            <h2 data-ng-click="cancel()" class="col-8 p-heading--four">&lsaquo;&nbsp;&nbsp;
                                             Create bond
                                             </h2>
                                         </div>
@@ -1520,7 +1520,7 @@
                                 <td class="p-table-expanding__panel col-12">
                                     <div class="row" data-ng-if="windowWidth <= 768">
                                         <div class="col-8">
-                                            <h2 data-ng-click="cancel()">&lsaquo;&nbsp;&nbsp;New interface</h2>
+                                            <h2 data-ng-click="cancel()" class="p-heading--four">&lsaquo;&nbsp;&nbsp;New interface</h2>
                                         </div>
                                         <div class="col-4">
                                             <div class="u-align--right">
@@ -1741,7 +1741,7 @@
             </div>
             <div class="row">
                 <div data-ng-controller="NodeFilesystemsController">
-                    <h3>Filesystems</h3>
+                    <h3 class="p-heading--four">Filesystems</h3>
                     <table class="p-table-expanding">
                         <thead>
                             <tr>
@@ -1784,7 +1784,7 @@
                                 <td class="p-table-expanding__panel col-12" data-ng-if="filesystem.$selected && (filesystemMode === 'unmount' || filesystemMode === 'delete')">
                                     <div class="row" data-ng-if="windowWidth <= 768">
                                         <div class="col-8">
-                                            <h2 data-ng-click="filesystemCancel()">
+                                            <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
                                                 <span data-ng-if="filesystemMode === 'unmount'">Unmounting {$ filesystem.name $}</span>
                                                 <span data-ng-if="filesystemMode === 'delete'">Removing {$ filesystem.name $}</span>
                                             </h2>
@@ -1827,7 +1827,7 @@
                                 <td class="p-table-expanding__panel col-12" data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
                                     <div class="row" data-ng-if="windowWidth <= 768">
                                         <div class="col-8">
-                                            <h2 data-ng-click="cancel()">Adding filesystem</h2>
+                                            <h2 data-ng-click="cancel()" class="p-heading--four">Adding filesystem</h2>
                                         </div>
                                         <div class="col-4">
                                             <div class="u-align--right">
@@ -1897,7 +1897,7 @@
                 </div>
                 <div data-ng-show="cachesets.length">
                     <div class="row">
-                        <h3>Available cache sets</h3>
+                        <h3 class="p-heading--four">Available cache sets</h3>
                     </div>
                     <div class="row">
                         <table class="p-table-expanding">
@@ -1926,7 +1926,7 @@
                                     <td class="p-table-expanding__panel col-12" data-ng-if="cachesetsMode === 'delete'">
                                         <div class="row" data-ng-if="windowWidth <= 768">
                                             <div class="col-8">
-                                                <h2 data-ng-click="filesystemCancel()">
+                                                <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
                                                     <span data-ng-if="cachesetsMode === 'delete'">Removing {$ cacheset.name $}</span>
                                                 </h2>
                                             </div>
@@ -1960,7 +1960,7 @@
                 </div>
                 <div class="p-strip">
                     <div class="row">
-                        <h3>Available disks and partitions</h3>
+                        <h3 class="p-heading--four">Available disks and partitions</h3>
                     </div>
                     <div class="row">
                         <table class="p-table-expanding p-table--disks-partitions col-12">
@@ -2081,7 +2081,7 @@
                                         data-ng-if="(availableMode === 'edit' || availableMode === 'format-mount' || availableMode === 'partition' || availableMode === 'logical-volume' || availableMode === 'delete') && item.$selected">
                                         <div class="row" data-ng-if="windowWidth <= 768">
                                             <div class="col-8">
-                                                <h2 data-ng-click="availableCancel(item)">
+                                                <h2 data-ng-click="availableCancel(item)" class="p-heading--four">
                                                     <span data-ng-if="availableMode === 'edit'">Editing {$ item.name $}</span>
                                                     <span data-ng-if="availableMode === 'format-mount'">Mount device</span>
                                                     <span data-ng-if="availableMode === 'partition'">Adding partition</span>
@@ -2426,7 +2426,7 @@
                                     <td class="p-table-expanding__panel col-12">
                                         <div class="row" data-ng-if="windowWidth <= 768">
                                             <div class="col-8">
-                                                <h2 data-ng-click="availableCancel()">Creating Bcache</h2>
+                                                <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating Bcache</h2>
                                             </div>
                                             <div class="col-4">
                                                 <button data-ng-click="availableCancel()" class="p-button">
@@ -2557,7 +2557,7 @@
                                     <td class="p-table-expanding__panel col-12">
                                         <div class="row" data-ng-if="windowWidth <= 768">
                                             <div class="col-8">
-                                                <h2 data-ng-click="availableCancel()">Creating RAID</h2>
+                                                <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating RAID</h2>
                                             </div>
                                             <div class="col-4">
                                                 <div class="u-align--right">
@@ -2692,7 +2692,7 @@
                                         <td class="p-table-expanding__panel col-12">
                                             <div class="row" data-ng-if="windowWidth <= 768">
                                                 <div class="col-8">
-                                                    <h2 data-ng-click="availableCancel()">Creating volume group</h2>
+                                                    <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating volume group</h2>
                                                 </div>
                                                 <div class="col-4">
                                                     <div class="u-align--right">
@@ -2798,7 +2798,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <h3>Used disks and partitions</h3>
+                    <h3 class="p-heading--four">Used disks and partitions</h3>
                 </div>
                 <div class="row">
                     <table class="p-table-expanding">

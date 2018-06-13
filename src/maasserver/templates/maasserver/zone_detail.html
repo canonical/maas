@@ -42,7 +42,7 @@ Physical zone: {{ zone.name }}
 
 {% block sidebar %}
 <div class="three-col last-col">
-    <h3>Actions</h3>
+    <h3 class="p-heading--four">Actions</h3>
     {% if user.is_superuser %}
     <a href="{% url 'zone-edit' zone.name %}" class="button--secondary button--inline">Edit zone</a>
     {% if not zone.is_default %}

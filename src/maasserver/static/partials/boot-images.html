@@ -85,7 +85,7 @@
 
         <div class="row p-divider" data-ng-if="isSuperUser() && !source.tooMany && showSelections()">
             <div class="col-6 p-divider__block">
-                <h3>Images</h3>
+                <h3 class="p-heading--four">Images</h3>
                 <div class="row">
                     <ul class="col-3 p-list">
                         <li  class="p-list__item" data-ng-repeat="release in getUbuntuLTSReleases() | orderBy:'-title'">
@@ -102,7 +102,7 @@
                 </div>
             </div>
             <div class="col-6 p-divider__block">
-                <h3>Architectures</h3>
+                <h3 class="p-heading--four">Architectures</h3>
                 <ul class="p-list is-split">
                     <li class="p-list__item" data-ng-repeat="arch in getArchitectures() | orderBy:'title'">
                         <input type="checkbox" id="{$ arch.name $}" data-ng-checked="isSelected('arches', arch)" data-ng-click="toggleSelection('arches', arch)" data-ng-disabled="saving">
@@ -175,7 +175,7 @@
 <div data-ng-if="ubuntu_core.images.length" data-ng-class="{'p-strip': design === 'page'}">
     <div class="row">
         <div class="col-8">
-            <h2>Ubuntu Core</h2>
+            <h2 class="p-heading--four">Ubuntu Core</h2>
             <div data-ng-if="isSuperUser() && !source.tooMany">
                 <span data-ng-repeat="image in ubuntu_core.images | orderBy:['-title']">
                     <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleUbuntuCoreSelection(image)" data-ng-disabled="saving">
@@ -222,7 +222,7 @@
 
 <div data-ng-if="design === 'page' && other.images.length && !source.isNew" data-ng-class="{'p-strip': design === 'page'}">
     <div class="row">
-        <h2>Other Images</h2>
+        <h2 class="p-heading--four">Other Images</h2>
         <div data-ng-if="isSuperUser() && !source.tooMany">
             <div class="col-3" data-ng-repeat="image in other.images | orderBy:['-title']">
                 <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleOtherSelection(image)" data-ng-disabled="saving">
@@ -272,7 +272,7 @@
 </div>
 <div class="row" data-ng-if="design === 'page' && generatedImages.length">
     <div class="wrapper--inner">
-        <h2>Generated Images</h2>
+        <h2 class="p-heading--four">Generated Images</h2>
         <table class="p-table-expanding p-table--images">
             <thead>
                 <tr class="p-table__row">
@@ -301,7 +301,7 @@
                         <button class="p-button--negative" aria-label="Remove" data-ng-click="quickRemove(image)">Remove image</button>
                     </td>
                     <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
-                        <h2 data-ng-click="cancelRemove()" class="u-float--left">Remove image</h2>
+                        <h2 data-ng-click="cancelRemove()" class="u-float--left p-heading--four">Remove image</h2>
                         <p><i class="p-icon--warning">Warning: </i> Are you sure you want to remove this image?</p>
                         <div class="u-float--right">
                             <a class="p-button--neutral is-inline" type="button" data-ng-click="cancelRemove()">Cancel</a>
@@ -315,7 +315,7 @@
 </div>
 <div data-ng-if="design === 'page' && customImages.length" data-ng-class="{'p-strip': design === 'page'}">
     <div class="row">
-        <h2>Custom Images</h2>
+        <h2 class="p-heading--four">Custom Images</h2>
         <table class="p-table-expanding p-table--images">
             <thead>
                 <tr class="p-table__row">
@@ -344,7 +344,7 @@
                         <a aria-label="Remove" data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
                     </td>
                     <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
-                        <h2 data-ng-click="cancelRemove()">Remove image</h2>
+                        <h2 class="p-heading--four" data-ng-click="cancelRemove()">Remove image</h2>
                         <p><i class="p-icon--warning">Warning: </i> Are you sure you want to remove this image?</p>
                         <button class="p-button--neutral is-inline" type="button" data-ng-click="cancelRemove()">Cancel</button>
                         <button class="p-button--negative is-inline" data-ng-click="confirmRemove(image)">Remove</button>

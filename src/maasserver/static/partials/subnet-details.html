@@ -72,7 +72,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="col-8">
-                    <h2 class="u-float--left">Subnet summary</h2>
+                    <h2 class="u-float--left p-heading--four">Subnet summary</h2>
                 </div>
                 <div class="col-4">
                     <div class="u-align--right" data-ng-if="isSuperUser()">
@@ -271,7 +271,7 @@
     <section class="p-strip" window-width>
         <div class="row">
             <div class="col-12">
-                <h2>Static Routes</h2>
+                <h2 class="p-heading--four">Static Routes</h2>
             </div>
         </div>
         <div class="row">
@@ -310,7 +310,7 @@
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
                             <div data-ng-if="windowWidth <= 768">
-                                <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left">Remove {$ staticRoute.gateway_ip $}</h2>
+                                <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left p-heading--four">Remove {$ staticRoute.gateway_ip $}</h2>
                                 <i data-ng-click="staticRouteCancelDelete()" class="p-icon--close u-float--right"></i>
                             </div>
                             <hr />
@@ -330,7 +330,7 @@
                             <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
                                 save-on-blur="false" after-save="ipRangeClearEditMode">
                                 <div data-ng-if="windowWidth <= 768">
-                                    <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left">Editing {$ staticRoute.gateway_ip $}</h2>
+                                    <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left p-heading--four">Editing {$ staticRoute.gateway_ip $}</h2>
                                     <i data-ng-click="staticRouteToggleEditMode(staticRoute)" class="p-icon--close u-float--right"></i>
                                 </div>
                                 <div class="row">
@@ -372,7 +372,7 @@
                             <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
                                 table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute">
                                 <div data-ng-if="windowWidth <= 768">
-                                    <h2 data-ng-click="cancelAddStaticRoute()" class="u-float--left">Adding static route</h2>
+                                    <h2 data-ng-click="cancelAddStaticRoute()" class="u-float--left p-heading--four">Adding static route</h2>
                                     <i data-ng-click="cancelAddStaticRoute()" class="p-icon--close u-float--right"></i>
                                 </div>
                                 <div class="row">
@@ -417,7 +417,7 @@
     <section class="p-strip">
         <div class="row">
             <div class="col-12">
-                <h2>Utilisation</h2>
+                <h2 class="p-heading--four">Utilisation</h2>
             </div>
         </div>
         <div class="row">
@@ -458,7 +458,7 @@
     <section class="p-strip">
         <div class="row">
             <div class="col-12">
-                <h2>Reserved</h2>
+                <h2 class="p-heading--four">Reserved</h2>
             </div>
         </div>
         <div class="row">
@@ -468,7 +468,7 @@
     <section class="p-strip">
         <div class="row">
             <div class="col-6">
-                <h2>Used</h2>
+                <h2 class="p-heading--four">Used</h2>
             </div>
             <div class="col-6">
                 <div class="search ng-hide">

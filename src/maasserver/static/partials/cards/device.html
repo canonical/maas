@@ -2,10 +2,10 @@
   <h2 class="p-heading--four">Overview</h2>
 </header>
 <ul class="p-list">
-  <li class="p-list__item" data-ng-if="node.owner">Owner: {$ node.owner $}</li>
-  <li class="p-list__item" data-ng-if="!node.owner">Owner: <span>(unassigned)</span></li>
-  <li class="p-list__item">Domain: {$ header.domain.selected.name $}</li>
-  <li class="p-list__item">Zone: {$ summary.zone.selected.name $}</li>
+  <li class="p-list__item u-no-margin--top" data-ng-if="node.owner">Owner: {$ node.owner $}</li>
+  <li class="p-list__item u-no-margin--top" data-ng-if="!node.owner">Owner: <span>(unassigned)</span></li>
+  <li class="p-list__item u-no-margin--top">Domain: {$ header.domain.selected.name $}</li>
+  <li class="p-list__item u-no-margin--top">Zone: {$ summary.zone.selected.name $}</li>
 </ul>
 <footer class="p-card__footer">
   <p><a data-ng-click="section.area = 'configuration'">Edit &rsaquo;</a></p>

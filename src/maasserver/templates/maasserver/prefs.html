@@ -12,7 +12,7 @@
         <div class="p-strip is-bordered">
             <div class="row">
                 <div class="col-8" id="api-keys" data-maas-pref-keys>
-                    <h3>MAAS keys</h3>
+                    <h3 class="p-heading--four">MAAS keys</h3>
                     <p>You'll need a separate API key for each Juju environment.</p>
                     <ul class="p-list" data-maas-pref-keys-inject="key_li">
                         {% for token in user.userprofile.get_authorisation_tokens %}
@@ -45,7 +45,7 @@
         <div class="p-strip is-bordered">
             <div class="row">
                 <div id="ssh-keys" class="col-8" data-ng-controller="PreferencesController">
-                    <h3>SSH keys</h3>
+                    <h3 class="p-heading--four">SSH keys</h3>
                     <span class="u-text--loading" data-ng-if="loading"><i class="p-icon--spinner p-icon--spinner"></i> Loading...</span>
                 </div>
             </div>
@@ -54,7 +54,7 @@
         <div class="p-strip is-bordered">
             <div class="row">
                 <div class="col-8" id="ssl-keys">
-                    <h3>SSL keys</h3>
+                    <h3 class="p-heading--four">SSL keys</h3>
                     <ul class="p-list">
                         {% for key in user.sslkey_set.all %}
                         <li class="u-equal-height js-bundle row">
@@ -78,7 +78,7 @@
     <section id="profile" class="p-strip is-bordered">
         <div class="row">
             <div class="col-8">
-                <h2>User details</h2>
+                <h2 class="p-heading--four">User details</h2>
                 <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
                     <ul class="p-list">
                         {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
@@ -93,7 +93,7 @@
     <section id="password" class="p-strip">
         <div class="row">
             <div class="col-8">
-                <h2>Password</h2>
+                <h2 class="p-heading--four">Password</h2>
                 <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
                     <ul class="p-list">
                         {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}

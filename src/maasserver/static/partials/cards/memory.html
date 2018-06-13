@@ -1,7 +1,7 @@
 <header class="p-card__header">
   <h2 class="p-heading--four">Memory</h3>
-  <h3 class="p-heading--three" data-ng-if="node.memory > 0"><strong>{$ node.memory $} GiB</strong></h2>
-  <h3 class="p-heading--three" data-ng-if="node.memory == 0"><strong>Unknown</strong></h2>
+  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.memory > 0"><strong>{$ node.memory $} GiB</strong></h2>
+  <h3 class="p-heading--four u-no-margin--top" data-ng-if="node.memory == 0"><strong>Unknown</strong></h2>
 </header>
 <div data-ng-controller="NodeResultsController">
   <div data-ng-repeat="test_result in testing_results">
