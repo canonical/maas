@@ -33,24 +33,8 @@ class Options(logger.VerbosityOptions):
     """Command line options for `rackd`."""
 
 
-class ProvisioningServerBase:
-    """Base service class."""
-
-    def _loadSettings(self):
-        # Load the settings from rackd.conf.
-        with ClusterConfiguration.open() as config:
-            settings.DEBUG = config.debug
-        # Debug mode is always on in the development environment.
-        if is_dev_environment():
-            settings.DEBUG = True
-
-    def _configureLogging(self, verbosity: int):
-        # Get something going with the logs.
-        logger.configure(verbosity, logger.LoggingMode.TWISTD)
-
-
 @implementer(IServiceMaker, IPlugin)
-class ProvisioningServiceMaker(ProvisioningServerBase):
+class ProvisioningServiceMaker:
     """Create a service for the Twisted plugin."""
 
     options = Options
@@ -58,14 +42,6 @@ class ProvisioningServiceMaker(ProvisioningServerBase):
     def __init__(self, name, description):
         self.tapname = name
         self.description = description
-
-    def _makeHTTPImageService(self, worker_count):
-        from provisioningserver.rackdservices.http_image_service import (
-            HTTPImageService,
-        )
-        image_service = HTTPImageService(reactor, worker_count=worker_count)
-        image_service.setName("http_image_service")
-        return image_service
 
     def _makeTFTPService(
             self, tftp_root, tftp_port, rpc_service):
@@ -167,8 +143,7 @@ class ProvisioningServiceMaker(ProvisioningServerBase):
         dns_service.setName("dns")
         return dns_service
 
-    def _makeServices(
-            self, tftp_root, tftp_port, http_worker_count, clock=reactor):
+    def _makeServices(self, tftp_root, tftp_port, clock=reactor):
         # Several services need to make use of the RPC service.
         rpc_service = self._makeRPCService()
         yield rpc_service
@@ -183,14 +158,25 @@ class ProvisioningServiceMaker(ProvisioningServerBase):
         yield self._makeNetworkTimeProtocolService(rpc_service)
         yield self._makeDNSService(rpc_service)
         # The following are network-accessible services.
-        yield self._makeHTTPImageService(http_worker_count)
         yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)
+
+    def _loadSettings(self):
+        # Load the settings from rackd.conf.
+        with ClusterConfiguration.open() as config:
+            settings.DEBUG = config.debug
+        # Debug mode is always on in the development environment.
+        if is_dev_environment():
+            settings.DEBUG = True
 
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.
         # In other words, this makes crochet.setup() a no-op.
         import crochet
         crochet.no_setup()
+
+    def _configureLogging(self, verbosity: int):
+        # Get something going with the logs.
+        logger.configure(verbosity, logger.LoggingMode.TWISTD)
 
     def makeService(self, options, clock=reactor):
         """Construct the MAAS Cluster service."""
@@ -209,65 +195,9 @@ class ProvisioningServiceMaker(ProvisioningServerBase):
         with ClusterConfiguration.open() as config:
             tftp_root = config.tftp_root
             tftp_port = config.tftp_port
-            http_worker_count = config.http_workers
 
         from provisioningserver import services
-        for service in self._makeServices(
-                tftp_root, tftp_port, http_worker_count, clock=clock):
+        for service in self._makeServices(tftp_root, tftp_port, clock=clock):
             service.setServiceParent(services)
 
         return services
-
-
-@implementer(IServiceMaker, IPlugin)
-class ProvisioningHTTPServiceMaker(ProvisioningServerBase):
-    """Create HTTP service for the Twisted plugin."""
-
-    options = Options
-
-    def __init__(self, name, description):
-        self.tapname = name
-        self.description = description
-
-    def _makeHTTPService(self, port, path, prefix=None):
-        from twisted.internet.endpoints import AdoptedStreamServerEndpoint
-        from provisioningserver.http import (
-            create_reuse_socket,
-            EndpointService,
-        )
-
-        # Create the HTTP socket binded to the provided port.
-        s = create_reuse_socket()
-        s.bind(('::', port))
-
-        # Use a backlog of 50, which seems to be fairly common.
-        s.listen(50)
-
-        # Adopt this socket into Twisted's reactor.
-        site_endpoint = AdoptedStreamServerEndpoint(
-            reactor, s.fileno(), s.family)
-        site_endpoint.port = port  # Make it easy to get the port number.
-        site_endpoint.socket = s  # Prevent garbage collection.
-
-        # Setup the endpoing with the resource path.
-        service = EndpointService(
-            resource_root=path, endpoint=site_endpoint, prefix=prefix)
-        service.setName("http_endpoint")
-        return service
-
-    def makeService(self, options, clock=reactor):
-        """Construct the MAAS Cluster HTTP service."""
-        register_sigusr2_thread_dump_handler()
-        add_patches_to_twisted()
-
-        self._loadSettings()
-        if settings.DEBUG:
-            # Always log at debug level in debug mode.
-            self._configureLogging(3)
-        else:
-            self._configureLogging(options["verbosity"])
-
-        with ClusterConfiguration.open() as config:
-            tftp_root = config.tftp_root
-
-        return self._makeHTTPService(5248, tftp_root, 'images')

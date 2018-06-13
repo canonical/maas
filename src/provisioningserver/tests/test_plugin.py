@@ -18,19 +18,14 @@ from provisioningserver import (
     settings,
 )
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.http import EndpointService
 from provisioningserver.plugin import (
     Options,
-    ProvisioningHTTPServiceMaker,
     ProvisioningServiceMaker,
 )
 from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
 from provisioningserver.rackdservices.dns import RackDNSService
-from provisioningserver.rackdservices.http_image_service import (
-    HTTPImageService,
-)
 from provisioningserver.rackdservices.image_download_service import (
     ImageDownloadService,
 )
@@ -53,12 +48,10 @@ from provisioningserver.rackdservices.tftp import (
 from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
 from provisioningserver.rpc.clusterservice import ClusterClientCheckerService
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.utils.twisted import reducedWebLogFormatter
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
     Equals,
-    Is,
     IsInstance,
     KeysEqual,
     MatchesAll,
@@ -66,8 +59,6 @@ from testtools.matchers import (
     Not,
 )
 from twisted.application.service import MultiService
-from twisted.python.filepath import FilePath
-from twisted.web.server import Site
 
 
 class TestOptions(MAASTestCase):
@@ -115,7 +106,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "dns",
-            "rpc", "rpc-ping", "tftp", "http_image_service", "service_monitor",
+            "rpc", "rpc-ping", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
@@ -140,7 +131,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "dns",
-            "rpc", "rpc-ping", "tftp", "http_image_service", "service_monitor",
+            "rpc", "rpc-ping", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
@@ -255,65 +246,3 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options, clock=None)
         lease_socket_service = service.getServiceNamed("lease_socket_service")
         self.assertIsInstance(lease_socket_service, LeaseSocketService)
-
-    def test_http_image_service(self):
-        options = Options()
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options, clock=None)
-        lease_socket_service = service.getServiceNamed("http_image_service")
-        self.assertIsInstance(lease_socket_service, HTTPImageService)
-
-
-class TestProvisioningHTTPServiceMaker(MAASTestCase):
-    """Tests for `provisioningserver.plugin.ProvisioningHTTPServiceMaker`."""
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def setUp(self):
-        super(TestProvisioningHTTPServiceMaker, self).setUp()
-        self.useFixture(ClusterConfigurationFixture())
-        self.patch_autospec(logger, "configure")
-
-    def test_init(self):
-        service_maker = ProvisioningHTTPServiceMaker("Harry", "Hill")
-        self.assertEqual("Harry", service_maker.tapname)
-        self.assertEqual("Hill", service_maker.description)
-
-    def test_makeService_not_in_debug(self):
-        self.patch(settings, "DEBUG", False)
-        options = Options()
-        service_maker = ProvisioningHTTPServiceMaker("Harry", "Hill")
-        self.patch(service_maker, '_loadSettings')
-        service = service_maker.makeService(options, clock=None)
-        self.assertIsInstance(service, EndpointService)
-        self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD))
-
-    def test_makeService_in_debug(self):
-        self.patch(settings, "DEBUG", True)
-        options = Options()
-        service_maker = ProvisioningHTTPServiceMaker("Harry", "Hill")
-        self.patch(service_maker, '_loadSettings')
-        service = service_maker.makeService(options, clock=None)
-        self.assertIsInstance(service, EndpointService)
-        self.assertThat(
-            logger.configure, MockCalledOnceWith(
-                3, logger.LoggingMode.TWISTD))
-
-    def test__makeHTTPImageService(self):
-        options = Options()
-        service_maker = ProvisioningHTTPServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options, clock=None)
-        self.assertIsInstance(service, EndpointService)
-        self.assertIsInstance(service.site, Site)
-        self.assertThat(service.site, MatchesStructure(
-            _logFormatter=Is(reducedWebLogFormatter)))
-        resource = service.site.resource
-        root = resource.getChildWithDefault(b"images", request=None)
-        self.assertThat(root, IsInstance(FilePath))
-
-        with ClusterConfiguration.open() as config:
-            resource_root = FilePath(config.tftp_root)
-
-        self.assertEqual(resource_root, root)

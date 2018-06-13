@@ -34,6 +34,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     deferred,
 )
+from tftp.backend import FilesystemReader
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
@@ -329,9 +330,5 @@ class WindowsPXEBootMethod(BootMethod):
 
     def output_static(self, kernel_params, path):
         """Outputs the static file based on the version of Windows."""
-        # Delayed import; prevent twisted reactor from being
-        # installed to early.
-        from tftp.backend import FilesystemReader
-
         actual_path = self.get_resource_path(kernel_params, path)
         return FilesystemReader(FilePath(actual_path))
