@@ -307,6 +307,7 @@ FAILED_STATUSES = list(NODE_FAILURE_STATUS_TRANSITIONS.values())
 # an ephemeral environment of the latest LTS, run some scripts
 # provided via user data, and report back success/fail status.
 COMMISSIONING_LIKE_STATUSES = [
+    NODE_STATUS.NEW,
     NODE_STATUS.COMMISSIONING,
     NODE_STATUS.DISK_ERASING,
     NODE_STATUS.ENTERING_RESCUE_MODE,

@@ -42,10 +42,6 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 
 ### some utility functions ####
-aptget() {
-    apt-get --assume-yes -q "$@" </dev/null
-}
-
 add_bin() {
     cat > "${BIN_D}/$1"
     chmod "${2:-755}" "${BIN_D}/$1"
@@ -91,10 +87,6 @@ find_creds_cfg() {
 # imports it.
 prep_maas_api_helper() {
     local creds=""
-
-    # Update apt cache and install libraries required by maas_api_helper.py
-    aptget update
-    aptget install python3-yaml python3-oauthlib
 
     find_creds_cfg || fail "Failed to find credential config"
     creds="$_RET"

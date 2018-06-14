@@ -148,6 +148,18 @@ def make_scripts(
         ]
 
 
+def make_fake_os_path_exists(testcase, exists=True):
+    orig_os_path_exists = os.path.exists
+
+    def fake_os_path_exists(path):
+        if path == '/var/cache/apt/pkgcache.bin':
+            return exists
+        return orig_os_path_exists(path)
+
+    testcase.patch(maas_run_remote_scripts.os.path, 'exists').side_effect = (
+        fake_os_path_exists)
+
+
 class TestInstallDependencies(MAASTestCase):
 
     def setUp(self):
@@ -238,6 +250,7 @@ class TestInstallDependencies(MAASTestCase):
     def test_install_dependencies_apt(self):
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
+        make_fake_os_path_exists(self)
         scripts_dir = self.useFixture(TempDirectory()).path
         scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         packages = [factory.make_name('apt_pkg') for _ in range(3)]
@@ -256,10 +269,35 @@ class TestInstallDependencies(MAASTestCase):
             self.assertFalse(os.path.exists(script['stdout_path']))
             self.assertFalse(os.path.exists(script['stderr_path']))
 
+    def test_install_dependencies_runs_apt_get_update_when_required(self):
+        mock_run_and_check = self.patch(
+            maas_run_remote_scripts, 'run_and_check')
+        make_fake_os_path_exists(self, False)
+        scripts_dir = self.useFixture(TempDirectory()).path
+        scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
+        packages = [factory.make_name('apt_pkg') for _ in range(3)]
+        for script in scripts:
+            script['packages'] = {'apt': packages}
+
+        self.assertTrue(install_dependencies(scripts))
+        self.assertThat(mock_run_and_check, MockAnyCall(
+            ['apt-get', '-qy', 'update'], scripts, True, True))
+        for script in scripts:
+            self.assertThat(self.mock_output_and_send, MockAnyCall(
+                'Installing apt packages for %s' % script['msg_name'],
+                True, status='INSTALLING'))
+            self.assertThat(mock_run_and_check, MockAnyCall(
+                ['apt-get', '-qy', 'install'] + packages, scripts, True, True))
+            # Verify cleanup
+            self.assertFalse(os.path.exists(script['combined_path']))
+            self.assertFalse(os.path.exists(script['stdout_path']))
+            self.assertFalse(os.path.exists(script['stderr_path']))
+
     def test_install_dependencies_apt_errors(self):
         mock_run_and_check = self.patch(
             maas_run_remote_scripts, 'run_and_check')
         mock_run_and_check.return_value = False
+        make_fake_os_path_exists(self)
         scripts_dir = self.useFixture(TempDirectory()).path
         scripts = make_scripts(scripts_dir=scripts_dir, with_output=False)
         packages = [factory.make_name('apt_pkg') for _ in range(3)]

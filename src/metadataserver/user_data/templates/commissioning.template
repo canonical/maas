@@ -31,9 +31,6 @@ main() {
     # the BMC username and password.
     signal WORKING "Starting [maas-bmc-autodetect]" || exit 1
 
-    # Install IPMI deps
-    aptget install freeipmi-tools openipmi ipmitool sshpass
-
     # Load IPMI kernel modules
     modprobe ipmi_msghandler
     modprobe ipmi_devintf

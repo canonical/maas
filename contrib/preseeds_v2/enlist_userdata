@@ -1,15 +1,5 @@
 #cloud-config
 
-rsyslog:
-   remotes:
-     maas: "{{syslog_host_port}}"
-
-power_state:
-   delay: now
-   mode: poweroff
-   timeout: 1800
-   condition: test ! -e /tmp/block-poweroff
-
 misc_bucket:
  - &maas_enlist |
    # Bring up all interfaces.
@@ -167,8 +157,5 @@ misc_bucket:
    fi
 
 
-
-packages: [ freeipmi-tools, openipmi, ipmitool, archdetect-deb, sshpass ]
-output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
  - [ sh, -c, *maas_enlist ]

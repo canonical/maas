@@ -3845,8 +3845,9 @@ class TestNode(MAASServerTestCase):
         # The following table shows the expected boot "purpose" for each set
         # of node parameters.
         options = [
-            ("poweroff", {"status": NODE_STATUS.NEW}),
+            ("commissioning", {"status": NODE_STATUS.NEW}),
             ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
+            ("commissioning", {"status": NODE_STATUS.TESTING}),
             ("commissioning", {"status": NODE_STATUS.DISK_ERASING}),
             ("poweroff", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
             ("poweroff", {"status": NODE_STATUS.MISSING}),

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.compose_preseed`."""
@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from maasserver.compose_preseed import (
+    compose_enlistment_preseed,
     compose_preseed,
     get_apt_proxy,
 )
@@ -236,7 +237,7 @@ class TestComposePreseed(MAASServerTestCase):
         Config.objects.set_config("enable_http_proxy", False)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
-        self.assertNotIn('apt_proxy', preseed)
+        self.assertNotIn('proxy', preseed['apt'])
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         rack_controller = factory.make_RackController()
@@ -255,7 +256,6 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS'],
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
-        self.assertEqual(apt_proxy, preseed['apt_proxy'])
         self.assertThat(
             preseed['reporting']['maas'],
             KeysEqual(
@@ -447,6 +447,20 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(token.key, reporting_dict['token_key'])
         self.assertEqual(token.secret, reporting_dict['token_secret'])
 
+    def test_compose_preseed_for_commissioning_includes_packages(self):
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+        self.assertItemsEqual([
+            'python3-yaml', 'python3-oauthlib', 'freeipmi-tools', 'ipmitool',
+            'sshpass'], preseed.get('packages'))
+
     def test_compose_preseed_with_curtin_installer(self):
         rack_controller = factory.make_RackController(url='')
         node = factory.make_Node(
@@ -479,7 +493,6 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(
             absolute_reverse('curtin-metadata', default_region_ip=region_ip),
             preseed['datasource']['MAAS']['metadata_url'])
-        self.assertEqual(expected_apt_proxy, preseed['apt_proxy'])
         self.assertSystemInfo(preseed)
         self.assertAptConfig(preseed, expected_apt_proxy)
 
@@ -500,7 +513,7 @@ class TestComposePreseed(MAASServerTestCase):
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 
-        self.assertNotIn('apt_proxy', preseed)
+        self.assertNotIn('proxy', preseed['apt'])
 
     # LP: #1743966 - Test for archive key work around
     def test_compose_preseed_for_curtin_and_trusty_aptsources(self):
@@ -517,10 +530,12 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
+        apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 
         self.assertIn('apt_sources', preseed)
+        self.assertEqual(apt_proxy, preseed['apt_proxy'])
 
     # LP: #1743966 - Test for archive key work around
     def test_compose_preseed_for_curtin_xenial_not_aptsources(self):
@@ -541,6 +556,25 @@ class TestComposePreseed(MAASServerTestCase):
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 
         self.assertNotIn('apt_sources', preseed)
+
+    def test_compose_preseed_for_curtin_not_packages(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING, osystem='ubuntu',
+            distro_series='xenial')
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        self.useFixture(RunningClusterRPCFixture())
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.CURTIN, node))
+
+        self.assertNotIn('packages', preseed)
 
     def test_compose_preseed_with_osystem_compose_preseed(self):
         os_name = factory.make_name('os')
@@ -607,3 +641,63 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertRaises(
             NoConnectionsAvailable,
             compose_preseed, PRESEED_TYPE.CURTIN, node)
+
+    def test_compose_enlistment_preseed(self):
+        rack_controller = factory.make_RackController()
+        url = factory.make_simple_http_url()
+        apt_proxy = get_apt_proxy(rack_controller)
+        preseed = yaml.safe_load(compose_enlistment_preseed(rack_controller, {
+            'metadata_enlist_url': url,
+            'syslog_host_port': url,
+            }))
+        self.assertDictEqual(
+            {'MAAS': {'metadata_url': url}}, preseed['datasource'])
+        self.assertTrue(preseed['manage_etc_hosts'])
+        self.assertDictEqual({'remotes': {'maas': url}}, preseed['rsyslog'])
+        self.assertDictEqual({
+            'delay': 'now',
+            'mode': 'poweroff',
+            'timeout': 1800,
+            'condition': 'test ! -e /tmp/block-poweroff',
+            }, preseed['power_state'])
+        self.assertItemsEqual([
+            'python3-yaml', 'python3-oauthlib', 'freeipmi-tools', 'ipmitool',
+            'sshpass'], preseed['packages'])
+        self.assertSystemInfo(preseed)
+        default = PackageRepository.get_main_archive().url
+        ports = PackageRepository.get_ports_archive().url
+        self.assertThat(preseed, ContainsDict({
+            'apt': ContainsDict({
+                'preserve_sources_list': Equals(False),
+                'primary': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["amd64", "i386"]),
+                        "uri": Equals(default),
+                    }),
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "uri": Equals(ports),
+                    }),
+                ]),
+                'proxy': Equals(apt_proxy),
+                'security': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["amd64", "i386"]),
+                        "uri": Equals(default),
+                    }),
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "uri": Equals(ports),
+                    }),
+                ]),
+            })
+        }))
+
+    def test_compose_enlistment_preseed_has_header(self):
+        rack_controller = factory.make_RackController()
+        url = factory.make_simple_http_url()
+        preseed = compose_enlistment_preseed(rack_controller, {
+            'metadata_enlist_url': url,
+            'syslog_host_port': url,
+            })
+        self.assertThat(preseed, StartsWith("#cloud-config\n"))

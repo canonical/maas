@@ -138,97 +138,121 @@ def run_and_check(cmd, scripts, send_result=True, sudo=False):
         return True
 
 
+def _install_apt_dependencies(packages, scripts, send_result=True):
+    for script in scripts:
+        output_and_send(
+            'Installing apt packages for %s' % script['msg_name'],
+            send_result, status='INSTALLING', **script['args'])
+
+    # Check if apt-get update needs to be run
+    if not os.path.exists('/var/cache/apt/pkgcache.bin'):
+        if not run_and_check(
+                ['apt-get', '-qy', 'update'], scripts, send_result, True):
+            return False
+
+    if not run_and_check(
+            ['apt-get', '-qy', 'install'] + packages, scripts, send_result,
+            True):
+        return False
+
+    return True
+
+
+def _install_snap_dependencies(packages, scripts, send_result=True):
+    for script in scripts:
+        output_and_send(
+            'Installing snap packages for %s' % script['msg_name'],
+            send_result, status='INSTALLING', **script['args'])
+    for pkg in packages:
+        if isinstance(pkg, str):
+            cmd = ['snap', 'install', pkg]
+        elif isinstance(pkg, dict):
+            cmd = ['snap', 'install', pkg['name']]
+            if 'channel' in pkg:
+                cmd.append('--%s' % pkg['channel'])
+            if 'mode' in pkg:
+                if pkg['mode'] == 'classic':
+                    cmd.append('--classic')
+                else:
+                    cmd.append('--%smode' % pkg['mode'])
+        else:
+            # The ScriptForm validates that each snap package should be a
+            # string or dictionary. This should never happen but just
+            # incase it does...
+            continue
+        if not run_and_check(cmd, scripts, send_result, True):
+            return False
+
+    return True
+
+
+def _install_url_dependencies(packages, scripts, send_result=True):
+    for script in scripts:
+        output_and_send(
+            'Downloading and extracting URLs for %s' % script['msg_name'],
+            send_result, status='INSTALLING', **script['args'])
+    path_regex = re.compile("^Saving to: ['‘](?P<path>.+)['’]$", re.M)
+    os.makedirs(script['download_path'], exist_ok=True)
+    for pkg in packages:
+        # wget supports multiple protocols, proxying, proper error message,
+        # handling user input without protocol information, and getting the
+        # filename from the request. Shell out and capture its output
+        # instead of implementing all of that here.
+        if not run_and_check(
+                ['wget', pkg, '-P', scripts[0]['download_path']], scripts,
+                send_result):
+            return False
+
+        # Get the filename from the captured output incase the URL does not
+        # include a filename. e.g the URL 'ubuntu.com' will create an
+        # index.html file.
+        with open(scripts[0]['combined_path'], 'r') as combined:
+            m = path_regex.findall(combined.read())
+            if m != []:
+                filename = m[-1]
+            else:
+                # Unable to find filename in output.
+                continue
+
+        if tarfile.is_tarfile(filename):
+            with tarfile.open(filename, 'r|*') as tar:
+                tar.extractall(script['download_path'])
+        elif zipfile.is_zipfile(filename):
+            with zipfile.ZipFile(filename, 'r') as z:
+                z.extractall(script['download_path'])
+        elif filename.endswith('.deb'):
+            # Allow dpkg to fail incase it just needs dependencies
+            # installed.
+            run_and_check(['dpkg', '-i', filename], scripts, False, True)
+            if not run_and_check(
+                    ['apt-get', 'install', '-qyf'], scripts, send_result,
+                    True):
+                return False
+        elif filename.endswith('.snap'):
+            if not run_and_check(
+                    ['snap', filename], scripts, send_result, True):
+                return False
+
+    return True
+
+
 def install_dependencies(scripts, send_result=True):
     """Download and install any required packaged for the script to run.
 
     If given a list of scripts assumes the package set is the same and signals
     installation status for all script results."""
     packages = scripts[0].get('packages', {})
-    apt = packages.get('apt')
-    snap = packages.get('snap')
-    url = packages.get('url')
+    installers = {
+        'apt': _install_apt_dependencies,
+        'snap': _install_snap_dependencies,
+        'url': _install_url_dependencies,
+    }
 
-    if apt is not None:
-        for script in scripts:
-            output_and_send(
-                'Installing apt packages for %s' % script['msg_name'],
-                send_result, status='INSTALLING', **script['args'])
-        if not run_and_check(
-                ['apt-get', '-qy', 'install'] + apt, scripts, send_result,
-                True):
-            return False
-
-    if snap is not None:
-        for script in scripts:
-            output_and_send(
-                'Installing snap packages for %s' % script['msg_name'],
-                send_result, status='INSTALLING', **script['args'])
-        for pkg in snap:
-            if isinstance(pkg, str):
-                cmd = ['snap', 'install', pkg]
-            elif isinstance(pkg, dict):
-                cmd = ['snap', 'install', pkg['name']]
-                if 'channel' in pkg:
-                    cmd.append('--%s' % pkg['channel'])
-                if 'mode' in pkg:
-                    if pkg['mode'] == 'classic':
-                        cmd.append('--classic')
-                    else:
-                        cmd.append('--%smode' % pkg['mode'])
-            else:
-                # The ScriptForm validates that each snap package should be a
-                # string or dictionary. This should never happen but just
-                # incase it does...
-                continue
-            if not run_and_check(cmd, scripts, send_result, True):
+    for t, installer in installers.items():
+        pkgs = packages.get(t)
+        if pkgs is not None:
+            if not installer(pkgs, scripts, send_result):
                 return False
-
-    if url is not None:
-        for script in scripts:
-            output_and_send(
-                'Downloading and extracting URLs for %s' % script['msg_name'],
-                send_result, status='INSTALLING', **script['args'])
-        path_regex = re.compile("^Saving to: ['‘](?P<path>.+)['’]$", re.M)
-        os.makedirs(script['download_path'], exist_ok=True)
-        for i in url:
-            # wget supports multiple protocols, proxying, proper error message,
-            # handling user input without protocol information, and getting the
-            # filename from the request. Shell out and capture its output
-            # instead of implementing all of that here.
-            if not run_and_check(
-                    ['wget', i, '-P', scripts[0]['download_path']], scripts,
-                    send_result):
-                return False
-
-            # Get the filename from the captured output incase the URL does not
-            # include a filename. e.g the URL 'ubuntu.com' will create an
-            # index.html file.
-            with open(scripts[0]['combined_path'], 'r') as combined:
-                m = path_regex.findall(combined.read())
-                if m != []:
-                    filename = m[-1]
-                else:
-                    # Unable to find filename in output.
-                    continue
-
-            if tarfile.is_tarfile(filename):
-                with tarfile.open(filename, 'r|*') as tar:
-                    tar.extractall(script['download_path'])
-            elif zipfile.is_zipfile(filename):
-                with zipfile.ZipFile(filename, 'r') as z:
-                    z.extractall(script['download_path'])
-            elif filename.endswith('.deb'):
-                # Allow dpkg to fail incase it just needs dependencies
-                # installed.
-                run_and_check(['dpkg', '-i', filename], scripts, False, True)
-                if not run_and_check(
-                        ['apt-get', 'install', '-qyf'], scripts, send_result,
-                        True):
-                    return False
-            elif filename.endswith('.snap'):
-                if not run_and_check(
-                        ['snap', filename], scripts, send_result, True):
-                    return False
 
     # All went well, clean up the install logs so only script output is
     # captured.

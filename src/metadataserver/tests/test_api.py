@@ -2681,18 +2681,8 @@ class TestAnonymousAPI(MAASServerTestCase):
         anon_node_url = reverse(
             'metadata-node-by-id',
             args=['latest', node.system_id])
-        # Fake the preseed so we're just exercising the view.
-        fake_preseed = factory.make_string()
-        self.patch(api, "get_preseed", lambda node, ip: fake_preseed)
         response = self.client.get(anon_node_url, {'op': 'get_preseed'})
-        self.assertEqual(
-            (http.client.OK.value,
-             "text/plain",
-             fake_preseed),
-            (response.status_code,
-             response["Content-Type"],
-             response.content.decode(settings.DEFAULT_CHARSET)),
-            response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
 
     def test_anoymous_netboot_off_adds_installation_finished_event(self):
         node = factory.make_Node(netboot=True)

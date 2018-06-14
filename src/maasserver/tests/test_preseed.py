@@ -610,14 +610,14 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
         maas_url = factory.make_simple_http_url()
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         rack_controller = factory.make_RackController(url=url)
-        preseed = render_enlistment_preseed(
-            self.preseed, "precise", rack_controller=rack_controller)
-        self.assertThat(
-            preseed.decode("utf-8"),
-            MatchesAll(
-                Contains(url),
-                Not(Contains(maas_url)),
-            ))
+        preseed = yaml.safe_load(render_enlistment_preseed(
+            self.preseed, "bionic", rack_controller=rack_controller))
+        self.assertEqual(
+            "%s/MAAS/metadata/enlist" % url,
+            preseed['datasource']['MAAS']['metadata_url'])
+        self.assertItemsEqual([
+            'python3-yaml', 'python3-oauthlib', 'freeipmi-tools',
+            'ipmitool', 'sshpass'], preseed['packages'])
 
 
 class TestComposeCurtinMAASReporter(MAASServerTestCase):

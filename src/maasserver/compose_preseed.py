@@ -1,9 +1,10 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level composition code for preseeds."""
 
 __all__ = [
+    'compose_enlistment_preseed',
     'compose_preseed',
     ]
 
@@ -18,6 +19,7 @@ from maasserver.enum import (
 )
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
+from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 from provisioningserver.rpc.exceptions import (
@@ -70,6 +72,7 @@ def get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node):
             'source': "deb %s $RELEASE main" % (archive.url),
             'filename': 'lp1743966.list',
         })
+
     return apt_sources
 
 
@@ -166,6 +169,53 @@ def get_archive_config(node, preserve_sources=False, default_region_ip=None):
     return archives
 
 
+def get_enlist_archive_config(apt_proxy=None):
+    default = PackageRepository.get_main_archive()
+    ports = PackageRepository.get_ports_archive()
+    # Process the default Ubuntu Archives or Mirror.
+    archives = {
+        'apt': {
+            'preserve_sources_list': False,
+            'primary': [
+                {
+                    'arches': ['amd64', 'i386'],
+                    'uri': default.url
+                },
+                {
+                    'arches': ['default'],
+                    'uri': ports.url
+                },
+            ],
+            'security': [
+                {
+                    'arches': ['amd64', 'i386'],
+                    'uri': default.url
+                },
+                {
+                    'arches': ['default'],
+                    'uri': ports.url
+                },
+            ],
+        },
+    }
+    if apt_proxy:
+        archives['apt']['proxy'] = apt_proxy
+    if default.key:
+        archives['apt']['sources'] = {
+            'default_key': {
+                'key': default.key
+            }
+        }
+    if ports.key:
+        archives['apt']['sources'] = {
+            'ports_key': {
+                'key': ports.key
+            }
+        }
+
+    return archives
+
+
 def get_cloud_init_reporting(node, token, base_url, default_region_ip=None):
     """Return the cloud-init metadata to enable reporting"""
     return {
@@ -226,6 +276,40 @@ def get_system_info():
     }
 
 
+def get_base_preseed(node=None):
+    """Return the base preseed config used by all ephemeral environments."""
+    cloud_config = {
+        # The ephemeral environment doesn't have a domain search path set which
+        # causes sudo to fail to resolve itself and print out a warning
+        # message. These messages are caught when logging during commissioning
+        # and testing. Allow /etc/hosts to be managed by cloud-init so the
+        # lookup works. This may cause LP:1087183 to come back if anyone tries
+        # to JuJu deploy in an ephemeral environment.
+        'manage_etc_hosts': True,
+        **get_system_info(),
+    }
+
+    if node is None or node.status in COMMISSIONING_LIKE_STATUSES:
+        # All other ephemeral environments use the MAAS script runner or
+        # signaler to send MAAS information about process status. cloud-init
+        # downloads the preseed from MAAS which contains the OAUTH keys and the
+        # metadata server URL. python3-yaml is used to read the preseed and
+        # python3-oauthlib is used to return the results. Both packages are
+        # currently dependencies of cloud-init but are included incase those
+        # dependencies are ever removed.  cloud-init is smart enough to not run
+        # apt if the requested packages are already installed.
+        cloud_config['packages'] = ['python3-yaml', 'python3-oauthlib']
+        # Enlistment and commissioning search for and set BMC settings.
+        if node is None or (not node.skip_bmc_config and node.status in [
+                NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING]):
+            # Tools required for IPMI detection.
+            cloud_config['packages'] += ['freeipmi-tools', 'ipmitool']
+            # Required for Facebook Wedge.
+            cloud_config['packages'] += ['sshpass']
+
+    return cloud_config
+
+
 def compose_cloud_init_preseed(
         node, token, base_url='', default_region_ip=None):
     """Compose the preseed value for a node in any state but Commissioning.
@@ -240,18 +324,14 @@ def compose_cloud_init_preseed(
         'oauth_token_secret': token.secret,
         })
 
-    config = {
-        # Do not let cloud-init override /etc/hosts/: use the default
-        # behavior which means running `dns_resolve(hostname)` on a node
-        # will query the DNS server (and not return 127.0.0.1).
-        # See bug 1087183 for details.
-        "manage_etc_hosts": False,
+    config = get_base_preseed(node)
+    config.update({
         "apt_preserve_sources_list": True,
         # Prevent the node from requesting cloud-init data on every reboot.
         # This is done so a machine does not need to contact MAAS every time
         # it reboots.
         "manual_cache_clean": True,
-    }
+    })
     # This is used as preseed for a node that's been installed.
     # This will allow cloud-init to be configured with reporting for
     # a node that has already been installed.
@@ -259,12 +339,6 @@ def compose_cloud_init_preseed(
         get_cloud_init_reporting(
             node=node, token=token, base_url=base_url,
             default_region_ip=default_region_ip))
-    # Add the system configuration information.
-    config.update(get_system_info())
-    apt_proxy = get_apt_proxy(
-        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
-    if apt_proxy:
-        config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
     config.update(
         get_archive_config(
@@ -323,7 +397,8 @@ def compose_curtin_preseed(node, token, base_url='', default_region_ip=None):
 def _compose_cloud_init_preseed(
         node, token, metadata_url, base_url, poweroff_timeout=3600,
         reboot_timeout=1800, default_region_ip=None):
-    cloud_config = {
+    cloud_config = get_base_preseed(node)
+    cloud_config.update({
         'datasource': {
             'MAAS': {
                 'metadata_url': metadata_url,
@@ -339,14 +414,7 @@ def _compose_cloud_init_preseed(
                     node, default_region_ip=default_region_ip),
             }
         },
-        # The ephemeral environment doesn't have a domain search path set which
-        # cases sudo to fail to resolve itself and print out a warning message.
-        # These messages are caught when logging during commissioning and
-        # testing. Allow /etc/hosts to be managed by cloud-init so the lookup
-        # works. This may cause 1087183 to come back if anyone tries to JuJu
-        # deploy in an ephemeral environment.
-        'manage_etc_hosts': True,
-    }
+    })
     # This configures reporting for the ephemeral environment
     cloud_config.update(
         get_cloud_init_reporting(
@@ -358,11 +426,13 @@ def _compose_cloud_init_preseed(
     if node.distro_series in ['precise', 'trusty']:
         cloud_config.update(
             get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node))
-    cloud_config.update(get_system_info())
-    apt_proxy = get_apt_proxy(
-        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
-    if apt_proxy:
-        cloud_config['apt_proxy'] = apt_proxy
+        # apt_proxy is deprecated in the cloud-init source code in favor of
+        # what get_archive_config does.
+        apt_proxy = get_apt_proxy(
+            node.get_boot_rack_controller(),
+            default_region_ip=default_region_ip)
+        if apt_proxy:
+            cloud_config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
     cloud_config.update(get_archive_config(
         node=node, preserve_sources=False,
@@ -426,7 +496,7 @@ def compose_preseed(preseed_type, node, default_region_ip=None):
 
     token = NodeKey.objects.get_token_for_node(node)
     rack_controller = node.get_boot_rack_controller()
-    base_url = rack_controller.url
+    base_url = rack_controller.url if rack_controller else ''
 
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
         return compose_commissioning_preseed(
@@ -466,3 +536,39 @@ def compose_preseed(preseed_type, node, default_region_ip=None):
         else:
             return compose_cloud_init_preseed(
                 node, token, base_url, default_region_ip=default_region_ip)
+
+
+def compose_enlistment_preseed(
+        rack_controller, context, default_region_ip=None):
+    """Put together preseed data for a new `node` being enlisted.
+
+    :param rack_controller: The RackController the request came from.
+    :param context: The output of get_preseed_context
+    :param default_region_ip: The default IP address to use for the region
+        controller (for example, when constructing URLs).
+    :return: Preseed data containing the information the node needs in order
+        to access the metadata service: its URL and auth token.
+    """
+    cloud_config = get_base_preseed()
+    cloud_config.update({
+        'datasource': {
+            'MAAS': {
+                'metadata_url': context['metadata_enlist_url'],
+            },
+        },
+        'rsyslog': {
+            'remotes': {
+                'maas': context['syslog_host_port'],
+            },
+        },
+        'power_state': {
+            'delay': 'now',
+            'mode': 'poweroff',
+            'timeout': 1800,
+            'condition': 'test ! -e /tmp/block-poweroff',
+        },
+        **get_enlist_archive_config(get_apt_proxy(
+            rack_controller, default_region_ip=default_region_ip)),
+    })
+
+    return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)

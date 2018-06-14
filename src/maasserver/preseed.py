@@ -33,10 +33,12 @@ from maasserver import logger
 from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
+    compose_enlistment_preseed,
     compose_preseed,
     get_apt_proxy,
     get_archive_config,
     get_cloud_init_reporting,
+    get_enlist_archive_config,
     get_system_info,
     RSYSLOG_PORT,
 )
@@ -128,53 +130,6 @@ def get_enlist_userdata(rack_controller=None, default_region_ip=None):
     config.update({'apt_proxy': http_proxy})
     config.update(get_enlist_archive_config(http_proxy))
     return enlist_userdata + yaml.safe_dump(config).encode('utf-8')
-
-
-def get_enlist_archive_config(apt_proxy=None):
-    default = PackageRepository.get_main_archive()
-    ports = PackageRepository.get_ports_archive()
-    # Process the default Ubuntu Archives or Mirror.
-    archives = {
-        'apt': {
-            'preserve_sources_list': False,
-            'primary': [
-                {
-                    'arches': ['amd64', 'i386'],
-                    'uri': default.url
-                },
-                {
-                    'arches': ['default'],
-                    'uri': ports.url
-                },
-            ],
-            'security': [
-                {
-                    'arches': ['amd64', 'i386'],
-                    'uri': default.url
-                },
-                {
-                    'arches': ['default'],
-                    'uri': ports.url
-                },
-            ],
-        },
-    }
-    if apt_proxy:
-        archives['apt']['proxy'] = apt_proxy
-    if default.key:
-        archives['apt']['sources'] = {
-            'default_key': {
-                'key': default.key
-            }
-        }
-    if ports.key:
-        archives['apt']['sources'] = {
-            'ports_key': {
-                'key': ports.key
-            }
-        }
-
-    return archives
 
 
 def curtin_maas_reporter(node, events_support=True):
@@ -608,16 +563,20 @@ def get_preseed(node, default_region_ip=None) -> bytes:
     :return: The rendered preseed string.
     :rtype: unicode.
     """
+    config = Config.objects.get_configs([
+        'commissioning_osystem', 'commissioning_distro_series'])
     if node.status in COMMISSIONING_LIKE_STATUSES:
         return render_preseed(
             node, PRESEED_TYPE.COMMISSIONING,
-            osystem=Config.objects.get_config('commissioning_osystem'),
-            release=Config.objects.get_config('commissioning_distro_series'),
+            osystem=config['commissioning_osystem'],
+            release=config['commissioning_distro_series'],
             default_region_ip=default_region_ip)
     else:
         return render_preseed(
             node, get_preseed_type_for(node),
-            osystem=node.get_osystem(), release=node.get_distro_series(),
+            osystem=node.get_osystem(config['commissioning_osystem']),
+            release=node.get_distro_series(
+                config['commissioning_distro_series']),
             default_region_ip=default_region_ip)
 
 
@@ -846,11 +805,12 @@ def get_node_preseed_context(
     """
     if rack_controller is None:
         rack_controller = node.get_boot_rack_controller()
+    base_url = rack_controller.url if rack_controller else ''
     # Create the url and the url-data (POST parameters) used to turn off
     # PXE booting once the install of the node is finished.
     node_disable_pxe_url = absolute_reverse(
         'metadata-node-by-id', default_region_ip=default_region_ip,
-        args=['latest', node.system_id], base_url=rack_controller.url)
+        args=['latest', node.system_id], base_url=base_url)
     node_disable_pxe_data = urlencode({'op': 'netboot_off'})
     driver = get_third_party_driver(node)
     return {
@@ -908,6 +868,8 @@ def render_enlistment_preseed(
     context = get_preseed_context(
         osystem, release, rack_controller=rack_controller,
         default_region_ip=default_region_ip)
+    context['preseed_data'] = compose_enlistment_preseed(
+        rack_controller, context, default_region_ip)
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
