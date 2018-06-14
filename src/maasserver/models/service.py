@@ -35,8 +35,8 @@ REGION_SERVICES = frozenset({
 # services overseen by the rack's ServiceMonitor.
 RACK_SERVICES = frozenset({
     "rackd",
-    "http",
     "tftp",
+    "http",
     "dhcpd",
     "dhcpd6",
     "ntp_rack",
@@ -50,10 +50,10 @@ DEAD_STATUSES = {
     "bind9": SERVICE_STATUS.UNKNOWN,
     "proxy": SERVICE_STATUS.UNKNOWN,
     "rackd": SERVICE_STATUS.DEAD,
-    "http": SERVICE_STATUS.DEAD,
     "tftp": SERVICE_STATUS.DEAD,
     "dhcpd": SERVICE_STATUS.DEAD,
     "dhcpd6": SERVICE_STATUS.DEAD,
+    "http": SERVICE_STATUS.UNKNOWN,
     "ntp_region": SERVICE_STATUS.DEAD,
     "ntp_rack": SERVICE_STATUS.DEAD,
     "dns_rack": SERVICE_STATUS.UNKNOWN,

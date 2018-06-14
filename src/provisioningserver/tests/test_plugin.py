@@ -106,7 +106,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "dns",
-            "rpc", "rpc-ping", "tftp", "service_monitor",
+            "rpc", "rpc-ping", "http", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
@@ -131,7 +131,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "dns",
-            "rpc", "rpc-ping", "tftp", "service_monitor",
+            "rpc", "rpc-ping", "http", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(

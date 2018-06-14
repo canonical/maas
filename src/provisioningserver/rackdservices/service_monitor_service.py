@@ -41,11 +41,6 @@ class ServiceMonitorService(TimerService, object):
     # on the connections across the multiple regions.
     ALWAYS_RUNNING_SERVICES = [
         {
-            "name": "http",
-            "status": "running",
-            "status_info": "",
-        },
-        {
             "name": "tftp",
             "status": "running",
             "status_info": "",

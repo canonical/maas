@@ -10,10 +10,19 @@ from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import GetControllerType
 from provisioningserver.utils.service_monitor import (
+    AlwaysOnService,
     Service,
     SERVICE_STATE,
     ServiceMonitor,
 )
+
+
+class HTTPService(AlwaysOnService):
+    """Monitored HTTP service."""
+
+    name = "http"
+    service_name = "maas-http"
+    snap_service_name = "http"
 
 
 class DHCPService(Service):
@@ -100,6 +109,7 @@ class DNSServiceOnRack(RackOnlyModeService):
 # Global service monitor for rackd. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
+    HTTPService(),
     DHCPv4Service(),
     DHCPv6Service(),
     NTPServiceOnRack(),

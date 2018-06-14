@@ -1,0 +1,209 @@
+# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for `provisioningserver.rackdservices.http`."""
+
+__all__ = []
+
+import attr
+from maastesting.factory import factory
+from maastesting.fixtures import MAASRootFixture
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+)
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
+from maastesting.twisted import (
+    always_succeed_with,
+    TwistedLoggerFixture,
+)
+from provisioningserver import services
+from provisioningserver.rackdservices import http
+from provisioningserver.rpc import (
+    common,
+    exceptions,
+)
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
+from testtools.matchers import (
+    Contains,
+    Equals,
+    FileContains,
+    IsInstance,
+    MatchesStructure,
+)
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
+
+def prepareRegion(test):
+    """Set up a mock region controller.
+
+    :return: The running RPC service, and the protocol instance.
+    """
+    fixture = test.useFixture(MockLiveClusterToRegionRPCFixture())
+    protocol, connecting = fixture.makeEventLoop()
+    protocol.RegisterRackController.side_effect = always_succeed_with(
+        {"system_id": factory.make_name("maas-id")})
+
+    def connected(teardown):
+        test.addCleanup(teardown)
+        return services.getServiceNamed("rpc"), protocol
+
+    return connecting.addCallback(connected)
+
+
+@attr.s
+class StubClusterClientService:
+    """A stub `ClusterClientService` service that's never connected."""
+
+    def getClientNow(self):
+        raise exceptions.NoConnectionsAvailable()
+
+
+class TestRackHTTPService(MAASTestCase):
+    """Tests for `RackHTTPService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
+
+    def test_service_uses__tryUpdate_as_periodic_function(self):
+        service = http.RackHTTPService(
+            self.make_dir(), StubClusterClientService(), reactor)
+        self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
+
+    def test_service_iterates_on_low_interval(self):
+        service = http.RackHTTPService(
+            self.make_dir(), StubClusterClientService(), reactor)
+        self.assertThat(service.step, Equals(service.INTERVAL_LOW))
+
+    def extract_regions(self, rpc_service):
+        return frozenset({
+            client.address[0]
+            for _, client in rpc_service.connections.items()
+        })
+
+    def make_startable_RackHTTPService(self, *args, **kwargs):
+        service = http.RackHTTPService(*args, **kwargs)
+        service._orig_tryUpdate = service._tryUpdate
+        self.patch(service, "_tryUpdate").return_value = (
+            always_succeed_with(None))
+        service.call = (service._tryUpdate, tuple(), {})
+        return service
+
+    @inlineCallbacks
+    def test__getConfiguration_returns_configuration_object(self):
+        rpc_service, protocol = yield prepareRegion(self)
+        region_ips = self.extract_regions(rpc_service)
+        service = self.make_startable_RackHTTPService(
+            self.make_dir(), rpc_service, reactor)
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+        observed = yield service._getConfiguration()
+
+        self.assertThat(observed, IsInstance(http._Configuration))
+        self.assertThat(
+            observed, MatchesStructure.byEquality(upstream_http=region_ips))
+
+    @inlineCallbacks
+    def test__tryUpdate_writes_nginx_config_reloads_nginx(self):
+        self.useFixture(MAASRootFixture())
+        rpc_service, _ = yield prepareRegion(self)
+        region_ips = self.extract_regions(rpc_service)
+        resource_root = self.make_dir() + '/'
+        service = self.make_startable_RackHTTPService(
+            resource_root, rpc_service, reactor)
+
+        # Mock service_monitor to catch reloadService.
+        mock_reloadService = self.patch(http.service_monitor, 'reloadService')
+        mock_reloadService.return_value = always_succeed_with(None)
+
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+        yield service._orig_tryUpdate()
+
+        # Verify the contents of the written config.
+        target_path = http.compose_http_config_path('rackd.nginx.conf')
+        self.assertThat(
+            target_path,
+            FileContains(matcher=Contains('alias %s;' % resource_root)))
+        for region_ip in region_ips:
+            self.assertThat(
+                target_path, FileContains(
+                    matcher=Contains('server %s:5240;' % region_ip)))
+        self.assertThat(
+            target_path,
+            FileContains(
+                matcher=Contains(
+                    'proxy_pass http://maas-regions/MAAS/metadata/;')))
+        self.assertThat(mock_reloadService, MockCalledOnceWith('http'))
+
+        # If the configuration has not changed then a second call to
+        # `_tryUpdate` does not result in another call to `_configure`.
+        yield service._orig_tryUpdate()
+        self.assertThat(mock_reloadService, MockCalledOnceWith('http'))
+
+    @inlineCallbacks
+    def test__getConfiguration_updates_interval_to_high(self):
+        rpc_service, protocol = yield prepareRegion(self)
+        service = http.RackHTTPService(self.make_dir(), rpc_service, reactor)
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+        yield service._getConfiguration()
+
+        self.assertThat(service.step, Equals(service.INTERVAL_HIGH))
+        self.assertThat(service._loop.interval, Equals(service.INTERVAL_HIGH))
+
+
+class TestRackHTTPService_Errors(MAASTestCase):
+    """Tests for error handing in `RackHTTPService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    scenarios = (
+        ("_getConfiguration", dict(method="_getConfiguration")),
+        ("_maybeApplyConfiguration", dict(method="_maybeApplyConfiguration")),
+        ("_applyConfiguration", dict(method="_applyConfiguration")),
+        ("_configurationApplied", dict(method="_configurationApplied")),
+    )
+
+    def make_startable_RackHTTPService(self, *args, **kwargs):
+        service = http.RackHTTPService(*args, **kwargs)
+        service._orig_tryUpdate = service._tryUpdate
+        self.patch(service, "_tryUpdate").return_value = (
+            always_succeed_with(None))
+        service.call = (service._tryUpdate, tuple(), {})
+        return service
+
+    @inlineCallbacks
+    def test__tryUpdate_logs_errors_from_broken_method(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(common.log, 'debug')
+
+        # Mock service_monitor to catch reloadService.
+        mock_reloadService = self.patch(http.service_monitor, 'reloadService')
+        mock_reloadService.return_value = always_succeed_with(None)
+
+        rpc_service, _ = yield prepareRegion(self)
+        service = self.make_startable_RackHTTPService(
+            self.make_dir(), rpc_service, reactor)
+        self.patch_autospec(service, "_configure")  # No-op configuration.
+        broken_method = self.patch_autospec(service, self.method)
+        broken_method.side_effect = factory.make_exception()
+
+        self.useFixture(MAASRootFixture())
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
+
+        self.assertThat(
+            logger.output, DocTestMatches(
+                """
+                Failed to update HTTP configuration.
+                Traceback (most recent call last):
+                ...
+                maastesting.factory.TestException#...
+                """))

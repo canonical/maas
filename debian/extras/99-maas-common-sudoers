@@ -5,6 +5,13 @@ maas ALL= NOPASSWD: /sbin/blockdev
 maas ALL= NOPASSWD: /usr/lib/maas/network-monitor
 maas ALL= NOPASSWD: /usr/lib/maas/beacon-monitor
 
+# Control of the HTTP server: MAAS needs to reconfigure it after editing
+# its configuration file, and start it again if stopped manually.
+maas ALL= NOPASSWD: /bin/systemctl reload maas-http
+maas ALL= NOPASSWD: /bin/systemctl restart maas-http
+maas ALL= NOPASSWD: /bin/systemctl start maas-http
+maas ALL= NOPASSWD: /bin/systemctl status maas-http
+
 # Control of the NTP server: MAAS needs to reconfigure it after editing
 # its configuration file, and start it again if stopped manually.
 maas ALL= NOPASSWD: /bin/systemctl restart chrony

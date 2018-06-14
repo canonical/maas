@@ -198,5 +198,5 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["dhcpd", "dhcpd6", "dns_rack", "ntp_rack"],
+            ["http", "dhcpd", "dhcpd6", "dns_rack", "ntp_rack"],
             service_monitor._services.keys())

@@ -1,0 +1,22 @@
+{{if upstream_http}}
+upstream maas-regions {
+    {{for upstream in upstream_http}}
+    server {{upstream}}:5240;
+    {{endfor}}
+}
+{{endif}}
+
+server {
+    listen [::]:5248;
+    listen 5248;
+
+    {{if upstream_http}}
+    location /metadata/ {
+        proxy_pass http://maas-regions/MAAS/metadata/;
+    }
+    {{endif}}
+
+    location /images/ {
+        alias {{resource_root}};
+    }
+}
