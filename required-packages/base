@@ -12,6 +12,7 @@ libjs-angularjs
 libjs-jquery
 libpq-dev
 lshw
+nginx-core
 postgresql
 pxelinux
 python3-all

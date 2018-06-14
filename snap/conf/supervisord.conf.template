@@ -79,6 +79,14 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd6.log
+
+[program:http]
+process_name=http
+command=%(ENV_SNAP)s/bin/run-nginx
+stopasgroup=true
+killasgroup=true
+redirect_stderr=true
+stdout_logfile=%(ENV_SNAP_COMMON)s/log/nginx.log
 {{endif}}
 
 {{if rackd or regiond}}

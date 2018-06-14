@@ -1,0 +1,12 @@
+#!/bin/bash
+# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+set -e
+
+# Place nginx.conf from the one shipped with the snap.
+mkdir -p $SNAP_DATA/http/
+cp -f $SNAP/usr/share/maas/nginx/nginx.conf $SNAP_DATA/http/
+
+# Run named.
+exec $SNAP/usr/sbin/nginx -g "daemon off;" -c "$SNAP_DATA/http/nginx.conf"

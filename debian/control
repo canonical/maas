@@ -110,7 +110,7 @@ Suggests: nmap
 Description: Region Controller for MAAS
  The MAAS region controller (maas-regiond) is the REST API server for
  all MAAS clients, and the postgres database that maintains machine
- state for the entire data centre (or “region”). The region controller 
+ state for the entire data centre (or “region”). The region controller
  an be scaled-out and highly available given the appropriate postgres
  setup and additional API servers.
  .
@@ -205,6 +205,7 @@ Depends: avahi-utils,
          maas-cli (=${binary:Version}),
          maas-common (=${binary:Version}),
          maas-dhcp (=${binary:Version}),
+         nginx-core,
          chrony,
          pxelinux | syslinux-common (<< 3:6.00~pre4+dfsg-5),
          python3-httplib2,

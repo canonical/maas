@@ -52,6 +52,7 @@ parts:
       - libjs-jquery
       - lshw
       - chrony
+      - nginx-core
       - openssh-client
       - postgresql
       - python3-bson
@@ -143,6 +144,7 @@ parts:
       bind: usr/share/maas/bind
       conf/chrony.conf: usr/share/maas/chrony.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
+      nginx: usr/share/maas/nginx
     stage:
       - -conf
       - -plugins

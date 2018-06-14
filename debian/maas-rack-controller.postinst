@@ -50,6 +50,11 @@ configure_libdir() {
     if [ -S /var/lib/maas/dhcpd.sock ]; then
         chown maas:maas /var/lib/maas/dhcpd.sock
     fi
+
+    # Ensure http related files have correct permissions
+    if [ -d /var/lib/maas/http ]; then
+        chown -R maas:maas /var/lib/maas/http
+    fi
 }
 
 extract_cluster_uuid(){

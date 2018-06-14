@@ -2,4 +2,6 @@ etc/bind/maas
 etc/maas
 var/lib/maas
 var/lib/maas/boot-resources
+var/lib/maas/http
 var/log/maas
+var/log/maas/http

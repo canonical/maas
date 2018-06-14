@@ -557,7 +557,7 @@ endef
 #
 
 service_names_region := database dns regiond reloader
-service_names_rack := rackd reloader
+service_names_rack := http rackd reloader
 service_names_all := $(service_names_region) $(service_names_rack)
 
 # The following template is intended to be used with `call`, and it
@@ -638,6 +638,8 @@ services/%/@supervise: services/%/@deps
 services/dns/@deps: bin/py bin/maas-common
 
 services/database/@deps: bin/database
+
+services/http/@deps: bin/py
 
 services/rackd/@deps: bin/rackd bin/maas-rack bin/maas-common
 
