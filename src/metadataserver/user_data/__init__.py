@@ -29,7 +29,9 @@ import tempita
 ENCODING = 'utf-8'
 
 
-def generate_user_data(node, userdata_template_file, extra_context=None):
+def generate_user_data(
+        node, userdata_template_file, extra_context=None,
+        rack_controller=None):
     """Produce a user_data script for use by an ephemeral environment.
 
     The main template file contains references to so-called ``snippets''
@@ -47,12 +49,17 @@ def generate_user_data(node, userdata_template_file, extra_context=None):
     # Avoid circular dependencies.
     from maasserver.preseed import get_preseed_context
 
+    # Enlisting machines will not have a node object or an assoicated
+    # rack controller if the subnet is unknown to MAAS or MAAS does not
+    # control DHCP on the VLAN(see find_rack_controller in maasserver.utils)
+    if rack_controller is None and node is not None:
+        rack_controller = node.get_boot_rack_controller()
+
     userdata_template = tempita.Template.from_filename(
         userdata_template_file, encoding=ENCODING)
     # The preseed context is a dict containing various configs that the
     # templates can use.
-    preseed_context = get_preseed_context(
-        rack_controller=node.get_boot_rack_controller())
+    preseed_context = get_preseed_context(rack_controller=rack_controller)
     preseed_context['node'] = node
 
     # Render the snippets in the main template.
@@ -70,9 +77,11 @@ def generate_user_data(node, userdata_template_file, extra_context=None):
     return combined.as_bytes()
 
 
-def generate_user_data_for_status(node, status=None, extra_content=None):
+def generate_user_data_for_status(
+        node, status=None, extra_content=None, rack_controller=None):
     """Produce a user_data script based on the node's status."""
     templates = {
+        NODE_STATUS.NEW: 'commissioning.template',
         NODE_STATUS.COMMISSIONING: 'commissioning.template',
         NODE_STATUS.TESTING: 'script_runner.template',
         NODE_STATUS.DISK_ERASING: 'disk_erasing.template',
@@ -82,7 +91,8 @@ def generate_user_data_for_status(node, status=None, extra_content=None):
         status = node.status
     userdata_template_file = os.path.join(
         get_userdata_template_dir(), templates[status])
-    return generate_user_data(node, userdata_template_file, extra_content)
+    return generate_user_data(
+        node, userdata_template_file, extra_content, rack_controller)
 
 
 def generate_user_data_for_poweroff(node):

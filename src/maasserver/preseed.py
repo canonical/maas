@@ -35,17 +35,13 @@ from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_enlistment_preseed,
     compose_preseed,
-    get_apt_proxy,
     get_archive_config,
     get_cloud_init_reporting,
-    get_enlist_archive_config,
-    get_system_info,
     RSYSLOG_PORT,
 )
 from maasserver.enum import (
     FILESYSTEM_TYPE,
     PRESEED_TYPE,
-    USERDATA_TYPE,
 )
 from maasserver.exceptions import (
     ClusterUnavailable,
@@ -113,23 +109,6 @@ def get_enlist_preseed(rack_controller=None, default_region_ip=None):
     return render_enlistment_preseed(
         PRESEED_TYPE.ENLIST, rack_controller=rack_controller,
         default_region_ip=default_region_ip)
-
-
-def get_enlist_userdata(rack_controller=None, default_region_ip=None):
-    """Return the enlistment preseed.
-
-    :param rack_controller: The rack controller used to generate the preseed.
-    :return: The rendered enlistment user-data string.
-    :rtype: unicode.
-    """
-    http_proxy = get_apt_proxy(
-        rack_controller=rack_controller, default_region_ip=default_region_ip)
-    enlist_userdata = render_enlistment_preseed(
-        USERDATA_TYPE.ENLIST, rack_controller=rack_controller)
-    config = get_system_info()
-    config.update({'apt_proxy': http_proxy})
-    config.update(get_enlist_archive_config(http_proxy))
-    return enlist_userdata + yaml.safe_dump(config).encode('utf-8')
 
 
 def curtin_maas_reporter(node, events_support=True):
@@ -461,7 +440,7 @@ def get_curtin_config(node, default_region_ip=None):
     osystem = node.get_osystem()
     series = node.get_distro_series()
     template = load_preseed_template(
-        node, USERDATA_TYPE.CURTIN, osystem, series)
+        node, 'curtin_userdata', osystem, series)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
         osystem, series, rack_controller=rack_controller,
@@ -773,11 +752,7 @@ def get_preseed_context(
     """
     server_host = get_maas_facing_server_host(
         rack_controller=rack_controller, default_region_ip=default_region_ip)
-    if rack_controller is None:
-        base_url = None
-    else:
-        base_url = rack_controller.url
-
+    base_url = rack_controller.url if rack_controller is not None else ''
     return {
         'osystem': osystem,
         'release': release,

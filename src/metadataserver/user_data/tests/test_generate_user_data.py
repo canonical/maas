@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test generation of commissioning user data."""
@@ -20,6 +20,37 @@ from testtools.matchers import ContainsAll
 
 
 class TestGenerateUserData(MAASServerTestCase):
+
+    def test_generate_user_data_produces_enlist_script(self):
+        # generate_user_data produces a commissioning script which contains
+        # both definitions and use of various commands in python.
+        rack = factory.make_RackController()
+        user_data = generate_user_data_for_status(
+            None, NODE_STATUS.NEW, rack_controller=rack)
+        parsed_data = email.message_from_string(user_data.decode("utf-8"))
+        self.assertTrue(parsed_data.is_multipart())
+
+        user_data_script = parsed_data.get_payload()[0]
+        self.assertEquals(
+            'text/x-shellscript; charset="utf-8"',
+            user_data_script['Content-Type'])
+        self.assertEquals(
+            'base64', user_data_script['Content-Transfer-Encoding'])
+        self.assertEquals(
+            'attachment; filename="user_data.sh"',
+            user_data_script['Content-Disposition'])
+        self.assertThat(
+            base64.b64decode(user_data_script.get_payload()), ContainsAll({
+                b'export DEBIAN_FRONTEND=noninteractive',
+                b'maas-run-remote-scripts',
+                b'def detect_ipmi',
+                b'class IPMIError',
+                b'def signal',
+                b'VALID_STATUS =',
+                b'def download_and_extract_tar',
+                b'COMMISSIONING',
+                b'maas-enlist',
+            }))
 
     def test_generate_user_data_produces_commissioning_script(self):
         # generate_user_data produces a commissioning script which contains

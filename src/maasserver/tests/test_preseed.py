@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed` and related bits and bobs."""
@@ -54,7 +54,6 @@ from maasserver.preseed import (
     get_curtin_merged_config,
     get_curtin_userdata,
     get_enlist_preseed,
-    get_enlist_userdata,
     get_netloc_and_path,
     get_node_deprecated_preseed_context,
     get_node_preseed_context,
@@ -617,7 +616,7 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertItemsEqual([
             'python3-yaml', 'python3-oauthlib', 'freeipmi-tools',
-            'ipmitool', 'sshpass'], preseed['packages'])
+            'ipmitool', 'sshpass', 'jq'], preseed['packages'])
 
 
 class TestComposeCurtinMAASReporter(MAASServerTestCase):
@@ -1745,7 +1744,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
 
 class TestPreseedMethods(
         PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
-    """Tests for `get_enlist_preseed`, `get_enlist_userdata` and `get_preseed`.
+    """Tests for `get_enlist_preseed` and `get_preseed`.
 
     These tests check that the preseed templates render and 'look right'.
     """
@@ -1838,41 +1837,6 @@ class TestPreseedMethods(
     def test_get_enlist_preseed_returns_enlist_preseed(self):
         preseed = get_enlist_preseed()
         self.assertTrue(preseed.startswith(b'#cloud-config'))
-
-    def test_get_enlist_userdata_contains_apt_config(self):
-        preseed = yaml.safe_load(get_enlist_userdata())
-        apt_proxy = 'http://localhost:8000/'
-        self.assertAptConfig(preseed, apt_proxy)
-        self.assertSystemInfo(preseed)
-
-    def test_get_enlist_userdata_no_proxy(self):
-        Config.objects.set_config('enable_http_proxy', False)
-        Config.objects.set_config('http_proxy', 'http://example.com:3128')
-        preseed = yaml.safe_load(get_enlist_userdata())
-        self.assertIsNone(preseed['apt_proxy'])
-        self.assertNotIn('proxy', preseed['apt'])
-
-    def test_get_enlist_userdata_use_builtin_proxy(self):
-        Config.objects.set_config('enable_http_proxy', True)
-        Config.objects.set_config('http_proxy', '')
-        preseed = yaml.safe_load(get_enlist_userdata())
-        self.assertEqual('http://localhost:8000/', preseed['apt_proxy'])
-        self.assertEqual('http://localhost:8000/', preseed['apt']['proxy'])
-
-    def test_get_enlist_userdata_use_external_proxy(self):
-        Config.objects.set_config('enable_http_proxy', True)
-        Config.objects.set_config('http_proxy', 'http://example.com:3128/')
-        preseed = yaml.safe_load(get_enlist_userdata())
-        self.assertEqual('http://example.com:3128/', preseed['apt_proxy'])
-        self.assertEqual('http://example.com:3128/', preseed['apt']['proxy'])
-
-    def test_get_enlist_userdata_use_peer_proxy(self):
-        Config.objects.set_config('enable_http_proxy', True)
-        Config.objects.set_config('use_peer_proxy', True)
-        Config.objects.set_config('http_proxy', 'http://example.com:3128/')
-        preseed = yaml.safe_load(get_enlist_userdata())
-        self.assertEqual('http://localhost:8000/', preseed['apt_proxy'])
-        self.assertEqual('http://localhost:8000/', preseed['apt']['proxy'])
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(

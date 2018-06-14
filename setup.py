@@ -56,7 +56,6 @@ setup(
         ('/etc/maas/preseeds',
             ['contrib/preseeds_v2/commissioning',
              'contrib/preseeds_v2/enlist',
-             'contrib/preseeds_v2/enlist_userdata',
              'contrib/preseeds_v2/curtin',
              'contrib/preseeds_v2/curtin_userdata',
              'contrib/preseeds_v2/curtin_userdata_centos',

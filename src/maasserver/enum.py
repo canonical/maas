@@ -26,7 +26,6 @@ __all__ = [
     'RDNS_MODE',
     'RDNS_MODE_CHOICES',
     'RDNS_MODE_CHOICES_DICT',
-    'USERDATA_TYPE',
     'KEYS_PROTOCOL_TYPE',
     'KEYS_PROTOCOL_TYPE_CHOICES',
     ]
@@ -227,12 +226,6 @@ class PRESEED_TYPE:
     COMMISSIONING = 'commissioning'
     ENLIST = 'enlist'
     CURTIN = 'curtin'
-
-
-class USERDATA_TYPE:
-    """Types of user-data documents that can be generated."""
-    ENLIST = 'enlist_userdata'
-    CURTIN = 'curtin_userdata'
 
 
 class RDNS_MODE:

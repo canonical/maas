@@ -70,7 +70,6 @@ from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
     get_curtin_userdata,
     get_enlist_preseed,
-    get_enlist_userdata,
     get_preseed,
 )
 from maasserver.utils import (
@@ -98,7 +97,10 @@ from metadataserver.models import (
     ScriptResult,
     ScriptSet,
 )
-from metadataserver.user_data import generate_user_data_for_poweroff
+from metadataserver.user_data import (
+    generate_user_data_for_poweroff,
+    generate_user_data_for_status,
+)
 from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc
 from provisioningserver.events import (
@@ -1133,15 +1135,13 @@ class EnlistUserDataHandler(OperationsHandler):
     def read(self, request, version):
         check_version(version)
         rack_controller = find_rack_controller(request)
-        default_region_ip = get_default_region_ip(request)
         # XXX: Set a charset for text/plain. Django automatically encodes
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
         return HttpResponse(
-            get_enlist_userdata(
-                rack_controller=rack_controller,
-                default_region_ip=default_region_ip),
+            generate_user_data_for_status(
+                None, NODE_STATUS.NEW, rack_controller=rack_controller),
             content_type="text/plain")
 
 

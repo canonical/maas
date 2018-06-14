@@ -662,7 +662,7 @@ class TestComposePreseed(MAASServerTestCase):
             }, preseed['power_state'])
         self.assertItemsEqual([
             'python3-yaml', 'python3-oauthlib', 'freeipmi-tools', 'ipmitool',
-            'sshpass'], preseed['packages'])
+            'sshpass', 'jq'], preseed['packages'])
         self.assertSystemInfo(preseed)
         default = PackageRepository.get_main_archive().url
         ports = PackageRepository.get_ports_archive().url

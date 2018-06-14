@@ -181,8 +181,8 @@ EOF
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || Error "$@"; exit 1; }
 
-short_opts="hs:n:i:a:t:p:ew"
-long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists,in-action"
+short_opts="hs:n:i:a:t:p:ewq"
+long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists,in-action,quite"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -201,6 +201,7 @@ while [ $# -ne 0 ]; do
 		-p|--power-params) power_parameters=${2}; shift;;
 		-e|--exists) check_exists=true;;
 		-w|--in-action) check_action_in_progress=true;;
+		-q|--quite) quite=true;;
 		--) shift; break;;
 	esac
 	shift;
@@ -238,7 +239,7 @@ else
 	api_url=`echo $serverurl | sed 's#^\(\|[a-z]\+://\)\([a-zA-Z0-9\.]\+\|\(\[[0-9a-fA-F:]\+\]\)\)\(\|\:[0-9]\+\)/##'`
 fi
 
-if [ -z "$hostname" ]; then
+if [ -z "$hostname" ] && [ "$quite" != "true" ]; then
 	echo "No hostname has been provided... MAAS will pick one automatically"
 fi
 

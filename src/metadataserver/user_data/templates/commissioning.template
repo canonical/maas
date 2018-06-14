@@ -26,11 +26,8 @@ add_ipmi_config() {
 
 main() {
     prep_maas_api_helper
-    {{if not node.skip_bmc_config}}
-    # LP:1730524 - Make sure we can signal the metadata service before updating
-    # the BMC username and password.
-    signal WORKING "Starting [maas-bmc-autodetect]" || exit 1
 
+    {{if not node or not node.skip_bmc_config}}
     # Load IPMI kernel modules
     modprobe ipmi_msghandler
     modprobe ipmi_devintf
@@ -47,6 +44,60 @@ main() {
     if [ -z $power_type ]; then
         power_type=$(maas-wedge-autodetect --check) || power_type=""
     fi
+    {{endif}}
+
+    {{if not node}}
+    # Start enlistment
+
+    # Bring up all interfaces.
+    ip -o link | cut -d: -f2 | xargs -I{} ip link set dev {} up
+
+    # Detect current power settings to send to the metadata server
+    case "$power_type" in
+        ipmi)
+            power_params=$(maas-ipmi-autodetect \
+                --configdir "$IPMI_CONFIG_D" ${pargs} --commission-creds) &&
+                [ -n "${power_params}" ] && power_params=${power_params%.}
+            ;;
+        moonshot)
+            power_params=$(maas-moonshot-autodetect --commission-creds) &&
+                [ -n "${power_params}" ] && power_params=${power_params%.}
+            ;;
+        wedge)
+            power_params=$(maas-wedge-autodetect --get-enlist-creds) || power_params=""
+            ;;
+    esac
+
+    # Attempt to enlist the machine. Capture the output so we can discover the
+    # system_id.
+    output=$(maas-enlist --quite --serverurl "{{server_url}}" \
+        ${power_params:+--power-params "${power_params}" \
+        --power-type "${power_type}"})
+    if [ $? -ne 0 ]; then
+	# Check if this is a machine in action. If so, reboot so it can resume.
+	# If not, exit which will cause the machine to shutdown.
+	maas-enlist --serverurl "{{server_url}}" --in-action
+	if [ $? -eq 1 ]; then
+	    echo "Rebooting the machine to resume action"
+	    reboot
+	else
+	    exit 0
+	fi
+    fi
+
+    # Reload cloud-init preseed using system_id to get OAUTH credentials.
+    system_id=$(echo $output | jq -r .system_id)
+    mv ${CRED_CFG} ${CRED_CFG}.orig
+    wget -q {{server_url.replace('api/2.0/machines/', 'metadata/latest/by-id/${system_id}/?op=get_preseed')}} \
+        -O ${CRED_CFG}
+
+    signal COMMISSIONING "Enlistment complete, starting commissioning"
+    {{endif}}
+
+    {{if not node or not node.skip_bmc_config}}
+    # LP:1730524 - Make sure we can signal the metadata service before updating
+    # the BMC username and password.
+    signal WORKING "Resetting BMC password" || exit 1
     case "$power_type" in
         ipmi)
             power_settings=$(maas-ipmi-autodetect \
@@ -62,7 +113,7 @@ main() {
     if [ ! -z "$power_settings" ]; then
         signal \
           "--power-type=${power_type}" "--power-parameters=${power_settings}" \
-          WORKING "Finished [maas-bmc-autodetect]"
+          WORKING "Finished setting BMC password"
     fi
     {{endif}}
 
@@ -98,6 +149,12 @@ END_MAAS_SIGNAL
 add_bin "maas-run-remote-scripts" <<"END_MAAS_RUN_REMOTE_SCRIPTS"
 {{maas_run_remote_scripts_py}}
 END_MAAS_RUN_REMOTE_SCRIPTS
+
+{{if not node}}
+add_bin "maas-enlist" <<"END_MAAS_ENLIST"
+{{maas_enlist_sh}}
+END_MAAS_ENLIST
+{{endif}}
 
 main
 exit

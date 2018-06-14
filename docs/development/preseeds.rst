@@ -92,8 +92,8 @@ node name basis. The templates are looked up in the following order::
 
 ``prefix`` is either empty (in which case the following underscore is also
 ommitted: e.g. {osystem}_{node_arch}_{node_subarch}_{release}) or one of
-``enlist``, ``enlist_userdata``, ``commissioning``, ``curtin``,
-``curtin_userdata`` or ``preseed_master``.
+``enlist``, ``commissioning``, ``curtin``, ``curtin_userdata`` or
+``preseed_master``.
 
 As you can see this mechanism is also used to calculate the base preseeds for
 all of installation, enlistment and commissioning.  It allows end users to

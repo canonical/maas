@@ -57,7 +57,6 @@ from maasserver.models import (
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
-from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import (
@@ -117,8 +116,6 @@ from testtools.matchers import (
     Equals,
     HasLength,
     KeysEqual,
-    MatchesAll,
-    Not,
     StartsWith,
 )
 import yaml
@@ -2864,35 +2861,11 @@ class TestEnlistViews(MAASServerTestCase):
     def test_get_userdata(self):
         # instance-id must be available
         ud_url = reverse('enlist-metadata-user-data', args=['latest'])
-        fake_preseed = factory.make_string()
-        self.patch(
-            api, "get_enlist_userdata", Mock(return_value=fake_preseed))
         response = self.client.get(ud_url)
-        self.assertEqual(
-            (http.client.OK, "text/plain", fake_preseed),
-            (response.status_code, response["Content-Type"],
-             response.content.decode(settings.DEFAULT_CHARSET)),
-            response)
-
-    def test_get_userdata_detects_request_origin(self):
-        rack_url = 'http://%s' % factory.make_name('host')
-        maas_url = factory.make_simple_http_url()
-        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        network = IPNetwork("10.1.1/24")
-        ip = factory.pick_ip_in_network(network)
-        rack = factory.make_RackController(interface=True, url=rack_url)
-        nic = rack.get_boot_interface()
-        vlan = nic.vlan
-        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
-        factory.make_StaticIPAddress(subnet=subnet, interface=nic)
-        vlan.dhcp_on = True
-        vlan.primary_rack = rack
-        vlan.save()
-        url = reverse('enlist-metadata-user-data', args=['latest'])
-        response = self.client.get(url, REMOTE_ADDR=ip)
-        self.assertThat(
-            response.content.decode(settings.DEFAULT_CHARSET),
-            MatchesAll(Contains(rack_url), Not(Contains(maas_url))))
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual("text/plain", response['Content-Type'])
+        self.assertNotEqual(
+            "", response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_metadata_list(self):
         # /enlist/latest/metadata request should list available keys
