@@ -149,8 +149,9 @@ class ScriptSetManager(Manager):
         elif not scripts:
             # If the user hasn't selected any commissioning Scripts select
             # all by default excluding for_hardware scripts.
-            for script in Script.objects.filter(
-                    script_type=SCRIPT_TYPE.COMMISSIONING, for_hardware=[]):
+            qs = Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING, for_hardware=[])
+            for script in qs:
                 script_set.add_pending_script(script, input)
         else:
             self._add_user_selected_scripts(script_set, scripts, input)
@@ -297,6 +298,15 @@ class ScriptSetManager(Manager):
             results_count=Count('scriptresult')).filter(
                 node=node, results_count=0)
         empty_scriptsets.delete()
+
+        # Set previous ScriptSet ScriptResults which are still pending,
+        # installing, or running to aborted. The user has requested for the
+        # process to be restarted.
+        ScriptResult.objects.exclude(script_set=new_script_set).filter(
+            script_set__result_type=new_script_set.result_type,
+            script_set__node=node, status__in=[
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                SCRIPT_STATUS.INSTALLING]).update(status=SCRIPT_STATUS.ABORTED)
 
 
 class ScriptSet(CleanSave, Model):

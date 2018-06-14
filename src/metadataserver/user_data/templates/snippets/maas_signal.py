@@ -11,7 +11,7 @@ from maas_api_helper import (
 )
 
 
-VALID_STATUS = ("OK", "FAILED", "WORKING", "TESTING")
+VALID_STATUS = ("OK", "FAILED", "WORKING", "TESTING", "COMMISSIONING")
 POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot", "wedge")
 
 

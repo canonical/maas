@@ -453,6 +453,27 @@ class TestScriptSetManager(MAASServerTestCase):
             ScriptSet.objects.filter(
                 result_type=RESULT_TYPE.COMMISSIONING).all())
 
+    def test_create_commissioning_script_set_aborts_old_running_scripts(self):
+        node = factory.make_Node()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        # Generate old ScriptResults
+        for _ in range(3):
+            script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            for status in [
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING]:
+                factory.make_ScriptResult(script_set=script_set, status=status)
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, scripts=[script.name])
+
+        for script_result in ScriptResult.objects.all():
+            if script_result.script_set == script_set:
+                self.assertEqual(SCRIPT_STATUS.PENDING, script_result.status)
+            else:
+                self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
+
     def test_create_commissioning_script_set_accepts_params(self):
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING, parameters={
@@ -666,6 +687,27 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertCountEqual(
             [script_set1, script_set2],
             ScriptSet.objects.filter(result_type=RESULT_TYPE.TESTING).all())
+
+    def test_create_testing_script_set_aborts_old_running_scripts(self):
+        node = factory.make_Node()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        # Generate old ScriptResults
+        for _ in range(3):
+            script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.TESTING)
+            for status in [
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING,
+                    SCRIPT_STATUS.INSTALLING]:
+                factory.make_ScriptResult(script_set=script_set, status=status)
+
+        script_set = ScriptSet.objects.create_testing_script_set(
+            node, scripts=[script.name])
+
+        for script_result in ScriptResult.objects.all():
+            if script_result.script_set == script_set:
+                self.assertEqual(SCRIPT_STATUS.PENDING, script_result.status)
+            else:
+                self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
 
     def test_create_testing_script_set_accepts_params(self):
         script = factory.make_Script(

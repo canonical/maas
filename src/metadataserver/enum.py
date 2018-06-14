@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the metadataserver application."""
@@ -23,6 +23,7 @@ class SIGNAL_STATUS:
     OK = "OK"
     FAILED = "FAILED"
     WORKING = "WORKING"
+    COMMISSIONING = "COMMISSIONING"
     TESTING = "TESTING"
     TIMEDOUT = "TIMEDOUT"
     INSTALLING = "INSTALLING"
@@ -32,6 +33,7 @@ SIGNAL_STATUS_CHOICES = (
     (SIGNAL_STATUS.OK, "OK"),
     (SIGNAL_STATUS.FAILED, "FAILED"),
     (SIGNAL_STATUS.WORKING, "WORKING"),
+    (SIGNAL_STATUS.COMMISSIONING, "COMMISSIONING"),
     (SIGNAL_STATUS.TESTING, "TESTING"),
     (SIGNAL_STATUS.TIMEDOUT, "TIMEDOUT"),
     (SIGNAL_STATUS.INSTALLING, "INSTALLING"),

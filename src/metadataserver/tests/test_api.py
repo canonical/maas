@@ -47,6 +47,8 @@ from maasserver.exceptions import (
     Unauthorized,
 )
 from maasserver.models import (
+    Config,
+    NodeMetadata,
     Event,
     SSHKey,
     Tag,
@@ -91,8 +93,10 @@ from metadataserver.enum import (
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
+    SIGNAL_STATUS_CHOICES,
 )
 from metadataserver.models import (
+    ScriptSet,
     NodeKey,
     NodeUserData,
 )
@@ -1620,6 +1624,17 @@ class TestCommissioningAPI(MAASServerTestCase):
             populate_tags_for_single_node,
             MockCalledOnceWith(ANY, node))
 
+    def test_signaling_commissioning_OK_moves_node_to_new_when_enlisting(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        nmd = NodeMetadata.objects.create(
+            node=node, key='enlisting', value='True')
+        client = make_node_client(node=node)
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
+        self.assertIsNone(reload_object(nmd))
+
     def test_signaling_requires_status_code(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
@@ -1632,7 +1647,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_machine_in_unexpected_state(self):
-        machine = factory.make_Node(status=NODE_STATUS.NEW)
+        machine = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         client = make_node_client(node=machine)
         response = call_signal(client)
         self.expectThat(
@@ -1640,9 +1655,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             Equals(http.client.CONFLICT))
         self.expectThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals(
-                "Machine wasn't commissioning/installing/entering-rescue-mode"
-                " (status is New)"))
+            Equals("Machine status isn't valid (status is Deployed)"))
 
     def test_signaling_accepts_non_machine_results(self):
         node = factory.make_Node(
@@ -2343,6 +2356,17 @@ class TestTestingAPI(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
+    def test_signaling_testing_success_moves_node_to_new_when_enlisting(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+        nmd = NodeMetadata.objects.create(
+            node=node, key='enlisting', value='True')
+        client = make_node_client(node=node)
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
+        self.assertIsNone(reload_object(nmd))
+
     def test_signaling_testing_success_moves_node_to_new_when_f_commiss(self):
         node = factory.make_Node(
             previous_status=NODE_STATUS.FAILED_COMMISSIONING,
@@ -2457,6 +2481,94 @@ class TestTestingAPI(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         node = reload_object(node)
         self.assertIsNone(node.status_expires)
+
+
+class TestNewAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.useFixture(SignalsDisabled("power"))
+
+    def test_signal_commissioning(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        # When creating a new ScriptSet for commissioning during enlistment
+        # only the builtin commissioning scripts should be added.
+        factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
+        min_hwe_kernel = factory.make_name('hwe_kernel')
+        Config.objects.set_config('default_min_hwe_kernel', min_hwe_kernel)
+
+        client = make_node_client(node)
+        response = call_signal(client, status=SIGNAL_STATUS.COMMISSIONING)
+
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        node = reload_object(node)
+        self.assertIsNotNone(node.current_commissioning_script_set)
+        self.assertItemsEqual(
+            NODE_INFO_SCRIPTS.keys(),
+            [script.name for script in node.current_commissioning_script_set])
+        self.assertIsNone(node.current_testing_script_set)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+        self.assertEqual(min_hwe_kernel, node.min_hwe_kernel)
+
+    def test_signal_commissioning_only_creates_scriptsets_when_needed(self):
+        # This happens when commissioning is started by the user with correct
+        # power parameters but an invalid or missing boot MAC.
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
+        commissioning = ScriptSet.objects.create_commissioning_script_set(node)
+        testing = ScriptSet.objects.create_testing_script_set(node)
+        node.current_commissioning_script_set = commissioning
+        node.current_testing_script_set = testing
+        node.save()
+
+        client = make_node_client(node)
+        response = call_signal(client, status=SIGNAL_STATUS.COMMISSIONING)
+
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        node = reload_object(node)
+        self.assertEqual(commissioning, node.current_commissioning_script_set)
+        self.assertEqual(testing, node.current_testing_script_set)
+
+    def test_other_user_than_node_cannot_signal_commissioning(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+
+        client = MAASSensibleOAuthClient(factory.make_User())
+        response = call_signal(client)
+
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
+
+    def test_signaling_commissioning_result_does_not_affect_other_node(self):
+        other_node = factory.make_Node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+
+        client = make_node_client(node)
+        response = call_signal(client, status=SIGNAL_STATUS.COMMISSIONING)
+
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        other_node = reload_object(other_node)
+        self.assertIsNone(other_node.current_commissioning_script_set)
+        self.assertIsNone(other_node.current_testing_script_set)
+        self.assertEqual(NODE_STATUS.NEW, other_node.status)
+        self.assertIsNone(other_node.min_hwe_kernel)
+
+    def test_signaling_other_is_ignored(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+
+        client = make_node_client(node)
+        response = call_signal(
+            client, status=factory.pick_choice(
+                SIGNAL_STATUS_CHOICES, but_not=SIGNAL_STATUS.COMMISSIONING))
+
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        node = reload_object(node)
+        self.assertIsNone(node.current_commissioning_script_set)
+        self.assertIsNone(node.current_testing_script_set)
+        self.assertEqual(NODE_STATUS.NEW, node.status)
+        self.assertIsNone(node.min_hwe_kernel)
 
 
 class TestDiskErasingAPI(MAASServerTestCase):

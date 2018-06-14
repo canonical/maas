@@ -55,8 +55,10 @@ from maasserver.exceptions import (
     NodeStateViolation,
 )
 from maasserver.models import (
+    Config,
     Interface,
     Node,
+    NodeMetadata,
     SSHKey,
     SSLKey,
 )
@@ -94,6 +96,7 @@ from metadataserver.models import (
     NodeUserData,
     Script,
     ScriptResult,
+    ScriptSet,
 )
 from metadataserver.user_data import generate_user_data_for_poweroff
 from metadataserver.vendor_data import get_vendor_data
@@ -426,10 +429,8 @@ class VersionIndexHandler(MetadataViewHandler):
     create = update = delete = None
     subfields = ('maas-commissioning-scripts', 'meta-data', 'user-data')
 
-    # States in which a node is allowed to signal
-    # commissioning/installing/entering-rescue-mode status.
-    # (Only in Commissioning/Deploying/EnteringRescueMode/RescueMode state,
-    # however, will it have any effect.)
+    # States in which a node is allowed to signal. Only in these states
+    # will signaling have an effect.
     signalable_states = [
         NODE_STATUS.BROKEN,
         NODE_STATUS.COMMISSIONING,
@@ -443,6 +444,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
         NODE_STATUS.TESTING,
         NODE_STATUS.FAILED_TESTING,
+        NODE_STATUS.NEW,
         ]
 
     effective_signalable_states = [
@@ -452,6 +454,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.RESCUE_MODE,
         NODE_STATUS.TESTING,
+        NODE_STATUS.NEW,
     ]
 
     def read(self, request, version, mac=None):
@@ -506,6 +509,28 @@ class VersionIndexHandler(MetadataViewHandler):
                     script_result.status = SCRIPT_STATUS.RUNNING
                     script_result.save(update_fields=['status'])
 
+    def _process_new(self, node, request, status):
+        # MAAS only cares if a NEW node is trying to commission itself. Ignore
+        # other signals.
+        if status != SIGNAL_STATUS.COMMISSIONING:
+            return None
+
+        # Check if the node currently has a pending or running commissioning
+        # ScriptSet. If it doesn't create one with only the builtin
+        # commissioning Scripts.
+        script_set = node.current_commissioning_script_set
+        if script_set is None or script_set.status not in [
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.INSTALLING,
+                SCRIPT_STATUS.RUNNING]:
+            script_set = ScriptSet.objects.create_commissioning_script_set(
+                node, ['none'])
+            node.current_commissioning_script_set = script_set
+
+        node.min_hwe_kernel = Config.objects.get_config(
+            'default_min_hwe_kernel')
+
+        return NODE_STATUS.COMMISSIONING
+
     def _process_testing(self, node, request, status):
         # node.status_expires is only used to ensure the node boots into
         # testing. After testing has started the script_reaper makes sure the
@@ -518,7 +543,11 @@ class VersionIndexHandler(MetadataViewHandler):
             node, node.current_testing_script_set, request, status)
 
         if status == SIGNAL_STATUS.OK:
-            if node.previous_status in NODE_TESTING_RESET_READY_TRANSITIONS:
+            enlisting = NodeMetadata.objects.get(node=node, key='enlisting')
+            if enlisting is not None:
+                enlisting.delete()
+                return NODE_STATUS.NEW
+            elif node.previous_status in NODE_TESTING_RESET_READY_TRANSITIONS:
                 return NODE_STATUS.READY
             elif node.previous_status == NODE_STATUS.FAILED_COMMISSIONING:
                 return NODE_STATUS.NEW
@@ -575,6 +604,10 @@ class VersionIndexHandler(MetadataViewHandler):
             SIGNAL_STATUS.TESTING: NODE_STATUS.TESTING,
         }
         target_status = signaling_statuses.get(status)
+        enlisting = NodeMetadata.objects.get(node=node, key='enlisting')
+        if enlisting is not None and status == SIGNAL_STATUS.OK:
+            enlisting.delete()
+            target_status = NODE_STATUS.NEW
 
         if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
             # Commissioning has ended. Check if any scripts failed during
@@ -632,22 +665,22 @@ class VersionIndexHandler(MetadataViewHandler):
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
-        """Signal commissioning/installation/entering-rescue-mode status.
+        """Signal ephemeral environment status.
 
         A node booted into an ephemeral environment can call this to report
         progress of any scripts given to it by MAAS.
 
-        Calling this from a node that is not Allocated, Commissioning, Ready,
-        Broken, Deployed, or Failed Tests is an error. Signaling
+        Calling this from a node in an invalid state is an error.  Signaling
         completion more than once is not an error; all but the first
         successful call are ignored.
 
-        :param status: A commissioning/installation/entering-rescue-mode
-            status code.
-            This can be "OK" (to signal that
-            commissioning/installation/entering-rescue-mode has completed
-            successfully), or "FAILED" (to signal failure), or
-            "WORKING" (for progress reports).
+        :param status: An ephemeral environment signal. This may be "OK" to
+            signal completion, WORKING for progress reports, FAILED for,
+            FAILURE, COMMISSIONING for requesting the node be put into
+            COMMISSIONING when NEW, TESTING for requesting the node be put
+            into TESTING from COMMISSIONING, TIMEDOUT if the script has run
+            past its time limit, or INSTALLING for installing required
+            packages.
         :param error: An optional error string. If given, this will be stored
             (overwriting any previous error string), and displayed in the MAAS
             UI. If not given, any previous error string will be cleared.
@@ -663,15 +696,13 @@ class VersionIndexHandler(MetadataViewHandler):
         if (node.status not in self.signalable_states and
                 node.node_type == NODE_TYPE.MACHINE):
             raise NodeStateViolation(
-                "Machine wasn't commissioning/installing/entering-rescue-mode "
-                "(status is %s)" % NODE_STATUS_CHOICES_DICT[node.status])
+                "Machine status isn't valid (status is %s)" %
+                NODE_STATUS_CHOICES_DICT[node.status])
 
         # These statuses are acceptable for commissioning, disk erasing,
         # entering rescue mode and deploying.
         if status not in [choice[0] for choice in SIGNAL_STATUS_CHOICES]:
-            raise MAASAPIBadRequest(
-                "Unknown commissioning, testing, installation, or "
-                "entering-rescue-mode status: '%s'" % status)
+            raise MAASAPIBadRequest("Unknown status: '%s'" % status)
 
         if (node.status not in self.effective_signalable_states and
                 node.node_type == NODE_TYPE.MACHINE):
@@ -681,6 +712,7 @@ class VersionIndexHandler(MetadataViewHandler):
 
         if node.node_type == NODE_TYPE.MACHINE:
             process_status_dict = {
+                NODE_STATUS.NEW: self._process_new,
                 NODE_STATUS.TESTING: self._process_testing,
                 NODE_STATUS.COMMISSIONING: self._process_commissioning,
                 NODE_STATUS.DEPLOYING: self._process_deploying,
