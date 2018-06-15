@@ -25,5 +25,6 @@ STATIC_ROOT = os.path.join(
 
 # Override the preseed locations.
 PRESEED_TEMPLATE_LOCATIONS = (
+    os.path.join(os.environ['SNAP_DATA'], 'preseeds'),
     os.path.join(os.environ['SNAP'], 'etc', 'maas', 'preseeds'),
     )
