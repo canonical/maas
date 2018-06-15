@@ -7,6 +7,7 @@ __all__ = [
     "RackHTTPService",
 ]
 
+from collections import defaultdict
 from datetime import timedelta
 import os
 import sys
@@ -93,10 +94,21 @@ class RackHTTPService(TimerService):
     def _genRegionIps(self):
         """Generate IP addresses for all rack controller this rack
         controller is connected to."""
-        for _, connection in self._rpc_service.connections.items():
-            addr = IPAddress(connection.address[0])
+        # Filter the connects by region.
+        conn_per_region = defaultdict(set)
+        for eventloop, connection in self._rpc_service.connections.items():
+            conn_per_region[eventloop.split(':')[0]].add(connection)
+        for _, connections in conn_per_region.items():
+            # Sort the connections so the same IP is always picked per
+            # region controller. This ensures that the HTTP configuration
+            # is not reloaded unless its actually required to reload.
+            conn = list(sorted(
+                connections, key=lambda conn: conn.address[0]))[0]
+            addr = IPAddress(conn.address[0])
             if addr.is_ipv4_mapped():
                 yield str(addr.ipv4())
+            elif addr.version == 6:
+                yield '[%s]' % addr
             else:
                 yield str(addr)
 

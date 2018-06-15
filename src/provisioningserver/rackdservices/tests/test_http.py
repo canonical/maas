@@ -5,6 +5,9 @@
 
 __all__ = []
 
+import random
+from unittest.mock import Mock
+
 import attr
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
@@ -154,6 +157,59 @@ class TestRackHTTPService(MAASTestCase):
 
         self.assertThat(service.step, Equals(service.INTERVAL_HIGH))
         self.assertThat(service._loop.interval, Equals(service.INTERVAL_HIGH))
+
+    def test__genRegionIps_groups_by_region(self):
+        mock_rpc = Mock()
+        mock_rpc.connections = {}
+        for _ in range(3):
+            region_name = factory.make_name('region')
+            for _ in range(3):
+                pid = random.randint(0, 10000)
+                eventloop = '%s:pid=%s' % (region_name, pid)
+                ip = factory.make_ip_address()
+                mock_conn = Mock()
+                mock_conn.address = (ip, random.randint(5240, 5250))
+                mock_rpc.connections[eventloop] = mock_conn
+
+        service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
+        region_ips = list(service._genRegionIps())
+        self.assertEquals(3, len(region_ips))
+
+    def test__genRegionIps_always_returns_same_result(self):
+        mock_rpc = Mock()
+        mock_rpc.connections = {}
+        for _ in range(3):
+            region_name = factory.make_name('region')
+            for _ in range(3):
+                pid = random.randint(0, 10000)
+                eventloop = '%s:pid=%s' % (region_name, pid)
+                ip = factory.make_ip_address()
+                mock_conn = Mock()
+                mock_conn.address = (ip, random.randint(5240, 5250))
+                mock_rpc.connections[eventloop] = mock_conn
+
+        service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
+        region_ips = frozenset(service._genRegionIps())
+        for _ in range(3):
+            self.assertEquals(region_ips, frozenset(service._genRegionIps()))
+
+    def test__genRegionIps_formats_ipv6(self):
+        mock_rpc = Mock()
+        mock_rpc.connections = {}
+        ip_addresses = set()
+        for _ in range(3):
+            region_name = factory.make_name('region')
+            pid = random.randint(0, 10000)
+            eventloop = '%s:pid=%s' % (region_name, pid)
+            ip = factory.make_ipv6_address()
+            ip_addresses.add('[%s]' % ip)
+            mock_conn = Mock()
+            mock_conn.address = (ip, random.randint(5240, 5250))
+            mock_rpc.connections[eventloop] = mock_conn
+
+        service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
+        region_ips = set(service._genRegionIps())
+        self.assertEquals(ip_addresses, region_ips)
 
 
 class TestRackHTTPService_Errors(MAASTestCase):
