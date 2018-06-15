@@ -12,10 +12,18 @@ mkdir -p "$SNAP_COMMON/proxy/cache"
 chown -R nobody:nogroup "$SNAP_COMMON/proxy/cache"
 mkdir -p "$SNAP_COMMON/proxy/spool"
 chown -R nobody:nogroup "$SNAP_COMMON/proxy/spool"
+mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"
 mkdir -p "$SNAP_DATA/proxy"
 mkdir -p "$SNAP_DATA/supervisord"
 mkdir -p "$SNAP_DATA/var/lib/maas"
+
+# Always overwrite sample preseeds to ensure samples are up-to-date in case
+# we do changes that need to be reflected.
+cp "$SNAP/etc/maas/preseeds/curtin_userdata" "$SNAP_DATA/preseeds/curtin_userdata.sample"
+cp "$SNAP/etc/maas/preseeds/curtin_userdata_centos" "$SNAP_DATA/preseeds/curtin_userdata_centos.sample"
+cp "$SNAP/etc/maas/preseeds/curtin_userdata_custom" "$SNAP_DATA/preseeds/curtin_userdata_custom.sample"
+cp "$SNAP/etc/maas/preseeds/curtin_userdata_windows" "$SNAP_DATA/preseeds/curtin_userdata_windows.sample"
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 exec "$SNAP/command-maas.wrapper" migrate --configure
