@@ -1313,41 +1313,38 @@
                                     </div>
                                 </td>
                             </tr>
-
-                            <tr class="row is-active" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
-                                <td class="col-1">
-                                    <input type="checkbox" class="checkbox" name="bond-create" disabled="disabled" checked />
-                                    <label for="bond-create"></label>
-                                </td>
-                                <td class="col-2 p-form-validation" data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }">
-                                    <input type="text" name="name" class="editible p-form-validation__input"
-                                        data-ng-model="newBondInterface.name">
-                                </td>
-                                <td class="col-1">
-                                    <div class="u-align--center">
-                                        <input type="radio" name="bondBootInterface" checked id="{$ newBondInterface $}"
-                                            data-ng-if="hasBootInterface(newBondInterface)">
-                                        <label for="{$ newBondInterface $}"></label>
+                            <tr class="is-active" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
+                                <td>
+                                    <div class="row" data-ng-if="windowWidth > 768">
+                                        <table class="u-no-margin--top">
+                                            <tr class="u-no-padding">
+                                                <td class="table-col--16">
+                                                    <input type="checkbox" class="checkbox u-float--left" id="bond-create" disabled="disabled" checked style="margin-top: 0.5rem;" />
+                                                    <label for="bond-create"></label>
+                                                    <span data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }">
+                                                        <input type="text" name="name" class="editible p-form-validation__input" data-ng-model="newBondInterface.name" style="width: 82%;">
+                                                    </span>
+                                                </td>
+                                                <td class="table-col--7 u-align--center">
+                                                    <input type="radio" name="bondBootInterface" checked id="{$ newBondInterface $}" data-ng-if="hasBootInterface(newBondInterface)">
+                                                </td>
+                                                <td class="table-col--77">&nbsp;</td>
+                                            </tr>
+                                        </table>
+                                        <hr>
                                     </div>
-                                </td>
-                                <td class="col-8"></td>
-                                <td class="p-table-expanding__panel col-12">
                                     <div class="row" data-ng-if="windowWidth <= 768">
-                                        <div class="col-8">
-                                            <h2 data-ng-click="cancel()" class="col-8 p-heading--four">&lsaquo;&nbsp;&nbsp;
-                                            Create bond
-                                            </h2>
-                                        </div>
-                                        <div class="col-4">
-                                            <button data-ng-click="cancel()" class="p-button">
-                                                <i class="p-icon--close">Cancel</i>
-                                            </button>
-                                        </div>
+                                        <h2 class="u-float--left">Create bond</h2>
+                                        <button data-ng-click="cancel()" class="p-button u-float--right u-no-margin--top">
+                                            <i class="p-icon--close">Cancel</i>
+                                        </button>
                                     </div>
+                                </td>
+                                <td class="p-table-expanding__panel col-12 u-no-padding--top">
                                     <div class="p-form p-form--stacked is-active">
                                         <div class="row">
                                             <div class="col-6">
-                                                <div class="p-form__group u-hide--large">
+                                                <div class="p-form__group" data-ng-if="windowWidth <= 768">
                                                     <label for="bond-name" class="p-form__label">Name</label>
                                                     <div class="p-form__control p-form-validation"
                                                         data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }">
@@ -1375,7 +1372,7 @@
                                                             data-ng-placeholder="getInterfacePlaceholderMACAddress(newBondInterface)">
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group">
+                                                <div class="p-form__group u-vertically-center">
                                                     <label class="p-form__label">Tags</label>
                                                     <div class="p-form__control tags--inline">
                                                         <tags-input data-ng-model="newBondInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
@@ -1404,21 +1401,24 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <table class="row">
-                                        <tr class="u-hide u-show--large">
-                                            <th class="col-3">Name</th>
-                                            <th class="col-3">Type</th>
-                                            <th class="col-6">Primary</th>
-                                        </tr>
-                                        <tr data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
-                                            <td class="col-3" aria-label="Name">{$ parent.name $}</td>
-                                            <td class="col-3" aria-label="Type">{$ getInterfaceTypeText(parent) $}</td>
-                                            <td class="col-6" aria-label="Primary">
-                                                <input type="radio" name="bondPrimary" id="{$ parent.name $}" data-ng-model="newBondInterface.primary" data-ng-value="parent">
-                                                <label for="{$ parent.name $}"></label>
-                                            </td>
-                                        </tr>
-                                    </table>
+                                    <div data-ng-if="newBondInterface.parents.length > 0">
+                                        <hr>
+                                        <table class="row">
+                                            <tr class="u-hide u-show--large">
+                                                <th class="table-col--16">Name</th>
+                                                <th class="table-col--16">Type</th>
+                                                <th class="table-col--16">Primary</th>
+                                            </tr>
+                                            <tr data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
+                                                <td class="table-col--16" aria-label="Name">{$ parent.name $}</td>
+                                                <td class="table-col--16" aria-label="Type">{$ getInterfaceTypeText(parent) $}</td>
+                                                <td class="table-col--16" aria-label="Primary">
+                                                    <input type="radio" name="bondPrimary" id="{$ parent.name $}" data-ng-model="newBondInterface.primary" data-ng-value="parent">
+                                                    <label for="{$ parent.name $}"></label>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
                                     <div class="row">
                                         <hr />
                                         <div class="col-12 u-align--right">
@@ -2182,7 +2182,7 @@
                                                         <span>{$ getDeviceType(item) $}</span>
                                                     </div>
                                                 </div>
-                                                <div class="p-form__group">
+                                                <div class="p-form__group u-vertically-center">
                                                     <label for="tags" class="p-form__label">Tags</label>
                                                     <div class="p-form__controls">
                                                         <input type="text" id="tags" name="tags">
