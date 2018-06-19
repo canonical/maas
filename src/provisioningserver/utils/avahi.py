@@ -88,9 +88,17 @@ def parse_avahi_event(line: str) -> dict:
     # consistency with the event names used in the avahi code).
     data = {}
     # Limit to 9 fields here in case a ';' appears in the TXT record unescaped.
-    fields = line.rstrip().split(';', 9)
+    fields = line.rstrip().split(b';', 9)
     if len(fields) < 6:
         return None
+    for index, field in enumerate(fields):
+        # the 9th field is TXT, which can contain anything, including
+        # binary characters. There's a bug about this, that maybe
+        # avahi-browser should escape those binary characters, which
+        # would allow us to treat everything as utf-8:
+        # https://github.com/lathiat/avahi/issues/169
+        if index != 9:
+            fields[index] = field.decode('utf-8')
     event_type = fields[0]
     # The type of the event is indicated in the first character from
     # avahi-browse. The following fields (no matter the event type) will
@@ -239,7 +247,7 @@ def _reader_from_avahi():
         stdout=subprocess.PIPE)
     try:
         # Avahi says "All strings used in DNS-SD are UTF-8 strings".
-        yield io.TextIOWrapper(avahi_browse.stdout, encoding='utf-8')
+        yield avahi_browse.stdout
     finally:
         # SIGINT or SIGTERM (see ActionScript.setup) has been received,
         # avahi-browse may have crashed or been terminated, or there may have
@@ -266,7 +274,7 @@ def _reader_from_stdin(stdin):
 def _reader_from_file(filename):
     """Reader from `filename`."""
     # Avahi says "All strings used in DNS-SD are UTF-8 strings".
-    with open(filename, "r", encoding="utf-8") as infile:
+    with open(filename, "rb") as infile:
         yield infile
 
 

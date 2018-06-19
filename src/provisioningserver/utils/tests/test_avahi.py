@@ -61,9 +61,9 @@ class TestParseAvahiEvent(MAASTestCase):
 
     def test__parses_browser_new_event(self):
         input = (
-            "+;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local")
+            b"+;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local")
         event = parse_avahi_event(input)
         self.assertEquals(
             event,
@@ -79,9 +79,9 @@ class TestParseAvahiEvent(MAASTestCase):
 
     def test__parses_browser_removed_event(self):
         input = (
-            "-;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local")
+            b"-;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local")
         event = parse_avahi_event(input)
         self.assertEquals(
             event,
@@ -97,13 +97,13 @@ class TestParseAvahiEvent(MAASTestCase):
 
     def test__parses_resolver_found_event(self):
         input = (
-            "=;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local;"
-            "printer.local;"
-            "192.168.0.222;"
-            "80;"
-            '"priority=50" "rp=RAW"')
+            b"=;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local;"
+            b"printer.local;"
+            b"192.168.0.222;"
+            b"80;"
+            b'"priority=50" "rp=RAW"')
         event = parse_avahi_event(input)
         self.assertEquals(
             event,
@@ -118,12 +118,25 @@ class TestParseAvahiEvent(MAASTestCase):
                 'fqdn': 'printer.local',
                 'hostname': 'printer',
                 'port': '80',
-                'txt': '"priority=50" "rp=RAW"'
+                'txt': b'"priority=50" "rp=RAW"'
             }
         )
 
+    def test__parses_txt_binary(self):
+        input = (
+            b"=;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local;"
+            b"printer.local;"
+            b"192.168.0.222;"
+            b"80;"
+            b'"BluetoothAddress=\xc8i\xcdB\xe2\x09"')
+        event = parse_avahi_event(input)
+        self.assertEquals(
+            b'"BluetoothAddress=\xc8i\xcdB\xe2\x09"', event['txt'])
+
     def test__returns_none_for_malformed_input(self):
-        self.assertThat(parse_avahi_event(";;;"), Equals(None))
+        self.assertThat(parse_avahi_event(b";;;"), Equals(None))
 
 
 def observe_mdns(*, input, output, verbose=False):
@@ -143,9 +156,9 @@ class TestObserveMDNS(MAASTestCase):
     def test__prints_event_json_in_verbose_mode(self):
         out = io.StringIO()
         input = (
-            "+;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local\n")
+            b"+;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local\n")
         expected_result = {
             'event': 'BROWSER_NEW',
             'interface': 'eth0',
@@ -163,9 +176,9 @@ class TestObserveMDNS(MAASTestCase):
     def test__skips_unimportant_events_without_verbose_enabled(self):
         out = io.StringIO()
         input = (
-            "+;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local\n")
+            b"+;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local\n")
         observe_mdns(verbose=False, input=[input], output=out)
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
@@ -174,13 +187,13 @@ class TestObserveMDNS(MAASTestCase):
     def test__non_verbose_removes_redundant_events_and_outputs_summary(self):
         out = io.StringIO()
         input = (
-            "=;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local;"
-            "printer.local;"
-            "192.168.0.222;"
-            "80;"
-            '"priority=50" "rp=RAW"\n')
+            b"=;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local;"
+            b"printer.local;"
+            b"192.168.0.222;"
+            b"80;"
+            b'"priority=50" "rp=RAW"\n')
         observe_mdns(verbose=False, input=[input, input], output=out)
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
@@ -196,13 +209,13 @@ class TestObserveMDNS(MAASTestCase):
     def test__non_verbose_removes_waits_before_emitting_duplicate_entry(self):
         out = io.StringIO()
         input = (
-            "=;eth0;IPv4"
-            ";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
-            "_http._tcp;local;"
-            "printer.local;"
-            "192.168.0.222;"
-            "80;"
-            '"priority=50" "rp=RAW"\n')
+            b"=;eth0;IPv4"
+            b";HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041;"
+            b"_http._tcp;local;"
+            b"printer.local;"
+            b"192.168.0.222;"
+            b"80;"
+            b'"priority=50" "rp=RAW"\n')
         # If we see the same entry 3 times over the course of 15 minutes, we
         # should only see output two out of the three times.
         self.patch(time, "monotonic").side_effect = (100.0, 200.0, 900.0)
@@ -239,7 +252,6 @@ class TestObserveMDNSCommand(MAASTestCase):
             b"192.168.0.222;"
             b"80;"
             b'"priority=50" "rp=RAW"\n')
-        self.test_input_str = self.test_input_bytes.decode('utf-8')
 
     def test__calls_subprocess_by_default(self):
         parser = ArgumentParser()
@@ -263,14 +275,14 @@ class TestObserveMDNSCommand(MAASTestCase):
         add_arguments(parser)
         args = parser.parse_args(['--input-file', '-'])
         output = io.StringIO()
-        run(args, output=output, stdin=[self.test_input_str])
+        run(args, output=output, stdin=[self.test_input_bytes])
         self.assertThat(output.getvalue(), Not(HasLength(0)))
 
     def test__allows_file_input(self):
-        with NamedTemporaryFile('w') as f:
+        with NamedTemporaryFile('wb') as f:
             parser = ArgumentParser()
             add_arguments(parser)
-            f.write(self.test_input_str)
+            f.write(self.test_input_bytes)
             f.flush()
             args = parser.parse_args(['--input-file', f.name])
             output = io.StringIO()
