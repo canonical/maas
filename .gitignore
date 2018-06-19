@@ -51,6 +51,7 @@
 /services/*/supervise
 /snap/.snapcraft
 /src/maasserver/static/js/bundle/
+/src/maasserver/static/css/*
 /stage
 /TAGS
 /tags

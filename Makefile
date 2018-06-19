@@ -453,6 +453,10 @@ lander-javascript: force-javascript
 	git update-index -q --no-assume-unchanged $(strip $(javascript_output)) 2> /dev/null || true
 	git add -f $(strip $(javascript_output)) 2> /dev/null || true
 
+lander-styles: force-styles node_modules $(scss_output)
+	git update-index -q --no-assume-unchanged $(strip $(scss_output)) 2> /dev/null || true
+	git add -f $(strip $(scss_output)) 2> /dev/null || true
+
 # The $(subst ...) uses a pattern rule to ensure Webpack runs just once,
 # even if all four output files are out-of-date.
 $(subst .,%,$(javascript_output)): $(javascript_deps)
@@ -527,6 +531,7 @@ define phony_targets
   install-dependencies
   javascript
   lander-javascript
+  lander-styles
   lint
   lint-css
   lint-doc
