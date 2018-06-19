@@ -614,9 +614,11 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
         self.assertEqual(
             "%s/MAAS/metadata/enlist" % url,
             preseed['datasource']['MAAS']['metadata_url'])
-        self.assertItemsEqual([
-            'python3-yaml', 'python3-oauthlib', 'freeipmi-tools',
-            'ipmitool', 'sshpass', 'jq'], preseed['packages'])
+        self.assertItemsEqual(
+            [
+                'python3-yaml', 'python3-oauthlib', 'freeipmi-tools',
+                'ipmitool', 'sshpass', 'archdetect-deb', 'jq',
+            ], preseed['packages'])
 
 
 class TestComposeCurtinMAASReporter(MAASServerTestCase):

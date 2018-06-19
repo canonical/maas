@@ -306,9 +306,11 @@ def get_base_preseed(node=None):
             cloud_config['packages'] += ['freeipmi-tools', 'ipmitool']
             # Required for Facebook Wedge.
             cloud_config['packages'] += ['sshpass']
-        # jq is used during enlistment to read the JSON string containing the
-        # system_id of the newly created machine.
+        # Check if node is enlisting
         if node is None or node.status == NODE_STATUS.NEW:
+            cloud_config['packages'] += ['archdetect-deb']
+            # jq is used during enlistment to read the JSON string containing
+            # the system_id of the newly created machine.
             cloud_config['packages'] += ['jq']
 
     return cloud_config

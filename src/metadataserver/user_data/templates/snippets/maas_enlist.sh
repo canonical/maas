@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 #    maas-enlist: MAAS Enlistment Tool
 #
