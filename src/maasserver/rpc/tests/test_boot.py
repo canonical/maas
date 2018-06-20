@@ -19,10 +19,7 @@ from maasserver.models import (
     Config,
     Event,
 )
-from maasserver.preseed import (
-    compose_enlistment_preseed_url,
-    compose_preseed_url,
-)
+from maasserver.preseed import compose_enlistment_preseed_url
 from maasserver.rpc import boot as boot_module
 from maasserver.rpc.boot import (
     event_log_pxe_request,
@@ -318,11 +315,24 @@ class TestGetConfig(MAASServerTestCase):
         self.assertEqual(host, observed_config.get('hostname'))
         self.assertEqual(domainname, observed_config.get('domain'))
 
-    def test__has_enlistment_preseed_url_for_default(self):
+    def test__has_enlistment_preseed_url_with_local_ip(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         factory.make_default_ubuntu_release_bootable()
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip)
+        self.assertEqual(
+            compose_enlistment_preseed_url(
+                base_url='http://%s:5248/' % local_ip),
+            observed_config["preseed_url"])
+
+    def test__has_enlistment_preseed_url_with_region_ip(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        factory.make_default_ubuntu_release_bootable()
+        Config.objects.set_config('use_rack_proxy', False)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(
@@ -356,19 +366,21 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, arch=arch)
         self.assertEqual('generic', observed_config['subarch'])
 
-    def test__has_preseed_url_for_known_node(self):
-        rack_controller = factory.make_RackController(url='')
-        local_ip = factory.make_ip_address()
+    def test_preseed_url_for_known_node_local_ip(self):
+        rack_url = 'http://%s' % factory.make_name('host')
+        network = IPNetwork("10.1.1/24")
+        local_ip = factory.pick_ip_in_network(network)
         remote_ip = factory.make_ip_address()
-        node = self.make_node(status=NODE_STATUS.DEPLOYING)
+        self.patch(
+            server_address, 'resolve_hostname').return_value = {local_ip}
+        rack_controller = factory.make_RackController(url=rack_url)
+        node = self.make_node(primary_rack=rack_controller)
         mac = node.get_boot_interface().mac_address
-        self.patch(boot_module, 'get_source_address').return_value = local_ip
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertEqual(
-            compose_preseed_url(
-                node, rack_controller, default_region_ip=local_ip),
-            observed_config["preseed_url"])
+        self.assertThat(
+            observed_config["preseed_url"],
+            StartsWith('http://%s:5248' % local_ip))
 
     def test_preseed_url_for_known_node_uses_rack_url(self):
         rack_url = 'http://%s' % factory.make_name('host')
@@ -380,6 +392,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController(url=rack_url)
         node = self.make_node(primary_rack=rack_controller)
         mac = node.get_boot_interface().mac_address
+        Config.objects.set_config('use_rack_proxy', False)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertThat(

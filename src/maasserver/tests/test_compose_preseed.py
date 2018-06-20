@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 
+from django.urls import reverse
 from maasserver.compose_preseed import (
     compose_enlistment_preseed,
     compose_preseed,
@@ -25,7 +26,7 @@ from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import absolute_reverse
+from maastesting.http import make_HttpRequest
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
@@ -154,9 +155,9 @@ class TestAptProxy(MAASServerTestCase):
         Config.objects.set_config("enable_http_proxy", self.enable)
         Config.objects.set_config("http_proxy", self.http_proxy)
         Config.objects.set_config("use_peer_proxy", self.use_peer_proxy)
-        actual = get_apt_proxy(
-            node.get_boot_rack_controller(),
-            default_region_ip=self.default_region_ip)
+        # Create the http request that would come in for the preseed.
+        request = make_HttpRequest(http_host=self.default_region_ip)
+        actual = get_apt_proxy(request, node.get_boot_rack_controller())
         self.assertEqual(self.result, actual)
 
 
@@ -235,8 +236,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         Config.objects.set_config("enable_http_proxy", False)
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertNotIn('proxy', preseed['apt'])
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
@@ -247,9 +249,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
-        apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
+        request = make_HttpRequest()
+        apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller())
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertIn('datasource', preseed)
         self.assertIn('MAAS', preseed['datasource'])
         self.assertThat(
@@ -275,7 +278,8 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
-        preseed = compose_preseed(PRESEED_TYPE.COMMISSIONING, node)
+        request = make_HttpRequest()
+        preseed = compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
         self.assertThat(preseed, StartsWith("#cloud-config\n"))
 
     def test_compose_preseed_for_commissioning_node_manages_etc_hosts(self):
@@ -289,8 +293,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertTrue(preseed['manage_etc_hosts'])
 
     def test_compose_preseed_for_commissioning_includes_metadata_status_url(
@@ -302,20 +307,19 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
-        region_ip = factory.make_ip_address()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(
-                PRESEED_TYPE.COMMISSIONING, node, default_region_ip=region_ip))
+                request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertEqual(
-            absolute_reverse('metadata', default_region_ip=region_ip),
+            request.build_absolute_uri(reverse('metadata')),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertEqual(
-            absolute_reverse(
-                'metadata-status', default_region_ip=region_ip,
-                args=[node.system_id]),
+            request.build_absolute_uri(
+                reverse('metadata-status', args=[node.system_id])),
             preseed['reporting']['maas']['endpoint'])
 
-    def test_compose_preseed_uses_default_region_ip(self):
+    def test_compose_preseed_uses_request_build_absolute_uri(self):
         rack_controller = factory.make_RackController(url='')
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
@@ -323,17 +327,16 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
             compose_preseed(
-                PRESEED_TYPE.COMMISSIONING, node,
-                default_region_ip='10.0.0.1'))
+                request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertEqual(
-            absolute_reverse('metadata', default_region_ip='10.0.0.1'),
+            request.build_absolute_uri(reverse('metadata')),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertEqual(
-            absolute_reverse(
-                'metadata-status', default_region_ip='10.0.0.1',
-                args=[node.system_id]),
+            request.build_absolute_uri(
+                reverse('metadata-status', args=[node.system_id])),
             preseed['reporting']['maas']['endpoint'])
 
     def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
@@ -344,8 +347,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertNotIn('power_state', preseed)
 
     def test_compose_preseed_for_enable_ssh_does_not_include_poweroff(self):
@@ -357,8 +361,9 @@ class TestComposePreseed(MAASServerTestCase):
             nic.vlan.dhcp_on = True
             nic.vlan.primary_rack = rack_controller
             nic.vlan.save()
+            request = make_HttpRequest()
             preseed = yaml.safe_load(
-                compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+                compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
             self.assertNotIn('power_state', preseed)
 
     def test_compose_preseed_for_enable_ssh_ignored_unsupported_states(self):
@@ -375,8 +380,9 @@ class TestComposePreseed(MAASServerTestCase):
             nic.vlan.dhcp_on = True
             nic.vlan.primary_rack = rack_controller
             nic.vlan.save()
+            request = make_HttpRequest()
             preseed = yaml.safe_load(
-                compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+                compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
             self.assertIn('power_state', preseed, status_name)
 
     def test_compose_pressed_for_testing_reboots_when_powered_on(self):
@@ -391,8 +397,9 @@ class TestComposePreseed(MAASServerTestCase):
         script_set = node.current_testing_script_set
         script_set.power_state_before_transition = POWER_STATE.ON
         script_set.save()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertDictEqual({
             'delay': 'now',
             'mode': 'reboot',
@@ -418,8 +425,9 @@ class TestComposePreseed(MAASServerTestCase):
             nic.vlan.dhcp_on = True
             nic.vlan.primary_rack = rack_controller
             nic.vlan.save()
+            request = make_HttpRequest()
             preseed = yaml.safe_load(
-                compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+                compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
             self.assertDictEqual({
                 'delay': 'now',
                 'mode': 'poweroff',
@@ -435,8 +443,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         maas_dict = preseed['datasource']['MAAS']
         reporting_dict = preseed['reporting']['maas']
         token = NodeKey.objects.get_token_for_node(node)
@@ -455,8 +464,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node))
         self.assertItemsEqual([
             'python3-yaml', 'python3-oauthlib', 'freeipmi-tools', 'ipmitool',
             'sshpass'], preseed.get('packages'))
@@ -470,12 +480,12 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
-        region_ip = factory.make_ip_address()
+        request = make_HttpRequest()
         expected_apt_proxy = get_apt_proxy(
-            node.get_boot_rack_controller(), default_region_ip=region_ip)
+            request, node.get_boot_rack_controller())
         preseed = yaml.safe_load(
             compose_preseed(
-                PRESEED_TYPE.CURTIN, node, default_region_ip=region_ip))
+                request, PRESEED_TYPE.CURTIN, node))
 
         self.assertIn('datasource', preseed)
         self.assertIn('MAAS', preseed['datasource'])
@@ -491,7 +501,7 @@ class TestComposePreseed(MAASServerTestCase):
                 'condition': 'test ! -e /tmp/block-reboot',
             }, preseed['power_state'])
         self.assertEqual(
-            absolute_reverse('curtin-metadata', default_region_ip=region_ip),
+            request.build_absolute_uri(reverse('curtin-metadata')),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertSystemInfo(preseed)
         self.assertAptConfig(preseed, expected_apt_proxy)
@@ -510,8 +520,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         Config.objects.set_config("enable_http_proxy", False)
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.CURTIN, node))
+            compose_preseed(request, PRESEED_TYPE.CURTIN, node))
 
         self.assertNotIn('proxy', preseed['apt'])
 
@@ -530,9 +541,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
-        apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
+        request = make_HttpRequest()
+        apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller())
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.CURTIN, node))
+            compose_preseed(request, PRESEED_TYPE.CURTIN, node))
 
         self.assertIn('apt_sources', preseed)
         self.assertEqual(apt_proxy, preseed['apt_proxy'])
@@ -552,8 +564,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.CURTIN, node))
+            compose_preseed(request, PRESEED_TYPE.CURTIN, node))
 
         self.assertNotIn('apt_sources', preseed)
 
@@ -571,8 +584,9 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
+        request = make_HttpRequest()
         preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.CURTIN, node))
+            compose_preseed(request, PRESEED_TYPE.CURTIN, node))
 
         self.assertNotIn('packages', preseed)
 
@@ -592,11 +606,10 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         token = NodeKey.objects.get_token_for_node(node)
-        region_ip = factory.make_ip_address()
-        expected_url = absolute_reverse(
-            'curtin-metadata', default_region_ip=region_ip)
+        request = make_HttpRequest()
+        expected_url = request.build_absolute_uri(reverse('curtin-metadata'))
         compose_preseed(
-            PRESEED_TYPE.CURTIN, node, default_region_ip=region_ip)
+            request, PRESEED_TYPE.CURTIN, node)
         self.assertThat(
             compose_preseed_mock,
             MockCalledOnceWith(
@@ -623,7 +636,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
             NoSuchOperatingSystem,
-            compose_preseed, PRESEED_TYPE.CURTIN, node)
+            compose_preseed, make_HttpRequest(), PRESEED_TYPE.CURTIN, node)
 
     def test_compose_preseed_propagates_NoConnectionsAvailable(self):
         # If the region does not have any connections to the node's cluster
@@ -640,16 +653,18 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         self.assertRaises(
             NoConnectionsAvailable,
-            compose_preseed, PRESEED_TYPE.CURTIN, node)
+            compose_preseed, make_HttpRequest(), PRESEED_TYPE.CURTIN, node)
 
     def test_compose_enlistment_preseed(self):
         rack_controller = factory.make_RackController()
         url = factory.make_simple_http_url()
-        apt_proxy = get_apt_proxy(rack_controller)
-        preseed = yaml.safe_load(compose_enlistment_preseed(rack_controller, {
-            'metadata_enlist_url': url,
-            'syslog_host_port': url,
-            }))
+        request = make_HttpRequest()
+        apt_proxy = get_apt_proxy(request, rack_controller)
+        preseed = yaml.safe_load(compose_enlistment_preseed(
+            request, rack_controller, {
+                'metadata_enlist_url': url,
+                'syslog_host_port': url,
+                }))
         self.assertDictEqual(
             {'MAAS': {'metadata_url': url}}, preseed['datasource'])
         self.assertTrue(preseed['manage_etc_hosts'])
@@ -696,7 +711,8 @@ class TestComposePreseed(MAASServerTestCase):
     def test_compose_enlistment_preseed_has_header(self):
         rack_controller = factory.make_RackController()
         url = factory.make_simple_http_url()
-        preseed = compose_enlistment_preseed(rack_controller, {
+        request = make_HttpRequest()
+        preseed = compose_enlistment_preseed(request, rack_controller, {
             'metadata_enlist_url': url,
             'syslog_host_port': url,
             })

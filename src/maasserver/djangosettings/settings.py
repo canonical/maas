@@ -60,6 +60,10 @@ LOGOUT_URL = 'logout'
 LOGIN_REDIRECT_URL = 'index'
 LOGIN_URL = 'login'
 
+# Always use X-Forwarded-Host when possible. This is needed
+# when MAAS is setup behind a reverse proxy.
+USE_X_FORWARDED_HOST = True
+
 # Should the DNS features be enabled?  Having this config option is a
 # debugging/testing feature to be able to quickly disconnect the DNS
 # machinery. TODO: Use the signals manager instead.

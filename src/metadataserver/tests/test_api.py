@@ -2747,7 +2747,7 @@ class TestAnonymousAPI(MAASServerTestCase):
              response.content.decode(settings.DEFAULT_CHARSET)),
             response)
 
-    def test_anonymous_get_enlist_preseed_detects_request_origin(self):
+    def test_anonymous_get_enlist_preseed_uses_build_absolute_uri(self):
         url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
@@ -2764,9 +2764,11 @@ class TestAnonymousAPI(MAASServerTestCase):
         response = self.client.get(
             anon_enlist_preseed_url, {'op': 'get_enlist_preseed'},
             REMOTE_ADDR=ip)
+        # Test client uses hostname 'testserver'. Ensures that the
+        # `build_absolute_uri` is used on the test.
         self.assertThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Contains(url))
+            Contains('http://testserver/MAAS/'))
 
     def test_anonymous_get_enlist_preseed_uses_detected_region_ip(self):
         request_ip = get_source_address('8.8.8.8')

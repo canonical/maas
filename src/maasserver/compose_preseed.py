@@ -11,6 +11,7 @@ __all__ = [
 from datetime import timedelta
 from urllib.parse import urlencode
 
+from django.urls import reverse
 from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.enum import (
     NODE_STATUS,
@@ -21,7 +22,7 @@ from maasserver.models import PackageRepository
 from maasserver.models.config import Config
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
-from maasserver.utils import absolute_reverse
+from maasserver.utils import get_default_region_ip
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -33,7 +34,7 @@ import yaml
 RSYSLOG_PORT = 514
 
 
-def get_apt_proxy(rack_controller=None, default_region_ip=None):
+def get_apt_proxy(request, rack_controller=None):
     """Return the APT proxy for the `rack_controller`."""
     if Config.objects.get_config("enable_http_proxy"):
         http_proxy = Config.objects.get_config("http_proxy")
@@ -43,9 +44,10 @@ def get_apt_proxy(rack_controller=None, default_region_ip=None):
         if http_proxy and not use_peer_proxy:
             return http_proxy
         else:
+            region_ip = get_default_region_ip(request)
             return compose_URL(
                 "http://:8000/", get_maas_facing_server_host(
-                    rack_controller, default_region_ip=default_region_ip))
+                    rack_controller, default_region_ip=region_ip))
     else:
         return None
 
@@ -76,12 +78,11 @@ def get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node):
     return apt_sources
 
 
-def get_archive_config(node, preserve_sources=False, default_region_ip=None):
+def get_archive_config(request, node, preserve_sources=False):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
     repositories = PackageRepository.objects.get_additional_repositories(arch)
-    apt_proxy = get_apt_proxy(
-        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
+    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller())
 
     # Process the default Ubuntu Archives or Mirror.
     archives = {}
@@ -216,15 +217,14 @@ def get_enlist_archive_config(apt_proxy=None):
     return archives
 
 
-def get_cloud_init_reporting(node, token, base_url, default_region_ip=None):
+def get_cloud_init_reporting(request, node, token):
     """Return the cloud-init metadata to enable reporting"""
     return {
         'reporting': {
             'maas': {
                 'type': 'webhook',
-                'endpoint': absolute_reverse(
-                    'metadata-status', default_region_ip=default_region_ip,
-                    args=[node.system_id], base_url=base_url),
+                'endpoint': request.build_absolute_uri(reverse(
+                    'metadata-status', args=[node.system_id])),
                 'consumer_key': token.consumer.key,
                 'token_key': token.key,
                 'token_secret': token.secret,
@@ -233,10 +233,11 @@ def get_cloud_init_reporting(node, token, base_url, default_region_ip=None):
     }
 
 
-def get_rsyslog_host_port(node, default_region_ip=None):
+def get_rsyslog_host_port(request, node):
     """Return the rsyslog host and port to use."""
+    region_ip = get_default_region_ip(request)
     host = get_maas_facing_server_host(
-        node.get_boot_rack_controller(), default_region_ip=default_region_ip)
+        node.get_boot_rack_controller(), default_region_ip=region_ip)
     return "%s:%d" % (host, RSYSLOG_PORT)
 
 
@@ -316,8 +317,7 @@ def get_base_preseed(node=None):
     return cloud_config
 
 
-def compose_cloud_init_preseed(
-        node, token, base_url='', default_region_ip=None):
+def compose_cloud_init_preseed(request, node, token):
     """Compose the preseed value for a node in any state but Commissioning.
 
     Returns cloud-config that's preseeded to cloud-init via debconf (It only
@@ -341,15 +341,11 @@ def compose_cloud_init_preseed(
     # This is used as preseed for a node that's been installed.
     # This will allow cloud-init to be configured with reporting for
     # a node that has already been installed.
-    config.update(
-        get_cloud_init_reporting(
-            node=node, token=token, base_url=base_url,
-            default_region_ip=default_region_ip))
+    config.update(get_cloud_init_reporting(request, node, token))
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
     config.update(
         get_archive_config(
-            node=node, preserve_sources=False,
-            default_region_ip=default_region_ip))
+            request, node, preserve_sources=False))
 
     local_config_yaml = yaml.safe_dump(config)
     # this is debconf escaping
@@ -359,9 +355,8 @@ def compose_cloud_init_preseed(
     # ks_meta, and it gets fed straight into debconf.
     preseed_items = [
         ('datasources', 'multiselect', 'MAAS'),
-        ('maas-metadata-url', 'string', absolute_reverse(
-            'metadata', default_region_ip=default_region_ip,
-            base_url=base_url)),
+        ('maas-metadata-url', 'string', request.build_absolute_uri(reverse(
+            'metadata'))),
         ('maas-metadata-credentials', 'string', credentials),
         ('local-cloud-config', 'string', local_config)
         ]
@@ -375,34 +370,27 @@ def compose_cloud_init_preseed(
         for item_name, item_type, item_value in preseed_items)
 
 
-def compose_commissioning_preseed(
-        node, token, base_url='', default_region_ip=None):
+def compose_commissioning_preseed(request, node, token):
     """Compose the preseed value for a Commissioning node."""
-    metadata_url = absolute_reverse(
-        'metadata', default_region_ip=default_region_ip, base_url=base_url)
+    metadata_url = request.build_absolute_uri(reverse('metadata'))
     if node.status == NODE_STATUS.DISK_ERASING:
         poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
     else:
         poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url,
-        poweroff_timeout=int(poweroff_timeout),
-        default_region_ip=default_region_ip)
+        request, node, token, metadata_url,
+        poweroff_timeout=int(poweroff_timeout))
 
 
-def compose_curtin_preseed(node, token, base_url='', default_region_ip=None):
+def compose_curtin_preseed(request, node, token):
     """Compose the preseed value for a node being installed with curtin."""
-    metadata_url = absolute_reverse(
-        'curtin-metadata', default_region_ip=default_region_ip,
-        base_url=base_url)
-    return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url,
-        default_region_ip=default_region_ip)
+    metadata_url = request.build_absolute_uri(reverse('curtin-metadata'))
+    return _compose_cloud_init_preseed(request, node, token, metadata_url)
 
 
 def _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url, poweroff_timeout=3600,
-        reboot_timeout=1800, default_region_ip=None):
+        request, node, token, metadata_url,
+        poweroff_timeout=3600, reboot_timeout=1800):
     cloud_config = get_base_preseed(node)
     cloud_config.update({
         'datasource': {
@@ -416,16 +404,12 @@ def _compose_cloud_init_preseed(
         # This configure rsyslog for the ephemeral environment
         'rsyslog': {
             'remotes': {
-                'maas': get_rsyslog_host_port(
-                    node, default_region_ip=default_region_ip),
+                'maas': get_rsyslog_host_port(request, node),
             }
         },
     })
     # This configures reporting for the ephemeral environment
-    cloud_config.update(
-        get_cloud_init_reporting(
-            node=node, token=token, base_url=base_url,
-            default_region_ip=default_region_ip))
+    cloud_config.update(get_cloud_init_reporting(request, node, token))
     # Add the system configuration information.
     # LP: #1743966 - When deploying precise or trusty, if a custom archive
     # with a custom key is used, create a work around to inject the key.
@@ -435,14 +419,12 @@ def _compose_cloud_init_preseed(
         # apt_proxy is deprecated in the cloud-init source code in favor of
         # what get_archive_config does.
         apt_proxy = get_apt_proxy(
-            node.get_boot_rack_controller(),
-            default_region_ip=default_region_ip)
+            request, node.get_boot_rack_controller())
         if apt_proxy:
             cloud_config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
     cloud_config.update(get_archive_config(
-        node=node, preserve_sources=False,
-        default_region_ip=default_region_ip))
+        request, node, preserve_sources=False))
 
     enable_ssh = (node.status in {
         NODE_STATUS.COMMISSIONING,
@@ -472,17 +454,14 @@ def _compose_cloud_init_preseed(
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 
-def _get_metadata_url(preseed_type, base_url, default_region_ip=None):
+def _get_metadata_url(request, preseed_type):
     if preseed_type == PRESEED_TYPE.CURTIN:
-        return absolute_reverse(
-            'curtin-metadata', default_region_ip=default_region_ip,
-            base_url=base_url)
+        return request.build_absolute_uri(reverse('curtin-metadata'))
     else:
-        return absolute_reverse(
-            'metadata', default_region_ip=default_region_ip, base_url=base_url)
+        return request.build_absolute_uri(reverse('metadata'))
 
 
-def compose_preseed(preseed_type, node, default_region_ip=None):
+def compose_preseed(request, preseed_type, node):
     """Put together preseed data for `node`.
 
     This produces preseed data for the node in different formats depending
@@ -492,25 +471,16 @@ def compose_preseed(preseed_type, node, default_region_ip=None):
     :type preseed_type: string
     :param node: The node to compose preseed data for.
     :type node: Node
-    :param default_region_ip: The default IP address to use for the region
-        controller (for example, when constructing URLs).
     :return: Preseed data containing the information the node needs in order
         to access the metadata service: its URL and auth token.
     """
     # Circular import.
     from metadataserver.models import NodeKey
-
     token = NodeKey.objects.get_token_for_node(node)
-    rack_controller = node.get_boot_rack_controller()
-    base_url = rack_controller.url if rack_controller else ''
-
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
-        return compose_commissioning_preseed(
-            node, token, base_url, default_region_ip=default_region_ip)
+        return compose_commissioning_preseed(request, node, token)
     else:
-        metadata_url = _get_metadata_url(
-            preseed_type, base_url, default_region_ip=default_region_ip)
-
+        metadata_url = _get_metadata_url(request, preseed_type)
         try:
             return get_preseed_data(preseed_type, node, token, metadata_url)
         except NotImplementedError:
@@ -537,21 +507,17 @@ def compose_preseed(preseed_type, node, default_region_ip=None):
 
         # There is no OS-specific preseed data.
         if preseed_type == PRESEED_TYPE.CURTIN:
-            return compose_curtin_preseed(
-                node, token, base_url, default_region_ip=default_region_ip)
+            return compose_curtin_preseed(request, node, token)
         else:
-            return compose_cloud_init_preseed(
-                node, token, base_url, default_region_ip=default_region_ip)
+            return compose_cloud_init_preseed(request, node, token)
 
 
 def compose_enlistment_preseed(
-        rack_controller, context, default_region_ip=None):
+        request, rack_controller, context):
     """Put together preseed data for a new `node` being enlisted.
 
     :param rack_controller: The RackController the request came from.
     :param context: The output of get_preseed_context
-    :param default_region_ip: The default IP address to use for the region
-        controller (for example, when constructing URLs).
     :return: Preseed data containing the information the node needs in order
         to access the metadata service: its URL and auth token.
     """
@@ -574,7 +540,7 @@ def compose_enlistment_preseed(
             'condition': 'test ! -e /tmp/block-poweroff',
         },
         **get_enlist_archive_config(get_apt_proxy(
-            rack_controller, default_region_ip=default_region_ip)),
+            request, rack_controller)),
     })
 
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)

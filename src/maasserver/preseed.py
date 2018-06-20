@@ -29,6 +29,7 @@ from crochet import TimeoutError
 from curtin.config import merge_config
 from curtin.pack import pack_install
 from django.conf import settings
+from django.urls import reverse
 from maasserver import logger
 from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
@@ -58,7 +59,10 @@ from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
-from maasserver.utils import absolute_reverse
+from maasserver.utils import (
+    absolute_reverse,
+    get_default_region_ip,
+)
 from maasserver.utils.curtin import (
     curtin_supports_custom_storage,
     curtin_supports_custom_storage_for_dd,
@@ -99,7 +103,7 @@ CURTIN_INSTALL_LOG = "/tmp/install.log"
 CURTIN_ERROR_TARFILE = "/tmp/curtin-logs.tar"
 
 
-def get_enlist_preseed(rack_controller=None, default_region_ip=None):
+def get_enlist_preseed(request, rack_controller=None):
     """Return the enlistment preseed.
 
     :param rack_controller: The rack controller used to generate the preseed.
@@ -107,22 +111,18 @@ def get_enlist_preseed(rack_controller=None, default_region_ip=None):
     :rtype: unicode.
     """
     return render_enlistment_preseed(
-        PRESEED_TYPE.ENLIST, rack_controller=rack_controller,
-        default_region_ip=default_region_ip)
+        request, PRESEED_TYPE.ENLIST, rack_controller=rack_controller)
 
 
-def curtin_maas_reporter(node, events_support=True):
+def curtin_maas_reporter(request, node, events_support=True):
     token = NodeKey.objects.get_token_for_node(node)
-    rack_controller = node.get_boot_rack_controller()
-    base_url = rack_controller.url
     if events_support:
         return {
             'reporting': {
                 'maas': {
                     'type': 'webhook',
-                    'endpoint': absolute_reverse(
-                        'metadata-status', args=[node.system_id],
-                        base_url=base_url),
+                    'endpoint': request.build_absolute_uri(reverse(
+                        'metadata-status', args=[node.system_id])),
                     'consumer_key': token.consumer.key,
                     'token_key': token.key,
                     'token_secret': token.secret,
@@ -139,9 +139,9 @@ def curtin_maas_reporter(node, events_support=True):
         return {
             'reporter': {
                 'maas': {
-                    'url': absolute_reverse(
-                        'curtin-metadata-version', args=[version],
-                        query={'op': 'signal'}, base_url=base_url),
+                    'url': request.build_absolute_uri(reverse(
+                        'curtin-metadata-version', args=[version])) + (
+                            '?op=signal'),
                     'consumer_key': token.consumer.key,
                     'token_key': token.key,
                     'token_secret': token.secret,
@@ -150,30 +150,29 @@ def curtin_maas_reporter(node, events_support=True):
         }
 
 
-def compose_curtin_maas_reporter(node):
+def compose_curtin_maas_reporter(request, node):
     """Return a list of curtin preseeds for using the MAASReporter in curtin.
 
     This enables the ability for curtin to talk back to MAAS through a backend
     that matches what the locally installed Curtin uses.
     """
-    reporter = curtin_maas_reporter(node, curtin_supports_webhook_events())
+    reporter = curtin_maas_reporter(
+        request, node, curtin_supports_webhook_events())
     return [yaml.safe_dump(reporter)]
 
 
-def get_curtin_cloud_config(node):
+def get_curtin_cloud_config(request, node):
     """Compose the curtin cloud-config, which is only applied to
        Ubuntu core (by curtin)."""
     token = NodeKey.objects.get_token_for_node(node)
-    rack_controller = node.get_boot_rack_controller()
-    base_url = rack_controller.url
     datasource = {
         'datasource': {
             'MAAS': {
                 'consumer_key': token.consumer.key,
                 'token_key': token.key,
                 'token_secret': token.secret,
-                'metadata_url': absolute_reverse(
-                    'metadata', base_url=base_url),
+                'metadata_url': request.build_absolute_uri(reverse(
+                    'metadata')),
             }
         }
     }
@@ -200,20 +199,19 @@ def get_curtin_cloud_config(node):
     config['maas-reporting'] = {
         'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_init_reporting.cfg',
         'content': '#cloud-config\n%s' % yaml.safe_dump(
-            get_cloud_init_reporting(
-                node=node, token=token, base_url=base_url))
+            get_cloud_init_reporting(request, node, token))
     }
     return {
         'cloudconfig': config
     }
 
 
-def compose_curtin_cloud_config(node):
-    config = get_curtin_cloud_config(node)
+def compose_curtin_cloud_config(request, node):
+    config = get_curtin_cloud_config(request, node)
     return [yaml.safe_dump(config)]
 
 
-def compose_curtin_archive_config(node):
+def compose_curtin_archive_config(request, node):
     """Return the curtin preseed for configuring a node's apt sources.
 
     If a node's deployed OS is Ubuntu (or a Custom Ubuntu), we pass this
@@ -221,7 +219,7 @@ def compose_curtin_archive_config(node):
     for Ubuntu.
     """
     if node.osystem in ['ubuntu', 'custom']:
-        archives = get_archive_config(node)
+        archives = get_archive_config(request, node)
         return [yaml.safe_dump(archives)]
     return []
 
@@ -283,12 +281,12 @@ def compose_curtin_verbose_preseed():
         return []
 
 
-def get_curtin_yaml_config(node, default_region_ip=None):
+def get_curtin_yaml_config(request, node):
     """Return the curtin configration for the node."""
-    main_config = get_curtin_config(node)
-    cloud_config = compose_curtin_cloud_config(node)
-    archive_config = compose_curtin_archive_config(node)
-    reporter_config = compose_curtin_maas_reporter(node)
+    main_config = get_curtin_config(request, node)
+    cloud_config = compose_curtin_cloud_config(request, node)
+    archive_config = compose_curtin_archive_config(request, node)
+    reporter_config = compose_curtin_maas_reporter(request, node)
     swap_config = compose_curtin_swap_preseed(node)
     kernel_config = compose_curtin_kernel_preseed(node)
     verbose_config = compose_curtin_verbose_preseed()
@@ -335,16 +333,16 @@ def get_curtin_yaml_config(node, default_region_ip=None):
         cloud_config)
 
 
-def get_curtin_merged_config(node):
+def get_curtin_merged_config(request, node):
     """Return the merged curtin configuration for the node."""
-    yaml_config = get_curtin_yaml_config(node)
+    yaml_config = get_curtin_yaml_config(request, node)
     config = {}
     for cfg in yaml_config:
         merge_config(config, yaml.safe_load(cfg))
     return config
 
 
-def get_curtin_userdata(node, default_region_ip=None):
+def get_curtin_userdata(request, node):
     """Return the curtin user-data.
 
     :param node: The node for which to generate the user-data.
@@ -354,7 +352,7 @@ def get_curtin_userdata(node, default_region_ip=None):
     # Pack the curtin and the configuration into a script to execute on the
     # deploying node.
     return pack_install(
-        configs=get_curtin_yaml_config(node, default_region_ip),
+        configs=get_curtin_yaml_config(request, node),
         args=[get_curtin_installer_url(node)])
 
 
@@ -431,7 +429,7 @@ def get_curtin_installer_url(node):
     return url_prepend + url
 
 
-def get_curtin_config(node, default_region_ip=None):
+def get_curtin_config(request, node):
     """Return the curtin configuration to be used by curtin.pack_install.
 
     :param node: The node for which to generate the configuration.
@@ -443,16 +441,12 @@ def get_curtin_config(node, default_region_ip=None):
         node, 'curtin_userdata', osystem, series)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        osystem, series, rack_controller=rack_controller,
-        default_region_ip=default_region_ip)
+        request, osystem, series, rack_controller=rack_controller)
     context.update(
         get_node_preseed_context(
-            node, osystem, series, rack_controller=rack_controller,
-            default_region_ip=default_region_ip))
+            request, node, osystem, series))
     context.update(
-        get_curtin_context(
-            node, rack_controller=rack_controller,
-            default_region_ip=default_region_ip))
+        get_curtin_context(request, node))
     deprecated_context_variables = [
         'main_archive_hostname', 'main_archive_directory',
         'ports_archive_hostname', 'ports_archive_directory',
@@ -497,7 +491,7 @@ def get_curtin_config(node, default_region_ip=None):
     return yaml.safe_dump(config)
 
 
-def get_curtin_context(node, rack_controller=None, default_region_ip=None):
+def get_curtin_context(request, node):
     """Return the curtin-specific context dictionary to be used to render
     user-data templates.
 
@@ -505,12 +499,9 @@ def get_curtin_context(node, rack_controller=None, default_region_ip=None):
     :rtype: dict.
     """
     token = NodeKey.objects.get_token_for_node(node)
-    if rack_controller is None:
-        rack_controller = node.get_boot_rack_controller()
-    base_url = rack_controller.url
     return {
         'curtin_preseed': compose_cloud_init_preseed(
-            node, token, base_url, default_region_ip=default_region_ip)
+            request, node, token)
     }
 
 
@@ -531,7 +522,7 @@ def get_preseed_type_for(node):
 
 
 @typed
-def get_preseed(node, default_region_ip=None) -> bytes:
+def get_preseed(request, node) -> bytes:
     """Return the preseed for a given node. Depending on the node's
     status this will be a commissioning preseed (if the node is
     commissioning or disk erasing) or an install preseed (normal
@@ -546,17 +537,15 @@ def get_preseed(node, default_region_ip=None) -> bytes:
         'commissioning_osystem', 'commissioning_distro_series'])
     if node.status in COMMISSIONING_LIKE_STATUSES:
         return render_preseed(
-            node, PRESEED_TYPE.COMMISSIONING,
+            request, node, PRESEED_TYPE.COMMISSIONING,
             osystem=config['commissioning_osystem'],
-            release=config['commissioning_distro_series'],
-            default_region_ip=default_region_ip)
+            release=config['commissioning_distro_series'])
     else:
         return render_preseed(
-            node, get_preseed_type_for(node),
+            request, node, get_preseed_type_for(node),
             osystem=node.get_osystem(config['commissioning_osystem']),
             release=node.get_distro_series(
-                config['commissioning_distro_series']),
-            default_region_ip=default_region_ip)
+                config['commissioning_distro_series']))
 
 
 UBUNTU_NAME = UbuntuOS().name
@@ -740,7 +729,7 @@ def get_netloc_and_path(url):
 
 
 def get_preseed_context(
-        osystem='', release='', rack_controller=None, default_region_ip=None):
+        request, osystem='', release='', rack_controller=None):
     """Return the node-independent context dictionary to be used to render
     preseed templates.
 
@@ -750,25 +739,23 @@ def get_preseed_context(
     :return: The context dictionary.
     :rtype: dict.
     """
+    region_ip = get_default_region_ip(request)
     server_host = get_maas_facing_server_host(
-        rack_controller=rack_controller, default_region_ip=default_region_ip)
-    base_url = rack_controller.url if rack_controller is not None else ''
+        rack_controller=rack_controller, default_region_ip=region_ip)
+    server_url = request.build_absolute_uri(reverse('machines_handler'))
+    metadata_enlist_url = request.build_absolute_uri(reverse('enlist'))
     return {
         'osystem': osystem,
         'release': release,
         'server_host': server_host,
-        'server_url': absolute_reverse(
-            'machines_handler', default_region_ip=default_region_ip,
-            base_url=base_url),
+        'server_url': server_url,
         'syslog_host_port': '%s:%d' % (server_host, RSYSLOG_PORT),
-        'metadata_enlist_url': absolute_reverse(
-            'enlist', default_region_ip=default_region_ip, base_url=base_url),
+        'metadata_enlist_url': metadata_enlist_url,
         }
 
 
 def get_node_preseed_context(
-        node, osystem='', release='', rack_controller=None,
-        default_region_ip=None):
+        request, node, osystem='', release=''):
     """Return the node-dependent context dictionary to be used to render
     preseed templates.
 
@@ -778,14 +765,8 @@ def get_node_preseed_context(
     :return: The context dictionary.
     :rtype: dict.
     """
-    if rack_controller is None:
-        rack_controller = node.get_boot_rack_controller()
-    base_url = rack_controller.url if rack_controller else ''
-    # Create the url and the url-data (POST parameters) used to turn off
-    # PXE booting once the install of the node is finished.
-    node_disable_pxe_url = absolute_reverse(
-        'metadata-node-by-id', default_region_ip=default_region_ip,
-        args=['latest', node.system_id], base_url=base_url)
+    node_disable_pxe_url = request.build_absolute_uri(
+        reverse('metadata-node-by-id', args=['latest', node.system_id]))
     node_disable_pxe_data = urlencode({'op': 'netboot_off'})
     driver = get_third_party_driver(node)
     return {
@@ -795,8 +776,7 @@ def get_node_preseed_context(
         'driver_package': driver.get('package', ''),
         'node': node,
         'preseed_data': compose_preseed(
-            get_preseed_type_for(node), node,
-            default_region_ip=default_region_ip),
+            request, get_preseed_type_for(node), node),
         'node_disable_pxe_url': node_disable_pxe_url,
         'node_disable_pxe_data': node_disable_pxe_data,
         'license_key': node.get_effective_license_key(),
@@ -828,8 +808,7 @@ def get_node_deprecated_preseed_context():
 
 
 def render_enlistment_preseed(
-        prefix, osystem='', release='', rack_controller=None,
-        default_region_ip=None):
+        request, prefix, osystem='', release='', rack_controller=None):
     """Return the enlistment preseed.
 
     :param prefix: See `get_preseed_filenames`.
@@ -841,10 +820,9 @@ def render_enlistment_preseed(
     """
     template = load_preseed_template(None, prefix, osystem, release)
     context = get_preseed_context(
-        osystem, release, rack_controller=rack_controller,
-        default_region_ip=default_region_ip)
+        request, osystem, release, rack_controller=rack_controller)
     context['preseed_data'] = compose_enlistment_preseed(
-        rack_controller, context, default_region_ip)
+        request, rack_controller, context)
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
@@ -852,7 +830,7 @@ def render_enlistment_preseed(
 
 
 def render_preseed(
-        node, prefix, osystem='', release='', default_region_ip=None):
+        request, node, prefix, osystem='', release=''):
     """Return the preseed for the given node.
 
     :param node: See `get_preseed_filenames`.
@@ -865,17 +843,15 @@ def render_preseed(
     template = load_preseed_template(node, prefix, osystem, release)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        osystem, release, rack_controller=rack_controller,
-        default_region_ip=default_region_ip)
+        request, osystem, release, rack_controller=rack_controller)
     context.update(
         get_node_preseed_context(
-            node, osystem, release, rack_controller=rack_controller,
-            default_region_ip=default_region_ip))
+            request, node, osystem, release))
     return template.substitute(**context).encode("utf-8")
 
 
 def compose_enlistment_preseed_url(
-        rack_controller=None, default_region_ip=None):
+        *, rack_controller=None, base_url=None, default_region_ip=None):
     """Compose enlistment preseed URL.
 
     :param rack_controller: The rack controller used to generate the preseed.
@@ -883,21 +859,22 @@ def compose_enlistment_preseed_url(
         communicate on.
     """
     # Always uses the latest version of the metadata API.
-    base_url = (
-        rack_controller.url
-        if rack_controller is not None
-        else None)
+    if base_url is None:
+        base_url = (
+            rack_controller.url
+            if rack_controller is not None
+            else None)
     version = 'latest'
     return absolute_reverse(
         'metadata-enlist-preseed', default_region_ip=default_region_ip,
         args=[version], query={'op': 'get_enlist_preseed'}, base_url=base_url)
 
 
-def compose_preseed_url(node, rack_controller, default_region_ip=None):
+def compose_preseed_url(node, *, base_url=None, default_region_ip=None):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
     return absolute_reverse(
         'metadata-node-by-id', default_region_ip=default_region_ip,
         args=[version, node.system_id], query={'op': 'get_preseed'},
-        base_url=rack_controller.url)
+        base_url=base_url)

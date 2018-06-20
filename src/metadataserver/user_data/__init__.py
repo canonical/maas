@@ -18,7 +18,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import os.path
 
+from django.urls import reverse
 from maasserver.enum import NODE_STATUS
+from maasserver.utils import absolute_reverse
 from metadataserver.user_data.snippets import (
     get_snippet_context,
     get_userdata_template_dir,
@@ -31,7 +33,7 @@ ENCODING = 'utf-8'
 
 def generate_user_data(
         node, userdata_template_file, extra_context=None,
-        rack_controller=None):
+        rack_controller=None, request=None):
     """Produce a user_data script for use by an ephemeral environment.
 
     The main template file contains references to so-called ``snippets''
@@ -46,9 +48,6 @@ def generate_user_data(
 
     :rtype: `bytes`
     """
-    # Avoid circular dependencies.
-    from maasserver.preseed import get_preseed_context
-
     # Enlisting machines will not have a node object or an assoicated
     # rack controller if the subnet is unknown to MAAS or MAAS does not
     # control DHCP on the VLAN(see find_rack_controller in maasserver.utils)
@@ -59,8 +58,14 @@ def generate_user_data(
         userdata_template_file, encoding=ENCODING)
     # The preseed context is a dict containing various configs that the
     # templates can use.
-    preseed_context = get_preseed_context(rack_controller=rack_controller)
-    preseed_context['node'] = node
+    if request is None:
+        server_url = absolute_reverse('machines_handler')
+    else:
+        server_url = request.build_absolute_uri(reverse('machines_handler'))
+    preseed_context = {
+        'node': node,
+        'server_url': server_url,
+    }
 
     # Render the snippets in the main template.
     snippets = get_snippet_context(encoding=ENCODING)
@@ -78,7 +83,8 @@ def generate_user_data(
 
 
 def generate_user_data_for_status(
-        node, status=None, extra_content=None, rack_controller=None):
+        node, status=None, extra_content=None,
+        rack_controller=None, request=None):
     """Produce a user_data script based on the node's status."""
     templates = {
         NODE_STATUS.NEW: 'commissioning.template',
@@ -92,11 +98,11 @@ def generate_user_data_for_status(
     userdata_template_file = os.path.join(
         get_userdata_template_dir(), templates[status])
     return generate_user_data(
-        node, userdata_template_file, extra_content, rack_controller)
+        node, userdata_template_file, extra_content, rack_controller, request)
 
 
-def generate_user_data_for_poweroff(node):
+def generate_user_data_for_poweroff(node, request=None):
     """Produce the poweroff user_data script."""
     userdata_template_file = os.path.join(
         get_userdata_template_dir(), 'poweroff.template')
-    return generate_user_data(node, userdata_template_file)
+    return generate_user_data(node, userdata_template_file, request=request)

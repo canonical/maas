@@ -72,10 +72,7 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
 )
-from maasserver.utils import (
-    find_rack_controller,
-    get_default_region_ip,
-)
+from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import (
     get_one,
     is_retryable_failure,
@@ -874,7 +871,8 @@ class UserDataHandler(MetadataViewHandler):
             # If this node is supposed to be powered off, serve the
             # 'poweroff' userdata.
             if node.get_boot_purpose() == 'poweroff':
-                user_data = generate_user_data_for_poweroff(node=node)
+                user_data = generate_user_data_for_poweroff(
+                    node=node, request=request)
             else:
                 user_data = NodeUserData.objects.get_user_data(node)
             return HttpResponse(
@@ -891,8 +889,7 @@ class CurtinUserDataHandler(MetadataViewHandler):
     def read(self, request, version, mac=None):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
-        default_region_ip = get_default_region_ip(request)
-        user_data = get_curtin_userdata(node, default_region_ip)
+        user_data = get_curtin_userdata(request, node)
         return HttpResponse(
             user_data,
             content_type='application/octet-stream')
@@ -1141,7 +1138,8 @@ class EnlistUserDataHandler(OperationsHandler):
         # a content-type is NOT provided.
         return HttpResponse(
             generate_user_data_for_status(
-                None, NODE_STATUS.NEW, rack_controller=rack_controller),
+                None, NODE_STATUS.NEW, rack_controller=rack_controller,
+                request=request),
             content_type="text/plain")
 
 
@@ -1164,9 +1162,8 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
-        region_ip = get_default_region_ip(request)
         preseed = get_enlist_preseed(
-            rack_controller=rack_controller, default_region_ip=region_ip)
+            request, rack_controller=rack_controller)
         return HttpResponse(preseed, content_type="text/plain")
 
     @operation(idempotent=True)
@@ -1177,8 +1174,7 @@ class AnonMetaDataHandler(VersionIndexHandler):
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
-        region_ip = get_default_region_ip(request)
-        preseed = get_preseed(node, region_ip)
+        preseed = get_preseed(request, node)
         return HttpResponse(preseed, content_type="text/plain")
 
     @operation(idempotent=False)

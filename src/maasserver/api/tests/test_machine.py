@@ -2301,7 +2301,7 @@ class TestGetCurtinConfig(APITestCase.ForUser):
             yaml.safe_dump(fake_config, default_flow_style=False),
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
-            mock_get_curtin_merged_config, MockCalledOnceWith(machine))
+            mock_get_curtin_merged_config, MockCalledOnceWith(ANY, machine))
 
 
 class TestRestoreNetworkingConfiguration(APITestCase.ForUser):

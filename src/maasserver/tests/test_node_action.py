@@ -532,7 +532,7 @@ class TestDeployAction(MAASServerTestCase):
         mock_node_start = self.patch(node, 'start')
         Deploy(node, user).execute()
         self.expectThat(
-            mock_get_curtin_config, MockCalledOnceWith(node))
+            mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
 
@@ -584,7 +584,7 @@ class TestDeployAction(MAASServerTestCase):
         }
         Deploy(node, user).execute(**extra)
         self.expectThat(
-            mock_get_curtin_config, MockCalledOnceWith(node))
+            mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
@@ -608,7 +608,7 @@ class TestDeployAction(MAASServerTestCase):
         }
         Deploy(node, user).execute(**extra)
         self.expectThat(
-            mock_get_curtin_config, MockCalledOnceWith(node))
+            mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(os_name))
@@ -629,7 +629,7 @@ class TestDeployAction(MAASServerTestCase):
         }
         Deploy(node, user).execute(**extra)
         self.expectThat(
-            mock_get_curtin_config, MockCalledOnceWith(node))
+            mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(""))
@@ -649,7 +649,7 @@ class TestDeployAction(MAASServerTestCase):
         }
         Deploy(node, user).execute(**extra)
         self.expectThat(
-            mock_get_curtin_config, MockCalledOnceWith(node))
+            mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
         self.expectThat(node.osystem, Equals(""))
@@ -665,7 +665,7 @@ class TestDeployAction(MAASServerTestCase):
         action.execute()
 
         self.expectThat(
-            mock_get_curtin_config, MockCalledOnceWith(node))
+            mock_get_curtin_config, MockCalledOnceWith(ANY, node))
         self.expectThat(
             mock_node_start, MockCalledOnceWith(user))
         self.expectThat(user, Equals(node.owner))

@@ -548,6 +548,20 @@ CONFIG_ITEMS = {
             'min_value': 1,
         },
     },
+    'use_rack_proxy': {
+        'default': True,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': (
+                "Use DNS and HTTP metadata proxy on the rack controllers "
+                "when a machine is booted."),
+            'required': False,
+            'help_text': (
+                "All DNS and HTTP metadata traffic will flow through the "
+                "rack controller that a machine is booting from. This "
+                "isolated region controllers from machines.")
+        }
+    },
 }
 
 

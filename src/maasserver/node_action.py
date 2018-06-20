@@ -25,6 +25,7 @@ from collections import OrderedDict
 
 from crochet import TimeoutError
 from django.core.exceptions import ValidationError
+from django.http.request import HttpRequest
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
@@ -384,8 +385,17 @@ class Deploy(NodeAction):
         except ValidationError as e:
             raise NodeActionError(e)
 
+        request = self.request
+        if request is None:
+            # Being called from the websocket, just to ensure that the curtin
+            # configuration is valid. The request object does not need to be
+            # an actual request. 'SERVER_NAME' and 'SERVER_PORT' are required
+            # so `build_absolure_uri` can create an actual absolute URI.
+            request = HttpRequest()
+            request.META['SERVER_NAME'] = 'localhost'
+            request.META['SERVER_PORT'] = 5248
         try:
-            get_curtin_config(self.node)
+            get_curtin_config(request, self.node)
         except Exception as e:
             raise NodeActionError(
                 "Failed to retrieve curtin config: %s" % e)

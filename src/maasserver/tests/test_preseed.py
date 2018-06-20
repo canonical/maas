@@ -79,9 +79,9 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.third_party_drivers import DriversConfig
-from maasserver.utils import absolute_reverse
 from maasserver.utils.curtin import curtin_supports_webhook_events
 from maasserver.utils.django_urls import reverse
+from maastesting.http import make_HttpRequest
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -457,7 +457,7 @@ class TestPreseedContext(MAASServerTestCase):
             default=True)
 
     def test_get_preseed_context_contains_keys(self):
-        context = get_preseed_context()
+        context = get_preseed_context(make_HttpRequest())
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
              'server_url', 'syslog_host_port'],
@@ -490,7 +490,7 @@ class TestNodePreseedContext(
             primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
         release = factory.make_string()
-        context = get_node_preseed_context(node, release)
+        context = get_node_preseed_context(make_HttpRequest(), node, release)
         self.assertItemsEqual(
             ['driver', 'driver_package', 'node',
              'node_disable_pxe_data', 'node_disable_pxe_url',
@@ -506,7 +506,7 @@ class TestNodePreseedContext(
         enable_third_party_drivers = factory.pick_bool()
         Config.objects.set_config(
             'enable_third_party_drivers', enable_third_party_drivers)
-        context = get_node_preseed_context(node, release)
+        context = get_node_preseed_context(make_HttpRequest(), node, release)
         self.assertEqual(
             enable_third_party_drivers,
             context['third_party_drivers'])
@@ -559,14 +559,13 @@ class TestRenderPreseed(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
-        preseed = render_preseed(node, self.preseed, "precise")
+        preseed = render_preseed(
+            make_HttpRequest(), node, self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, bytes)
 
-    def test_get_preseed_uses_rack_controller_url(self):
-        ng_url = 'http://%s' % factory.make_hostname()
-        self.rpc_rack_controller.url = ng_url
+    def test_get_preseed_uses_requests_url(self):
         self.rpc_rack_controller.save()
         maas_url = factory.make_simple_http_url()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -574,11 +573,12 @@ class TestRenderPreseed(
             status=NODE_STATUS.COMMISSIONING)
         self.configure_get_boot_images_for_node(node, 'install')
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        preseed = render_preseed(node, self.preseed, "precise")
+        request = make_HttpRequest()
+        preseed = render_preseed(request, node, self.preseed, "precise")
         self.assertThat(
             preseed.decode("utf-8"),
             MatchesAll(
-                Contains(ng_url),
+                Contains(request.build_absolute_uri('/')),
                 Not(Contains(maas_url)),
             ))
 
@@ -595,24 +595,27 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
     ]
 
     def test_render_enlistment_preseed(self):
-        preseed = render_enlistment_preseed(self.preseed, "precise")
+        preseed = render_enlistment_preseed(
+            make_HttpRequest(), self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, bytes)
 
     def test_render_enlistment_preseed_valid_yaml(self):
-        preseed = render_enlistment_preseed(self.preseed, "precise")
+        preseed = render_enlistment_preseed(
+            make_HttpRequest(), self.preseed, "precise")
         self.assertTrue(yaml.safe_load(preseed))
 
-    def test_get_preseed_uses_rack_controller_maas_url(self):
+    def test_get_preseed_uses_request_url(self):
         url = 'http://%s' % factory.make_hostname()
         maas_url = factory.make_simple_http_url()
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         rack_controller = factory.make_RackController(url=url)
+        request = make_HttpRequest()
         preseed = yaml.safe_load(render_enlistment_preseed(
-            self.preseed, "bionic", rack_controller=rack_controller))
+            request, self.preseed, "bionic", rack_controller=rack_controller))
         self.assertEqual(
-            "%s/MAAS/metadata/enlist" % url,
+            request.build_absolute_uri('/MAAS/metadata/enlist'),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertItemsEqual(
             [
@@ -630,13 +633,13 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
     def test__curtin_maas_reporter_with_events_support(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         token = NodeKey.objects.get_token_for_node(node)
-        reporter = curtin_maas_reporter(node, True)
+        request = make_HttpRequest()
+        reporter = curtin_maas_reporter(request, node, True)
         self.assertItemsEqual(
             ['reporting', 'install'], list(reporter.keys()))
         self.assertEqual(
-            absolute_reverse(
-                'metadata-status', args=[node.system_id],
-                base_url=node.get_boot_primary_rack_controller().url),
+            request.build_absolute_uri(reverse(
+                'metadata-status', args=[node.system_id])),
             reporter['reporting']['maas']['endpoint'])
         self.assertEqual(
             'webhook',
@@ -665,13 +668,12 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
     def test__curtin_maas_reporter_without_events_support(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         token = NodeKey.objects.get_token_for_node(node)
-        reporter = curtin_maas_reporter(node, False)
+        request = make_HttpRequest()
+        reporter = curtin_maas_reporter(request, node, False)
         self.assertEqual(['reporter'], list(reporter.keys()))
         self.assertEqual(
-            absolute_reverse(
-                'curtin-metadata-version', args=['latest'],
-                query={'op': 'signal'},
-                base_url=node.get_boot_primary_rack_controller().url),
+            request.build_absolute_uri(reverse(
+                'curtin-metadata-version', args=['latest'])) + '?op=signal',
             reporter['reporter']['maas']['url'])
         self.assertEqual(
             token.consumer.key,
@@ -685,7 +687,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
 
     def test__returns_list_of_yaml_strings_matching_curtin(self):
         preseeds = compose_curtin_maas_reporter(
-            factory.make_Node_with_Interface_on_Subnet())
+            make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet())
         self.assertIsInstance(preseeds, list)
         self.assertThat(preseeds, HasLength(1))
         reporter = self.load_reporter(preseeds)
@@ -702,13 +704,13 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
 
     def test__returns_curtin_cloud_config(self):
         preseeds = compose_curtin_cloud_config(
-            factory.make_Node_with_Interface_on_Subnet())
+            make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet())
         self.assertIsInstance(preseeds, list)
         self.assertThat(preseeds, HasLength(1))
 
     def test__get_curtin_cloud_config_includes_datasource_list(self):
         node = factory.make_Node_with_Interface_on_Subnet()
-        config = get_curtin_cloud_config(node)
+        config = get_curtin_cloud_config(make_HttpRequest(), node)
         self.assertItemsEqual(
             ['cloudconfig'], list(config.keys()))
         self.assertItemsEqual(
@@ -722,8 +724,8 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
         token = NodeKey.objects.get_token_for_node(node)
-        base_url = node.get_boot_primary_rack_controller().url
-        config = get_curtin_cloud_config(node)
+        request = make_HttpRequest()
+        config = get_curtin_cloud_config(request, node)
         self.assertItemsEqual(
             ['cloudconfig'], list(config.keys()))
         self.assertItemsEqual(
@@ -736,8 +738,8 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
                     'consumer_key': token.consumer.key,
                     'token_key': token.key,
                     'token_secret': token.secret,
-                    'metadata_url': absolute_reverse(
-                        'metadata', base_url=base_url),
+                    'metadata_url': request.build_absolute_uri(
+                        reverse('metadata')),
                 }
             }
         }
@@ -750,9 +752,8 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             'reporting': {
                 'maas': {
                     'type': 'webhook',
-                    'endpoint': absolute_reverse(
-                        'metadata-status', args=[node.system_id],
-                        base_url=base_url),
+                    'endpoint': request.build_absolute_uri(
+                        reverse('metadata-status', args=[node.system_id])),
                     'consumer_key': token.consumer.key,
                     'token_key': token.key,
                     'token_secret': token.secret,
@@ -880,8 +881,10 @@ class TestGetCurtinMergedConfig(MAASServerTestCase):
                 "test": "data2"
             },
             "override": "data2",
-        }, get_curtin_merged_config(sentinel.node))
-        self.assertThat(mock_yaml_config, MockCalledOnceWith(sentinel.node))
+        }, get_curtin_merged_config(sentinel.request, sentinel.node))
+        self.assertThat(
+            mock_yaml_config,
+            MockCalledOnceWith(sentinel.request, sentinel.node))
 
 
 class TestGetCurtinUserData(
@@ -903,7 +906,7 @@ class TestGetCurtinUserData(
         self.patch(
             preseed_module, "curtin_supports_custom_storage").value = True
         node.osystem = 'ubuntu'
-        user_data = get_curtin_userdata(node)
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
         self.assertThat(mock_compose_network, MockCalledOnceWith(node))
@@ -918,7 +921,7 @@ class TestGetCurtinUserData(
         self.patch(
             preseed_module, "curtin_supports_custom_storage").value = True
         node.osystem = factory.make_name("osystem")
-        user_data = get_curtin_userdata(node)
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockNotCalled())
 
@@ -938,7 +941,7 @@ class TestGetCurtinUserData(
             preseed_module,
             "curtin_supports_custom_storage_for_dd").value = True
         node.osystem = 'windows'
-        user_data = get_curtin_userdata(node)
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
 
@@ -952,7 +955,7 @@ class TestGetCurtinUserData(
         self.patch(
             preseed_module, "curtin_supports_custom_storage").value = True
         node.osystem = factory.make_name("osystem")
-        user_data = get_curtin_userdata(node)
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_network, MockCalledOnceWith(node))
 
@@ -965,7 +968,7 @@ class TestGetCurtinUserData(
             preseed_module, "curtin_supports_custom_storage")
         mock_supports_storage.return_value = False
 
-        user_data = get_curtin_userdata(node)
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_supports_storage, MockCalledOnceWith())
 
@@ -989,7 +992,7 @@ class TestRenderCurtinUserdataWithThirdPartyDrivers(
         get_third_party_driver = self.patch(
             preseed_module, "get_third_party_driver")
         get_third_party_driver.return_value = self.driver
-        curtin_config_text = get_curtin_config(node)
+        curtin_config_text = get_curtin_config(make_HttpRequest(), node)
         config = yaml.safe_load(curtin_config_text)
         self.assertThat(
             config['early_commands'], Contains('driver_00_get_key'))
@@ -1033,7 +1036,7 @@ class TestGetCurtinUserDataOS(
             primary_rack=self.rpc_rack_controller, osystem=self.os_name)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        user_data = get_curtin_userdata(node)
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
 
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)
@@ -1047,7 +1050,7 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
+        config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(
             config,
             Contains("debconf_selections:"))
@@ -1063,7 +1066,7 @@ class TestCurtinUtilities(
         """)
         self.patch(preseed_module, "get_preseed_template").return_value = (
             factory.make_name("filename"), power_state_template)
-        config = get_curtin_config(node)
+        config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(config, Not(Contains('mode: reboot')))
 
     def test_get_curtin_config_removes_apt_mirrors(self):
@@ -1077,7 +1080,7 @@ class TestCurtinUtilities(
         """)
         self.patch(preseed_module, "get_preseed_template").return_value = (
             factory.make_name("filename"), apt_mirrors_template)
-        config = get_curtin_config(node)
+        config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(config, Not(Contains('ubuntu_archive')))
         self.assertThat(config, Not(Contains('ubuntu_security')))
 
@@ -1090,7 +1093,7 @@ class TestCurtinUtilities(
         """)
         self.patch(preseed_module, "get_preseed_template").return_value = (
             factory.make_name("filename"), apt_proxy_template)
-        config = get_curtin_config(node)
+        config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(config, Not(Contains('127.0.0.1')))
 
     def test_get_curtin_config_contains_reboot_for_precise(self):
@@ -1099,66 +1102,19 @@ class TestCurtinUtilities(
         node.distro_series = "precise"
         node.save()
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
+        config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(config, Contains('mode: reboot'))
 
-    def test_get_curtin_config_with_ipv4_rack_url(self):
-        primary_rack = self.rpc_rack_controller
-        primary_rack.url = 'http://192.168.1.1:5240/'
-        primary_rack.save()
+    def test_get_curtin_config_with_request_url(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=primary_rack)
+            primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
+        request = make_HttpRequest()
+        config = get_curtin_config(request, node)
         yaml_conf = yaml.safe_load(config)
         self.assertEqual(
-            "%sMAAS/metadata/latest/by-id/%s/" % (
-                primary_rack.url, node.system_id),
-            yaml_conf['late_commands']['maas'][2])
-        self.assertTrue('debconf_selections' in yaml_conf)
-
-    def test_get_curtin_config_with_ipv6_rack_url(self):
-        primary_rack = self.rpc_rack_controller
-        primary_rack.url = 'http://[2001:db8::1]:5240/'
-        primary_rack.save()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=primary_rack)
-        self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
-        yaml_conf = yaml.safe_load(config)
-        self.assertEqual(
-            "%sMAAS/metadata/latest/by-id/%s/" % (
-                primary_rack.url, node.system_id),
-            yaml_conf['late_commands']['maas'][2])
-        self.assertTrue('debconf_selections' in yaml_conf)
-
-    def test_get_curtin_config_with_name_rack_url(self):
-        primary_rack = self.rpc_rack_controller
-        primary_rack.url = 'http://%s:5240/' % factory.make_name('host')
-        primary_rack.save()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=primary_rack)
-        self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
-        yaml_conf = yaml.safe_load(config)
-        self.assertEqual(
-            "%sMAAS/metadata/latest/by-id/%s/" % (
-                primary_rack.url, node.system_id),
-            yaml_conf['late_commands']['maas'][2])
-        self.assertTrue('debconf_selections' in yaml_conf)
-
-    def test_get_curtin_config_with_quote_rack_url(self):
-        primary_rack = self.rpc_rack_controller
-        primary_rack.url = 'http://%s:5240/' % factory.make_name("ho'st")
-        primary_rack.save()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=primary_rack)
-        self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
-        yaml_conf = yaml.safe_load(config)
-        self.assertEqual(
-            "%sMAAS/metadata/latest/by-id/%s/" % (
-                primary_rack.url, node.system_id),
+            request.build_absolute_uri(
+                "/MAAS/metadata/latest/by-id/%s/" % node.system_id),
             yaml_conf['late_commands']['maas'][2])
         self.assertTrue('debconf_selections' in yaml_conf)
 
@@ -1167,7 +1123,7 @@ class TestCurtinUtilities(
             primary_rack=self.rpc_rack_controller)
         node.save()
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(node)
+        config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(
             config,
             Contains('grub2: grub2   grub2/update_nvram  boolean false'))
@@ -1224,7 +1180,7 @@ class TestCurtinUtilities(
             url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
         self.assertEqual(
@@ -1240,7 +1196,7 @@ class TestCurtinUtilities(
             url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
         self.assertEqual(
@@ -1283,7 +1239,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             url=main_url, default=True, arches=['i386', 'amd64'], key=key)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = get_archive_config(node)
+        userdata = get_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
         self.assertEqual(
@@ -1300,7 +1256,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             disabled_pockets=['updates', 'backports'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         preseed = yaml.safe_load(userdata[0])
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
@@ -1324,7 +1280,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             disabled_components=['universe', 'multiverse'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         preseed = yaml.safe_load(userdata[0])
         self.assertThat(
             preseed['apt']['sources_list'],
@@ -1343,7 +1299,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         ppa = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
         preseed = yaml.safe_load(userdata[0])
@@ -1372,7 +1328,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             name='Juju PPA', default=False, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         ppas = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0])
         preseed = yaml.safe_load(userdata[0])
@@ -1408,7 +1364,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         repository = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
         preseed = yaml.safe_load(userdata[0])
@@ -1433,7 +1389,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             components=['main', 'universe'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         repository = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
         preseed = yaml.safe_load(userdata[0])
@@ -1464,7 +1420,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             components=['main', 'universe'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         repository = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
         preseed = yaml.safe_load(userdata[0])
@@ -1491,7 +1447,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             url=main_url, default=True, arches=['ppc64el', 'arm64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
         self.assertEqual(
@@ -1506,7 +1462,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
-        userdata = compose_curtin_archive_config(node)
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
         self.assertEqual(
@@ -1516,7 +1472,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_get_curtin_context(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
-        context = get_curtin_context(node)
+        context = get_curtin_context(make_HttpRequest(), node)
         self.assertItemsEqual(['curtin_preseed'], context.keys())
         self.assertIn('cloud-init', context['curtin_preseed'])
 
@@ -1832,26 +1788,27 @@ class TestPreseedMethods(
             primary_rack=self.rpc_rack_controller,
             status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        preseed = get_preseed(node)
-        curtin_url = reverse('curtin-metadata')
+        request = make_HttpRequest()
+        preseed = get_preseed(request, node)
+        curtin_url = request.build_absolute_uri(reverse('curtin-metadata'))
         self.assertIn(curtin_url.encode("utf-8"), preseed)
 
     def test_get_enlist_preseed_returns_enlist_preseed(self):
-        preseed = get_enlist_preseed()
+        preseed = get_enlist_preseed(make_HttpRequest())
         self.assertTrue(preseed.startswith(b'#cloud-config'))
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller,
             status=NODE_STATUS.COMMISSIONING)
-        preseed = get_preseed(node)
+        preseed = get_preseed(make_HttpRequest(), node)
         self.assertIn(b'#cloud-config', preseed)
 
     def test_get_preseed_returns_commissioning_preseed_for_disk_erasing(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller,
             status=NODE_STATUS.DISK_ERASING)
-        preseed = get_preseed(node)
+        preseed = get_preseed(make_HttpRequest(), node)
         self.assertIn(b'#cloud-config', preseed)
 
 
@@ -1861,10 +1818,10 @@ class TestPreseedURLs(
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
         response = self.client.get(compose_enlistment_preseed_url(
-            default_region_ip="127.0.0.1"))
+            default_region_ip='127.0.0.1'), HTTP_HOST='testserver')
+        request = make_HttpRequest(http_host='testserver')
         self.assertEqual(
-            (http.client.OK, get_enlist_preseed(
-                default_region_ip="127.0.0.1")),
+            (http.client.OK, get_enlist_preseed(request)),
             (response.status_code, response.content))
 
     def test_compose_enlistment_preseed_url_returns_absolute_link(self):
@@ -1889,14 +1846,16 @@ class TestPreseedURLs(
         self.configure_get_boot_images_for_node(node, 'install')
         response = self.client.get(
             compose_preseed_url(
-                node, self.rpc_rack_controller, default_region_ip='127.0.0.1'))
+                node, base_url=self.rpc_rack_controller.url,
+                default_region_ip='127.0.0.1'), HTTP_HOST='testserver')
+        request = make_HttpRequest(http_host='testserver')
         self.assertEqual(
-            (http.client.OK, get_preseed(node, default_region_ip='127.0.0.1')),
+            (http.client.OK, get_preseed(request, node)),
             (response.status_code, response.content))
 
     def test_compose_preseed_url_returns_absolute_link(self):
         self.assertThat(
             compose_preseed_url(
                 factory.make_Node_with_Interface_on_Subnet(),
-                self.rpc_rack_controller),
+                base_url=self.rpc_rack_controller.url),
             StartsWith('http://'))

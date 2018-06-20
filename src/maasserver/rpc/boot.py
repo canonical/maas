@@ -279,6 +279,7 @@ def get_config(
         'default_osystem',
         'default_distro_series',
         'kernel_opts',
+        'use_rack_proxy',
     ])
     if machine is not None:
         # Update the last interface, last access cluster IP address, and
@@ -314,8 +315,13 @@ def get_config(
                 machine.boot_interface.save()
 
         arch, subarch = machine.split_arch()
-        preseed_url = compose_preseed_url(
-            machine, rack_controller, default_region_ip=region_ip)
+        if configs['use_rack_proxy']:
+            preseed_url = compose_preseed_url(
+                machine, base_url='http://%s:5248/' % local_ip)
+        else:
+            preseed_url = compose_preseed_url(
+                machine, base_url=rack_controller.url,
+                default_region_ip=region_ip)
         hostname = machine.hostname
         domain = machine.domain.name
         purpose = machine.get_boot_purpose()
@@ -380,8 +386,12 @@ def get_config(
                                                      extra_kernel_opts)
     else:
         purpose = "commissioning"  # enlistment
-        preseed_url = compose_enlistment_preseed_url(
-            rack_controller, default_region_ip=region_ip)
+        if configs['use_rack_proxy']:
+            preseed_url = compose_enlistment_preseed_url(
+                base_url='http://%s:5248/' % local_ip)
+        else:
+            preseed_url = compose_enlistment_preseed_url(
+                rack_controller=rack_controller, default_region_ip=region_ip)
         hostname = 'maas-enlist'
         domain = 'local'
         osystem = configs['commissioning_osystem']

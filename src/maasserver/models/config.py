@@ -115,6 +115,8 @@ def get_default_config():
         'external_auth_domain': '',
         'external_auth_admin_group': '',
         'macaroon_private_key': None,
+        # MAAS Architecture.
+        'use_rack_proxy': True,
     }
 
 

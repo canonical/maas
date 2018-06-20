@@ -606,7 +606,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             raise MAASAPIValidationError(form.errors)
         # Check that the curtin preseeds renders correctly.
         try:
-            get_curtin_merged_config(machine)
+            get_curtin_merged_config(request, machine)
         except Exception as e:
             raise MAASAPIBadRequest(
                 "Failed to render preseed: %s" % e)
@@ -886,7 +886,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 "Machine %s is not in a deployment state." % machine.hostname)
         return HttpResponse(
             yaml.safe_dump(
-                get_curtin_merged_config(machine), default_flow_style=False),
+                get_curtin_merged_config(request, machine),
+                default_flow_style=False),
             content_type='text/plain')
 
     @operation(idempotent=False)

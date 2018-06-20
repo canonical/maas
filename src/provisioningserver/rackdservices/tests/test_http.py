@@ -139,7 +139,7 @@ class TestRackHTTPService(MAASTestCase):
             target_path,
             FileContains(
                 matcher=Contains(
-                    'proxy_pass http://maas-regions/MAAS/metadata/;')))
+                    'proxy_pass http://maas-regions/MAAS/;')))
         self.assertThat(mock_reloadService, MockCalledOnceWith('http'))
 
         # If the configuration has not changed then a second call to
