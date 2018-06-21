@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the nodes API."""
@@ -16,6 +16,7 @@ from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
 )
@@ -27,12 +28,25 @@ from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 
 
-class TestIsRegisteredAPI(APITestCase.ForAnonymousAndUserAndAdmin):
+class TestIsRegisteredAnonAPI(APITestCase.ForAnonymousAndUserAndAdmin):
+
+    def make_node(self, *args, **kwargs):
+        if self.user.is_anonymous:
+            but_not = [
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.RETIRED,
+            ]
+        else:
+            but_not = [NODE_STATUS.RETIRED]
+        return factory.make_Node(
+            status=factory.pick_choice(NODE_STATUS_CHOICES, but_not=but_not))
 
     def test_is_registered_returns_True_if_node_registered(self):
+        node = self.make_node()
         mac_address = factory.make_mac_address()
         factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address, node=node)
         response = self.client.get(
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
@@ -42,11 +56,13 @@ class TestIsRegisteredAPI(APITestCase.ForAnonymousAndUserAndAdmin):
              response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_is_registered_normalizes_mac_address(self):
+        node = self.make_node()
         # These two non-normalized MAC addresses are the same.
         non_normalized_mac_address = 'AA-bb-cc-dd-ee-ff'
         non_normalized_mac_address2 = 'aabbccddeeff'
         factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, mac_address=non_normalized_mac_address)
+            INTERFACE_TYPE.PHYSICAL, mac_address=non_normalized_mac_address,
+            node=node)
         response = self.client.get(
             reverse('nodes_handler'),
             {
@@ -60,6 +76,27 @@ class TestIsRegisteredAPI(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_is_registered_returns_False_if_node_not_registered(self):
         mac_address = factory.make_mac_address()
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {'op': 'is_registered', 'mac_address': mac_address})
+        self.assertEqual(
+            (http.client.OK.value, "false"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
+
+    def test_is_registered_returns_False_if_node_new_commis_retired(self):
+        if self.user.is_anonymous:
+            status = random.choice([
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.RETIRED,
+            ])
+        else:
+            status = NODE_STATUS.RETIRED
+        node = factory.make_Node(status=status)
+        mac_address = factory.make_mac_address()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address, node=node)
         response = self.client.get(
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})

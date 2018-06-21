@@ -251,12 +251,14 @@ def filtered_nodes_list_from_request(request, model=None):
     return nodes.order_by('id')
 
 
-def is_registered(request):
+def is_registered(request, ignore_statuses=None):
     """Used by both `NodesHandler` and `AnonNodesHandler`."""
     mac_address = get_mandatory_param(request.GET, 'mac_address')
     interfaces = Interface.objects.filter(mac_address=mac_address)
     interfaces = interfaces.exclude(node__isnull=True)
-    interfaces = interfaces.exclude(node__status=NODE_STATUS.RETIRED)
+    if ignore_statuses is None:
+        ignore_statuses = [NODE_STATUS.RETIRED]
+    interfaces = interfaces.exclude(node__status__in=ignore_statuses)
     return interfaces.exists()
 
 
@@ -540,7 +542,16 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
         Returns 400 if any mandatory parameters are missing.
         """
-        return is_registered(request)
+        # If a node is added with missing/incorrect arch/boot MAC it will
+        # enter enlistment instead of commissioning. Enlistment should be
+        # allowed to run. Once its done maas-run-remote-scripts will run
+        # which will execute all user selected commissioning and testing
+        # scripts.
+        return is_registered(
+            request, [
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.RETIRED])
 
     @operation(idempotent=True)
     def is_action_in_progress(self, request):
