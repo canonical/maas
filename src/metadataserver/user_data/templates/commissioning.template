@@ -6,102 +6,21 @@
 # scripts to gather data about the system, and runs testing scripts to validate
 # the hardware is in a functioning state.
 
-####  IPMI setup  ######
-IPMI_CONFIG_D="${TEMP_D}/ipmi.d"
-mkdir -p "$IPMI_CONFIG_D"
-# If IPMI network settings have been configured statically, you can
-# make them DHCP. If 'true', the IPMI network source will be changed
-# to DHCP.
-IPMI_CHANGE_STATIC_TO_DHCP="false"
-
-# In certain hardware, the parameters for the ipmi_si kernel module
-# might need to be specified. If you wish to send parameters, uncomment
-# the following line.
-#IPMI_SI_PARAMS="type=kcs ports=0xca2"
-
-add_ipmi_config() {
-   cat > "${IPMI_CONFIG_D}/$1"
-   chmod "${2:-644}" "${IPMI_CONFIG_D}/$1"
-}
-
 main() {
     prep_maas_api_helper
 
-    {{if not node or not node.skip_bmc_config}}
-    # Load IPMI kernel modules
-    modprobe ipmi_msghandler
-    modprobe ipmi_devintf
-    modprobe ipmi_si ${IPMI_SI_PARAMS}
-    modprobe ipmi_ssif
-    udevadm settle
+    {{if not node.skip_bmc_config}}
+    load_ipmi_modules
 
-    # Power settings.
-    local pargs=""
-    if $IPMI_CHANGE_STATIC_TO_DHCP; then
-        pargs="--dhcp-if-static"
-    fi
-    power_type=$(maas-ipmi-autodetect-tool)
-    if [ -z $power_type ]; then
-        power_type=$(maas-wedge-autodetect --check) || power_type=""
-    fi
-    {{endif}}
-
-    {{if not node}}
-    # Start enlistment
-
-    # Bring up all interfaces.
-    ip -o link | cut -d: -f2 | xargs -I{} ip link set dev {} up
-
-    # Detect current power settings to send to the metadata server
-    case "$power_type" in
-        ipmi)
-            power_params=$(maas-ipmi-autodetect \
-                --configdir "$IPMI_CONFIG_D" ${pargs} --commission-creds) &&
-                [ -n "${power_params}" ] && power_params=${power_params%.}
-            ;;
-        moonshot)
-            power_params=$(maas-moonshot-autodetect --commission-creds) &&
-                [ -n "${power_params}" ] && power_params=${power_params%.}
-            ;;
-        wedge)
-            power_params=$(maas-wedge-autodetect --get-enlist-creds) || power_params=""
-            ;;
-    esac
-
-    # Attempt to enlist the machine. Capture the output so we can discover the
-    # system_id.
-    output=$(maas-enlist --quite --serverurl "{{server_url}}" \
-        ${power_params:+--power-params "${power_params}" \
-        --power-type "${power_type}"})
-    if [ $? -ne 0 ]; then
-	# Check if this is a machine in action. If so, reboot so it can resume.
-	# If not, exit which will cause the machine to shutdown.
-	maas-enlist --serverurl "{{server_url}}" --in-action
-	if [ $? -eq 1 ]; then
-	    echo "Rebooting the machine to resume action"
-	    reboot
-	else
-	    exit 0
-	fi
-    fi
-
-    # Reload cloud-init preseed using system_id to get OAUTH credentials.
-    system_id=$(echo $output | jq -r .system_id)
-    mv ${CRED_CFG} ${CRED_CFG}.orig
-    wget -q {{server_url.replace('api/2.0/machines/', 'metadata/latest/by-id/${system_id}/?op=get_preseed')}} \
-        -O ${CRED_CFG}
-
-    signal COMMISSIONING "Enlistment complete, starting commissioning"
-    {{endif}}
-
-    {{if not node or not node.skip_bmc_config}}
     # LP:1730524 - Make sure we can signal the metadata service before updating
     # the BMC username and password.
     signal WORKING "Resetting BMC password" || exit 1
+
+    # Create or reset the MAAS IPMI user password
+    power_type=$(get_power_type)
     case "$power_type" in
         ipmi)
-            power_settings=$(maas-ipmi-autodetect \
-              --configdir "$IPMI_CONFIG_D" ${pargs})
+            power_settings=$(maas-ipmi-autodetect ${IPMI_AUTODETECT_ARGS})
             ;;
         moonshot)
             power_settings=$(maas-moonshot-autodetect)
@@ -149,12 +68,6 @@ END_MAAS_SIGNAL
 add_bin "maas-run-remote-scripts" <<"END_MAAS_RUN_REMOTE_SCRIPTS"
 {{maas_run_remote_scripts_py}}
 END_MAAS_RUN_REMOTE_SCRIPTS
-
-{{if not node}}
-add_bin "maas-enlist" <<"END_MAAS_ENLIST"
-{{maas_enlist_sh}}
-END_MAAS_ENLIST
-{{endif}}
 
 main
 exit

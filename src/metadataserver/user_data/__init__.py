@@ -87,7 +87,7 @@ def generate_user_data_for_status(
         rack_controller=None, request=None):
     """Produce a user_data script based on the node's status."""
     templates = {
-        NODE_STATUS.NEW: 'commissioning.template',
+        NODE_STATUS.NEW: 'enlistment.template',
         NODE_STATUS.COMMISSIONING: 'commissioning.template',
         NODE_STATUS.TESTING: 'script_runner.template',
         NODE_STATUS.DISK_ERASING: 'disk_erasing.template',
