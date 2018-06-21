@@ -455,28 +455,20 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
             }
         machine = factory.make_Machine(
             hostname=hostname, status=NODE_STATUS.NEW,
-            architecture='', power_type=power_type,
+            architecture=architecture, power_type=power_type,
             power_parameters=power_parameters)
-        # Simulate creating the MAAS IPMI user
-        power_parameters["power_user"] = "maas"
-        power_parameters["power_pass"] = factory.make_name("power-pass")
         response = self.client.post(
             reverse('machines_handler'),
             {
-                'hostname': 'maas-enlistment',
+                'hostname': hostname,
                 'architecture': architecture,
                 'power_type': power_type,
                 'mac_addresses': factory.make_mac_address(),
                 'power_parameters': json.dumps(power_parameters),
             })
-        self.assertEqual(http.client.OK, response.status_code)
-        machine = reload_object(machine)
-        self.assertEqual(hostname, machine.hostname)
-        self.assertEqual(architecture, machine.architecture)
-        self.assertDictContainsSubset(
-            machine.bmc.power_parameters, power_parameters)
-        node_metadata = NodeMetadata.objects.get(node=machine, key='enlisting')
+        node_metadata = NodeMetadata.objects.get(key='enlisting')
         self.assertEqual(node_metadata.value, 'True')
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(mock_create_machine, MockNotCalled())
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
@@ -499,46 +491,6 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         self.assertEqual(architecture, machine.architecture)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
-
-    def test_POST_create_requires_architecture(self):
-        hostname = factory.make_name("hostname")
-        response = self.client.post(
-            reverse('machines_handler'),
-            {
-                'hostname': hostname,
-                'power_type': 'manual',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
-            })
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertDictEqual(
-            {'architecture': ['This field is required.']},
-            json_load_bytes(response.content))
-
-    def test_POST_create_validates_architecture(self):
-        hostname = factory.make_name("hostname")
-        power_type = 'ipmi'
-        power_parameters = {
-            "power_address": factory.make_ip_address(),
-            "power_user": factory.make_name("power-user"),
-            "power_pass": factory.make_name("power-pass"),
-            "power_driver": 'LAN_2_0',
-            "mac_address": '',
-            "power_boot_type": 'auto',
-            }
-        factory.make_Machine(
-            hostname=hostname, status=NODE_STATUS.NEW,
-            architecture='', power_type=power_type,
-            power_parameters=power_parameters)
-        response = self.client.post(
-            reverse('machines_handler'),
-            {
-                'hostname': 'maas-enlistment',
-                'architecture': factory.make_name('arch'),
-                'power_type': power_type,
-                'mac_addresses': factory.make_mac_address(),
-                'power_parameters': json.dumps(power_parameters),
-            })
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
 
 class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):

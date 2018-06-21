@@ -60,7 +60,6 @@ from maasserver.exceptions import (
     Unauthorized,
 )
 from maasserver.forms import (
-    AdminMachineForm,
     get_machine_create_form,
     get_machine_edit_form,
 )
@@ -1065,32 +1064,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         return machine
 
 
-def fix_architecture(data):
-    # For backwards compatibilty reasons, requests may be sent with:
-    #     architecture with a '/' in it: use normally
-    #     architecture without a '/' and no subarchitecture: assume 'generic'
-    #     architecture without a '/' and a subarchitecture: use as specified
-    #     architecture with a '/' and a subarchitecture: error
-    architecture = data.get('architecture', None)
-    subarchitecture = data.get('subarchitecture', None)
-    if architecture and '/' in architecture:
-        if subarchitecture:
-            # Architecture with a '/' and a subarchitecture: error.
-            raise MAASAPIValidationError(
-                'Subarchitecture cannot be specified twice.')
-    elif architecture:
-        if subarchitecture:
-            # Architecture without a '/' and a subarchitecture:
-            # use as specified.
-            data['architecture'] = '/'.join([architecture, subarchitecture])
-            del data['subarchitecture']
-        else:
-            # Architecture without a '/' and no subarchitecture:
-            # assume 'generic'.
-            data['architecture'] += '/generic'
-
-
-def create_machine(request, requires_arch=False):
+def create_machine(request):
     """Service an http request to create a machine.
 
     The machine will be in the New state.
@@ -1100,11 +1074,33 @@ def create_machine(request, requires_arch=False):
     :rtype: :class:`maasserver.models.Machine`.
     :raises: ValidationError
     """
+
+    # For backwards compatibilty reasons, requests may be sent with:
+    #     architecture with a '/' in it: use normally
+    #     architecture without a '/' and no subarchitecture: assume 'generic'
+    #     architecture without a '/' and a subarchitecture: use as specified
+    #     architecture with a '/' and a subarchitecture: error
     given_arch = request.data.get('architecture', None)
     given_subarch = request.data.get('subarchitecture', None)
     given_min_hwe_kernel = request.data.get('min_hwe_kernel', None)
     altered_query_data = request.data.copy()
-    fix_architecture(altered_query_data)
+    if given_arch and '/' in given_arch:
+        if given_subarch:
+            # Architecture with a '/' and a subarchitecture: error.
+            raise MAASAPIValidationError(
+                'Subarchitecture cannot be specified twice.')
+        # Architecture with a '/' in it: use normally.
+    elif given_arch:
+        if given_subarch:
+            # Architecture without a '/' and a subarchitecture:
+            # use as specified.
+            altered_query_data['architecture'] = '/'.join(
+                [given_arch, given_subarch])
+            del altered_query_data['subarchitecture']
+        else:
+            # Architecture without a '/' and no subarchitecture:
+            # assume 'generic'.
+            altered_query_data['architecture'] += '/generic'
 
     hwe_regex = re.compile('(hwe|ga)-.+')
     has_arch_with_hwe = (
@@ -1121,8 +1117,7 @@ def create_machine(request, requires_arch=False):
                 'min_hwe_kernel must be in the form of hwe-<LETTER>.')
 
     Form = get_machine_create_form(request.user)
-    form = Form(
-        data=altered_query_data, request=request, requires_arch=requires_arch)
+    form = Form(data=altered_query_data, request=request)
     if form.is_valid():
         machine = form.save()
         maaslog.info("%s: Enlisted new machine", machine.hostname)
@@ -1206,7 +1201,6 @@ class AnonMachinesHandler(AnonNodesHandler):
         # BMC enlistment is currently only done for IPMI.
         # First, check if there is a pre-existing machine within MAAS that
         # matches the request.
-        architecture = request.data.get('architecture', None)
         power_type = request.data.get('power_type', None)
         power_parameters = request.data.get('power_parameters', None)
         machine = None
@@ -1216,30 +1210,10 @@ class AnonMachinesHandler(AnonNodesHandler):
                 status__in=[NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING],
                 bmc__power_parameters__power_address=(
                     params['power_address'])).first()
-            if machine is not None:
-                # Update the power parameters with the new MAAS password and
-                # ensure the architecture is set.
-                data = {
-                    'architecture': architecture,
-                    'power_type': power_type,
-                    'power_parameters': power_parameters,
-                }
-                fix_architecture(data)
-
-                # AdminMachineForm must be used so the power parameters can be
-                # updated.
-                form = AdminMachineForm(
-                    data=data, instance=machine, requires_arch=True)
-                if form.is_valid():
-                    machine = form.save()
-                else:
-                    raise MAASAPIValidationError(form.errors)
         if machine is None:
-            machine = create_machine(request, requires_arch=True)
+            machine = create_machine(request)
         if machine.status == NODE_STATUS.NEW:
-            # Make sure an enlisting NodeMetadata object exists if the machine
-            # is NEW. When commissioning finishes this is how MAAS knows to
-            # set the status to NEW instead of READY.
+            # Create or update NodeMetadata object for this node.
             NodeMetadata.objects.update_or_create(
                 node=machine, key='enlisting', defaults={'value': 'True'})
         return machine

@@ -173,33 +173,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             {nic.mac_address for nic in machine.interface_set.all()},
             Equals(macs))
 
-    def test_POST_creates_ipmi_machine_sets_mac_addresses_empty_no_arch(self):
-        make_usable_architecture(self)
-        hostname = factory.make_name('host')
-        macs = {
-            factory.make_mac_address()
-            for _ in range(random.randint(1, 2))
-        }
-        power_address = factory.make_ip_address()
-        response = self.client.post(
-            reverse('machines_handler'),
-            {
-                'hostname': hostname,
-                'mac_addresses': macs,
-                'power_type': 'ipmi',
-                'power_parameters_power_address': power_address,
-            })
-        self.assertEqual(http.client.OK, response.status_code)
-        system_id = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
-        machine = Machine.objects.get(system_id=system_id)
-        self.expectThat(machine.hostname, Equals(hostname))
-        self.expectThat(
-            {nic.mac_address for nic in machine.interface_set.all()},
-            Equals(set()))
-        self.assertEqual(
-            power_address, machine.power_parameters['power_address'])
-
     def test_POST_when_logged_in_creates_machine_in_declared_state(self):
         # When a user enlists a machine, it goes into the New state.
         # This will change once we start doing proper commissioning.

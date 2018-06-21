@@ -105,7 +105,7 @@ describe("AddHardwareController", function() {
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.pools).toBe(ResourcePoolsManager.getItems());
         expect($scope.domains).toBe(DomainsManager.getItems());
-        expect($scope.architectures).toEqual(['Choose an architecture']);
+        expect($scope.architectures).toEqual([]);
         expect($scope.hwe_kernels).toEqual([]);
         expect($scope.power_types).toEqual([]);
         expect($scope.error).toBeNull();
@@ -131,7 +131,7 @@ describe("AddHardwareController", function() {
             architecture: '',
             power: {type: makeName("power_type")}
         };
-        $scope.show()
+        $scope.show();
 
         loadManagers_defer.resolve();
         loadItems_defer.resolve();
@@ -139,7 +139,7 @@ describe("AddHardwareController", function() {
         expect($scope.machine.architecture).toEqual(arch);
     });
 
-    it("initializes machine arch with amd64 arch", function() {
+    it("initializes machine architecture with amd64 arch", function() {
         var loadManagers_defer = $q.defer();
         var loadItems_defer = $q.defer();
         var controller = makeController(loadManagers_defer, loadItems_defer);
@@ -383,11 +383,11 @@ describe("AddHardwareController", function() {
             expect($scope.machineHasError()).toBe(true);
         });
 
-        it("returns true if architecture is not chosen", function() {
+        it("returns true if architecture is empty", function() {
             var controller = makeControllerWithMachine();
             $scope.machine.zone = {};
             $scope.machine.pool = {};
-            $scope.machine.architecture = 'Choose an architecture';
+            $scope.machine.architecture = '';
             $scope.machine.power.type = {};
             $scope.machine.macs[0].mac = '00:11:22:33:44:55';
             $scope.machine.macs[0].error = false;

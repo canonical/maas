@@ -1563,6 +1563,12 @@ class Node(CleanSave, TimestampedModel):
                 )
             raise NodeStateViolation(error_text)
 
+    def clean_architecture(self):
+        if self.architecture == '':
+            raise ValidationError(
+                {'architecture':
+                    ["Architecture must be defined for installable nodes."]})
+
     def clean_hostname_domain(self):
         # If you set the hostname to a name with dots, that you mean for that
         # to be the FQDN of the host. Se we check that a domain exists for
@@ -1601,6 +1607,8 @@ class Node(CleanSave, TimestampedModel):
             self.clean_pool()
         if self._state.has_changed('status'):
             self.clean_status(self._state.get_old_value('status'))
+        if self._state.has_changed('architecture'):
+            self.clean_architecture()
         if self._state.has_changed('boot_disk_id'):
             self.clean_boot_disk()
         if self._state.has_changed('boot_interface_id'):
@@ -2976,7 +2984,7 @@ class Node(CleanSave, TimestampedModel):
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
-        if self.architecture is None or self.architecture == '':
+        if self.architecture is None:
             return ("", "")
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
@@ -5455,6 +5463,10 @@ class Device(Node):
     def __init__(self, *args, **kwargs):
         super(Device, self).__init__(
             node_type=NODE_TYPE.DEVICE, *args, **kwargs)
+
+    def clean_architecture(self):
+        # Devices aren't required to have a defined architecture
+        pass
 
 
 class NodeGroupToRackController(CleanSave, Model):

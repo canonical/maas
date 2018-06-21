@@ -1778,6 +1778,37 @@ class TestMachineHandler(MAASServerTestCase):
             HandlerPermissionError,
             handler.create, {})
 
+    def test_create_raises_validation_error_for_missing_pxe_mac(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        zone = factory.make_Zone()
+        params = {
+            "architecture": make_usable_architecture(self),
+            "zone": {
+                "name": zone.name,
+            },
+        }
+        error = self.assertRaises(
+            HandlerValidationError, handler.create, params)
+        self.assertThat(error.message_dict, Equals(
+            {'mac_addresses': ['This field is required.']}))
+
+    def test_create_raises_validation_error_for_missing_architecture(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        zone = factory.make_Zone()
+        params = {
+            "pxe_mac": factory.make_mac_address(),
+            "zone": {
+                "name": zone.name,
+            },
+        }
+        error = self.assertRaises(
+            HandlerValidationError, handler.create, params)
+        self.assertThat(error.message_dict, Equals(
+            {'architecture': [
+                'Architecture must be defined for installable nodes.']}))
+
     def test_create_creates_node(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})

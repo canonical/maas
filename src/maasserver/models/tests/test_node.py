@@ -1004,6 +1004,17 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         self.assertThat(node.system_id, HasLength(6))
 
+    def test_empty_architecture_rejected_for_type_node(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Node, node_type=NODE_TYPE.MACHINE, architecture='')
+
+    def test_empty_architecture_rejected_for_type_rack_controller(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Node, node_type=NODE_TYPE.RACK_CONTROLLER,
+            architecture='')
+
     def test__set_zone(self):
         zone = factory.make_Zone()
         node = factory.make_Node()
@@ -3417,6 +3428,18 @@ class TestNode(MAASServerTestCase):
         node.save()
         node = reload_object(node)
         self.assertIsNone(node.status_expires)
+
+    def test_save_checks_architecture_for_installable_nodes(self):
+        device = factory.make_Device(architecture='')
+        device.node_type = factory.pick_enum(
+            NODE_TYPE, but_not=[NODE_TYPE.DEVICE])
+        device._state._changed_fields['architecture'] = None
+        exception = self.assertRaises(
+            ValidationError, device.as_node().save)
+        self.assertEqual(
+            exception.message_dict,
+            {'architecture':
+                ['Architecture must be defined for installable nodes.']})
 
     def test_netboot_defaults_to_True(self):
         node = Node()

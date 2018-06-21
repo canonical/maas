@@ -667,18 +667,15 @@ class NodeForm(MAASModelForm):
 
 
 class MachineForm(NodeForm):
-    def __init__(self, request=None, requires_arch=False, *args, **kwargs):
+    def __init__(self, request=None, *args, **kwargs):
         super(MachineForm, self).__init__(*args, **kwargs)
 
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
         # with AdminMachineForm which actually uses this parameter.
-        request = kwargs.get('request')
-        if request is not None:
-            self.data = request.data
         instance = kwargs.get('instance')
 
-        self.set_up_architecture_field(requires_arch=requires_arch)
+        self.set_up_architecture_field()
         # We only want the license key field to render in the UI if the `OS`
         # and `Release` fields are also present.
         if self.has_owner:
@@ -691,7 +688,7 @@ class MachineForm(NodeForm):
             self.fields['license_key'] = forms.CharField(
                 label="", required=False, widget=forms.HiddenInput())
 
-    def set_up_architecture_field(self, requires_arch=False):
+    def set_up_architecture_field(self):
         """Create the `architecture` field.
 
         This needs to be done on the fly so that we can pass a dynamic list of
@@ -705,11 +702,9 @@ class MachineForm(NodeForm):
             choices = list_architecture_choices(architectures)
         invalid_arch_message = compose_invalid_choice_text(
             'architecture', choices)
-        power_type = self.data.get('power_type', None)
         self.fields['architecture'] = forms.ChoiceField(
-            choices=choices, required=(power_type != 'ipmi' or requires_arch),
-            initial=default_arch, error_messages={
-                'invalid_choice': invalid_arch_message})
+            choices=choices, required=False, initial=default_arch,
+            error_messages={'invalid_choice': invalid_arch_message})
 
     def set_up_osystem_and_distro_series_fields(self, instance):
         """Create the `osystem` and `distro_series` fields.
@@ -1210,8 +1205,7 @@ class WithMACAddressesMixin:
 
     def set_up_mac_addresses_field(self):
         macs = [mac for mac in self.data.getlist('mac_addresses') if mac]
-        self.fields['mac_addresses'] = MultipleMACAddressField(
-            len(macs), required=(self.data.get('power_type') != 'ipmi'))
+        self.fields['mac_addresses'] = MultipleMACAddressField(len(macs))
         self.data = self.data.copy()
         self.data['mac_addresses'] = macs
 
@@ -1261,19 +1255,7 @@ class WithMACAddressesMixin:
         This implementation of `save` does not support the `commit` argument.
         """
         node = super(WithMACAddressesMixin, self).save()
-        architecture = self.cleaned_data.get('architecture')
-        power_type = self.cleaned_data.get('power_type')
-        # If a new node with an IPMI BMC is created the user doesn't have
-        # to specify the architecture or MAC addresses. Anonymous POST
-        # on the machines API will find the machine the user created by
-        # power address. If only the MAC address is given ignore it so the
-        # machine boots into the enlistment environment and MAAS can capture
-        # the architecture.
-        if not architecture and power_type == 'ipmi':
-            mac_addresses = []
-        else:
-            mac_addresses = self.cleaned_data['mac_addresses']
-        for mac in mac_addresses:
+        for mac in self.cleaned_data['mac_addresses']:
             mac_addresses_errors = []
             try:
                 node.add_physical_interface(mac)
