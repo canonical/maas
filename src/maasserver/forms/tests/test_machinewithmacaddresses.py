@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `MachineWithMACAddressesForm`."""
@@ -136,6 +136,24 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
             data=self.make_params(
                 mac_addresses=[factory.make_mac_address(), '']))
 
+        self.assertTrue(form.is_valid())
+
+    def test__mac_address_is_required(self):
+        form = MachineWithMACAddressesForm(
+            data=self.make_params(mac_addresses=[]))
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(['mac_addresses'], list(form.errors))
+        self.assertEqual(
+            ["This field is required."],
+            form.errors['mac_addresses'])
+
+    def test__no_architecture_or_mac_addresses_is_ok_for_ipmi(self):
+        # No architecture or MAC addresses is okay for IPMI power types.
+        params = self.make_params(mac_addresses=[])
+        params['architecture'] = None
+        params['power_type'] = 'ipmi'
+        form = MachineWithMACAddressesForm(data=params)
         self.assertTrue(form.is_valid())
 
     def test__save(self):

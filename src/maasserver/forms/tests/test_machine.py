@@ -369,8 +369,8 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'cpu_count',
                 'memory',
                 'zone',
-                'power_type',
                 'power_parameters',
+                'power_type',
                 'pool',
             ],
             list(form.fields))
