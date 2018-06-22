@@ -5,6 +5,9 @@
 
 __all__ = []
 
+import random
+from unittest.mock import Mock
+
 import attr
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
@@ -84,10 +87,10 @@ class TestRackDNSService(MAASTestCase):
             StubClusterClientService(), reactor)
         self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
 
-    def test_service_iterates_every_30_seconds(self):
+    def test_service_iterates_on_low_interval(self):
         service = dns.RackDNSService(
             StubClusterClientService(), reactor)
-        self.assertThat(service.step, Equals(30.0))
+        self.assertThat(service.step, Equals(service.INTERVAL_LOW))
 
     def make_trusted_networks(self):
         return frozenset({
@@ -101,6 +104,14 @@ class TestRackDNSService(MAASTestCase):
             for _, client in rpc_service.connections.items()
         })
 
+    def make_startable_RackDNSService(self, *args, **kwargs):
+        service = dns.RackDNSService(*args, **kwargs)
+        service._orig_tryUpdate = service._tryUpdate
+        self.patch(service, "_tryUpdate").return_value = (
+            always_succeed_with(None))
+        service.call = (service._tryUpdate, tuple(), {})
+        return service
+
     @inlineCallbacks
     def test__getConfiguration_returns_configuration_object(self):
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
@@ -109,7 +120,9 @@ class TestRackDNSService(MAASTestCase):
             self, is_region=is_region, is_rack=is_rack,
             trusted_networks=trusted_networks)
         region_ips = self.extract_regions(rpc_service)
-        service = dns.RackDNSService(rpc_service, reactor)
+        service = self.make_startable_RackDNSService(rpc_service, reactor)
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
         observed = yield service._getConfiguration()
 
         self.assertThat(observed, IsInstance(dns._Configuration))
@@ -125,7 +138,7 @@ class TestRackDNSService(MAASTestCase):
         rpc_service, _ = yield prepareRegion(
             self, trusted_networks=trusted_networks)
         region_ips = self.extract_regions(rpc_service)
-        service = dns.RackDNSService(rpc_service, reactor)
+        service = self.make_startable_RackDNSService(rpc_service, reactor)
 
         bind_write_options = self.patch_autospec(
             dns, "bind_write_options")
@@ -134,7 +147,9 @@ class TestRackDNSService(MAASTestCase):
         bind_reload_with_retries = self.patch_autospec(
             dns, "bind_reload_with_retries")
 
-        yield service._tryUpdate()
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+        yield service._orig_tryUpdate()
         self.assertThat(
             bind_write_options,
             MockCalledOnceWith(
@@ -146,7 +161,7 @@ class TestRackDNSService(MAASTestCase):
             bind_reload_with_retries, MockCalledOnceWith())
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
-        yield service._tryUpdate()
+        yield service._orig_tryUpdate()
         self.assertThat(
             bind_write_options,
             MockCalledOnceWith(
@@ -197,14 +212,16 @@ class TestRackDNSService(MAASTestCase):
         self.patch(common.log, 'debug')
         self.useFixture(MAASRootFixture())
         rpc_service, _ = yield prepareRegion(self, is_region=True)
-        service = dns.RackDNSService(rpc_service, reactor)
+        service = self.make_startable_RackDNSService(rpc_service, reactor)
         self.patch_autospec(service, "_configure")  # No-op configuration.
 
         # There is no most recently applied configuration.
         self.assertThat(service._configuration, Is(None))
 
         with TwistedLoggerFixture() as logger:
-            yield service._tryUpdate()
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
 
         # The most recently applied configuration is set, though it was not
         # actually "applied" because this host was configured as a region+rack
@@ -215,6 +232,52 @@ class TestRackDNSService(MAASTestCase):
         self.assertThat(service._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
         self.assertThat(logger.output, Equals(""))
+
+    @inlineCallbacks
+    def test__getConfiguration_updates_interval_to_high(self):
+        rpc_service, protocol = yield prepareRegion(self)
+        service = dns.RackDNSService(rpc_service, reactor)
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+        yield service._getConfiguration()
+
+        self.assertThat(service.step, Equals(service.INTERVAL_HIGH))
+        self.assertThat(service._loop.interval, Equals(service.INTERVAL_HIGH))
+
+    def test__genRegionIps_groups_by_region(self):
+        mock_rpc = Mock()
+        mock_rpc.connections = {}
+        for _ in range(3):
+            region_name = factory.make_name('region')
+            for _ in range(3):
+                pid = random.randint(0, 10000)
+                eventloop = '%s:pid=%s' % (region_name, pid)
+                ip = factory.make_ip_address()
+                mock_conn = Mock()
+                mock_conn.address = (ip, random.randint(5240, 5250))
+                mock_rpc.connections[eventloop] = mock_conn
+
+        service = dns.RackDNSService(mock_rpc, reactor)
+        region_ips = list(service._genRegionIps())
+        self.assertEquals(3, len(region_ips))
+
+    def test__genRegionIps_always_returns_same_result(self):
+        mock_rpc = Mock()
+        mock_rpc.connections = {}
+        for _ in range(3):
+            region_name = factory.make_name('region')
+            for _ in range(3):
+                pid = random.randint(0, 10000)
+                eventloop = '%s:pid=%s' % (region_name, pid)
+                ip = factory.make_ip_address()
+                mock_conn = Mock()
+                mock_conn.address = (ip, random.randint(5240, 5250))
+                mock_rpc.connections[eventloop] = mock_conn
+
+        service = dns.RackDNSService(mock_rpc, reactor)
+        region_ips = frozenset(service._genRegionIps())
+        for _ in range(3):
+            self.assertEquals(region_ips, frozenset(service._genRegionIps()))
 
 
 class TestRackDNSService_Errors(MAASTestCase):
@@ -229,6 +292,14 @@ class TestRackDNSService_Errors(MAASTestCase):
         ("_configurationApplied", dict(method="_configurationApplied")),
     )
 
+    def make_startable_RackDNSService(self, *args, **kwargs):
+        service = dns.RackDNSService(*args, **kwargs)
+        service._orig_tryUpdate = service._tryUpdate
+        self.patch(service, "_tryUpdate").return_value = (
+            always_succeed_with(None))
+        service.call = (service._tryUpdate, tuple(), {})
+        return service
+
     @inlineCallbacks
     def test__tryUpdate_logs_errors_from_broken_method(self):
         # Patch the logger in the clusterservice so no log messages are printed
@@ -236,14 +307,16 @@ class TestRackDNSService_Errors(MAASTestCase):
         self.patch(common.log, 'debug')
 
         rpc_service, _ = yield prepareRegion(self)
-        service = dns.RackDNSService(rpc_service, reactor)
+        service = self.make_startable_RackDNSService(rpc_service, reactor)
         self.patch_autospec(service, "_configure")  # No-op configuration.
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
 
         self.useFixture(MAASRootFixture())
         with TwistedLoggerFixture() as logger:
-            yield service._tryUpdate()
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
 
         self.assertThat(
             logger.output, DocTestMatches(
