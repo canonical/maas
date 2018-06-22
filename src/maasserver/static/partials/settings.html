@@ -372,7 +372,7 @@
                             </span>
                         </td>
                         <td class="col-4" aria-label="URL" data-ng-if="editRepository !== repository">{$ repository.url $}</td>
-                        <td class="col-2" aria-label="Enabled" data-ng-if="editRepository !== repository">
+                        <td class="col-2 p-table--action-cell" aria-label="Enabled" data-ng-if="editRepository !== repository">
                             <div class="onoffswitch" data-ng-if="!isMirror(repository)">
                                 <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-repo-{$ repository.id $}"
                                     data-ng-model="repository.enabled"
