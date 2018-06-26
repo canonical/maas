@@ -26,5 +26,6 @@ server {
 
     location /images/ {
         alias {{resource_root}};
+        autoindex on;
     }
 }
