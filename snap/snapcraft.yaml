@@ -92,6 +92,8 @@ parts:
       - squid
       - tcpdump
       - ubuntu-keyring
+    python-packages:
+      - zhmcclient
     organize:
         lib/python3.*/site-packages/etc/*: etc
         lib/python3.*/site-packages/usr/bin/*: usr/bin
