@@ -475,6 +475,25 @@ CONFIG_ITEMS = {
                 (IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0))
         }
     },
+    'boot_images_no_proxy': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Set no_proxy with the image repository address when MAAS "
+                "is behind (or set with) a proxy."),
+            'help_text': (
+                "By default, when MAAS is behind (and set with) a proxy, it "
+                "is used to download images from the image repository. In "
+                "some situations (e.g. when using a local image repository) "
+                "it doesn't make sense for MAAS to use the proxy to download "
+                "images because it can access them directly. Setting this "
+                "option allows MAAS to access the (local) image repository "
+                "directly by setting the no_proxy variable for the MAAS env "
+                "with the address of the image repository.")
+        }
+    },
     'curtin_verbose': {
         'default': False,
         'form': forms.BooleanField,
