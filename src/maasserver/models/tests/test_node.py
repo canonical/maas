@@ -6055,12 +6055,23 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         nodeif = factory.make_Interface(vlan=vlan, node=node)
         if ipv4:
-            nodeif.link_subnet(INTERFACE_LINK_TYPE.AUTO, v4_subnet)
+            nodeif.link_subnet(INTERFACE_LINK_TYPE.STATIC, v4_subnet)
         if ipv6:
-            nodeif.link_subnet(INTERFACE_LINK_TYPE.AUTO, v6_subnet)
+            nodeif.link_subnet(INTERFACE_LINK_TYPE.STATIC, v6_subnet)
         node.boot_interface = nodeif
         node.save()
         return rack_v4, rack_v6, node
+
+    def make_RackController_routable_to_node(self, node, subnet=None):
+        other_rack = factory.make_RackController()
+        vlan = node.boot_interface.vlan
+        subnet = vlan.subnet_set.first()
+        other_rack.interface_set.all().delete()
+        other_rackif = factory.make_Interface(vlan=vlan, node=other_rack)
+        other_rackif_ip = factory.pick_ip_in_Subnet(subnet)
+        other_rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, subnet, other_rackif_ip)
+        return other_rackif_ip, other_rack
 
     def test__uses_rack_ipv4_if_ipv4_only_with_no_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -6158,6 +6169,46 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_subnet_dns=[ipv6_subnet_dns])
         self.assertThat(
             node.get_default_dns_servers(), Equals([ipv6_subnet_dns]))
+
+    def test__uses_other_routeable_rack_controllers_ipv4(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False)
+        rack_ips = [rack_v4]
+        for _ in range(3):
+            rack_ip, _ = self.make_RackController_routable_to_node(node)
+            rack_ips.append(rack_ip)
+        self.assertItemsEqual(
+            node.get_default_dns_servers(), rack_ips)
+
+    def test__uses_other_routeable_rack_controllers_ipv6(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=False)
+        rack_ips = [rack_v6]
+        for _ in range(3):
+            rack_ip, _ = self.make_RackController_routable_to_node(node)
+            rack_ips.append(rack_ip)
+        self.assertItemsEqual(
+            node.get_default_dns_servers(), rack_ips)
+
+    def test__uses_subnet_ipv4_gateway_with_other_routeable_racks(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=True, ipv6=False, ipv6_gateway=False)
+        rack_ips = [rack_v4]
+        for _ in range(3):
+            rack_ip, _ = self.make_RackController_routable_to_node(node)
+            rack_ips.append(rack_ip)
+        self.assertItemsEqual(
+            node.get_default_dns_servers(), rack_ips)
+
+    def test__uses_subnet_ipv6_gateway_with_other_routeable_racks(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=True)
+        rack_ips = [rack_v6]
+        for _ in range(3):
+            rack_ip, _ = self.make_RackController_routable_to_node(node)
+            rack_ips.append(rack_ip)
+        self.assertItemsEqual(
+            node.get_default_dns_servers(), rack_ips)
 
 
 class TestNode_Start(MAASTransactionServerTestCase):

@@ -1041,7 +1041,7 @@ class TestNetplan(MAASServerTestCase):
                         'type': 'physical'
                     },
                     {
-                        'address': ['10.0.0.1', r2_address.ip],
+                        'address': [r2_address.ip, '10.0.0.1'],
                         'search': ['maas'],
                         'type': 'nameserver'
                     }

@@ -828,7 +828,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         servers = get_default_dns_servers(rack_controller, subnet)
         self.assertThat(servers, Equals([IPAddress('192.168.0.1')]))
 
-    def test__chooses_alternate_from_known_reachable_subnet(self):
+    def test__chooses_alternate_from_known_reachable_subnet_no_proxy(self):
         mock_get_source_address = self.patch(dhcp_module, 'get_source_address')
         mock_get_source_address.return_value = '10.0.0.1'
         vlan = factory.make_VLAN()
@@ -842,9 +842,35 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         address = factory.make_StaticIPAddress(
             interface=interface, subnet=subnet,
             alloc_type=IPADDRESS_TYPE.STICKY)
-        servers = get_default_dns_servers(r1, subnet)
+        servers = get_default_dns_servers(r1, subnet, False)
         self.assertThat(servers, Equals(
             [IPAddress('10.0.0.1'), IPAddress(address.ip)]))
+
+    def test__racks_on_subnet_comes_before_region(self):
+        mock_get_source_address = self.patch(dhcp_module, 'get_source_address')
+        mock_get_source_address.return_value = '10.0.0.1'
+        vlan = factory.make_VLAN()
+        r1 = factory.make_RegionRackController(interface=False)
+        mock_get_maas_id = self.patch(server_address_module, 'get_maas_id')
+        mock_get_maas_id.return_value = r1.system_id
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        r1_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r1)
+        r1_address = factory.make_StaticIPAddress(
+            interface=r1_interface, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        r2 = factory.make_RegionRackController(interface=False)
+        r2_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r2)
+        r2_address = factory.make_StaticIPAddress(
+            interface=r2_interface, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        servers = get_default_dns_servers(r1, subnet)
+        self.assertThat(servers, Equals([
+            IPAddress(r1_address.ip),
+            IPAddress(r2_address.ip),
+            IPAddress('10.0.0.1'),
+        ]))
 
 
 class TestMakeSubnetConfig(MAASServerTestCase):

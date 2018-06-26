@@ -31,6 +31,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
+    NODE_TYPE,
     SERVICE_STATUS,
 )
 from maasserver.exceptions import UnresolvableHost
@@ -489,30 +490,78 @@ def get_ntp_servers(ntp_servers, subnet, peer_rack):
         return ntp_servers
 
 
-def get_default_dns_servers(rack_controller, subnet):
+@typed
+def get_dns_server_addresses_for_rack(
+        rack_controller: RackController, subnet: Subnet) -> dict:
+    """Return a map of IP addresses suitable for DNS on subnet.
+
+    This will define a list of IP addresses across all rack controllers that
+    exist on `subnet`. The `rack_controller` will always be the first in the
+    list followed by other rack controllers that are also on the subnet.
+    """
+    addresses = StaticIPAddress.objects.filter(
+        subnet=subnet,
+        alloc_type__in={
+            IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
+        interface__enabled=True,
+        interface__node__node_type__in={
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER})
+    addresses = addresses.distinct()
+    addresses = addresses.values_list(
+        "ip",
+        "interface__node_id")
+
+    def sort_key__rack__ip(record):
+        ip, node_id = record
+        return -int(node_id == rack_controller.id), IPAddress(ip)
+
+    return [
+        IPAddress(record[0])
+        for record in sorted(addresses, key=sort_key__rack__ip)
+    ]
+
+
+def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     """Calculates the DNS servers on a per-subnet basis, to make sure we
     choose the best possible IP addresses for each subnet.
 
     :param rack_controller: The RackController to be used as the DHCP server.
     :param subnet: The DHCP-managed subnet.
+    :param use_rack_proxy: Whether to proxy DNS through the rack controller
+      or not.
     """
     ip_version = subnet.get_ip_version()
     try:
         default_region_ip = get_source_address(subnet.get_ipnetwork())
-        maas_dns_servers = get_dns_server_addresses(
+        dns_servers = get_dns_server_addresses(
             rack_controller, ipv4=(ip_version == 4),
             ipv6=(ip_version == 6), include_alternates=True,
             default_region_ip=default_region_ip)
     except UnresolvableHost:
-        maas_dns_servers = None
-    return maas_dns_servers
+        dns_servers = None
+
+    if use_rack_proxy:
+        # Add the IP address for the rack controllers on the subnet before the
+        # region DNS servers.
+        rack_ips = get_dns_server_addresses_for_rack(
+            rack_controller, subnet)
+        if dns_servers:
+            dns_servers = rack_ips + [
+                server
+                for server in dns_servers
+                if server not in rack_ips
+            ]
+        elif rack_ips:
+            dns_servers = rack_ips
+
+    return dns_servers
 
 
 @typed
 def get_dhcp_configure_for(
         ip_version: int, rack_controller, vlan, subnets: list,
         ntp_servers: Union[list, dict], domain, search_list=None,
-        dhcp_snippets: Iterable=None):
+        dhcp_snippets: Iterable=None, use_rack_proxy=True):
     """Get the DHCP configuration for `ip_version`."""
     # Select the best interface for this VLAN. This is an interface that
     # at least has an IP address.
@@ -542,7 +591,8 @@ def get_dhcp_configure_for(
     # Generate the shared network configurations.
     subnet_configs = []
     for subnet in subnets:
-        maas_dns_servers = get_default_dns_servers(rack_controller, subnet)
+        maas_dns_servers = get_default_dns_servers(
+            rack_controller, subnet, use_rack_proxy)
         subnet_configs.append(
             make_subnet_config(
                 rack_controller, subnet, maas_dns_servers, ntp_servers,
@@ -606,6 +656,10 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     hosts_v6 = []
     interfaces_v6 = set()
 
+    # DNS can either go through the rack controller or directly to the
+    # region controller.
+    use_rack_proxy = Config.objects.get_config('use_rack_proxy')
+
     # NTP configuration can get tricky...
     ntp_external_only = Config.objects.get_config("ntp_external_only")
     if ntp_external_only:
@@ -626,7 +680,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
             config = get_dhcp_configure_for(
                 4, rack_controller, vlan, subnets_v4, ntp_servers,
                 default_domain, search_list=search_list,
-                dhcp_snippets=dhcp_snippets)
+                dhcp_snippets=dhcp_snippets, use_rack_proxy=use_rack_proxy)
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v4.append(failover_peer)
@@ -643,7 +697,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
             config = get_dhcp_configure_for(
                 6, rack_controller, vlan, subnets_v6,
                 ntp_servers, default_domain, search_list=search_list,
-                dhcp_snippets=dhcp_snippets)
+                dhcp_snippets=dhcp_snippets, use_rack_proxy=use_rack_proxy)
             failover_peer, subnets, hosts, interface = config
             if failover_peer is not None:
                 failover_peers_v6.append(failover_peer)

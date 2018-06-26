@@ -140,6 +140,10 @@ from maasserver.node_status import (
     NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
     NODE_TRANSITIONS,
 )
+from maasserver.routablepairs import (
+    get_routable_address_map,
+    reduce_routable_address_map,
+)
 from maasserver.rpc import (
     getAllClients,
     getClientFor,
@@ -3483,6 +3487,13 @@ class Node(CleanSave, TimestampedModel):
                 # servers defined. IPv6 DNS servers take second-priority.
                 return list(OrderedDict.fromkeys(subnet.dns_servers))
 
+        # Get the routable addresses between the node and all rack controllers,
+        # when the rack proxy should be used (default).
+        routable_addrs_map = {}
+        if Config.objects.get_config('use_rack_proxy'):
+            routable_addrs_map = get_routable_address_map(
+                RackController.objects.all(), self)
+
         # No default gateway subnet has specific DNS servers defined, so
         # use MAAS for the default DNS server.
         if gateways.ipv4 is None and gateways.ipv6 is None:
@@ -3492,6 +3503,15 @@ class Node(CleanSave, TimestampedModel):
                 rack_controller=self.get_boot_rack_controller(),
                 ipv4=ipv4, ipv6=ipv6, include_alternates=True,
                 default_region_ip=default_region_ip)
+            routable_addrs_map = {
+                node: [
+                    address
+                    for address in addresses
+                    if ((ipv4 and address.version == 4) or
+                        (ipv6 and address.version == 6))
+                ]
+                for node, addresses in routable_addrs_map.items()
+            }
         else:
             # Choose an address consistent with the primary address-family
             # in use, as indicated by the presence (or not) of a gateway.
@@ -3503,7 +3523,32 @@ class Node(CleanSave, TimestampedModel):
                 ipv4=(ipv4 and gateways.ipv4 is not None),
                 ipv6=(ipv6 and gateways.ipv6 is not None),
                 include_alternates=True, default_region_ip=default_region_ip)
-        return list(OrderedDict.fromkeys([str(ip) for ip in maas_dns_servers]))
+            routable_addrs_map = {
+                node: [
+                    address
+                    for address in addresses
+                    if ((ipv4 and gateways.ipv4 is not None and
+                         address.version == 4) or
+                        (ipv6 and gateways.ipv6 is not None and
+                         address.version == 6))
+                ]
+                for node, addresses in routable_addrs_map.items()
+            }
+
+        # Routable rack controllers come before the region controllers when
+        # using the rack DNS proxy.
+        maas_dns_servers = list(
+            OrderedDict.fromkeys([str(ip) for ip in maas_dns_servers]))
+        if routable_addrs_map:
+            routable_addrs = reduce_routable_address_map(routable_addrs_map)
+            routable_addrs = list(map(str, routable_addrs))
+            return routable_addrs + [
+                ip
+                for ip in maas_dns_servers
+                if ip not in routable_addrs
+            ]
+        else:
+            return maas_dns_servers
 
     def get_boot_purpose(self):
         """
