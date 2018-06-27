@@ -633,7 +633,7 @@
             <div class="row">
                 <div class="page-header__controls u-align--right" data-ng-if="tabs.controllers.actionOption.name !== 'test'">
                     <button class="p-button--base" type="button" data-ng-click="actionCancel('controllers')">Cancel</button>
-                    <button class="p-button--positive" data-ng-click="actionGo('controllers')">
+                    <button class="p-button--positive" data-ng-class="{ 'p-button--positive': tabs.controllers.actionOption.name !== 'delete', 'p-button--negative': tabs.controllers.actionOption.name === 'delete' }" data-ng-click="actionGo('controllers')">
                         <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
                             <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
                         </span>

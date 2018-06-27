@@ -20,15 +20,15 @@
         </div>
     </div>
     <div class="row" data-ng-class="{ 'u-hide': !action.option }">
-        <div class="col-12" data-ng-if="!isActionError() && !hasActionsInProgress()">
-            <form class="p-form p-form--inline">
+        <div class="col-12 u-align--right" data-ng-if="!isActionError() && !hasActionsInProgress()">
+            <form>
                 <p data-ng-if="hasActionsFailed()">
                     Performing {$ action.option.sentence $} failed for {$ action.progress.errors $}
                     <span data-ng-pluralize count="action.progress.errors" when="{'one': 'pod', 'other': 'pods'}"></span>,
                     see listing for specific error for each pod.
                 </p>
                 <button class="p-button--base is-inline" type="button" data-ng-click="actionCancel()">Cancel</button>
-                <button class="is-inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!hasActionsFailed()">
+                <button class="is-inline" data-ng-class="action.option.name === 'delete' ? 'p-button--negative' : 'p-button--positive'" data-ng-click="actionGo()" data-ng-if="!hasActionsFailed()">
                     <span data-ng-if="action.option.name === 'refresh'">Refresh {$ selectedItems.length $}
                         <span data-ng-pluralize count="selectedItems.length" when="{'one': 'pod', 'other': 'pods'}"></span>
                     </span>

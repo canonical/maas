@@ -457,7 +457,7 @@
                 <h2 data-ng-if="!isController" class="p-heading--four">{$ node.node_type_display $} configuration</h2>
                 <h2 data-ng-if="isController" class="p-heading--four">Controller configuration</h2>
             </div>
-            <div class="col-2">
+            <div class="col-2" data-ng-if="!summary.editing">
                 <button class="p-button--neutral u-float--right"
                     data-ng-if="canEdit()"
                     data-ng-click="editSummary()">Edit</button>
