@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Methods."""
@@ -393,6 +393,7 @@ from provisioningserver.boot.open_firmware_ppc64el import (
 )
 from provisioningserver.boot.powernv import PowerNVBootMethod
 from provisioningserver.boot.windows import WindowsPXEBootMethod
+from provisioningserver.boot.s390x import S390XBootMethod
 
 
 builtin_boot_methods = [
@@ -402,6 +403,7 @@ builtin_boot_methods = [
     OpenFirmwarePPC64ELBootMethod(),
     PowerNVBootMethod(),
     WindowsPXEBootMethod(),
+    S390XBootMethod(),
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)
