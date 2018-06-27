@@ -194,7 +194,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             instance=package_repository, data={'arches': ['i286']})
         self.assertEqual(
             ["'i286' is not a valid architecture. Known architectures: "
-                'amd64, arm64, armhf, i386, ppc64el'],
+                'amd64, arm64, armhf, i386, ppc64el, s390x'],
             form.errors.get('arches'))
         request = HttpRequest()
         request.user = factory.make_User()

@@ -94,7 +94,7 @@ class PackageRepository(CleanSave, TimestampedModel):
     """A `PackageRepository`."""
 
     MAIN_ARCHES = ['amd64', 'i386']
-    PORTS_ARCHES = ['armhf', 'arm64', 'ppc64el']
+    PORTS_ARCHES = ['armhf', 'arm64', 'ppc64el', 's390x']
     KNOWN_ARCHES = MAIN_ARCHES + PORTS_ARCHES
     POCKETS_TO_DISABLE = ['updates', 'security', 'backports']
     COMPONENTS_TO_DISABLE = ['restricted', 'universe', 'multiverse']
