@@ -1128,6 +1128,18 @@ class TestCurtinUtilities(
             config,
             Contains('grub2: grub2   grub2/update_nvram  boolean false'))
 
+    def test_get_curtin_config_has_s390x_local_boot_late_command(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            architecture='s390x/generic', bios_boot_method='s390x')
+        node.save()
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(make_HttpRequest(), node)
+        self.assertThat(
+            config,
+            Contains(
+                'maas_00: chreipl node /dev/' + node.get_boot_disk().name))
+
     def make_fastpath_node(self, main_arch=None):
         """Return a `Node`, with FPI enabled, and the given main architecture.
 

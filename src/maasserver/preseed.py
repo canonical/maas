@@ -488,6 +488,9 @@ def get_curtin_config(request, node):
         config['debconf_selections'].update(grub2_debconf)
     else:
         config['debconf_selections'] = grub2_debconf
+    if 's390x' in node.architecture:
+        command = {'maas_00': 'chreipl node /dev/' + node.get_boot_disk().name}
+        config['late_commands'].update(command)
     return yaml.safe_dump(config)
 
 
