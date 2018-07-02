@@ -25,6 +25,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.pools = ResourcePoolsManager.getItems();
         $scope.domains = DomainsManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
+        $scope.architectures.push("Choose an architecture");
         $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
         $scope.default_min_hwe_kernel = GeneralManager.getData(
             "default_min_hwe_kernel");
@@ -518,7 +519,8 @@ angular.module('MAAS').controller('AddHardwareController', [
                 $scope.machine === null ||
                 $scope.machine.zone === null ||
                 $scope.machine.pool === null ||
-                $scope.machine.architecture === '' ||
+                ($scope.machine.architecture === 'Choose an architecture' &&
+                    $scope.machine.power.type.name !== 'ipmi') ||
                 $scope.machine.power.type === null ||
                 $scope.invalidName($scope.machine));
             if(in_error) {
@@ -527,7 +529,8 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Make sure none of the mac addresses are in error. The first one
             // cannot be blank the remaining are allowed to be empty.
-            if($scope.machine.macs[0].mac === '' ||
+            if(($scope.machine.macs[0].mac === '' &&
+                $scope.machine.power.type.name !== 'ipmi') ||
                 $scope.machine.macs[0].error) {
                 return true;
             }
@@ -574,6 +577,11 @@ angular.module('MAAS').controller('AddHardwareController', [
             // Clear the error so it can be set again, if it fails to save
             // the device.
             $scope.error = null;
+
+            // Set the architecture to empty string if none was chosen.
+            if($scope.machine.architecture === "Choose an architecture") {
+                $scope.machine.architecture = '';
+            }
 
             // Add the machine.
             MachinesManager.create(
