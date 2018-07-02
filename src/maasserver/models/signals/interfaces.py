@@ -52,6 +52,28 @@ signals = SignalsManager()
 log = LegacyLogger()
 
 
+class InterfaceVisitingThreadLocal(threading.local):
+    """Since infinite recursion could occur in an arbitrary interface
+    hierarchy, use thread-local storage to ensure that each interface is only
+    visited once.
+    """
+    def __init__(self):
+        super().__init__()
+        self.visiting = set()
+
+enabled_or_disabled_thread_local = InterfaceVisitingThreadLocal()
+
+
+def ensure_link_up(interface):
+    visiting = enabled_or_disabled_thread_local.visiting
+    if interface.id not in visiting:
+        try:
+            visiting.add(interface.id)
+            interface.ensure_link_up()
+        finally:
+            visiting.discard(interface.id)
+
+
 def interface_enabled_or_disabled(instance, old_values, **kwargs):
     """When an interface is enabled be sure at minimum a LINK_UP is created.
     When an interface is disabled make sure that all its links are removed,
@@ -62,9 +84,10 @@ def interface_enabled_or_disabled(instance, old_values, **kwargs):
         log.msg("%s: Physical interface enabled; ensuring link-up." % (
             instance.get_log_string()))
         # Make sure it has a LINK_UP link, and for its children.
-        instance.ensure_link_up()
+        ensure_link_up(instance)
         for rel in instance.children_relationships.all():
-            rel.child.ensure_link_up()
+            ensure_link_up(rel.child)
+
     else:
         log.msg("%s: Physical interface disabled; removing links." % (
             instance.get_log_string()))
@@ -157,16 +180,7 @@ for klass in INTERFACE_CLASSES:
         klass, ['params'], delete=False)
 
 
-class InterfaceUpdateParentsThreadLocal(threading.local):
-    """Since infinite recursion could occur in an arbitrary interface
-    hierarchy, use thread-local stroage to ensure that each interface is only
-    visited once.
-    """
-    def __init__(self):
-        super().__init__()
-        self.visiting = set()
-
-update_parents_thread_local = InterfaceUpdateParentsThreadLocal()
+update_parents_thread_local = InterfaceVisitingThreadLocal()
 
 
 def update_interface_parents(sender, instance, created, **kwargs):
