@@ -14,12 +14,18 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_TYPE,
 )
-from maasserver.models import Controller
+from maasserver.models import (
+    Controller,
+    Interface,
+)
 from maasserver.models.config import (
     Config,
     NetworkDiscoveryConfig,
 )
-from maasserver.models.signals.interfaces import update_parents_thread_local
+from maasserver.models.signals.interfaces import (
+    ensure_link_up,
+    update_parents_thread_local,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -28,6 +34,11 @@ from testtools.matchers import (
     Contains,
     Not,
 )
+
+
+def _mock_ensure_link_up(self):
+    """Mock method to test the 'visited' pattern for recursion prevention."""
+    ensure_link_up(self)
 
 
 class TestEnableAndDisableInterface(MAASServerTestCase):
@@ -51,6 +62,14 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         link_ip = vlan_interface.ip_addresses.get(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None)
         self.assertIsNotNone(link_ip)
+
+    def test__ensure_link_up_only_called_once_per_interface(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, enabled=False)
+        interface.enabled = True
+        self.patch(Interface, 'ensure_link_up', _mock_ensure_link_up)
+        # This will cause a RecursionError if the code doesn't work.
+        interface.save()
 
     def test__disable_interface_removes_links(self):
         interface = factory.make_Interface(
