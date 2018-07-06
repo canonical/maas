@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Base pod driver."""
@@ -296,7 +296,12 @@ class RequestedMachineBlockDevice(AttrHelperMixin):
 @attr.s
 class RequestedMachineInterface(AttrHelperMixin):
     """Requested machine interface information."""
-    # Currently has no parameters.
+    attach_ifname = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
+    attach_type = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
+    attach_type_mode = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
 
 
 @attr.s

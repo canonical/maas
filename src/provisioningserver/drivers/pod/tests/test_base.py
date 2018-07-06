@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.pod`."""
@@ -618,7 +618,14 @@ class TestRequestClasses(MAASTestCase):
             "cpu_speed": Equals(cpu_speed),
             "memory": Equals(memory),
             "interfaces": MatchesListwise([
-                MatchesDict({})
+                MatchesDict({
+                    "attach_ifname": Equals(
+                        interface.attach_ifname),
+                    "attach_type": Equals(
+                        interface.attach_type),
+                    "attach_type_mode": Equals(
+                        interface.attach_type_mode),
+                })
                 for interface in interfaces
             ]),
             "block_devices": MatchesListwise([
