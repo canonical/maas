@@ -13,6 +13,7 @@ module.exports = {
             glob.sync('./src/maasserver/static/js/angular/*.js'),
             glob.sync('./src/maasserver/static/js/angular/controllers/*.js'),
             glob.sync('./src/maasserver/static/js/angular/directives/*.js'),
+            glob.sync('./src/maasserver/static/js/angular/directives/nodedetails/*.js'),
             glob.sync('./src/maasserver/static/js/angular/filters/*.js'),
             glob.sync('./src/maasserver/static/js/angular/services/*.js'),
             glob.sync('./src/maasserver/static/js/angular/factories/*.js')

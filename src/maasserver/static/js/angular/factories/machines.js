@@ -56,13 +56,13 @@ angular.module('MAAS').factory(
         MachinesManager.prototype = new NodesManager();
 
         MachinesManager.prototype.mountSpecialFilesystem =
-            function(machine, fstype, mount_point, mount_options) {
+            function(obj) {
                 var method = this._handler + ".mount_special";
                 var params = {
-                    system_id: machine.system_id,
-                    fstype: fstype,
-                    mount_point: mount_point,
-                    mount_options: mount_options
+                    system_id: obj.system_id,
+                    fstype: obj.fstype,
+                    mount_point: obj.mount_point,
+                    mount_options: obj.mount_options
                 };
                 return RegionConnection.callMethod(method, params);
             };

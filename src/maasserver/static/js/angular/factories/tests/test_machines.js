@@ -41,16 +41,18 @@ describe("MachinesManager", function() {
     describe("mountSpecialFilesystem", function() {
         it("calls mount_special", function() {
             spyOn(RegionConnection, "callMethod");
-            var machine = {system_id: makeName("system-id")};
-            var fstype = makeName("fstype");
-            var mount_point = makeName("/dir");
-            var mount_options = makeName("options");
-            MachinesManager.mountSpecialFilesystem(
-                machine, fstype, mount_point, mount_options);
+            var obj = {
+                system_id: makeName("system-id"),
+                fstype: makeName("fstype"),
+                mount_point: makeName("/dir"),
+                mount_options: makeName("options")
+            }
+            MachinesManager.mountSpecialFilesystem(obj);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
                 "machine.mount_special", {
-                    system_id: machine.system_id, fstype: fstype,
-                    mount_point: mount_point, mount_options: mount_options
+                    system_id: obj.system_id, fstype: obj.fstype,
+                    mount_point: obj.mount_point,
+                    mount_options: obj.mount_options
                 }
             );
         });

@@ -7,43 +7,49 @@
 
 (function() {
 
-    function SpecialFilesystem() {
-        this.fstype = "tmpfs";
-        this.mountPoint = "";
-        this.mountOptions = "";
-    }
-
-    SpecialFilesystem.prototype.isValid = function() {
-        return this.mountPoint.startsWith("/");
-    };
-
-    SpecialFilesystem.prototype.describe = function() {
-        var parts = [this.fstype];
-        // Add the mount point if specified and valid.
-        if (this.mountPoint.startsWith("/")) {
-            parts.push("at " + this.mountPoint);
+    class SpecialFilesystem {
+        constructor(fstype = null) {
+            this.fstype = fstype;
+            this.mountPoint = "";
+            this.mountOptions = "";
         }
-        // Filesystem-specific bits.
-        switch (this.fstype) {
-        case "tmpfs":
-            // Extract size=n parameter from mount options. Other
-            // options could be added in the future.
-            var size = this.mountOptions.match(/\bsize=(\d+)(%?)/);
-            if (size !== null) {
-                if (size[2] === "%") {
-                    parts.push("limited to " + size[1] + "% of memory");
-                } else {
-                    parts.push("limited to " + size[1] + " bytes");
-                }
+
+        isValid() {
+            return this.mountPoint.startsWith("/");
+        }
+
+        describe() {
+            if(!this.fstype) {
+                return;
             }
-            break;
-        case "ramfs":
-            // This filesystem does not recognise any options. Consider
-            // warning about lack of a size limit.
-            break;
+            var parts = [this.fstype];
+            // Add the mount point if specified and valid.
+            if (this.mountPoint.startsWith('/')) {
+                parts.push("at " + this.mountPoint);
+            }
+            // Filesystem-specific bits.
+            switch (this.fstype) {
+                case "tmpfs":
+                    // Extract size=n parameter from mount options. Other
+                    // options could be added in the future.
+                    var size = this.mountOptions.match(/\bsize=(\d+)(%?)/);
+                    if (size !== null) {
+                        if (size[2] === "%") {
+                            parts.push("limited to " + size[1] + "% of memory");
+                        }
+                        else {
+                            parts.push("limited to " + size[1] + " bytes");
+                        }
+                    }
+                    break;
+                case "ramfs":
+                    // This filesystem does not recognise any options. Consider
+                    // warning about lack of a size limit.
+                    break;
+            }
+            return parts.join(" ");
         }
-        return parts.join(" ");
-    };
+    }
 
     function NodeFilesystemsController($scope) {
 
@@ -65,28 +71,49 @@
 
     function NodeAddSpecialFilesystemController($scope, MachinesManager) {
 
+        $scope.machineManager = MachinesManager;
+        $scope.specialFilesystemTypes = ['tmpfs', 'ramfs'];
+        $scope.newFilesystem = {
+            'system_id': $scope.node.system_id,
+        };
         $scope.filesystem = new SpecialFilesystem();
         $scope.description = null;  // Updated by watch.
 
-        $scope.$watch("filesystem", function(filesystem) {
-            $scope.description = filesystem.describe();
+        const watches = {
+            fstype: 'fstype',
+            mountPoint: 'mount_point',
+            mountOptions: 'mount_options'
+        };
+
+        for (let k in watches) {
+            $scope.$watch(function() {
+                return $scope.newFilesystem.$maasForm.getValue(watches[k]);
+            }, function(result) {
+                $scope.filesystem[k] = result;
+            });
+        }
+
+        $scope.$watch('filesystem', function() {
+            if($scope.filesystem) {
+                $scope.description = $scope.filesystem.describe();
+            }
         }, true);
 
         $scope.canMount = function() {
             return $scope.filesystem.isValid();
         };
 
-        $scope.mount = function() {
-            MachinesManager.mountSpecialFilesystem(
-                $scope.node, $scope.filesystem.fstype,
-                $scope.filesystem.mountPoint,
-                $scope.filesystem.mountOptions);
-            $scope.addSpecialFilesystemFinished();
-        };
-
         $scope.cancel = function() {
             $scope.filesystem = new SpecialFilesystem();
             $scope.addSpecialFilesystemFinished();
+        };
+    }
+
+    /* blr - Remove this polyfill once karma has es6 support */
+    if (!String.prototype.startsWith) {
+        String.prototype.startsWith = function(search, pos) {
+            var posExp = !pos || pos < 0 ? 0 : +pos;
+            return this.substr(posExp, search.length) === search;
         };
     }
 
