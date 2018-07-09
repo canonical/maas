@@ -986,7 +986,8 @@ class VirshSSH(pexpect.spawn):
         # Removed the --delete-snapshots flag to workaround the volumes not
         # being deleted.  See the bug for more details.
         self.run([
-            'undefine', domain, '--remove-all-storage', '--managed-save'])
+            'undefine', domain, '--remove-all-storage',
+            '--managed-save', '--nvram'])
 
 
 class VirshPodDriver(PodDriver):

@@ -1581,9 +1581,8 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(mock_run, MockCallsMatch(
             call(['destroy', domain]),
             call([
-                'undefine', domain,
-                '--remove-all-storage',
-                '--managed-save'])))
+                'undefine', domain, '--remove-all-storage',
+                '--managed-save', '--nvram'])))
 
 
 class TestVirsh(MAASTestCase):
