@@ -1549,3 +1549,37 @@ class TestPodDelete(MAASTransactionServerTestCase):
         self.assertIsNone(decomposable_machine_two)
         self.assertIsNone(delete_machine)
         self.assertIsNone(pod)
+
+
+class TestPodHost(MAASServerTestCase):
+
+    def test_allows_machine_host(self):
+        machine = factory.make_Machine()
+        pod = factory.make_Pod()
+        pod.host = machine
+        pod.save()
+        self.assertThat(pod.host, Equals(machine))
+
+    def test_allows_device_host(self):
+        device = factory.make_Device()
+        pod = factory.make_Pod()
+        pod.host = device
+        pod.save()
+        self.assertThat(pod.host, Equals(device))
+
+    def test_host_set_null_if_deleted(self):
+        machine = factory.make_Machine()
+        pod = factory.make_Pod()
+        pod.host = machine
+        pod.save()
+        self.assertThat(pod.host, Equals(machine))
+        machine.delete()
+        pod = reload_object(pod)
+        self.assertThat(pod.host, Equals(None))
+
+    def test_related_name(self):
+        machine = factory.make_Machine()
+        pod = factory.make_Pod()
+        pod.host = machine
+        pod.save()
+        self.assertThat(machine.hosted_pods.first(), Equals(pod))

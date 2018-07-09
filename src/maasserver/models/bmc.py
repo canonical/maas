@@ -152,49 +152,68 @@ class BMC(CleanSave, TimestampedModel):
         through="BMCRoutableRackControllerRelationship",
         related_name="routable_bmcs")
 
-    # Values for Pod's.
-    #  1. Name of the Pod.
-    #  2. List of architectures that a Pod supports.
-    #  3. Capabilities that the Pod supports.
-    #  4. Total cores in the Pod.
-    #  5. Fastest CPU speed in the Pod.
-    #  6. Total amount of memory in the Pod.
-    #  7. Total amount in bytes of local storage available in the Pod.
-    #  8. Total number of available local disks in the Pod.
-    #  9. The resource pool machines in the pod should belong to by default.
-    #  10. The zone of the Pod.
-    #  11. The tags of the Pod.
-    #  12. CPU over commit ratio multiplier ('over_commit' capabilities).
-    #  13. Memory over commit ratio multiplier ('over_commit' capabilities).
-    #  14. Default storage pool.
+    # Pod-specific fields.
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
+
+    # Architectures this pod supports.
     architectures = ArrayField(
         TextField(), blank=True, null=True, default=list)
+
+    # Pod capabilities.
     capabilities = ArrayField(
         TextField(), blank=True, null=True, default=list)
+
     cores = IntegerField(blank=False, null=False, default=0)
-    cpu_speed = IntegerField(blank=False, null=False, default=0)  # MHz
+
+    # Fastest CPU in the pod (MHz)
+    cpu_speed = IntegerField(blank=False, null=False, default=0)
+
+    # Total memory in the pod (XXX: units?)
     memory = IntegerField(blank=False, null=False, default=0)
-    local_storage = BigIntegerField(  # Bytes
+
+    # Total storage available in the pod (bytes)
+    local_storage = BigIntegerField(
         blank=False, null=False, default=0)
+
+    # Number of disks in the pod (if applicable, otherwise set to -1)
     local_disks = IntegerField(blank=False, null=False, default=-1)
+
+    # Total iSCSI storage available in the pod (if applicable, otherwise -1).
     iscsi_storage = BigIntegerField(  # Bytes
         blank=False, null=False, default=-1)
+
+    # Resource pool for this pod.
     pool = ForeignKey(
         ResourcePool, default=None, null=True, blank=True, editable=True,
         on_delete=PROTECT)
+
+    # Physical zone this pod is in.
     zone = ForeignKey(
         Zone, verbose_name="Physical zone", default=get_default_zone,
         editable=True, db_index=True, on_delete=SET_DEFAULT)
+
+    # Tags for this pod.
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
+
+    # CPU over-commit ratio.
     cpu_over_commit_ratio = FloatField(
         default=1, validators=[MinValueValidator(0)])
+
+    # Memory over-commit ratio.
     memory_over_commit_ratio = FloatField(
         default=1, validators=[MinValueValidator(0)])
+
+    # Default storage pool for the pod.
     default_storage_pool = ForeignKey(
         PodStoragePool, null=True, blank=True,
         related_name='+', on_delete=SET_NULL)
+
+    # Node this pod is hosted on. (Could be a machine or device.)
+    # This is used to determine the available networks on the pod.
+    host = ForeignKey(
+        Node, null=True, blank=True, related_name='hosted_pods',
+        on_delete=SET_NULL)
 
     def __str__(self):
         return "%s (%s)" % (
