@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeNetworkingController.
@@ -365,6 +365,9 @@ describe("NodeNetworkingController", function() {
             loadManagers.and.returnValue($q.defer().promise);
         }
 
+        var loadItems = spyOn(GeneralManager, "loadItems");
+        loadItems.and.returnValue($q.defer().promise);
+
         $parentScope.nodesManager = MachinesManager;
 
         // Create the controller.
@@ -447,6 +450,17 @@ describe("NodeNetworkingController", function() {
         expect($scope.loaded).toBe(true);
         expect($scope.nodeHasLoaded).toBe(true);
         expect($scope.managersHaveLoaded).toBe(true);
+    });
+
+    it("loads bond_options if not yet loaded", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        expect(GeneralManager.loadItems).toHaveBeenCalledWith(
+            ["bond_options"]);
     });
 
     it("watches interfaces and subnets once nodeLoaded called", function() {
