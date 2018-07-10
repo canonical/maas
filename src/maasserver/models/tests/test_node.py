@@ -6,7 +6,10 @@
 __all__ = []
 
 import base64
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta,
+)
 import email
 import os
 import random
@@ -112,6 +115,7 @@ from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
+    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
     NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TESTING_RESET_READY_TRANSITIONS,
@@ -4239,6 +4243,27 @@ class TestNode(MAASServerTestCase):
     def test_storage_layout_issues_is_valid_when_flat(self):
         node = factory.make_Node()
         self.assertEqual([], node.storage_layout_issues())
+
+    def test_reset_status_expires(self):
+        status = random.choice(list(NODE_FAILURE_MONITORED_STATUS_TIMEOUTS))
+        node = factory.make_Node(status=status)
+        node.status_expires = factory.make_date()
+        node.reset_status_expires()
+        # Testing for the exact time will fail during testing due to now()
+        # being different in reset_status_expires vs here. Pad by 1 minute
+        # to make sure its reset but won't fail testing.
+        expected_time = now() + timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[status])
+        self.assertGreaterEqual(
+            node.status_expires, expected_time - timedelta(minutes=1))
+        self.assertLessEqual(
+            node.status_expires, expected_time + timedelta(minutes=1))
+
+    def test_reset_status_expires_does_nothing_when_not_set(self):
+        status = random.choice(list(NODE_FAILURE_MONITORED_STATUS_TIMEOUTS))
+        node = factory.make_Node(status=status)
+        node.reset_status_expires()
+        self.assertIsNone(node.status_expires)
 
     def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
         node = factory.make_Node(with_boot_disk=False)

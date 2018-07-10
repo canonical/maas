@@ -293,6 +293,12 @@ def get_config(
             machine.boot_cluster_ip = local_ip
         if machine.bios_boot_method != bios_boot_method:
             machine.bios_boot_method = bios_boot_method
+
+        # Reset the machine's status_expires whenever the boot_config is called
+        # on a known machine. This allows a machine to take up to the maximum
+        # timeout status to POST.
+        machine.reset_status_expires()
+
         # Does nothing if the machine hasn't changed.
         machine.save()
 
