@@ -1,0 +1,25 @@
+<div data-ng-controller="NodeResultsController">
+    <div class="row" data-ng-if="!resultsLoaded">
+        <div class="col-12">
+            <p class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i>&nbsp;&nbsp;Loading...</p>
+        </div>
+    </div>
+    <div data-ng-if="resultsLoaded">
+        <div class="row">
+            <div class="col-12">
+                <div data-maas-cta="logs.availableOptions" data-ng-model="logs.option" data-ng-change="updateLogOutput()"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <pre class="p-code-numbered" data-maas-code-lines="logOutput" data-ng-if="logOutput !== null && logOutput !== ''"></pre>
+                <div class="p-notification" data-ng-if="logOutput === null || logOutput === ''">
+                    <p class="p-notification__response">
+                        No logs found.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

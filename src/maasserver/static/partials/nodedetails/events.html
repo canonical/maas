@@ -1,0 +1,35 @@
+<div class="row">
+    <div class="col-12 u-align--right" data-ng-if="node.events.length">
+        <a href="#/{$ type_name $}/{$ node.system_id $}/events">View full history</a>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        <p data-ng-if="!node.events.length">No events.</p>
+        <table data-ng-if="node.events.length">
+            <thead>
+                <tr>
+                    <th class="col-3">Time</th>
+                    <th class="col-9">Event</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    data-ng-repeat="event in node.events | orderByDate:'created':'id' | limitTo:events.limit">
+                    <td class="col-3" aria-label="Created" title="{$ event.created $}">
+                        <span class="p-icon--{$ event.type.level $}"></span>&nbsp;
+                        {$ event.created $}
+                    </td>
+                    <td class="col-9" aria-label="Event" title="{$ getEventText(event) $}">{$ getEventText(event) $}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12 u-align--center">
+        <p>
+            <button class="p-button--neutral" data-ng-show="allowShowMoreEvents()" data-ng-click="showMoreEvents()">Load next 10 events</button>
+        </p>
+    </div>
+</div>

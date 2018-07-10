@@ -1,0 +1,18 @@
+<div class="row">
+    <table>
+        <thead>
+            <tr>
+                <th class="col-4">Name</th>
+                <th class="col-4">MAC</th>
+                <th class="col-4">IP Address</th>
+            </tr>
+        </thead>
+        <tbody data-selected-rows>
+            <tr data-ng-repeat="device in devices">
+                <td class="col-4">{$ device.name $}</td>
+                <td class="col-4">{$ device.mac_address $}</td>
+                <td class="col-4">{$ device.ip_address $}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

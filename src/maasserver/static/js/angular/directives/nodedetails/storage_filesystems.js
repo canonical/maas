@@ -1,5 +1,4 @@
-/* 'thin' directive, ~50% more performant than ng-include */
-angular.module('MAAS').directive('storageFilesystems', function() {
+angular.module('MAAS').directive('nodeStorageFilesystems', function() {
     const path = 'static/partials/nodedetails/storage/filesystems.html';
     return {
         restrict: 'E',

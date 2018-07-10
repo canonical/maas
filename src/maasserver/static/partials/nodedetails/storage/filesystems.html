@@ -27,8 +27,8 @@
             <td class="col-1 p-table--action-cell">
                 <div class="u-align--right">
                     <div class="p-contextual-menu" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
-                        <button class="p-button--base is-small p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu" data-ng-click="toggleMenu()"
-                            aria-haspopup="true">
+                        <button class="p-button--base is-small p-contextual-menu__toggle" aria-controls="#{$ item.name $}-menu"
+                            data-ng-click="toggleMenu()" aria-haspopup="true">
                             <i class="p-icon--contextual-menu">Actions</i>
                         </button>
                         <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
@@ -57,8 +57,8 @@
                 <div data-ng-if="filesystemMode !== null && filesystemMode !== 'multi'" data-ng-class="{ 'is-active': filesystemMode !== null && filesystemMode !== 'multi' }">
                     <div class="row" data-ng-if="filesystemMode === 'unmount'">
                         <div class="col-8">
-                            <p>
-                                <span class="p-icon--warning">Warning:</span> Are you sure you want to unmount this filesystem?</p>
+                            <p><span class="p-icon--warning">Warning:</span> Are you sure
+                                you want to unmount this filesystem?</p>
                         </div>
                         <div class="col-4">
                             <div class="u-align--right">
@@ -69,8 +69,9 @@
                     </div>
                     <div data-ng-if="filesystemMode === 'delete'">
                         <div class="col-8">
-                            <p>
-                                <span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(filesystem) $}?</p>
+                            <p><span class="p-icon--warning">Warning:</span> Are you sure
+                                you want to remove this {$ getRemoveTypeText(filesystem) $}?
+                            </p>
                         </div>
                         <div class="col-4">
                             <div class="u-align--right">
@@ -85,8 +86,11 @@
 
         <tr class="is-active" data-ng-if="dropdown" data-ng-switch="dropdown">
             <!-- Adding a new TMPFS or RAMFPS filesystem -->
-            <td class="p-table-expanding__panel col-12" data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
-                <maas-obj-form obj="newFilesystem" manager="machineManager" manager-method="mountSpecialFilesystem" inline="false" save-on-blur="false"
+            <td class="p-table-expanding__panel col-12"
+                data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
+                <maas-obj-form obj="newFilesystem" manager="machineManager"
+                    manager-method="mountSpecialFilesystem"
+                    inline="false" save-on-blur="false"
                     after-save="cancel">
                     <div class="row" data-ng-if="windowWidth <= 768">
                         <div class="col-8">
@@ -124,7 +128,7 @@
                         <div class="u-align--right u-no-margin--top">
                             <button class="p-button--base" type="button" data-ng-click="cancel()">Cancel</button>
                             <button class="p-button--neutral u-no-margin--top ng-binding"
-                            data-ng-disabled="!canMount()" 
+                            data-ng-disabled="!canMount()"
                             maas-obj-save>Mount</button>
                         </div>
                     </div>
@@ -133,8 +137,9 @@
         </tr>
     </tbody>
 </table>
-<button class="p-button--neutral p-tooltip--top-center" data-ng-disabled="dropdown !== null" data-ng-class="{ 'p-tooltip': dropdown === null}"
-    data-ng-if="!isAllStorageDisabled()" data-ng-click="addSpecialFilesystem()">
+<button class="p-button--neutral p-tooltip--top-center" data-ng-disabled="dropdown !== null"
+    data-ng-class="{ 'p-tooltip': dropdown === null}" data-ng-if="!isAllStorageDisabled()"
+    data-ng-click="addSpecialFilesystem()">
     Add special filesystem
     <span class="p-tooltip__message" role="tooltip">Create a tmpfs or ramfs filesystem</span>
 </button>
