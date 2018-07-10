@@ -109,14 +109,6 @@
         };
     }
 
-    /* blr - Remove this polyfill once karma has es6 support */
-    if (!String.prototype.startsWith) {
-        String.prototype.startsWith = function(search, pos) {
-            var posExp = !pos || pos < 0 ? 0 : +pos;
-            return this.substr(posExp, search.length) === search;
-        };
-    }
-
     angular.module("MAAS").controller(
         "NodeFilesystemsController", [
             "$scope", NodeFilesystemsController

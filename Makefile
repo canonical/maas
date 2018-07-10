@@ -233,6 +233,7 @@ define node_packages
   @types/prop-types
   @types/react
   @types/react-dom
+  babel-polyfill
   babel-loader@^8.0.0-beta.0
   glob
   jasmine-core@=2.99.1

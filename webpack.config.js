@@ -7,7 +7,7 @@ module.exports = {
         vendor: [].concat(
             glob.sync('./src/maasserver/static/js/angular/3rdparty/*.js')
         ),
-        maas: [].concat(
+        maas: ['babel-polyfill'].concat(
             glob.sync('./src/maasserver/static/js/*.js'),
             glob.sync('./src/maasserver/static/js/ui/*.js'),
             glob.sync('./src/maasserver/static/js/angular/*.js'),
