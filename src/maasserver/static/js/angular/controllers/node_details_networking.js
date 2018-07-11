@@ -1,4 +1,4 @@
-/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Networking Controller
@@ -1669,6 +1669,12 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             UsersManager,
             ControllersManager
         ]).then(function() {
+            // GeneralManager is loaded by the parent scope however
+            // bond_options may not have been loaded. If it hasn't been
+            // loaded, load it.
+            if(!GeneralManager.isDataLoaded('bond_options')) {
+                GeneralManager.loadItems(['bond_options']);
+            }
             $scope.managersHaveLoaded = true;
             updateLoaded();
         });
