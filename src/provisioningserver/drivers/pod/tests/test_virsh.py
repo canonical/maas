@@ -39,6 +39,8 @@ from provisioningserver.drivers.pod.virsh import (
     ARCH_FIX_REVERSE,
     DOM_TEMPLATE_AMD64,
     DOM_TEMPLATE_ARM64,
+    DOM_TEMPLATE_BRIDGE_INTERFACE,
+    DOM_TEMPLATE_MACVLAN_INTERFACE,
     DOM_TEMPLATE_PPC64,
     DOM_TEMPLATE_S390X,
     VirshPodDriver,
@@ -1236,18 +1238,101 @@ class TestVirshSSH(MAASTestCase):
         self.patch(virsh.VirshSSH, "get_network_list").return_value = []
         self.assertRaises(PodInvalidResources, conn.get_best_network)
 
-    def test_attach_interface(self):
+    def test_attach_interface_defaults_to_network_attachment(self):
         conn = self.configure_virshssh('')
         domain = factory.make_name('domain')
         network = factory.make_name('network')
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
+        interface = RequestedMachineInterface()
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
-        conn.attach_interface(domain, network)
+        conn.attach_interface(interface, domain, network)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-interface', domain, 'network', network,
             '--mac', fake_mac,
             '--model', 'virtio', '--config']))
+
+    def test_attach_interface_calls_attaches_network(self):
+        conn = self.configure_virshssh('')
+        domain = factory.make_name('domain')
+        network = factory.make_name('network')
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        fake_mac = factory.make_mac_address()
+        interface = RequestedMachineInterface(
+            attach_name=network, attach_type='network')
+        self.patch(virsh, 'generate_mac_address').return_value = fake_mac
+        conn.attach_interface(interface, domain, network)
+        self.assertThat(mock_run, MockCalledOnceWith([
+            'attach-interface', domain, 'network', network,
+            '--mac', fake_mac,
+            '--model', 'virtio', '--config']))
+
+    def test_attach_interface_attaches_macvlan(self):
+        conn = self.configure_virshssh('')
+        domain = factory.make_name('domain')
+        network = factory.make_name('network')
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        fake_mac = factory.make_mac_address()
+        interface = RequestedMachineInterface(
+            attach_name=factory.make_name('name'),
+            attach_type='macvlan', attach_options=random.choice([
+                'private', 'vepa', 'bridge', 'passthru']))
+        self.patch(virsh, 'generate_mac_address').return_value = fake_mac
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        conn.attach_interface(interface, domain, network)
+
+        device_params = {
+            'mac_address': fake_mac,
+            'attach_name': interface.attach_name,
+            'attach_options': interface.attach_options,
+        }
+        self.assertThat(mock_run, MockCalledOnceWith([
+            'attach-device', domain, ANY, '--config']))
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(tmpfile.write, MockCallsMatch(
+            call(DOM_TEMPLATE_MACVLAN_INTERFACE.format(
+                **device_params).encode('utf-8')),
+            call(b'\n')))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+
+    def test_attach_interface_attaches_bridge(self):
+        conn = self.configure_virshssh('')
+        domain = factory.make_name('domain')
+        network = factory.make_name('network')
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        fake_mac = factory.make_mac_address()
+        interface = RequestedMachineInterface(
+            attach_name=factory.make_name('ifname'),
+            attach_type='bridge', attach_options=random.choice([
+                'private', 'vepa', 'bridge', 'passthru']))
+        self.patch(virsh, 'generate_mac_address').return_value = fake_mac
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        conn.attach_interface(interface, domain, network)
+
+        device_params = {
+            'mac_address': fake_mac,
+            'attach_name': interface.attach_name,
+        }
+        self.assertThat(mock_run, MockCalledOnceWith([
+            'attach-device', domain, ANY, '--config']))
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(tmpfile.write, MockCallsMatch(
+            call(DOM_TEMPLATE_BRIDGE_INTERFACE.format(
+                **device_params).encode('utf-8')),
+            call(b'\n')))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
 
     def test_get_domain_capabilities_for_kvm(self):
         conn = self.configure_virshssh(SAMPLE_CAPABILITY_KVM)
@@ -1387,7 +1472,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1446,7 +1531,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1505,7 +1590,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1564,7 +1649,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(

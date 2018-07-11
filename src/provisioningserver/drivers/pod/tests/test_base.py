@@ -619,12 +619,12 @@ class TestRequestClasses(MAASTestCase):
             "memory": Equals(memory),
             "interfaces": MatchesListwise([
                 MatchesDict({
-                    "attach_ifname": Equals(
-                        interface.attach_ifname),
+                    "attach_name": Equals(
+                        interface.attach_name),
                     "attach_type": Equals(
                         interface.attach_type),
-                    "attach_type_mode": Equals(
-                        interface.attach_type_mode),
+                    "attach_options": Equals(
+                        interface.attach_options),
                 })
                 for interface in interfaces
             ]),

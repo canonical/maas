@@ -296,11 +296,11 @@ class RequestedMachineBlockDevice(AttrHelperMixin):
 @attr.s
 class RequestedMachineInterface(AttrHelperMixin):
     """Requested machine interface information."""
-    attach_ifname = attr.ib(
+    attach_name = attr.ib(
         converter=converter_obj(str, optional=True), default=None)
     attach_type = attr.ib(
         converter=converter_obj(str, optional=True), default=None)
-    attach_type_mode = attr.ib(
+    attach_options = attr.ib(
         converter=converter_obj(str, optional=True), default=None)
 
 

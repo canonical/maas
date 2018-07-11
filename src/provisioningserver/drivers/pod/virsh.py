@@ -64,6 +64,21 @@ XPATH_POOL_CAPACITY = "/pool/capacity"
 XPATH_POOL_PATH = "/pool/target/path"
 XPATH_POOL_UUID = "/pool/uuid"
 
+DOM_TEMPLATE_MACVLAN_INTERFACE = dedent("""\
+    <interface type='direct'>
+      <source dev='{attach_name}' mode='{attach_options}'/>
+      <mac address='{mac_address}'/>
+      <model type='virtio'/>
+    </interface>
+    """)
+
+DOM_TEMPLATE_BRIDGE_INTERFACE = dedent("""\
+    <interface type='bridge'>
+      <source bridge='{attach_name}'/>
+      <mac address='{mac_address}'/>
+      <model type='virtio'/>
+    </interface>
+    """)
 
 DOM_TEMPLATE_AMD64 = dedent("""\
     <domain type='{type}'>
@@ -834,12 +849,48 @@ class VirshSSH(pexpect.spawn):
 
         return networks[0]
 
-    def attach_interface(self, domain, network):
+    def attach_interface(self, interface, domain, network):
         """Attach new network interface on `domain` to `network`."""
         mac = generate_mac_address()
-        self.run([
-            'attach-interface', domain, 'network', network,
-            '--mac', mac, '--model', 'virtio', '--config'])
+        # If attachment type is not specified, default to network.
+        if interface.attach_type in (None, 'network'):
+            # Set the network if we are explicity attaching a network
+            # specified by the user.
+            if interface.attach_type is not None:
+                network = interface.attach_name
+            return self.run([
+                'attach-interface', domain, 'network', network,
+                '--mac', mac, '--model', 'virtio', '--config'])
+
+        # For macvlans and bridges, we need to pass an XML template to
+        # virsh's attach-device command since the attach-interface
+        # command doesn't have a flag for setting the macvlan's mode.
+        device_params = {
+            'mac_address': mac,
+            'attach_name': interface.attach_name,
+        }
+        if interface.attach_type == 'macvlan':
+            device_params['attach_options'] = interface.attach_options
+            device_xml = DOM_TEMPLATE_MACVLAN_INTERFACE.format(**device_params)
+        if interface.attach_type == 'bridge':
+            device_xml = DOM_TEMPLATE_BRIDGE_INTERFACE.format(**device_params)
+
+        # Rewrite the XML in a temporary file to use with 'virsh define'.
+        with NamedTemporaryFile() as f:
+            f.write(device_xml.encode('utf-8'))
+            f.write(b'\n')
+            f.flush()
+            output = self.run([
+                'attach-device', domain, f.name, '--config'])
+            if output.startswith('error:'):
+                maaslog.error(
+                    "%s: Failed to attach network device %s" % (
+                        domain, interface.attach_name))
+                return False
+            maaslog.info(
+                "%s: Successfully attached network device %s" % (
+                    domain, interface.attach_name))
+            return True
 
     def get_domain_capabilities(self):
         """Return the domain capabilities.
@@ -965,8 +1016,8 @@ class VirshSSH(pexpect.spawn):
 
         # Attach new interfaces to the best possible network.
         best_network = self.get_best_network()
-        for _ in request.interfaces:
-            self.attach_interface(request.hostname, best_network)
+        for interface in request.interfaces:
+            self.attach_interface(interface, request.hostname, best_network)
 
         # Set machine to autostart.
         self.set_machine_autostart(request.hostname)
