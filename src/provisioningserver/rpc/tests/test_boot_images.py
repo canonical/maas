@@ -125,65 +125,62 @@ class TestGetHostsFromSources(MAASTestCase):
 
 class TestFixSourcesForCluster(MAASTestCase):
 
-    def set_maas_url(self, url):
-        self.useFixture(ClusterConfigurationFixture(maas_url=url))
-
     def test__removes_matching_path_from_maas_url_with_extra_slashes(self):
-        self.set_maas_url("http://192.168.122.2/MAAS/////")
         sources = [
             {
                 "url": "http://localhost/MAAS/images/index.json"
             }
         ]
-        observed = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(
+            sources, "http://192.168.122.2/MAAS/////")
         self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
             observed[0]['url'])
 
     def test__removes_matching_path_from_maas_url(self):
-        self.set_maas_url("http://192.168.122.2/MAAS/")
         sources = [
             {
                 "url": "http://localhost/MAAS/images/index.json"
             }
         ]
-        observed = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(
+            sources, "http://192.168.122.2/MAAS/")
         self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
             observed[0]['url'])
 
     def test__removes_matching_path_with_extra_slashes_from_maas_url(self):
-        self.set_maas_url("http://192.168.122.2/MAAS/")
         sources = [
             {
                 "url": "http://localhost///MAAS///images/index.json"
             }
         ]
-        observed = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(
+            sources, "http://192.168.122.2/MAAS/")
         self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
             observed[0]['url'])
 
     def test__doesnt_remove_non_matching_path_from_maas_url(self):
-        self.set_maas_url("http://192.168.122.2/not-matching/")
         sources = [
             {
                 "url": "http://localhost/MAAS/images/index.json"
             }
         ]
-        observed = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(
+            sources, "http://192.168.122.2/not-matching/")
         self.assertEqual(
             "http://192.168.122.2/not-matching/MAAS/images/index.json",
             observed[0]['url'])
 
     def test__doesnt_remove_non_matching_path_from_maas_url_with_slashes(self):
-        self.set_maas_url("http://192.168.122.2/not-matching////")
         sources = [
             {
                 "url": "http://localhost///MAAS/images/index.json"
             }
         ]
-        observed = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(
+            sources, "http://192.168.122.2/not-matching////")
         self.assertEqual(
             "http://192.168.122.2/not-matching/MAAS/images/index.json",
             observed[0]['url'])
@@ -219,25 +216,28 @@ class TestRunImport(MAASTestCase):
         self.patch(boot_resources, 'logger')
         self.patch(boot_resources, 'locate_config').return_value = (
             fixture.filename)
-        self.assertThat(_run_import(sources=[]), Is(False))
+        self.assertThat(_run_import(
+            sources=[], maas_url=factory.make_simple_http_url()), Is(False))
 
     def test__run_import_sets_GPGHOME(self):
         home = factory.make_name('home')
         self.patch(boot_images, 'get_maas_user_gpghome').return_value = home
         fake = self.patch_boot_resources_function()
-        _run_import(sources=[])
+        _run_import(sources=[], maas_url=factory.make_simple_http_url())
         self.assertEqual(home, fake.env['GNUPGHOME'])
 
     def test__run_import_sets_proxy_if_given(self):
         proxy = 'http://%s.example.com' % factory.make_name('proxy')
         fake = self.patch_boot_resources_function()
-        _run_import(sources=[], http_proxy=proxy, https_proxy=proxy)
+        _run_import(
+            sources=[], maas_url=factory.make_simple_http_url(),
+            http_proxy=proxy, https_proxy=proxy)
         self.expectThat(fake.env['http_proxy'], Equals(proxy))
         self.expectThat(fake.env['https_proxy'], Equals(proxy))
 
     def test__run_import_sets_proxy_for_loopback(self):
         fake = self.patch_boot_resources_function()
-        _run_import(sources=[])
+        _run_import(sources=[], maas_url=factory.make_simple_http_url())
         self.assertEqual(
             fake.env['no_proxy'],
             "localhost,::ffff:127.0.0.1,127.0.0.1,::1")
@@ -245,10 +245,9 @@ class TestRunImport(MAASTestCase):
     def test__run_import_sets_proxy_for_source_host(self):
         host = factory.make_name("host").lower()
         maas_url = "http://%s/" % host
-        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         sources, _ = make_sources()
         fake = self.patch_boot_resources_function()
-        _run_import(sources=sources)
+        _run_import(sources=sources, maas_url=maas_url)
         self.assertItemsEqual(
             fake.env['no_proxy'].split(','),
             ["localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1"] + [host])
@@ -256,14 +255,14 @@ class TestRunImport(MAASTestCase):
     def test__run_import_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')
         sources, _ = make_sources()
-        _run_import(sources=sources)
+        _run_import(sources=sources, maas_url=factory.make_simple_http_url())
         self.assertThat(fake, MockCalledOnceWith(sources))
 
     def test__run_import_calls_reload_boot_images(self):
         fake_reload = self.patch(boot_images, 'reload_boot_images')
         self.patch(boot_resources, 'import_images')
         sources, _ = make_sources()
-        _run_import(sources=sources)
+        _run_import(sources=sources, maas_url=factory.make_simple_http_url())
         self.assertThat(fake_reload, MockCalledOnceWith())
 
 
@@ -276,13 +275,14 @@ class TestImportBootImages(MAASTestCase):
         yield concurrency.boot_images.acquire()
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
-        d = import_boot_images(sentinel.sources)
+        maas_url = factory.make_simple_http_url()
+        d = import_boot_images(sentinel.sources, maas_url)
         self.assertEqual(1, len(concurrency.boot_images.waiting))
         concurrency.boot_images.release()
         yield d
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                _run_import, sentinel.sources,
+                _run_import, sentinel.sources, maas_url,
                 http_proxy=None, https_proxy=None))
 
     @defer.inlineCallbacks
@@ -290,14 +290,15 @@ class TestImportBootImages(MAASTestCase):
         yield concurrency.boot_images.acquire()
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
-        d = import_boot_images(sentinel.sources)
-        self.assertIsNone(import_boot_images(sentinel.sources))
+        maas_url = factory.make_simple_http_url()
+        d = import_boot_images(sentinel.sources, maas_url)
+        self.assertIsNone(import_boot_images(sentinel.sources, maas_url))
         self.assertEqual(1, len(concurrency.boot_images.waiting))
         concurrency.boot_images.release()
         yield d
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                _run_import, sentinel.sources,
+                _run_import, sentinel.sources, maas_url,
                 http_proxy=None, https_proxy=None))
 
     def test__takes_lock_when_running(self):
@@ -306,7 +307,8 @@ class TestImportBootImages(MAASTestCase):
         deferToThread.return_value = pause(1, clock)
 
         # Lock is acquired when import is started.
-        import_boot_images(sentinel.sources)
+        import_boot_images(
+            sentinel.sources, factory.make_simple_http_url())
         self.assertTrue(concurrency.boot_images.locked)
 
         # Lock is released once the download is done.
@@ -320,9 +322,12 @@ class TestImportBootImages(MAASTestCase):
         getRegionClient = self.patch(boot_images, "getRegionClient")
         _run_import = self.patch_autospec(boot_images, '_run_import')
         _run_import.return_value = True
-        yield boot_images._import_boot_images(sentinel.sources)
+        maas_url = factory.make_simple_http_url()
+        yield boot_images._import_boot_images(
+            sentinel.sources, maas_url)
         self.assertThat(
-            _run_import, MockCalledOnceWith(sentinel.sources, None, None))
+            _run_import, MockCalledOnceWith(
+                sentinel.sources, maas_url, None, None))
         self.assertThat(getRegionClient, MockCalledOnceWith())
         self.assertThat(get_maas_id, MockCalledOnceWith())
         client = getRegionClient.return_value
@@ -337,9 +342,12 @@ class TestImportBootImages(MAASTestCase):
         getRegionClient = self.patch(boot_images, "getRegionClient")
         _run_import = self.patch_autospec(boot_images, '_run_import')
         _run_import.return_value = False
-        yield boot_images._import_boot_images(sentinel.sources)
+        maas_url = factory.make_simple_http_url()
+        yield boot_images._import_boot_images(
+            sentinel.sources, maas_url)
         self.assertThat(
-            _run_import, MockCalledOnceWith(sentinel.sources, None, None))
+            _run_import, MockCalledOnceWith(
+                sentinel.sources, maas_url, None, None))
         self.assertThat(getRegionClient, MockCalledOnceWith())
         self.assertThat(get_maas_id, MockCalledOnceWith())
         client = getRegionClient.return_value
@@ -351,7 +359,6 @@ class TestImportBootImages(MAASTestCase):
     def test_update_last_image_sync_end_to_end(self):
         get_maas_id = self.patch(boot_images, "get_maas_id")
         get_maas_id.return_value = factory.make_string()
-        self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
             region.UpdateLastImageSync)
@@ -360,17 +367,17 @@ class TestImportBootImages(MAASTestCase):
         self.patch_autospec(boot_resources, 'import_images')
         boot_resources.import_images.return_value = True
         sources, hosts = make_sources()
-        yield boot_images.import_boot_images(sources)
+        maas_url = factory.make_simple_http_url()
+        yield boot_images.import_boot_images(sources, maas_url)
         self.assertThat(
             boot_resources.import_images,
-            MockCalledOnceWith(sources))
+            MockCalledOnceWith(fix_sources_for_cluster(sources, maas_url)))
         self.assertThat(
             protocol.UpdateLastImageSync,
             MockCalledOnceWith(protocol, system_id=get_maas_id()))
 
     @inlineCallbacks
     def test_update_last_image_sync_end_to_end_import_not_performed(self):
-        self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
             region.UpdateLastImageSync)
@@ -379,10 +386,11 @@ class TestImportBootImages(MAASTestCase):
         self.patch_autospec(boot_resources, 'import_images')
         boot_resources.import_images.return_value = False
         sources, hosts = make_sources()
-        yield boot_images.import_boot_images(sources)
+        maas_url = factory.make_simple_http_url()
+        yield boot_images.import_boot_images(sources, maas_url)
         self.assertThat(
             boot_resources.import_images,
-            MockCalledOnceWith(sources))
+            MockCalledOnceWith(fix_sources_for_cluster(sources, maas_url)))
         self.assertThat(
             protocol.UpdateLastImageSync,
             MockNotCalled())

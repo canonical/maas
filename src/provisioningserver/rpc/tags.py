@@ -12,14 +12,14 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
 )
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.tags import process_node_tags
 from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous
 def evaluate_tag(
-        system_id, nodes, tag_name, tag_definition, tag_nsmap, credentials):
+        system_id, nodes, tag_name, tag_definition, tag_nsmap,
+        credentials, maas_url):
     """Evaluate `tag_definition` against this cluster's nodes' details.
 
     :param system_id: System ID for the rack controller.
@@ -28,9 +28,8 @@ def evaluate_tag(
     :param tag_definition: The XPath expression of the tag.
     :param tag_nsmap: The namespace map as used by LXML's ETree library.
     :param credentials: A 3-tuple of OAuth credentials.
+    :param maas_url: URL of the MAAS API.
     """
-    with ClusterConfiguration.open() as config:
-        maas_url = config.maas_url
     client = MAASClient(
         auth=MAASOAuth(*credentials), dispatcher=MAASDispatcher(),
         base_url=maas_url)

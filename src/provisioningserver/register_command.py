@@ -91,7 +91,7 @@ def add_arguments(parser):
         Secret installed to /var/lib/maas/secret.
     """)
     parser.add_argument(
-        '--url', action='store', required=False,
+        '--url', action='append', required=False,
         help=(
             'URL of the region controller where to connect this '
             'rack controller.'))

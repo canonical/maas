@@ -295,7 +295,8 @@ class Cluster(RPCProtocol):
         """
         get_proxy_url = lambda url: None if url is None else url.geturl()
         import_boot_images(
-            sources, http_proxy=get_proxy_url(http_proxy),
+            sources, self.service.maas_url,
+            http_proxy=get_proxy_url(http_proxy),
             https_proxy=get_proxy_url(https_proxy))
         return {}
 
@@ -546,7 +547,8 @@ class Cluster(RPCProtocol):
             # Transform tag_nsmap into a format that LXML likes.
             {entry["prefix"]: entry["uri"] for entry in tag_nsmap},
             # Parse the credential string into a 3-tuple.
-            convert_string_to_tuple(credentials))
+            convert_string_to_tuple(credentials),
+            self.service.maas_url)
         return d.addCallback(lambda _: {})
 
     @cluster.RefreshRackControllerInfo.responder
@@ -557,10 +559,9 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
         """
         def _refresh():
-            with ClusterConfiguration.open() as config:
-                return deferToThread(
-                    refresh, system_id, consumer_key, token_key,
-                    token_secret, config.maas_url)
+            return deferToThread(
+                refresh, system_id, consumer_key, token_key,
+                token_secret, self.service.maas_url)
 
         lock = NamedLock('refresh')
         try:
@@ -788,10 +789,8 @@ class ClusterClient(Cluster):
 
     @inlineCallbacks
     def registerRackWithRegion(self):
-        # Grab the URL the rack uses to communicate to the region API along
-        # with the cluster UUID. It is possible that the cluster UUID is blank.
+        # Grab the cluster UUID. It is possible that the cluster UUID is blank.
         with ClusterConfiguration.open() as config:
-            url = config.maas_url
             cluster_uuid = config.cluster_uuid
 
         # Grab the set system_id if already set for this controller.
@@ -803,7 +802,7 @@ class ClusterClient(Cluster):
         # Gather the required information for registration.
         interfaces = get_all_interfaces_definition()
         hostname = gethostname()
-        parsed_url = urlparse(url)
+        parsed_url = urlparse(self.service.maas_url)
         version = get_maas_version()
 
         try:
@@ -965,6 +964,10 @@ class ClusterClientService(TimerService, object):
         self._previous_work = (None, None)
         self.clock = reactor
 
+        # Stored the URL used to connect to the region controller. This will be
+        # the URL that was used to get the eventloops.
+        self.maas_url = None
+
         # When _doUpdate is called we capture it into _updateInProgress so
         # that concurrent calls can piggyback rather than initiating extra
         # calls. We start with an already-fired DeferredValue: _tryUpdate
@@ -1033,72 +1036,86 @@ class ClusterClientService(TimerService, object):
         This obtains a list of endpoints from the region then connects
         to new ones and drops connections to those no longer used.
         """
-        info_url_base = urlparse(self._get_rpc_info_url()).decode()
-
-        info_url_addresses = yield resolve_host_to_addrinfo(
-            info_url_base.hostname, ip_version=0, port=info_url_base.port)
-        # Prefer AF_INET6 addresses
-        info_url_addresses.sort(key=itemgetter(0), reverse=True)
         eventloops = None
-        for family, _, _, _, sockaddr in info_url_addresses:
-            addr, port, *_ = sockaddr
-            # We could use compose_URL (from provisioningserver.utils.url), but
-            # that just calls url._replace itself, and returns a url literal,
-            # rather than a url structure.  So we use _replace() here as well.
-            # What we are actually doing here is replacing the given host:port
-            # in the URL with the answer we got from socket.getaddrinfo().
-            if family in {AF_INET, AF_INET6}:
-                if port == 0:
-                    netloc = "[%s]" % IPAddress(addr).ipv6()
-                else:
-                    netloc = "[%s]:%d" % (IPAddress(addr).ipv6(), port)
-            else:
-                continue
-            info_url = info_url_base._replace(netloc=netloc)
-            info_url = ascii_url(info_url.geturl())
-            try:
-                info = yield self._fetch_rpc_info(info_url)
-                eventloops = info["eventloops"]
-                if eventloops is None:
-                    # This means that the region process we've just asked about
-                    # RPC event-loop endpoints is not running the RPC
-                    # advertising service. It could be just starting up for
-                    # example.
-                    log.msg(
-                        "Region is not advertising RPC endpoints."
-                        " (While requesting RPC info at %s)" %
-                        info_url)
-                else:
-                    yield self._update_connections(eventloops)
-            except ConnectError as error:
+        urls = yield self._get_rpc_info_urls()
+        try:
+            eventloops, maas_url = (
+                yield self._parallel_fetch_rpc_info(urls))
+            if eventloops is None:
+                # This means that the region process we've just asked about
+                # RPC event-loop endpoints is not running the RPC
+                # advertising service. It could be just starting up for
+                # example.
+                self.maas_url = None
                 log.msg(
-                    "Region not available: %s "
-                    "(While requesting RPC info at %s)."
-                    % (error, info_url))
-            except:
-                log.err(
-                    None, "Failed to contact region. "
-                    "(While requesting RPC info at %s)."
-                    % (info_url))
+                    "Region is not advertising RPC endpoints."
+                    " (While requesting RPC info at %s)" %
+                    ', '.join([url for _, url in urls]))
             else:
-                # The advertising service on the region was not running yet.
-                break
+                self.maas_url = maas_url
+                yield self._update_connections(eventloops)
+        except ConnectError as error:
+            self.maas_url = None
+            log.msg(
+                "Region not available: %s "
+                "(While requesting RPC info at %s)."
+                % (error, ', '.join([url for _, url in urls])))
+        except:
+            self.maas_url = None
+            log.err(
+                None, "Failed to contact region. "
+                "(While requesting RPC info at %s)."
+                % (', '.join([url for _, url in urls])))
 
         self._update_interval(
             None if eventloops is None else len(eventloops),
             len(self.connections))
 
-    @staticmethod
-    def _get_rpc_info_url():
-        """Return the URL to the RPC infomation page on the region."""
+    @inlineCallbacks
+    def _get_rpc_info_urls(self):
+        """Return the URLs to the RPC infomation page on the region."""
+        # Load the URLs from the rackd configuration.
+        config_urls = []
         with ClusterConfiguration.open() as config:
-            url = urlparse(config.maas_url)
-            url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
-            url = url.geturl()
-        return ascii_url(url)
+            for orig_url in config.maas_url:
+                url = urlparse(orig_url)
+                url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
+                url = url.geturl()
+                url = ascii_url(url)
+                config_urls.append((url, orig_url))
 
-    @classmethod
-    def _fetch_rpc_info(cls, url):
+        # Breakdown the URLs to use IPv6 first.
+        urls = []
+        for url, orig_url in config_urls:
+            urls_group = []
+            url_base = urlparse(url).decode()
+            url_addresses = yield resolve_host_to_addrinfo(
+                url_base.hostname, ip_version=0, port=url_base.port)
+            # Prefer AF_INET6 addresses
+            url_addresses.sort(key=itemgetter(0), reverse=True)
+            for family, _, _, _, sockaddr in url_addresses:
+                addr, port, *_ = sockaddr
+                # We could use compose_URL (from provisioningserver.utils.url),
+                # but that just calls url._replace itself, and returns a url
+                # literal, rather than a url structure.  So we use _replace()
+                # here as well. What we are actually doing here is replacing
+                # the given host:port in the URL with the answer we got from
+                # socket.getaddrinfo().
+                if family in {AF_INET, AF_INET6}:
+                    if port == 0:
+                        netloc = "[%s]" % IPAddress(addr).ipv6()
+                    else:
+                        netloc = "[%s]:%d" % (IPAddress(addr).ipv6(), port)
+                else:
+                    continue
+                url = url_base._replace(netloc=netloc)
+                url = ascii_url(url.geturl())
+                urls_group.append(url)
+            urls.append((urls_group, orig_url))
+
+        return urls
+
+    def _fetch_rpc_info(self, url, orig_url):
 
         def catch_503_error(failure):
             # Catch `twisted.web.error.Error` if has a 503 status code. That
@@ -1108,23 +1125,92 @@ class ClusterClientService(TimerService, object):
             if failure.value.status != "503":
                 failure.raiseException()
             else:
-                return {"eventloops": None}
+                return ({"eventloops": None}, orig_url)
 
         def read_body(response):
             # Read the body of the response and convert it to JSON.
             d = Deferred()
             protocol = _ReadBodyProtocol(response.code, response.phrase, d)
             response.deliverBody(protocol)
-            d.addCallback(lambda data: json.loads(data.decode('utf-8')))
+            d.addCallback(
+                lambda data: (json.loads(data.decode('utf-8')), orig_url))
             return d
 
+        # Request the RPC information.
         agent = Agent(reactor)
         d = agent.request(
             b'GET', url,
-            Headers({b'User-Agent': [fullyQualifiedName(cls)]}))
+            Headers({b'User-Agent': [fullyQualifiedName(type(self))]}))
         d.addCallback(read_body)
         d.addErrback(catch_503_error)
+
+        # Timeout making HTTP request after 5 seconds.
+        self.clock.callLater(5, d.cancel)
+
         return d
+
+    @inlineCallbacks
+    def _serial_fetch_rpc_info(self, urls, orig_url):
+        """Fetch the RPC information serially."""
+        last_exc = None
+        for url in urls:
+            try:
+                response = yield self._fetch_rpc_info(url, orig_url)
+                return response
+            except Exception as exc:
+                # The exception is stored so that if trying all URLs fail,
+                # the last branch in this method will raise this exception.
+                # This allows all URLs to be tried before raising the error.
+                last_exc = exc
+        if last_exc is not None:
+            raise last_exc
+
+    def _parallel_fetch_rpc_info(self, urls):
+        """Fetch the RPC information in parallel.
+
+        `urls` is a list of tuples in the form (url_group, orig_url). Each
+        tuple is fetched in parallel and the url_group list is fetched
+        serially. The url_group inner list is fetched serially because it
+        points to the same region controller, just at different IP addresses.
+        """
+
+        def handle_responses(results):
+            # Gather the list of successful responses.
+            successful = []
+            errors = []
+            for sucess, result in results:
+                if sucess:
+                    body, orig_url = result
+                    eventloops = body.get('eventloops')
+                    if eventloops is not None:
+                        eventloops_count = len(eventloops)
+                        if eventloops_count > 0:
+                            successful.append(
+                                (eventloops_count, eventloops, orig_url))
+                else:
+                    errors.append(result)
+
+            # When successful use the response with the most eventloops. This
+            # ensures that the rack controller will connect to as many RPC
+            # eventloops as possible.
+            if len(successful) > 0:
+                successful = sorted(
+                    successful, key=itemgetter(0), reverse=True)
+                return (successful[0][1], successful[0][2])
+
+            # No success so lets raise the first error.
+            if len(errors) > 0:
+                errors[0].raiseException()
+
+            # All responses had empty eventloops.
+            return (None, None)
+
+        defers = []
+        for url_group, orig_url in urls:
+            defers.append(self._serial_fetch_rpc_info(url_group, orig_url))
+        defers = DeferredList(defers, consumeErrors=True)
+        defers.addCallback(handle_responses)
+        return defers
 
     def _calculate_interval(self, num_eventloops, num_connections):
         """Calculate the update interval.

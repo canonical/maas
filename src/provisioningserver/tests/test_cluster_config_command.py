@@ -124,7 +124,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         cluster_config_command.run(self.make_args(region_url=expected))
         with ClusterConfiguration.open() as config:
             observed = config.maas_url
-        self.assertEqual(expected, observed)
+        self.assertEqual([expected], observed)
 
     def test_config_set_maas_url_without_setting_does_nothing(self):
         with ClusterConfiguration.open() as config:

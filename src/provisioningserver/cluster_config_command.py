@@ -19,11 +19,11 @@ from provisioningserver.config import (
 
 
 def update_maas_cluster_conf(
-        url=None, uuid=None, init=None, tftp_port=None, tftp_root=None):
+        urls=None, uuid=None, init=None, tftp_port=None, tftp_root=None):
     """This function handles the logic behind using the parameters passed to
     run and setting / initializing values in the config backend.
 
-    :param url: The MAAS URL to set. Does nothing if None.
+    :param urls: The MAAS URLs to set. Does nothing if None.
     :param tftp_port: The tftp port number to set. Does nothing if None.
     :param tftp_root: The tftp root file path to set. Does nothing if None.
     :param uuid: The UUID to use for this cluster. Does nothing if None.
@@ -34,8 +34,8 @@ def update_maas_cluster_conf(
     parameters.
     """
     with ClusterConfiguration.open_for_update() as config:
-        if url is not None:
-            config.maas_url = url
+        if urls is not None:
+            config.maas_url = urls
         if uuid is not None:
             config.cluster_uuid = uuid
         if init:
@@ -62,9 +62,10 @@ def add_arguments(parser):
     Specified by the `ActionScript` interface.
     """
     parser.add_argument(
-        '--region-url', action='store', required=False,
+        '--region-url', action='append', required=False,
         help=('Change the URL where cluster controllers can reach the MAAS '
-              'region controller.'))
+              'region controller. Use parameter multiple times to connect to '
+              'multiple region controllers.'))
     uuid_group = parser.add_mutually_exclusive_group()
     uuid_group.add_argument(
         '--uuid', action='store', required=False,
@@ -84,10 +85,10 @@ def add_arguments(parser):
 def run(args):
     """Update configuration settings."""
     params = vars(args).copy()
-    url = params.pop('region_url', None)
+    urls = params.pop('region_url', None)
     uuid = params.pop('uuid', None)
     init = params.pop('init', None)
     tftp_port = params.pop('tftp_port', None)
     tftp_root = params.pop('tftp_root', None)
 
-    update_maas_cluster_conf(url, uuid, init, tftp_port, tftp_root)
+    update_maas_cluster_conf(urls, uuid, init, tftp_port, tftp_root)

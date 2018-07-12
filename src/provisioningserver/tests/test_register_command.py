@@ -117,7 +117,7 @@ class TestRegisterMAASRack(MAASTestCase):
             self.make_args(url=expected_url, secret=to_hex(secret)))
         with ClusterConfiguration.open() as config:
             observed = config.maas_url
-        self.assertEqual(expected_url, observed)
+        self.assertEqual([expected_url], observed)
 
     def test___prompts_user_for_url(self):
         expected_url = factory.make_simple_http_url()
@@ -135,7 +135,7 @@ class TestRegisterMAASRack(MAASTestCase):
 
         self.expectThat(
             input, MockCalledOnceWith("MAAS region controller URL: "))
-        self.expectThat(expected_url, Equals(observed))
+        self.expectThat([expected_url], Equals(observed))
 
     def test___sets_secret(self):
         url = factory.make_simple_http_url()

@@ -72,12 +72,10 @@ def get_hosts_from_sources(sources):
     return hosts
 
 
-def fix_sources_for_cluster(sources):
+def fix_sources_for_cluster(sources, maas_url):
     """Return modified sources that use the URL to the region defined in the
     cluster configuration instead of the one the region suggested."""
     sources = list(sources)
-    with ClusterConfiguration.open() as config:
-        maas_url = config.maas_url
     maas_url_parsed = urlparse(maas_url)
     maas_url_path = maas_url_parsed.path.lstrip('/').rstrip('/')
     for source in sources:
@@ -96,14 +94,14 @@ def fix_sources_for_cluster(sources):
 
 
 @synchronous
-def _run_import(sources, http_proxy=None, https_proxy=None):
+def _run_import(sources, maas_url, http_proxy=None, https_proxy=None):
     """Run the import.
 
     This is function is synchronous so it must be called with deferToThread.
     """
     # Fix the sources to download from the IP address defined in the cluster
     # configuration, instead of the URL that the region asked it to use.
-    sources = fix_sources_for_cluster(sources)
+    sources = fix_sources_for_cluster(sources, maas_url)
     variables = {
         'GNUPGHOME': get_maas_user_gpghome(),
         }
@@ -126,7 +124,7 @@ def _run_import(sources, http_proxy=None, https_proxy=None):
     return imported
 
 
-def import_boot_images(sources, http_proxy=None, https_proxy=None):
+def import_boot_images(sources, maas_url, http_proxy=None, https_proxy=None):
     """Imports the boot images from the given sources."""
     lock = concurrency.boot_images
     # This checks if any other defer is already waiting. If nothing is waiting
@@ -137,18 +135,18 @@ def import_boot_images(sources, http_proxy=None, https_proxy=None):
     # original import another will be fired.
     if not lock.waiting:
         return lock.run(
-            _import_boot_images, sources, http_proxy=http_proxy,
+            _import_boot_images, sources, maas_url, http_proxy=http_proxy,
             https_proxy=https_proxy)
 
 
 @inlineCallbacks
-def _import_boot_images(sources, http_proxy=None, https_proxy=None):
+def _import_boot_images(sources, maas_url, http_proxy=None, https_proxy=None):
     """Import boot images then inform the region.
 
     Helper for `import_boot_images`.
     """
     proxies = dict(http_proxy=http_proxy, https_proxy=https_proxy)
-    yield deferToThread(_run_import, sources, **proxies)
+    yield deferToThread(_run_import, sources, maas_url, **proxies)
     yield touch_last_image_sync_timestamp().addErrback(
         log.err, "Failure touching last image sync timestamp.")
 

@@ -115,6 +115,11 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
     starting = None
     stopping = None
 
+    def __init__(self, maas_url=None):
+        self.maas_url = maas_url
+        if self.maas_url is None:
+            self.maas_url = 'http://localhost/MAAS'
+
     def checkServicesClean(self):
         # If services are running, what do we do with any existing RPC
         # service? Do we shut it down and patch in? Do we just patch in and
@@ -141,10 +146,10 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         # Pretend event-loops only exist for those connections that already
         # exist. The chicken-and-egg will be resolved by injecting a
         # connection later on.
-        self.rpc_service._get_rpc_info_url = self._get_rpc_info_url
+        self.rpc_service._get_rpc_info_urls = self._get_rpc_info_urls
         self.rpc_service._fetch_rpc_info = self._fetch_rpc_info
         # Finally, start the service. If the clock is advanced, this will do
-        # its usual update() calls, but we've patched out _get_rpc_info_url
+        # its usual update() calls, but we've patched out _get_rpc_info_urls
         # and _fetch_rpc_info so no traffic will result.
         self.starting = defer.maybeDeferred(self.rpc_service.startService)
 
@@ -244,26 +249,28 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         :return: ...
         """
 
-    def _get_rpc_info_url(self):
-        """Patch-in for `ClusterClientService._get_rpc_info_url`.
+    def _get_rpc_info_urls(self):
+        """Patch-in for `ClusterClientService._get_rpc_info_urls`.
 
         Returns a dummy value.
         """
-        return ascii_url("http://localhost/MAAS")
+        return [
+            ([ascii_url(self.maas_url)], self.maas_url),
+        ]
 
-    def _fetch_rpc_info(self, url):
+    def _fetch_rpc_info(self, url, orig_url):
         """Patch-in for `ClusterClientService._fetch_rpc_info`.
 
         Describes event-loops only for those event-loops already known to the
         service, thus new connections must be injected into the service.
         """
         connections = self.rpc_service.connections.items()
-        return {
+        return ({
             "eventloops": {
                 eventloop: [client.address]
                 for eventloop, client in connections
             },
-        }
+        }, orig_url)
 
     def _authenticate_with_cluster_key(self, protocol, message):
         """Patch-in for `Authenticate` calls.
@@ -381,6 +388,11 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         class RegionFactory(Factory):
             def buildProtocol(self, addr):
                 return region
+
+        # `doUpdate` has already been called, but with no connections the
+        # mocked `_fetch_rpc_info` caused no `maas_url` to be set on the
+        # RPC service. Set the `maas_url` to the one set on the fixture.
+        self.rpc_service.maas_url = self.maas_url
 
         endpoint_region = endpoints.UNIXServerEndpoint(reactor, sockfile)
         port = yield endpoint_region.listen(RegionFactory())

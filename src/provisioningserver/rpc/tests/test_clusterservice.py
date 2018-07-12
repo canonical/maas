@@ -320,8 +320,13 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
     @inlineCallbacks
     def test_import_boot_images_can_be_called(self):
         self.patch(clusterservice, "import_boot_images")
+
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
         response = yield call_responder(
-            Cluster(), cluster.ImportBootImages, {'sources': []})
+            conn_cluster, cluster.ImportBootImages, {'sources': []})
         self.assertEqual({}, response)
 
     @inlineCallbacks
@@ -344,12 +349,18 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
             },
         ]
 
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
         yield call_responder(
-            Cluster(), cluster.ImportBootImages, {'sources': sources})
+            conn_cluster, cluster.ImportBootImages, {'sources': sources})
 
         self.assertThat(
             import_boot_images,
-            MockCalledOnceWith(sources, http_proxy=None, https_proxy=None))
+            MockCalledOnceWith(
+                sources, conn_cluster.service.maas_url,
+                http_proxy=None, https_proxy=None))
 
     @inlineCallbacks
     def test_import_boot_images_calls_import_boot_images_with_proxies(self):
@@ -358,8 +369,12 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         proxy = 'http://%s.example.com' % factory.make_name('proxy')
         parsed_proxy = urlparse(proxy)
 
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
         yield call_responder(
-            Cluster(), cluster.ImportBootImages, {
+            conn_cluster, cluster.ImportBootImages, {
                 'sources': [],
                 'http_proxy': parsed_proxy,
                 'https_proxy': parsed_proxy,
@@ -368,7 +383,8 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         self.assertThat(
             import_boot_images,
             MockCalledOnceWith(
-                [], http_proxy=proxy, https_proxy=proxy))
+                [], conn_cluster.service.maas_url,
+                http_proxy=proxy, https_proxy=proxy))
 
 
 class TestClusterProtocol_IsImportBootImagesRunning(MAASTestCase):
@@ -474,13 +490,23 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service, IsInstance(TimerService))
         self.assertThat(service.clock, Is(sentinel.reactor))
 
-    def test__get_rpc_info_url(self):
-        maas_url = "http://%s/%s/" % (
-            factory.make_hostname(), factory.make_name("path"))
-        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
-        expected_rpc_info_url = (maas_url + "rpc/").encode("ascii")
-        observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
-        self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
+    @inlineCallbacks
+    def test__get_rpc_info_urls(self):
+        # Because this actually will try to resolve the URL's in the test we
+        # keep them to localhost so it works on all systems.
+        maas_urls = [
+            "http://127.0.0.1:5240/"
+            for _ in range(3)
+        ]
+        self.useFixture(ClusterConfigurationFixture(maas_url=maas_urls))
+        expected_urls = [
+            ([b'http://[::ffff:127.0.0.1]:5240/rpc/'],
+             "http://127.0.0.1:5240/")
+            for url in maas_urls
+        ]
+        service = ClusterClientService(reactor)
+        observed_urls = yield service._get_rpc_info_urls()
+        self.assertThat(observed_urls, Equals(expected_urls))
 
     def test__doUpdate_connect_503_error_is_logged_tersely(self):
         mock_agent = MagicMock()
@@ -490,9 +516,10 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
-        _get_rpc_info_url.return_value = ascii_url(
-            "http://[::ffff:127.0.0.1]/MAAS")
+        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
+        _get_rpc_info_urls.return_value = succeed([
+            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
+        ])
 
         # Starting the service causes the first update to be performed.
         service.startService()
@@ -502,6 +529,79 @@ class TestClusterClientService(MAASTestCase):
             Headers({'User-Agent': [ANY]})))
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
+
+    def test__doUpdate_makes_parallel_requests(self):
+        mock_agent = MagicMock()
+        mock_agent.request.return_value = (
+            always_fail_with(web.error.Error("503")))
+        self.patch(clusterservice, 'Agent').return_value = mock_agent
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
+        _get_rpc_info_urls.return_value = succeed([
+            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
+            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
+        ])
+
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
+        self.assertThat(mock_agent.request, MockCallsMatch(
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]}))))
+        dump = logger.dump()
+        self.assertIn(
+            "Failed to contact region. (While requesting RPC info at "
+            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
+
+    def test__doUpdate_makes_parallel_with_serial_requests(self):
+        mock_agent = MagicMock()
+        mock_agent.request.return_value = (
+            always_fail_with(web.error.Error("503")))
+        self.patch(clusterservice, 'Agent').return_value = mock_agent
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
+        _get_rpc_info_urls.return_value = succeed([
+            ([
+                b'http://[::ffff:127.0.0.1]/MAAS',
+                b'http://127.0.0.1/MAAS'],
+             'http://127.0.0.1/MAAS'),
+            ([
+                b'http://[::ffff:127.0.0.1]/MAAS',
+                b'http://127.0.0.1/MAAS'],
+             'http://127.0.0.1/MAAS'),
+        ])
+
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
+        self.assertThat(mock_agent.request, MockCallsMatch(
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://127.0.0.1/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://127.0.0.1/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            ))
+        dump = logger.dump()
+        self.assertIn(
+            "Failed to contact region. (While requesting RPC info at "
+            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
 
     def test_failed_update_is_logged(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -526,9 +626,10 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
-        _get_rpc_info_url.return_value = ascii_url(
-            "http://[::ffff:127.0.0.1]/MAAS")
+        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
+        _get_rpc_info_urls.return_value = succeed([
+            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
+        ])
 
         # Starting the service causes the first update to be performed.
         service.startService()
@@ -728,16 +829,18 @@ class TestClusterClientService(MAASTestCase):
     @inlineCallbacks
     def test__update_only_updates_interval_when_eventloops_are_unknown(self):
         service = ClusterClientService(Clock())
-        self.patch_autospec(service, "_get_rpc_info_url")
-        self.patch_autospec(service, "_fetch_rpc_info")
+        self.patch_autospec(service, "_get_rpc_info_urls")
+        self.patch_autospec(service, "_parallel_fetch_rpc_info")
         self.patch_autospec(service, "_update_connections")
-        # Return a token from _get_rpc_info_url.
-        service._get_rpc_info_url.return_value = (
-            ascii_url("http://[::ffff:127.0.0.1]/MAAS"))
+        # Return urls from _get_rpc_info_urls.
+        service._get_rpc_info_urls.return_value = succeed([
+            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
+        ])
         # Return None instead of a list of event-loop endpoints. This is the
         # response that the region will give when the advertising service is
         # not running.
-        service._fetch_rpc_info.return_value = {"eventloops": None}
+        service._parallel_fetch_rpc_info.return_value = succeed(
+            (None, None))
         # Set the step to a bogus value so we can see it change.
         service.step = 999
 
@@ -749,7 +852,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service.step, Equals(service.INTERVAL_LOW))
         self.assertEqual(
             "Region is not advertising RPC endpoints. (While requesting RPC"
-            " info at b'http://[::ffff:127.0.0.1]/MAAS')", logger.dump())
+            " info at http://127.0.0.1/MAAS)", logger.dump())
 
     def test__make_connection(self):
         service = ClusterClientService(Clock())
@@ -1469,9 +1572,8 @@ class TestClusterClient(MAASTestCase):
         maas_url = factory.make_simple_http_url()
         hostname = platform.node().split('.')[0]
         interfaces = get_all_interfaces_definition()
-        self.useFixture(ClusterConfigurationFixture(
-            maas_url=maas_url))
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        self.useFixture(ClusterConfigurationFixture())
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
         protocol, connecting = fixture.makeEventLoop()
         self.addCleanup((yield connecting))
         yield getRegionClient()
@@ -1524,9 +1626,8 @@ class TestClusterClient(MAASTestCase):
         self.patch_autospec(clusterservice, 'gethostname').return_value = (
             hostname)
         interfaces = get_all_interfaces_definition()
-        self.useFixture(ClusterConfigurationFixture(
-            maas_url=maas_url))
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        self.useFixture(ClusterConfigurationFixture())
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
         protocol, connecting = fixture.makeEventLoop()
         self.addCleanup((yield connecting))
         yield getRegionClient()
@@ -2243,8 +2344,12 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
             for _ in range(3)
         ]
 
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
         response = yield call_responder(
-            Cluster(), cluster.EvaluateTag, {
+            conn_cluster, cluster.EvaluateTag, {
                 "system_id": rack_id,
                 "tag_name": "all-nodes",
                 "tag_definition": "//*",
@@ -2278,8 +2383,12 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
             for _ in range(3)
         ]
 
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
         yield call_responder(
-            Cluster(), cluster.EvaluateTag, {
+            conn_cluster, cluster.EvaluateTag, {
                 "system_id": rack_id,
                 "tag_name": tag_name,
                 "tag_definition": tag_definition,
@@ -2294,6 +2403,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
             rack_id, nodes, tag_name, tag_definition,
             {tag_ns_prefix: tag_ns_uri},
             (consumer_key, resource_token, resource_secret),
+            conn_cluster.service.maas_url,
         ))
 
 
@@ -2383,9 +2493,13 @@ class TestClusterProtocol_Refresh(
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
 
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
         with TwistedLoggerFixture() as logger:
             yield call_responder(
-                Cluster(), cluster.RefreshRackControllerInfo, {
+                conn_cluster, cluster.RefreshRackControllerInfo, {
                     "system_id": system_id,
                     "consumer_key": consumer_key,
                     "token_key": token_key,
@@ -2427,7 +2541,11 @@ class TestClusterProtocol_Refresh(
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
 
-        yield call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
+        conn_cluster = Cluster()
+        conn_cluster.service = MagicMock()
+        conn_cluster.service.maas_url = factory.make_simple_http_url()
+
+        yield call_responder(conn_cluster, cluster.RefreshRackControllerInfo, {
             'system_id': system_id,
             'consumer_key': consumer_key,
             'token_key': token_key,

@@ -146,6 +146,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
                 https=urlparse(https_proxy))),
             ]
         rpc_client.getClientNow.return_value = defer.succeed(client_call)
+        rpc_client.maas_url = factory.make_simple_http_url()
 
         # We could patch out 'import_boot_images' instead here but I
         # don't do that for 2 reasons:
@@ -159,8 +160,8 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         service.startService()
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                _run_import, sentinel.sources, http_proxy=http_proxy,
-                https_proxy=https_proxy))
+                _run_import, sentinel.sources, rpc_client.maas_url,
+                http_proxy=http_proxy, https_proxy=https_proxy))
 
     def test_no_download_if_no_rpc_connections(self):
         rpc_client = Mock()

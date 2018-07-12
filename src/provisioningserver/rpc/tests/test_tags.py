@@ -19,7 +19,6 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import tags
-from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestEvaluateTag(MAASTestCase):
@@ -27,7 +26,6 @@ class TestEvaluateTag(MAASTestCase):
     def setUp(self):
         super(TestEvaluateTag, self).setUp()
         self.mock_url = factory.make_simple_http_url()
-        self.useFixture(ClusterConfigurationFixture(maas_url=self.mock_url))
 
     def test__calls_process_node_tags(self):
         credentials = "aaa", "bbb", "ccc"
@@ -35,7 +33,7 @@ class TestEvaluateTag(MAASTestCase):
         process_node_tags = self.patch_autospec(tags, "process_node_tags")
         tags.evaluate_tag(
             rack_id, [], sentinel.tag_name, sentinel.tag_definition,
-            sentinel.tag_nsmap, credentials)
+            sentinel.tag_nsmap, credentials, self.mock_url)
         self.assertThat(
             process_node_tags, MockCalledOnceWith(
                 nodes=[], rack_id=rack_id,
@@ -55,7 +53,7 @@ class TestEvaluateTag(MAASTestCase):
 
         tags.evaluate_tag(
             rack_id, [], sentinel.tag_name, sentinel.tag_definition,
-            sentinel.tag_nsmap, credentials)
+            sentinel.tag_nsmap, credentials, self.mock_url)
 
         client = tags.process_node_tags.call_args[1]["client"]
         self.assertIsInstance(client, MAASClient)

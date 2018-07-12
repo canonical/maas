@@ -581,30 +581,30 @@ class TestClusterConfiguration(MAASTestCase):
 
     def test_default_maas_url(self):
         config = ClusterConfiguration({})
-        self.assertEqual("http://localhost:5240/MAAS", config.maas_url)
+        self.assertEqual(["http://localhost:5240/MAAS"], config.maas_url)
 
     def test_set_and_get_maas_url(self):
         config = ClusterConfiguration({})
         example_url = factory.make_simple_http_url()
         config.maas_url = example_url
-        self.assertEqual(example_url, config.maas_url)
+        self.assertEqual([example_url], config.maas_url)
         # It's also stored in the configuration database.
-        self.assertEqual({"maas_url": example_url}, config.store)
+        self.assertEqual({"maas_url": [example_url]}, config.store)
 
     def test_set_maas_url_accepts_hostnames(self):
         config = ClusterConfiguration({})
         example_url = factory.make_simple_http_url()
         config.maas_url = example_url
-        self.assertEqual(example_url, config.maas_url)
-        self.assertEqual({"maas_url": example_url}, config.store)
+        self.assertEqual([example_url], config.maas_url)
+        self.assertEqual({"maas_url": [example_url]}, config.store)
 
     def test_set_maas_url_accepts_very_short_hostnames(self):
         config = ClusterConfiguration({})
         example_url = factory.make_simple_http_url(
             netloc=factory.make_string(size=1))
         config.maas_url = example_url
-        self.assertEqual(example_url, config.maas_url)
-        self.assertEqual({"maas_url": example_url}, config.store)
+        self.assertEqual([example_url], config.maas_url)
+        self.assertEqual({"maas_url": [example_url]}, config.store)
 
     def test_set_maas_url_rejects_bare_ipv6_addresses(self):
         config = ClusterConfiguration({})
@@ -618,8 +618,8 @@ class TestClusterConfiguration(MAASTestCase):
         example_url = factory.make_simple_http_url(
             netloc="[%s]" % factory.make_ipv6_address())
         config.maas_url = example_url
-        self.assertEqual(example_url, config.maas_url)
-        self.assertEqual({"maas_url": example_url}, config.store)
+        self.assertEqual([example_url], config.maas_url)
+        self.assertEqual({"maas_url": [example_url]}, config.store)
 
     def test_default_tftp_port(self):
         config = ClusterConfiguration({})

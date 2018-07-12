@@ -763,8 +763,11 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     """Local configuration for the MAAS cluster."""
 
     maas_url = ConfigurationOption(
-        "maas_url", "The HTTP URL for the MAAS region.", ExtendedURL(
-            require_tld=False, if_missing="http://localhost:5240/MAAS"))
+        "maas_url", "The HTTP URL(s) for the MAAS region.",
+        ForEach(
+            ExtendedURL(require_tld=False),
+            convert_to_list=True,
+            if_missing=["http://localhost:5240/MAAS"]))
 
     # TFTP options.
     tftp_port = ConfigurationOption(

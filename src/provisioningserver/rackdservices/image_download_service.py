@@ -111,8 +111,8 @@ class ImageDownloadService(TimerService, object):
             return None if url is None else url.geturl()
 
         yield import_boot_images(
-            sources.get("sources"), get_proxy_url("http"),
-            get_proxy_url("https"))
+            sources.get("sources"), self.client_service.maas_url,
+            get_proxy_url("http"), get_proxy_url("https"))
 
     @inlineCallbacks
     def maybe_start_download(self):
