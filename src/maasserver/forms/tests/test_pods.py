@@ -20,6 +20,7 @@ from django.core.validators import (
 )
 from maasserver.enum import (
     BMC_TYPE,
+    MACVLAN_MODE_CHOICES,
     NODE_CREATION_TYPE,
 )
 from maasserver.exceptions import PodProblem
@@ -162,6 +163,7 @@ class TestPodForm(MAASTransactionServerTestCase):
                 'cpu_over_commit_ratio',
                 'memory_over_commit_ratio',
                 'default_storage_pool',
+                'default_macvlan_mode',
             ], list(form.fields))
 
     def test_creates_pod_with_discovered_information(self):
@@ -456,6 +458,20 @@ class TestPodForm(MAASTransactionServerTestCase):
                 pool_id=Equals(default_storage_pool.id)),
         ))
 
+    def test_updates_default_macvlan_mode(self):
+        discovered_pod, _, _ = (
+            self.fake_pod_discovery())
+        default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
+        pod = factory.make_Pod(pod_type='virsh')
+        pod.sync(discovered_pod, self.request.user)
+        form = PodForm(data={
+            'default_macvlan_mode': default_macvlan_mode,
+        }, request=self.request, instance=pod)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertThat(pod, MatchesStructure(
+            default_macvlan_mode=Equals(default_macvlan_mode)))
+
     @wait_for_reactor
     @inlineCallbacks
     def test_updates_existing_pod_in_twisted(self):
@@ -532,6 +548,28 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertThat(pod, MatchesStructure(
             default_storage_pool=MatchesStructure(
                 pool_id=Equals(default_storage_pool.id)),
+        ))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_updates_default_macvlan_mode_in_twisted(self):
+        discovered_pod, _, _ = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods_module.discover_pod.return_value = succeed(
+            pods_module.discover_pod.return_value)
+        default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
+        pod = yield deferToDatabase(
+            factory.make_Pod, pod_type='virsh')
+        yield deferToDatabase(pod.sync, discovered_pod, self.request.user)
+        form = yield deferToDatabase(
+            PodForm, data={
+                'default_macvlan_mode': default_macvlan_mode,
+            }, request=self.request, instance=pod)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+        pod = yield form.save()
+        self.assertThat(pod, MatchesStructure(
+            default_macvlan_mode=Equals(default_macvlan_mode),
         ))
 
     def test_discover_and_sync_existing_pod(self):

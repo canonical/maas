@@ -30,6 +30,7 @@ from maasserver.clusterrpc.pods import (
 )
 from maasserver.enum import (
     BMC_TYPE,
+    MACVLAN_MODE_CHOICES,
     NODE_CREATION_TYPE,
 )
 from maasserver.exceptions import PodProblem
@@ -91,6 +92,7 @@ class PodForm(MAASModelForm):
             'cpu_over_commit_ratio',
             'memory_over_commit_ratio',
             'default_storage_pool',
+            'default_macvlan_mode',
         ]
 
     name = forms.CharField(
@@ -118,6 +120,10 @@ class PodForm(MAASModelForm):
     default_storage_pool = forms.ModelChoiceField(
         label="Default storage pool", required=False,
         queryset=PodStoragePool.objects.none(), to_field_name='pool_id')
+
+    default_macvlan_mode = forms.ChoiceField(
+        label="Default MACVLAN mode", required=False,
+        choices=MACVLAN_MODE_CHOICES, initial=MACVLAN_MODE_CHOICES[0])
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         self.is_new = instance is None
