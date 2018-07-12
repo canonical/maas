@@ -71,6 +71,7 @@ def get_default_config():
         'default_distro_series': DEFAULT_OS.get_default_release(),
         # Proxy settings
         'enable_http_proxy': True,
+        'maas_proxy_port': 8000,
         'use_peer_proxy': False,
         'http_proxy': None,
         'prefer_v4_proxy': False,

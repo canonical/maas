@@ -73,6 +73,26 @@ def make_default_osystem_field(*args, **kwargs):
     return field
 
 
+def validate_port(value):
+    """Raise `ValidationError` when the value is set to a port number. that is
+    either reserved for known services, or for MAAS services to ensure this
+    doesn't break MAAS or other applications."""
+    msg = "Unable to change port number"
+    if value > 65535 or value <= 0:
+        raise ValidationError(
+            "%s. Port number is not between 0 - 65535." % msg)
+    if value >= 0 and value <= 1023:
+        raise ValidationError(
+            "%s. Port number is reserved for system services." % msg)
+    # 5240 -> reserved for region HTTP.
+    # 5241 - 4247 -> reserved for other MAAS services.
+    # 5248 -> reserved for rack HTTP.
+    # 5250+ -> reserved for region workers (RPC).
+    if (value >= 5240 and value <= 5270):
+        raise ValidationError(
+            "%s. Port number is reserved for MAAS services." % msg)
+
+
 def get_default_usable_osystem(default_osystem):
     """Return the osystem from the clusters that matches the default_osystem.
     """
@@ -89,6 +109,13 @@ def list_choices_for_releases(releases):
         (release['name'], release['title'])
         for release in releases
     ]
+
+
+def make_maas_proxy_port_field(*args, **kwargs):
+    """Build and return the maas_proxy_port field."""
+    return forms.IntegerField(
+        validators=[validate_port],
+        **kwargs)
 
 
 def make_default_distro_series_field(*args, **kwargs):
@@ -221,6 +248,17 @@ CONFIG_ITEMS = {
                 "Provision nodes to use the built-in HTTP proxy (or "
                 "user specified proxy) for APT. MAAS also uses the proxy for "
                 "downloading boot images.")
+        }
+    },
+    'maas_proxy_port': {
+        'default': 8000,
+        'form': make_maas_proxy_port_field,
+        'form_kwargs': {
+            'label': "Port to bind the MAAS built-in proxy (default: 8000)",
+            'required': False,
+            'help_text': (
+                "Defines the port used to bind the built-in proxy. The "
+                "default port is 8000.")
         }
     },
     'use_peer_proxy': {

@@ -45,8 +45,10 @@ def get_apt_proxy(request, rack_controller=None):
             return http_proxy
         else:
             region_ip = get_default_region_ip(request)
+            maas_proxy_port = Config.objects.get_config("maas_proxy_port")
+            url = "http://:%d/" % maas_proxy_port
             return compose_URL(
-                "http://:8000/", get_maas_facing_server_host(
+                url, get_maas_facing_server_host(
                     rack_controller, default_region_ip=region_ip))
     else:
         return None
