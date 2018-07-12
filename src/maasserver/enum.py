@@ -16,6 +16,8 @@ __all__ = [
     'INTERFACE_TYPE_CHOICES',
     'INTERFACE_TYPE_CHOICES_DICT',
     'IPADDRESS_TYPE',
+    'MACVLAN_MODE',
+    'MACVLAN_MODE_CHOICES',
     'NODE_PERMISSION',
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
@@ -775,4 +777,20 @@ class ENDPOINT:
 ENDPOINT_CHOICES = (
     (ENDPOINT.API, "API"),
     (ENDPOINT.UI, "WebUI"),
+)
+
+
+class MACVLAN_MODE:
+
+    BRIDGE = "bridge"
+    PASSTHRU = "passthru"
+    PRIVATE = "private"
+    VEPA = "vepa"
+
+
+MACVLAN_MODE_CHOICES = (
+    (MACVLAN_MODE.BRIDGE, "bridge"),
+    (MACVLAN_MODE.PASSTHRU, "passthru"),
+    (MACVLAN_MODE.PRIVATE, "private"),
+    (MACVLAN_MODE.VEPA, "vepa"),
 )

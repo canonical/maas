@@ -40,6 +40,7 @@ from maasserver.enum import (
     BMC_TYPE_CHOICES,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    MACVLAN_MODE_CHOICES,
     NODE_CREATION_TYPE,
     NODE_STATUS,
 )
@@ -152,7 +153,7 @@ class BMC(CleanSave, TimestampedModel):
         through="BMCRoutableRackControllerRelationship",
         related_name="routable_bmcs")
 
-    # Pod-specific fields.
+    # Name of the pod.
     name = CharField(
         max_length=255, default='', blank=True, unique=True)
 
@@ -164,19 +165,20 @@ class BMC(CleanSave, TimestampedModel):
     capabilities = ArrayField(
         TextField(), blank=True, null=True, default=list)
 
+    # Number of cores in the pod.
     cores = IntegerField(blank=False, null=False, default=0)
 
-    # Fastest CPU in the pod (MHz)
+    # Fastest CPU in the pod (MHz).
     cpu_speed = IntegerField(blank=False, null=False, default=0)
 
-    # Total memory in the pod (XXX: units?)
+    # Total memory in the pod (XXX: units?).
     memory = IntegerField(blank=False, null=False, default=0)
 
-    # Total storage available in the pod (bytes)
+    # Total storage available in the pod (bytes).
     local_storage = BigIntegerField(
         blank=False, null=False, default=0)
 
-    # Number of disks in the pod (if applicable, otherwise set to -1)
+    # Number of disks in the pod (if applicable, otherwise set to -1).
     local_disks = IntegerField(blank=False, null=False, default=-1)
 
     # Total iSCSI storage available in the pod (if applicable, otherwise -1).
@@ -214,6 +216,13 @@ class BMC(CleanSave, TimestampedModel):
     host = ForeignKey(
         Node, null=True, blank=True, related_name='hosted_pods',
         on_delete=SET_NULL)
+
+    # Default MACVLAN mode for the pod.
+    # This is used as the default macvlan mode when a user wants
+    # to create a macvlan interface for a VM.
+    default_macvlan_mode = CharField(
+        max_length=32, null=True, blank=True,
+        default=None, choices=MACVLAN_MODE_CHOICES)
 
     def __str__(self):
         return "%s (%s)" % (

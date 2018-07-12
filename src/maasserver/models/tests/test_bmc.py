@@ -1583,3 +1583,19 @@ class TestPodHost(MAASServerTestCase):
         pod.host = machine
         pod.save()
         self.assertThat(machine.hosted_pods.first(), Equals(pod))
+
+
+class TestPodDefaultMACVlanMode(MAASServerTestCase):
+
+    def test_allows_default_macvlan_mode(self):
+        pod = factory.make_Pod()
+        default_macvlan_mode = random.choice([
+            'bridge', 'private', 'vepa', 'passthru'])
+        pod.default_macvlan_mode = default_macvlan_mode
+        pod.save()
+        self.assertThat(
+            pod.default_macvlan_mode, Equals(default_macvlan_mode))
+
+    def test_default_default_macvlan_mode_is_None(self):
+        pod = factory.make_Pod()
+        self.assertThat(pod.default_macvlan_mode, Equals(None))
