@@ -257,6 +257,8 @@ class InterfaceConfiguration:
                             len(subnet.dns_servers) > 0):
                         v1_subnet_operation["dns_nameservers"] = (
                             subnet.dns_servers)
+                        v1_subnet_operation["dns_search"] = (
+                            self.node_config.default_search_list)
                         if "nameservers" not in v2_config:
                             v2_config["nameservers"] = v2_nameservers
                             # XXX should also support search paths.
@@ -462,8 +464,16 @@ class NodeNetworkConfiguration:
         self.v2_bridges = {}
         self.gateway_ipv4_set = False
         self.gateway_ipv6_set = False
+
         # The default value is False: expected keys are 4 and 6.
         self.addr_family_present = defaultdict(bool)
+
+        # Ensure the machine's primary domain always comes first in the list.
+        self.default_search_list = [self.node.domain.name] + [
+            name
+            for name in sorted(get_dns_search_paths())
+            if name != self.node.domain.name
+        ]
 
         self.gateways = self.node.get_default_gateways()
         if self.gateways.ipv4 is not None:
@@ -506,16 +516,10 @@ class NodeNetworkConfiguration:
         default_dns_servers = self.node.get_default_dns_servers(
             ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6],
             default_region_ip=default_source_ip)
-        # Ensure the machine's primary domain always comes first in the list.
-        search_list = [self.node.domain.name] + [
-            name
-            for name in sorted(get_dns_search_paths())
-            if name != self.node.domain.name
-        ]
         self.v1_config.append({
             "type": "nameserver",
             "address": default_dns_servers,
-            "search": search_list,
+            "search": self.default_search_list,
         })
         if version == 1:
             network_config = {

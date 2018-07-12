@@ -213,6 +213,10 @@ class AssertNetworkConfigMixin:
                             ret += "    dns_nameservers:\n"
                             for dns_server in subnet.dns_servers:
                                 ret += "    - %s\n" % dns_server
+                            ret += "    dns_search:\n"
+                            for domain in self.get_dns_search_list(
+                                    node.domain.name):
+                                ret += "    - %s\n" % domain
                 dhcp_types = set()
                 for dhcp_ip in iface.ip_addresses.filter(
                         alloc_type=IPADDRESS_TYPE.DHCP):
@@ -230,17 +234,21 @@ class AssertNetworkConfigMixin:
                     ret += "  - type: dhcp6\n"
         return ret
 
-    def collectDNSConfig(self, node, ipv4=True, ipv6=True):
+    def collect_dns_config(self, node, ipv4=True, ipv6=True):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
             repr(node.get_default_dns_servers(ipv4=ipv4, ipv6=ipv6)))
         domain_name = node.domain.name
-        dns_searches = [domain_name] + [
-            name
-            for name in sorted(get_dns_search_paths())
-            if name != domain_name]
+        dns_searches = self.get_dns_search_list(domain_name)
         for dns_name in dns_searches:
             config += "   - %s\n" % dns_name
         return config
+
+    def get_dns_search_list(self, domain_name):
+        return [domain_name] + [
+            name
+            for name in sorted(get_dns_search_paths())
+            if name != domain_name
+        ]
 
 
 class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
@@ -277,7 +285,7 @@ class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         sip.save()
         factory.make_Interface(node=node)
         net_config = self.collect_interface_config(node)
-        net_config += self.collectDNSConfig(
+        net_config += self.collect_dns_config(
             node, ipv4=(self.version == 4), ipv6=(self.version == 6))
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
@@ -311,7 +319,7 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         sip.save()
         factory.make_Interface(node=node)
         net_config = self.collect_interface_config(node)
-        net_config += self.collectDNSConfig(node)
+        net_config += self.collect_dns_config(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
 
@@ -335,7 +343,7 @@ class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             subnet=bond_iface.vlan.subnet_set.first())
         net_config = self.collect_interface_config(node, filter="physical")
         net_config += self.collect_interface_config(node, filter="bond")
-        net_config += self.collectDNSConfig(node)
+        net_config += self.collect_dns_config(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
 
@@ -352,7 +360,7 @@ class TestVLANNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         factory.make_StaticIPAddress(interface=vlan_iface, subnet=subnet)
         net_config = self.collect_interface_config(node, filter="physical")
         net_config += self.collect_interface_config(node, filter="vlan")
-        net_config += self.collectDNSConfig(node)
+        net_config += self.collect_dns_config(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
 
@@ -379,7 +387,7 @@ class TestVLANOnBondNetworkLayout(MAASServerTestCase,
         net_config = self.collect_interface_config(node, filter="physical")
         net_config += self.collect_interface_config(node, filter="bond")
         net_config += self.collect_interface_config(node, filter="vlan")
-        net_config += self.collectDNSConfig(node)
+        net_config += self.collect_dns_config(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
 
@@ -438,7 +446,7 @@ class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             subnet=bridge_iface.vlan.subnet_set.first())
         net_config = self.collect_interface_config(node, filter="physical")
         net_config += self.collect_interface_config(node, filter="bridge")
-        net_config += self.collectDNSConfig(node)
+        net_config += self.collect_dns_config(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
 
@@ -965,6 +973,7 @@ class TestNetplan(MAASServerTestCase):
                         'subnets': [{
                             'address': '10.0.0.4/24',
                             'dns_nameservers': ['10.0.0.2'],
+                            'dns_search': ['maas'],
                             'gateway': '10.0.0.1',
                             'type': 'static',
                         }],
@@ -978,6 +987,7 @@ class TestNetplan(MAASServerTestCase):
                         'subnets': [{
                             'address': '10.0.1.4/24',
                             'dns_nameservers': ['10.0.1.2'],
+                            'dns_search': ['maas'],
                             'type': 'static',
                         }],
                         'type': 'physical'
