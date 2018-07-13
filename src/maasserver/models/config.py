@@ -91,6 +91,7 @@ def get_default_config():
         'uuid': None,
         # Images.
         'boot_images_auto_import': True,
+        'boot_images_no_proxy': False,
         # Third Party
         'enable_third_party_drivers': True,
         # Disk erasing.

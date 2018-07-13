@@ -13,6 +13,7 @@ __all__ = [
 import datetime
 import html
 import os
+from urllib.parse import urlparse
 
 from maasserver.components import (
     discard_persistent_error,
@@ -98,7 +99,20 @@ def get_simplestreams_env():
             # entire process, including controller refresh. When the region
             # needs to refresh itself it sends itself results over HTTP to
             # 127.0.0.1.
-            env['no_proxy'] = '127.0.0.1,localhost'
+            no_proxy_hosts = '127.0.0.1,localhost'
+            # When using a proxy and using an image mirror, we may not want
+            # to use the proxy to download the images, as they could be
+            # localted in the local network, hence it makes no sense to use
+            # it. With this, we add the image mirror localtion(s) to the
+            # no proxy variable, which ensures MAAS contacts the mirror
+            # directly instead of through the proxy.
+            no_proxy = Config.objects.get_config('boot_images_no_proxy')
+            if no_proxy:
+                sources = get_boot_sources()
+                for source in sources:
+                    host = urlparse(source["url"]).netloc.split(':')[0]
+                    no_proxy_hosts = ",".join((no_proxy_hosts, host))
+            env['no_proxy'] = no_proxy_hosts
     return env
 
 
