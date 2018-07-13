@@ -1598,6 +1598,7 @@ PEER_PROXY_CONFIG_INSERT = dedent("""\
     RETURNS trigger as $$
     BEGIN
       IF (NEW.name = 'enable_proxy' OR
+          NEW.name = 'maas_proxy_port' OR
           NEW.name = 'use_peer_proxy' OR
           NEW.name = 'http_proxy' OR
           NEW.name = 'prefer_v4_proxy') THEN
@@ -1615,6 +1616,7 @@ PEER_PROXY_CONFIG_UPDATE = dedent("""\
     RETURNS trigger as $$
     BEGIN
       IF (NEW.name = 'enable_proxy' OR
+          NEW.name = 'maas_proxy_port' OR
           NEW.name = 'use_peer_proxy' OR
           NEW.name = 'http_proxy' OR
           NEW.name = 'prefer_v4_proxy') THEN

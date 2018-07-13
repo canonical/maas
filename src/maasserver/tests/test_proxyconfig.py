@@ -7,6 +7,7 @@ __all__ = []
 
 import os
 from pathlib import Path
+import random
 
 from crochet import wait_for
 from django.conf import settings
@@ -175,6 +176,19 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
             self.assertIn('dns_v4_first on', lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__with_new_maas_proxy_port_changes_port(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        port = random.randint(1, 65535)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "maas_proxy_port", port)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn('http_port %s' % port, lines)
 
     @wait_for_reactor
     @inlineCallbacks
