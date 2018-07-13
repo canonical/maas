@@ -292,3 +292,14 @@ class MAASHandlerAPITest(APITestCase.ForUser):
             })
         self.assertEqual(http.client.OK, response.status_code)
         self.assertTrue(Config.objects.get_config("use_peer_proxy"))
+
+    def test_set_config_boot_images_no_proxy(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "boot_images_no_proxy",
+                "value": True,
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertTrue(Config.objects.get_config("boot_images_no_proxy"))
