@@ -4338,7 +4338,7 @@ class TestProxyListener(
             "sys_proxy", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_config, "prefer_v4_proxy", 9000)
+            yield deferToDatabase(self.create_config, "maas_proxy_port", 9000)
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
