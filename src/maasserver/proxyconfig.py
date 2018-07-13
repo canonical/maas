@@ -71,6 +71,7 @@ def proxy_update_config(reload_proxy=True):
         cidrs = [subnet.cidr for subnet in allowed_subnets]
 
         http_proxy = Config.objects.get_config("http_proxy")
+        maas_proxy_port = Config.objects.get_config("maas_proxy_port")
         upstream_proxy_enabled = (
             Config.objects.get_config("use_peer_proxy") and http_proxy)
         context = {
@@ -83,6 +84,7 @@ def proxy_update_config(reload_proxy=True):
             'snap_data_path': snappy.get_snap_data_path(),
             'snap_common_path': snappy.get_snap_common_path(),
             'upstream_peer_proxy': upstream_proxy_enabled,
+            'maas_proxy_port': maas_proxy_port,
         }
 
         proxy_enabled = Config.objects.get_config("enable_http_proxy")

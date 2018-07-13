@@ -23,7 +23,7 @@ http_access allow localnet
 http_access allow localhost
 http_access deny all
 http_port 3128 transparent
-http_port 8000
+http_port {{maas_proxy_port}}
 refresh_pattern ^ftp:           1440    20%     10080
 refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
 refresh_pattern \/Release(|\.gpg)$                        0    0%    0 refresh-ims

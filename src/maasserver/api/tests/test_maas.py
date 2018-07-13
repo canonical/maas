@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import json
 from operator import itemgetter
+import random
 
 from django.conf import settings
 from maasserver.forms.settings import CONFIG_ITEMS_KEYS
@@ -303,3 +304,36 @@ class MAASHandlerAPITest(APITestCase.ForUser):
             })
         self.assertEqual(http.client.OK, response.status_code)
         self.assertTrue(Config.objects.get_config("boot_images_no_proxy"))
+
+
+class MAASHandlerAPITestForProxyPort(APITestCase.ForUser):
+
+    scenarios = [
+        ('valid-port', {
+            'port': random.randint(5300, 65535), 'valid': True}),
+        ('invalid-port_maas-reserved-range', {
+            'port': random.randint(5240, 5270), 'valid': False}),
+        ('invalid-port_system-services', {
+            'port': random.randint(0, 1023), 'valid': False}),
+        ('invalid-port_out-of-range', {
+            'port': random.randint(65536, 70000), 'valid': False}),
+    ]
+
+    def test_set_config_maas_proxy_port(self):
+        self.become_admin()
+        port = self.port
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "maas_proxy_port",
+                "value": port,
+            })
+        if self.valid:
+            self.assertEqual(http.client.OK, response.status_code)
+            self.assertEqual(
+                port, Config.objects.get_config("maas_proxy_port"))
+        else:
+            self.assertEqual(
+                http.client.BAD_REQUEST,
+                response.status_code,
+                response.content)

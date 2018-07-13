@@ -1432,6 +1432,7 @@ class ProxyForm(ConfigForm):
     enable_http_proxy = get_config_field('enable_http_proxy')
     use_peer_proxy = get_config_field('use_peer_proxy')
     http_proxy = get_config_field('http_proxy')
+    maas_proxy_port = get_config_field('maas_proxy_port')
 
 
 class DNSForm(ConfigForm):

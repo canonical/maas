@@ -4258,6 +4258,21 @@ class TestProxyListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_config_insert_maas_proxy_port(self):
+        yield deferToDatabase(register_system_triggers)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_config, "maas_proxy_port", 9000)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_config_insert_http_proxy(self):
         yield deferToDatabase(register_system_triggers)
         dv = DeferredValue()
@@ -4300,6 +4315,22 @@ class TestProxyListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.set_config, "use_peer_proxy", False)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_update_maas_proxy_port(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(self.create_config, "maas_proxy_port", 8000)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.set_config, "maas_proxy_port", 9000)
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()

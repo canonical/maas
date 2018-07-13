@@ -69,6 +69,7 @@ def get_default_config():
         'default_osystem': DEFAULT_OS.name,
         'default_distro_series': DEFAULT_OS.get_default_release(),
         'enable_http_proxy': True,
+        'maas_proxy_port': 8000,
         'use_peer_proxy': False,
         'http_proxy': None,
         'upstream_dns': None,

@@ -1590,6 +1590,7 @@ PEER_PROXY_CONFIG_INSERT = dedent("""\
     RETURNS trigger as $$
     BEGIN
       IF (NEW.name = 'enable_proxy' OR
+          NEW.name = 'maas_proxy_port' OR
           NEW.name = 'use_peer_proxy' OR
           NEW.name = 'http_proxy') THEN
         PERFORM pg_notify('sys_proxy', '');
@@ -1606,6 +1607,7 @@ PEER_PROXY_CONFIG_UPDATE = dedent("""\
     RETURNS trigger as $$
     BEGIN
       IF (NEW.name = 'enable_proxy' OR
+          NEW.name = 'maas_proxy_port' OR
           NEW.name = 'use_peer_proxy' OR
           NEW.name = 'http_proxy') THEN
         PERFORM pg_notify('sys_proxy', '');
