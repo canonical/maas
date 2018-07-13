@@ -36,17 +36,19 @@ RSYSLOG_PORT = 514
 
 def get_apt_proxy(request, rack_controller=None):
     """Return the APT proxy for the `rack_controller`."""
-    if Config.objects.get_config("enable_http_proxy"):
-        http_proxy = Config.objects.get_config("http_proxy")
+    config = Config.objects.get_configs([
+        'enable_http_proxy', 'http_proxy', 'use_peer_proxy',
+        'maas_proxy_port'])
+    if config["enable_http_proxy"]:
+        http_proxy = config["http_proxy"]
         if http_proxy is not None:
             http_proxy = http_proxy.strip()
-        use_peer_proxy = Config.objects.get_config("use_peer_proxy")
+        use_peer_proxy = config["use_peer_proxy"]
         if http_proxy and not use_peer_proxy:
             return http_proxy
         else:
             region_ip = get_default_region_ip(request)
-            maas_proxy_port = Config.objects.get_config("maas_proxy_port")
-            url = "http://:%d/" % maas_proxy_port
+            url = "http://:%d/" % config["maas_proxy_port"]
             return compose_URL(
                 url, get_maas_facing_server_host(
                     rack_controller, default_region_ip=region_ip))

@@ -69,12 +69,12 @@ def proxy_update_config(reload_proxy=True):
     def write_config():
         allowed_subnets = Subnet.objects.filter(allow_proxy=True)
         cidrs = [subnet.cidr for subnet in allowed_subnets]
+        config = Config.objects.get_configs([
+            'http_proxy', 'maas_proxy_port', 'use_peer_proxy',
+            'prefer_v4_proxy', 'enable_http_proxy'])
 
-        http_proxy = Config.objects.get_config("http_proxy")
-        maas_proxy_port = Config.objects.get_config("maas_proxy_port")
-        upstream_proxy_enabled = (
-            Config.objects.get_config("use_peer_proxy") and http_proxy)
-        dns_v4_first = Config.objects.get_config("prefer_v4_proxy")
+        http_proxy = config["http_proxy"]
+        upstream_proxy_enabled = (config["use_peer_proxy"] and http_proxy)
         context = {
             'allowed': allowed_subnets,
             'modified': str(datetime.date.today()),
@@ -85,11 +85,11 @@ def proxy_update_config(reload_proxy=True):
             'snap_data_path': snappy.get_snap_data_path(),
             'snap_common_path': snappy.get_snap_common_path(),
             'upstream_peer_proxy': upstream_proxy_enabled,
-            'dns_v4_first': dns_v4_first,
-            'maas_proxy_port': maas_proxy_port,
+            'dns_v4_first': config['prefer_v4_proxy'],
+            'maas_proxy_port': config['maas_proxy_port'],
         }
 
-        proxy_enabled = Config.objects.get_config("enable_http_proxy")
+        proxy_enabled = config["enable_http_proxy"]
         if proxy_enabled and upstream_proxy_enabled:
             http_proxy_hostname = urlparse(http_proxy).hostname
             http_proxy_port = urlparse(http_proxy).port
