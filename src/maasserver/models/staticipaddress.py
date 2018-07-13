@@ -75,6 +75,8 @@ _special_mapping_result = _mapping_base_fields + (
 
 _mapping_query_result = _mapping_base_fields + (
     'is_boot',
+    'preference',
+    'family',
 )
 
 _interface_mapping_result = _mapping_base_fields + (
@@ -504,7 +506,7 @@ class StaticIPAddressManager(Manager):
                     domain.ttl,
                     %s)""" % default_ttl
         sql_query = """
-            SELECT DISTINCT ON (node.hostname, is_boot, family(staticip.ip))
+            SELECT DISTINCT ON (fqdn, is_boot, family)
                 CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
@@ -515,16 +517,38 @@ class StaticIPAddressManager(Manager):
                     node.boot_interface_id IS NOT NULL AND
                     (
                         node.boot_interface_id = interface.id OR
-                        node.boot_interface_id = parent.id
+                        node.boot_interface_id = parent.id OR
+                        node.boot_interface_id = parent_parent.id
                     ),
                     False
-                ) AS is_boot
+                ) AS is_boot,
+                CASE
+                    WHEN interface.type = 'bridge' AND
+                        parent_parent.id = node.boot_interface_id THEN 1
+                    WHEN interface.type = 'bridge' AND
+                        parent.id = node.boot_interface_id THEN 2
+                    WHEN interface.type = 'bond' AND
+                        parent.id = node.boot_interface_id THEN 3
+                    WHEN interface.type = 'physical' AND
+                        interface.id = node.boot_interface_id THEN 4
+                    WHEN interface.type = 'bond' THEN 5
+                    WHEN interface.type = 'physical' THEN 6
+                    WHEN interface.type = 'vlan' THEN 7
+                    WHEN interface.type = 'alias' THEN 8
+                    WHEN interface.type = 'unknown' THEN 9
+                    ELSE 10
+                END AS preference,
+                family(staticip.ip) AS family
             FROM
                 maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
                 interface.id = rel.child_id
             LEFT OUTER JOIN maasserver_interface AS parent ON
                 rel.parent_id = parent.id
+            LEFT OUTER JOIN maasserver_interfacerelationship AS parent_rel ON
+                parent.id = parent_rel.child_id
+            LEFT OUTER JOIN maasserver_interface AS parent_parent ON
+                parent_rel.parent_id = parent_parent.id
             JOIN maasserver_node AS node ON
                 node.id = interface.node_id
             JOIN maasserver_domain AS domain ON
@@ -562,21 +586,10 @@ class StaticIPAddressManager(Manager):
                 staticip.ip IS NOT NULL AND
                 host(staticip.ip) != ''
             ORDER BY
-                node.hostname,
+                fqdn,
                 is_boot DESC,
-                family(staticip.ip),
-                CASE
-                    WHEN interface.type = 'bond' AND
-                        parent.id = node.boot_interface_id THEN 1
-                    WHEN interface.type = 'physical' AND
-                        interface.id = node.boot_interface_id THEN 2
-                    WHEN interface.type = 'bond' THEN 3
-                    WHEN interface.type = 'physical' THEN 4
-                    WHEN interface.type = 'vlan' THEN 5
-                    WHEN interface.type = 'alias' THEN 6
-                    WHEN interface.type = 'unknown' THEN 7
-                    ELSE 8
-                END,
+                family,
+                preference,
                 /*
                  * We want STICKY and USER_RESERVED addresses to be preferred,
                  * followed by AUTO, DHCP, and finally DISCOVERED.

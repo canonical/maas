@@ -1128,6 +1128,8 @@ class Interface(CleanSave, TimestampedModel):
         """Remove all the `IPAddress` link on the interface."""
         for ip_address in self.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED):
+            maaslog.info("%s: IP address automatically unlinked: %s" % (
+                self.get_log_string(), ip_address))
             self.unlink_ip_address(ip_address, clearing_config=clearing_config)
 
     def claim_auto_ips(self, exclude_addresses=[]):
