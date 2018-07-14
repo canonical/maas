@@ -146,10 +146,12 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         # Pretend event-loops only exist for those connections that already
         # exist. The chicken-and-egg will be resolved by injecting a
         # connection later on.
-        self.rpc_service._get_rpc_info_urls = self._get_rpc_info_urls
+        self.rpc_service._get_config_rpc_info_urls = (
+            self._get_config_rpc_info_urls)
+        self.rpc_service._build_rpc_info_urls = self._build_rpc_info_urls
         self.rpc_service._fetch_rpc_info = self._fetch_rpc_info
         # Finally, start the service. If the clock is advanced, this will do
-        # its usual update() calls, but we've patched out _get_rpc_info_urls
+        # its usual update() calls, but we've patched out _build_rpc_info_urls
         # and _fetch_rpc_info so no traffic will result.
         self.starting = defer.maybeDeferred(self.rpc_service.startService)
 
@@ -249,8 +251,15 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         :return: ...
         """
 
-    def _get_rpc_info_urls(self):
-        """Patch-in for `ClusterClientService._get_rpc_info_urls`.
+    def _get_config_rpc_info_urls(self):
+        """Patch-in for `ClusterClientService._get_config_rpc_info_urls`.
+
+        Returns a dummy value.
+        """
+        return [self.maas_url]
+
+    def _build_rpc_info_urls(self):
+        """Patch-in for `ClusterClientService._build_rpc_info_urls`.
 
         Returns a dummy value.
         """

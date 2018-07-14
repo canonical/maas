@@ -490,22 +490,80 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service, IsInstance(TimerService))
         self.assertThat(service.clock, Is(sentinel.reactor))
 
+    def test__get_config_rpc_info_urls(self):
+        maas_urls = [
+            factory.make_simple_http_url()
+            for _ in range(3)
+        ]
+        self.useFixture(ClusterConfigurationFixture(maas_url=maas_urls))
+        service = ClusterClientService(reactor)
+        observed_urls = service._get_config_rpc_info_urls()
+        self.assertThat(observed_urls, Equals(maas_urls))
+
+    def test__get_saved_rpc_info_urls(self):
+        saved_urls = [
+            factory.make_simple_http_url()
+            for _ in range(3)
+        ]
+        service = ClusterClientService(reactor)
+        with open(service._get_saved_rpc_info_path(), 'w') as stream:
+            for url in saved_urls:
+                stream.write('%s\n' % url)
+        observed_urls = service._get_saved_rpc_info_urls()
+        self.assertThat(observed_urls, Equals(saved_urls))
+
+    def test_update_saved_rpc_info_state(self):
+        service = ClusterClientService(reactor)
+        ipv4client = ClusterClient(
+            ("1.1.1.1", 1111), "host1:pid=1", service)
+        ipv6client = ClusterClient(
+            ("::ffff", 2222), "host2:pid=2", service)
+        ipv6mapped = ClusterClient(
+            ("::ffff:3.3.3.3", 3333), "host3:pid=3", service)
+        hostclient = ClusterClient(
+            ("example.com", 4444), "host4:pid=4", service)
+
+        # Fake some connections.
+        service.connections = {
+            ipv4client.eventloop: ipv4client,
+            ipv6client.eventloop: ipv6client,
+            ipv6mapped.eventloop: ipv6mapped,
+            hostclient.eventloop: hostclient,
+        }
+
+        # Update the RPC state to the filesystem and info cache.
+        self.assertThat(service._rpc_info_state, Is(None))
+        service._update_saved_rpc_info_state()
+
+        # Ensure that the info state is set.
+        self.assertThat(service._rpc_info_state, Equals({
+            client.address[0]
+            for _, client in service.connections.items()
+        }))
+
+        # Check that the written rpc state is valid.
+        self.assertThat(service._get_saved_rpc_info_urls(), Equals([
+            'http://1.1.1.1:5240/MAAS',
+            'http://[::ffff]:5240/MAAS',
+            'http://3.3.3.3:5240/MAAS',
+            'http://example.com:5240/MAAS',
+        ]))
+
     @inlineCallbacks
-    def test__get_rpc_info_urls(self):
+    def test__build_rpc_info_urls(self):
         # Because this actually will try to resolve the URL's in the test we
         # keep them to localhost so it works on all systems.
         maas_urls = [
             "http://127.0.0.1:5240/"
             for _ in range(3)
         ]
-        self.useFixture(ClusterConfigurationFixture(maas_url=maas_urls))
         expected_urls = [
             ([b'http://[::ffff:127.0.0.1]:5240/rpc/'],
              "http://127.0.0.1:5240/")
             for url in maas_urls
         ]
         service = ClusterClientService(reactor)
-        observed_urls = yield service._get_rpc_info_urls()
+        observed_urls = yield service._build_rpc_info_urls(maas_urls)
         self.assertThat(observed_urls, Equals(expected_urls))
 
     def test__doUpdate_connect_503_error_is_logged_tersely(self):
@@ -516,8 +574,8 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
-        _get_rpc_info_urls.return_value = succeed([
+        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
+        _build_rpc_info_urls.return_value = succeed([
             ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
         ])
 
@@ -539,8 +597,14 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
-        _get_rpc_info_urls.return_value = succeed([
+        _get_config_rpc_info_urls = self.patch(
+            service, "_get_config_rpc_info_urls")
+        _get_config_rpc_info_urls.return_value = [
+            'http://127.0.0.1/MAAS',
+            'http://127.0.0.1/MAAS',
+        ]
+        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
+        _build_rpc_info_urls.return_value = succeed([
             ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
             ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
         ])
@@ -569,8 +633,14 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
-        _get_rpc_info_urls.return_value = succeed([
+        _get_config_rpc_info_urls = self.patch(
+            service, "_get_config_rpc_info_urls")
+        _get_config_rpc_info_urls.return_value = [
+            'http://127.0.0.1/MAAS',
+            'http://127.0.0.1/MAAS',
+        ]
+        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
+        _build_rpc_info_urls.return_value = succeed([
             ([
                 b'http://[::ffff:127.0.0.1]/MAAS',
                 b'http://127.0.0.1/MAAS'],
@@ -603,6 +673,60 @@ class TestClusterClientService(MAASTestCase):
             "Failed to contact region. (While requesting RPC info at "
             "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
 
+    def test__doUpdate_falls_back_to_rpc_info_state(self):
+        mock_agent = MagicMock()
+        mock_agent.request.return_value = (
+            always_fail_with(web.error.Error("503")))
+        self.patch(clusterservice, 'Agent').return_value = mock_agent
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        _get_config_rpc_info_urls = self.patch(
+            service, "_get_config_rpc_info_urls")
+        _get_config_rpc_info_urls.return_value = [
+            'http://127.0.0.1/MAAS',
+            'http://127.0.0.1/MAAS',
+        ]
+        _get_saved_rpc_info_urls = self.patch(
+            service, "_get_saved_rpc_info_urls")
+        _get_saved_rpc_info_urls.return_value = [
+            'http://127.0.0.1/MAAS',
+            'http://127.0.0.1/MAAS',
+        ]
+        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
+        _build_rpc_info_urls.side_effect = [
+            succeed([
+                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
+                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
+            ]),
+            succeed([
+                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
+                ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS'),
+            ]),
+        ]
+
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
+        self.assertThat(mock_agent.request, MockCallsMatch(
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]})),
+            call(
+                b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+                Headers({'User-Agent': [ANY]}))))
+        dump = logger.dump()
+        self.assertIn(
+            "Failed to contact region. (While requesting RPC info at "
+            "http://127.0.0.1/MAAS, http://127.0.0.1/MAAS)", dump)
+
     def test_failed_update_is_logged(self):
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -626,8 +750,13 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _get_rpc_info_urls = self.patch(service, "_get_rpc_info_urls")
-        _get_rpc_info_urls.return_value = succeed([
+        _get_config_rpc_info_urls = self.patch(
+            service, "_get_config_rpc_info_urls")
+        _get_config_rpc_info_urls.return_value = [
+            'http://127.0.0.1/MAAS',
+        ]
+        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
+        _build_rpc_info_urls.return_value = succeed([
             ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
         ])
 
@@ -829,11 +958,15 @@ class TestClusterClientService(MAASTestCase):
     @inlineCallbacks
     def test__update_only_updates_interval_when_eventloops_are_unknown(self):
         service = ClusterClientService(Clock())
-        self.patch_autospec(service, "_get_rpc_info_urls")
+        self.patch_autospec(service, "_get_config_rpc_info_urls")
+        self.patch_autospec(service, "_build_rpc_info_urls")
         self.patch_autospec(service, "_parallel_fetch_rpc_info")
         self.patch_autospec(service, "_update_connections")
-        # Return urls from _get_rpc_info_urls.
-        service._get_rpc_info_urls.return_value = succeed([
+        # Return urls from _get_config_rpc_info_urls and _build_rpc_info_urls.
+        service._get_config_rpc_info_urls.return_value = [
+            'http://127.0.0.1/MAAS',
+        ]
+        service._build_rpc_info_urls.return_value = succeed([
             ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://127.0.0.1/MAAS')
         ])
         # Return None instead of a list of event-loop endpoints. This is the
@@ -892,6 +1025,38 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(
             connection.transport.loseConnection,
             MockCalledOnceWith())
+
+    def test__add_connection_removes_from_try_connections(self):
+        service = make_inert_client_service()
+        service.startService()
+        endpoint = Mock()
+        connection = Mock()
+        connection.address = (':::ffff', 2222)
+        service.try_connections[endpoint] = connection
+        service.add_connection(endpoint, connection)
+        self.assertThat(service.try_connections, Equals({}))
+
+    def test__add_connection_adds_to_connections(self):
+        service = make_inert_client_service()
+        service.startService()
+        endpoint = Mock()
+        connection = Mock()
+        connection.address = (':::ffff', 2222)
+        service.add_connection(endpoint, connection)
+        self.assertThat(service.connections, Equals({
+            endpoint: connection,
+        }))
+
+    def test__add_connection_calls__update_saved_rpc_info_state(self):
+        service = make_inert_client_service()
+        service.startService()
+        endpoint = Mock()
+        connection = Mock()
+        connection.address = (':::ffff', 2222)
+        self.patch_autospec(service, '_update_saved_rpc_info_state')
+        service.add_connection(endpoint, connection)
+        self.assertThat(
+            service._update_saved_rpc_info_state, MockCalledOnceWith())
 
     def test__remove_connection_removes_from_try_connections(self):
         service = make_inert_client_service()

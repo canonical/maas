@@ -23,7 +23,10 @@ from urllib.parse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
-from netaddr import IPAddress
+from netaddr import (
+    AddrFormatError,
+    IPAddress,
+)
 from provisioningserver import concurrency
 from provisioningserver.config import (
     ClusterConfiguration,
@@ -45,6 +48,7 @@ from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
 )
+from provisioningserver.path import get_data_path
 from provisioningserver.refresh import (
     get_sys_info,
     refresh,
@@ -847,9 +851,7 @@ class ClusterClient(Cluster):
             log.msg("Event-loop '%s' authenticated." % self.ident)
             registered = yield self.registerRackWithRegion()
             if registered:
-                if self.eventloop in self.service.try_connections:
-                    del self.service.try_connections[self.eventloop]
-                self.service.connections[self.eventloop] = self
+                self.service.add_connection(self.eventloop, self)
                 self.ready.set(self.eventloop)
             else:
                 self.transport.loseConnection()
@@ -968,6 +970,11 @@ class ClusterClientService(TimerService, object):
         # the URL that was used to get the eventloops.
         self.maas_url = None
 
+        # Holds the last stored state of the RPC connection information. This
+        # state is used to only update the RPC state file when the URL have
+        # actually changed.
+        self._rpc_info_state = None
+
         # When _doUpdate is called we capture it into _updateInProgress so
         # that concurrent calls can piggyback rather than initiating extra
         # calls. We start with an already-fired DeferredValue: _tryUpdate
@@ -1037,10 +1044,9 @@ class ClusterClientService(TimerService, object):
         to new ones and drops connections to those no longer used.
         """
         eventloops = None
-        urls = yield self._get_rpc_info_urls()
+        urls = self._get_config_rpc_info_urls()
         try:
-            eventloops, maas_url = (
-                yield self._parallel_fetch_rpc_info(urls))
+            eventloops, maas_url = yield self._get_rpc_info(urls)
             if eventloops is None:
                 # This means that the region process we've just asked about
                 # RPC event-loop endpoints is not running the RPC
@@ -1050,7 +1056,7 @@ class ClusterClientService(TimerService, object):
                 log.msg(
                     "Region is not advertising RPC endpoints."
                     " (While requesting RPC info at %s)" %
-                    ', '.join([url for _, url in urls]))
+                    ', '.join(urls))
             else:
                 self.maas_url = maas_url
                 yield self._update_connections(eventloops)
@@ -1059,34 +1065,33 @@ class ClusterClientService(TimerService, object):
             log.msg(
                 "Region not available: %s "
                 "(While requesting RPC info at %s)."
-                % (error, ', '.join([url for _, url in urls])))
+                % (error, ', '.join(urls)))
         except:
             self.maas_url = None
             log.err(
                 None, "Failed to contact region. "
                 "(While requesting RPC info at %s)."
-                % (', '.join([url for _, url in urls])))
+                % (', '.join(urls)))
 
         self._update_interval(
             None if eventloops is None else len(eventloops),
             len(self.connections))
 
     @inlineCallbacks
-    def _get_rpc_info_urls(self):
-        """Return the URLs to the RPC infomation page on the region."""
-        # Load the URLs from the rackd configuration.
-        config_urls = []
-        with ClusterConfiguration.open() as config:
-            for orig_url in config.maas_url:
-                url = urlparse(orig_url)
-                url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
-                url = url.geturl()
-                url = ascii_url(url)
-                config_urls.append((url, orig_url))
+    def _build_rpc_info_urls(self, urls):
+        """
+        Take a list of `urls` and breakdown them down to try IPv6 before IPv4.
+        """
+        orig_urls = []
+        for orig_url in urls:
+            url = urlparse(orig_url)
+            url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
+            url = url.geturl()
+            url = ascii_url(url)
+            orig_urls.append((url, orig_url))
 
-        # Breakdown the URLs to use IPv6 first.
         urls = []
-        for url, orig_url in config_urls:
+        for url, orig_url in orig_urls:
             urls_group = []
             url_base = urlparse(url).decode()
             url_addresses = yield resolve_host_to_addrinfo(
@@ -1114,6 +1119,54 @@ class ClusterClientService(TimerService, object):
             urls.append((urls_group, orig_url))
 
         return urls
+
+    def _get_config_rpc_info_urls(self):
+        """Return the URLs to the RPC endpoint from rackd.conf."""
+        # Load the URLs from the rackd configuration.
+        with ClusterConfiguration.open() as config:
+            return config.maas_url
+
+    def _get_saved_rpc_info_path(self):
+        """Return path to the saved RPC state file."""
+        return get_data_path('/var/lib/maas/rpc.state')
+
+    def _get_saved_rpc_info_urls(self):
+        """Return the URLs to the RPC endpoint from the saved RPC state."""
+        path = self._get_saved_rpc_info_path()
+        try:
+            with open(path, 'r') as stream:
+                return stream.read().splitlines()
+        except OSError:
+            return []
+
+    def _update_saved_rpc_info_state(self):
+        """Update the saved RPC info state."""
+        # Build a list of addresses based on the current connections.
+        connected_addr = {
+            conn.address[0]
+            for _, conn in self.connections.items()
+        }
+        if (self._rpc_info_state is None or
+                self._rpc_info_state != connected_addr):
+            path = self._get_saved_rpc_info_path()
+            with open(path, 'w') as stream:
+                for addr in sorted(list(connected_addr)):
+                    try:
+                        ip = IPAddress(addr)
+                    except AddrFormatError:
+                        # Not an IP address, must be a hostname.
+                        stream.write('http://%s:5240/MAAS\n' % addr)
+                    else:
+                        if ip.is_ipv4_mapped():
+                            stream.write(
+                                'http://%s:5240/MAAS\n' % str(ip.ipv4()))
+                        elif ip.version == 4:
+                            stream.write(
+                                'http://%s:5240/MAAS\n' % str(ip))
+                        else:
+                            stream.write(
+                                'http://[%s]:5240/MAAS\n' % str(ip))
+            self._rpc_info_state = connected_addr
 
     def _fetch_rpc_info(self, url, orig_url):
 
@@ -1211,6 +1264,53 @@ class ClusterClientService(TimerService, object):
         defers = DeferredList(defers, consumeErrors=True)
         defers.addCallback(handle_responses)
         return defers
+
+    @inlineCallbacks
+    def _get_rpc_info(self, config_urls):
+        """Return the RPC connection information.
+
+        Connect to the region controller(s) to determine all the RPC endpoints
+        for connection.
+        """
+        eventloops, maas_url = None, None
+
+        # First try to get the eventloop information using the URLs
+        # defined in rackd.conf.
+        config_exc = None
+        urls = yield self._build_rpc_info_urls(config_urls)
+        try:
+            eventloops, maas_url = (
+                yield self._parallel_fetch_rpc_info(urls))
+            if eventloops is None:
+                maas_url = None
+        except Exception as exc:
+            # Hold the exception raised trying to get endpoints from the region
+            # using URLs defined in the rackd.conf. This exception will be
+            # re-raised if the stored state URLs fail.
+            config_exc = exc
+
+        # Second try to get the eventloop information using the URLs
+        # defined in the saved rpc connection information.
+        if not eventloops:
+            saved_urls = self._get_saved_rpc_info_urls()
+            if saved_urls:
+                urls = yield self._build_rpc_info_urls(saved_urls)
+                try:
+                    eventloops, maas_url = (
+                        yield self._parallel_fetch_rpc_info(urls))
+                    if eventloops is None:
+                        maas_url = None
+                except:
+                    # Ignore this exception, the `config_exc` will be raised
+                    # instead, because that is the real issue. The rackd.conf
+                    # should point to an active region controller.
+                    pass
+
+        # Raise the `config_exc` if present and still not eventloops.
+        if not eventloops and config_exc is not None:
+            raise config_exc
+
+        return eventloops, maas_url
 
     def _calculate_interval(self, num_eventloops, num_connections):
         """Calculate the update interval.
@@ -1399,6 +1499,17 @@ class ClusterClientService(TimerService, object):
     def _drop_connection(self, connection):
         """Drop the given `connection`."""
         return connection.transport.loseConnection()
+
+    def add_connection(self, eventloop, connection):
+        """Add the connection to the tracked connections.
+
+        Update the saved RPC info state information based on the new
+        connection.
+        """
+        if eventloop in self.try_connections:
+            del self.try_connections[eventloop]
+        self.connections[eventloop] = connection
+        self._update_saved_rpc_info_state()
 
     def remove_connection(self, eventloop, connection):
         """Remove the connection from the tracked connections.
