@@ -13,6 +13,7 @@ from functools import partial
 from math import ceil
 
 from apiclient.creds import convert_tuple_to_string
+from django.db.transaction import TransactionManagementError
 from lxml import etree
 from maasserver import logger
 from maasserver.models.node import (
@@ -30,7 +31,10 @@ from maasserver.models.user import (
     get_creds_tuple,
 )
 from maasserver.rpc import getAllClients
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    in_transaction,
+    transactional,
+)
 from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
@@ -78,7 +82,6 @@ def chunk_list(items, num_chunks):
 
 
 @synchronous
-@transactional
 def populate_tags(tag):
     """Evaluate `tag` for all nodes.
 
@@ -93,36 +96,51 @@ def populate_tags(tag):
       good thing to be waiting for in a web request.
 
     """
+    # This function cannot be called inside a transaction. The function manages
+    # its own transaction.
+    if in_transaction():
+        raise TransactionManagementError(
+            '`populate_tags` cannot be called inside an existing transaction.')
+
     logger.debug('Evaluating the "%s" tag for all nodes.', tag.name)
+
     clients = getAllClients()
     if len(clients) == 0:
         # We have no clients so we need to do the work locally.
-        return populate_tag_for_multiple_nodes(tag, Node.objects.all())
+        @transactional
+        def _populate_tag():
+            return populate_tag_for_multiple_nodes(tag, Node.objects.all())
+
+        return _populate_tag()
     else:
         # Split the work between the connected rack controllers.
-        node_ids = Node.objects.all().values_list("system_id", flat=True)
-        node_ids = [{"system_id": node_id} for node_id in node_ids]
-        chunked_node_ids = list(chunk_list(node_ids, len(clients)))
-        connected_racks = []
-        for idx, client in enumerate(clients):
-            rack = RackController.objects.get(system_id=client.ident)
-            token = _get_or_create_auth_token(rack.owner)
-            creds = convert_tuple_to_string(get_creds_tuple(token))
-            if len(chunked_node_ids) > idx:
-                connected_racks.append({
-                    "system_id": rack.system_id,
-                    "hostname": rack.hostname,
-                    "client": client,
-                    "tag_name": tag.name,
-                    "tag_definition": tag.definition,
-                    "tag_nsmap": [
-                        {"prefix": prefix, "uri": uri}
-                        for prefix, uri in tag_nsmap.items()
-                    ],
-                    "credentials": creds,
-                    "nodes": list(chunked_node_ids[idx]),
-                })
-        return _do_populate_tags(connected_racks)
+        @transactional
+        def _generate_work():
+            node_ids = Node.objects.all().values_list("system_id", flat=True)
+            node_ids = [{"system_id": node_id} for node_id in node_ids]
+            chunked_node_ids = list(chunk_list(node_ids, len(clients)))
+            connected_racks = []
+            for idx, client in enumerate(clients):
+                rack = RackController.objects.get(system_id=client.ident)
+                token = _get_or_create_auth_token(rack.owner)
+                creds = convert_tuple_to_string(get_creds_tuple(token))
+                if len(chunked_node_ids) > idx:
+                    connected_racks.append({
+                        "system_id": rack.system_id,
+                        "hostname": rack.hostname,
+                        "client": client,
+                        "tag_name": tag.name,
+                        "tag_definition": tag.definition,
+                        "tag_nsmap": [
+                            {"prefix": prefix, "uri": uri}
+                            for prefix, uri in tag_nsmap.items()
+                        ],
+                        "credentials": creds,
+                        "nodes": list(chunked_node_ids[idx]),
+                    })
+            return connected_racks
+
+        return _do_populate_tags(_generate_work())
 
 
 def _get_or_create_auth_token(user):

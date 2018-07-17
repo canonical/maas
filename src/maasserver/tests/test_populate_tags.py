@@ -12,6 +12,7 @@ from unittest.mock import (
 )
 
 from apiclient.creds import convert_tuple_to_string
+from django.db import transaction
 from fixtures import FakeLogger
 from maasserver import (
     populate_tags as populate_tags_module,
@@ -240,6 +241,12 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         return self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+    def test__populate_tags_fails_called_in_transaction(self):
+        with transaction.atomic():
+            tag = factory.make_Tag(populate=False)
+            self.assertRaises(
+                transaction.TransactionManagementError, populate_tags, tag)
 
     def test__calls_are_made_to_all_clusters(self):
         rpc_fixture = self.prepare_live_rpc()
