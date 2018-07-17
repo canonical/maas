@@ -1,137 +1,246 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test builtin_script fio."""
 
 __all__ = []
 
-from copy import deepcopy
-import io
 import os
-import re
-from subprocess import (
-    PIPE,
-    Popen,
-    STDOUT,
-)
+from pathlib import Path
+import random
+from subprocess import CalledProcessError
 from textwrap import dedent
-from unittest.mock import ANY
+from unittest.mock import (
+    ANY,
+    call,
+)
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.fixtures import TempDirectory
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import fio
 import yaml
 
 
-FIO_READ_OUTPUT = dedent("""
+FIO_OLD_READ_OUTPUT = dedent("""
     ...
     Starting 1 process
     Jobs: 1 (f=1): [r] [100.0% done] [62135K/0K /s] [15.6K/0 iops]
     test: (groupid=0, jobs=1): err= 0: pid=31181: Fri May 9 15:38:57 2014
-      read : io=1024.0MB, bw=62748KB/s, iops=15686 , runt= 16711msec
+      read : io=1024.0MB, bw={bw}KB/s, iops={iops} , runt= 16711msec
       ...
     """)
 
-FIO_WRITE_OUTPUT = dedent("""
+FIO_OLD_WRITE_OUTPUT = dedent("""
     ...
     Starting 1 process
     Jobs: 1 (f=1): [w] [100.0% done] [0K/26326K /s] [0 /6581 iops]
     test: (groupid=0, jobs=1): err= 0: pid=31235: Fri May 9 16:16:21 2014
-      write: io=1024.0MB, bw=29195KB/s, iops=7298 , runt= 35916msec
+      write: io=1024.0MB, bw={bw}KB/s, iops={iops} , runt= 35916msec
       ...
     """)
 
+FIO_NEW_READ_OUTPUT = dedent("""
+fio-3.1
+Starting 1 process
+{{
+    "jobs" : [
+        {{
+            "read" : {{
+                "bw" : {bw},
+                "iops" : {iops}
+            }}
+        }}
+     ]
+}}
 
-class TestFioTest(MAASTestCase):
+fio_test: (groupid=0, jobs=1): err= 0: pid=2119: Tue Jul 17 17:00:41 2018
+   read: IOPS=117k, BW=458MiB/s (480MB/s)(4096MiB/8951msec)
+   bw (  KiB/s): min=427920, max=520120, per=100.00%, avg={bw}, stdev=27642.16
+   iops        : min=106980, max=130030, avg={iops}, stdev=6910.54, samples=17
+  cpu          : usr=11.64%, sys=39.18%, ctx=32963, majf=0, minf=75
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwt: total=1048576,0,0, short=0,0,0, dropped=0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+""")
 
-    def test_run_cmd_runs_cmd_and_returns_output(self):
-        cmd = factory.make_string()
-        output = factory.make_string()
-        mock_popen = self.patch(fio, "Popen")
-        mock_popen.return_value = Popen(
-            ['echo', '-n', output], stdout=PIPE, stderr=PIPE)
+FIO_NEW_WRITE_OUTPUT = dedent("""
+fio-3.1
+Starting 1 process
+{{
+    "jobs" : [
+        {{
+            "write" : {{
+                "bw" : {bw},
+                "iops" : {iops}
+            }}
+        }}
+     ]
+}}
 
-        cmd_output = fio.run_cmd(cmd)
+fio_test: (groupid=0, jobs=1): err= 0: pid=2235: Tue Jul 17 17:10:30 2018
+  write: IOPS=123k, BW=480MiB/s (504MB/s)(4096MiB/8526msec)
+   bw (  KiB/s): min=  512, max=1146456, per=100.00%, avg={bw}, stdev=376195.87
+   iops        : min=  128, max=286614, avg={iops}, stdev=94048.97, samples=14
+  cpu          : usr=10.84%, sys=32.75%, ctx=301, majf=0, minf=9
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwt: total=0,1048576,0, short=0,0,0, dropped=0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+""")
 
-        self.assertEquals((output.encode(), 0), cmd_output)
-        self.assertThat(mock_popen, MockCalledOnceWith(
-            cmd, stdout=PIPE, stderr=STDOUT))
+
+class TestFioTestRunCmd(MAASTestCase):
+
+    scenarios = [
+        ('old_read', {
+            'output_template': FIO_OLD_READ_OUTPUT,
+            'readwrite': random.choice(['read', 'randread']),
+        }),
+        ('old_write', {
+            'output_template': FIO_OLD_WRITE_OUTPUT,
+            'readwrite': random.choice(['write', 'randwrite']),
+        }),
+        ('new_read', {
+            'output_template': FIO_NEW_READ_OUTPUT,
+            'readwrite': random.choice(['read', 'randread']),
+        }),
+        ('new_write', {
+            'output_template': FIO_NEW_WRITE_OUTPUT,
+            'readwrite': random.choice(['write', 'randwrite']),
+        }),
+    ]
+
+    def setUp(self):
+        super().setUp()
+        self.mock_print = self.patch(fio, 'print')
+        self.mock_stdout_write = self.patch(fio.sys.stdout, 'write')
+        self.mock_stderr_write = self.patch(fio.sys.stderr, 'write')
+        self.mock_check_output = self.patch(fio, 'check_output')
+        self.bw = random.randint(1000, 1000000000)
+        self.iops = random.randint(1000, 1000000000)
+
+    def test_runs_command_outputs_and_returns_results(self):
+        output = self.output_template.format(bw=self.bw, iops=self.iops)
+        self.mock_check_output.return_value = output.encode()
+
+        results = fio.run_cmd(self.readwrite)
+
+        self.assertThat(self.mock_print, MockCallsMatch(
+            call(ANY),
+            call(ANY),
+            call('\n%s\n' % str('-' * 80))))
+        self.assertDictEqual({
+            'bw': self.bw,
+            'iops': self.iops,
+            }, results)
 
     def test_run_cmd_runs_cmd_and_exits_on_error(self):
-        cmd = factory.make_string()
-        mock_popen = self.patch(fio, "Popen")
-        proc = mock_popen.return_value
-        proc.communicate.return_value = (b"Output", None)
-        proc.returncode = 1
+        stdout = factory.make_string()
+        stderr = factory.make_string()
+        self.mock_check_output.side_effect = CalledProcessError(
+            output=stdout.encode(), stderr=stderr.encode(),
+            cmd=['fio'], returncode=1)
 
-        self.assertRaises(SystemExit, fio.run_cmd, cmd)
-        self.assertThat(mock_popen, MockCalledOnceWith(
-            cmd, stdout=PIPE, stderr=STDOUT))
+        self.assertRaises(SystemExit, fio.run_cmd, self.readwrite)
+        self.assertThat(self.mock_stderr_write, MockCallsMatch(
+            call('fio failed to run!\n'),
+            call(stderr)))
+        self.assertThat(self.mock_stdout_write, MockCalledOnceWith(stdout))
 
-    def test_run_fio_test_runs_test(self):
-        result_path = factory.make_string()
-        readwrite = factory.make_string()
-        cmd = deepcopy(fio.CMD)
-        cmd.append('--readwrite=%s' % readwrite)
-        returncode = 0
-        mock_run_cmd = self.patch(fio, "run_cmd")
-        mock_run_cmd.return_value = (
-            FIO_READ_OUTPUT.encode('utf-8'), returncode)
-        mock_re_search = self.patch(re, "search")
-        fio.run_fio_test(readwrite, result_path)
 
-        self.assertThat(mock_run_cmd, MockCalledOnceWith(cmd))
-        self.assertThat(mock_re_search, MockCalledOnceWith(
-            fio.REGEX, FIO_READ_OUTPUT.encode('utf-8')))
+class TestFioTestRunFio(MAASTestCase):
 
-    def test_run_fio_test_exits_if_no_match_found(self):
-        result_path = factory.make_string()
-        readwrite = factory.make_string()
-        cmd = deepcopy(fio.CMD)
-        cmd.append('--readwrite=%s' % readwrite)
-        returncode = 0
-        mock_run_cmd = self.patch(fio, "run_cmd")
-        mock_run_cmd.return_value = (
-            FIO_WRITE_OUTPUT.encode('utf-8'), returncode)
-        mock_re_search = self.patch(re, "search")
-        mock_re_search.return_value = None
-        fio.run_fio_test(readwrite, result_path)
+    scenarios = [
+        ('old', {
+            'read_output_template': FIO_OLD_READ_OUTPUT,
+            'write_output_template': FIO_OLD_WRITE_OUTPUT,
+        }),
+        ('new', {
+            'read_output_template': FIO_NEW_READ_OUTPUT,
+            'write_output_template': FIO_NEW_WRITE_OUTPUT,
+        }),
+    ]
 
-        self.assertThat(mock_run_cmd, MockCalledOnceWith(cmd))
-        self.assertThat(mock_re_search, MockCalledOnceWith(
-            fio.REGEX, FIO_WRITE_OUTPUT.encode('utf-8')))
+    def setUp(self):
+        super().setUp()
+        self.mock_print = self.patch(fio, 'print')
+        self.mock_stdout_write = self.patch(fio.sys.stdout, 'write')
+        self.mock_stderr_write = self.patch(fio.sys.stderr, 'write')
+        self.mock_check_output = self.patch(fio, 'check_output')
 
     def test_run_fio_writes_yaml_file(self):
-        self.patch(os, 'environ', {
-            "RESULT_PATH": factory.make_name()
-        })
-        disk = factory.make_name('disk')
-        read_match = re.search(fio.REGEX, FIO_READ_OUTPUT.encode('utf-8'))
-        write_match = re.search(fio.REGEX, FIO_WRITE_OUTPUT.encode('utf-8'))
-        mock_run_fio_test = self.patch(fio, "run_fio_test")
-        mock_run_fio_test.side_effect = [
-            read_match, read_match, write_match, write_match]
-        mock_open = self.patch(fio, "open")
-        mock_open.return_value = io.StringIO()
-        mock_yaml_safe_dump = self.patch(yaml, "safe_dump")
-        # For the test, we will just use the same fio result for both
-        # random and sequential.
-        results = {
-            'status': "passed",
-            'results': {
-                'random_read': read_match.group(1).decode(),
-                'random_read_iops': read_match.group(2).decode(),
-                'sequential_read': read_match.group(1).decode(),
-                'sequential_read_iops': read_match.group(2).decode(),
-                'random_write': write_match.group(1).decode(),
-                'random_write_iops': write_match.group(2).decode(),
-                'sequential_write': write_match.group(1).decode(),
-                'sequential_write_iops': write_match.group(2).decode(),
-            }
-        }
-        fio.run_fio(disk)
+        tmp_path = Path(self.useFixture(TempDirectory()).path)
+        result_path = tmp_path.joinpath('results.yaml')
+        self.patch(os, 'environ', {'RESULT_PATH': result_path})
+        rand_read_bw = random.randint(1000, 1000000000)
+        rand_read_iops = random.randint(1000, 1000000000)
+        rand_read_output = self.read_output_template.format(
+            bw=rand_read_bw, iops=rand_read_iops).encode()
+        seq_read_bw = random.randint(1000, 1000000000)
+        seq_read_iops = random.randint(1000, 1000000000)
+        seq_read_output = self.read_output_template.format(
+            bw=seq_read_bw, iops=seq_read_iops).encode()
+        rand_write_bw = random.randint(1000, 1000000000)
+        rand_write_iops = random.randint(1000, 1000000000)
+        rand_write_output = self.write_output_template.format(
+            bw=rand_write_bw, iops=rand_write_iops).encode()
+        seq_write_bw = random.randint(1000, 1000000000)
+        seq_write_iops = random.randint(1000, 1000000000)
+        seq_write_output = self.write_output_template.format(
+            bw=seq_write_bw, iops=seq_write_iops).encode()
+        self.mock_check_output.side_effect = [
+            rand_read_output, seq_read_output,
+            rand_write_output, seq_write_output,
+        ]
 
-        self.assertThat(mock_open, MockCalledOnceWith(ANY, "w"))
-        self.assertThat(mock_yaml_safe_dump, MockCalledOnceWith(
-            results, mock_open.return_value))
+        fio.run_fio(factory.make_name('blockdevice'))
+
+        with open(result_path, 'r') as results_file:
+            results = yaml.safe_load(results_file)
+
+        self.assertDictEqual({'results': {
+            'random_read': '%s KB/s' % rand_read_bw,
+            'random_read_iops': rand_read_iops,
+            'sequential_read': '%s KB/s' % seq_read_bw,
+            'sequential_read_iops': seq_read_iops,
+            'random_write': '%s KB/s' % rand_write_bw,
+            'random_write_iops': rand_write_iops,
+            'sequential_write': '%s KB/s' % seq_write_bw,
+            'sequential_write_iops': seq_write_iops,
+            }}, results)
+
+    def test_run_fio_doenst_write_yaml_file(self):
+        mock_open = self.patch(fio, 'open')
+        rand_read_bw = random.randint(1000, 1000000000)
+        rand_read_iops = random.randint(1000, 1000000000)
+        rand_read_output = self.read_output_template.format(
+            bw=rand_read_bw, iops=rand_read_iops).encode()
+        seq_read_bw = random.randint(1000, 1000000000)
+        seq_read_iops = random.randint(1000, 1000000000)
+        seq_read_output = self.read_output_template.format(
+            bw=seq_read_bw, iops=seq_read_iops).encode()
+        rand_write_bw = random.randint(1000, 1000000000)
+        rand_write_iops = random.randint(1000, 1000000000)
+        rand_write_output = self.write_output_template.format(
+            bw=rand_write_bw, iops=rand_write_iops).encode()
+        seq_write_bw = random.randint(1000, 1000000000)
+        seq_write_iops = random.randint(1000, 1000000000)
+        seq_write_output = self.write_output_template.format(
+            bw=seq_write_bw, iops=seq_write_iops).encode()
+        self.mock_check_output.side_effect = [
+            rand_read_output, seq_read_output,
+            rand_write_output, seq_write_output,
+        ]
+
+        fio.run_fio(factory.make_name('blockdevice'))
+
+        self.assertThat(mock_open, MockNotCalled())
