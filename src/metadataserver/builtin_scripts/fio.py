@@ -3,8 +3,9 @@
 # fio - Run fio on supplied drive.
 #
 # Author: Newell Jensen <newell.jensen@canonical.com>
+#         Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017 Canonical
+# Copyright (C) 2017-2018 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -53,7 +54,9 @@
 #   title: Sequential write IOPS
 #   description: IOPS when reading sequentialy from the disk.
 # parameters:
-#  storage: {type: storage}
+#  storage:
+#    type: storage
+#    argument_format: '{path}'
 # packages: {apt: fio}
 # destructive: true
 # --- End MAAS 1.0 script metadata ---
@@ -61,92 +64,124 @@
 
 import argparse
 from copy import deepcopy
+import json
 import os
 import re
 from subprocess import (
-    PIPE,
-    Popen,
-    STDOUT,
+    CalledProcessError,
+    check_output,
 )
 import sys
 
 import yaml
 
-
+# When given --output-format=normal,json fio > 3 outputs both normal
+# and json format. Older versions just output the normal format.
 CMD = [
     'sudo', '-n', 'fio', '--randrepeat=1', '--ioengine=libaio',
     '--direct=1', '--gtod_reduce=1', '--name=fio_test', '--bs=4k',
-    '--iodepth=64', '--size=4G'
+    '--iodepth=64', '--size=4G', '--output-format=normal,json'
 ]
 
-REGEX = b"bw=([0-9\.]+[a-zA-Z]+/s),\siops=([0-9]+)"
+
+REGEX = re.compile(r'''
+    (
+        # fio-3+ outputs both formats, this regex pulls out the JSON.
+        (?P<pre_output>[^\{]*)(?P<json>^{.*^}$\n)(?P<post_output>.*)
+    ) | (
+        # fio < 3 will only output the normal output. Search for the
+        # values we need.
+        (
+            ^\s+(read\s*:|write:).*
+            bw=(?P<bw>.+)(?P<bw_unit>[KMG]B/s),.*iops=(?P<iops>\d+)
+        )
+    )
+''', re.MULTILINE | re.DOTALL | re.VERBOSE)
 
 
-def run_cmd(cmd):
-    """Execute `cmd` and return output or exit if error."""
-    proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
-    # Currently, we are piping stderr to STDOUT.
-    stdout, _ = proc.communicate()
-
-    # Print stdout to the console.
-    if stdout is not None:
-        print('Running command: %s\n' % ' '.join(cmd))
-        print(stdout.decode())
-        print('-' * 80)
-    if proc.returncode == 0:
-        return stdout, proc.returncode
-    sys.exit(proc.returncode)
-
-
-def run_fio_test(readwrite, result_path):
-    """Run fio for the given type of test specified by `cmd`."""
+def run_cmd(readwrite, result_break=True):
+    """Execute `CMD` and return output or exit if error."""
     cmd = deepcopy(CMD)
     cmd.append('--readwrite=%s' % readwrite)
-    stdout, returncode = run_cmd(cmd)
-    if result_path is not None:
-        # Parse the results for the desired information and
-        # then wrtie this to the results file.
-        match = re.search(REGEX, stdout)
-        if match is None:
-            print("Warning: results could not be found.")
-        return match
+    print('Running command: %s\n' % ' '.join(cmd))
+    try:
+        stdout = check_output(cmd)
+    except CalledProcessError as e:
+        sys.stderr.write('fio failed to run!\n')
+        sys.stdout.write(e.stdout.decode())
+        if e.stderr is not None:
+            sys.stderr.write(e.stderr.decode())
+        sys.exit(e.returncode)
+
+    stdout = stdout.decode()
+    match = REGEX.search(stdout)
+    if match is not None:
+        regex_results = match.groupdict()
+    else:
+        regex_results = {}
+    if regex_results['json'] is not None:
+        # fio >= 3 - Only print the output, parse the JSON.
+        full_output = ''
+        for output in ['pre_output', 'post_output']:
+            if regex_results[output] is not None:
+                full_output += regex_results[output].strip()
+        print(full_output)
+        fio_dict = json.loads(regex_results['json'])['jobs'][0][
+            'read' if 'read' in readwrite else 'write']
+        results = {
+            'bw': int(fio_dict['bw']),
+            'iops': int(fio_dict['iops']),
+        }
+    else:
+        # fio < 3 - Print the output, the regex should of found the results.
+        print(stdout)
+        bw = regex_results.get('bw')
+        if bw is not None:
+            # JSON output in fio >= 3 always returns bw in KB/s. Normalize here
+            # so units are always the same.
+            multiplier = {
+                'KB/s': 1,
+                'MB/s': 1000,
+                'GB/s': 1000 * 1000,
+            }
+            bw = int(float(bw) * multiplier[regex_results['bw_unit']])
+        iops = regex_results.get('iops')
+        if iops is not None:
+            iops = int(iops)
+        results = {
+            'bw': bw,
+            'iops': iops,
+        }
+    if result_break:
+        print('\n%s\n' % str('-' * 80))
+    return results
 
 
-def run_fio(storage):
+def run_fio(blockdevice):
     """Execute fio tests for supplied storage device.
 
     Performs random and sequential read and write tests.
     """
-    result_path = os.environ.get("RESULT_PATH")
-    CMD.append('--filename=%s' % storage)
-    random_read_match = run_fio_test("randread", result_path)
-    sequential_read_match = run_fio_test("read", result_path)
-    random_write_match = run_fio_test("randwrite", result_path)
-    sequential_write_match = run_fio_test("write", result_path)
+    CMD.append('--filename=%s' % blockdevice)
+    random_read = run_cmd("randread")
+    sequential_read = run_cmd("read")
+    random_write = run_cmd("randwrite")
+    sequential_write = run_cmd("write", False)
 
     # Write out YAML file if RESULT_PATH is set.
-    # The status is hardcoded at the moment because there isn't a
-    # degraded state yet for fio.  This most likely will change in
-    # the future when there is an agreed upon crtteria for fio to
-    # mark a storage device in the degraded state based on one of
-    # its tests.
-    if all(var is not None for var in [
-            result_path, random_read_match, sequential_read_match,
-            random_write_match, sequential_write_match]):
+    result_path = os.environ.get("RESULT_PATH")
+    if result_path is not None:
         results = {
-            'status': "passed",
             'results': {
-                'random_read': random_read_match.group(1).decode(),
-                'random_read_iops': random_read_match.group(2).decode(),
-                'sequential_read': sequential_read_match.group(1).decode(),
-                'sequential_read_iops': (
-                    sequential_read_match.group(2).decode()),
-                'random_write': random_write_match.group(1).decode(),
-                'random_write_iops': random_write_match.group(2).decode(),
-                'sequential_write': sequential_write_match.group(1).decode(),
-                'sequential_write_iops': (
-                    sequential_write_match.group(2).decode()),
-            }
+                'random_read': '%s KB/s' % random_read['bw'],
+                'random_read_iops': random_read['iops'],
+                'sequential_read': '%s KB/s' % sequential_read['bw'],
+                'sequential_read_iops': sequential_read['iops'],
+                'random_write': '%s KB/s' % random_write['bw'],
+                'random_write_iops': random_write['iops'],
+                'sequential_write': '%s KB/s' % sequential_write['bw'],
+                'sequential_write_iops': sequential_write['iops'],
+            },
         }
         with open(result_path, 'w') as results_file:
             yaml.safe_dump(results, results_file)
@@ -155,7 +190,6 @@ def run_fio(storage):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fio Hardware Testing.')
     parser.add_argument(
-        '--storage', dest='storage',
-        help='path to storage device you want to test. e.g. /dev/sda')
+        'blockdevice', help='The blockdevice you want to test. e.g. /dev/sda')
     args = parser.parse_args()
-    sys.exit(run_fio(args.storage))
+    sys.exit(run_fio(args.blockdevice))
