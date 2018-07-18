@@ -136,6 +136,8 @@ class PodHandler(OperationsHandler):
         :type power_pass: unicode
         :param zone: Name of the zone for the pod
         :type zone: unicode
+        :param host: The node that hosts this Pod.
+        :type host: unicode
         :param tags: A tag or tags (separated by comma) for the pod.
         :type tags: unicode
 

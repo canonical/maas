@@ -164,6 +164,7 @@ class TestPodForm(MAASTransactionServerTestCase):
                 'memory_over_commit_ratio',
                 'default_storage_pool',
                 'default_macvlan_mode',
+                'host',
             ], list(form.fields))
 
     def test_creates_pod_with_discovered_information(self):
@@ -277,6 +278,16 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pool.id, pod.pool.id)
+
+    def test_creates_pod_with_host(self):
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        host = factory.make_Node()
+        pod_info['host'] = host.system_id
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(host, pod.host)
 
     @wait_for_reactor
     @inlineCallbacks
