@@ -440,43 +440,39 @@
                                     <hr />
                                     <div class="row">
                                         <div class="col-6">
-                                            <div class="p-form--inline" data-ng-if="windowWidth <= 768" data-ng-if="!isMirror(repository)">
+                                            <div data-ng-if="windowWidth <= 768" data-ng-if="!isMirror(repository)">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
                                                     label="Name" input-class="p-form__control"
                                                     data-ng-if="!isMirror(repository)"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline" data-ng-if="windowWidth <= 768" data-ng-if="editRepository === repository">
+                                            <div data-ng-if="windowWidth <= 768" data-ng-if="editRepository === repository">
                                                 <maas-obj-field type="text" key="url" placeholder="URL"
                                                     label="URL" input-class="table__input u-margin--none"
                                                     data-ng-if="editRepository === repository"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline">
+                                            <div>
                                                 <maas-obj-field type="textarea" key="key" label="Key"
                                                     label-width="2" input-width="3"></maas-obj-field>
                                             </div>
                                         </div>
                                         <div class="col-6">
-                                            <div class="p-form--inline">
+                                            <div>
                                                 <maas-obj-field type="checkboxes" key="arches" label="Architectures"
                                                     label-width="2" input-width="3" values="known_architectures"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline"
-                                                data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
+                                            <div data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
                                                 <maas-obj-field type="tags" key="distributions" label="Distributions"
                                                     placeholder="Add a distribution" label-width="2" input-width="3"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline"
-                                                data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
+                                            <div data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
                                                 <maas-obj-field type="tags" key="components" label="Components"
                                                     placeholder="Add a component" label-width="2" input-width="3"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline"
-                                                data-ng-if="isMirror(editRepository) && !isPPA(editRepository)">
+                                            <div data-ng-if="isMirror(editRepository) && !isPPA(editRepository)">
                                                 <maas-obj-field type="checkboxes" key="disabled_pockets" label="Disabled Pockets"
                                                     label-width="2" input-width="3" values="pockets_to_disable"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline"
-                                                data-ng-if="isMirror(editRepository) && !isPPA(editRepository)">
+                                            <div data-ng-if="isMirror(editRepository) && !isPPA(editRepository)">
                                                 <maas-obj-field type="checkboxes" key="disabled_components" label="Disabled Components"
                                                     label-width="2" input-width="3" values="components_to_disable"></maas-obj-field>
                                             </div>
