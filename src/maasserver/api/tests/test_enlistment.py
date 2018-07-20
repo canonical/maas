@@ -7,15 +7,12 @@ __all__ = []
 
 import http.client
 import json
+import random
 
 from django.conf import settings
 from maasserver.api import machines as machines_module
 from maasserver.clusterrpc import boot_images
-from maasserver.enum import (
-    INTERFACE_TYPE,
-    NODE_STATUS,
-)
-from maasserver.fields import MAC
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Domain,
     Machine,
@@ -210,26 +207,6 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertNotEqual("", strip_domain(machine.hostname))
-
-    def test_POST_fails_if_mac_duplicated(self):
-        # Mac Addresses should be unique.
-        mac = 'aa:bb:cc:dd:ee:ff'
-        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac_address=MAC(mac))
-        architecture = make_usable_architecture(self)
-        response = self.client.post(
-            reverse('machines_handler'),
-            {
-                'architecture': architecture,
-                'hostname': factory.make_string(),
-                'mac_addresses': [mac],
-            })
-        parsed_result = json_load_bytes(response.content)
-
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIn('application/json', response['Content-Type'])
-        self.assertIn(
-            "MAC address %s already in use on" % mac,
-            parsed_result['mac_addresses'][0])
 
     def test_POST_fails_with_bad_operation(self):
         # If the operation ('op=operation_name') specified in the
@@ -478,6 +455,36 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         node_metadata = NodeMetadata.objects.get(node=machine, key='enlisting')
         self.assertEqual(node_metadata.value, 'True')
         self.assertThat(mock_create_machine, MockNotCalled())
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)['system_id'])
+
+    def test_POST_create_returns_machine_with_matching_mac(self):
+        hostname = factory.make_name('hostname')
+        machine = factory.make_Machine(
+            hostname=hostname, status=NODE_STATUS.NEW, architecture='')
+        macs = [
+            str(factory.make_Interface(node=machine).mac_address)
+            for _ in range(3)
+        ]
+        architecture = make_usable_architecture(self)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'hostname': 'maas-enlistment',
+                'architecture': architecture,
+                'mac_addresses': [
+                    # Machine only has to match one MAC address.
+                    random.choice(macs),
+                    # A MAC address unknown to MAAS shouldn't effect finding
+                    # the machine.
+                    factory.make_MAC(),
+                ],
+            })
+
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertEqual(hostname, machine.hostname)
+        self.assertEqual(architecture, machine.architecture)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
 

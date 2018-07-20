@@ -12,7 +12,10 @@ import json
 import re
 
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import Q
 from django.http import (
     HttpResponse,
@@ -51,6 +54,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -59,10 +63,12 @@ from maasserver.exceptions import (
     NodeStateViolation,
     Unauthorized,
 )
+from maasserver.fields import validate_mac
 from maasserver.forms import (
     AdminMachineForm,
     get_machine_create_form,
     get_machine_edit_form,
+    MachineForm,
 )
 from maasserver.forms.ephemeral import CommissionForm
 from maasserver.forms.filesystem import (
@@ -73,6 +79,7 @@ from maasserver.forms.pods import ComposeMachineForPodsForm
 from maasserver.models import (
     Config,
     Domain,
+    Interface,
     ISCSIBlockDevice,
     Machine,
     NodeMetadata,
@@ -1151,6 +1158,42 @@ class AnonMachinesHandler(AnonNodesHandler):
     read = update = delete = None
     base_model = Machine
 
+    def _update_new_node(
+            self, machine, architecture, power_type, power_parameters):
+        """Update a new machine's editable fields.
+
+        Update the power parameters with the new MAAS password and
+        ensure the architecture is set.
+        """
+        if not power_type and not power_parameters:
+            Form = MachineForm
+            data = {
+                'architecture': architecture,
+            }
+        else:
+            # AdminMachineForm must be used so the power parameters can be
+            # validated and updated.
+            Form = AdminMachineForm
+            data = {
+                'architecture': architecture,
+                'power_type': power_type,
+                'power_parameters': power_parameters,
+            }
+        fix_architecture(data)
+
+        form = Form(data=data, instance=machine, requires_arch=True)
+        if form.is_valid():
+            if machine.status == NODE_STATUS.NEW:
+                maaslog.info(
+                    "%s: Found existing machine, enlisting", machine.hostname)
+            else:
+                maaslog.info(
+                    "%s: Found existing machine, commissioning",
+                    machine.hostname)
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
     def create(self, request):
         # Note: this docstring is duplicated below. Be sure to update both.
         """Create a new Machine.
@@ -1203,45 +1246,63 @@ class AnonMachinesHandler(AnonNodesHandler):
             power type.
         :type power_parameters_{param1}: unicode
         """
-        # BMC enlistment is currently only done for IPMI.
-        # First, check if there is a pre-existing machine within MAAS that
-        # matches the request.
-        architecture = request.data.get('architecture', None)
-        power_type = request.data.get('power_type', None)
-        power_parameters = request.data.get('power_parameters', None)
+        architecture = request.data.get('architecture')
+        power_type = request.data.get('power_type')
+        power_parameters = request.data.get('power_parameters')
+        mac_addresses = request.data.getlist('mac_addresses')
         machine = None
-        if power_type == 'ipmi' and power_parameters is not None:
+
+        # BMC enlistment - Check if there is a pre-existing machine within MAAS
+        # that has the same BMC as a known node. Currently only IPMI is
+        # supported.
+        if power_type == 'ipmi' and power_parameters:
             params = json.loads(power_parameters)
             machine = Machine.objects.filter(
                 status__in=[NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING],
                 bmc__power_parameters__power_address=(
-                    params['power_address'])).first()
+                    params.get('power_address', ''))).first()
             if machine is not None:
-                # Update the power parameters with the new MAAS password and
-                # ensure the architecture is set.
-                data = {
-                    'architecture': architecture,
-                    'power_type': power_type,
-                    'power_parameters': power_parameters,
-                }
-                fix_architecture(data)
+                machine = self._update_new_node(
+                    machine, architecture, power_type, power_parameters)
 
-                # AdminMachineForm must be used so the power parameters can be
-                # updated.
-                form = AdminMachineForm(
-                    data=data, instance=machine, requires_arch=True)
-                if form.is_valid():
-                    machine = form.save()
-                else:
-                    raise MAASAPIValidationError(form.errors)
+        # MAC enlistment - Check if there is a pre-existing machine within MAAS
+        # that has an Interface with one of the given MAC addresses.
+        if machine is None and mac_addresses:
+            interface = None
+            # Validate all given MACs. If one isn't in a proper format filting
+            # on Interfaces below will give an InternalError that can't be
+            # caught.
+            macs_valid = True
+            for mac_address in mac_addresses:
+                try:
+                    validate_mac(mac_address)
+                except ValidationError:
+                    macs_valid = False
+                    break
+            if macs_valid:
+                interface = Interface.objects.filter(
+                    mac_address__in=mac_addresses,
+                    node__node_type=NODE_TYPE.MACHINE,
+                    node__status__in=[
+                        NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING],
+                ).first()
+            if interface is not None:
+                machine = self._update_new_node(
+                    interface.node.as_self(), architecture, power_type,
+                    power_parameters)
+
+        # If the machine isn't being enlisted by BMC or MAC create a new
+        # machine object.
         if machine is None:
             machine = create_machine(request, requires_arch=True)
+
         if machine.status == NODE_STATUS.NEW:
             # Make sure an enlisting NodeMetadata object exists if the machine
             # is NEW. When commissioning finishes this is how MAAS knows to
             # set the status to NEW instead of READY.
             NodeMetadata.objects.update_or_create(
                 node=machine, key='enlisting', defaults={'value': 'True'})
+
         return machine
 
     @operation(idempotent=False)
