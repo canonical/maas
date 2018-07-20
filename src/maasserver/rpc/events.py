@@ -93,3 +93,33 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
         Event.objects.create(
             node=interface.node, type=event_type, description=description,
             created=timestamp)
+
+
+@synchronous
+@transactional
+def send_event_ip_address(ip_address, type_name, description, timestamp):
+    """Send an event using IP address.
+
+    for :py:class:`~provisioningserver.rpc.region.SendEventIPAddress`.
+    """
+    try:
+        event_type = EventType.objects.get(name=type_name)
+    except EventType.DoesNotExist:
+        raise NoSuchEventType.from_name(type_name)
+
+    try:
+        node = Node.objects.get(
+            interface__ip_addresses__ip=ip_address)
+    except Node.DoesNotExist:
+        # The node doesn't exist, but we don't raise an exception - it's
+        # entirely possible the cluster has started sending events for a node
+        # that we don't know about yet. This is most likely to happen when a
+        # new node is trying to enlist.
+        log.debug(
+            "Event '{type}: {description}' sent for non-existent "
+            "node with IP address '{ip_address}'.",
+            type=type_name, description=description, ip_address=ip_address)
+    else:
+        Event.objects.create(
+            node=node, type=event_type, description=description,
+            created=timestamp)

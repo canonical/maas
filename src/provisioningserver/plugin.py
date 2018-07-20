@@ -8,6 +8,10 @@ __all__ = [
     "ProvisioningServiceMaker",
 ]
 
+from errno import ENOPROTOOPT
+import socket
+from socket import error as socket_error
+
 from provisioningserver import (
     logger,
     settings,
@@ -42,6 +46,35 @@ class ProvisioningServiceMaker:
     def __init__(self, name, description):
         self.tapname = name
         self.description = description
+
+    def _makeHTTPLogService(self):
+        """Create the HTTP log service."""
+        from provisioningserver.rackdservices.http import HTTPLogResource
+        from twisted.application.internet import StreamServerEndpointService
+        from twisted.internet.endpoints import AdoptedStreamServerEndpoint
+        from provisioningserver.utils.twisted import SiteNoLog
+
+        port = 5249
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        except socket_error as e:
+            if e.errno != ENOPROTOOPT:
+                raise e
+        s.bind(('::', port))
+        # Use a backlog of 50, which seems to be fairly common.
+        s.listen(50)
+        # Adopt this socket into Twisted's reactor.
+        site_endpoint = AdoptedStreamServerEndpoint(
+            reactor, s.fileno(), s.family)
+        site_endpoint.port = port  # Make it easy to get the port number.
+        site_endpoint.socket = s  # Prevent garbage collection.
+
+        http_log = StreamServerEndpointService(
+            site_endpoint, SiteNoLog(HTTPLogResource()))
+        http_log.setName("http_log")
+        return http_log
 
     def _makeTFTPService(
             self, tftp_root, tftp_port, rpc_service):
@@ -166,6 +199,7 @@ class ProvisioningServiceMaker:
         yield self._makeHTTPService(tftp_root, rpc_service)
         yield self._makeDNSService(rpc_service)
         # The following are network-accessible services.
+        yield self._makeHTTPLogService()
         yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)
 
     def _loadSettings(self):

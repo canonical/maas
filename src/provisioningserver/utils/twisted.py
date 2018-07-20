@@ -77,6 +77,7 @@ from twisted.python import (
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from twisted.web.iweb import IAccessLogFormatter
+from twisted.web.server import Site
 from zope import interface
 from zope.interface import provider
 
@@ -1138,3 +1139,11 @@ def reducedWebLogFormatter(timestamp, request):
         method=field(request.method, "???"), uri=field(request.uri, "-"),
         proto=field(request.clientproto, "-"),
     )
+
+
+class SiteNoLog(Site):
+    """A `Site` that does not log its request."""
+
+    def log(self, request):
+        # Do nothing.
+        pass

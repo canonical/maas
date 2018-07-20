@@ -6,7 +6,10 @@
 __all__ = []
 
 import random
-from unittest.mock import Mock
+from unittest.mock import (
+    ANY,
+    Mock,
+)
 
 import attr
 from maastesting.factory import factory
@@ -24,6 +27,7 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver import services
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rackdservices import http
 from provisioningserver.rpc import (
     common,
@@ -39,6 +43,9 @@ from testtools.matchers import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
+from twisted.web.http_headers import Headers
+from twisted.web.server import Request
+from twisted.web.test.test_web import DummyChannel
 
 
 def prepareRegion(test):
@@ -263,3 +270,34 @@ class TestRackHTTPService_Errors(MAASTestCase):
                 ...
                 maastesting.factory.TestException#...
                 """))
+
+
+class TestHTTPLogResource(MAASTestCase):
+
+    def test_render_GET_logs_node_event_with_original_path_ip(self):
+        path = factory.make_name('path')
+        ip = factory.make_ip_address()
+        request = Request(DummyChannel(), False)
+        request.requestHeaders = Headers({
+            'X-Original-URI': [path],
+            'X-Original-Remote-IP': [ip],
+        })
+
+        log_info = self.patch(http.log, 'info')
+        mock_deferLater = self.patch(http, 'deferLater')
+        mock_deferLater.side_effect = always_succeed_with(None)
+
+        resource = http.HTTPLogResource()
+        resource.render_GET(request)
+
+        self.assertThat(
+            log_info,
+            MockCalledOnceWith(
+                "{path} requested by {remote_host}",
+                path=path, remote_host=ip))
+        self.assertThat(
+            mock_deferLater,
+            MockCalledOnceWith(
+                ANY, 0, http.send_node_event_ip_address,
+                event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+                ip_address=ip, description=path))

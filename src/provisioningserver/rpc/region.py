@@ -372,6 +372,24 @@ class SendEventMACAddress(amp.Command):
     }
 
 
+class SendEventIPAddress(amp.Command):
+    """Send an event by IP address.
+
+    :since: 2.5
+    """
+
+    arguments = [
+        (b"ip_address", amp.Unicode()),
+        (b"type_name", amp.Unicode()),
+        (b"description", amp.Unicode()),
+    ]
+    response = []
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+        NoSuchEventType: b"NoSuchEventType"
+    }
+
+
 class ReportForeignDHCPServer(amp.Command):
     """Report a foreign DHCP server on a rack controller's interface.
 

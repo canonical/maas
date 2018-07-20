@@ -5,6 +5,7 @@
 
 __all__ = [
     "RackHTTPService",
+    "HTTPLogResource",
 ]
 
 from collections import defaultdict
@@ -14,6 +15,10 @@ import sys
 
 import attr
 from netaddr import IPAddress
+from provisioningserver.events import (
+    EVENT_TYPES,
+    send_node_event_ip_address,
+)
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.service_monitor import service_monitor
@@ -24,8 +29,11 @@ from provisioningserver.utils import (
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import callOut
 from twisted.application.internet import TimerService
+from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
+from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
+from twisted.web import resource
 
 
 log = LegacyLogger()
@@ -191,3 +199,26 @@ class _Configuration:
 
     # Addresses of upstream HTTP servers.
     upstream_http = attr.ib(converter=frozenset)
+
+
+class HTTPLogResource(resource.Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        # Extract the original path and original IP of the request.
+        path = request.getHeader('X-Original-URI')
+        remote_host = request.getHeader('X-Original-Remote-IP')
+
+        # Log the HTTP request to rackd.log and push that event to the
+        # region controller.
+        log.info(
+            "{path} requested by {remote_host}",
+            path=path, remote_host=remote_host)
+        d = deferLater(
+            reactor, 0, send_node_event_ip_address,
+            event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+            ip_address=remote_host, description=path)
+        d.addErrback(log.err, "Logging HTTP request failed.")
+
+        # Respond empty to nginx.
+        return b''

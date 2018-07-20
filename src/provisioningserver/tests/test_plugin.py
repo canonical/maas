@@ -58,6 +58,7 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+from twisted.application.internet import StreamServerEndpointService
 from twisted.application.service import MultiService
 
 
@@ -106,7 +107,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "dns",
-            "rpc", "rpc-ping", "http", "tftp", "service_monitor",
+            "rpc", "rpc-ping", "http", "http_log", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
@@ -131,7 +132,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "ntp", "dns",
-            "rpc", "rpc-ping", "http", "tftp", "service_monitor",
+            "rpc", "rpc-ping", "http", "http_log", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
@@ -215,6 +216,13 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options, clock=None)
         dns_service = service.getServiceNamed("dns")
         self.assertIsInstance(dns_service, RackDNSService)
+
+    def test_http_service(self):
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options, clock=None)
+        http_log = service.getServiceNamed("http_log")
+        self.assertIsInstance(http_log, StreamServerEndpointService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

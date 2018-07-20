@@ -236,7 +236,6 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_reader_regular_file(self):
         # TFTPBackend.get_reader() returns a regular FilesystemReader for
         # paths not matching re_config_file.
-        self.patch(tftp_module, 'get_remote_mac')
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
         self.addCleanup(reader.finish)
@@ -246,8 +245,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_reader_handles_backslashes_in_path(self):
-        self.patch(tftp_module, 'get_remote_mac')
-
         data = factory.make_string().encode("ascii")
         temp_dir = self.make_dir()
         subdir = factory.make_name('subdir')
@@ -266,25 +263,13 @@ class TestTFTPBackend(MAASTestCase):
         self.assertEqual(b"", reader.read(1))
 
     @inlineCallbacks
-    def test_get_reader_logs_node_event_with_mac_address(self):
-        mac_address = factory.make_mac_address()
-        self.patch(tftp_module, 'get_remote_mac').return_value = mac_address
+    def test_get_reader_logs_node_event(self):
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
         self.addCleanup(reader.finish)
         self.assertThat(
             tftp_module.log_request,
-            MockCalledOnceWith(mac_address, ANY))
-
-    @inlineCallbacks
-    def test_get_reader_does_not_log_when_mac_cannot_be_found(self):
-        self.patch(tftp_module, 'get_remote_mac').return_value = None
-        data = factory.make_string().encode("ascii")
-        reader = yield self.get_reader(data)
-        self.addCleanup(reader.finish)
-        self.assertThat(
-            tftp_module.log_request,
-            MockNotCalled())
+            MockCalledOnceWith(ANY))
 
     @inlineCallbacks
     def test_get_reader_converts_BootConfigNoResponse_to_FileNotFound(self):
@@ -1041,37 +1026,42 @@ class TestLogRequest(MAASTestCase):
 
     def test__defers_log_call_later(self):
         clock = Clock()
-        log_request(sentinel.macaddr, sentinel.filename, clock)
+        log_request(sentinel.filename, clock)
         self.expectThat(clock.calls, HasLength(1))
         [call] = clock.calls
         self.expectThat(call.getTime(), Equals(0.0))
 
     def test__sends_event_later(self):
-        send_event = self.patch(tftp_module, "send_node_event_mac_address")
+        send_event = self.patch(tftp_module, "send_node_event_ip_address")
+        ip = factory.make_ip_address()
+        self.patch(tftp_module.tftp, 'get_remote_address').return_value = (
+            ip, sentinel.port)
         clock = Clock()
-        log_request(sentinel.macaddr, sentinel.filename, clock)
+        log_request(sentinel.filename, clock)
         self.assertThat(send_event, MockNotCalled())
         clock.advance(0.0)
         self.assertThat(send_event, MockCalledOnceWith(
-            mac_address=sentinel.macaddr, description=sentinel.filename,
+            ip_address=ip, description=sentinel.filename,
             event_type=EVENT_TYPES.NODE_TFTP_REQUEST))
 
     def test__logs_to_server_log(self):
-        self.patch(tftp_module, "send_node_event_mac_address")
+        self.patch(tftp_module, "send_node_event_ip_address")
+        ip = factory.make_ip_address()
+        self.patch(tftp_module.tftp, 'get_remote_address').return_value = (
+            ip, sentinel.port)
         clock = Clock()
-        mac_address = factory.make_mac_address()
         file_name = factory.make_name("file")
         with TwistedLoggerFixture() as logger:
-            log_request(mac_address, file_name, clock)
+            log_request(file_name, clock)
             clock.advance(0.0)  # Don't leave anything in the reactor.
         self.assertThat(logger.output, Equals(
-            "%s requested by %s" % (file_name, mac_address)))
+            "%s requested by %s" % (file_name, ip)))
 
     def test__logs_when_sending_event_errors(self):
-        send_event = self.patch(tftp_module, "send_node_event_mac_address")
+        send_event = self.patch(tftp_module, "send_node_event_ip_address")
         send_event.side_effect = factory.make_exception()
         clock = Clock()
-        log_request(sentinel.macaddr, sentinel.filename, clock)
+        log_request(sentinel.filename, clock)
         self.assertThat(send_event, MockNotCalled())
         with TwistedLoggerFixture() as logger:
             clock.advance(0.0)

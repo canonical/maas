@@ -321,6 +321,21 @@ class Region(RPCProtocol):
         # Don't wait for the record to be written.
         return succeed({})
 
+    @region.SendEventIPAddress.responder
+    def send_event_ip_address(self, ip_address, type_name, description):
+        """send_event_ip_address()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.SendEventIPAddress`.
+        """
+        timestamp = datetime.now()
+        dbtasks = eventloop.services.getServiceNamed("database-tasks")
+        dbtasks.addTask(
+            events.send_event_ip_address, ip_address,
+            type_name, description, timestamp)
+        # Don't wait for the record to be written.
+        return succeed({})
+
     @region.ReportForeignDHCPServer.responder
     def report_foreign_dhcp_server(
             self, system_id, interface_name, dhcp_ip=None):

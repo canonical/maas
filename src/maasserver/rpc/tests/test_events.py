@@ -92,3 +92,36 @@ class TestSendEventMACAddress(MAASServerTestCase):
         Event.objects.get(
             node=node, type=event_type, description=description,
             created=timestamp)
+
+
+class TestSendEventIPAddress(MAASServerTestCase):
+
+    def test__errors_when_no_event_type(self):
+        name = factory.make_name('name')
+        description = factory.make_name('description')
+        self.assertRaises(
+            NoSuchEventType, events.send_event_ip_address,
+            factory.make_ip_address(), name, description,
+            datetime.datetime.utcnow())
+
+    def test__silent_when_no_node(self):
+        event_type = factory.make_EventType()
+        description = factory.make_name('description')
+        # Exception should not be raised.
+        events.send_event_ip_address(
+            factory.make_ip_address(), event_type.name,
+            description, datetime.datetime.utcnow())
+
+    def test__creates_event_for_node(self):
+        event_type = factory.make_EventType()
+        node = factory.make_Node(interface=True)
+        description = factory.make_name('description')
+        timestamp = datetime.datetime.utcnow()
+        ip = factory.make_StaticIPAddress(interface=node.interface_set.first())
+        events.send_event_ip_address(
+            ip.ip, event_type.name,
+            description, timestamp)
+        # Doesn't raise a DoesNotExist error.
+        Event.objects.get(
+            node=node, type=event_type, description=description,
+            created=timestamp)

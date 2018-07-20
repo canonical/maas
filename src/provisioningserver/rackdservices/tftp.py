@@ -15,15 +15,12 @@ from socket import (
 )
 
 from netaddr import IPAddress
-from provisioningserver.boot import (
-    BootMethodRegistry,
-    get_remote_mac,
-)
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
-    send_node_event_mac_address,
+    send_node_event_ip_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.logger import (
@@ -112,7 +109,7 @@ def get_boot_image(params):
     return None
 
 
-def log_request(mac_address, file_name, clock=reactor):
+def log_request(file_name, clock=reactor):
     """Log a TFTP request.
 
     This will be logged to the regular log, and also to the node event log at
@@ -124,14 +121,15 @@ def log_request(mac_address, file_name, clock=reactor):
     if isinstance(file_name, bytes):
         file_name = file_name.decode("ascii", "replace")
     # Log to the regular log.
+    remote_host, _ = tftp.get_remote_address()
     log.info(
-        "{file_name} requested by {mac_address}", file_name=file_name,
-        mac_address=mac_address)
+        "{file_name} requested by {remote_host}",
+        file_name=file_name, remote_host=remote_host)
     # Log to the node event log.
     d = deferLater(
-        clock, 0, send_node_event_mac_address,
+        clock, 0, send_node_event_ip_address,
         event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
-        mac_address=mac_address, description=file_name)
+        ip_address=remote_host, description=file_name)
     d.addErrback(log.err, "Logging TFTP request failed.")
 
 
@@ -370,9 +368,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # of '/', example being 'bootx64.efi'. Convert all '\' to '/' to be
         # unix compatiable.
         file_name = file_name.replace(b'\\', b'/')
-        mac_address = get_remote_mac()
-        if mac_address is not None:
-            log_request(mac_address, file_name)
+        log_request(file_name)
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.no_response_errback, file_name)

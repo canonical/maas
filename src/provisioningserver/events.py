@@ -31,6 +31,7 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.region import (
     RegisterEventType,
     SendEvent,
+    SendEventIPAddress,
     SendEventMACAddress,
 )
 from provisioningserver.utils.env import get_maas_id
@@ -71,6 +72,8 @@ class EVENT_TYPES:
     NODE_PXE_REQUEST = 'NODE_PXE_REQUEST'
     # TFTP request event.
     NODE_TFTP_REQUEST = 'NODE_TFTP_REQUEST'
+    # HTTP request event.
+    NODE_HTTP_REQUEST = 'NODE_HTTP_REQUEST'
     # Other installation-related event types.
     NODE_INSTALLATION_FINISHED = "NODE_INSTALLATION_FINISHED"
     # Node status transition event.
@@ -191,6 +194,10 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_TFTP_REQUEST: EventDetail(
         description="TFTP Request",
+        level=DEBUG,
+    ),
+    EVENT_TYPES.NODE_HTTP_REQUEST: EventDetail(
+        description="HTTP Request",
         level=DEBUG,
     ),
     EVENT_TYPES.NODE_PXE_REQUEST: EventDetail(
@@ -534,6 +541,37 @@ class NodeEventHub:
 
         return d
 
+    @asynchronous
+    def logByIP(self, event_type, ip_address, description=""):
+        """Send the given node event to the region.
+
+        The node is specified by its MAC address.
+
+        :param event_type: The type of the event.
+        :type event_type: unicode
+        :param ip_address: The IP address of the node.
+        :type ip_address: unicode
+        :param description: An optional description of the event.
+        :type description: unicode
+        """
+        def send(_):
+            client = getRegionClient()
+            return client(
+                SendEventIPAddress, ip_address=ip_address,
+                type_name=event_type, description=description)
+
+        d = self.ensureEventTypeRegistered(event_type).addCallback(send)
+        d.addErrback(self._checkEventTypeRegistered, event_type)
+
+        # Suppress NoSuchNode. This happens during enlistment because the
+        # region does not yet know of the node; it's quite normal. Logging
+        # tracebacks telling us about it is not useful. Perhaps the region
+        # should store these logs anyway. Then, if and when the node is
+        # enlisted, logs prior to enlistment can be seen.
+        d.addErrback(suppress, NoSuchNode)
+
+        return d
+
 
 # Singleton.
 nodeEventHub = NodeEventHub()
@@ -566,6 +604,20 @@ def send_node_event_mac_address(event_type, mac_address, description=''):
     :type description: unicode
     """
     return nodeEventHub.logByMAC(event_type, mac_address, description)
+
+
+@asynchronous
+def send_node_event_ip_address(event_type, ip_address, description=''):
+    """Send the given node event to the region for the given IP address.
+
+    :param event_type: The type of the event.
+    :type event_type: unicode
+    :param ip_address: The IP Address of the node of the event.
+    :type ip_address: unicode
+    :param description: An optional description of the event.
+    :type description: unicode
+    """
+    return nodeEventHub.logByIP(event_type, ip_address, description)
 
 
 @asynchronous
