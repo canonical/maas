@@ -1907,19 +1907,19 @@
                                                 <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
                                                     <button class="p-contextual-menu__link"
                                                         aria-label="Add logical volume"
-                                                        data-ng-show="canAddLogicalVolume(item)"
+                                                        data-ng-show="canAddLogicalVolume(item) && availableMode !== 'logical-volume'"
                                                         data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</button>
                                                     <button class="p-contextual-menu__link"
                                                         aria-label="Partition"
-                                                        data-ng-show="canAddPartition(item)"
+                                                        data-ng-show="canAddPartition(item) && availableMode !== 'partition'"
                                                         data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</button>
                                                     <button class="p-contextual-menu__link"
                                                         aria-label="Edit"
-                                                        data-ng-show="canEdit(item)"
+                                                        data-ng-show="canEdit(item) && availableMode !== 'edit'"
                                                         data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</button>
                                                     <button class="p-contextual-menu__link"
                                                         aria-label="Remove"
-                                                        data-ng-show="canDelete(item)"
+                                                        data-ng-show="canDelete(item) && availableMode !== 'delete'"
                                                         data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</button>
                                                 </div>
                                             </div>
