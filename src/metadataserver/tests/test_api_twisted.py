@@ -7,9 +7,13 @@ __all__ = []
 
 import base64
 import bz2
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta,
+)
 from io import BytesIO
 import json
+import random
 from unittest.mock import (
     call,
     Mock,
@@ -23,6 +27,8 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.signals.testing import SignalsDisabled
+from maasserver.models.timestampedmodel import now
+from maasserver.node_status import NODE_FAILURE_MONITORED_STATUS_TIMEOUTS
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -955,3 +961,30 @@ class TestStatusWorkerService(MAASServerTestCase):
         script_result = script_set.find_script_result(
             script_name=CURTIN_INSTALL_LOG)
         self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
+
+    def test_resets_status_expires(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, status_expires=factory.make_date(),
+            with_empty_script_sets=True)
+        payload = {
+            'event_type': random.choice(['start', 'finish']),
+            'origin': 'curtin',
+            'name': random.choice([
+                'cmd-install',
+                'cmd-install/stage-early',
+                'cmd-install/stage-late']),
+            'description': 'Installing',
+            'timestamp': datetime.utcnow(),
+        }
+        self.processMessage(node, payload)
+        node = reload_object(node)
+        # Testing for the exact time will fail during testing due to now()
+        # being different in reset_status_expires vs here. Pad by 1 minute
+        # to make sure its reset but won't fail testing.
+        expected_time = now() + timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
+                NODE_STATUS.DEPLOYING])
+        self.assertGreaterEqual(
+            node.status_expires, expected_time - timedelta(minutes=1))
+        self.assertLessEqual(
+            node.status_expires, expected_time + timedelta(minutes=1))

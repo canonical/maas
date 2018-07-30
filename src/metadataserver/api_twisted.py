@@ -352,6 +352,17 @@ class StatusWorkerService(TimerService, object):
                 script_result.status = SCRIPT_STATUS.RUNNING
                 script_result.save(update_fields=['status'])
 
+        # Reset status_expires when Curtin signals its starting or finishing
+        # early commands. This allows users to define early or late commands
+        # which take up to 40 minutes to run.
+        if (origin == 'curtin' and event_type in ['start', 'finish'] and
+                activity_name in [
+                    'cmd-install/stage-early',
+                    'cmd-install',
+                    'cmd-install/stage-late']):
+            node.reset_status_expires()
+            save_node = True
+
         if save_node:
             node.save()
         return True
@@ -418,7 +429,17 @@ class StatusWorkerService(TimerService, object):
             self._is_top_level(message['name']) and
             message['event_type'] == 'finish')
         has_files = len(message.get('files', [])) > 0
-        if is_starting_event or is_final_event or has_files:
+        # Process Curtin early/late start/finish messages so that
+        # status_expires is reset allowing them to take up to 40 min.
+        is_curtin_early_late = (
+            message['name'] in [
+                'cmd-install/stage-early',
+                'cmd-install/stage-late'
+                ] and
+            message['event_type'] in ['start', 'finish'] and
+            message['origin'] == 'curtin')
+        if (is_starting_event or is_final_event or has_files or
+                is_curtin_early_late):
             d = deferToDatabase(
                 self._processMessageNow, authorization, message)
             d.addErrback(
