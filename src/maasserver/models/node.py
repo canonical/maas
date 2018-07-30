@@ -1285,6 +1285,13 @@ class Node(CleanSave, TimestampedModel):
             minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
                 NODE_STATUS.RELEASING]).total_seconds()
 
+    def reset_status_expires(self):
+        """Reset status_expires if set and in a monitored status."""
+        if (self.status_expires is not None and
+                self.status in NODE_FAILURE_MONITORED_STATUS_TIMEOUTS):
+            minutes = NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[self.status]
+            self.status_expires = now() + timedelta(minutes=minutes)
+
     def _register_request_event(
             self, user, type_name, action='', comment=None):
         """Register a node request event.

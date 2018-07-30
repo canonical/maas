@@ -1,10 +1,11 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for boot configuration retrieval from RPC."""
 
 __all__ = []
 
+from datetime import timedelta
 import random
 from unittest.mock import ANY
 
@@ -19,6 +20,8 @@ from maasserver.models import (
     Config,
     Event,
 )
+from maasserver.models.timestampedmodel import now
+from maasserver.node_status import NODE_FAILURE_MONITORED_STATUS_TIMEOUTS
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -581,6 +584,27 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip,
             mac=mac, bios_boot_method="pxe")
         self.assertEqual('pxe', reload_object(node).bios_boot_method)
+
+    def test__resets_status_expires(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        status = random.choice(list(NODE_FAILURE_MONITORED_STATUS_TIMEOUTS))
+        node = self.make_node(
+            status=status, status_expires=factory.make_date())
+        mac = node.get_boot_interface().mac_address
+        get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        node = reload_object(node)
+        # Testing for the exact time will fail during testing due to now()
+        # being different in reset_status_expires vs here. Pad by 1 minute
+        # to make sure its reset but won't fail testing.
+        expected_time = now() + timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[status])
+        self.assertGreaterEqual(
+            node.status_expires, expected_time - timedelta(minutes=1))
+        self.assertLessEqual(
+            node.status_expires, expected_time + timedelta(minutes=1))
 
     def test__sets_boot_interface_vlan_to_match_rack_controller(self):
         rack_controller = factory.make_RackController()
