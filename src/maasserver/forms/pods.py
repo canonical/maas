@@ -237,6 +237,10 @@ class PodForm(MAASModelForm):
             self.instance = super(PodForm, self).save(commit=False)
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
+            if (self.data.get('host') is "" and
+                    self.instance.host is not None):
+                # 'host' is being cleared.
+                self.instance.host = None
             return self.instance
 
         power_type = self.cleaned_data['type']

@@ -9,7 +9,10 @@ import http.client
 import random
 from unittest.mock import MagicMock
 
-from maasserver.enum import NODE_CREATION_TYPE
+from maasserver.enum import (
+    MACVLAN_MODE_CHOICES,
+    NODE_CREATION_TYPE,
+)
 from maasserver.forms import pods
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
@@ -125,6 +128,8 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'memory_over_commit_ratio',
                 'storage_pools',
                 'pool',
+                'host',
+                'default_macvlan_mode',
             ],
             list(parsed_result[0]))
         self.assertItemsEqual(
@@ -340,25 +345,46 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
     def test_PUT_update_updates_pod_host(self):
         self.become_admin()
         pod_info = self.make_pod_info()
-        power_parameters = {
-            'power_address': pod_info['power_address'],
-            'power_pass': pod_info['power_pass'],
-        }
-        pod = factory.make_Pod(
-            pod_type=pod_info['type'], parameters=power_parameters)
+        pod = factory.make_Pod(pod_type=pod_info['type'])
         host = factory.make_Node()
-        new_name = factory.make_name('pool')
         self.fake_pod_discovery()
+        self.assertIsNone(pod.host)
         response = self.client.put(get_pod_uri(pod), {
-            'name': new_name,
             'host': host.system_id,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         pod.refresh_from_db()
-        self.assertEqual(new_name, pod.name)
-        self.assertEqual(power_parameters, pod.power_parameters)
         self.assertEqual(pod.host, host)
+
+    def test_PUT_update_updates_pod_host_to_None(self):
+        self.become_admin()
+        pod_info = self.make_pod_info()
+        host = factory.make_Node()
+        pod = factory.make_Pod(pod_type=pod_info['type'], host=host)
+        self.fake_pod_discovery()
+        self.assertIsNotNone(pod.host)
+        response = self.client.put(get_pod_uri(pod), {
+            'host': "",
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        pod.refresh_from_db()
+        self.assertIsNone(pod.host)
+
+    def test_PUT_update_updates_pod_default_macvlan_mode(self):
+        self.become_admin()
+        pod_info = self.make_pod_info()
+        pod = factory.make_Pod(pod_type=pod_info['type'])
+        default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
+        self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod), {
+            'default_macvlan_mode': default_macvlan_mode,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        pod.refresh_from_db()
+        self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
 
     def test_refresh_requires_admin(self):
         pod = factory.make_Pod()

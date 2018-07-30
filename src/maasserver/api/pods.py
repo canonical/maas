@@ -44,6 +44,8 @@ DISPLAYED_POD_FIELDS = (
     'memory_over_commit_ratio',
     'storage_pools',
     'pool',
+    'host',
+    'default_macvlan_mode',
     )
 
 
@@ -114,6 +116,18 @@ class PodHandler(OperationsHandler):
             })
         return pools
 
+    @classmethod
+    def host(cls, pod):
+        system_id = None
+        if pod.host is not None:
+            system_id = pod.host.system_id
+        # __incomplete__ let's user know that this
+        # object has more data associated with it.
+        return {
+            'system_id': system_id,
+            '__incomplete__': True,
+        }
+
     @admin_method
     def update(self, request, id):
         """Update a specific Pod.
@@ -136,8 +150,12 @@ class PodHandler(OperationsHandler):
         :type power_pass: unicode
         :param zone: Name of the zone for the pod
         :type zone: unicode
-        :param host: The node that hosts this Pod.
+        :param host: The node that hosts this Pod. Passing in an empty string
+            will cause the host be set to None.
         :type host: unicode
+        :param default_macvlan_mode: Default macvlan mode (bridge, passthru,
+           private, vepa) for the pod.
+        :type default_macvlan_mode: unicode
         :param tags: A tag or tags (separated by comma) for the pod.
         :type tags: unicode
 
