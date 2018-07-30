@@ -101,6 +101,7 @@ describe("NodeStorageController", function() {
     var node, updateNodeSpy, canEditSpy;
     beforeEach(function() {
         node = {
+            system_id: makeName("system_id"),
             architecture: "amd64/generic",
             disks: []
         };
@@ -2160,36 +2161,48 @@ describe("NodeStorageController", function() {
 
         it("returns true if blank", function() {
             var controller = makeController();
+            var size = "";
             var disk = {
                 $options: {
-                    size: "",
                     sizeUnits: "GB"
                 }
             };
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue').
+                and.returnValue(size);
+            $scope.$digest();
 
             expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
         });
 
         it("returns true if not numbers", function() {
             var controller = makeController();
+            var size = makeName("invalid");
             var disk = {
                 $options: {
-                    size: makeName("invalid"),
                     sizeUnits: "GB"
                 }
             };
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue').
+                and.returnValue(size);
+            $scope.$digest();
 
             expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
         });
 
         it("returns true if smaller than MIN_PARTITION_SIZE", function() {
             var controller = makeController();
+            var size = "1";
             var disk = {
                 $options: {
-                    size: "1",
                     sizeUnits: "MB"
                 }
             };
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue').
+                and.returnValue(size);
+            $scope.$digest();
 
             expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
         });
@@ -2197,6 +2210,7 @@ describe("NodeStorageController", function() {
         it("returns true if larger than available_size more than tolerance",
             function() {
                 var controller = makeController();
+                var size = "4";
                 var disk = {
                     original: {
                         available_size: 2 * 1000 * 1000 * 1000
@@ -2206,6 +2220,10 @@ describe("NodeStorageController", function() {
                         sizeUnits: "GB"
                     }
                 };
+                $scope.newPartition.$maasForm = {getValue: function() {}};
+                spyOn($scope.newPartition.$maasForm, 'getValue').
+                    and.returnValue(size);
+                $scope.$digest();
 
                 expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
             });
@@ -2213,31 +2231,39 @@ describe("NodeStorageController", function() {
         it("returns false if larger than available_size in tolerance",
             function() {
                 var controller = makeController();
+                var size = "2.62";
                 var disk = {
                     original: {
                         available_size: 2.6 * 1000 * 1000 * 1000
                     },
                     $options: {
-                        size: "2.62",
                         sizeUnits: "GB"
                     }
                 };
+                $scope.newPartition.$maasForm = {getValue: function() {}};
+                spyOn($scope.newPartition.$maasForm, 'getValue').
+                    and.returnValue(size);
+                $scope.$digest();
 
-                expect($scope.isAddPartitionSizeInvalid(disk)).toBe(false);
+               expect($scope.isAddPartitionSizeInvalid(disk)).toBe(false);
             });
 
         it("returns false if less than available_size",
             function() {
                 var controller = makeController();
+                var size = "1.6"
                 var disk = {
                     original: {
                         available_size: 2.6 * 1000 * 1000 * 1000
                     },
                     $options: {
-                        size: "1.6",
                         sizeUnits: "GB"
                     }
                 };
+                $scope.newPartition.$maasForm = {getValue: function() {}};
+                spyOn($scope.newPartition.$maasForm, 'getValue').
+                    and.returnValue(size);
+                $scope.$digest();
 
                 expect($scope.isAddPartitionSizeInvalid(disk)).toBe(false);
             });
@@ -2247,12 +2273,17 @@ describe("NodeStorageController", function() {
 
         it("does nothing if invalid", function() {
             var controller = makeController();
+            var size = "";
             var disk = {
                 $options: {
-                    size: "",
                     sizeUnits: "GB"
                 }
             };
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue').
+                and.returnValue(size);
+            $scope.$digest();
+
             spyOn(MachinesManager, "createPartition");
 
             $scope.availableConfirmPartition(disk);
@@ -2271,16 +2302,27 @@ describe("NodeStorageController", function() {
                     block_size: 512
                 },
                 $options: {
-                    size: "2",
                     sizeUnits: "GB"
                 }
             };
-            spyOn(MachinesManager, "createPartition");
+            var params = {
+                "size": "2",
+                "mount_point": makeName("/path"),
+                "mount_options": makeName("options")
+            }
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue')
+                .and.callFake(function(param) {
+                    return params[param];
+            });
+            $scope.$digest();
 
             $scope.availableConfirmPartition(disk);
 
-            expect(MachinesManager.createPartition).toHaveBeenCalledWith(
-                node, disk.block_id, 2 * 1000 * 1000 * 1000, {});
+            expect($scope.newPartition.system_id).toEqual(node.system_id)
+            expect($scope.newPartition.block_id).toEqual(disk.block_id)
+            expect($scope.newPartition.partition_size)
+                .toEqual(2 * 1000 * 1000 * 1000)
         });
 
         it("calls createPartition with fstype, " +
@@ -2295,23 +2337,29 @@ describe("NodeStorageController", function() {
                     block_size: 512
                 },
                 $options: {
-                    size: "2",
                     sizeUnits: "GB",
                     fstype: "ext4",
-                    mountPoint: makeName("/path"),
-                    mountOptions: makeName("options")
                 }
             };
-            spyOn(MachinesManager, "createPartition");
+            var params = {
+                "size": "2",
+                "mount_point": makeName("/path"),
+                "mount_options": makeName("options")
+            }
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue')
+                .and.callFake(function(param) {
+                    return params[param];
+            });
+            $scope.$digest();
 
             $scope.availableConfirmPartition(disk);
 
-            expect(MachinesManager.createPartition).toHaveBeenCalledWith(
-                node, disk.block_id, 2 * 1000 * 1000 * 1000, {
-                    fstype: "ext4",
-                    mount_point: disk.$options.mountPoint,
-                    mount_options: disk.$options.mountOptions
-                });
+            expect($scope.newPartition.params).toEqual({
+                fstype: "ext4",
+                mount_point: params['mount_point'],
+                mount_options: params['mount_options']
+            });
         });
 
         it("calls createPartition with available_size bytes", function() {
@@ -2326,11 +2374,20 @@ describe("NodeStorageController", function() {
                     block_size: 512
                 },
                 $options: {
-                    size: "2.62",
                     sizeUnits: "GB"
                 }
             };
-            spyOn(MachinesManager, "createPartition");
+            var params = {
+                "size": "2.62",
+                "mount_point": makeName("/path"),
+                "mount_options": makeName("options")
+            }
+            $scope.newPartition.$maasForm = {getValue: function() {}};
+            spyOn($scope.newPartition.$maasForm, 'getValue')
+                .and.callFake(function(param) {
+                    return params[param];
+            });
+            $scope.$digest();
 
             $scope.availableConfirmPartition(disk);
 
@@ -2338,8 +2395,8 @@ describe("NodeStorageController", function() {
             var align_size = (4 * 1024 * 1024);
             var expected = align_size *
                 Math.floor(available_size / align_size);
-            expect(MachinesManager.createPartition).toHaveBeenCalledWith(
-                node, disk.block_id, expected, {});
+
+            expect($scope.newPartition.partition_size).toEqual(expected);
         });
 
         // regression test for https://bugs.launchpad.net/maas/+bug/1509535
@@ -2357,11 +2414,20 @@ describe("NodeStorageController", function() {
                         block_size: 512
                     },
                     $options: {
-                        size: "2.0",
                         sizeUnits: "GB"
                     }
                 };
-                spyOn(MachinesManager, "createPartition");
+                var params = {
+                    "size": "2.0",
+                    "mount_point": makeName("/path"),
+                    "mount_options": makeName("options")
+                }
+                $scope.newPartition.$maasForm = {getValue: function() {}};
+                spyOn($scope.newPartition.$maasForm, 'getValue')
+                    .and.callFake(function(param) {
+                        return params[param];
+                });
+                $scope.$digest();
 
                 $scope.availableConfirmPartition(disk);
 
@@ -2369,8 +2435,8 @@ describe("NodeStorageController", function() {
                 var align_size = (4 * 1024 * 1024);
                 var expected = align_size *
                     Math.floor(available_size / align_size);
-                expect(MachinesManager.createPartition).toHaveBeenCalledWith(
-                    node, disk.block_id, expected, {});
+
+                expect($scope.newPartition.partition_size).toEqual(expected);
         });
 
         it("calls createPartition with bytes minus partition table extra",
@@ -2386,11 +2452,20 @@ describe("NodeStorageController", function() {
                         block_size: 512
                     },
                     $options: {
-                        size: "2.62",
                         sizeUnits: "GB"
                     }
                 };
-                spyOn(MachinesManager, "createPartition");
+                var params = {
+                    "size": "2.62",
+                    "mount_point": makeName("/path"),
+                    "mount_options": makeName("options")
+                }
+                $scope.newPartition.$maasForm = {getValue: function() {}};
+                spyOn($scope.newPartition.$maasForm, 'getValue')
+                    .and.callFake(function(param) {
+                        return params[param];
+                });
+                $scope.$digest();
 
                 $scope.availableConfirmPartition(disk);
 
@@ -2399,8 +2474,8 @@ describe("NodeStorageController", function() {
                 var expected = align_size * Math.floor(
                     (available_size - (5 * 1024 * 1024)) /
                     align_size);
-                expect(MachinesManager.createPartition).toHaveBeenCalledWith(
-                    node, disk.block_id, expected, {});
+
+                expect($scope.newPartition.partition_size).toEqual(expected);
             });
     });
 

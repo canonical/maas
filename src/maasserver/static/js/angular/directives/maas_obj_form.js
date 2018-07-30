@@ -662,6 +662,13 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         }
                     });
 
+                    // Set input value if 'value' attr provided
+                    if(attrs.value) {
+                        scope.$applyAsync(function() {
+                            inputElement.val(attrs.value);
+                        });
+                    }
+
                     // Register the field with the controller and set the
                     // current value for the field.
                     var currentValue = controller.registerField(

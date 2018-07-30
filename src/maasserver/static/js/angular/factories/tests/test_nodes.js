@@ -588,8 +588,14 @@ describe("NodesManager", function() {
             function(done) {
                 var machine = makemachine(), block_id = makeInteger(0, 100);
                 var size = makeInteger(1024 * 1024, 1024 * 1024 * 1024);
+                var partition = {
+                    system_id: machine.system_id,
+                    block_id: block_id,
+                    partition_size: size
+                }
                 webSocket.returnData.push(makeFakeResponse("deleted"));
-                MachinesManager.createPartition(machine, block_id, size).then(
+
+                MachinesManager.createPartition(partition).then(
                     function() {
                         var sentObject = angular.fromJson(
                             webSocket.sentData[0]);
@@ -610,23 +616,29 @@ describe("NodesManager", function() {
                 var params = { fstype: "ext4" };
                 var machine = makemachine(), block_id = makeInteger(0, 100);
                 var size = makeInteger(1024 * 1024, 1024 * 1024 * 1024);
+                var partition = {
+                    system_id: machine.system_id,
+                    block_id: block_id,
+                    partition_size: size,
+                    params: params
+                }
                 webSocket.returnData.push(makeFakeResponse("deleted"));
-                MachinesManager.createPartition(
-                    machine, block_id, size, params).then(
-                        function() {
-                            var sentObject = angular.fromJson(
-                                webSocket.sentData[0]);
-                            expect(sentObject.method).toBe(
-                                "machine.create_partition");
-                            expect(sentObject.params.system_id).toBe(
-                                machine.system_id);
-                            expect(sentObject.params.block_id).toBe(
-                                block_id);
-                            expect(sentObject.params.partition_size).toBe(
-                                size);
-                            expect(sentObject.params.fstype).toBe("ext4");
-                            done();
-                        });
+
+                MachinesManager.createPartition(partition).then(
+                    function () {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "machine.create_partition");
+                        expect(sentObject.params.system_id).toBe(
+                            machine.system_id);
+                        expect(sentObject.params.block_id).toBe(
+                            block_id);
+                        expect(sentObject.params.partition_size).toBe(
+                            size);
+                        expect(sentObject.params.fstype).toBe("ext4");
+                        done();
+                    });
             });
     });
 

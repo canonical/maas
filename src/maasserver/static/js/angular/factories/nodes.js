@@ -240,18 +240,20 @@ angular.module('MAAS').service(
             };
 
         // Create a new partition.
-        NodesManager.prototype.createPartition = function(
-            node, block_id, size, params) {
-                if(!angular.isObject(params)) {
-                    params = {};
-                }
-                var self = this;
-                var method = this._handler + ".create_partition";
-                params.system_id = node.system_id;
-                params.block_id = block_id;
-                params.partition_size = size;
-                return RegionConnection.callMethod(method, params);
-            };
+        NodesManager.prototype.createPartition = function(partition) {
+            if(angular.isObject(partition['params'])) {
+                params = partition['params'];
+            } else {
+                params = {};
+            }
+            var self = this;
+            var method = this._handler + ".create_partition";
+            params.system_id = partition['system_id'];
+            params.block_id = partition['block_id'];
+            params.partition_size = partition['partition_size'];
+
+            return RegionConnection.callMethod(method, params);
+        };
 
         // Create a new cache set.
         NodesManager.prototype.createCacheSet = function(

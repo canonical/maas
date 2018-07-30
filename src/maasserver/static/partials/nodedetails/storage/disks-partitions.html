@@ -1,0 +1,904 @@
+<div class="p-strip">
+    <div class="row">
+        <h3 class="p-heading--four">Available disks and partitions</h3>
+    </div>
+    <div class="row">
+        <table class="p-table-expanding p-table--disks-partitions col-12">
+            <thead>
+                <tr class="p-table__row">
+                    <th class="col-3">
+                        <input type="checkbox" class="checkbox u-float--left" id="available-check-all" data-ng-hide="isAvailableDisabled()" data-ng-checked="availableAllSelected"
+                            data-ng-click="toggleAvailableAllSelect()" data-ng-disabled="isAvailableDisabled()" />
+                        <label for="available-check-all"></label>
+                        <a data-ng-click="tableInfo.column = 'name'" data-ng-class="{'p-link--soft': tableInfo.column === 'name'}">Name</a>
+                        <span class="divide"> | </span>
+                        <a data-ng-click="tableInfo.column = 'model'" data-ng-class="{'p-link--soft': tableInfo.column === 'model'}">Model</a>
+                        <span class="divide"> | </span>
+                        <a data-ng-click="tableInfo.column = 'serial'" data-ng-class="{'p-link--soft': tableInfo.column === 'serial'}">Serial</a>
+                        <span class="divide"> | </span>
+                        <a data-ng-click="tableInfo.column = 'firmware_version'" data-ng-class="{'p-link--soft': tableInfo.column === 'firmware_version'}">Firmware</a>
+                    </th>
+                    <th class="col-1"><div class="u-align--center">Boot</div></th>
+                    <th class="col-1">Size</th>
+                    <th class="col-1">Type</th>
+                    <th class="col-2">Filesystem</th>
+                    <th class="col-2">Tags</th>
+                    <th class="col-1">Health</th>
+                    <th class="col-1"><div class="u-align--center">Actions</div></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-ng-hide="available.length">
+                    <td colspan="9" class="col-12">
+                        No available disks or partitions.
+                    </td>
+                </tr>
+                <tr class="p-table__row" data-ng-repeat="item in available | removeAvailableByNew:availableNew"
+                    data-ng-class="{ 'is-active': item.$selected }">
+                    <td class="col-3 p-form-validation" aria-label="Name"
+                        data-ng-class="{ 'is-error': isNameInvalid(item) }">
+                        <input type="checkbox" class="checkbox u-float--left" id="{$ item.name $}"
+                            data-ng-hide="isAvailableDisabled()"
+                            data-ng-checked="item.$selected"
+                            data-ng-click="toggleAvailableSelect(item)"
+                            data-ng-disabled="isAvailableDisabled()" />
+                        <label for="{$ item.name $}" ></label>
+                        <span data-ng-show="tableInfo.column === 'name'" data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.name $}">{$ item.name $}</span>
+                        <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
+                        <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
+                        <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
+                        <input type="text" class="p-form-validation__input"
+                            data-ng-model="item.name"
+                            data-ng-show="availableMode === 'edit' && item.$selected"
+                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
+                            data-ng-change="nameHasChanged(item)">
+                    </td>
+                    <td class="col-1" aria-label="Boot">
+                        <div class="u-align--center">
+                            <input type="radio" name="boot-disk" id="{$ item.name $}-boot" class="u-no-margin--right"
+                                data-ng-click="setAsBootDisk(item)"
+                                data-ng-checked="item.is_boot"
+                                data-ng-if="item.type === 'physical'"
+                                data-ng-disabled="isBootDiskDisabled(item, 'available')"
+                                data-ng-hide="availableMode === 'edit' && item.$selected">
+                            <label for="{$ item.name $}-boot" data-ng-hide="availableMode === 'edit' && item.$selected"></label>
+                        </div>
+                    </td>
+                    <td class="col-1" aria-label="Size">
+                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.size_human $}">
+                            {$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span>
+                        </span>
+                    </td>
+                    <td class="col-1" aria-label="type">
+                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ getDeviceType(item) $}">{$ getDeviceType(item) $}</span>
+                    </td>
+                    <td class="col-2" aria-label="Filesystem">
+                        <span data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.fstype $}">{$ item.fstype $}</span>
+                    </td>
+                    <td class="col-2" aria-label="Tags">
+                        <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
+                            <a href="#/machines/?query=storage_tags:({$ tag.text $})" title="{$ tag.text $}">{$ tag.text $}</a>
+                        </span>
+                    </td>
+                    <td class="col-1" aria-label="Health">
+                        <span data-maas-script-status="script-status" data-script-status="item.test_status" data-ng-if="item.type === 'physical'"></span>
+                        <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
+                        <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
+                        <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
+                        <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
+                    </td>
+                    <td class="col-1 p-table--action-cell">
+                        <div class="u-align--right">
+                            <div class="p-contextual-menu" toggle-ctrl
+                                data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
+                                <button class="p-contextual-menu__toggle p-button--base is-small" aria-controls="#{$ item.name $}-menu"
+                                    data-ng-click="toggleMenu()" aria-haspopup="true"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                                <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled" id="{$ item.name $}-menu">
+                                    <button class="p-contextual-menu__link"
+                                        aria-label="Add logical volume"
+                                        data-ng-show="canAddLogicalVolume(item)"
+                                        data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</button>
+                                    <button class="p-contextual-menu__link"
+                                        aria-label="Partition"
+                                        data-ng-show="canAddPartition(item) && availableMode != 'partition'"
+                                        data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</button>
+                                    <button class="p-contextual-menu__link"
+                                        aria-label="Edit"
+                                        data-ng-show="canEdit(item)"
+                                        data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</button>
+                                    <button class="p-contextual-menu__link"
+                                        aria-label="Remove"
+                                        data-ng-show="canDelete(item)"
+                                        data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</button>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-table-expanding__panel col-12"
+                        data-ng-if="(availableMode === 'edit' || availableMode === 'format-mount' || availableMode === 'partition' || availableMode === 'logical-volume' || availableMode === 'delete') && item.$selected">
+                        <div class="row" data-ng-if="windowWidth <= 768">
+                            <div class="col-8">
+                                <h2 data-ng-click="availableCancel(item)" class="p-heading--four">
+                                    <span data-ng-if="availableMode === 'edit'">Editing {$ item.name $}</span>
+                                    <span data-ng-if="availableMode === 'format-mount'">Mount device</span>
+                                    <span data-ng-if="availableMode === 'partition'">Adding partition</span>
+                                    <span data-ng-if="availableMode === 'logical-volume'">Adding logical volume</span>
+                                    <span data-ng-if="availableMode === 'delete'">Removing {$ item.name $}</span>
+                                </h2>
+                            </div>
+                            <div class="col-4">
+                                <div class="u-align--right">
+                                    <i data-ng-click="availableCancel(item)" class="p-icon--close">Cancel</i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-form p-form--stacked" data-ng-if="availableMode === 'edit'">
+                            <div class="col-6">
+                                <div class="p-form__group p-form-validation u-hide--large"
+                                    data-ng-show="availableMode === 'edit' && item.$selected"
+                                    data-ng-class="{ 'is-error': isNameInvalid(item) }">
+                                    <label class="p-form__label" for="device-name"
+                                        data-ng-show="availableMode === 'edit' && item.$selected">Name</label>
+                                    <div class="p-form__control">
+                                        <input type="text" id="device-name" class="p-form-validation__input"
+                                            data-ng-model="item.name"
+                                            data-ng-show="availableMode === 'edit' && item.$selected"
+                                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
+                                            data-ng-change="nameHasChanged(item)">
+                                    </div>
+                                </div>
+                                <div class="p-form__group">
+                                    <label class="p-form__label">Size</label>
+                                    <div class="p-form__control">
+                                        <span>{$ item.size_human $}</span>
+                                    </div>
+                                </div>
+                                <div class="p-form__group ng-hide" data-ng-show="showFreeSpace(item)">
+                                    <label class="p-form__label">Free space</label>
+                                    <div class="p-form__control">
+                                        <span>{$ item.available_size_human $}</span>
+                                    </div>
+                                </div>
+                                <div class="p-form__group">
+                                    <label class="p-form__label">Type</label>
+                                    <div class="p-form__control">
+                                        <span>{$ getDeviceType(item) $}</span>
+                                    </div>
+                                </div>
+                                <div class="p-form__group" data-ng-if="item.$options.editingTags">
+                                    <label for="tags" class="p-form__label">Tags</label>
+                                    <div class="p-form__control tags--inline">
+                                        <tags-input
+                                            data-ng-model="item.$options.tags"
+                                            data-ng-if="item.$options.editingTags"
+                                            allow-tags-pattern="[\w-]+"></tags-input>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6" data-ng-show="item.$options.editingFilesystem">
+                                <div class="p-form__group">
+                                    <label for="filesys" class="p-form__label">Filesystem</label>
+                                    <div class="p-form__controls">
+                                        <select name="filesys"
+                                            data-ng-model="item.$options.fstype"
+                                            data-ng-change="fstypeChanged(item.$options)"
+                                            data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                            <option value="" selected="selected">Unformatted</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="p-form__group p-form-validation"
+                                    data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                    <label for="mount-point" class="p-form__label">Mount point</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="mount-point" class="p-form-validation__input"
+                                            placeholder="Absolute path"
+                                            data-ng-model="item.$options.mountPoint"
+                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)">
+                                    </div>
+                                </div>
+                                <div class="p-form__group">
+                                    <label for="mount-options" class="p-form__label">Mount options</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="mount-options"
+                                            placeholder="Separated by commas, no spaces"
+                                            data-ng-model="item.$options.mountOptions"
+                                            data-ng-disabled="item.$options.fstype === null">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row p-form p-form--stacked"
+                            data-ng-if="availableMode === 'format-mount'"
+                            data-ng-class="{ 'is-active': availableMode === 'format-mount' }">
+                            <div class="col-6">
+                                <div class="p-form__group">
+                                    <label class="p-form__label">Size</label>
+                                    <div class="p-form__controls">
+                                        <span>{$ item.size_human $} <span class="ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></span>
+                                    </div>
+                                </div>
+                                <div class="p-form__group">
+                                    <label class="p-form__label">Type</label>
+                                    <div class="p-form__controls">
+                                        <span>{$ getDeviceType(item) $}</span>
+                                    </div>
+                                </div>
+                                <div class="p-form__group u-vertically-center">
+                                    <label for="tags" class="p-form__label">Tags</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="tags" name="tags">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-form__group">
+                                    <label for="filesys" class="p-form__label">Filesystem</label>
+                                    <div class="p-form__controls">
+                                        <select name="filesys"
+                                            data-ng-model="item.$options.fstype"
+                                            data-ng-change="fstypeChanged(item.$options)"
+                                            data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                            <option value="">Unformatted</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="p-form__group p-form-validation"
+                                    data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                    <label for="mount-point" class="p-form__label">Mount point</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="mount-point" class="p-form-validation__input"
+                                            placeholder="Absolute path"
+                                            data-ng-model="item.$options.mountPoint"
+                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)">
+                                    </div>
+                                </div>
+                                <div class="p-form__group">
+                                    <label for="mount-options" class="p-form__label">Mount options</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="mount-options"
+                                            placeholder="Separated by commas, no spaces"
+                                            data-ng-model="item.$options.mountOptions"
+                                            data-ng-disabled="item.$options.fstype === null">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-form p-form--stacked"
+                            data-ng-if="availableMode === 'partition'"
+                            data-ng-class="{ 'is-active': availableMode === 'partition' }">
+                            <maas-obj-form obj="newPartition" manager="nodesManager"
+                                manager-method="createPartition"
+                                pre-process="preProcess"
+                                table-form="true"
+                                save-on-blur="false">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="p-form__group">
+                                            <label for="mount-options" class="p-form__label">Name</label>
+                                            <div class="p-form__controls">
+                                                <span>{$ getAddPartitionName(item) $}</span>
+                                            </div>
+                                        </div>
+                                        <div class="p-form__group">
+                                            <label for="mount-options" class="p-form__label">Type</label>
+                                            <div class="p-form__controls">
+                                                <span>Partition</span>
+                                            </div>
+                                        </div>
+
+                                        <maas-obj-field type="text" key="size" label="Size"
+                                            label-width="2" input-width="3" value="{$ item.$options.size $}">
+                                        </maas-obj-field>
+
+                                        <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': isAddPartitionSizeInvalid(item) }">
+                                            <label class="p-form__label" for="size">Units</label>
+                                            <div class="p-form__controls">
+                                                <select name="size-units" class="p-form-validation__input" data-ng-model="item.$options.sizeUnits">
+                                                    <option value="MB">MB</option>
+                                                    <option value="GB">GB</option>
+                                                    <option value="TB">TB</option>
+                                                </select>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-form__group">
+                                            <label class="p-form__label" for="filesys">Filesystem</label>
+                                            <div class="p-form__controls">
+                                                <select name="filesys" id="filesys"
+                                                data-ng-model="item.$options.fstype"
+                                                data-ng-change="fstypeChanged(item.$options)"
+                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                    <option value="">Unformatted</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="p-form__group p-form-validation" data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                            <maas-obj-field type="text" key="mount_point" label="Mount point"
+                                                data-ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                subtle="false" placeholder="Absolute path"></maas-obj-field>
+                                            <maas-obj-field type="text" key="mount_options" label="Mount options"
+                                                data-ng-disabled="item.$options.fstype === null"
+                                                subtle="false" placeholder="Separated by commas, no spaces">
+                                            </maas-obj-field>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <hr />
+                                    <div class="col-6">
+                                        <p><maas-obj-errors></maas-obj-errors></p>
+                                    </div>
+                                    <div class="col-6 u-align--right">
+                                        <button class="p-button--base" type="button"
+                                            data-ng-click="availableCancel(item)">Cancel</button>
+                                        <button class="p-button--positive u-no-margin--top"
+                                            data-ng-click="availableConfirmPartition(item)"
+                                            data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
+                                            maas-obj-save>Add partition</button>
+                                    </div>
+                                </div>
+                            </maas-obj-form>
+                        </div>
+                        <div class="row p-form p-form--stacked"
+                            data-ng-if="availableMode === 'logical-volume'"
+                            data-ng-class="{ 'is-active': availableMode === 'logical-volume' }">
+                            <div class="col-6">
+                                <div class="p-form__group p-form-validation"
+                                    data-ng-class="{ 'is-error': isLogicalVolumeNameInvalid(item) }">
+                                    <label for="name" class="p-form__label">Name</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" class="p-form-validation__input"
+                                            data-ng-change="newLogicalVolumeNameChanged(item)"
+                                            data-ng-model="item.$options.name">
+                                    </div>
+                                </div>
+                                <div class="p-form__group p-form-validation"
+                                    data-ng-class="{ 'is-error': isAddLogicalVolumeSizeInvalid(item) }">
+                                    <label for="size" class="p-form__label">Size</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="size"
+                                            class="p-form-validation__input"
+                                            data-ng-model="item.$options.size">
+                                        <select name="size-units"
+                                            data-ng-model="item.$options.sizeUnits"
+                                            class="p-form-validation__input">
+                                            <option value="MB">MB</option>
+                                            <option value="GB">GB</option>
+                                            <option value="TB">TB</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <dl>
+                                    <dt>Type</dt>
+                                    <dd>Logical volume</dd>
+                                </dl>
+                                <div class="p-form__group">
+                                    <label for="tags" class="p-form__label">Tags</label>
+                                    <div class="p-form__controls tags--inline">
+                                        <tags-input data-ng-model="item.$options.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-form__group">
+                                    <label for="filesys" class="p-form__label">Filesystem</label>
+                                    <div class="p-form__controls">
+                                        <select name="filesys"
+                                            data-ng-model="item.$options.fstype"
+                                            data-ng-change="fstypeChanged(item.$options)"
+                                            data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                            <option value="">Unformatted</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="p-form__group p-form-validation"
+                                    data-ng-class="{ 'is-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                    <label for="mount-point" class="p-form__label">Mount point</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="mount-point"
+                                            class="p-form-validation__input"
+                                            placeholder="Absolute path"
+                                            data-ng-model="item.$options.mountPoint"
+                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)">
+                                    </div>
+                                </div>
+                                <div class="p-form__group">
+                                    <label for="mount-options" class="p-form__label">Mount options</label>
+                                    <div class="p-form__controls">
+                                        <input type="text" id="mount-options"
+                                            placeholder="Separated by commas, no spaces"
+                                            data-ng-model="item.$options.mountOptions"
+                                            data-ng-disabled="item.$options.fstype === null">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-ng-if="availableMode !== null && activeMode !== 'multi'"
+                            data-ng-class="{ 'is-active': availableMode !== null && activeMode !== 'multi' }">
+                            <div data-ng-if="availableMode === 'edit'" class="row">
+                                <hr />
+                                <div class="col-12">
+                                    <div class="u-align--right">
+                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                        <button class="p-button--positive u-no-margin--top"
+                                            data-ng-disabled="isMountPointInvalid(item.$options.mountPoint) || isNameInvalid(item)"
+                                            data-ng-click="availableConfirmEdit(item)">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div data-ng-if="availableMode === 'delete'" class="row">
+                                <div class="col-8">
+                                    <p><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(item) $}?</p>
+                                </div>
+                                <div class="col-4">
+                                    <div class="u-align--right">
+                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                        <button class="p-button--negative u-no-margin--top" data-ng-click="availableConfirmDelete(item)">Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div data-ng-if="availableMode === 'logical-volume'" class="row">
+                                <hr />
+                                <div class="col-12">
+                                    <div class="u-align--right">
+                                        <button class="p-button--base" type="button" data-ng-click="availableCancel(item)">Cancel</button>
+                                        <button class="p-button--positive u-no-margin--top"
+                                            data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
+                                            data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="is-active" data-ng-if="availableMode === 'bcache'">
+                    <td class="col-1">
+                        <input type="checkbox" class="checkbox" id="bcache-create" disabled="disabled" checked />
+                        <label class="checkbox-label" for="bcache-create"></label>
+                    </td>
+                    <td class="col-2 p-form-validation"
+                        data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                        <input type="text" class="p-form-validation__input"
+                            data-ng-model="availableNew.name">
+                    </td>
+                    <td class="col-2"></td>
+                    <td class="col-2"></td>
+                    <td class="col-4"></td>
+                    <td class="col-1"></td>
+                    <td class="p-table-expanding__panel col-12">
+                        <div class="row" data-ng-if="windowWidth <= 768">
+                            <div class="col-8">
+                                <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating Bcache</h2>
+                            </div>
+                            <div class="col-4">
+                                <button data-ng-click="availableCancel()" class="p-button">
+                                    <i class="p-icon--close">Cancel</i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-form p-form--stacked">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="p-form__group u-hide--large p-form-validation"
+                                        data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                        <label for="bcache-name" class="p-form__label">Name</label>
+                                        <div class="p-form__controls">
+                                            <input type="text" id="bcache-name" data-ng-model="availableNew.name"
+                                                class="p-form-validation__input">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="bcache-name" class="p-form__label">Size</label>
+                                        <div class="p-form__controls">
+                                            <span>{$ availableNew.device.size_human $}</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="bcache-name" class="p-form__label">Type</label>
+                                        <div class="p-form__controls">
+                                            <span>Bcache</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label class="p-form__label">Tags</label>
+                                        <div class="p-form__controls tags--inline">
+                                            <tags-input data-ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="cache-set" class="p-form__label">Cache set</label>
+                                        <div class="p-form__controls">
+                                            <select name="cache-set" id="cache-set"
+                                                data-ng-model="availableNew.cacheset"
+                                                data-ng-options="cacheset as cacheset.name for cacheset in cachesets">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="cache-mode" class="p-form__label">Cache mode</label>
+                                        <div class="p-form__controls">
+                                            <select name="cache-mode" id="cache-mode"
+                                                data-ng-model="availableNew.cacheMode">
+                                                <option value="writeback">writeback</option>
+                                                <option value="writethrough">writethrough</option>
+                                                <option value="writearound">writearound</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-form__group">
+                                        <label for="type" class="p-form__label">Filesystem</label>
+                                        <div class="p-form__controls">
+                                            <select name="filesys"
+                                                data-ng-model="availableNew.fstype"
+                                                data-ng-change="fstypeChanged(availableNew)"
+                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                <option value="">Unformatted</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group p-form-validation"
+                                        data-ng-class="{ 'is-error': isMountPointInvalid(availableNew.mountPoint) }">
+                                        <label for="mount-point" class="p-form__label">Mount point</label>
+                                        <div class="p-form__controls">
+                                            <input type="text" id="mount-point" class="p-form-validation__input"
+                                                placeholder="Absolute path"
+                                                data-ng-model="availableNew.mountPoint"
+                                                data-ng-disabled="!usesMountPoint(availableNew.fstype)">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="mount-options" class="p-form__label">Mount options</label>
+                                        <div class="p-form__controls">
+                                            <input type="text" id="mount-options"
+                                                placeholder="Separated by commas, no spaces"
+                                                data-ng-model="availableNew.mountOptions"
+                                                data-ng-disabled="availableNew.fstype === null">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <table>
+                            <tr>
+                                <th class="col-2">Name</th>
+                                <th class="col-2">Size</th>
+                                <th class="col-2">Device type</th>
+                                <th class="col-6"></th>
+                            </tr>
+                            <tr>
+                                <td class="col-2">{$ availableNew.device.name $}</td>
+                                <td class="col-2">{$ availableNew.device.size_human $}</td>
+                                <td class="col-2">{$ getDeviceType(availableNew.device) $}</td>
+                                <td class="col-6"></td>
+                            </tr>
+                        </table>
+                        <div class="row">
+                            <div class="col-12 u-align--right">
+                                <button class="p-button--base"
+                                    data-ng-click="availableCancel()">Cancel</button>
+                                <button class="p-button--positive"
+                                    data-ng-disabled="!createBcacheCanSave()"
+                                    data-ng-click="availableConfirmCreateBcache()">Create bcache</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="is-active" data-ng-if="availableMode === 'raid'">
+                    <td class="col-1">
+                        <input type="checkbox" class="checkbox" id="raid-create" disabled="disabled" checked />
+                        <label for="raid-create"></label>
+                    </td>
+                    <td class="col-2 p-form-validation"
+                        data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                        <input type="text" class="p-form-validation__input"
+                            data-ng-model="availableNew.name">
+                    </td>
+                    <td class="col-9"></td>
+                    <td class="p-table-expanding__panel col-12">
+                        <div class="row" data-ng-if="windowWidth <= 768">
+                            <div class="col-8">
+                                <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating RAID</h2>
+                            </div>
+                            <div class="col-4">
+                                <div class="u-align--right">
+                                    <button data-ng-click="availableCancel()" class="p-button">
+                                        <i class="p-icon--close">Cancel</i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-form p-form--stacked row">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="p-form__group u-hide--large">
+                                        <label for="new-raid-name" class="p-form__label">Name</label>
+                                        <div class="p-form__controls" data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                            <input type="text" id="new-raid-name" data-ng-model="availableNew.name">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label class="p-form__label">Size</label>
+                                        <div class="p-form__controls">
+                                            <span>{$ getNewRAIDSize() $}</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="type" class="p-form__label">RAID type</label>
+                                        <div class="p-form__controls">
+                                            <select name="type" id="type"
+                                                data-ng-model="availableNew.mode"
+                                                data-ng-change="RAIDModeChanged()"
+                                                data-ng-options="mode as mode.title for mode in getAvailableRAIDModes()">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label class="p-form__label">Tags</label>
+                                        <div class="p-form__controls tags--inline">
+                                            <tags-input data-ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-form__group">
+                                        <label for="type" class="p-form__label">Filesystem</label>
+                                        <div class="p-form__controls">
+                                            <select name="filesys"
+                                                data-ng-model="availableNew.fstype"
+                                                data-ng-change="fstypeChanged(availableNew)"
+                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                <option value="">Unformatted</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group p-form-validation"
+                                        data-ng-class="{ 'is-error': isMountPointInvalid(availableNew.mountPoint) }">
+                                        <label for="mount-point" class="p-form__label">Mount point</label>
+                                        <div class="p-form__controls">
+                                            <input type="text" id="mount-point" class="p-form-validation__input"
+                                                placeholder="Absolute path"
+                                                data-ng-model="availableNew.mountPoint"
+                                                data-ng-disabled="!usesMountPoint(availableNew.fstype)">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="mount-options" class="p-form__label">Mount options</label>
+                                        <div class="p-form__controls">
+                                            <input type="text" id="mount-options"
+                                                placeholder="Separated by commas, no spaces"
+                                                data-ng-model="availableNew.mountOptions"
+                                                data-ng-disabled="availableNew.fstype === null">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <table>
+                                <tr>
+                                    <th class="col-2">Name</th>
+                                    <th class="col-2">Size</th>
+                                    <th class="col-2">Device type</th>
+                                    <th class="col-1">Active</th>
+                                    <th class="col-2">
+                                        <span data-ng-show="showSparesColumn()">Spare (Maximum {$ getTotalNumberOfAvailableSpares() $})</span>
+                                    </th>
+                                    <th class="col-3"></th>
+                                </tr>
+                                <tr data-ng-repeat="device in availableNew.devices">
+                                    <td class="col-2" aria-label="Name">{$ device.name $}</td>
+                                    <td class="col-2" aria-label="Size">{$ device.size_human $}</td>
+                                    <td class="col-2" aria-label="Tyoe">{$ getDeviceType(device) $}</td>
+                                    <td class="col-1" aria-label="Active">
+                                        <input type="radio" id="{$ device.name $}-active" name="{$ device.name $}-options"
+                                            data-ng-checked="isActiveRAIDMember(device)"
+                                            data-ng-click="setAsActiveRAIDMember(device)">
+                                        <label for="{$ device.name $}-active"></label>
+                                    </td>
+                                    <td class="col-2" aria-label="Spare" data-ng-show="showSparesColumn()">
+                                        <input type="radio" name="{$ device.name $}-options" id="{$ device.name $}-spare"
+                                            data-ng-checked="isSpareRAIDMember(device)"
+                                            data-ng-click="setAsSpareRAIDMember(device)"
+                                            data-ng-disabled="getNumberOfRemainingSpares() <= 0">
+                                        <label for="{$ device.name $}-spare"></label>
+                                    </td>
+                                    <td class="col-3"></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 u-align--right">
+                                <button class="p-button--base"
+                                    data-ng-click="availableCancel()">Cancel</button>
+                                <button class="p-button--positive"
+                                    data-ng-disabled="!createRAIDCanSave()"
+                                    data-ng-click="availableConfirmCreateRAID()">Create RAID</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="is-active" data-ng-if="availableMode === 'volume-group'">
+                    <div class="row">
+                        <td class="col-1">
+                            <input type="checkbox" class="checkbox" id="vg-create" disabled="disabled" checked />
+                            <label for="vg-create"></label>
+                        </td>
+                        <td class="col-2 p-form-validation"
+                            data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                            <input type="text" class="p-form-validation__input"
+                                data-ng-model="availableNew.name">
+                        </td>
+                        <td class="col-9"></td>
+                        <td class="p-table-expanding__panel col-12">
+                            <div class="row" data-ng-if="windowWidth <= 768">
+                                <div class="col-8">
+                                    <h2 data-ng-click="availableCancel()" class="p-heading--four">Creating volume group</h2>
+                                </div>
+                                <div class="col-4">
+                                    <div class="u-align--right">
+                                        <button data-ng-click="availableCancel()" class="p-button">
+                                            <i class="p-icon--close">Cancel</i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="p-form p-form--stacked">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="p-form__group p-form-validation u-hide--large">
+                                                <label for="new-vg-name" class="p-form__label">Name</label>
+                                                <div class="p-form__controls" data-ng-class="{ 'is-error': isNewDiskNameInvalid() }">
+                                                    <input type="text" class="p-form-validation__input" id="new-vg-name" data-ng-model="availableNew.name">
+                                                </div>
+                                            </div>
+                                            <div class="p-form__group">
+                                                <label for="new-vg-name" class="p-form__label">Size</label>
+                                                <div class="p-form__controls">
+                                                    <span>{$ getNewVolumeGroupSize() $}</span>
+                                                </div>
+                                            </div>
+                                            <div class="p-form__group">
+                                                <label for="new-vg-name" class="p-form__label">Type</label>
+                                                <div class="p-form__controls">
+                                                    <span>Volume group</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <hr />
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th class="col-2">Name</th>
+                                            <th class="col-2">Size</th>
+                                            <th class="col-2">Device type</th>
+                                            <th class="col-6"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr data-ng-repeat="device in availableNew.devices">
+                                            <td class="col-2" aria-label="Name">{$ device.name $}</td>
+                                            <td class="col-2" aria-label="Size">{$ device.size_human $}</td>
+                                            <td class="col-2" aria-label="Device type">{$ getDeviceType(device) $}</td>
+                                            <td class="col-6"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="row">
+                                <hr />
+                                <div class="col-12 u-align--right">
+                                    <button class="p-button--base"
+                                        data-ng-click="availableCancel()">Cancel</button>
+                                    <button class="p-button--positive u-no-margin--top"
+                                        data-ng-disabled="!createVolumeGroupCanSave()"
+                                        data-ng-click="availableConfirmCreateVolumeGroup()">Create volume group</button>
+                                </div>
+                            </div>
+                        </td>
+                    </div>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="row">
+        <button class="p-button--neutral p-tooltip p-tooltip--top-center"
+            data-ng-disabled="!canCreateRAID()"
+            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-click="createRAID()">
+            Create RAID
+            <span class="p-tooltip__message" role="tooltip">Select two or more physical devices to create a RAID</span>
+        </button>
+        <button class="p-button--neutral p-tooltip p-tooltip--top-center"
+            data-ng-disabled="!canCreateVolumeGroup()"
+            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-click="createVolumeGroup()">
+            Create volume group
+            <span class="p-tooltip__message" role="tooltip">Select one or more devices to create a volume group</span>
+        </button>
+        <button class="p-button--neutral p-tooltip p-tooltip--top-center"
+            data-ng-disabled="!canCreateCacheSet()"
+            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-click="createCacheSet()">
+            Create cache Set
+            <span class="p-tooltip__message" role="tooltip">Select one device to create a cache set</span>
+        </button>
+        <button class="p-button--neutral p-tooltip--top-center"
+            data-ng-class="{ 'p-tooltip': !canCreateBcache() }"
+            data-ng-disabled="!canCreateBcache()"
+            data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
+            data-ng-click="createBcache()">
+            Create bcache
+            <span class="p-tooltip__message" role="tooltip">{$ getCannotCreateBcacheMsg() $}</span>
+        </button>
+    </div>
+</div>
+<div class="row">
+    <h3 class="p-heading--four">Used disks and partitions</h3>
+</div>
+<div class="row">
+    <table class="p-table-expanding">
+        <thead>
+            <tr>
+                <th class="col-3">
+                    <a data-ng-click="tableInfo.column = 'name'" data-ng-class="{'p-link--soft': tableInfo.column === 'name'}">Name</a>
+                    <span class="divide"> | </span>
+                    <a data-ng-click="tableInfo.column = 'model'" data-ng-class="{'p-link--soft': tableInfo.column === 'model'}">Model</a>
+                    <span class="divide"> | </span>
+                    <a data-ng-click="tableInfo.column = 'serial'" data-ng-class="{'p-link--soft': tableInfo.column === 'serial'}">Serial</a>
+                    <span class="divide"> | </span>
+                    <a data-ng-click="tableInfo.column = 'firmware_version'" data-ng-class="{'p-link--soft': tableInfo.column === 'firmware_version'}">Firmware</a>
+                </th>
+                <th class="col-1"><div class="u-align--center">Boot</div></th>
+                <th class="col-2">Device type</th>
+                <th class="col-3">Used for</th>
+                <th class="col-2">Health</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-ng-hide="used.length">
+                <td colspan="6" class="col-12">
+                    No disk or partition has been fully utilized.
+                </td>
+            </tr>
+            <tr data-ng-repeat="item in used" class="table__row details__used">
+                <td class="col-3" aria-label="Name">
+                    <span data-ng-show="tableInfo.column === 'name'" title="{$ item.name $}">{$ item.name $}</span>
+                    <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
+                    <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
+                    <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
+                </td>
+                <td class="col-1" aria-label="Boot disk">
+                    <div class="u-align--center">
+                        <input type="radio" id="{$ item.name $}-boot" name="boot-disk"
+                            data-ng-click="setAsBootDisk(item)"
+                            data-ng-checked="item.is_boot"
+                            data-ng-if="item.type === 'physical'"
+                            data-ng-disabled="isBootDiskDisabled(item, 'used')">
+                        <label for="{$ item.name $}-boot"></label>
+                    </div>
+                </td>
+                <td class="col-2" aria-label="Device type" title="{$ getDeviceType(item) $}">{$ getDeviceType(item) $}</td>
+                <td class="col-3" aria-label="Used for" title="{$ item.used_for $}">{$ item.used_for $}</td>
+                <td class="col-2" aria-label="Health">
+                    <span data-ng-if="item.type === 'physical'">
+                        <span data-maas-script-status="script-status" data-script-status="item.test_status"></span>
+                        <span data-ng-if="item.test_status === 0 || item.test_status === 1 || item.test_status === 2 || item.test_status === 5 || item.test_status === 7" title="Ok">Ok</span>
+                        <span data-ng-if="item.test_status === 3 || item.test_status === 4 || item.test_status === 8" title="Error">Error</span>
+                        <span data-ng-if="item.test_status === 6" title="Degraded">Degraded</span>
+                        <span data-ng-if="item.test_status === -1" title="Unknown">Unknown</span>
+                    </span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

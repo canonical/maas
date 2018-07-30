@@ -138,6 +138,8 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.availableMode = SELECTION_MODE.NONE;
         $scope.availableAllSelected = false;
         $scope.availableNew = {};
+        $scope.newPartition = {};
+        $scope.nodeManager = MachinesManager;
         $scope.used = [];
         $scope.showMembers = [];
 
@@ -1235,18 +1237,24 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the size is invalid.
         $scope.isAddPartitionSizeInvalid = function(disk) {
-            if(disk.$options.size === "" || !isNumber(disk.$options.size)) {
+            let size = disk.$options.size;
+            // blr 2018-07-23: special cased as isAddLogicalVolumeSizeInvalid
+            // calls this but has not yet migrated to maas-obj-form.
+            if($scope.newPartition.$maasForm) {
+                size = $scope.newPartition.$maasForm.getValue('size');
+            }
+            if(size === "" || !isNumber(size)) {
                 return true;
             } else {
                 var bytes = ConverterService.unitsToBytes(
-                    disk.$options.size, disk.$options.sizeUnits);
+                    size, disk.$options.sizeUnits);
                 if(bytes < MIN_PARTITION_SIZE) {
                     return true;
                 } else if(bytes > disk.original.available_size) {
                     // Round the size down to the lowest tolerance for that
                     // to see if it now fits.
                     var rounded = ConverterService.roundUnits(
-                        disk.$options.size, disk.$options.sizeUnits);
+                        size, disk.$options.sizeUnits);
                     if(rounded > disk.original.available_size) {
                         return true;
                     } else {
@@ -1260,19 +1268,24 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Confirm the partition creation.
         $scope.availableConfirmPartition = function(disk) {
+            const form = $scope.newPartition.$maasForm;
+            const size = form.getValue('size');
+            const mountPoint = form.getValue('mount_point');
+            const mountOptions = form.getValue('mount_options');
+
             // Do nothing if not valid.
             if($scope.isAddPartitionSizeInvalid(disk) ||
-                $scope.isMountPointInvalid(disk.$options.mountPoint)) {
+                $scope.isMountPointInvalid(mountPoint)) {
                 return;
             }
 
             // Get the bytes to create the partition.
             var bytes = ConverterService.unitsToBytes(
-                disk.$options.size, disk.$options.sizeUnits);
+                size, disk.$options.sizeUnits);
 
             // Accepting prefilled defaults means use whole disk (lp:1509535).
             var size_and_units = disk.original.available_size_human.split(" ");
-            if(disk.$options.size === size_and_units[0] &&
+            if(size === size_and_units[0] &&
                disk.$options.sizeUnits === size_and_units[1]) {
                 bytes = disk.original.available_size;
             }
@@ -1286,18 +1299,22 @@ angular.module('MAAS').controller('NodeStorageController', [
                 removeDisk = true;
             }
 
-            // Create the partition.
+            // Set params
             var params = {};
             if(angular.isString(disk.$options.fstype) &&
                 disk.$options.fstype !== "") {
                 params.fstype = disk.$options.fstype;
-                if(disk.$options.mountPoint !== "") {
-                    params.mount_point = disk.$options.mountPoint;
-                    params.mount_options = disk.$options.mountOptions;
+                if(mountPoint !== "") {
+                    params.mount_point = mountPoint;
+                    params.mount_options = mountOptions;
                 }
             }
-            MachinesManager.createPartition(
-                $scope.node, disk.block_id, bytes, params);
+
+            // Set values on maas-obj-form object
+            $scope.newPartition.system_id = $scope.node.system_id;
+            $scope.newPartition.block_id = disk.block_id;
+            $scope.newPartition.partition_size = bytes;
+            $scope.newPartition.params = params;
 
             // Remove the disk if needed.
             if(removeDisk) {
