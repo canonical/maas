@@ -821,6 +821,84 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 node.system_id, 30, {vlanip.ip}, node.node_type)}
         self.assertEqual(expected_mapping, mapping)
 
+    def test_get_hostname_ip_mapping_prefers_bridged_bond_pxe_interface(self):
+        subnet = factory.make_Subnet(
+            cidr='10.0.0.0/24', dns_servers=[], gateway_ip='10.0.0.1')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname='host', subnet=subnet)
+        eth0 = node.get_boot_interface()
+        eth0.name = 'eth0'
+        eth0.save()
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name='eth1', vlan=subnet.vlan)
+        eth2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name='eth2', vlan=subnet.vlan)
+        node.boot_interface = eth1
+        node.save()
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[eth1, eth2], name='bond0')
+        br_bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[bond0], name='br-bond0')
+        phy_staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=eth0,
+            subnet=subnet, ip='10.0.0.2')
+        bridge_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=br_bond0,
+            subnet=subnet, ip='10.0.0.3')
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.domain)
+        expected_mapping = {
+            node.fqdn: HostnameIPMapping(
+                node.system_id, 30, {bridge_ip.ip}, node.node_type),
+            "%s.%s" % (eth0.name, node.fqdn): HostnameIPMapping(
+                node.system_id, 30, {phy_staticip.ip}, node.node_type),
+        }
+        self.assertThat(mapping, Equals(expected_mapping))
+
+    def test_get_hostname_ip_mapping_with_v4_and_v6_and_bridged_bonds(self):
+        subnet_v4 = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr))
+        subnet_v6 = factory.make_Subnet(
+            cidr='2001:db8::/64')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname='host', subnet=subnet_v4)
+        eth0 = node.get_boot_interface()
+        eth0.name = 'eth0'
+        eth0.save()
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name='eth1')
+        eth2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name='eth2')
+        node.boot_interface = eth1
+        node.save()
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[eth1, eth2], name='bond0')
+        br_bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[bond0], name='br-bond0')
+        phy_staticip_v4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=eth0,
+            subnet=subnet_v4)
+        bridge_ip_v4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=br_bond0,
+            subnet=subnet_v4)
+        phy_staticip_v6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=eth0,
+            subnet=subnet_v6)
+        bridge_ip_v6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=br_bond0,
+            subnet=subnet_v6)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.domain)
+        expected_mapping = {
+            node.fqdn: HostnameIPMapping(
+                node.system_id, 30, {bridge_ip_v4.ip, bridge_ip_v6.ip},
+                node.node_type),
+            "%s.%s" % (eth0.name, node.fqdn): HostnameIPMapping(
+                node.system_id, 30, {phy_staticip_v4.ip, phy_staticip_v6.ip},
+                node.node_type),
+        }
+        self.assertThat(mapping, Equals(expected_mapping))
+
     def test_get_hostname_ip_mapping_returns_domain_head_ips(self):
         parent = factory.make_Domain()
         name = factory.make_name()
