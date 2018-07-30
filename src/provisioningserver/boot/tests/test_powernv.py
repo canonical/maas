@@ -164,7 +164,8 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = PowerNVBootMethod()
-        params = make_kernel_parameters(self, purpose="xinstall")
+        params = make_kernel_parameters(
+            self, arch="ppc64el", purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -195,7 +196,8 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         method = PowerNVBootMethod()
         options = {
             "backend": None,
-            "kernel_params": make_kernel_parameters(self, purpose="install"),
+            "kernel_params": make_kernel_parameters(
+                self, arch="ppc64el", purpose="install"),
         }
         # Capture the output before sprinking in some random options.
         output_before = method.get_reader(**options).read(10000)
@@ -213,7 +215,8 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         method = PowerNVBootMethod()
         options = {
             "backend": None,
-            "kernel_params": make_kernel_parameters(purpose="local"),
+            "kernel_params": make_kernel_parameters(
+                arch="ppc64el", purpose="local"),
             }
         output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertIn("", output)

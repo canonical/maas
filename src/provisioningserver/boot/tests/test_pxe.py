@@ -12,7 +12,6 @@ import re
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
-    MockCalledOnce,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
@@ -39,6 +38,7 @@ from provisioningserver.utils.fs import (
     atomic_symlink,
     tempdir,
 )
+from provisioningserver.utils.network import convert_host_to_uri_str
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -106,7 +106,7 @@ class TestPXEBootMethod(MAASTestCase):
 
     def test_bootloader_path(self):
         method = PXEBootMethod()
-        self.assertEqual('pxelinux.0', method.bootloader_path)
+        self.assertEqual('lpxelinux.0', method.bootloader_path)
 
     def test_bootloader_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root()
@@ -145,6 +145,21 @@ class TestPXEBootMethod(MAASTestCase):
             syslinux_link = os.path.join(tmp, 'syslinux')
             self.assertTrue(os.path.islink(syslinux_link))
             self.assertEquals(stream_path, os.path.realpath(syslinux_link))
+
+    def test_link_simplestream_bootloaders_creates_lpxelinux_and_links(self):
+        method = PXEBootMethod()
+        with tempdir() as tmp:
+            stream_path = os.path.join(
+                tmp, 'bootloader', method.bios_boot_method,
+                method.bootloader_arches[0])
+            os.makedirs(stream_path)
+            for bootloader_file in method.bootloader_files:
+                factory.make_file(stream_path, bootloader_file)
+
+            method.link_bootloader(tmp)
+
+            self.assertTrue(os.path.exists(os.path.join(tmp, 'lpxelinux.0')))
+            self.assertTrue(os.path.islink(os.path.join(tmp, 'pxelinux.0')))
 
     def test_link_bootloader_copies_previously_downloaded_files(self):
         method = PXEBootMethod()
@@ -214,8 +229,9 @@ class TestPXEBootMethod(MAASTestCase):
         # pxelinux and syslinux-common package installed the fallback kicks
         # which makes PXE work but this test fail.
         self.patch(os.path, 'exists').return_value = False
+        self.patch(pxe_module, 'atomic_symlink')
         method.link_bootloader('foo')
-        self.assertThat(mock_maaslog, MockCalledOnce())
+        self.assertTrue(mock_maaslog.called)
 
 
 def parse_pxe_config(text):
@@ -285,8 +301,6 @@ class TestPXEBootMethodRender(MAASTestCase):
         image_dir = compose_image_path(
             osystem=params.osystem, arch=params.arch, subarch=params.subarch,
             release=params.release, label=params.label)
-        print(output)
-        print(params.fs_host)
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
@@ -310,6 +324,8 @@ class TestPXEBootMethodRender(MAASTestCase):
         # correctly rendered.
         method = PXEBootMethod()
         params = make_kernel_parameters(self, purpose="xinstall")
+        fs_host = 'http://%s:5248/images' % (
+            convert_host_to_uri_str(params.fs_host))
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -324,12 +340,14 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s$' % (
-                        re.escape(image_dir), params.kernel),
+                    r'.*^\s+KERNEL %s/%s/%s$' % (
+                        re.escape(fs_host), re.escape(image_dir),
+                        params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/%s$' % (
-                        re.escape(image_dir), params.initrd),
+                    r'.*^\s+INITRD %s/%s/%s$' % (
+                        re.escape(fs_host), re.escape(image_dir),
+                        params.initrd),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+APPEND .+?$',
@@ -486,6 +504,8 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
                 testcase=self, osystem=osystem, subarch=subarch,
                 arch=arch, purpose=self.purpose),
         }
+        fs_host = 'http://%s:5248/images' % (
+            convert_host_to_uri_str(options['kernel_params'].fs_host))
         output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
@@ -493,7 +513,8 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         self.assertThat(config, Contains(default_section_label))
         default_section = dict(config[default_section_label])
 
-        contains_arch_path = StartsWith("%s/%s/%s" % (osystem, arch, subarch))
+        contains_arch_path = StartsWith(
+            "%s/%s/%s/%s" % (fs_host, osystem, arch, subarch))
         self.assertThat(default_section["KERNEL"], contains_arch_path)
         self.assertThat(default_section["INITRD"], contains_arch_path)
         self.assertEqual("2", default_section["IPAPPEND"])
@@ -514,6 +535,8 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
                 testcase=self, osystem=osystem, subarch="generic",
                 purpose='enlist'),
         }
+        fs_host = 'http://%s:5248/images' % (
+            convert_host_to_uri_str(options['kernel_params'].fs_host))
         output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
@@ -536,7 +559,7 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
             self.assertThat(
                 section, ContainsAll(("KERNEL", "INITRD", "APPEND")))
             contains_arch_path = StartsWith(
-                "%s/%s/" % (osystem, section_label))
+                "%s/%s/%s/" % (fs_host, osystem, section_label))
             self.assertThat(section["KERNEL"], contains_arch_path)
             self.assertThat(section["INITRD"], contains_arch_path)
             self.assertIn("APPEND", section)

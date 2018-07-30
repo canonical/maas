@@ -223,7 +223,7 @@ class WindowsPXEBootMethod(BootMethod):
         # If the node is requesting the initial bootloader, then we
         # need to see if this node is set to boot Windows first.
         local_host, local_port = tftp.get_local_address()
-        if path == 'pxelinux.0':
+        if path in ['pxelinux.0', 'lpxelinux.0']:
             data = yield self.get_node_info()
             if data is None:
                 returnValue(None)

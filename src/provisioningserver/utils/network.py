@@ -1464,3 +1464,18 @@ def generate_mac_address():
         random.randint(0x00, 0xff)
     ]
     return ':'.join(map(lambda byte: "%02x" % byte, mac))
+
+
+def convert_host_to_uri_str(host):
+    """Convert host to a string that can be used in a URI."""
+    try:
+        ip = IPAddress(host)
+    except AddrFormatError:
+        return host
+    else:
+        if ip.is_ipv4_mapped():
+            return str(ip.ipv4())
+        elif ip.version == 4:
+            return str(ip)
+        else:
+            return '[%s]' % str(ip)

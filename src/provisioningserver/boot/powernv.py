@@ -151,5 +151,6 @@ class PowerNVBootMethod(BootMethod):
 
     @typed
     def link_bootloader(self, destination: str):
-        """Does nothing. No extra boot files are required. All of the boot
-        files from PXEBootMethod will suffice."""
+        """Does nothing. No extra boot files are required."""
+        # PowerNV doesn't actually use the provided pxelinux.0. It emulates
+        # pxelinux behaviour using its own bootloader.

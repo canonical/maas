@@ -23,10 +23,7 @@ from urllib.parse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
-from netaddr import (
-    AddrFormatError,
-    IPAddress,
-)
+from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import (
     ClusterConfiguration,
@@ -97,6 +94,7 @@ from provisioningserver.utils.fs import (
     NamedLock,
 )
 from provisioningserver.utils.network import (
+    convert_host_to_uri_str,
     get_all_interfaces_definition,
     resolve_host_to_addrinfo,
 )
@@ -1151,21 +1149,8 @@ class ClusterClientService(TimerService, object):
             path = self._get_saved_rpc_info_path()
             with open(path, 'w') as stream:
                 for addr in sorted(list(connected_addr)):
-                    try:
-                        ip = IPAddress(addr)
-                    except AddrFormatError:
-                        # Not an IP address, must be a hostname.
-                        stream.write('http://%s:5240/MAAS\n' % addr)
-                    else:
-                        if ip.is_ipv4_mapped():
-                            stream.write(
-                                'http://%s:5240/MAAS\n' % str(ip.ipv4()))
-                        elif ip.version == 4:
-                            stream.write(
-                                'http://%s:5240/MAAS\n' % str(ip))
-                        else:
-                            stream.write(
-                                'http://[%s]:5240/MAAS\n' % str(ip))
+                    host = convert_host_to_uri_str(addr)
+                    stream.write('http://%s:5240/MAAS\n' % host)
             self._rpc_info_state = connected_addr
 
     def _fetch_rpc_info(self, url, orig_url):

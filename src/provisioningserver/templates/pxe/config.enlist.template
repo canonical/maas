@@ -8,12 +8,12 @@ LABEL execute
   APPEND amd64 -- i386
 
 LABEL amd64
-  KERNEL {{kernel_params(arch="amd64") | kernel_path }}
-  INITRD {{kernel_params(arch="amd64") | initrd_path }}
+  KERNEL http://{{kernel_params | fs_host}}:5248/images/{{kernel_params(arch="amd64") | kernel_path }}
+  INITRD http://{{kernel_params | fs_host}}:5248/images/{{kernel_params(arch="amd64") | initrd_path }}
   APPEND {{kernel_params(arch="amd64") | kernel_command}}
   IPAPPEND 2
 
 LABEL i386
-  KERNEL {{kernel_params(arch="i386") | kernel_path }}
-  INITRD {{kernel_params(arch="i386") | initrd_path }}
+  KERNEL http://{{kernel_params | fs_host}}:5248/images/{{kernel_params(arch="i386") | kernel_path }}
+  INITRD http://{{kernel_params | fs_host}}:5248/images/{{kernel_params(arch="i386") | initrd_path }}
   APPEND {{kernel_params(arch="i386") | kernel_command}}

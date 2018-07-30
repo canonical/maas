@@ -48,6 +48,7 @@ from provisioningserver.utils.network import (
     bytes_to_int,
     clean_up_netifaces_address,
     coerce_to_valid_hostname,
+    convert_host_to_uri_str,
     enumerate_assigned_ips,
     enumerate_ipv4_addresses,
     find_ip_via_arp,
@@ -2331,3 +2332,23 @@ class TestGenerateMACAddress(MAASTestCase):
         ]
         for mac1, mac2 in itertools.permutations(random_macs, 2):
             self.expectThat(mac1, Not(Equals(mac2)))
+
+
+class TestConvertHostToUriStr(MAASTestCase):
+
+    def test__hostname(self):
+        hostname = factory.make_hostname()
+        self.assertEquals(hostname, convert_host_to_uri_str(hostname))
+
+    def test__ipv4(self):
+        ipv4 = factory.make_ipv4_address()
+        self.assertEquals(ipv4, convert_host_to_uri_str(ipv4))
+
+    def test__ipv6_mapped(self):
+        ipv4 = factory.make_ipv4_address()
+        ipv6_mapped = IPAddress(ipv4).ipv6()
+        self.assertEquals(ipv4, convert_host_to_uri_str(str(ipv6_mapped)))
+
+    def test__ipv6(self):
+        ipv6 = factory.make_ipv6_address()
+        self.assertEquals('[%s]' % ipv6, convert_host_to_uri_str(ipv6))

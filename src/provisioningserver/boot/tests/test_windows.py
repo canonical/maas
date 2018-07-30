@@ -279,6 +279,78 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         self.assertEqual(params, None)
 
     @inlineCallbacks
+    def test_match_path_lpxelinux(self):
+        method = WindowsPXEBootMethod()
+        method.remote_path = factory.make_string()
+        mock_mac = factory.make_mac_address()
+        mock_get_node_info = self.patch(method, 'get_node_info')
+        mock_get_node_info.return_value = {
+            'purpose': 'install',
+            'osystem': 'windows',
+            'mac': mock_mac,
+            }
+
+        params = yield method.match_path(None, 'lpxelinux.0')
+        self.assertEqual(mock_mac, params['mac'])
+        self.assertEqual(method.bootloader_path, params['path'])
+
+    @inlineCallbacks
+    def test_match_path_lpxelinux_only_on_install(self):
+        method = WindowsPXEBootMethod()
+        method.remote_path = factory.make_string()
+        mock_mac = factory.make_mac_address()
+        mock_get_node_info = self.patch(method, 'get_node_info')
+        mock_get_node_info.return_value = {
+            'purpose': factory.make_string(),
+            'osystem': 'windows',
+            'mac': mock_mac,
+            }
+
+        params = yield method.match_path(None, 'lpxelinux.0')
+        self.assertEqual(params, None)
+
+    @inlineCallbacks
+    def test_match_path_lpxelinux_missing_hivex(self):
+        method = WindowsPXEBootMethod()
+        method.remote_path = factory.make_string()
+        mock_mac = factory.make_mac_address()
+        mock_get_node_info = self.patch(method, 'get_node_info')
+        mock_get_node_info.return_value = {
+            'purpose': factory.make_string(),
+            'osystem': 'windows',
+            'mac': mock_mac,
+            }
+
+        self.patch(windows_module, 'HAVE_HIVEX', )
+        params = yield method.match_path(None, 'lpxelinux.0')
+        self.assertEqual(params, None)
+
+    @inlineCallbacks
+    def test_match_path_lpxelinux_only_on_windows(self):
+        method = WindowsPXEBootMethod()
+        method.remote_path = factory.make_string()
+        mock_mac = factory.make_mac_address()
+        mock_get_node_info = self.patch(method, 'get_node_info')
+        mock_get_node_info.return_value = {
+            'purpose': 'install',
+            'osystem': factory.make_string(),
+            'mac': mock_mac,
+            }
+
+        params = yield method.match_path(None, 'lpxelinux.0')
+        self.assertEqual(params, None)
+
+    @inlineCallbacks
+    def test_match_path_lpxelinux_get_node_info_None(self):
+        method = WindowsPXEBootMethod()
+        method.remote_path = factory.make_string()
+        mock_get_node_info = self.patch(method, 'get_node_info')
+        mock_get_node_info.return_value = None
+
+        params = yield method.match_path(None, 'lpxelinux.0')
+        self.assertEqual(params, None)
+
+    @inlineCallbacks
     def test_match_path_static_file(self):
         method = WindowsPXEBootMethod()
         mock_mac = factory.make_mac_address()

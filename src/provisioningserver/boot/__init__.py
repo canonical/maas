@@ -36,7 +36,10 @@ from provisioningserver.utils.fs import (
     atomic_copy,
     atomic_symlink,
 )
-from provisioningserver.utils.network import find_mac_via_arp
+from provisioningserver.utils.network import (
+    convert_host_to_uri_str,
+    find_mac_via_arp,
+)
 from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.twisted import asynchronous
 import tempita
@@ -331,6 +334,9 @@ class BootMethod(metaclass=ABCMeta):
         """
         dtb_subarchs = ['xgene-uboot-mustang']
 
+        def fs_host(params):
+            return convert_host_to_uri_str(params.fs_host)
+
         def image_dir(params):
             return compose_image_path(
                 params.osystem, params.arch, params.subarch,
@@ -370,6 +376,7 @@ class BootMethod(metaclass=ABCMeta):
             return compose_kernel_command_line(params)
 
         namespace = {
+            "fs_host": fs_host,
             "initrd_path": initrd_path,
             "kernel_command": kernel_command,
             "kernel_params": kernel_params,

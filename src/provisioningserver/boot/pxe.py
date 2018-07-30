@@ -78,9 +78,9 @@ class PXEBootMethod(BootMethod):
     bios_boot_method = 'pxe'
     template_subdir = 'pxe'
     bootloader_arches = ['i386', 'amd64']
-    bootloader_path = 'pxelinux.0'
+    bootloader_path = 'lpxelinux.0'
     bootloader_files = [
-        'pxelinux.0',
+        'lpxelinux.0',
         'chain.c32',
         'ifcpu64.c32',
         'ldlinux.c32',
@@ -127,6 +127,25 @@ class PXEBootMethod(BootMethod):
         return BytesReader(tempita.Template(step1).substitute(namespace)
                            .encode("utf-8"))
 
+    def link_bootloader(self, destination: str):
+        """Installs the required files for this boot method into the
+        destination.
+
+        :param destination: path to install bootloader
+        """
+        super(PXEBootMethod, self).link_bootloader(destination)
+        # When lpxelinux.0 doesn't exist we run find and copy to add that file
+        # in the correct place.
+        lpxelinux = os.path.join(destination, 'lpxelinux.0')
+        if not os.path.exists(lpxelinux):
+            self._find_and_copy_bootloaders(
+                destination, bootloader_files=['lpxelinux.0'])
+
+        # Symlink pxelinux.0 to lpxelinux.0 for backwards compatibility of
+        # external DHCP servers that point next-server to pxelinux.0.
+        pxelinux = os.path.join(destination, 'pxelinux.0')
+        atomic_symlink(lpxelinux, pxelinux)
+
     def _link_simplestream_bootloaders(self, stream_path, destination):
         super()._link_simplestream_bootloaders(stream_path, destination)
 
@@ -139,7 +158,10 @@ class PXEBootMethod(BootMethod):
         syslinux_dst = os.path.join(destination, 'syslinux')
         atomic_symlink(stream_path, syslinux_dst)
 
-    def _find_and_copy_bootloaders(self, destination, log_missing=True):
+    def _find_and_copy_bootloaders(
+            self, destination, log_missing=True, bootloader_files=None):
+        if bootloader_files is None:
+            bootloader_files = self.bootloader_files
         boot_sources_base = os.path.realpath(os.path.join(destination, '..'))
         default_search_path = os.path.join(boot_sources_base, 'current')
         syslinux_search_path = os.path.join(default_search_path, 'syslinux')
@@ -156,7 +178,7 @@ class PXEBootMethod(BootMethod):
         ]
         files_found = []
         for search_path in search_paths:
-            for bootloader_file in self.bootloader_files:
+            for bootloader_file in bootloader_files:
                 bootloader_src = os.path.join(search_path, bootloader_file)
                 bootloader_src = os.path.realpath(bootloader_src)
                 bootloader_dst = os.path.join(destination, bootloader_file)
@@ -174,7 +196,7 @@ class PXEBootMethod(BootMethod):
                     files_found.append(bootloader_file)
 
         missing_files = [
-            bootloader_file for bootloader_file in self.bootloader_files
+            bootloader_file for bootloader_file in bootloader_files
             if bootloader_file not in files_found
         ]
         if missing_files != []:

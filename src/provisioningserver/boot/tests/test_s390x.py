@@ -164,7 +164,8 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = S390XBootMethod()
-        params = make_kernel_parameters(self, purpose="xinstall")
+        params = make_kernel_parameters(
+            self, arch="s390x", purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -195,7 +196,8 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         method = S390XBootMethod()
         options = {
             "backend": None,
-            "kernel_params": make_kernel_parameters(self, purpose="install"),
+            "kernel_params": make_kernel_parameters(
+                self, arch="s390x", purpose="install"),
         }
         # Capture the output before sprinking in some random options.
         output_before = method.get_reader(**options).read(10000)
@@ -213,7 +215,8 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         method = S390XBootMethod()
         options = {
             "backend": None,
-            "kernel_params": make_kernel_parameters(purpose="local"),
+            "kernel_params": make_kernel_parameters(
+                arch="amd64", purpose="local"),
             }
         output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertIn("", output)
@@ -221,7 +224,7 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
     def test_get_reader_appends_bootif(self):
         method = S390XBootMethod()
         fake_mac = factory.make_mac_address("-")
-        params = make_kernel_parameters(self, purpose="install")
+        params = make_kernel_parameters(self, arch="amd64", purpose="install")
         output = method.get_reader(
             backend=None, kernel_params=params, arch='s390x', mac=fake_mac)
         output = output.read(10000).decode("utf-8")
