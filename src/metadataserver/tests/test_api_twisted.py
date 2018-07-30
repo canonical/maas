@@ -248,22 +248,18 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
         mock_processMessage.return_value = False
-        mock_updateLastPing = self.patch(worker, "_updateLastPing")
         yield deferToDatabase(
             worker._processMessages, sentinel.node,
             [sentinel.message1, sentinel.message2])
         self.assertThat(
             mock_processMessage,
             MockCalledOnceWith(sentinel.node, sentinel.message1))
-        self.assertThat(
-            mock_updateLastPing, MockNotCalled())
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__processMessages_calls_processMessage_and_updateLastPing(self):
+    def test__processMessages_calls_processMessage(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
-        mock_updateLastPing = self.patch(worker, "_updateLastPing")
         yield deferToDatabase(
             worker._processMessages, sentinel.node,
             [sentinel.message1, sentinel.message2])
@@ -272,16 +268,12 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             MockCallsMatch(
                 call(sentinel.node, sentinel.message1),
                 call(sentinel.node, sentinel.message2)))
-        self.assertThat(
-            mock_updateLastPing,
-            MockCalledOnceWith(sentinel.node, sentinel.message2))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_queueMessages_processes_top_level_message_instantly(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
-        mock_updateLastPing = self.patch(worker, "_updateLastPing")
         message = self.make_message()
         message['event_type'] = 'finish'
         nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
@@ -289,9 +281,6 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         yield worker.queueMessage(token.key, message)
         self.assertThat(
             mock_processMessage,
-            MockCalledOnceWith(node, message))
-        self.assertThat(
-            mock_updateLastPing,
             MockCalledOnceWith(node, message))
 
     @wait_for_reactor
@@ -354,10 +343,6 @@ class TestStatusWorkerService(MAASServerTestCase):
     def processMessage(self, node, payload):
         worker = StatusWorkerService(sentinel.dbtasks)
         return worker._processMessage(node, payload)
-
-    def updateLastPing(self, node, payload):
-        worker = StatusWorkerService(sentinel.dbtasks)
-        worker._updateLastPing(node, payload)
 
     def test_process_message_returns_false_when_node_deleted(self):
         node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
@@ -954,34 +939,6 @@ class TestStatusWorkerService(MAASServerTestCase):
             if script_result.name == "00-maas-02-virtuality":
                 break
         self.assertEqual(content, script_result.stdout)
-
-    def test_updateLastPing_updates_script_status_last_ping(self):
-        nodes = {
-            status: factory.make_Node(
-                status=status, with_empty_script_sets=True)
-            for status in (
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.TESTING,
-                NODE_STATUS.DEPLOYING)
-        }
-
-        for status, node in nodes.items():
-            payload = {
-                'event_type': 'progress',
-                'origin': 'curtin',
-                'name': 'test',
-                'description': 'testing',
-                'timestamp': datetime.utcnow(),
-            }
-            self.updateLastPing(node, payload)
-            script_set_statuses = {
-                NODE_STATUS.COMMISSIONING: (
-                    node.current_commissioning_script_set),
-                NODE_STATUS.TESTING: node.current_testing_script_set,
-                NODE_STATUS.DEPLOYING: node.current_installation_script_set,
-            }
-            script_set = script_set_statuses.get(node.status)
-            self.assertIsNotNone(script_set.last_ping)
 
     def test_captures_installation_start(self):
         node = factory.make_Node(
