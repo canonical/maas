@@ -4069,6 +4069,30 @@ class TestDNSConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_config_maas_internal_domain_insert(self):
+        maas_internal_domain_new = factory.make_name('internal')
+        yield deferToDatabase(register_system_triggers)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "maas_internal_domain", maas_internal_domain_new)
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "configuration maas_internal_domain set to %s"
+                % json.dumps(maas_internal_domain_new)))
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_config_upstream_dns_update(self):
         upstream_dns_old = factory.make_ip_address()
         upstream_dns_new = factory.make_ip_address()
@@ -4148,6 +4172,34 @@ class TestDNSConfigListener(
             self.getCapturedPublication().source, Equals(
                 "configuration default_dns_ttl changed to %s"
                 % (json.dumps(default_dns_ttl_new))))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_maas_internal_domain_update(self):
+        maas_internal_domain_old = factory.make_name('internal')
+        maas_internal_domain_new = factory.make_name('internal_new')
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            "maas_internal_domain", maas_internal_domain_old)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "maas_internal_domain", maas_internal_domain_new)
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "configuration maas_internal_domain changed to %s"
+                % (json.dumps(maas_internal_domain_new))))
 
 
 class TestDNSConfigListenerLegacy(

@@ -1321,7 +1321,8 @@ DNS_INTERFACE_UPDATE = dedent("""\
 
 # Triggered when a config is inserted. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches for inserts on config
-# upstream_dns, dnssec_validation, default_dns_ttl, and windows_kms_host.
+# upstream_dns, dnssec_validation, default_dns_ttl, windows_kms_host, and
+# maas_internal_domain.
 DNS_CONFIG_INSERT = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_config_insert()
     RETURNS trigger as $$
@@ -1330,7 +1331,8 @@ DNS_CONFIG_INSERT = dedent("""\
       IF (NEW.name = 'upstream_dns' OR
           NEW.name = 'dnssec_validation' OR
           NEW.name = 'default_dns_ttl' OR
-          NEW.name = 'windows_kms_host')
+          NEW.name = 'windows_kms_host' OR
+          NEW.name = 'maas_internal_domain')
       THEN
         PERFORM sys_dns_publish_update(
           'configuration ' || NEW.name || ' set to ' ||
@@ -1348,13 +1350,13 @@ DNS_CONFIG_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_config_update()
     RETURNS trigger as $$
     BEGIN
-      -- Only care about the upstream_dns, default_dns_ttl, and
-      -- windows_kms_host.
+      -- Only care about the
       IF (OLD.value != NEW.value AND (
           NEW.name = 'upstream_dns' OR
           NEW.name = 'dnssec_validation' OR
           NEW.name = 'default_dns_ttl' OR
-          NEW.name = 'windows_kms_host'))
+          NEW.name = 'windows_kms_host' OR
+          NEW.name = 'maas_internal_domain'))
       THEN
         PERFORM sys_dns_publish_update(
           'configuration ' || NEW.name || ' changed to ' || NEW.value);

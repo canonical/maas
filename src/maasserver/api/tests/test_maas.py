@@ -318,6 +318,36 @@ class MAASHandlerAPITest(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertTrue(Config.objects.get_config("boot_images_no_proxy"))
 
+    def test_get_config_maas_internal_domain(self):
+        internal_domain = factory.make_name("internal")
+        Config.objects.set_config(
+            "maas_internal_domain", internal_domain)
+        response = self.client.get(
+            reverse('maas_handler'), {
+                "op": "get_config",
+                "name": "maas_internal_domain",
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        expected = '"%s"' % internal_domain
+        self.assertEqual(
+            expected.encode(settings.DEFAULT_CHARSET), response.content)
+
+    def test_set_config_maas_internal_domain(self):
+        self.become_admin()
+        internal_domain = factory.make_name("internal")
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "maas_internal_domain",
+                "value": internal_domain,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            internal_domain,
+            Config.objects.get_config("maas_internal_domain"))
+
 
 class MAASHandlerAPITestForProxyPort(APITestCase.ForUser):
 

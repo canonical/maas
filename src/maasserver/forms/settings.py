@@ -222,6 +222,22 @@ def make_active_discovery_interval_field(*args, **kwargs):
     return field
 
 
+def validate_internal_domain(value):
+    """Django validator: `value` must be a valid DNS zone name for the maas
+    internal domain."""
+    namespec = re.compile(
+        r"^[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}$")
+    if not namespec.search(value) or len(value) > 255:
+        raise ValidationError("Invalid internal domain name: %s." % value)
+
+
+def make_maas_internal_domain_field(*args, **kwargs):
+    """Build and return the maas_internal_domain field."""
+    return forms.CharField(
+        validators=[validate_internal_domain],
+        **kwargs)
+
+
 CONFIG_ITEMS = {
     'maas_name': {
         'default': gethostname(),
@@ -334,6 +350,19 @@ CONFIG_ITEMS = {
                 "Only used when MAAS is running its own DNS server. This "
                 "value is used as the value of 'dnssec_validation' in the DNS "
                 "server config.")
+        }
+    },
+    'maas_internal_domain': {
+        'default': '_maas_internal',
+        'form': make_maas_internal_domain_field,
+        'form_kwargs': {
+            'label': (
+                "Domain name used by MAAS for internal mapping of MAAS "
+                "provided services."),
+            'required': False,
+            'help_text': (
+                "This domain should not collide with an upstream domain "
+                "provided by the set upstream DNS.")
         }
     },
     'ntp_servers': {
