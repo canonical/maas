@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the UbuntuCore module."""
@@ -60,28 +60,42 @@ class TestUbuntuCoreOS(MAASTestCase):
         release = factory.make_name('release')
         self.assertEqual(release, osystem.get_release_title(release))
 
-    def test_get_xinstall_parameters_returns_root_tgz_tgz(self):
+    def test_get_xinstall_parameters_returns_root_dd_dd_tgz(self):
         osystem = UbuntuCoreOS()
-        arch, subarch, release, label = self.make_resource_path('root-tgz')
+        arch, subarch, release, label = self.make_resource_path('root-dd')
         self.assertItemsEqual(
-            ('root-tgz', 'tgz'),
+            ('root-dd', 'dd-tgz'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
 
-    def test_get_xinstall_parameters_returns_root_dd_tar_ddtar(self):
+    def test_get_xinstall_parameters_returns_root_dd_tar_dd_tar(self):
         osystem = UbuntuCoreOS()
         arch, subarch, release, label = self.make_resource_path('root-dd.tar')
         self.assertItemsEqual(
             ('root-dd.tar', 'dd-tar'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
 
-    def test_get_xinstall_parameters_returns_root_dd_raw_ddraw(self):
+    def test_get_xinstall_parameters_returns_root_dd_raw_dd_raw(self):
         osystem = UbuntuCoreOS()
         arch, subarch, release, label = self.make_resource_path('root-dd.raw')
         self.assertItemsEqual(
             ('root-dd.raw', 'dd-raw'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
 
-    def test_get_xinstall_parameters_returns_root_dd_tar_bz2_ddtbz(self):
+    def test_get_xinstall_parameters_returns_root_dd_tbz_dd_bz2(self):
+        osystem = UbuntuCoreOS()
+        arch, subarch, release, label = self.make_resource_path('root-dd.bz2')
+        self.assertItemsEqual(
+            ('root-dd.bz2', 'dd-bz2'),
+            osystem.get_xinstall_parameters(arch, subarch, release, label))
+
+    def test_get_xinstall_parameters_returns_root_dd_gz_dd_gz(self):
+        osystem = UbuntuCoreOS()
+        arch, subarch, release, label = self.make_resource_path('root-dd.gz')
+        self.assertItemsEqual(
+            ('root-dd.gz', 'dd-gz'),
+            osystem.get_xinstall_parameters(arch, subarch, release, label))
+
+    def test_get_xinstall_parameters_returns_root_dd_tar_bz_dd_tbz(self):
         osystem = UbuntuCoreOS()
         arch, subarch, release, label = self.make_resource_path(
             'root-dd.tar.bz2')
@@ -89,15 +103,14 @@ class TestUbuntuCoreOS(MAASTestCase):
             ('root-dd.tar.bz2', 'dd-tbz'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
 
-    def test_get_xinstall_parameters_returns_root_dd_tar_gz_ddtgz(self):
+    def test_get_xinstall_parameters_returns_root_dd_xz_dd_xz(self):
         osystem = UbuntuCoreOS()
-        arch, subarch, release, label = self.make_resource_path(
-            'root-dd')
+        arch, subarch, release, label = self.make_resource_path('root-dd.xz')
         self.assertItemsEqual(
-            ('root-dd', 'dd-tgz'),
+            ('root-dd.xz', 'dd-xz'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
 
-    def test_get_xinstall_parameters_returns_root_dd_tar_xz_ddtxz(self):
+    def test_get_xinstall_parameters_returns_root_dd_tar_xz_dd_txz(self):
         osystem = UbuntuCoreOS()
         arch, subarch, release, label = self.make_resource_path(
             'root-dd.tar.xz')
@@ -105,23 +118,12 @@ class TestUbuntuCoreOS(MAASTestCase):
             ('root-dd.tar.xz', 'dd-txz'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
 
-    def test_get_xinstall_parameters_returns_root_dd_bz2_ddbz2(self):
+    def test_get_xinstall_parameters_returns_default_when_not_found(self):
         osystem = UbuntuCoreOS()
-        arch, subarch, release, label = self.make_resource_path('root-dd.bz2')
-        self.assertItemsEqual(
-            ('root-dd.bz2', 'dd-bz2'),
-            osystem.get_xinstall_parameters(arch, subarch, release, label))
-
-    def test_get_xinstall_parameters_returns_root_dd_gz_ddgz(self):
-        osystem = UbuntuCoreOS()
-        arch, subarch, release, label = self.make_resource_path('root-dd.gz')
-        self.assertItemsEqual(
-            ('root-dd.gz', 'dd-gz'),
-            osystem.get_xinstall_parameters(arch, subarch, release, label))
-
-    def test_get_xinstall_parameters_returns_root_dd_xz_ddxz(self):
-        osystem = UbuntuCoreOS()
-        arch, subarch, release, label = self.make_resource_path('root-dd.xz')
         self.assertItemsEqual(
             ('root-dd.xz', 'dd-xz'),
-            osystem.get_xinstall_parameters(arch, subarch, release, label))
+            osystem.get_xinstall_parameters(
+                factory.make_name('arch'),
+                factory.make_name('subarch'),
+                factory.make_name('release'),
+                factory.make_name('label')))
