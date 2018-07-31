@@ -29,6 +29,7 @@ import pexpect
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPodStoragePool,
+    InterfaceAttachType,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -45,6 +46,7 @@ from provisioningserver.drivers.pod.virsh import (
     DOM_TEMPLATE_S390X,
     VirshPodDriver,
 )
+from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils.shell import (
     get_env_with_locale,
@@ -1275,8 +1277,8 @@ class TestVirshSSH(MAASTestCase):
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=factory.make_name('name'),
-            attach_type='macvlan', attach_options=random.choice([
-                'private', 'vepa', 'bridge', 'passthru']))
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_options=factory.pick_choice(MACVLAN_MODE_CHOICES))
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
         NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value
@@ -1309,8 +1311,8 @@ class TestVirshSSH(MAASTestCase):
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=factory.make_name('ifname'),
-            attach_type='bridge', attach_options=random.choice([
-                'private', 'vepa', 'bridge', 'passthru']))
+            attach_type=InterfaceAttachType.BRIDGE,
+            attach_options=factory.pick_choice(MACVLAN_MODE_CHOICES))
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
         NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
         tmpfile = NamedTemporaryFile.return_value

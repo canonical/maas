@@ -194,6 +194,23 @@ class Factory:
         assert port_min >= 0 and port_max <= 65535
         return random.randint(port_min, port_max)
 
+    def pick_choice(self, choices, but_not=None):
+        """Pick a random item from `choices`.
+
+        :param choices: A sequence of choices in Django form choices format:
+            [
+                ('choice_id_1', "Choice name 1"),
+                ('choice_id_2', "Choice name 2"),
+            ]
+        :param but_not: A list of choices' IDs to exclude.
+        :type but_not: Sequence.
+        :return: The "id" portion of a random choice out of `choices`.
+        """
+        if but_not is None:
+            but_not = ()
+        return random.choice(
+            [choice for choice in choices if choice[0] not in but_not])[0]
+
     def make_vlan_tag(self, allow_none=False, *, but_not=EMPTY_SET):
         """Create a random VLAN tag.
 

@@ -29,6 +29,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodStoragePool,
+    InterfaceAttachType,
     PodDriver,
 )
 from provisioningserver.logger import get_maas_logger
@@ -853,7 +854,7 @@ class VirshSSH(pexpect.spawn):
         """Attach new network interface on `domain` to `network`."""
         mac = generate_mac_address()
         # If attachment type is not specified, default to network.
-        if interface.attach_type in (None, 'network'):
+        if interface.attach_type in (None, InterfaceAttachType.NETWORK):
             # Set the network if we are explicity attaching a network
             # specified by the user.
             if interface.attach_type is not None:
@@ -869,10 +870,10 @@ class VirshSSH(pexpect.spawn):
             'mac_address': mac,
             'attach_name': interface.attach_name,
         }
-        if interface.attach_type == 'macvlan':
+        if interface.attach_type == InterfaceAttachType.MACVLAN:
             device_params['attach_options'] = interface.attach_options
             device_xml = DOM_TEMPLATE_MACVLAN_INTERFACE.format(**device_params)
-        if interface.attach_type == 'bridge':
+        elif interface.attach_type == InterfaceAttachType.BRIDGE:
             device_xml = DOM_TEMPLATE_BRIDGE_INTERFACE.format(**device_params)
 
         # Rewrite the XML in a temporary file to use with 'virsh define'.

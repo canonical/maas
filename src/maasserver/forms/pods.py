@@ -30,7 +30,7 @@ from maasserver.clusterrpc.pods import (
 )
 from maasserver.enum import (
     BMC_TYPE,
-    MACVLAN_MODE_CHOICES,
+    INTERFACE_TYPE,
     NODE_CREATION_TYPE,
 )
 from maasserver.exceptions import PodProblem
@@ -40,6 +40,7 @@ from maasserver.models import (
     BMC,
     BMCRoutableRackControllerRelationship,
     Domain,
+    Interface,
     Machine,
     Node,
     Pod,
@@ -50,6 +51,9 @@ from maasserver.models import (
 )
 from maasserver.node_constraint_filter_forms import (
     get_storage_constraints_from_string,
+    interfaces_validator,
+    LabeledConstraintMapField,
+    nodes_by_interface,
     storage_validator,
 )
 from maasserver.rpc import getClientFromIdentifiers
@@ -63,9 +67,14 @@ import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
+    InterfaceAttachType,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
+)
+from provisioningserver.enum import (
+    MACVLAN_MODE,
+    MACVLAN_MODE_CHOICES,
 )
 from provisioningserver.utils.twisted import asynchronous
 from twisted.python.threadable import isInIOThread
@@ -398,6 +407,10 @@ class ComposeMachineForm(forms.Form):
         self.fields['storage'] = CharField(
             validators=[storage_validator], required=False)
         self.initial['storage'] = 'root:8(local)'
+        self.fields['interfaces'] = LabeledConstraintMapField(
+            validators=[interfaces_validator], label="Interface constraints",
+            required=False)
+        self.initial['interfaces'] = None
         self.fields['skip_commissioning'] = BooleanField(required=False)
         self.initial['skip_commissioning'] = False
 
@@ -414,16 +427,24 @@ class ComposeMachineForm(forms.Form):
 
     def get_requested_machine(self):
         """Return the `RequestedMachine`."""
-        # XXX blake_r 2017-04-04: Interfaces are hard coded at the
-        # moment. Will be extended later.
         block_devices = []
-        constraints = get_storage_constraints_from_string(
+
+        storage_constraints = get_storage_constraints_from_string(
             self.get_value_for('storage'))
-        for _, size, tags in constraints:
+        for _, size, tags in storage_constraints:
             if tags is None:
                 tags = []
             block_devices.append(
                 RequestedMachineBlockDevice(size=size, tags=tags))
+        interfaces_label_map = self.get_value_for('interfaces')
+        if interfaces_label_map is not None:
+            requested_machine_interfaces = (
+                self._get_requested_machine_interfaces_via_constraints(
+                    interfaces_label_map)
+            )
+        else:
+            requested_machine_interfaces = [RequestedMachineInterface()]
+
         return RequestedMachine(
             hostname=self.get_value_for('hostname'),
             architecture=self.get_value_for('architecture'),
@@ -431,7 +452,49 @@ class ComposeMachineForm(forms.Form):
             memory=self.get_value_for('memory'),
             cpu_speed=self.get_value_for('cpu_speed'),
             block_devices=block_devices,
-            interfaces=[RequestedMachineInterface()])
+            interfaces=requested_machine_interfaces)
+
+    def _get_requested_machine_interfaces_via_constraints(
+            self, interfaces_label_map):
+        requested_machine_interfaces = []
+        if self.pod.host is None:
+            raise ValidationError(
+                "Pod must be on a known host if interfaces are specified.")
+        node_ids, compatible_interfaces = nodes_by_interface(
+            interfaces_label_map)
+        pod_node_id = self.pod.host.id
+        if pod_node_id not in node_ids:
+            raise ValidationError(
+                "This pod does not match the specified networks.")
+        for label in compatible_interfaces.keys():
+            interface_ids = compatible_interfaces[label][pod_node_id]
+            # XXX: We might want to use the "deepest" interface in the
+            # heirarchy, to ensure we get a bridge or bond (if configured)
+            # rather than its parent. max() is a good approximation, since
+            # child interfaces will be created after their parents.
+            requested_machine_interfaces.append(
+                self.get_requested_machine_interface_by_interface_id(
+                    max(interface_ids))
+            )
+        return requested_machine_interfaces
+
+    def get_requested_machine_interface_by_interface_id(self, interface_id):
+        interface = Interface.objects.get(id=interface_id)
+        if interface.type == INTERFACE_TYPE.BRIDGE:
+            rmi = RequestedMachineInterface(
+                attach_name=interface.name,
+                attach_type=InterfaceAttachType.BRIDGE)
+        else:
+            attach_options = self.pod.default_macvlan_mode
+            if attach_options is None:
+                # Default macvlan mode is 'bridge' if not specified, since that
+                # provides the best chance for connectivity.
+                attach_options = MACVLAN_MODE.BRIDGE
+            rmi = RequestedMachineInterface(
+                attach_name=interface.name,
+                attach_type=InterfaceAttachType.MACVLAN,
+                attach_options=attach_options)
+        return rmi
 
     def save(self):
         """Prevent from usage."""

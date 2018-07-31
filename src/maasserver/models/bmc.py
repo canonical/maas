@@ -40,7 +40,6 @@ from maasserver.enum import (
     BMC_TYPE_CHOICES,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    MACVLAN_MODE_CHOICES,
     NODE_CREATION_TYPE,
     NODE_STATUS,
 )
@@ -78,6 +77,7 @@ import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import BlockDeviceType
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks

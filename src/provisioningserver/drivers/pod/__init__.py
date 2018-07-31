@@ -172,6 +172,21 @@ class BlockDeviceType:
     ISCSI = 'iscsi'
 
 
+class InterfaceAttachType:
+    """Different interface attachment types."""
+
+    # Interface attached to a network predefined in the hypervisor.
+    # (This is the default if no constraints are specified; MAAS will look for
+    # a 'maas' network, and then fall back to a 'default' network.)
+    NETWORK = 'network'
+
+    # Interface attached to a bridge interface on the hypervisor.
+    BRIDGE = 'bridge'
+
+    # Interface attached via a non-bridge interface using the macvlan driver.
+    MACVLAN = 'macvlan'
+
+
 class AttrHelperMixin:
     """Mixin to add the `fromdict` and `asdict` to the classes."""
 
