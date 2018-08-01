@@ -1765,10 +1765,18 @@
                                     <td class="col-3" aria-label="Size" title="{$ cacheset.size_human $}">{$ cacheset.size_human $}</td>
                                     <td class="col-4" aria-label="Used by" title="{$ cacheset.used_by $}">{$ cacheset.used_by $}</td>
                                     <td class="col-2 p-table--action-cell">
-                                        <div toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset)">
-                                            <button class="p-button" aria-label="Remove"
-                                                data-ng-show="canDeleteCacheSet(cacheset)"
-                                                data-ng-click="toggleMenu(); quickCacheSetDelete(cacheset)">Remove cacheset</button>
+                                        <div class="u-align--right">
+                                        <div class="p-contextual-menu" toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset)">
+                                            <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
+                                                <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
+                                            </button>
+                                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                                <button class="p-contextual-menu__link"
+                                                    aria-label="Remove"
+                                                    data-ng-show="canDeleteCacheSet(cacheset)"
+                                                    data-ng-click="toggleMenu(); quickCacheSetDelete(cacheset)">Remove&hellip;</button>
+                                            </div>
+                                        </div>
                                         </div>
                                     </td>
                                     <td class="p-table-expanding__panel col-12" data-ng-if="cachesetsMode === 'delete'">
