@@ -37,13 +37,16 @@
                     data-ng-class="{ 'is-active': item.$selected }">
                     <td class="col-3 p-form-validation" aria-label="Name"
                         data-ng-class="{ 'is-error': isNameInvalid(item) }">
-                        <input type="checkbox" class="checkbox u-float--left" id="{$ item.name $}"
-                            data-ng-hide="isAvailableDisabled()"
-                            data-ng-checked="item.$selected"
-                            data-ng-click="toggleAvailableSelect(item)"
-                            data-ng-disabled="isAvailableDisabled()" />
-                        <label for="{$ item.name $}" ></label>
-                        <span data-ng-show="tableInfo.column === 'name'" data-ng-hide="availableMode === 'edit' && item.$selected" title="{$ item.name $}">{$ item.name $}</span>
+                        <label for="{$ item.name $}">
+                            <input type="checkbox" class="checkbox u-float--left" id="{$ item.name $}"
+                                data-ng-hide="isAvailableDisabled()"
+                                data-ng-checked="item.$selected"
+                                data-ng-click="toggleAvailableSelect(item)"
+                                data-ng-disabled="isAvailableDisabled()" />
+                            <span data-ng-show="tableInfo.column === 'name'"
+                                data-ng-hide="availableMode === 'edit' && item.$selected"
+                                title="{$ item.name $}">{$ item.name $}</span>
+                        </label>
                         <span data-ng-show="tableInfo.column === 'model'" title="{$ item.model $}">{$ item.model $}</span>
                         <span data-ng-show="tableInfo.column === 'serial'" title="{$ item.serial $}">{$ item.serial $}</span>
                         <span data-ng-show="tableInfo.column === 'firmware_version'" title="{$ item.firmware_version $}">{$ item.firmware_version $}</span>
