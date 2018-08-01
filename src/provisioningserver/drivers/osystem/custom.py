@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Operating System class used for custom images."""
@@ -40,15 +40,29 @@ class CustomOS(OperatingSystem):
         return release
 
     def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Returns the xinstall image name and type for given image."""
+        """Return the xinstall image name and type for this operating system.
+
+        :param arch: Architecture of boot image.
+        :param subarch: Sub-architecture of boot image.
+        :param release: Release of boot image.
+        :param label: Label of boot image.
+        :return: tuple with name of root image and image type
+        """
         filetypes = {
             "root-tgz": "tgz",
+            # Done for backwards compatibility.
             "root-dd": "dd-tgz",
+            "root-dd.tar": "dd-tar",
+            "root-dd.raw": "dd-raw",
+            "root-dd.bz2": "dd-bz2",
+            "root-dd.gz": "dd-gz",
             "root-dd.xz": "dd-xz",
+            "root-dd.tar.bz2": "dd-tbz",
+            "root-dd.tar.xz": "dd-txz",
         }
         with ClusterConfiguration.open() as config:
             dd_path = os.path.join(
-                config.tftp_root, "custom", arch,
+                config.tftp_root, self.name, arch,
                 subarch, release, label)
         filename, filetype = "root-tgz", "tgz"
         try:

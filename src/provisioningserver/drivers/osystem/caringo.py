@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Operating System class used for custom images."""
@@ -39,7 +39,3 @@ class CaringoOS(OperatingSystem):
         # Return the same name, since the cluster does not know about the
         # title of the image. The region will fix the title for the UI.
         return release
-
-    def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Returns the xinstall image name and type for given image."""
-        return "root-tgz", "tgz"

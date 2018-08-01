@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Operating System class used for custom images."""
@@ -40,22 +40,23 @@ class UbuntuCoreOS(OperatingSystem):
 
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Returns the xinstall image name and type for given image."""
+        # Ubuntu-Core deployments must use a DD image.
         filetypes = {
-            "root-tgz": "tgz",
+            # Done for backwards compatibility.
+            "root-dd": "dd-tgz",
             "root-dd.tar": "dd-tar",
             "root-dd.raw": "dd-raw",
-            "root-dd.tar.bz2": "dd-tbz",
-            "root-dd": "dd-tgz",
-            "root-dd.tar.xz": "dd-txz",
             "root-dd.bz2": "dd-bz2",
             "root-dd.gz": "dd-gz",
-            "root-dd.xz": "dd-xz"
+            "root-dd.xz": "dd-xz",
+            "root-dd.tar.bz2": "dd-tbz",
+            "root-dd.tar.xz": "dd-txz",
         }
         with ClusterConfiguration.open() as config:
             dd_path = os.path.join(
-                config.tftp_root, 'ubuntu-core', arch,
+                config.tftp_root, self.name, arch,
                 subarch, release, label)
-        filename, filetype = "", ""
+        filename, filetype = "root-dd.xz", "dd-xz"
         try:
             for fname in os.listdir(dd_path):
                 if fname in filetypes.keys():
