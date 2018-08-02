@@ -12,6 +12,7 @@ import collections
 from itertools import chain
 import socket
 
+import attr
 from maasserver import logger
 from maasserver.enum import (
     IPRANGE_TYPE,
@@ -19,7 +20,10 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import DNSData
+from maasserver.models.dnsdata import (
+    DNSData,
+    HostnameRRsetMapping,
+)
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -179,7 +183,9 @@ class ZoneGenerator:
     We generate zones for the domains (forward), and subnets (reverse) passed.
     """
 
-    def __init__(self, domains, subnets, default_ttl=None, serial=None):
+    def __init__(
+            self, domains, subnets, default_ttl=None, serial=None,
+            internal_domains=None):
         """
         :param serial: A serial number to reuse when creating zones in bulk.
         """
@@ -191,6 +197,9 @@ class ZoneGenerator:
             self.default_ttl = default_ttl
         self.default_domain = Domain.objects.get_default_domain()
         self.serial = serial
+        self.internal_domains = internal_domains
+        if self.internal_domains is None:
+            self.internal_domains = []
 
     @staticmethod
     def _get_mappings():
@@ -205,7 +214,7 @@ class ZoneGenerator:
     @staticmethod
     def _gen_forward_zones(
             domains, serial, ns_host_name, mappings,
-            rrset_mappings, default_ttl):
+            rrset_mappings, default_ttl, internal_domains):
         """Generator of forward zones, collated by domain name."""
         dns_ip_list = get_dns_server_addresses()
         domains = set(domains)
@@ -266,6 +275,27 @@ class ZoneGenerator:
                 ns_host_name=ns_host_name,
                 other_mapping=other_mapping,
                 dynamic_ranges=dynamic_ranges,
+                )
+
+        # Create the forward zone config for the internal domains.
+        for internal_domain in internal_domains:
+            # Use other_mapping to create the domain resources.
+            other_mapping = collections.defaultdict(HostnameRRsetMapping)
+            for resource in internal_domain.resources:
+                resource_mapping = other_mapping[resource.name]
+                for record in resource.records:
+                    resource_mapping.rrset.add(
+                        (internal_domain.ttl, record.rrtype, record.rrdata))
+            yield DNSForwardZoneConfig(
+                internal_domain.name, serial=serial,
+                default_ttl=internal_domain.ttl,
+                ns_ttl=internal_domain.ttl,
+                ipv4_ttl=internal_domain.ttl,
+                ipv6_ttl=internal_domain.ttl,
+                mapping={},
+                ns_host_name=ns_host_name,
+                other_mapping=other_mapping,
+                dynamic_ranges=[],
                 )
 
     @staticmethod
@@ -390,7 +420,7 @@ class ZoneGenerator:
         return chain(
             self._gen_forward_zones(
                 self.domains, serial, ns_host_name, mappings,
-                rrset_mappings, default_ttl),
+                rrset_mappings, default_ttl, self.internal_domains),
             self._gen_reverse_zones(
                 self.subnets, serial, ns_host_name, mappings, default_ttl),
             )
@@ -398,3 +428,39 @@ class ZoneGenerator:
     def as_list(self):
         """Return the zones as a list."""
         return list(self)
+
+
+@attr.s
+class InternalDomain:
+    """Configuration for the internal domain."""
+
+    # Name of the domain.
+    name = attr.ib(converter=str)
+
+    # TTL for the domain.
+    ttl = attr.ib(converter=int)
+
+    # Resources for this domain.
+    resources = attr.ib(converter=list)
+
+
+@attr.s
+class InternalDomainResourse:
+    """Resource inside the internal domain."""
+
+    # Name of the resource.
+    name = attr.ib(converter=str)
+
+    # Records for this resource.
+    records = attr.ib(converter=list)
+
+
+@attr.s
+class InternalDomainResourseRecord:
+    """Record inside an internal domain resource."""
+
+    # Type of the resource record.
+    rrtype = attr.ib(converter=str)
+
+    # Data inside resource record.
+    rrdata = attr.ib(converter=str)

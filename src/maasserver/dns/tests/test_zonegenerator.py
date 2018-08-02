@@ -22,6 +22,9 @@ from maasserver.dns.zonegenerator import (
     get_dns_server_address,
     get_hostname_dnsdata_mapping,
     get_hostname_ip_mapping,
+    InternalDomain,
+    InternalDomainResourse,
+    InternalDomainResourseRecord,
     lazydict,
     warn_loopback,
     WARNING_MESSAGE,
@@ -67,6 +70,7 @@ from testtools.matchers import (
     Equals,
     IsInstance,
     MatchesAll,
+    MatchesDict,
     MatchesSetwise,
     MatchesStructure,
 )
@@ -569,6 +573,47 @@ class TestZoneGenerator(MAASServerTestCase):
             ZoneGenerator(
                 domains, subnets, serial=random.randint(0, 65535)).as_list(),
             MatchesSetwise(*expected_zones))
+
+    def test_yields_internal_forward_zones(self):
+        default_domain = Domain.objects.get_default_domain()
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        domains = []
+        for _ in range(3):
+            record = InternalDomainResourseRecord(
+                rrtype='A', rrdata=factory.pick_ip_in_Subnet(subnet))
+            resource = InternalDomainResourse(
+                name=factory.make_name('resource'),
+                records=[record])
+            domain = InternalDomain(
+                name=factory.make_name('domain'),
+                ttl=random.randint(15, 300),
+                resources=[resource])
+            domains.append(domain)
+        zones = ZoneGenerator(
+            [], [subnet], serial=random.randint(0, 65535),
+            internal_domains=domains).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(*[
+                MatchesAll(
+                    forward_zone(domain.name),
+                    MatchesStructure(
+                        _other_mapping=MatchesDict({
+                            domain.resources[0].name: MatchesStructure(
+                                rrset=MatchesSetwise(
+                                    Equals((
+                                        domain.ttl,
+                                        domain.resources[0].records[0].rrtype,
+                                        domain.resources[0].records[0].rrdata))
+                                )
+                            )
+                        })
+                    )
+                )
+                for domain in domains
+            ] + [
+                reverse_zone(default_domain.name, "10/29"),
+                reverse_zone(default_domain.name, "10/24")
+            ]))
 
 
 class TestZoneGeneratorTTL(MAASTransactionServerTestCase):

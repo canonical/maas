@@ -8,12 +8,21 @@ __all__ = [
     'dns_update_all_zones',
     ]
 
+from collections import defaultdict
+import ipaddress
+
 from django.conf import settings
-from maasserver.dns.zonegenerator import ZoneGenerator
+from maasserver.dns.zonegenerator import (
+    InternalDomain,
+    InternalDomainResourse,
+    InternalDomainResourseRecord,
+    ZoneGenerator,
+)
 from maasserver.enum import RDNS_MODE
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
+from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
 from provisioningserver.dns.actions import (
     bind_reload,
@@ -61,7 +70,7 @@ def dns_update_all_zones(reload_retry=False):
     serial = current_zone_serial()
     zones = ZoneGenerator(
         domains, subnets, default_ttl,
-        serial).as_list()
+        serial, internal_domains=[get_internal_domain()]).as_list()
     bind_write_zones(zones)
 
     # We should not be calling bind_write_options() here; call-sites should be
@@ -121,3 +130,63 @@ def get_trusted_networks():
         str(subnet.cidr)
         for subnet in Subnet.objects.all()
     ]
+
+
+def get_resource_name_for_subnet(subnet):
+    """Convert the subnet CIDR to the resource name."""
+    network = subnet.cidr.split('/', 1)[0]
+    network = ipaddress.ip_address(network).exploded
+    return network.replace(':', '-').replace('.', '-')
+
+
+def get_internal_domain():
+    """Calculate the zone description for the internal domain.
+
+    This constructs the zone with a resource per subnet that is connected to
+    rack controllers. Each resource gets A and AAAA records for the rack
+    controllers that have a connection to that subnet.
+
+    Note: Rack controllers that have no registered RPC connections are not
+    included in the calculation. Those rack controllers are dead and no traffic
+    should be directed to them.
+    """
+    # `connections__isnull` verifies that only rack controllers with atleast
+    # one connection are used in the calculation.
+    controllers = RackController.objects.filter(connections__isnull=False)
+    controllers = controllers.prefetch_related(
+        'interface_set__ip_addresses__subnet')
+
+    # Group the IP addresses on controllers by the connected subnets.
+    ips_by_resource = defaultdict(set)
+    for controller in controllers:
+        for interface in controller.interface_set.all():
+            for ip_address in interface.ip_addresses.all():
+                if ip_address.ip:
+                    resource_name = (
+                        get_resource_name_for_subnet(ip_address.subnet))
+                    ips_by_resource[resource_name].add(ip_address.ip)
+
+    # Map the subnet IP address to the model required for zone generation.
+    resources = []
+    for resource_name, ip_addresses in ips_by_resource.items():
+        records = []
+        for ip_address in ip_addresses:
+            if ipaddress.ip_address(ip_address).version == 4:
+                records.append(InternalDomainResourseRecord(
+                    rrtype='A',
+                    rrdata=ip_address
+                ))
+            else:
+                records.append(InternalDomainResourseRecord(
+                    rrtype='AAAA',
+                    rrdata=ip_address
+                ))
+        resources.append(InternalDomainResourse(
+            name=resource_name,
+            records=records,
+        ))
+
+    return InternalDomain(
+        name=Config.objects.get_config('maas_internal_domain'),
+        ttl=15,
+        resources=resources)

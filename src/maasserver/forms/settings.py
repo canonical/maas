@@ -30,6 +30,7 @@ from maasserver.models.config import (
     DNSSEC_VALIDATION_CHOICES,
     NETWORK_DISCOVERY_CHOICES,
 )
+from maasserver.models.domain import validate_domain_name
 from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
@@ -222,19 +223,10 @@ def make_active_discovery_interval_field(*args, **kwargs):
     return field
 
 
-def validate_internal_domain(value):
-    """Django validator: `value` must be a valid DNS zone name for the maas
-    internal domain."""
-    namespec = re.compile(
-        r"^[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}$")
-    if not namespec.search(value) or len(value) > 255:
-        raise ValidationError("Invalid internal domain name: %s." % value)
-
-
 def make_maas_internal_domain_field(*args, **kwargs):
     """Build and return the maas_internal_domain field."""
     return forms.CharField(
-        validators=[validate_internal_domain],
+        validators=[validate_domain_name],
         **kwargs)
 
 

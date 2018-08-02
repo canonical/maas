@@ -17,9 +17,12 @@ from maasserver.dns.config import (
     current_zone_serial,
     dns_force_reload,
     dns_update_all_zones,
+    get_internal_domain,
+    get_resource_name_for_subnet,
     get_trusted_networks,
     get_upstream_dns,
 )
+from maasserver.dns.zonegenerator import InternalDomainResourseRecord
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -149,6 +152,18 @@ class TestDNSServer(MAASServerTestCase):
             subnet=subnet, interface=nic)
         return node, static_ip
 
+    def create_rack_with_static_ip(self, subnet=None):
+        if subnet is None:
+            network = factory.make_ipv4_network()
+            subnet = factory.make_Subnet(cidr=str(network.cidr))
+        rack = factory.make_RackController(interface=True)
+        nic = rack.get_boot_interface()
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        return rack, static_ip
+
     def dns_wait_soa(self, fqdn, removing=False):
         # Get the serial number for the zone containing the FQDN by asking DNS
         # nicely for the SOA for the FQDN.  If it's top-of-zone, we get an
@@ -224,7 +239,7 @@ class TestDNSServer(MAASServerTestCase):
             commands=['-x', ip, '+short', '-%i' % version])
         return output.split('\n')
 
-    def assertDNSMatches(self, hostname, domain, ip, version=-1):
+    def assertDNSMatches(self, hostname, domain, ip, version=-1, reverse=True):
         # A forward lookup on the hostname returns the IP address.
         if version == -1:
             version = IPAddress(ip).version
@@ -242,12 +257,14 @@ class TestDNSServer(MAASServerTestCase):
             "Failed to resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(forward_lookup_result)))
         # A reverse lookup on the IP address returns the hostname.
-        reverse_lookup_result = self.dig_reverse_resolve(
-            ip, version=version)
-        self.assertThat(
-            reverse_lookup_result, Contains("%s." % fqdn),
-            "Failed to reverse resolve '%s' missing '%s' (results: '%s')." % (
-                ip, "%s." % fqdn, ','.join(reverse_lookup_result)))
+        if reverse:
+            reverse_lookup_result = self.dig_reverse_resolve(
+                ip, version=version)
+            self.assertThat(
+                reverse_lookup_result, Contains("%s." % fqdn),
+                "Failed to reverse resolve '%s' missing '%s' "
+                "(results: '%s')." % (
+                    ip, "%s." % fqdn, ','.join(reverse_lookup_result)))
 
 
 class TestDNSConfigModifications(TestDNSServer):
@@ -257,6 +274,31 @@ class TestDNSConfigModifications(TestDNSServer):
         node, static = self.create_node_with_static_ip()
         dns_update_all_zones()
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
+
+    def test_dns_update_all_zones_includes_internal_domain(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        rack, static = self.create_rack_with_static_ip()
+        factory.make_RegionRackRPCConnection(rack)
+        dns_update_all_zones()
+        resource_name = get_resource_name_for_subnet(static.subnet)
+        self.assertDNSMatches(
+            resource_name, Config.objects.get_config('maas_internal_domain'),
+            static.ip, reverse=False)
+
+    def test_dns_update_all_zones_includes_multiple_racks(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        rack1, static1 = self.create_rack_with_static_ip()
+        factory.make_RegionRackRPCConnection(rack1)
+        rack2, static2 = self.create_rack_with_static_ip(subnet=static1.subnet)
+        factory.make_RegionRackRPCConnection(rack2)
+        dns_update_all_zones()
+        resource_name = get_resource_name_for_subnet(static1.subnet)
+        self.assertDNSMatches(
+            resource_name, Config.objects.get_config('maas_internal_domain'),
+            static1.ip, reverse=False)
+        self.assertDNSMatches(
+            resource_name, Config.objects.get_config('maas_internal_domain'),
+            static2.ip, reverse=False)
 
     def test_dns_update_all_zones_passes_reload_retry_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -422,3 +464,111 @@ class TestGetTrustedNetworks(MAASServerTestCase):
         # Note: This test was seen randomly failing because the networks were
         # in an unexpected order...
         self.assertItemsEqual(expected, get_trusted_networks())
+
+
+class TestGetInternalDomain(MAASServerTestCase):
+    """Test for maasserver/dns/config.py:get_internal_domain()"""
+
+    def test__uses_maas_internal_domain_config(self):
+        internal_domain = factory.make_name('internal')
+        Config.objects.set_config('maas_internal_domain', internal_domain)
+        domain = get_internal_domain()
+        self.assertEqual(internal_domain, domain.name)
+
+    def test__doesnt_add_disconnected_rack(self):
+        rack = factory.make_RackController()
+        # No `RegionRackRPCConnection` is being created so the rack is
+        # disconnected.
+        nic = rack.get_boot_interface()
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        domain = get_internal_domain()
+        self.assertEqual(0, len(domain.resources))
+
+    def test__adds_connected_rack_ipv4(self):
+        rack = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack)
+        nic = rack.get_boot_interface()
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        domain = get_internal_domain()
+        self.assertEqual(
+            get_resource_name_for_subnet(subnet), domain.resources[0].name)
+        self.assertEqual(
+            InternalDomainResourseRecord(rrtype='A', rrdata=static_ip.ip),
+            domain.resources[0].records[0])
+
+    def test__adds_connected_rack_ipv6(self):
+        rack = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack)
+        nic = rack.get_boot_interface()
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        domain = get_internal_domain()
+        self.assertEqual(
+            get_resource_name_for_subnet(subnet), domain.resources[0].name)
+        self.assertEqual(
+            InternalDomainResourseRecord(rrtype='AAAA', rrdata=static_ip.ip),
+            domain.resources[0].records[0])
+
+    def test__adds_connected_multiple_racks_ipv4(self):
+        rack1 = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack1)
+        rack2 = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack2)
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        static_ip1 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=rack1.get_boot_interface())
+        static_ip2 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=rack2.get_boot_interface())
+        domain = get_internal_domain()
+        self.assertEqual(
+            get_resource_name_for_subnet(subnet),
+            domain.resources[0].name)
+        self.assertThat(domain.resources[0].records, MatchesSetwise(
+            Equals(InternalDomainResourseRecord(
+                rrtype='A', rrdata=static_ip1.ip)),
+            Equals(InternalDomainResourseRecord(
+                rrtype='A', rrdata=static_ip2.ip))))
+
+    def test__adds_connected_multiple_racks_ipv6(self):
+        rack1 = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack1)
+        rack2 = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack2)
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        static_ip1 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=rack1.get_boot_interface())
+        static_ip2 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=rack2.get_boot_interface())
+        domain = get_internal_domain()
+        self.assertEqual(
+            get_resource_name_for_subnet(subnet),
+            domain.resources[0].name)
+        self.assertThat(domain.resources[0].records, MatchesSetwise(
+            Equals(InternalDomainResourseRecord(
+                rrtype='AAAA', rrdata=static_ip1.ip)),
+            Equals(InternalDomainResourseRecord(
+                rrtype='AAAA', rrdata=static_ip2.ip))))
