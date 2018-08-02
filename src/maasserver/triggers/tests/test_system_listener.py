@@ -55,7 +55,8 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestCoreRegionRackRPCConnectionInsertListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
     """End-to-end test for the core triggers code."""
 
     @wait_for_reactor
@@ -378,9 +379,87 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             overloaded_region_process.id,
             rack_controller.managing_process_id)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_publish_on_first_rpc_connection(self):
+        yield deferToDatabase(register_system_triggers)
+        region = yield deferToDatabase(self.create_region_controller)
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        rack_controller = yield deferToDatabase(self.create_rack_controller)
+        yield self.capturePublication()
+
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("rack controller %s connected" % rack_controller.hostname))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_no_dns_publish_on_second_rpc_connection(self):
+        yield deferToDatabase(register_system_triggers)
+        region = yield deferToDatabase(self.create_region_controller)
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        region_process_endpoint2 = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        rack_controller = yield deferToDatabase(self.create_rack_controller)
+        yield self.capturePublication()
+
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+            publication = self.getCapturedPublication()
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint2,
+                "rack_controller": rack_controller,
+            })
+        finally:
+            yield listener.stopService()
+        # Verify that the DNS publication has not changed.
+        yield self.capturePublication()
+        self.assertEqual(publication, self.getCapturedPublication())
+
 
 class TestCoreRegionRackRPCConnectionDeleteListener(
-        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
     """End-to-end test for the core triggers code."""
 
     @wait_for_reactor
@@ -524,6 +603,52 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
             self.assertIsNone(rack_controller.managing_process_id)
         finally:
             yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_publish_when_no_connections(self):
+        # Create a region process that is managing for a rack controller.
+        region = yield deferToDatabase(self.create_region_controller)
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": region_process
+            })
+        connection = yield deferToDatabase(
+            self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+
+        yield self.capturePublication()
+
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            # Remove the connection on the region process.
+            yield deferToDatabase(
+                self.delete_region_rack_rpc_connection, connection.id)
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals(
+                "rack controller %s disconnected" % rack_controller.hostname))
 
 
 class TestDHCPVLANListener(

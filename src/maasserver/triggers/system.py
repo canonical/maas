@@ -205,6 +205,13 @@ CORE_REGIONRACKRPCONNECTION_INSERT = dedent("""\
           END IF;
         END IF;
       END IF;
+
+      -- First connection of the rack controller requires the DNS to be
+      -- reloaded for the internal MAAS domain.
+      IF sys_core_get_num_conn(rack_controller) = 1 THEN
+        PERFORM sys_dns_publish_update(
+          'rack controller ' || rack_controller.hostname || ' connected');
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -256,6 +263,13 @@ CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
             CONCAT('sys_core_', region_process.id),
             CONCAT('watch_', CAST(rack_controller.id AS text)));
         END IF;
+      END IF;
+
+      -- No connections of the rack controller requires the DNS to be
+      -- reloaded for the internal MAAS domain.
+      IF sys_core_get_num_conn(rack_controller) = 0 THEN
+        PERFORM sys_dns_publish_update(
+          'rack controller ' || rack_controller.hostname || ' disconnected');
       END IF;
       RETURN NEW;
     END;
