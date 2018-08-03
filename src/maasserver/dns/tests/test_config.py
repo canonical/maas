@@ -572,3 +572,26 @@ class TestGetInternalDomain(MAASServerTestCase):
                 rrtype='AAAA', rrdata=static_ip1.ip)),
             Equals(InternalDomainResourseRecord(
                 rrtype='AAAA', rrdata=static_ip2.ip))))
+
+
+class TestGetResourceNameForSubnet(MAASServerTestCase):
+    """Test for maasserver/dns/config.py:get_resource_name_for_subnet()"""
+
+    scenarios = (
+        ('10.0.0.0/8', {
+            'cidr': '10.0.0.0/8',
+            'result': '10-0-0-0--8',
+        }),
+        ('192.168.1.0/24', {
+            'cidr': '192.168.1.0/24',
+            'result': '192-168-1-0--24',
+        }),
+        ('2001:db8:0::/64', {
+            'cidr': '2001:db8:0::/64',
+            'result': '2001-db8----64',
+        }),
+    )
+
+    def test__returns_valid(self):
+        subnet = factory.make_Subnet(cidr=self.cidr)
+        self.assertEqual(self.result, get_resource_name_for_subnet(subnet))

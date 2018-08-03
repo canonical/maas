@@ -9,7 +9,6 @@ __all__ = [
     ]
 
 from collections import defaultdict
-import ipaddress
 
 from django.conf import settings
 from maasserver.dns.zonegenerator import (
@@ -24,6 +23,7 @@ from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
+from netaddr import IPAddress
 from provisioningserver.dns.actions import (
     bind_reload,
     bind_reload_with_retries,
@@ -134,9 +134,7 @@ def get_trusted_networks():
 
 def get_resource_name_for_subnet(subnet):
     """Convert the subnet CIDR to the resource name."""
-    network = subnet.cidr.split('/', 1)[0]
-    network = ipaddress.ip_address(network).exploded
-    return network.replace(':', '-').replace('.', '-')
+    return subnet.cidr.replace('/', '--').replace(':', '-').replace('.', '-')
 
 
 def get_internal_domain():
@@ -171,7 +169,7 @@ def get_internal_domain():
     for resource_name, ip_addresses in ips_by_resource.items():
         records = []
         for ip_address in ip_addresses:
-            if ipaddress.ip_address(ip_address).version == 4:
+            if IPAddress(ip_address).version == 4:
                 records.append(InternalDomainResourseRecord(
                     rrtype='A',
                     rrdata=ip_address
