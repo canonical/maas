@@ -10,6 +10,7 @@ import random
 from unittest.mock import ANY
 
 from maasserver import server_address
+from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     INTERFACE_TYPE,
@@ -53,8 +54,8 @@ def get_config(*args, **kwargs):
     if explicit_count is None:
         # If you need to adjust this value up be sure that 100% you cannot
         # lower this value. If you want to adjust this value down, big +1!
-        assert count <= 20, (
-            '%d > 20; Query count should remain below 20 queries '
+        assert count <= 21, (
+            '%d > 21; Query count should remain below 21 queries '
             'at all times.' % count)
     else:
         # This test sets an explicit count. This should *ONLY* be used if
@@ -159,7 +160,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=6)
+            query_count=7)
         self.assertEquals({
             "system_id": node.system_id,
             "arch": node.split_arch()[0],
@@ -318,7 +319,7 @@ class TestGetConfig(MAASServerTestCase):
         self.assertEqual(host, observed_config.get('hostname'))
         self.assertEqual(domainname, observed_config.get('domain'))
 
-    def test__has_enlistment_preseed_url_with_local_ip(self):
+    def test__has_enlistment_preseed_url_with_local_ip_no_subnet(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
@@ -328,6 +329,36 @@ class TestGetConfig(MAASServerTestCase):
         self.assertEqual(
             compose_enlistment_preseed_url(
                 base_url='http://%s:5248/' % local_ip),
+            observed_config["preseed_url"])
+
+    def test__has_enlistment_preseed_url_with_local_ip_subnet_with_dns(self):
+        rack_controller = factory.make_RackController()
+        subnet = factory.make_Subnet()
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        remote_ip = factory.make_ip_address()
+        factory.make_default_ubuntu_release_bootable()
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip)
+        self.assertEqual(
+            compose_enlistment_preseed_url(
+                base_url='http://%s:5248/' % local_ip),
+            observed_config["preseed_url"])
+
+    def test__has_enlistment_preseed_url_internal_domain(self):
+        rack_controller = factory.make_RackController()
+        subnet = factory.make_Subnet()
+        subnet.dns_servers = []
+        subnet.save()
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        remote_ip = factory.make_ip_address()
+        factory.make_default_ubuntu_release_bootable()
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip)
+        self.assertEqual(
+            compose_enlistment_preseed_url(
+                base_url='http://%s.%s:5248/' % (
+                    get_resource_name_for_subnet(subnet),
+                    Config.objects.get_config('maas_internal_domain'))),
             observed_config["preseed_url"])
 
     def test__has_enlistment_preseed_url_with_region_ip(self):
@@ -369,7 +400,7 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, arch=arch)
         self.assertEqual('generic', observed_config['subarch'])
 
-    def test_preseed_url_for_known_node_local_ip(self):
+    def test_preseed_url_for_known_node_local_ip_no_subnet(self):
         rack_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         local_ip = factory.pick_ip_in_network(network)
@@ -384,6 +415,43 @@ class TestGetConfig(MAASServerTestCase):
         self.assertThat(
             observed_config["preseed_url"],
             StartsWith('http://%s:5248' % local_ip))
+
+    def test_preseed_url_for_known_node_local_ip_subnet_with_dns(self):
+        rack_url = 'http://%s' % factory.make_name('host')
+        subnet = factory.make_Subnet()
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        remote_ip = factory.make_ip_address()
+        self.patch(
+            server_address, 'resolve_hostname').return_value = {local_ip}
+        rack_controller = factory.make_RackController(url=rack_url)
+        node = self.make_node(primary_rack=rack_controller)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertThat(
+            observed_config["preseed_url"],
+            StartsWith('http://%s:5248' % local_ip))
+
+    def test_preseed_url_for_known_node_internal_domain(self):
+        rack_url = 'http://%s' % factory.make_name('host')
+        subnet = factory.make_Subnet()
+        subnet.dns_servers = []
+        subnet.save()
+        local_ip = factory.pick_ip_in_Subnet(subnet)
+        remote_ip = factory.make_ip_address()
+        self.patch(
+            server_address, 'resolve_hostname').return_value = {local_ip}
+        rack_controller = factory.make_RackController(url=rack_url)
+        node = self.make_node(primary_rack=rack_controller)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertThat(
+            observed_config["preseed_url"],
+            StartsWith(
+                'http://%s.%s:5248' % (
+                    get_resource_name_for_subnet(subnet),
+                    Config.objects.get_config('maas_internal_domain'))))
 
     def test_preseed_url_for_known_node_uses_rack_url(self):
         rack_url = 'http://%s' % factory.make_name('host')
@@ -547,7 +615,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = nic.mac_address
         get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=21)
+            query_count=22)
         self.assertEqual(nic, reload_object(node).boot_interface)
 
     def test__updates_boot_interface_when_changed(self):
@@ -562,7 +630,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = nic.mac_address
         get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=21)
+            query_count=22)
         self.assertEqual(nic, reload_object(node).boot_interface)
 
     def test__sets_boot_cluster_ip_when_empty(self):
@@ -635,7 +703,7 @@ class TestGetConfig(MAASServerTestCase):
 
         get_config(
             rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
-            query_count=27)
+            query_count=28)
         self.assertEqual(
             rack_vlan, reload_object(node).get_boot_interface().vlan)
 
@@ -655,7 +723,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         get_config(
             rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
-            query_count=21)
+            query_count=22)
         self.assertEqual(
             relay_vlan, reload_object(node).get_boot_interface().vlan)
 
@@ -676,7 +744,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         get_config(
             rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac,
-            query_count=27)
+            query_count=28)
         self.assertEqual(
             rack_vlan, reload_object(node).get_boot_interface().vlan)
 
@@ -730,7 +798,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=21)
+            query_count=22)
         self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_converted(self):
@@ -744,7 +812,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=21)
+            query_count=22)
         self.assertEqual("hwe-18.04", observed_config["subarch"])
 
     def test__commissioning_node_uses_min_hwe_kernel_reports_missing(self):
@@ -781,7 +849,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=14)
+            query_count=15)
         self.assertEqual(observed_config["release"], commissioning_series)
         self.assertEqual(observed_config["subarch"], 'generic')
         self.assertEqual(node.distro_series, distro_series)
@@ -808,7 +876,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=14)
+            query_count=15)
         self.assertEqual(observed_config["release"], commissioning_series)
         self.assertEqual(observed_config["subarch"], default_min_hwe_kernel)
         self.assertEqual(node.distro_series, distro_series)
@@ -825,7 +893,7 @@ class TestGetConfig(MAASServerTestCase):
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac,
-            query_count=15)
+            query_count=16)
         self.assertEqual("ga-90.90", observed_config["subarch"])
 
     def test__returns_ubuntu_os_series_for_ubuntu_xinstall(self):

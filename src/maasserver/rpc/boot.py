@@ -14,6 +14,7 @@ from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
 )
+from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     INTERFACE_TYPE,
@@ -25,6 +26,7 @@ from maasserver.models import (
     Node,
     PhysicalInterface,
     RackController,
+    Subnet,
     VLAN,
 )
 from maasserver.node_status import NODE_STATUS
@@ -242,6 +244,20 @@ def get_boot_config_for_machine(machine, configs, purpose):
     return osystem, series, subarch
 
 
+def get_base_url_for_local_ip(local_ip, internal_domain):
+    """Get the base URL for the preseed using the `local_ip`."""
+    subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
+    if subnet is not None and not subnet.dns_servers:
+        # Use the MAAS internal domain to resolve the IP address of
+        # the rack controllers on the subnet.
+        return 'http://%s.%s:5248/' % (
+            get_resource_name_for_subnet(subnet), internal_domain)
+    else:
+        # Either no subnet or the subnet has DNS servers defined. In
+        # that case fallback to using IP address only.
+        return 'http://%s:5248/' % local_ip
+
+
 @synchronous
 @transactional
 def get_config(
@@ -280,6 +296,7 @@ def get_config(
         'default_distro_series',
         'kernel_opts',
         'use_rack_proxy',
+        'maas_internal_domain',
     ])
     if machine is not None:
         # Update the last interface, last access cluster IP address, and
@@ -323,7 +340,8 @@ def get_config(
         arch, subarch = machine.split_arch()
         if configs['use_rack_proxy']:
             preseed_url = compose_preseed_url(
-                machine, base_url='http://%s:5248/' % local_ip)
+                machine, base_url=get_base_url_for_local_ip(
+                    local_ip, configs['maas_internal_domain']))
         else:
             preseed_url = compose_preseed_url(
                 machine, base_url=rack_controller.url,
@@ -394,7 +412,8 @@ def get_config(
         purpose = "commissioning"  # enlistment
         if configs['use_rack_proxy']:
             preseed_url = compose_enlistment_preseed_url(
-                base_url='http://%s:5248/' % local_ip)
+                base_url=get_base_url_for_local_ip(
+                    local_ip, configs['maas_internal_domain']))
         else:
             preseed_url = compose_enlistment_preseed_url(
                 rack_controller=rack_controller, default_region_ip=region_ip)
