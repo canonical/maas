@@ -600,6 +600,16 @@ class Interface(CleanSave, TimestampedModel):
     def is_enabled(self):
         return self.enabled
 
+    def has_bootable_vlan(self):
+        """Return if this interface has a bootable VLAN."""
+        if self.vlan is not None:
+            if self.vlan.dhcp_on:
+                return True
+            elif self.vlan.relay_vlan is not None:
+                if self.vlan.relay_vlan.dhcp_on:
+                    return True
+        return False
+
     def get_effective_mtu(self):
         """Return the effective MTU value for this interface."""
         mtu = None

@@ -466,20 +466,30 @@ class ComposeMachineForm(forms.Form):
         if pod_node_id not in node_ids:
             raise ValidationError(
                 "This pod does not match the specified networks.")
+        has_bootable_vlan = False
         for label in compatible_interfaces.keys():
-            interface_ids = compatible_interfaces[label][pod_node_id]
             # XXX: We might want to use the "deepest" interface in the
             # heirarchy, to ensure we get a bridge or bond (if configured)
             # rather than its parent. max() is a good approximation, since
             # child interfaces will be created after their parents.
+            interface_ids = compatible_interfaces[label][pod_node_id]
+            interface_id = max(interface_ids)
+            interface = Interface.objects.get(id=interface_id)
+            # Check to see if we have a bootable VLAN,
+            # we need at least one.
+            if interface.has_bootable_vlan():
+                has_bootable_vlan = True
             requested_machine_interfaces.append(
-                self.get_requested_machine_interface_by_interface_id(
-                    max(interface_ids))
+                self.get_requested_machine_interface_by_interface(
+                    interface)
             )
+        if not has_bootable_vlan:
+            raise ValidationError(
+                "MAAS DHCP must be enabled on at least one VLAN attached "
+                "to the specified interfaces.")
         return requested_machine_interfaces
 
-    def get_requested_machine_interface_by_interface_id(self, interface_id):
-        interface = Interface.objects.get(id=interface_id)
+    def get_requested_machine_interface_by_interface(self, interface):
         if interface.type == INTERFACE_TYPE.BRIDGE:
             rmi = RequestedMachineInterface(
                 attach_name=interface.name,

@@ -1594,6 +1594,38 @@ class VLANInterfaceTest(MAASServerTestCase):
         self.assertFalse(interface.is_enabled())
         self.assertFalse(reload_object(interface).enabled)
 
+    def test_vlan_has_bootable_vlan_for_vlan(self):
+        name = factory.make_name('eth', size=2)
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name=name)
+        vlan = factory.make_VLAN(dhcp_on=True)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            vlan=vlan, parents=[parent])
+        self.assertTrue(interface.has_bootable_vlan())
+
+    def test_vlan_has_bootable_vlan_for_relay_vlan(self):
+        name = factory.make_name('eth', size=2)
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name=name)
+        vlan = factory.make_VLAN(
+            dhcp_on=False,
+            relay_vlan=factory.make_VLAN(dhcp_on=True))
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            vlan=vlan, parents=[parent])
+        self.assertTrue(interface.has_bootable_vlan())
+
+    def test_vlan_has_bootable_vlan_with_no_dhcp(self):
+        name = factory.make_name('eth', size=2)
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name=name)
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            vlan=vlan, parents=[parent])
+        self.assertFalse(interface.has_bootable_vlan())
+
 
 class BondInterfaceTest(MAASServerTestCase):
 

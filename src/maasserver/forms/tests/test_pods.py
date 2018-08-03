@@ -915,6 +915,25 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                             size=Equals(disk_2), tags=Equals([]))),
                     ]))))
 
+    def test__get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
+        request = MagicMock()
+        host = factory.make_Machine_with_Interface_on_Subnet()
+        host.boot_interface.vlan.dhcp_on = False
+        host.boot_interface.vlan.save()
+        pod = make_pod_with_hints()
+        pod.host = host
+        pod.save()
+        interfaces = "eth0:subnet=%s" % (
+            host.boot_interface.vlan.subnet_set.first().cidr)
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        with ExpectedException(
+                ValidationError,
+                ".*DHCP must be enabled on at least one VLAN*"):
+            form.get_requested_machine()
+
     def test__get_machine_with_interfaces_fails_for_no_pod_host(self):
         request = MagicMock()
         host = factory.make_Machine_with_Interface_on_Subnet()
@@ -1042,7 +1061,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         # Because PXE booting from the DMZ is /always/ a great idea. ;-)
         host.boot_interface.vlan.space = dmz_space
         host.boot_interface.vlan.save()
-        storage_vlan = factory.make_VLAN(space=storage_space)
+        storage_vlan = factory.make_VLAN(space=storage_space, dhcp_on=True)
         storage_if = factory.make_Interface(node=host, vlan=storage_vlan)
         pod = make_pod_with_hints()
         pod.host = host
