@@ -256,6 +256,7 @@ from provisioningserver.drivers.osystem.custom import CustomOS
 from provisioningserver.drivers.osystem.windows import WindowsOS
 from provisioningserver.drivers.osystem.suse import SUSEOS
 from provisioningserver.drivers.osystem.caringo import CaringoOS
+from provisioningserver.drivers.osystem.esxi import ESXi
 
 builtin_osystems = [
     UbuntuOS(),
@@ -267,6 +268,7 @@ builtin_osystems = [
     WindowsOS(),
     SUSEOS(),
     CaringoOS(),
+    ESXi(),
     ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)
