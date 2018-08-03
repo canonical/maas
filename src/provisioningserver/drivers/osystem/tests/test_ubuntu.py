@@ -6,7 +6,6 @@
 __all__ = []
 
 from itertools import product
-import os
 import random
 
 from distro_info import UbuntuDistroInfo
@@ -132,21 +131,3 @@ class TestUbuntuOS(MAASTestCase):
         self.assertEqual(
             osystem.get_release_title(release),
             self.get_release_title(release))
-
-    def test_get_xinstall_parameters_returns_squashfs(self):
-        osystem = UbuntuOS()
-        self.patch(os.path, 'exists').return_value = True
-        self.assertItemsEqual(
-            ('squashfs', 'squashfs'),
-            osystem.get_xinstall_parameters(
-                factory.make_name('arch'), factory.make_name('subarch'),
-                factory.make_name('release'), factory.make_name('label')))
-
-    def test_get_xinstall_parameters_returns_tgz(self):
-        osystem = UbuntuOS()
-        self.patch(os.path, 'exists').return_value = False
-        self.assertItemsEqual(
-            ('root-tgz', 'tgz'),
-            osystem.get_xinstall_parameters(
-                factory.make_name('arch'), factory.make_name('subarch'),
-                factory.make_name('release'), factory.make_name('label')))

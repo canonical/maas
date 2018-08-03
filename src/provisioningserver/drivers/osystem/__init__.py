@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Osystem Drivers."""
@@ -16,7 +16,9 @@ from abc import (
     abstractproperty,
 )
 from collections import namedtuple
+import os
 
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.utils.registry import Registry
 
 
@@ -34,6 +36,7 @@ class BOOT_IMAGE_PURPOSE:
     BOOTLOADER = 'bootloader'
     #: Usable for ephemeral boots
     EPHEMERAL = 'ephemeral'
+
 
 # A cluster-side representation of a Node, relevant to the osystem code,
 # with only minimal fields.
@@ -187,6 +190,47 @@ class OperatingSystem(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    def _find_image(
+            self, arch, subarch, release, label,
+            squashfs=False, tgz=False, dd=False, default_fname=None):
+        filetypes = {}
+        if squashfs:
+            filetypes.update({'squashfs': 'squashfs'})
+        if tgz:
+            filetypes.update({'root-tgz': 'tgz'})
+        if dd:
+            filetypes.update({
+                # root-dd maps to dd-tgz for backwards compatibility.
+                'root-dd': 'dd-tgz',
+                'root-dd.tar': 'dd-tar',
+                'root-dd.raw': 'dd-raw',
+                'root-dd.bz2': 'dd-bz2',
+                'root-dd.gz': 'dd-gz',
+                'root-dd.xz': 'dd-xz',
+                'root-dd.tar.bz2': 'dd-tbz',
+                'root-dd.tar.xz': 'dd-txz',
+            })
+
+        with ClusterConfiguration.open() as config:
+            base_path = os.path.join(
+                config.tftp_root, self.name, arch,
+                subarch, release, label)
+
+        try:
+            for fname in os.listdir(base_path):
+                if fname in filetypes.keys():
+                    return fname, filetypes[fname]
+        except FileNotFoundError:
+            # In case the path does not exist
+            pass
+
+        assert squashfs or tgz or dd, "One type must be selected"
+        # If none is found return the default for messaging.
+        if default_fname and default_fname in filetypes:
+            return default_fname, filetypes[default_fname]
+        else:
+            return list(filetypes.items())[0]
+
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Return the xinstall image name and type for this operating system.
 
@@ -196,7 +240,7 @@ class OperatingSystem(metaclass=ABCMeta):
         :param label: Label of boot image.
         :return: tuple with name of root image and image type
         """
-        return "root-tgz", "tgz"
+        return self._find_image(arch, subarch, release, label, tgz=True)
 
 
 class OperatingSystemRegistry(Registry):

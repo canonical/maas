@@ -7,10 +7,7 @@ __all__ = [
     "UbuntuOS",
     ]
 
-import os
-
 from distro_info import UbuntuDistroInfo
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -100,11 +97,5 @@ class UbuntuOS(OperatingSystem):
         :param label: Label of boot image.
         :return: tuple with name of root image and image type
         """
-        with ClusterConfiguration.open() as config:
-            squashfs_path = os.path.join(
-                config.tftp_root, 'ubuntu', arch, subarch, release, label,
-                'squashfs')
-        if os.path.exists(squashfs_path):
-            return ('squashfs', 'squashfs')
-        else:
-            return ('root-tgz', 'tgz')
+        return self._find_image(
+            arch, subarch, release, label, tgz=True, squashfs=True)

@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """CentOS Operating System."""
@@ -31,9 +31,7 @@ class CentOS(OperatingSystem):
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
-        return [
-            BOOT_IMAGE_PURPOSE.XINSTALL
-            ]
+        return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
     def get_default_release(self):
         """Gets the default release to use when a release is not

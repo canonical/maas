@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the UbuntuOS module."""
@@ -6,7 +6,6 @@
 __all__ = []
 
 from itertools import product
-import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -41,12 +40,3 @@ class TestCaringoOS(MAASTestCase):
         self.assertEqual(
             osystem.get_release_title("9.0"),
             "9.0")
-
-    def test_get_xinstall_parameters_returns_squashfs(self):
-        osystem = CaringoOS()
-        self.patch(os.path, 'exists').return_value = True
-        self.assertItemsEqual(
-            ('root-tgz', 'tgz'),
-            osystem.get_xinstall_parameters(
-                factory.make_name('arch'), factory.make_name('subarch'),
-                factory.make_name('release'), factory.make_name('label')))

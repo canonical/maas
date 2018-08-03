@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """SUSE Operating System."""
@@ -29,9 +29,7 @@ class SUSEOS(OperatingSystem):
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
-        return [
-            BOOT_IMAGE_PURPOSE.XINSTALL
-            ]
+        return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
     def is_release_supported(self, release):
         """Return True when the release is supported, False otherwise."""

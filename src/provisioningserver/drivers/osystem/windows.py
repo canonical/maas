@@ -105,29 +105,4 @@ class WindowsOS(OperatingSystem):
         :param label: Label of boot image.
         :return: tuple with name of root image and image type
         """
-        # Windows deployments must use a DD image.
-        filetypes = {
-            # Done for backwards compatibility.
-            "root-dd": "dd-tgz",
-            "root-dd.tar": "dd-tar",
-            "root-dd.raw": "dd-raw",
-            "root-dd.bz2": "dd-bz2",
-            "root-dd.gz": "dd-gz",
-            "root-dd.xz": "dd-xz",
-            "root-dd.tar.bz2": "dd-tbz",
-            "root-dd.tar.xz": "dd-txz",
-        }
-        with ClusterConfiguration.open() as config:
-            dd_path = os.path.join(
-                config.tftp_root, self.name, arch,
-                subarch, release, label)
-        filename, filetype = "root-dd", "dd-tgz"
-        try:
-            for fname in os.listdir(dd_path):
-                if fname in filetypes.keys():
-                    filename, filetype = fname, filetypes[fname]
-                    break
-        except FileNotFoundError:
-            # In case the path does not exist
-            pass
-        return filename, filetype
+        return self._find_image(arch, subarch, release, label, dd=True)

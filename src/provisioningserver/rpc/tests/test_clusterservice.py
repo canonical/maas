@@ -295,8 +295,12 @@ class TestClusterProtocol_ListBootImages_and_ListBootImagesV2(MAASTestCase):
             ]
         for expected_image in expected_images:
             if expected_image['purpose'] == 'xinstall':
-                expected_image['xinstall_path'] = 'root-tgz'
-                expected_image['xinstall_type'] = 'tgz'
+                if expected_image['osystem'] == 'ubuntu':
+                    expected_image['xinstall_path'] = 'squashfs'
+                    expected_image['xinstall_type'] = 'squashfs'
+                else:
+                    expected_image['xinstall_path'] = 'root-tgz'
+                    expected_image['xinstall_type'] = 'tgz'
             else:
                 expected_image['xinstall_path'] = ''
                 expected_image['xinstall_type'] = ''
