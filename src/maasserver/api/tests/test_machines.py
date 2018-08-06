@@ -999,6 +999,47 @@ class TestMachinesAPI(APITestCase.ForUser):
         }, parsed_result['constraints_by_type']['storage'])
         self.assertThat(mock_compose, MockCalledOnceWith())
 
+    def test_POST_allocate_returns_a_composed_machine_with_interfaces(self):
+        # The "allocate" operation returns a composed machine.
+        available_status = NODE_STATUS.READY
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod = factory.make_Pod(architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            status=available_status, owner=None)
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        space = factory.make_Space()
+        machine.boot_interface.vlan.space = space
+        machine.boot_interface.vlan.save()
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0],
+                'interfaces': 'eth0:space=%s' % space.name,
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertEqual({
+            'eth0': [machine.boot_interface.id]
+        }, parsed_result['constraints_by_type']['interfaces'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
+
     def test_POST_allocate_returns_conflict_when_compose_fails(self):
         # The "allocate" operation returns a composed machine.
         architectures = [

@@ -39,6 +39,7 @@ from maasserver.testing.factory import (
 )
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
+from provisioningserver.utils.constraints import LabeledConstraintMap
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -1289,6 +1290,12 @@ class TestAcquireNodeForm(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet()
         form = AcquireNodeForm({
             'interfaces': 'label:fabric=fabric-0'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
+    def test_interfaces_constraint_works_with_object_form(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            'interfaces': LabeledConstraintMap('label:fabric=fabric-0')})
         self.assertTrue(form.is_valid(), dict(form.errors))
 
     def test_interfaces_constraint_with_multiple_labels_and_values_validated(

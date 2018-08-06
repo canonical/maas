@@ -496,7 +496,7 @@ class ComposeMachineForm(forms.Form):
                 attach_type=InterfaceAttachType.BRIDGE)
         else:
             attach_options = self.pod.default_macvlan_mode
-            if attach_options is None:
+            if not attach_options:
                 # Default macvlan mode is 'bridge' if not specified, since that
                 # provides the best chance for connectivity.
                 attach_options = MACVLAN_MODE.BRIDGE
@@ -632,6 +632,7 @@ class ComposeMachineForPodsForm(forms.Form):
             for form in self.valid_pod_forms
             if Capabilities.OVER_COMMIT in form.pod.capabilities
         ]
+        # XXX - we need a way to get errors back from these forms for debugging
         # First, try to compose a machine from non-commitable pods.
         for form in non_commit_forms:
             try:

@@ -91,6 +91,7 @@ from maasserver.models import (
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
+    nodes_by_interface,
     nodes_by_storage,
 )
 from maasserver.node_status import NODE_TRANSITIONS
@@ -233,7 +234,7 @@ def get_allocation_parameters(request):
 
 
 def get_allocated_composed_machine(
-        request, data, storage, pods, form, input_constraints):
+        request, data, storage, interfaces, pods, form, input_constraints):
     """Return composed machine if input constraints are matched."""
     machine = None
     # Gather tags and not_tags.
@@ -271,7 +272,11 @@ def get_allocated_composed_machine(
                 storage, node_ids=[machine.id])
             if storage is None:
                 storage = {}
-    return machine, storage
+            if interfaces:
+                _, interfaces = nodes_by_interface(interfaces)
+            else:
+                interfaces = {}
+    return machine, storage, interfaces
 
 
 class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
@@ -1774,18 +1779,23 @@ class MachinesHandler(NodesHandler, PowersMixin):
                         None if len(architectures) == 0
                         else min(architectures))
                 storage = form.cleaned_data.get('storage')
+                interfaces = form.cleaned_data.get('interfaces')
                 data = {
                     "cores": cores,
                     "memory": memory,
                     "architecture": architecture,
                     "storage": storage,
+                    "interfaces": interfaces,
                 }
                 pods = Pod.objects.all()
                 if zone is not None:
                     pods = pods.filter(zone__name=zone)
                 if pods:
-                    machine, storage = get_allocated_composed_machine(
-                        request, data, storage, pods, form, input_constraints)
+                    machine, storage, interfaces = (
+                        get_allocated_composed_machine(
+                            request, data, storage, interfaces, pods, form,
+                            input_constraints)
+                    )
 
             if machine is None:
                 constraints = form.describe_constraints()

@@ -1026,6 +1026,38 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                             attach_options=Equals(attach_mode)))
                 ]))))
 
+    def test__get_machine_with_interfaces_by_subnet_with_empty_mode(self):
+        request = MagicMock()
+        host = factory.make_Machine_with_Interface_on_Subnet()
+        space = factory.make_Space('dmz')
+        host.boot_interface.vlan.space = space
+        host.boot_interface.vlan.save()
+        pod = make_pod_with_hints()
+        pod.host = host
+        # We expect the macvlan mode to be the default choice...
+        attach_mode = MACVLAN_MODE_CHOICES[0][1]
+        # ... when the macvlan mode is set to the empty string.
+        pod.default_macvlan_mode = ''
+        pod.save()
+        interfaces = "eth0:subnet=%s" % (
+            host.boot_interface.vlan.subnet_set.first().cidr)
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine()
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                interfaces=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Equals(host.boot_interface.name),
+                            attach_type=Equals(InterfaceAttachType.MACVLAN),
+                            attach_options=Equals(attach_mode)))
+                ]))))
+
     def test__get_machine_with_interfaces_by_space(self):
         request = MagicMock()
         host = factory.make_Machine_with_Interface_on_Subnet()

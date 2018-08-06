@@ -471,7 +471,9 @@ class LabeledConstraintMapField(Field):
 
     def to_python(self, value):
         """Returns a LabeledConstraintMap object."""
-        if value is not None and len(value.strip()) != 0:
+        if isinstance(value, LabeledConstraintMap):
+            return value
+        elif value is not None and len(value.strip()) != 0:
             return LabeledConstraintMap(value)
 
 
