@@ -147,11 +147,17 @@ fix_dns_permissions() {
     fi
 }
 
+disable_nginx() {
+    systemctl stop nginx >/dev/null 2>&1 || true
+    systemctl disable nginx >/dev/null 2>&1 || true
+}
+
 # Unconditionally ensure that there is at least an empty configuration
 # file. This does *not* overwrite any existing configuration.
 maas-rack config
 
 if [ "$1" = "configure" ] && [ -z "$2" ]; then
+    disable_nginx
     configure_logging
     configure_libdir
     configure_maas_url
@@ -178,6 +184,7 @@ elif [ -n "$DEBCONF_RECONFIGURE" ]; then
     configure_shared_secret
 
 elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0ubuntu1; then
+    disable_nginx
     configure_logging
     configure_libdir
     maas-rack upgrade-cluster
