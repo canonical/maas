@@ -3,7 +3,11 @@
 
 """Test ResourcePool objects."""
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_DESCRIPTION,
     DEFAULT_RESOURCEPOOL_NAME,
@@ -63,3 +67,54 @@ class TestResourcePool(MAASServerTestCase):
         pool = ResourcePool.objects.get_default_resource_pool()
         factory.make_Node(pool=pool)
         self.assertRaises(ValidationError, pool.delete)
+
+
+class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
+
+    def test__user_view_returns_resource_pool(self):
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        self.assertEqual(
+            pool,
+            ResourcePool.objects.get_resource_pool_or_404(
+                pool.id, user, NODE_PERMISSION.VIEW))
+
+    def test__user_edit_raises_PermissionError(self):
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        self.assertRaises(
+            PermissionDenied,
+            ResourcePool.objects.get_resource_pool_or_404,
+            pool.id, user, NODE_PERMISSION.EDIT)
+
+    def test__user_admin_raises_PermissionError(self):
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        self.assertRaises(
+            PermissionDenied,
+            ResourcePool.objects.get_resource_pool_or_404,
+            pool.id, user, NODE_PERMISSION.ADMIN)
+
+    def test__admin_view_returns_resource_pool(self):
+        admin = factory.make_admin()
+        pool = factory.make_ResourcePool()
+        self.assertEqual(
+            pool,
+            ResourcePool.objects.get_resource_pool_or_404(
+                pool.id, admin, NODE_PERMISSION.VIEW))
+
+    def test__admin_edit_returns_resource_pool(self):
+        admin = factory.make_admin()
+        pool = factory.make_ResourcePool()
+        self.assertEqual(
+            pool,
+            ResourcePool.objects.get_resource_pool_or_404(
+                pool.id, admin, NODE_PERMISSION.EDIT))
+
+    def test__admin_admin_returns_pool(self):
+        admin = factory.make_admin()
+        pool = factory.make_ResourcePool()
+        self.assertEqual(
+            pool,
+            ResourcePool.objects.get_resource_pool_or_404(
+                pool.id, admin, NODE_PERMISSION.ADMIN))

@@ -13,8 +13,11 @@ from maasserver.api.support import (
     ModelCollectionOperationsHandler,
     ModelOperationsHandler,
 )
+from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ResourcePoolForm
 from maasserver.models import ResourcePool
+from piston3.utils import rc
 
 
 DISPLAYED_RESOURCEPOOL_FIELDS = (
@@ -45,14 +48,34 @@ class ResourcePoolHandler(ModelOperationsHandler):
 
         Returns 404 if the resource pool is not found.
         """
-        return super().read(request, id=id)
+        return ResourcePool.objects.get_resource_pool_or_404(
+            id, request.user, NODE_PERMISSION.VIEW)
 
     def update(self, request, id):
         """PUT request.  Update resource pool.
 
+        Please see the documentation for the 'create' operation for detailed
+        descriptions of each parameter.
+
+        Optional parameters
+        -------------------
+
+        name
+            Name of the resource pool.
+
+        description
+            Description of the resource pool.
+
         Returns 404 if the resource pool is not found.
         """
-        return super().update(request, id=id)
+
+        pool = ResourcePool.objects.get_resource_pool_or_404(
+            id, request.user, NODE_PERMISSION.ADMIN)
+        form = ResourcePoolForm(instance=pool, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
         """DELETE request.  Delete resource pool.
@@ -60,7 +83,10 @@ class ResourcePoolHandler(ModelOperationsHandler):
         Returns 404 if the resource pool is not found.
         Returns 204 if the resource pool is successfully deleted.
         """
-        return super().delete(request, id=id)
+        pool = ResourcePool.objects.get_resource_pool_or_404(
+            id, request.user, NODE_PERMISSION.ADMIN)
+        pool.delete()
+        return rc.DELETED
 
 
 class ResourcePoolsHandler(ModelCollectionOperationsHandler):
