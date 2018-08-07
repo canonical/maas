@@ -774,6 +774,7 @@ def configure_dhcp(rack_controller):
         ipv4_exc = exc
         ipv4_status = SERVICE_STATUS.DEAD
         log.err(
+            None,
             "Error configuring DHCPv4 on rack controller '%s': %s" % (
                 rack_controller.system_id, exc))
     else:
@@ -796,6 +797,7 @@ def configure_dhcp(rack_controller):
         ipv6_exc = exc
         ipv6_status = SERVICE_STATUS.DEAD
         log.err(
+            None,
             "Error configuring DHCPv6 on rack controller '%s': %s" % (
                 rack_controller.system_id, exc))
     else:
