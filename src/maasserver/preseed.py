@@ -64,6 +64,7 @@ from maasserver.utils import (
     get_default_region_ip,
 )
 from maasserver.utils.curtin import (
+    curtin_supports_centos_curthook,
     curtin_supports_custom_storage,
     curtin_supports_custom_storage_for_dd,
     curtin_supports_webhook_events,
@@ -290,42 +291,47 @@ def get_curtin_yaml_config(request, node):
     swap_config = compose_curtin_swap_preseed(node)
     kernel_config = compose_curtin_kernel_preseed(node)
     verbose_config = compose_curtin_verbose_preseed()
-
-    supports_custom_storage = True
-    # Get the storage configration if curtin supports custom storage.
-    if not curtin_supports_custom_storage():
-        maaslog.error(
-            "%s: cannot deploy with custom storage config; missing support "
-            "from curtin." % node.hostname)
-        supports_custom_storage = False
-
     network_config = compose_curtin_network_config(node)
 
-    if node.osystem != "ubuntu":
-        maaslog.info(
-            "%s: custom storage options are only supported on "
-            "Ubuntu. Using flat storage layout."
-            % node.hostname)
-        supports_custom_storage = False
-        if (node.osystem == "windows" and
-           curtin_supports_custom_storage_for_dd()):
-            # Windows does not support custom storage, however we still pass
-            # the storage config to ensure that curtin correctly selects the
-            # boot device as the root device.
-            #
-            # This also requires curtin support. See (LP:1640301).
-            supports_custom_storage = True
+    if node.osystem not in [
+            'ubuntu', 'ubuntu-core', 'centos', 'rhel', 'windows']:
+        maaslog.warning(
+            "%s: Custom network configuration is not supported on '%s' "
+            "('%s'). It is only supported on Ubuntu, Ubuntu-Core, CentOS, "
+            "RHEL, and Windows. Please verify that this image supports custom "
+            "network configuration." % (
+                node.hostname, node.osystem, node.distro_series))
 
-    if node.osystem == "custom":
-        maaslog.info(
-            "%s: deploying custom image '%s' with custom networking options. "
-            "Please verify that this image supports custom network "
-            "configuration." % (node.hostname, node.distro_series))
+    if curtin_supports_custom_storage():
+        if node.osystem in ['windows', 'ubuntu-core', 'esxi']:
+            # Windows, ubuntu-core, and ESXi do not support custom storage.
+            # Custom storage is still passed to allow Curtin to correctly
+            # select the boot device.
+            #
+            # This also requires Curtin support. See (LP:1640301). If Curtin
+            # doesn't support it, the storage config is not passed for
+            # backwards compatibility.
+            supports_custom_storage = curtin_supports_custom_storage_for_dd()
+        elif node.osystem != 'ubuntu':
+            # CentOS/RHEL storage is now natively supported by Curtin. Other
+            # GNU/Linux distributions may work as well. If Curtin lacks support
+            # don't send storage configuration for backwards compatibility.
+            supports_custom_storage = curtin_supports_centos_curthook()
+        else:
+            supports_custom_storage = True
+    else:
+        # Curtin has supported custom storage for Ubuntu since
+        # 0.1.0~bzr275-0ubuntu1.
+        supports_custom_storage = False
 
     if supports_custom_storage:
         storage_config = compose_curtin_storage_config(node)
     else:
         storage_config = []
+        maaslog.warning(
+            "%s: cannot deploy '%s' ('%s') with custom storage config; "
+            "missing support from Curtin. Default to flat storage layout." %
+            (node.hostname, node.osystem, node.distro_series))
 
     return (
         storage_config + [main_config] + archive_config + reporter_config +

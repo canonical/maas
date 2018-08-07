@@ -9,6 +9,7 @@ import http.client
 import json
 import os
 from pipes import quote
+import random
 from textwrap import dedent
 from unittest.mock import sentinel
 from urllib.parse import urlparse
@@ -893,84 +894,87 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller)
-        arch, subarch = node.architecture.split('/')
+            primary_rack=self.rpc_rack_controller, osystem='ubuntu')
         main_url = PackageRepository.get_main_archive().url
         factory.make_PackageRepository(
             url=main_url, default=True, arches=['i386', 'amd64'])
+        self.patch(
+            preseed_module,
+            "curtin_supports_custom_storage").return_value = True
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config")
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config")
-        self.patch(
-            preseed_module, "curtin_supports_custom_storage").value = True
-        node.osystem = 'ubuntu'
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
         self.assertThat(mock_compose_network, MockCalledOnceWith(node))
 
-    def test_get_curtin_userdata_skips_storage_for_non_ubuntu(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller)
-        arch, subarch = node.architecture.split('/')
-        self.configure_get_boot_images_for_node(node, 'xinstall')
-        mock_compose_storage = self.patch(
-            preseed_module, "compose_curtin_storage_config")
-        self.patch(
-            preseed_module, "curtin_supports_custom_storage").value = True
-        node.osystem = factory.make_name("osystem")
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
-        self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_storage, MockNotCalled())
-
-    def test_get_curtin_userdata_includes_storage_for_windows(self):
+    def test_get_curtin_userdata_includes_storage_for_dd(self):
         # Tests that storage config is sent when deploying windows. This is
         # required to select the correct root device based on the boot device
         # See LP:1640301
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller)
-        arch, subarch = node.architecture.split('/')
+            primary_rack=self.rpc_rack_controller,
+            osystem=random.choice(["windows", "ubuntu-core", "esxi"]))
+        self.patch(
+            preseed_module,
+            "curtin_supports_custom_storage").return_value = True
+        self.patch(
+            preseed_module,
+            "curtin_supports_custom_storage_for_dd").return_value = True
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config")
-        self.patch(
-            preseed_module, "curtin_supports_custom_storage").value = True
-        self.patch(
-            preseed_module,
-            "curtin_supports_custom_storage_for_dd").value = True
-        node.osystem = 'windows'
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
 
-    def test_get_curtin_userdata_includes_networking_for_non_ubuntu(self):
+    def test_get_curtin_userdata_always_includes_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller)
-        arch, subarch = node.architecture.split('/')
+            primary_rack=self.rpc_rack_controller,
+            osystem=factory.make_name('osystem'))
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_network = self.patch(
-            preseed_module, "compose_curtin_network_config")
-        self.patch(
-            preseed_module, "curtin_supports_custom_storage").value = True
-        node.osystem = factory.make_name("osystem")
+            preseed_module, 'compose_curtin_network_config')
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_network, MockCalledOnceWith(node))
 
-    def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
+    def test_get_curtin_userdata_includes_storage_when_curtin_supported(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller)
-        arch, subarch = node.architecture.split('/')
+            primary_rack=self.rpc_rack_controller,
+            osystem=factory.make_name('osystem'))
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        mock_supports_storage = self.patch(
-            preseed_module, "curtin_supports_custom_storage")
-        mock_supports_storage.return_value = False
-
+        self.patch(
+            preseed_module,
+            "curtin_supports_custom_storage").return_value = True
+        self.patch(
+            preseed_module,
+            'curtin_supports_centos_curthook').return_value = True
+        mock_compose_storage = self.patch(
+            preseed_module, 'compose_curtin_storage_config')
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_supports_storage, MockCalledOnceWith())
+        self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
+
+    def test_get_curtin_userdata_doesnt_incl_storage_when_not_supported(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            osystem=factory.make_name('osystem'))
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        self.patch(
+            preseed_module,
+            "curtin_supports_custom_storage").return_value = True
+        self.patch(
+            preseed_module,
+            'curtin_supports_centos_curthook').return_value = False
+        mock_compose_storage = self.patch(
+            preseed_module, 'compose_curtin_storage_config')
+        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(mock_compose_storage, MockNotCalled())
 
 
 class TestRenderCurtinUserdataWithThirdPartyDrivers(
