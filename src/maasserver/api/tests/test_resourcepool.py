@@ -57,6 +57,19 @@ class TestResourcePoolAPI(APITestCase.ForUser):
         self.assertEqual(pool.name, new_name)
         self.assertEqual(pool.description, new_description)
 
+    def test_PUT_updates_pool_by_name(self):
+        self.become_admin()
+        pool = factory.make_ResourcePool()
+        new_name = factory.make_name('name')
+        new_description = factory.make_name('description')
+        response = self.client.put(
+            reverse('resourcepool_handler', args=[pool.name]),
+            {'name': new_name, 'description': new_description})
+        self.assertEqual(response.status_code, http.client.OK)
+        pool = reload_object(pool)
+        self.assertEqual(pool.name, new_name)
+        self.assertEqual(pool.description, new_description)
+
     def test_PUT_missing(self):
         self.become_admin()
         description = factory.make_string()
@@ -72,11 +85,19 @@ class TestResourcePoolAPI(APITestCase.ForUser):
             {'description': factory.make_string()})
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
-    def test_DELETE_removes_pool(self):
+    def test_DELETE_removes_pool_by_id(self):
         self.become_admin()
         pool = factory.make_ResourcePool()
         response = self.client.delete(
             reverse('resourcepool_handler', args=[pool.id]), {})
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+        self.assertIsNone(reload_object(pool))
+
+    def test_DELETE_removes_pool_by_name(self):
+        self.become_admin()
+        pool = factory.make_ResourcePool()
+        response = self.client.delete(
+            reverse('resourcepool_handler', args=[pool.name]), {})
         self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertIsNone(reload_object(pool))
 
@@ -100,6 +121,4 @@ class TestResourcePoolAPI(APITestCase.ForUser):
         response = self.client.delete(
             reverse('resourcepool_handler', args=[pool.id]))
         self.assertEqual(response.status_code, http.client.NO_CONTENT)
-        response = self.client.delete(
-            reverse('resourcepool_handler', args=[pool.id]))
-        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+        self.assertIsNone(reload_object(pool))

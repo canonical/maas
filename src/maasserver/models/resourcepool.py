@@ -11,7 +11,10 @@ __all__ = [
 
 from datetime import datetime
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import (
     CharField,
     Manager,
@@ -21,13 +24,27 @@ from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
 
 
 DEFAULT_RESOURCEPOOL_NAME = 'default'
 DEFAULT_RESOURCEPOOL_DESCRIPTION = 'Default pool'
 
 
-class ResourcePoolManager(Manager):
+class ResourcePoolQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        specifier_types = {
+            None: self._add_default_query,
+            'name': "__name",
+            'id': "__id",
+        }
+        return super(ResourcePoolQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
     """Manager for the :class:`ResourcePool` model."""
 
     def get_default_resource_pool(self):
@@ -42,6 +59,30 @@ class ResourcePoolManager(Manager):
                 'created': now,
                 'updated': now})
         return pool
+
+    def get_resource_pool_or_404(self, specifiers, user, perm):
+        """Fetch a `ResourcePool` by its id.  Raise exceptions if no
+        `ResourcePool` with this id exists or if the provided user has not
+        the required permission to access this `ResourcePool`.
+
+        :param specifiers: A specifier to uniquely locate the ResourcePool.
+        :type specifiers: unicode
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        pool = self.get_object_by_specifiers_or_raise(specifiers)
+        if user.has_perm(perm, pool):
+            return pool
+        else:
+            raise PermissionDenied()
 
 
 class ResourcePool(CleanSave, TimestampedModel):

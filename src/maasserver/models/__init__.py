@@ -280,6 +280,7 @@ UNRESTRICTED_READ_MODELS = (
     Domain,
     Fabric,
     FanNetwork,
+    ResourcePool,
     Space,
     Subnet,
     StaticRoute,
