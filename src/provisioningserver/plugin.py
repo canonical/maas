@@ -164,24 +164,18 @@ class ProvisioningServiceMaker:
         service_monitor.setName("service_monitor")
         return service_monitor
 
-    def _makeNetworkTimeProtocolService(self, rpc_service):
-        from provisioningserver.rackdservices import ntp
-        ntp_service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
-        ntp_service.setName("ntp")
-        return ntp_service
-
-    def _makeDNSService(self, rpc_service):
-        from provisioningserver.rackdservices import dns
-        dns_service = dns.RackDNSService(rpc_service, reactor)
-        dns_service.setName("dns")
-        return dns_service
-
     def _makeHTTPService(self, resource_root, rpc_service):
         from provisioningserver.rackdservices import http
         http_service = http.RackHTTPService(
             resource_root, rpc_service, reactor)
         http_service.setName("http")
         return http_service
+
+    def _makeExternalService(self, rpc_service):
+        from provisioningserver.rackdservices import external
+        external_service = external.RackExternalService(rpc_service, reactor)
+        external_service.setName("external")
+        return external_service
 
     def _makeServices(self, tftp_root, tftp_port, clock=reactor):
         # Several services need to make use of the RPC service.
@@ -195,9 +189,8 @@ class ProvisioningServiceMaker:
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
         yield self._makeImageDownloadService(rpc_service, tftp_root)
-        yield self._makeNetworkTimeProtocolService(rpc_service)
         yield self._makeHTTPService(tftp_root, rpc_service)
-        yield self._makeDNSService(rpc_service)
+        yield self._makeExternalService(rpc_service)
         # The following are network-accessible services.
         yield self._makeHTTPLogService()
         yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)

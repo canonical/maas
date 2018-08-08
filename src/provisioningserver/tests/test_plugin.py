@@ -25,7 +25,7 @@ from provisioningserver.plugin import (
 from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
-from provisioningserver.rackdservices.dns import RackDNSService
+from provisioningserver.rackdservices.external import RackExternalService
 from provisioningserver.rackdservices.image_download_service import (
     ImageDownloadService,
 )
@@ -106,7 +106,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
-            "lease_socket_service", "node_monitor", "ntp", "dns",
+            "lease_socket_service", "node_monitor", "external",
             "rpc", "rpc-ping", "http", "http_log", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
@@ -131,7 +131,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
-            "lease_socket_service", "node_monitor", "ntp", "dns",
+            "lease_socket_service", "node_monitor", "external",
             "rpc", "rpc-ping", "http", "http_log", "tftp", "service_monitor",
             ]
         self.assertThat(service.namedServices, KeysEqual(*expected_services))
@@ -210,12 +210,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
         rpc_ping = service.getServiceNamed("rpc-ping")
         self.assertIsInstance(rpc_ping, ClusterClientCheckerService)
 
-    def test_dns_service(self):
+    def test_external_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, clock=None)
-        dns_service = service.getServiceNamed("dns")
-        self.assertIsInstance(dns_service, RackDNSService)
+        external_service = service.getServiceNamed("external")
+        self.assertIsInstance(external_service, RackExternalService)
 
     def test_http_service(self):
         options = Options()
