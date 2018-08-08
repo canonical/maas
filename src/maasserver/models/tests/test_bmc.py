@@ -58,6 +58,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodStoragePool,
 )
 from provisioningserver.rpc.cluster import DecomposeMachine
+from provisioningserver.utils.constraints import LabeledConstraintMap
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -967,6 +968,86 @@ class TestPod(MAASServerTestCase):
         pod.add_tag(tag.name)
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertTrue(tag in machine.tags.all())
+
+    def test_create_machine_sets_interface_names_using_constraint_labels(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        vlan2 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        vlan3 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                'maas0:vlan=id:%d;maas1:vlan=id:%d;maas2:vlan=id:%d' % (
+                    vlan.id, vlan2.id, vlan3.id))
+        )
+        # Check that the interface names match the labels provided in the
+        # constraints string.
+        self.assertItemsEqual(
+            ['maas0', 'maas1', 'maas2'],
+            list(machine.interface_set.order_by('id').values_list(
+                'name', flat=True)))
+
+    def test_create_machine_uses_default_ifnames_if_discovered_mismatch(self):
+        """This makes sure that if the discovered machine comes back with
+        a different number of interfaces than the constraint string, the
+        default (ethX) names are used.
+        """
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        vlan2 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        # The constraint here as two labels, but the discovered machine will
+        # have three interfaces.
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                'maas0:vlan=id:%d;maas1:vlan=id:%d' % (
+                    vlan.id, vlan2.id))
+        )
+        # Check that the interface names use the ethX numbering, since the
+        # provided constraints won't match the number of interfaces that were
+        # returned.
+        self.assertItemsEqual(
+            ['eth0', 'eth1', 'eth2'],
+            list(machine.interface_set.order_by('id').values_list(
+                'name', flat=True)))
+
+    def test_create_machine_uses_default_names_if_no_interfaces(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        # Check that the interface names match the labels provided in the
+        # constraints string.
+        self.assertItemsEqual(
+            ['eth0', 'eth1', 'eth2'],
+            list(machine.interface_set.order_by('id').values_list(
+                'name', flat=True)))
 
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()

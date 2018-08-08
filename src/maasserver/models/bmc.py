@@ -79,6 +79,7 @@ from provisioningserver.drivers.pod import BlockDeviceType
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.constraints import LabeledConstraintMap
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks
 
@@ -668,7 +669,8 @@ class Pod(BMC):
     def create_machine(
             self, discovered_machine, commissioning_user,
             skip_commissioning=False,
-            creation_type=NODE_CREATION_TYPE.PRE_EXISTING, **kwargs):
+            creation_type=NODE_CREATION_TYPE.PRE_EXISTING, interfaces=None,
+            **kwargs):
         """Create's a `Machine` from `discovered_machines` for this pod."""
         if skip_commissioning:
             status = NODE_STATUS.READY
@@ -694,6 +696,9 @@ class Pod(BMC):
         pool = kwargs.pop('pool', None)
         if pool is None:
             pool = self.pool
+
+        if interfaces is not None:
+            assert isinstance(interfaces, LabeledConstraintMap)
 
         # Create the machine.
         machine = Machine(
@@ -754,11 +759,30 @@ class Pod(BMC):
         if skip_commissioning:
             machine.set_default_storage_layout()
 
+        # Enumerating the LabeledConstraintMap of interfaces will yield the
+        # name of each interface, in the same order that they will exist
+        # on the hypervisor. (This is a fortunate coincidence, since
+        # dictionaries in Python 3.6+ preserve insertion order.)
+        if interfaces is not None:
+            interface_names = [
+                label[:15]
+                for label in interfaces
+            ]
+        else:
+            interface_names = []
+        if len(discovered_machine.interfaces) > len(interface_names):
+            # The lists should never have different lengths, but use default
+            # names for all interfaces to avoid conflicts, just in case.
+            # (This also happens if no interface labels were supplied.)
+            interface_names = [
+                'eth%d' % i
+                for i in range(len(discovered_machine.interfaces))
+            ]
         # Create the discovered interface and set the default networking
         # configuration.
         for idx, discovered_nic in enumerate(discovered_machine.interfaces):
             interface = self._create_interface(
-                discovered_nic, machine, name='eth%d' % idx)
+                discovered_nic, machine, name=interface_names[idx])
             if discovered_nic.boot:
                 machine.boot_interface = interface
                 machine.save(update_fields=['boot_interface'])

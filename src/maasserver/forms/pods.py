@@ -538,9 +538,11 @@ class ComposeMachineForm(forms.Form):
                 discovered_machine, self.request.user,
                 skip_commissioning=skip_commissioning,
                 creation_type=creation_type,
+                interfaces=self.get_value_for('interfaces'),
                 domain=self.get_value_for('domain'),
                 pool=self.get_value_for('pool'),
-                zone=self.get_value_for('zone'))
+                zone=self.get_value_for('zone'),
+            )
             self.pod.sync_hints(pod_hints)
             return created_machine
 
