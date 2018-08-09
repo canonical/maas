@@ -29,6 +29,7 @@ from maasserver.fields import (
     MODEL_NAME_VALIDATOR,
     NodeChoiceField,
     register_mac_type,
+    SubnetListFormField,
     URLOrPPAFormField,
     URLOrPPAValidator,
     validate_mac,
@@ -703,6 +704,112 @@ class TestNodeChoiceField(MAASServerTestCase):
         # Double check that we have duplicated entires
         self.assertEqual(2, len(qs.filter(system_id=node.system_id)))
         self.assertEqual(node, node_field.clean(node.system_id))
+
+
+class TestSubnetListFormField(MAASTestCase):
+
+    def test_accepts_none(self):
+        self.assertIsNone(SubnetListFormField().clean(None))
+
+    def test_accepts_single_ip(self):
+        ip = factory.make_ip_address()
+        self.assertEqual(ip, SubnetListFormField().clean(ip))
+
+    def test_accepts_space_separated_ips(self):
+        ips = [factory.make_ip_address() for _ in range(5)]
+        input = ' '.join(ips)
+        self.assertEqual(input, SubnetListFormField().clean(input))
+
+    def test_accepts_comma_separated_ips(self):
+        ips = [factory.make_ip_address() for _ in range(5)]
+        input = ','.join(ips)
+        self.assertEqual(' '.join(ips), SubnetListFormField().clean(input))
+
+    def test_accepts_single_subnet(self):
+        subnet = str(factory.make_ipv4_network())
+        self.assertEqual(subnet, SubnetListFormField().clean(subnet))
+
+    def test_accepts_space_separated_subnets(self):
+        subnets = [str(factory.make_ipv6_network()) for _ in range(5)]
+        input = ' '.join(subnets)
+        self.assertEqual(input, SubnetListFormField().clean(input))
+
+    def test_accepts_comma_separated_subnets(self):
+        subnets = [str(factory.make_ipv4_network()) for _ in range(5)]
+        input = ','.join(subnets)
+        self.assertEqual(' '.join(subnets), SubnetListFormField().clean(input))
+
+    def test_separators_dont_conflict_with_ipv4_address(self):
+        self.assertIsNone(re.search(
+            SubnetListFormField.separators, factory.make_ipv4_address()))
+
+    def test_separators_dont_conflict_with_ipv6_address(self):
+        self.assertIsNone(re.search(
+            SubnetListFormField.separators, factory.make_ipv6_address()))
+
+    def test_accepts_hostname(self):
+        hostname = factory.make_hostname()
+        self.assertEqual(hostname, SubnetListFormField().clean(hostname))
+
+    def test_accepts_space_separated_hostnames(self):
+        hostnames = factory.make_hostname(), factory.make_hostname()
+        input = ' '.join(hostnames)
+        self.assertEqual(input, SubnetListFormField().clean(input))
+
+    def test_accepts_comma_separated_hostnames(self):
+        hostnames = factory.make_hostname(), factory.make_hostname()
+        input = ','.join(hostnames)
+        self.assertEqual(
+            ' '.join(hostnames), SubnetListFormField().clean(input))
+
+    def test_accepts_misc(self):
+        servers = {
+            "::1",
+            "1::",
+            "1::2",
+            "1:2::3",
+            "1::2:3",
+            "1:2::3:4",
+            "::127.0.0.1",
+        }
+        input = ','.join(servers)
+        self.assertEqual(' '.join(servers), SubnetListFormField().clean(input))
+
+    def test_rejects_invalid_ipv4_address(self):
+        input = "%s 12.34.56.999" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, SubnetListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Invalid IP address: 12.34.56.999."))
+
+    def test_rejects_invalid_ipv6_address(self):
+        input = "%s fe80::abcde" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, SubnetListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Invalid IP address: fe80::abcde."))
+
+    def test_rejects_invalid_ipv4_subnet(self):
+        input = "%s 10.10.10.300/24" % factory.make_ipv4_network()
+        error = self.assertRaises(
+            ValidationError, SubnetListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Invalid network: 10.10.10.300/24."))
+
+    def test_rejects_invalid_ipv6_subnet(self):
+        input = "%s 100::/300" % factory.make_ipv6_network()
+        error = self.assertRaises(
+            ValidationError, SubnetListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Invalid network: 100::/300."))
+
+    def test_rejects_invalid_hostname(self):
+        input = "%s abc-.foo" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, SubnetListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Invalid hostname: Label cannot start or end with "
+            "hyphen: 'abc-'."))
 
 
 class TestVersionedTextFileField(MAASServerTestCase):

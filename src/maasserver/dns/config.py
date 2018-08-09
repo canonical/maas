@@ -121,15 +121,26 @@ def get_dnssec_validation():
     return Config.objects.get_config("dnssec_validation")
 
 
+def get_trusted_acls():
+    """Return the configuration option for trusted ACLs.
+
+    :return: A list of CIDR-format subnet, IPs or names.
+    """
+    items = Config.objects.get_config("dns_trusted_acl")
+    return [] if items is None else items.split()
+
+
 def get_trusted_networks():
-    """Return the CIDR representation of all the Subnets we know about.
+    """Return the CIDR representation of all the subnets we know about
+    combined with the list from get_trusted_acls().
 
     :return: A list of CIDR-format subnet specifications.
     """
-    return [
+    known_subnets = [
         str(subnet.cidr)
         for subnet in Subnet.objects.all()
     ]
+    return list(set(known_subnets + get_trusted_acls()))
 
 
 def get_resource_name_for_subnet(subnet):

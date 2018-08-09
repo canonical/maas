@@ -19,6 +19,7 @@ from maasserver.dns.config import (
     dns_update_all_zones,
     get_internal_domain,
     get_resource_name_for_subnet,
+    get_trusted_acls,
     get_trusted_networks,
     get_upstream_dns,
 )
@@ -330,6 +331,17 @@ class TestDNSConfigModifications(TestDNSServer):
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)))
 
+    def test_dns_update_all_zones_writes_trusted_networks_params_extra(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        extra_trusted_network = factory.make_ipv6_network()
+        get_trusted_acls_patch = self.patch(
+            dns_config_module, 'get_trusted_acls')
+        get_trusted_acls_patch.return_value = [extra_trusted_network.cidr]
+        dns_update_all_zones()
+        self.assertThat(
+            compose_config_path(DNSConfig.target_file_name),
+            FileContains(matcher=Contains(str(extra_trusted_network))))
+
     def test_dns_config_has_NS_record(self):
         self.patch(settings, 'DNS_CONNECT', True)
         ip = factory.make_ipv4_address()
@@ -441,6 +453,34 @@ class TestGetUpstreamDNS(MAASServerTestCase):
             factory.make_ip_address() for _ in range(3)]
         Config.objects.set_config("upstream_dns", " ".join(addresses))
         self.assertEqual(addresses, get_upstream_dns())
+
+
+class TestGetTrustedAcls(MAASServerTestCase):
+    """Test for maasserver/dns/config.py:get_trusted_acls()"""
+
+    def setUp(self):
+        super(TestGetTrustedAcls, self).setUp()
+        self.useFixture(RegionConfigurationFixture())
+
+    def test__returns_empty_string_if_no_networks(self):
+        self.assertEqual([], get_trusted_acls())
+
+    def test__returns_single_network(self):
+        subnet = factory.make_ipv6_network()
+        Config.objects.set_config('dns_trusted_acl', str(subnet))
+        expected = [str(subnet)]
+        self.assertEqual(expected, get_trusted_acls())
+
+    def test__returns_many_networks(self):
+        subnets = [
+            str(factory.make_ipv4_network()) for _ in range(
+                random.randint(1, 5))]
+        actual_subnets = ' '.join(subnets)
+        Config.objects.set_config('dns_trusted_acl', str(actual_subnets))
+        expected = [subnet for subnet in subnets]
+        # Note: This test was seen randomly failing because the networks were
+        # in an unexpected order...
+        self.assertItemsEqual(expected, get_trusted_acls())
 
 
 class TestGetTrustedNetworks(MAASServerTestCase):

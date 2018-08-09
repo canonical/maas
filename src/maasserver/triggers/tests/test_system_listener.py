@@ -4218,6 +4218,30 @@ class TestDNSConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_config_dns_trusted_acl_insert(self):
+        dns_trusted_acl_new = factory.make_name('internal')
+        yield deferToDatabase(register_system_triggers)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "dns_trusted_acl", dns_trusted_acl_new)
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "configuration dns_trusted_acl set to %s"
+                % json.dumps(dns_trusted_acl_new)))
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_config_upstream_dns_update(self):
         upstream_dns_old = factory.make_ip_address()
         upstream_dns_new = factory.make_ip_address()
@@ -4325,6 +4349,34 @@ class TestDNSConfigListener(
             self.getCapturedPublication().source, Equals(
                 "configuration maas_internal_domain changed to %s"
                 % (json.dumps(maas_internal_domain_new))))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_dns_trusted_acl_update(self):
+        dns_trusted_acl_old = factory.make_name('internal')
+        dns_trusted_acl_new = factory.make_name('internal_new')
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            "dns_trusted_acl", dns_trusted_acl_old)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "dns_trusted_acl", dns_trusted_acl_new)
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "configuration dns_trusted_acl changed to %s"
+                % (json.dumps(dns_trusted_acl_new))))
 
 
 class TestDNSConfigListenerLegacy(

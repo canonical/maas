@@ -690,6 +690,70 @@ class HostListFormField(forms.CharField):
             return host
 
 
+class SubnetListFormField(forms.CharField):
+    """Accepts a space/comma separated list of hostnames, Subnets or IPs.
+
+    This field normalizes the list to a space-separated list.
+    """
+    separators = re.compile('[,\s]+')
+
+    # Regular expressions to sniff out things that look like IP addresses;
+    # additional and more robust validation ought to be done to make sure.
+    pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    pt_ipv6 = r"(?: (|[0-9A-Fa-f]{1,4}) [:] (|[0-9A-Fa-f]{1,4}) [:] (.*))"
+    pt_ip = re.compile(
+        r"^ (?: %s | %s ) $" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+    pt_subnet = re.compile(
+        r"^ (?: %s | %s ) \/\d+$" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+
+    def clean(self, value):
+        if value is None:
+            return None
+        else:
+            values = map(str.strip, self.separators.split(value))
+            values = (value for value in values if len(value) != 0)
+            values = map(self._clean_addr_or_host, values)
+            return ' '.join(values)
+
+    def _clean_addr_or_host(self, value):
+        looks_like_ip = self.pt_ip.match(value) is not None
+        looks_like_subnet = self.pt_subnet.match(value) is not None
+        if looks_like_subnet:
+            return self._clean_subnet(value)
+        elif looks_like_ip:
+            return self._clean_addr(value)
+        else:
+            return self._clean_host(value)
+
+    def _clean_addr(self, value):
+        try:
+            addr = IPAddress(value)
+        except ValueError:
+            return
+        except AddrFormatError as error:
+            raise ValidationError(
+                "Invalid IP address: %s." % value)
+        else:
+            return str(addr)
+
+    def _clean_subnet(self, value):
+        try:
+            cidr = IPNetwork(value)
+        except AddrFormatError:
+            raise ValidationError(
+                "Invalid network: %s." % value)
+        else:
+            return str(cidr)
+
+    def _clean_host(self, host):
+        try:
+            validate_hostname(host)
+        except ValidationError as error:
+            raise ValidationError("Invalid hostname: " + error.message)
+        else:
+            return host
+
+
 class CaseInsensitiveChoiceField(forms.ChoiceField):
     """ChoiceField that allows the input to be case insensitive."""
 

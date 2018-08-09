@@ -21,6 +21,7 @@ from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver.fields import (
     HostListFormField,
     IPListFormField,
+    SubnetListFormField,
 )
 from maasserver.models import BootResource
 from maasserver.models.config import (
@@ -355,6 +356,22 @@ CONFIG_ITEMS = {
             'help_text': (
                 "This domain should not collide with an upstream domain "
                 "provided by the set upstream DNS.")
+        }
+    },
+    'dns_trusted_acl': {
+        'default': None,
+        'form': SubnetListFormField,
+        'form_kwargs': {
+            'label': (
+                "List of external networks (not previously known), that will "
+                "be allowed to use MAAS for DNS resolution."),
+            'required': False,
+            'help_text': (
+                "MAAS keeps a list of networks that are allowed to use MAAS "
+                "for DNS resolution. This option allows to add extra "
+                "networks (not previously known) to the trusted ACL where "
+                "this list of networks is kept. It also supports specifying "
+                "IPs or ACL names.")
         }
     },
     'ntp_servers': {

@@ -78,6 +78,7 @@ def get_default_config():
         # DNS settings
         'upstream_dns': None,
         'dnssec_validation': "auto",
+        'dns_trusted_acl': None,
         'maas_internal_domain': 'maas-internal',
         # NTP settings
         'ntp_servers': 'ntp.ubuntu.com',

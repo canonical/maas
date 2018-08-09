@@ -123,6 +123,7 @@ def bind_write_options(upstream_dns, dnssec_validation):
     """Write BIND options.
 
     :param upstream_dns: A sequence of upstream DNS servers.
+    :param dnssec_validation: Whether to enable DNSSec.
     """
     # upstream_dns was formerly specified as a single IP address. These
     # assertions are here to prevent code that assumes that slipping through.

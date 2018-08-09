@@ -180,7 +180,10 @@ class SettingsTest(MAASServerTestCase):
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
         self.client.login(user=factory.make_admin())
-        new_upstream = "8.8.8.8"
+        new_upstream = "8.8.8.8 8.8.4.4"
+        new_ipv4_subnet = factory.make_ipv4_network()
+        new_ipv6_subnet = factory.make_ipv6_network()
+        new_subnets = "%s %s" % (new_ipv4_subnet, new_ipv6_subnet)
         response = self.client.post(
             reverse('settings_network'),
             get_prefixed_form_data(
@@ -188,12 +191,15 @@ class SettingsTest(MAASServerTestCase):
                 data={
                     'upstream_dns': new_upstream,
                     'dnssec_validation': 'no',
+                    'dns_trusted_acl': new_subnets,
                 }))
         self.assertEqual(
             http.client.FOUND, response.status_code, response.content)
         self.assertEqual(
             new_upstream, Config.objects.get_config('upstream_dns'))
         self.assertEqual('no', Config.objects.get_config('dnssec_validation'))
+        self.assertEqual(
+            new_subnets, Config.objects.get_config('dns_trusted_acl'))
 
     def test_settings_ntp_POST(self):
         # Disable boot source cache signals.

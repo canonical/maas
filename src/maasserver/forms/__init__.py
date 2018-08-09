@@ -1501,6 +1501,7 @@ class DNSForm(ConfigForm):
     """Settings page, DNS section."""
     upstream_dns = get_config_field('upstream_dns')
     dnssec_validation = get_config_field('dnssec_validation')
+    dns_trusted_acl = get_config_field('dns_trusted_acl')
 
 
 class NTPForm(ConfigForm):
