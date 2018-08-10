@@ -165,6 +165,46 @@
                 </div>
                 <div class="p-form__group">
                     <div class="p-form__label">
+                        <p>
+                            <strong>Proxy access</strong>
+                            <span data-ng-if="subnet.allow_proxy == false" class="p-tooltip p-tooltip--btm-right">
+                                <i class="p-icon--information">Help:</i>
+                                <span class="p-tooltip__message" role="tooltip">MAAS will not allow clients from this&#xa;subnet to access the MAAS proxy.</span>
+                            </span>
+
+                            <span data-ng-if="subnet.allow_proxy == true" class="p-tooltip p-tooltip--btm-right">
+                                <i class="p-icon--information">Help:</i>
+                                <span class="p-tooltip__message" role="tooltip">MAAS will allow clients from this&#xa;subnet to access the MAAS proxy.</span>
+                            </span>
+                        </p>
+                    </div>
+                    <div class="p-form__control">
+                        <span data-ng-if="subnet.allow_proxy == false">Disallowed</span>
+                        <span data-ng-if="subnet.allow_proxy == true">Allowed</span>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
+                        <p>
+                            <strong>Allow DNS resolution</strong>
+                            <span data-ng-if="subnet.allow_dns == false" class="p-tooltip p-tooltip--btm-right">
+                                <i class="p-icon--information">Help:</i>
+                                <span class="p-tooltip__message" role="tooltip">MAAS will not allow clients from this&#xa;subnet to use MAAS for DNS resolution.</span>
+                            </span>
+
+                            <span data-ng-if="subnet.allow_dns == true" class="p-tooltip p-tooltip--btm-right">
+                                <i class="p-icon--information">Help:</i>
+                                <span class="p-tooltip__message" role="tooltip">MAAS will allow clients from this&#xa;subnet to use MAAS for DNS resolution.</span>
+                            </span>
+                        </p>
+                    </div>
+                    <div class="p-form__control">
+                        <span data-ng-if="subnet.allow_dns == false">Disallowed</span>
+                        <span data-ng-if="subnet.allow_dns == true">Allowed</span>
+                    </div>
+                </div>
+                <div class="p-form__group">
+                    <div class="p-form__label">
                         <p><strong>Fabric</strong></p>
                     </div>
                     <div class="p-form__control">
@@ -230,6 +270,14 @@
                         </p>
                         <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
                             label-width="2" input-width="3" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
+                        <maas-obj-field type="onoffswitch" key="allow_proxy" label="Proxy access"
+                            label-width="3" input-width="3"
+			    label-info="When enabled, MAAS will allow clients from this subnet to access&#xa;the MAAS proxy.">
+                        </maas-obj-field>
+                        <maas-obj-field type="onoffswitch" key="allow_dns" label="Allow DNS resolution"
+                            label-width="3" input-width="3"
+			    label-info="When enabled, MAAS will allow clients from this subnet to use&#xa;MAAS for DNS resolution.">
+                        </maas-obj-field>
                         <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
                             options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
                             label-width="2" input-width="5"></maas-obj-field>
