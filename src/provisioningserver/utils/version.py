@@ -23,7 +23,7 @@ from provisioningserver.utils import (
 
 maaslog = get_maas_logger('version')
 
-DEFAULT_VERSION = "2.3.0"
+DEFAULT_VERSION = "2.5.0"
 
 # Only import apt_pkg and initialize when not running in a snap.
 if not snappy.running_in_snap():
