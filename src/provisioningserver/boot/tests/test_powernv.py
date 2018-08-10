@@ -26,6 +26,7 @@ from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
+from provisioningserver.utils.network import convert_host_to_uri_str
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -166,6 +167,8 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         method = PowerNVBootMethod()
         params = make_kernel_parameters(
             self, arch="ppc64el", purpose="xinstall")
+        fs_host = 'http://%s:5248/images' % (
+            convert_host_to_uri_str(params.fs_host))
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -180,12 +183,14 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/%s$' % (
-                        re.escape(image_dir), params.kernel),
+                    r'.*^\s+KERNEL %s/%s/%s$' % (
+                        re.escape(fs_host), re.escape(image_dir),
+                        params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/%s$' % (
-                        re.escape(image_dir), params.initrd),
+                    r'.*^\s+INITRD %s/%s/%s$' % (
+                        re.escape(fs_host), re.escape(image_dir),
+                        params.initrd),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+APPEND .+?$',

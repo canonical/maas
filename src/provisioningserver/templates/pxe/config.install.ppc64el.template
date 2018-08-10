@@ -1,6 +1,6 @@
 DEFAULT execute
 
 LABEL execute
-  KERNEL {{kernel_params | kernel_path }}
-  INITRD {{kernel_params | initrd_path }}
+  KERNEL http://{{kernel_params | fs_host}}:5248/images/{{kernel_params | kernel_path }}
+  INITRD http://{{kernel_params | fs_host}}:5248/images/{{kernel_params | initrd_path }}
   APPEND {{kernel_params | kernel_command}}
