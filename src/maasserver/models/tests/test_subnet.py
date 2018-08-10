@@ -495,16 +495,17 @@ class SubnetTest(MAASServerTestCase):
             for _ in range(random.randint(1, 3))]
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
         allow_proxy = factory.pick_bool()
+        allow_dns = factory.pick_bool()
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
             dns_servers=dns_servers, rdns_mode=rdns_mode,
-            allow_proxy=allow_proxy)
+            allow_proxy=allow_proxy, allow_dns=allow_dns)
         subnet.save()
         subnet_from_db = Subnet.objects.get(name=name)
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
             dns_servers=dns_servers, rdns_mode=rdns_mode,
-            allow_proxy=allow_proxy))
+            allow_proxy=allow_proxy, allow_dns=allow_dns))
 
     def test_creates_subnet_with_correct_defaults(self):
         name = factory.make_name('name')
@@ -524,7 +525,7 @@ class SubnetTest(MAASServerTestCase):
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
             dns_servers=dns_servers, rdns_mode=RDNS_MODE.DEFAULT,
-            allow_proxy=True))
+            allow_proxy=True, allow_dns=True))
 
     def test_creates_subnet_with_default_name_if_name_is_none(self):
         vlan = factory.make_VLAN()

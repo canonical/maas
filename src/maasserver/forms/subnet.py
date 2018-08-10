@@ -41,6 +41,9 @@ class SubnetForm(MAASModelForm):
     active_discovery = forms.BooleanField(
         required=False)
 
+    allow_dns = forms.BooleanField(
+        required=False)
+
     allow_proxy = forms.BooleanField(
         required=False)
 
@@ -58,6 +61,7 @@ class SubnetForm(MAASModelForm):
             'dns_servers',
             'rdns_mode',
             'active_discovery',
+            'allow_dns',
             'allow_proxy',
             'managed',
             )
@@ -73,6 +77,9 @@ class SubnetForm(MAASModelForm):
                 self, "space",
                 "Spaces may no longer be set on subnets. Set the space on the "
                 "underlying VLAN.")
+        # The default value for 'allow_dns' is True.
+        if 'allow_dns' not in self.data:
+            cleaned_data['allow_dns'] = True
         # The default value for 'allow_proxy' is True.
         if 'allow_proxy' not in self.data:
             cleaned_data['allow_proxy'] = True

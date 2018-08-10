@@ -1072,8 +1072,8 @@ class Factory(maastesting.factory.Factory):
     def make_Subnet(self, name=None, vlan=None, cidr=None, gateway_ip=RANDOM,
                     dns_servers=None, host_bits=None, fabric=None, vid=None,
                     dhcp_on=False, version=None, rdns_mode=RDNS_MODE.DEFAULT,
-                    allow_proxy=True, managed=True, space=RANDOM_OR_NONE,
-                    description=None):
+                    allow_dns=True, allow_proxy=True, managed=True,
+                    space=RANDOM_OR_NONE, description=None):
         if name is None:
             name = factory.make_name('name')
         space = self._maybe_make_Space(space)
@@ -1093,7 +1093,7 @@ class Factory(maastesting.factory.Factory):
                 self.make_ip_address() for _ in range(random.randint(1, 3))]
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            dns_servers=dns_servers, rdns_mode=rdns_mode,
+            dns_servers=dns_servers, rdns_mode=rdns_mode, allow_dns=allow_dns,
             allow_proxy=allow_proxy, managed=managed, description='')
         subnet.save()
         if subnet.vlan.space != space and space not in (undefined, None):

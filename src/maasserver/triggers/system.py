@@ -1142,7 +1142,8 @@ DNS_SUBNET_INSERT = dedent("""\
 
 
 # Triggered when a subnet is updated. Increments the zone serial and notifies
-# that DNS needs to be updated. Only watches changes on the cidr and rdns_mode.
+# that DNS needs to be updated. Only watches changes on the cidr, rdns_mode
+# and allow_dns.
 DNS_SUBNET_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
     RETURNS trigger as $$
@@ -1156,6 +1157,11 @@ DNS_SUBNET_UPDATE = dedent("""\
         PERFORM sys_dns_publish_update(
             'subnet ' || text(NEW.cidr) || ' rdns changed to ' ||
             NEW.rdns_mode);
+      END IF;
+      IF OLD.allow_dns != NEW.allow_dns THEN
+        PERFORM sys_dns_publish_update(
+            'subnet ' || text(NEW.cidr) || ' allow_dns changed to ' ||
+            NEW.allow_dns);
       END IF;
       RETURN NEW;
     END;

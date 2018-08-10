@@ -31,6 +31,7 @@ DISPLAYED_SUBNET_FIELDS = (
     'dns_servers',
     'rdns_mode',
     'active_discovery',
+    'allow_dns',
     'allow_proxy',
     'managed',
 )
@@ -100,6 +101,9 @@ class SubnetsHandler(OperationsHandler):
           parent zone with the appropriate CNAME resource records for the
           network, if the network is small enough to require the support
           described in RFC2317.
+
+        allow_dns
+          Configure MAAS DNS to allow DNS resolution from this subnet.
 
         allow_proxy
           Configure maas-proxy to allow requests from this
@@ -192,6 +196,9 @@ class SubnetHandler(OperationsHandler):
 
         rdns_mode
           How reverse DNS is handled for this subnet.
+
+        allow_dns
+          Configure MAAS DNS to allow DNS resolution from this subnet.
 
         allow_proxy
           Configure maas-proxy to allow requests from this subnet.

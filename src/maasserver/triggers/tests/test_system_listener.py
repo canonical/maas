@@ -4479,6 +4479,25 @@ class TestProxyListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_subnet_allow_dns_update(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(
+            self.create_subnet, {"allow_dns": False})
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_subnet, subnet.id, {
+                "allow_dns": True,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_subnet_allow_proxy_update(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(

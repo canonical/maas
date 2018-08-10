@@ -498,6 +498,12 @@ class TestGetTrustedNetworks(MAASServerTestCase):
         expected = [str(subnet.cidr)]
         self.assertEqual(expected, get_trusted_networks())
 
+    def test__returns_no_networks_if_not_allow_dns(self):
+        factory.make_Subnet(allow_dns=False)
+        subnet_allowed = factory.make_Subnet(allow_dns=True)
+        expected = [str(subnet_allowed.cidr)]
+        self.assertEqual(expected, get_trusted_networks())
+
     def test__returns_many_networks(self):
         subnets = [factory.make_Subnet() for _ in range(random.randint(1, 5))]
         expected = [str(subnet.cidr) for subnet in subnets]

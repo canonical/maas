@@ -138,7 +138,7 @@ def get_trusted_networks():
     """
     known_subnets = [
         str(subnet.cidr)
-        for subnet in Subnet.objects.all()
+        for subnet in Subnet.objects.filter(allow_dns=True)
     ]
     return list(set(known_subnets + get_trusted_acls()))
 

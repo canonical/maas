@@ -387,6 +387,9 @@ class Subnet(CleanSave, TimestampedModel):
     dns_servers = ArrayField(
         TextField(), blank=True, editable=True, null=True, default=list)
 
+    allow_dns = BooleanField(
+        editable=True, blank=False, null=False, default=True)
+
     allow_proxy = BooleanField(
         editable=True, blank=False, null=False, default=True)
 
