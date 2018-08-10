@@ -110,28 +110,28 @@ class TestCreateAdminAccount(MAASTestCase):
     def test_no_options(self):
         options = self.parser.parse_args([])
         init.create_admin_account(options)
-        self.mock_print_msg.assert_called_with('Create first admin account:')
+        self.mock_print_msg.assert_called_with('Create first admin account')
         self.mock_call.assert_called_with(
             [self.maas_region_path, 'createadmin'])
 
     def test_username(self):
         options = self.parser.parse_args(['--admin-username', 'my-user'])
         init.create_admin_account(options)
-        self.mock_print_msg.assert_called_with('Create first admin account:')
+        self.mock_print_msg.assert_called_with('Create first admin account')
         self.mock_call.assert_called_with(
             [self.maas_region_path, 'createadmin', '--username', 'my-user'])
 
     def test_password(self):
         options = self.parser.parse_args(['--admin-password', 'my-pass'])
         init.create_admin_account(options)
-        self.mock_print_msg.assert_called_with('Create first admin account:')
+        self.mock_print_msg.assert_called_with('Create first admin account')
         self.mock_call.assert_called_with(
             [self.maas_region_path, 'createadmin', '--password', 'my-pass'])
 
     def test_email(self):
         options = self.parser.parse_args(['--admin-email', 'me@example.com'])
         init.create_admin_account(options)
-        self.mock_print_msg.assert_called_with('Create first admin account:')
+        self.mock_print_msg.assert_called_with('Create first admin account')
         self.mock_call.assert_called_with(
             [self.maas_region_path,
              'createadmin', '--email', 'me@example.com'])
@@ -139,7 +139,7 @@ class TestCreateAdminAccount(MAASTestCase):
     def test_ssh_import(self):
         options = self.parser.parse_args(['--admin-ssh-import', 'lp:me'])
         init.create_admin_account(options)
-        self.mock_print_msg.assert_called_with('Create first admin account:')
+        self.mock_print_msg.assert_called_with('Create first admin account')
         self.mock_call.assert_called_with(
             [self.maas_region_path, 'createadmin', '--ssh-import', 'lp:me'])
 

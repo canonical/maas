@@ -60,7 +60,7 @@ def create_admin_account(options):
         options.admin_password,
         options.admin_email])
     if print_create_header:
-        print_msg('Create first admin account:')
+        print_msg('Create first admin account')
     cmd = [get_maas_region_bin_path(), 'createadmin']
     if options.admin_username:
         cmd.extend(['--username', options.admin_username])
