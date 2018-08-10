@@ -635,13 +635,6 @@ describe("AddDeviceController", function() {
 
     describe("cancel", function() {
 
-        it("clears error", function() {
-            var controller = makeController();
-            $scope.error = makeName("error");
-            $scope.cancel();
-            expect($scope.error).toBeNull();
-        });
-
         it("clears device", function() {
             var controller = makeControllerWithDevice();
             $scope.device.name = makeName("name");

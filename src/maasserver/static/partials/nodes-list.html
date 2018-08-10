@@ -352,90 +352,11 @@
     </div>
 
     <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-    <div class="page-header__dropdown row u-no-margin--top" data-ng-class="{ 'u-hide': !addHardwareScope.viewable }" data-ng-controller="AddHardwareController">
+    <div class="page-header__dropdown row u-no-margin--top"
+        data-ng-class="{ 'u-hide': !addHardwareScope.viewable }"
+        data-ng-controller="AddHardwareController">
         <hr />
-        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-        <section class="page-header__section ng-hide" data-ng-show="showMachine()">
-            <h3 class="page-header__dropdown-title">Add machine</h3>
-            <form class="p-form p-form--stacked">
-                <div class="col-6">
-                    <div class="p-form__group">
-                        <label for="machine-name" class="p-form__label col-2">Machine name</label>
-                        <div class="p-form__group-input col-3">
-                            <input type="text" id="machine-name" placeholder="Choose a machine name (optional)"
-                                data-ng-model="machine.name">
-                        </div>
-                    </div>
-                    <div class="p-form__group">
-                        <label for="domain" class="p-form__label col-2">Domain</label>
-                        <div class="p-form__group-input col-3">
-                            <select name="domain" id="domain"
-                                data-ng-model="machine.domain"
-                                data-ng-options="domain as domain.name for domain in domains">
-                                <option value="" disabled>Choose a domain</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="p-form__group">
-                        <label for="architecture" class="p-form__label col-2">Architecture</label>
-                        <div class="p-form__group-input col-3">
-                            <select name="architecture" id="architecture"
-                                data-ng-model="machine.architecture"
-                                data-ng-options="arch for arch in architectures">
-                                <option value="">Choose an architecture</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="p-form__group">
-                        <label for="min_hwe_kernel" class="p-form__label col-2">Minimum Kernel</label>
-                        <div class="p-form__group-input col-3">
-                            <select name="min_hwe_kernel" id="min_hwe_kernel"
-                                data-ng-model="machine.min_hwe_kernel"
-                                data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in hwe_kernels">
-                                <option value="">No minimum kernel</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="p-form__group">
-                        <label for="zone4" class="p-form__label col-2">Zone</label>
-                        <select name="zone" id="zone4" class="col-3"
-                            data-ng-model="machine.zone"
-                            data-ng-options="zone as zone.name for zone in zones">
-                        </select>
-                    </div>
-                    <div class="p-form__group">
-                        <label for="pool-select" class="p-form__label col-2">Resource pool</label>
-                        <select name="pool" id="pool-select" class="col-3"
-                            data-ng-model="machine.pool"
-                            data-ng-options="pool as pool.name for pool in pools">
-                        </select>
-                    </div>
-                    <div class="p-form__group" data-ng-repeat="mac in machine.macs">
-                        <label for="mac-address" class="p-form__label col-2"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span>&nbsp;</label>
-                        <div class="p-form__group-input col-3 p-search-box">
-                            <input type="text" id="mac-address" placeholder="00:00:00:00:00:00" class="p-search-box__input"
-                                maxlength="17"
-                                data-ng-class="{ 'has-error': mac.error }"
-                                data-ng-model="mac.mac"
-                                data-ng-pattern="macAddressRegex"
-                                data-ng-change="validateMac(mac)"
-                                mac-address>
-                            <button type="reset" title="Delete MAC" class="p-search-box__button"
-                                data-ng-hide="mac === machine.macs[0]" data-ng-click="removeMac(mac)"><i class="p-icon--close"></i></button>
-                        </div>
-                    </div>
-                    <div class="p-form__group">
-                        <div class="col-5">
-                            <button class="p-button--neutral u-float--right" data-ng-click="addMac()">+ Add MAC Address</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6"
-                    data-maas-power-parameters="power_types"
-                    data-ng-model="machine.power">
-                </div>
-            </form>
-        </section>
+        <add-machine data-ng-show="showMachine()"></add-machine>
         <section class="page-header__section col-12 ng-hide" data-ng-show="showChassis()">
             <h3 class="page-header__dropdown-title">Add chassis</h3>
             <form action="post" class="p-form p-form--stacked">
@@ -456,22 +377,6 @@
                 </div>
             </form>
         </section>
-
-        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-        <section class="page-header__section col-12" data-ng-show="showMachine()">
-            <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>
-            <div class="page-header__controls p-strip u-align--right u-no-padding--bottom">
-                <hr />
-                <button class="p-button--base" type="button" data-ng-click="cancel()">Cancel</button>
-                <button class="p-button--neutral"
-                    data-ng-disabled="machineHasError()"
-                    data-ng-click="saveMachine(true)">Save and add another</button>
-                <button class="p-button--positive"
-                    data-ng-disabled="machineHasError()"
-                    data-ng-click="saveMachine(false)">Save machine</button>
-            </div>
-        </section>
-
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <section class="page-header__section col-12 ng-hide" data-ng-show="showChassis()">
             <p class="page-header__message page-header__message--error ng-hide" data-ng-show="error">{$ error $}</p>

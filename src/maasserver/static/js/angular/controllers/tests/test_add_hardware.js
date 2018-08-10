@@ -542,7 +542,8 @@ describe("AddHardwareController", function() {
             var controller = makeControllerWithMachine();
             $scope.error = makeName("error");
             $scope.cancel();
-            expect($scope.error).toBeNull();
+
+            expect($scope.showErrors).toEqual(false);
         });
 
         it("clears machine and adds a new one", function() {
@@ -597,103 +598,53 @@ describe("AddHardwareController", function() {
             $scope.machine.macs[1].error = false;
         });
 
-        it("does nothing if errors", function() {
-            var error = makeName("error");
-            $scope.error = error;
-            // Force the machine to be invalid.
-            spyOn($scope, "machineHasError").and.returnValue(true);
+        it("Converts power and macs to machine protocol", function() {
             $scope.saveMachine(false);
-            expect($scope.error).toBe(error);
-        });
+            $rootScope.$digest();
 
-        it("clears error", function() {
-            $scope.error = makeName("error");
-            $scope.saveMachine(false);
-            expect($scope.error).toBeNull();
-        });
-
-        it("calls MachinesManager.create with converted machine", function() {
-            spyOn(MachinesManager, "create").and.returnValue(
-                $q.defer().promise);
-
-            $scope.saveMachine(false);
-            expect(MachinesManager.create).toHaveBeenCalledWith({
-                hostname: $scope.machine.name,
-                domain: $scope.machine.domain,
-                architecture: $scope.machine.architecture,
+            expect($scope.newMachineObj).toEqual(
+            {
                 min_hwe_kernel: $scope.machine.min_hwe_kernel,
                 pxe_mac: $scope.machine.macs[0].mac,
                 extra_macs: [$scope.machine.macs[1].mac],
                 power_type: $scope.machine.power.type.name,
                 power_parameters: $scope.machine.power.parameters,
-                zone: {
-                    id: $scope.machine.zone.id,
-                    name: $scope.machine.zone.name
-                },
-                pool: {
-                    id: $scope.machine.pool.id,
-                    name: $scope.machine.pool.name
-                }
             });
         });
 
-        it("calls hide once MachinesManager.create is resolved", function() {
-            var defer = $q.defer();
-            spyOn(MachinesManager, "create").and.returnValue(defer.promise);
+        it("calls hide once the maas-form's after-save is called", function() {
             spyOn($scope, "hide");
-            $scope.saveMachine(false);
-            defer.resolve();
+            $scope.afterSaveMachine();
             $rootScope.$digest();
 
             expect($scope.hide).toHaveBeenCalled();
         });
 
-        it("resets machine once MachinesManager.create is resolved",
+        it("resets machine once the maas-form's after-save is called",
             function() {
-                var defer = $q.defer();
-                spyOn(MachinesManager, "create").and.returnValue(defer.promise);
-                $scope.saveMachine(false);
-                defer.resolve();
+                $scope.afterSaveMachine();
                 $rootScope.$digest();
 
                 expect($scope.machine.name).toBe("");
             });
 
-        it("clones machine once MachinesManager.create is resolved",
+        it("clones machine once after-save is called with addAnother",
             function() {
-                var defer = $q.defer();
-                spyOn(MachinesManager, "create").and.returnValue(defer.promise);
-
                 $scope.saveMachine(true);
-                defer.resolve();
+                $rootScope.$digest();
+                $scope.afterSaveMachine();
                 $rootScope.$digest();
 
                 expect($scope.machine.name).toBe("");
             });
 
-        it("deosnt call hide if addAnother is true", function() {
-            var defer = $q.defer();
-            spyOn(MachinesManager, "create").and.returnValue(defer.promise);
+        it("doesn't call hide if addAnother is true", function() {
             spyOn($scope, "hide");
-
             $scope.saveMachine(true);
-            defer.resolve();
+            $rootScope.$digest();
+            $scope.afterSaveMachine();
             $rootScope.$digest();
 
-            expect($scope.hide).not.toHaveBeenCalled();
-        });
-
-        it("sets error when MachinesManager.create is rejected", function() {
-            var defer = $q.defer();
-            spyOn(MachinesManager, "create").and.returnValue(defer.promise);
-            spyOn($scope, "hide");
-
-            var error = makeName("error");
-            $scope.saveMachine(false);
-            defer.reject(error);
-            $rootScope.$digest();
-
-            expect($scope.error).toBe(error);
             expect($scope.hide).not.toHaveBeenCalled();
         });
     });

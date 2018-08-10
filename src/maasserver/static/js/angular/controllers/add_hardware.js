@@ -19,6 +19,8 @@ angular.module('MAAS').controller('AddHardwareController', [
         parentScope.addHardwareScope = $scope;
 
         // Set initial values.
+        $scope.machineManager = MachinesManager;
+        $scope.newMachineObj = {};
         $scope.viewable = false;
         $scope.model = 'machine';
         $scope.zones = ZonesManager.getItems();
@@ -360,35 +362,6 @@ angular.module('MAAS').controller('AddHardwareController', [
             }
         }
 
-        // Converts the machine information from how it is held in the UI to
-        // how it is handled over the websocket.
-        function convertMachineToProtocol(machine) {
-            // Convert the mac addresses.
-            var macs = angular.copy(machine.macs);
-            var pxe_mac = macs.shift().mac;
-            var extra_macs = macs.map(function(mac) { return mac.mac; });
-
-            // Return the new object.
-            return {
-                hostname: machine.name,
-                domain: machine.domain,
-                architecture: machine.architecture,
-                min_hwe_kernel: machine.min_hwe_kernel,
-                pxe_mac: pxe_mac,
-                extra_macs: extra_macs,
-                power_type: machine.power.type.name,
-                power_parameters: angular.copy(machine.power.parameters),
-                zone: {
-                    id: machine.zone.id,
-                    name: machine.zone.name
-                },
-                pool: {
-                    id: machine.pool.id,
-                    name: machine.pool.name
-                }
-            };
-        }
-
         // Validate that all the parameters are there for the given power type.
         function powerParametersHasError(power_type, parameters) {
             var i;
@@ -559,46 +532,55 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Called when the cancel button is pressed.
         $scope.cancel = function() {
-            $scope.error = null;
             $scope.machine = newMachine();
             $scope.chassis = newChassis();
 
             // Hide the controller.
             $scope.hide();
+
+            $scope.showErrors = false;
         };
 
-        // Called to perform the saving of the machine.
+        // Converts machine information for macs and power from how
+        // it is held in the UI to how it is handled over the websocket.
+        function convertMachineToProtocol(machine) {
+            // Convert the mac addresses.
+            var macs = angular.copy(machine.macs);
+            var pxe_mac = macs.shift().mac;
+            var extra_macs = macs.map(function(mac) { return mac.mac; });
+
+            // Return the new object.
+            return {
+                min_hwe_kernel: machine.min_hwe_kernel,
+                pxe_mac: pxe_mac,
+                extra_macs: extra_macs,
+                power_type: machine.power.type.name,
+                power_parameters: angular.copy(machine.power.parameters),
+            };
+        }
+
+        // Called to update maas-obj-form state with protocol
+        // for macs and power.
         $scope.saveMachine = function(addAnother) {
-            // Does nothing if machine has errors.
-            if($scope.machineHasError()) {
-                return;
+            $scope.addAnother = addAnother;
+            $scope.showErrors = true;
+
+            // set maas-obj-form object;
+            $scope.newMachineObj = Object.assign(
+                $scope.newMachineObj,
+                convertMachineToProtocol($scope.machine));
+        }
+
+        // maas-obj-form after-save callback
+        $scope.afterSaveMachine = function() {
+            if($scope.addAnother) {
+                $scope.machine = newMachine($scope.machine);
+            } else {
+                $scope.machine = newMachine();
+
+                // Hide the scope if not adding another.
+                $scope.hide();
             }
-
-            // Clear the error so it can be set again, if it fails to save
-            // the device.
-            $scope.error = null;
-
-            // Set the architecture to empty string if none was chosen.
-            if($scope.machine.architecture === "Choose an architecture") {
-                $scope.machine.architecture = '';
-            }
-
-            // Add the machine.
-            MachinesManager.create(
-                convertMachineToProtocol($scope.machine)).then(
-                    function() {
-                        if(addAnother) {
-                            $scope.machine = newMachine($scope.machine);
-                        } else {
-                            $scope.machine = newMachine();
-
-                            // Hide the scope if not adding another.
-                            $scope.hide();
-                        }
-                    }, function(error) {
-                        $scope.error =
-                            ManagerHelperService.parseValidationError(error);
-                    });
         };
 
         // Called to perform the saving of the chassis.
