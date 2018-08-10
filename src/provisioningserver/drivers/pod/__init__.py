@@ -207,6 +207,10 @@ class DiscoveredMachineInterface(AttrHelperMixin):
     vid = attr.ib(converter=int, default=-1)
     tags = attr.ib(converter=converter_list(str), default=attr.Factory(list))
     boot = attr.ib(converter=bool, default=False)
+    attach_type = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
+    attach_name = attr.ib(
+        converter=converter_obj(str, optional=True), default=None)
 
 
 @attr.s

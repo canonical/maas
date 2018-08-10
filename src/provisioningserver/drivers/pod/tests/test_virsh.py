@@ -44,6 +44,7 @@ from provisioningserver.drivers.pod.virsh import (
     DOM_TEMPLATE_MACVLAN_INTERFACE,
     DOM_TEMPLATE_PPC64,
     DOM_TEMPLATE_S390X,
+    InterfaceInfo,
     VirshPodDriver,
 )
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
@@ -612,10 +613,15 @@ class TestVirshSSH(MAASTestCase):
         macs = [factory.make_mac_address() for _ in range(2)]
         output = SAMPLE_IFLIST % (macs[0], macs[1])
         conn = self.configure_virshssh(output)
-        expected = conn.list_machine_mac_addresses('')
-        self.assertEqual(macs, expected)
+        expected = conn.get_machine_interface_info('')
+        self.assertEqual(
+            [
+                InterfaceInfo('bridge', 'br0', 'e1000', macs[0]),
+                InterfaceInfo('bridge', 'br1', 'e1000', macs[1])
+            ],
+            expected)
 
-    def test_list_machine_mac_addresses_error(self):
+    def test_get_machine_interface_info_error(self):
         conn = self.configure_virshssh('error:')
         expected = conn.get_machine_state('')
         self.assertEqual(None, expected)
@@ -868,8 +874,8 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, 'list_machine_block_devices')
         mock_get_machine_local_storage = self.patch(
             virsh.VirshSSH, 'get_machine_local_storage')
-        mock_list_machine_mac_addresses = self.patch(
-            virsh.VirshSSH, 'list_machine_mac_addresses')
+        mock_get_machine_interface_info = self.patch(
+            virsh.VirshSSH, 'get_machine_interface_info')
         mock_get_pod_storage_pools.return_value = storage_pools
         mock_get_machine_arch.return_value = architecture
         mock_get_machine_cpu_count.return_value = cores
@@ -877,7 +883,10 @@ class TestVirshSSH(MAASTestCase):
         mock_get_machine_state.return_value = "shut off"
         mock_list_machine_block_devices.return_value = devices
         mock_get_machine_local_storage.side_effect = local_storage
-        mock_list_machine_mac_addresses.return_value = mac_addresses
+        mock_get_machine_interface_info.return_value = [
+            InterfaceInfo('bridge', 'br0', 'virtio', mac)
+            for mac in mac_addresses
+        ]
 
         block_devices = [
             RequestedMachineBlockDevice(
@@ -958,8 +967,8 @@ class TestVirshSSH(MAASTestCase):
             virsh.VirshSSH, 'list_machine_block_devices')
         mock_get_machine_local_storage = self.patch(
             virsh.VirshSSH, 'get_machine_local_storage')
-        mock_list_machine_mac_addresses = self.patch(
-            virsh.VirshSSH, 'list_machine_mac_addresses')
+        mock_get_machine_interface_info = self.patch(
+            virsh.VirshSSH, 'get_machine_interface_info')
         mock_get_pod_storage_pools.return_value = storage_pools
         mock_get_machine_arch.return_value = architecture
         mock_get_machine_cpu_count.return_value = cores
@@ -967,7 +976,7 @@ class TestVirshSSH(MAASTestCase):
         mock_get_machine_state.return_value = "shut off"
         mock_list_machine_block_devices.return_value = devices
         mock_get_machine_local_storage.side_effect = local_storage
-        mock_list_machine_mac_addresses.return_value = mac_addresses
+        mock_get_machine_interface_info.return_value = mac_addresses
 
         discovered_machine = conn.get_discovered_machine(hostname)
         self.assertIsNone(discovered_machine)
@@ -1725,8 +1734,14 @@ class TestVirsh(MAASTestCase):
         poweraddr = factory.make_name('poweraddr')
         called_params = []
         fake_macs = []
+        fake_ifinfo = []
         for machine in machines:
             macs = [factory.make_mac_address() for _ in range(4)]
+            ifinfo = [
+                InterfaceInfo('bridge', 'br0', 'virtio', mac)
+                for mac in macs
+            ]
+            fake_ifinfo.append(ifinfo)
             fake_macs.append(macs)
             called_params.append({
                 'power_address': poweraddr,
@@ -1736,8 +1751,8 @@ class TestVirsh(MAASTestCase):
 
         # Patch the get_mac_addresses so we get a known list of
         # mac addresses for each machine.
-        mock_macs = self.patch(virsh.VirshSSH, 'list_machine_mac_addresses')
-        mock_macs.side_effect = fake_macs
+        mock_ifinfo = self.patch(virsh.VirshSSH, 'get_machine_interface_info')
+        mock_ifinfo.side_effect = fake_ifinfo
 
         # Patch the poweroff and create as we really don't want these
         # actions to occur, but want to also check that they are called.

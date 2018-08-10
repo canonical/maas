@@ -366,6 +366,8 @@ class TestDiscoveredClasses(MAASTestCase):
                             "vid": Equals(interface.vid),
                             "tags": Equals(interface.tags),
                             "boot": Equals(False),
+                            "attach_type": Is(None),
+                            "attach_name": Is(None),
                         })
                         for interface in machine.interfaces
                     ]),

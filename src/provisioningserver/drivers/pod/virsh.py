@@ -8,6 +8,7 @@ __all__ = [
     'VirshPodDriver',
     ]
 
+from collections import namedtuple
 import string
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
@@ -236,6 +237,13 @@ ARCH_FIX_REVERSE = {
     for key, value in ARCH_FIX.items()
 }
 
+InterfaceInfo = namedtuple("InterfaceInfo", (
+    "type",
+    "source",
+    "model",
+    "mac",
+))
+
 
 REQUIRED_PACKAGES = [["virsh", "libvirt-clients"],
                      ["virt-login-shell", "libvirt-clients"]]
@@ -447,17 +455,25 @@ class VirshSSH(pexpect.spawn):
             return None
         return state
 
-    def list_machine_mac_addresses(self, machine):
+    def get_machine_interface_info(self, machine):
         """Gets list of mac addressess assigned to the VM."""
         output = self.run(['domiflist', machine]).strip()
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get node MAC addresses", machine)
             return None
-        # Skip first two header lines.
+        # Parse the `virsh domiflist <machine>` output, which will look
+        # something like the following:
+        #
+        # Interface  Type       Source     Model       MAC
+        # -------------------------------------------------------
+        # -          network    default    virtio      52:54:00:5b:86:86
+        # -          bridge     br0        virtio      52:54:00:8f:39:13
+        # -          bridge     br1        virtio      52:54:00:72:f9:82
+        #
+        # That is, skip the two lines of header, and then extract the type,
+        # source, model, and MAC.
         output = output.splitlines()[2:]
-        # Only return the last item of the line, as it is ensured that the
-        # last item is the MAC Address.
-        return [line.split()[-1] for line in output]
+        return [InterfaceInfo(*line.split()[1:5]) for line in output]
 
     def get_pod_cpu_count(self):
         """Gets number of CPUs in the pod."""
@@ -688,12 +704,14 @@ class VirshSSH(pexpect.spawn):
 
         # Discover interfaces.
         interfaces = []
-        mac_addresses = self.list_machine_mac_addresses(machine)
+        all_interface_info = self.get_machine_interface_info(machine)
         boot = True
-        for mac in mac_addresses:
+        for interface_info in all_interface_info:
             interfaces.append(
                 DiscoveredMachineInterface(
-                    mac_address=mac, boot=boot))
+                    mac_address=interface_info.mac, boot=boot,
+                    attach_type=interface_info.type,
+                    attach_name=interface_info.source))
             boot = False
         discovered_machine.interfaces = interfaces
         return discovered_machine
@@ -1230,7 +1248,7 @@ def probe_virsh_and_enlist(
     for machine in conn_list:
         arch = conn.get_machine_arch(machine)
         state = conn.get_machine_state(machine)
-        macs = conn.list_machine_mac_addresses(machine)
+        all_interface_info = conn.get_machine_interface_info(machine)
 
         params = {
             'power_address': poweraddr,
@@ -1238,6 +1256,7 @@ def probe_virsh_and_enlist(
         }
         if password is not None:
             params['power_pass'] = password
+        macs = [ifinfo.mac for ifinfo in all_interface_info]
         system_id = create_node(
             macs, arch, 'virsh', params, domain, hostname=machine).wait(30)
 
