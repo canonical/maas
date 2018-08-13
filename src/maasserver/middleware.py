@@ -151,7 +151,7 @@ class ExternalComponentsMiddleware:
                     "%d rack controllers are not yet connected to the region"
                     % len(disconnected_controllers))
             message = (
-                "%s. Visit the <a href=\"%s#/nodes?tab=controllers\">"
+                "%s. Visit the <a href=\"%s#/controllers\">"
                 "rack controllers page</a> for "
                 "more information." % (message, reverse('index')))
             register_persistent_error(COMPONENT.RACK_CONTROLLERS, message)
