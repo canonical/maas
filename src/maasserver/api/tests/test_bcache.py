@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for bcache API."""
@@ -6,10 +6,13 @@
 __all__ = []
 
 import http.client
+from unittest.mock import ANY
 from uuid import uuid4
 
+from maasserver.api import bcache as bcache_module
 from maasserver.enum import (
     CACHE_MODE_TYPE,
+    ENDPOINT,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     NODE_STATUS,
@@ -22,6 +25,8 @@ from maasserver.utils.converters import (
 )
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.events import EVENT_TYPES
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -117,6 +122,8 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
 
     def test_create(self):
         """Tests Bcache device creation."""
+        mock_create_audit_event = self.patch(
+            bcache_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         backing_size = 10 * 1000 ** 4
@@ -138,6 +145,9 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         self.assertEqual(backing_size, parsed_device['virtual_device']['size'])
         self.assertItemsEqual('bcache0', parsed_device['name'])
         self.assertItemsEqual(uuid, parsed_device['uuid'])
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Created bcache on " + "%s." % node.hostname))
 
     def test_create_with_missing_cache_set_fails(self):
         """Tests Bcache device creation without a cache set."""
@@ -241,6 +251,8 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_deletes_bcache(self):
+        mock_create_audit_event = self.patch(
+            bcache_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
@@ -250,6 +262,9 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(bcache))
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Deleted bcache on " + "%s." % node.hostname))
 
     def test_delete_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -284,6 +299,8 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
     def test_update_bcache(self):
         """Tests update bcache method by changing the name, UUID and cache
         mode of a bcache."""
+        mock_create_audit_event = self.patch(
+            bcache_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
@@ -307,10 +324,15 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         # Ensure the filesystems were not changed.
         self.assertListEqual(
             filesystem_ids, [fs.id for fs in bcache.filesystems.all()])
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Updated bcache on " + "%s." % node.hostname))
 
     def test_change_bcache_backing(self):
         """Tests update bcache method by changing backing device to different
         block device."""
+        mock_create_audit_event = self.patch(
+            bcache_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
@@ -326,10 +348,15 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
         self.assertEqual('physical', parsed_device['backing_device']['type'])
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Updated bcache on " + "%s." % node.hostname))
 
     def test_change_storages_to_partitions_bcache(self):
         """Tests update bcache method by changing backing device to a
         partition."""
+        mock_create_audit_event = self.patch(
+            bcache_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
@@ -347,6 +374,9 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
         self.assertEqual('partition', parsed_device['backing_device']['type'])
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Updated bcache on " + "%s." % node.hostname))
 
     def test_invalid_change_fails(self):
         """Tests changing the backing of a bcache device to None fails."""

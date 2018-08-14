@@ -1,10 +1,12 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Bcache`."""
 
 from maasserver.api.support import OperationsHandler
+from maasserver.audit import create_audit_event
 from maasserver.enum import (
+    ENDPOINT,
     NODE_PERMISSION,
     NODE_STATUS,
 )
@@ -22,6 +24,7 @@ from maasserver.models import (
 )
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_BCACHE_FIELDS = (
@@ -81,6 +84,10 @@ class BcachesHandler(OperationsHandler):
                 "Cannot create Bcache because the machine is not Ready.")
         form = CreateBcacheForm(machine, data=request.data)
         if form.is_valid():
+            create_audit_event(
+                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
+                "'%(username)s': Created bcache on " +
+                "%s." % machine.hostname)
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -149,10 +156,13 @@ class BcacheHandler(OperationsHandler):
             raise NodeStateViolation(
                 "Cannot delete Bcache because the machine is not Ready.")
         bcache.delete()
+        create_audit_event(
+            EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
+            "'%(username)s': Deleted bcache on " + "%s." % node.hostname)
         return rc.DELETED
 
     def update(self, request, system_id, id):
-        """Delete bcache on a machine.
+        """Update bcache on a machine.
 
         :param name: Name of the Bcache.
         :param uuid: UUID of the Bcache.
@@ -175,6 +185,9 @@ class BcacheHandler(OperationsHandler):
                 "Cannot update Bcache because the machine is not Ready.")
         form = UpdateBcacheForm(bcache, data=request.data)
         if form.is_valid():
+            create_audit_event(
+                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
+                "'%(username)s': Updated bcache on " + "%s." % node.hostname)
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
