@@ -264,8 +264,13 @@ def interface_vlan_update(instance, old_values, **kwargs):
         # links except the DISCOVERED ones.
         instance.ip_addresses.exclude(
             alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
-        log.msg("%s: deleted IP addresses due to VLAN update (%s -> %s)." % (
-            instance.get_log_string(), old_vlan_id, new_vlan_id))
+        if old_vlan_id is not None:
+            # Don't bother logging if the VLAN was previously NULL, since there
+            # shouldn't be any IP addresses on the interface, anyway. (But keep
+            # the above database cleanup, just in case of the unexpected.)
+            log.msg(
+                "%s: deleted IP addresses due to VLAN update (%s -> %s)." % (
+                    instance.get_log_string(), old_vlan_id, new_vlan_id))
 
 
 for klass in INTERFACE_CLASSES:

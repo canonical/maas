@@ -999,6 +999,50 @@ class TestPod(MAASServerTestCase):
             list(machine.interface_set.order_by('id').values_list(
                 'name', flat=True)))
 
+    def test_create_machine_sets_interface_vlans_using_attach_names(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        controller = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True, primary_rack=controller)
+        subnet = factory.make_Subnet()
+        vlan2 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False, primary_rack=controller)
+        vlan3 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False, primary_rack=controller)
+        eth0 = factory.make_Interface(node=controller, vlan=vlan)
+        eth1 = factory.make_Interface(node=controller, vlan=vlan2)
+        eth2 = factory.make_Interface(node=controller, vlan=vlan3)
+        br0 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=controller, vlan=vlan,
+            parents=[eth0])
+        ip = factory.make_StaticIPAddress(subnet=subnet, interface=br0)
+        discovered_machine.interfaces[0].attach_type = 'bridge'
+        discovered_machine.interfaces[0].attach_name = br0.name
+        discovered_machine.interfaces[1].attach_type = 'macvlan'
+        discovered_machine.interfaces[1].attach_name = eth1.name
+        discovered_machine.interfaces[2].attach_type = 'macvlan'
+        discovered_machine.interfaces[2].attach_name = eth2.name
+        pod = factory.make_Pod(
+            host=controller, ip_address=ip)
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                'eth0:vlan=id:%d;eth1:vlan=id:%d;eth2:vlan=id:%d' % (
+                    vlan.id, vlan2.id, vlan3.id),
+            )
+        )
+        interfaces = {
+            interface.name: interface
+            for interface in machine.interface_set.all()
+        }
+        self.assertThat(interfaces['eth0'].vlan, Equals(vlan))
+        self.assertThat(interfaces['eth1'].vlan, Equals(vlan2))
+        self.assertThat(interfaces['eth2'].vlan, Equals(vlan3))
+
     def test_create_machine_uses_default_ifnames_if_discovered_mismatch(self):
         """This makes sure that if the discovered machine comes back with
         a different number of interfaces than the constraint string, the

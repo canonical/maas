@@ -821,20 +821,55 @@ class Pod(BMC):
             ]
         # Create the discovered interface and set the default networking
         # configuration.
+        created_interfaces = []
         for idx, discovered_nic in enumerate(discovered_machine.interfaces):
             interface = self._create_interface(
                 discovered_nic, machine, name=interface_names[idx])
+            created_interfaces.append(interface)
             if discovered_nic.boot:
                 machine.boot_interface = interface
                 machine.save(update_fields=['boot_interface'])
         if skip_commissioning:
             machine.set_initial_networking_configuration()
 
+        # We need a second pass here to configure interfaces that the above
+        # function call would otherwise change.
+        if self.host is not None:
+            self._update_vlans_based_on_pod_host(
+                created_interfaces, discovered_machine)
+
         # New machines get commission started immediately unless skipped.
         if not skip_commissioning:
             machine.start_commissioning(commissioning_user)
 
         return machine
+
+    def _update_vlans_based_on_pod_host(
+            self, created_interfaces, discovered_machine):
+        """Matches up newly-created interfaces with interfaces on the pod.host,
+        given a list of interfaces that were created for the machine, and
+        the DiscoveredMachine object.
+        """
+        # Circular imports.
+        from maasserver.models import Interface
+        interfaces = {
+            interface.name: interface
+            for interface in Interface.objects.all_interfaces_parents_first(
+                self.host)
+        }
+        for idx, discovered_nic in enumerate(discovered_machine.interfaces):
+            if discovered_nic.attach_type in ('bridge', 'macvlan'):
+                host_attach_interface = interfaces.get(
+                    discovered_nic.attach_name, None)
+                if host_attach_interface is not None:
+                    # If we get to this point, we found the interface the
+                    # the VM has been attached to. Update the VLAN (but
+                    # only if necessary).
+                    host_vlan = host_attach_interface.vlan
+                    if host_vlan != created_interfaces[idx].vlan:
+                        created_interfaces[idx].vlan = host_vlan
+                        created_interfaces[idx].save()
+                    continue
 
     def _sync_machine(self, discovered_machine, existing_machine):
         """Sync's the information from `discovered_machine` to update
