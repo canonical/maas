@@ -1724,13 +1724,13 @@
                         </p>
                     </div>
                     <div class="p-notification ng-hide" data-ng-show="isAllStorageDisabled() && isSuperUser()">
-                        <p class="p-notification__response">Storage configuration cannot be modified unless the node is Ready or Allocated.</p>
+                        <p class="p-notification__response">Storage configuration cannot be modified unless the machine is Ready or Allocated.</p>
                     </div>
-                    <div class="p-notification ng-hide" data-ng-show="isAllStorageDisabled() && !isSuperUser()">
-                        <p class="p-notification__response">Storage configuration cannot be modified unless the node is Ready or Allocated and you own the node.</p>
+                    <div class="p-notification ng-hide" data-ng-show="!isUbuntuOS() && !isCentOS()">
+                        <p class="p-notification__response">Custom storage configuration is only supported on Ubuntu, CentOS, and RHEL.</p>
                     </div>
                     <div class="p-notification ng-hide" data-ng-show="!isUbuntuOS()">
-                        <p class="p-notification__response">Custom storage configuration only supported on Ubuntu. Using flat layout.</p>
+                        <p class="p-notification__response">Bcache and ZFS are only supported on Ubuntu.</p>
                     </div>
                     <div data-ng-repeat="issue in node.storage_layout_issues" class="p-notification--negative ng-hide" data-ng-show="hasStorageLayoutIssues()">
                         <p class="p-notification__response">

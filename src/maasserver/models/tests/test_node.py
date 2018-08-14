@@ -4294,6 +4294,27 @@ class TestNode(MAASServerTestCase):
              "bcache volume. Mount /boot on a non-bcache device to be able to "
              "deploy this node."], node.storage_layout_issues())
 
+    def test_storage_layout_issues_returns_invalid_when_bcache_on_centos(self):
+        osystem = random.choice(["centos", "rhel"])
+        node = factory.make_Node(osystem=osystem)
+        factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        self.assertItemsEqual(
+            ["This node cannot be deployed because the selected deployment "
+             "OS, %s, does not support Bcache." % osystem],
+            node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_invalid_when_zfs_on_centos(self):
+        osystem = random.choice(["centos", "rhel"])
+        node = factory.make_Node(osystem=osystem)
+        bd = factory.make_BlockDevice(node=node)
+        factory.make_Filesystem(
+            block_device=bd, fstype=FILESYSTEM_TYPE.ZFSROOT)
+        self.assertItemsEqual(
+            ["This node cannot be deployed because the selected deployment "
+             "OS, %s, does not support ZFS." % osystem],
+            node.storage_layout_issues())
+
     def test_start_rescue_mode_raises_PermissionDenied_if_no_edit(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user, status=random.choice([

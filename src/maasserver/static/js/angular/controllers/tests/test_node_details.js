@@ -837,6 +837,32 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("isCentOS", function() {
+        it("returns true when CentOS", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = 'centos';
+            node.distro_series = makeName("distro_series");
+            expect($scope.isCentOS()).toBe(true);
+        });
+
+        it("returns true when RHEL", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = 'rhel';
+            node.distro_series = makeName("distro_series");
+            expect($scope.isCentOS()).toBe(true);
+        });
+
+        it("returns false when otheros", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = makeName("osystem");
+            node.distro_series = makeName("distro_series");
+            expect($scope.isCentOS()).toBe(false);
+        });
+    });
+
     describe("isCustomOS", function() {
         it("returns true when custom OS", function() {
             var controller = makeController();

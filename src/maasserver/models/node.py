@@ -1339,6 +1339,8 @@ class Node(CleanSave, TimestampedModel):
         has_boot = False
         root_mounted = False
         root_on_bcache = False
+        any_bcache = False
+        any_zfs = False
         boot_mounted = False
         arch, subarch = self.split_arch()
 
@@ -1358,6 +1360,11 @@ class Node(CleanSave, TimestampedModel):
                     elif (fs.mount_point == '/boot' and
                           not on_bcache(block_device)):
                         boot_mounted = True
+                    any_bcache |= fs.fstype in (
+                        FILESYSTEM_TYPE.BCACHE_CACHE,
+                        FILESYSTEM_TYPE.BCACHE_BACKING,
+                    )
+                    any_zfs |= (fs.fstype == FILESYSTEM_TYPE.ZFSROOT)
             else:
                 fs = block_device.get_effective_filesystem()
                 if fs is None:
@@ -1368,6 +1375,11 @@ class Node(CleanSave, TimestampedModel):
                         root_on_bcache = True
                 elif fs.mount_point == '/boot' and not on_bcache(block_device):
                     boot_mounted = True
+                any_bcache |= fs.fstype in (
+                    FILESYSTEM_TYPE.BCACHE_CACHE,
+                    FILESYSTEM_TYPE.BCACHE_BACKING,
+                )
+                any_zfs |= (fs.fstype == FILESYSTEM_TYPE.ZFSROOT)
         issues = []
         if not has_boot:
             issues.append(
@@ -1387,6 +1399,17 @@ class Node(CleanSave, TimestampedModel):
                 "This node cannot be deployed because it needs a separate "
                 "/boot partition.  Mount /boot on a device to be able to "
                 "deploy this node.")
+        if self.osystem in ["centos", "rhel"]:
+            if any_bcache:
+                issues.append(
+                    "This node cannot be deployed because the selected "
+                    "deployment OS, %s, does not support Bcache." %
+                    self.osystem)
+            if any_zfs:
+                issues.append(
+                    "This node cannot be deployed because the selected "
+                    "deployment OS, %s, does not support ZFS." %
+                    self.osystem)
         return issues
 
     def on_network(self):
