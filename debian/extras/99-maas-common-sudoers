@@ -18,6 +18,14 @@ maas ALL= NOPASSWD: /bin/systemctl restart chrony
 maas ALL= NOPASSWD: /bin/systemctl start chrony
 maas ALL= NOPASSWD: /bin/systemctl status chrony
 
+# Control of the Proxy server: MAAS needs to reconfigure it after editing
+# its configuration file, start it and stop it.
+maas ALL= NOPASSWD: /bin/systemctl reload maas-proxy
+maas ALL= NOPASSWD: /bin/systemctl restart maas-proxy
+maas ALL= NOPASSWD: /bin/systemctl start maas-proxy
+maas ALL= NOPASSWD: /bin/systemctl stop maas-proxy
+maas ALL= NOPASSWD: /bin/systemctl status maas-proxy
+
 # Writing and deleting files as root.
 maas ALL= NOPASSWD: /usr/lib/maas/maas-delete-file
 maas ALL= NOPASSWD: /usr/lib/maas/maas-write-file

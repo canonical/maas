@@ -32,7 +32,10 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.service_monitor import service_monitor
+from provisioningserver.service_monitor import (
+    service_monitor,
+    SERVICE_STATE,
+)
 from testtools.matchers import (
     Equals,
     Is,
@@ -45,18 +48,20 @@ from twisted.internet.defer import inlineCallbacks
 
 def prepareRegion(
         test, *, is_region=False, is_rack=True,
-        servers=None, peers=None, trusted_networks=None):
+        servers=None, peers=None, trusted_networks=None,
+        proxy_enabled=True, proxy_port=8000, proxy_allowed_cidrs=None,
+        proxy_prefer_v4_proxy=False):
     """Set up a mock region controller.
 
-    It responds to `GetControllerType`, `GetTimeConfiguration` and
-    `GetDNSConfiguration`.
+    It responds to `GetControllerType`, `GetTimeConfiguration`,
+    `GetDNSConfiguration` and `GetProxyConfiguration`.
 
     :return: The running RPC service, and the protocol instance.
     """
     fixture = test.useFixture(MockLiveClusterToRegionRPCFixture())
     protocol, connecting = fixture.makeEventLoop(
         region.GetControllerType, region.GetTimeConfiguration,
-        region.GetDNSConfiguration)
+        region.GetDNSConfiguration, region.GetProxyConfiguration)
     protocol.RegisterRackController.side_effect = always_succeed_with(
         {"system_id": factory.make_name("maas-id")})
     protocol.GetControllerType.side_effect = always_succeed_with(
@@ -68,6 +73,14 @@ def prepareRegion(
     protocol.GetDNSConfiguration.side_effect = always_succeed_with({
         "trusted_networks": (
             [] if trusted_networks is None else trusted_networks),
+    })
+    if proxy_allowed_cidrs is None:
+        proxy_allowed_cidrs = []
+    protocol.GetProxyConfiguration.side_effect = always_succeed_with({
+        "enabled": proxy_enabled,
+        "port": proxy_port,
+        "allowed_cidrs": proxy_allowed_cidrs,
+        "prefer_v4_proxy": proxy_prefer_v4_proxy,
     })
 
     def connected(teardown):
@@ -459,3 +472,139 @@ class TestRackDNS(MAASTestCase):
         for _ in range(3):
             self.assertEquals(
                 region_ips, frozenset(dns._genRegionIps(mock_rpc.connections)))
+
+
+class TestRackProxy(MAASTestCase):
+    """Tests for `RackProxy` for `RackExternalService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
+
+    def make_cidrs(self):
+        return frozenset({
+            str(factory.make_ipv4_network()),
+            str(factory.make_ipv6_network()),
+        })
+
+    def extract_regions(self, rpc_service):
+        return frozenset({
+            client.address[0]
+            for _, client in rpc_service.connections.items()
+        })
+
+    def make_RackProxy_ExternalService(self, rpc_service, reactor):
+        proxy = external.RackProxy()
+        service = make_startable_RackExternalService(
+            self, rpc_service, reactor, [('proxy', proxy)])
+        return service, proxy
+
+    @inlineCallbacks
+    def test__getConfiguration_returns_configuration_object(self):
+        is_region, is_rack = factory.pick_bool(), factory.pick_bool()
+        allowed_cidrs = self.make_cidrs()
+        proxy_enabled = factory.pick_bool()
+        proxy_prefer_v4_proxy = factory.pick_bool()
+        proxy_port = random.randint(1000, 8000)
+        rpc_service, protocol = yield prepareRegion(
+            self, is_region=is_region, is_rack=is_rack,
+            proxy_enabled=proxy_enabled, proxy_allowed_cidrs=allowed_cidrs,
+            proxy_port=proxy_port, proxy_prefer_v4_proxy=proxy_prefer_v4_proxy)
+        region_ips = self.extract_regions(rpc_service)
+        service, proxy = self.make_RackProxy_ExternalService(
+            rpc_service, reactor)
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+
+        config = yield service._getConfiguration()
+        observed = proxy._getConfiguration(
+            config.controller_type, config.proxy_configuration,
+            config.connections)
+
+        self.assertThat(observed, IsInstance(external._ProxyConfiguration))
+        self.assertThat(
+            observed, MatchesStructure.byEquality(
+                enabled=proxy_enabled, port=proxy_port,
+                allowed_cidrs=allowed_cidrs,
+                prefer_v4_proxy=proxy_prefer_v4_proxy,
+                upstream_proxies=region_ips,
+                is_region=is_region, is_rack=is_rack))
+
+    @inlineCallbacks
+    def test__tryUpdate_updates_dns_server(self):
+        self.useFixture(MAASRootFixture())
+        allowed_cidrs = self.make_cidrs()
+        proxy_prefer_v4_proxy = factory.pick_bool()
+        proxy_port = random.randint(1000, 8000)
+        rpc_service, _ = yield prepareRegion(
+            self, proxy_allowed_cidrs=allowed_cidrs,
+            proxy_port=proxy_port, proxy_prefer_v4_proxy=proxy_prefer_v4_proxy)
+        region_ips = self.extract_regions(rpc_service)
+        service, _ = self.make_RackProxy_ExternalService(rpc_service, reactor)
+
+        write_config = self.patch_autospec(external, "write_config")
+        service_monitor = self.patch_autospec(external, 'service_monitor')
+
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+
+        yield service._orig_tryUpdate()
+
+        expected_peers = sorted([
+            'http://%s:%s' % (ip, proxy_port)
+            for ip in region_ips
+        ])
+        self.assertThat(
+            write_config,
+            MockCalledOnceWith(
+                allowed_cidrs,
+                peer_proxies=expected_peers,
+                prefer_v4_proxy=proxy_prefer_v4_proxy,
+                maas_proxy_port=proxy_port))
+        self.assertThat(
+            service_monitor.reloadService, MockCalledOnceWith("proxy_rack"))
+        # If the configuration has not changed then a second call to
+        # `_tryUpdate` does not result in another call to `_configure`.
+        yield service._orig_tryUpdate()
+        self.assertThat(
+            write_config,
+            MockCalledOnceWith(
+                allowed_cidrs,
+                peer_proxies=expected_peers,
+                prefer_v4_proxy=proxy_prefer_v4_proxy,
+                maas_proxy_port=proxy_port))
+        self.assertThat(
+            service_monitor.reloadService, MockCalledOnceWith("proxy_rack"))
+
+    @inlineCallbacks
+    def test_sets_proxy_rack_service_to_any_when_is_region(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(common.log, 'debug')
+        self.useFixture(MAASRootFixture())
+        rpc_service, _ = yield prepareRegion(self, is_region=True)
+        service, proxy = self.make_RackProxy_ExternalService(
+            rpc_service, reactor)
+        self.patch_autospec(proxy, "_configure")  # No-op configuration.
+
+        # There is no most recently applied configuration.
+        self.assertThat(proxy._configuration, Is(None))
+
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
+
+        # Ensure that the service was set to any.
+        service = service_monitor.getServiceByName("proxy_rack")
+        self.assertEquals(
+            (SERVICE_STATE.ANY, "managed by region"),
+            service.getExpectedState())
+        # The most recently applied configuration is set, though it was not
+        # actually "applied" because this host was configured as a region+rack
+        # controller, and the rack should not attempt to manage the DNS server
+        # on a region+rack.
+        self.assertThat(
+            proxy._configuration, IsInstance(external._ProxyConfiguration))
+        # The configuration was not applied.
+        self.assertThat(proxy._configure, MockNotCalled())
+        # Nothing was logged; there's no need for lots of chatter.
+        self.assertThat(logger.output, Equals(""))

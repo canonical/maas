@@ -61,8 +61,10 @@ cache_access_log /var/log/maas/proxy/access.log
 cache_log /var/log/maas/proxy/cache.log
 cache_store_log /var/log/maas/proxy/store.log
 {{endif}}
-{{if upstream_peer_proxy}}
-cache_peer {{upstream_proxy_address}} parent {{upstream_proxy_port}} 0 no-query default
+{{if peers}}
+{{for peer in peers}}
+cache_peer {{peer['address']}} parent {{peer['port']}} 0 no-query default
+{{endfor}}
 never_direct allow all
 {{endif}}
 {{if dns_v4_first}}

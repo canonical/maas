@@ -11,6 +11,7 @@ from maasserver.models.config import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.proxy import config
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
     Service,
@@ -49,14 +50,12 @@ class ProxyService(Service):
 
         @transactional
         def db_getExpectedState():
-            # Avoid recursive import.
-            from maasserver import proxyconfig
             if (Config.objects.get_config("enable_http_proxy") and
                     Config.objects.get_config("http_proxy") and
                     not Config.objects.get_config("use_peer_proxy")):
                 return (SERVICE_STATE.OFF,
                         "disabled, alternate proxy is configured in settings.")
-            elif proxyconfig.is_config_present() is False:
+            elif config.is_config_present() is False:
                 return (SERVICE_STATE.OFF, "no configuration file present.")
             else:
                 return (SERVICE_STATE.ON, None)

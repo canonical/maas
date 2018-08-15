@@ -38,17 +38,6 @@ killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/regiond.log
 serverurl=http://localhost:9001
-
-[program:proxy]
-process_name=proxy
-command=%(ENV_SNAP)s/bin/run-squid
-user=nobody
-group=nogroup
-autostart=false
-stopasgroup=true
-killasgroup=true
-redirect_stderr=true
-stdout_logfile=%(ENV_SNAP_COMMON)s/log/proxy.log
 {{endif}}
 
 
@@ -105,4 +94,15 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/chrony.log
+
+[program:proxy]
+process_name=proxy
+command=%(ENV_SNAP)s/bin/run-squid
+user=nobody
+group=nogroup
+autostart=false
+stopasgroup=true
+killasgroup=true
+redirect_stderr=true
+stdout_logfile=%(ENV_SNAP_COMMON)s/log/proxy.log
 {{endif}}

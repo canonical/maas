@@ -1,11 +1,10 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the proxyconfig."""
 
 __all__ = []
 
-import os
 from pathlib import Path
 import random
 
@@ -14,17 +13,16 @@ from django.conf import settings
 from fixtures import EnvironmentVariableFixture
 from maasserver import proxyconfig
 from maasserver.models import Config
+from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from provisioningserver.proxy import config
 from provisioningserver.utils import snappy
 from testtools.matchers import (
     Contains,
@@ -37,32 +35,17 @@ from twisted.internet.defer import inlineCallbacks
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-class TestGetConfigDir(MAASServerTestCase):
-    """Tests for `maasserver.proxyconfig.get_proxy_config_path`."""
-
-    def test_returns_default(self):
-        self.assertEquals(
-            "/var/lib/maas/maas-proxy.conf",
-            proxyconfig.get_proxy_config_path())
-
-    def test_env_overrides_default(self):
-        os.environ['MAAS_PROXY_CONFIG_DIR'] = factory.make_name('env')
-        self.assertEquals(
-            os.sep.join([
-                os.environ['MAAS_PROXY_CONFIG_DIR'],
-                proxyconfig.MAAS_PROXY_CONF_NAME]),
-            proxyconfig.get_proxy_config_path())
-        del(os.environ['MAAS_PROXY_CONFIG_DIR'])
-
-
 class TestProxyUpdateConfig(MAASTransactionServerTestCase):
     """Tests for `maasserver.proxyconfig`."""
 
     def setUp(self):
         super(TestProxyUpdateConfig, self).setUp()
         self.tmpdir = self.make_dir()
-        self.proxy_path = Path(self.tmpdir) / proxyconfig.MAAS_PROXY_CONF_NAME
+        self.proxy_path = Path(self.tmpdir) / config.MAAS_PROXY_CONF_NAME
         self.service_monitor = self.patch(proxyconfig, "service_monitor")
+        # Setting the http_proxy Config will cause the boot sources to be
+        # re-cached. Disable the signals so no threads are dirty.
+        bootsources.signals.disable()
         self.useFixture(
             EnvironmentVariableFixture('MAAS_PROXY_CONFIG_DIR', self.tmpdir))
 
@@ -80,12 +63,12 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         # enabled's cidr must be present
         matcher = Contains("acl localnet src %s" % enabled.cidr)
         self.assertThat(
-            "%s/%s" % (self.tmpdir, proxyconfig.MAAS_PROXY_CONF_NAME),
+            "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
             FileContains(matcher=matcher))
         # disabled's cidr must not be present
         matcher = Not(Contains("acl localnet src %s" % disabled.cidr))
         self.assertThat(
-            "%s/%s" % (self.tmpdir, proxyconfig.MAAS_PROXY_CONF_NAME),
+            "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
             FileContains(matcher=matcher))
 
     @wait_for_reactor

@@ -8,7 +8,6 @@ __all__ = []
 import os
 
 from crochet import wait_for
-from maasserver import proxyconfig
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.service_monitor import (
@@ -20,6 +19,7 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.testcase import MAASTestCase
+from provisioningserver.proxy import config
 from provisioningserver.utils.service_monitor import SERVICE_STATE
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -60,7 +60,7 @@ class TestProxyService(MAASTransactionServerTestCase):
         yield deferToDatabase(
             transactional(Config.objects.set_config),
             "http_proxy", "")
-        self.patch(proxyconfig, "is_config_present").return_value = True
+        self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATE.ON, None), expected_state)
 
@@ -89,7 +89,7 @@ class TestProxyService(MAASTransactionServerTestCase):
         yield deferToDatabase(
             transactional(Config.objects.set_config),
             "http_proxy", factory.make_url())
-        self.patch(proxyconfig, "is_config_present").return_value = True
+        self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATE.ON, None), expected_state)
 
@@ -107,7 +107,7 @@ class TestProxyService(MAASTransactionServerTestCase):
         yield deferToDatabase(
             transactional(Config.objects.set_config),
             "http_proxy", "")
-        self.patch(proxyconfig, "is_config_present").return_value = True
+        self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATE.ON, None), expected_state)
 
@@ -125,7 +125,7 @@ class TestProxyService(MAASTransactionServerTestCase):
         yield deferToDatabase(
             transactional(Config.objects.set_config),
             "http_proxy", factory.make_url())
-        self.patch(proxyconfig, "is_config_present").return_value = True
+        self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual(
             (SERVICE_STATE.OFF,
@@ -149,6 +149,6 @@ class TestProxyService(MAASTransactionServerTestCase):
         yield deferToDatabase(
             transactional(Config.objects.set_config),
             "http_proxy", factory.make_url())
-        self.patch(proxyconfig, "is_config_present").return_value = True
+        self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATE.ON, None), expected_state)

@@ -35,6 +35,7 @@ from provisioningserver.utils.service_monitor import (
     ServiceParsingError,
     ServiceState,
     ServiceUnknownError,
+    ToggleableService,
 )
 from provisioningserver.utils.shell import get_env_with_bytes_locale
 from testscenarios import multiply_scenarios
@@ -1097,3 +1098,55 @@ class TestServiceMonitor(MAASTestCase):
         self.assertThat(
             service_monitor._performServiceAction,
             MockNotCalled())
+
+
+class TestToggleableService(MAASTestCase):
+
+    def make_toggleable_service(self):
+
+        class FakeToggleableService(ToggleableService):
+
+            name = factory.make_name("name")
+            service_name = factory.make_name("service")
+            snap_service_name = factory.make_name("service")
+
+        return FakeToggleableService()
+
+    def test_expected_state_starts_off(self):
+        service = self.make_toggleable_service()
+        self.assertEqual(SERVICE_STATE.OFF, service.expected_state)
+
+    def test_getExpectedState_returns_from_expected_state_and_reason(self):
+        service = self.make_toggleable_service()
+        service.expected_state = sentinel.state
+        service.expected_state_reason = sentinel.reason
+        self.assertEqual(
+            (sentinel.state, sentinel.reason), service.getExpectedState())
+
+    def test_is_on_returns_True_when_expected_state_on(self):
+        service = self.make_toggleable_service()
+        service.expected_state = SERVICE_STATE.ON
+        self.assertTrue(
+            service.is_on(),
+            "Did not return true when expected_state was on.")
+
+    def test_is_on_returns_False_when_expected_state_off(self):
+        service = self.make_toggleable_service()
+        service.expected_state = SERVICE_STATE.OFF
+        self.assertFalse(
+            service.is_on(),
+            "Did not return false when expected_state was off.")
+
+    def test_on_sets_expected_state_to_on(self):
+        service = self.make_toggleable_service()
+        service.expected_state = SERVICE_STATE.OFF
+        service.on(sentinel.reason)
+        self.assertEqual(SERVICE_STATE.ON, service.expected_state)
+        self.assertEqual(sentinel.reason, service.expected_state_reason)
+
+    def test_off_sets_expected_state_to_off(self):
+        service = self.make_toggleable_service()
+        service.expected_state = SERVICE_STATE.ON
+        service.off(sentinel.reason)
+        self.assertEqual(SERVICE_STATE.OFF, service.expected_state)
+        self.assertEqual(sentinel.reason, service.expected_state_reason)

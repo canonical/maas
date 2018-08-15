@@ -83,6 +83,7 @@ from provisioningserver.rpc.region import (
     GetControllerType,
     GetDNSConfiguration,
     GetProxies,
+    GetProxyConfiguration,
     GetTimeConfiguration,
     Identify,
     ListNodePowerParameters,
@@ -1388,3 +1389,44 @@ class TestRegionProtocol_GetDNSConfiguration(MAASTransactionServerTestCase):
         }))
         self.assertThat(deferToDatabase, MockCalledOnceWith(
             get_trusted_networks))
+
+
+class TestRegionProtocol_GetProxyConfiguration(MAASTransactionServerTestCase):
+
+    def test_get_proxy_configuration_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            GetProxyConfiguration.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_returns_proxy_configuration(self):
+
+        def _db_work():
+            cidrs = [
+                factory.make_Subnet(allow_proxy=True).cidr
+                for _ in range(3)
+            ]
+            for _ in range(3):
+                factory.make_Subnet(allow_proxy=False)
+            enabled = factory.pick_bool()
+            Config.objects.set_config('enable_http_proxy', enabled)
+            port = random.randint(1000, 8000)
+            Config.objects.set_config('maas_proxy_port', port)
+            prefer_v4_proxy = factory.pick_bool()
+            Config.objects.set_config('prefer_v4_proxy', prefer_v4_proxy)
+            return cidrs, enabled, port, prefer_v4_proxy
+
+        cidrs, enabled, port, prefer_v4_proxy = yield deferToDatabase(
+            _db_work)
+
+        system_id = factory.make_name("id")
+        response = yield call_responder(
+            Region(), GetProxyConfiguration, {'system_id': system_id})
+        self.assertThat(response, Equals({
+            'enabled': enabled,
+            'port': port,
+            'allowed_cidrs': cidrs,
+            'prefer_v4_proxy': prefer_v4_proxy,
+        }))

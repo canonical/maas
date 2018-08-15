@@ -21,7 +21,9 @@ import uuid
 from maasserver import eventloop
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.dns.config import get_trusted_networks
+from maasserver.models.config import Config
 from maasserver.models.node import RackController
+from maasserver.models.subnet import Subnet
 from maasserver.rpc import (
     boot,
     configuration,
@@ -38,6 +40,7 @@ from maasserver.rpc.nodes import (
 )
 from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from netaddr import (
     AddrConversionError,
@@ -504,6 +507,31 @@ class Region(RPCProtocol):
         d = deferToDatabase(get_trusted_networks)
         d.addCallback(lambda networks: {'trusted_networks': networks})
         return d
+
+    @region.GetProxyConfiguration.responder
+    def get_proxy_configuration(self, system_id):
+        """Get settings to use for configuring proxy.
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetProxyConfiguration`.
+        """
+        # For consistency `system_id` is passed, but at the moment it is not
+        # used to customise the proxy configuration.
+
+        @transactional
+        def get_from_db():
+            allowed_subnets = Subnet.objects.filter(allow_proxy=True)
+            cidrs = [subnet.cidr for subnet in allowed_subnets]
+            configs = Config.objects.get_configs([
+                'maas_proxy_port', 'prefer_v4_proxy', 'enable_http_proxy'])
+            return {
+                'enabled': configs['enable_http_proxy'],
+                'port': configs['maas_proxy_port'],
+                'allowed_cidrs': cidrs,
+                'prefer_v4_proxy': configs['prefer_v4_proxy'],
+            }
+
+        return deferToDatabase(get_from_db)
 
 
 @inlineCallbacks

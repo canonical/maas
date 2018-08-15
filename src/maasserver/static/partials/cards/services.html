@@ -75,5 +75,11 @@
                 <span data-ng-if="services.ntp_rack.status_info"> &ndash; <small>{$ services.ntp_rack.status_info $}</small></span>
             </span>
         </li>
+        <li class="p-list-tree__item" data-ng-if="(node.node_type == 2 || node.node_type == 4) && services.proxy_rack">
+            <span>
+                <span class="p-icon--{$ getServiceClass(services.proxy_rack) $}"></span>&nbsp;proxy
+                <span data-ng-if="services.proxy_rack.status_info"> &ndash; <small>{$ services.proxy_rack.status_info $}</small></span>
+            </span>
+        </li>
     </ul>
 </div>

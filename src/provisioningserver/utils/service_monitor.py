@@ -167,6 +167,42 @@ class AlwaysOnService(Service):
         return (SERVICE_STATE.ON, None)
 
 
+class ToggleableService(Service):
+    """Service can be toggled on or off."""
+
+    def __init__(self):
+        super(ToggleableService, self).__init__()
+        self.expected_state = SERVICE_STATE.OFF
+        self.expected_state_reason = None
+
+    def getExpectedState(self):
+        """Return a the expected state for the dhcp service.
+
+        The dhcp service always starts as off. Once the rackd starts dhcp
+        `expected_state` will be set to ON.
+        """
+        return (self.expected_state, self.expected_state_reason)
+
+    def is_on(self):
+        """Return true if the service should be on."""
+        return self.expected_state == SERVICE_STATE.ON
+
+    def on(self, reason=None):
+        """Set the expected state of the service to `ON`."""
+        self.expected_state = SERVICE_STATE.ON
+        self.expected_state_reason = reason
+
+    def off(self, reason=None):
+        """Set the expected state of the service to `OFF`."""
+        self.expected_state = SERVICE_STATE.OFF
+        self.expected_state_reason = reason
+
+    def any(self, reason=None):
+        """Set the expected state of the service to `ANY`."""
+        self.expected_state = SERVICE_STATE.ANY
+        self.expected_state_reason = reason
+
+
 class ServiceUnknownError(Exception):
     """Raised when a check is called for a service the `ServiceMonitor` does
     not know about."""

@@ -14,6 +14,7 @@ from provisioningserver.utils.service_monitor import (
     Service,
     SERVICE_STATE,
     ServiceMonitor,
+    ToggleableService,
 )
 
 
@@ -25,42 +26,14 @@ class HTTPService(AlwaysOnService):
     snap_service_name = "http"
 
 
-class DHCPService(Service):
-    """Abstract monitored dhcp service."""
-
-    def __init__(self):
-        super(DHCPService, self).__init__()
-        self.expected_state = SERVICE_STATE.OFF
-
-    def getExpectedState(self):
-        """Return a the expected state for the dhcp service.
-
-        The dhcp service always starts as off. Once the rackd starts dhcp
-        `expected_state` will be set to ON.
-        """
-        return (self.expected_state, None)
-
-    def is_on(self):
-        """Return true if the service should be on."""
-        return self.expected_state == SERVICE_STATE.ON
-
-    def on(self):
-        """Set the expected state of the service to `ON`."""
-        self.expected_state = SERVICE_STATE.ON
-
-    def off(self):
-        """Set the expected state of the service to `OFF`."""
-        self.expected_state = SERVICE_STATE.OFF
-
-
-class DHCPv4Service(DHCPService):
+class DHCPv4Service(ToggleableService):
 
     name = "dhcpd"
     service_name = "maas-dhcpd"
     snap_service_name = "dhcpd"
 
 
-class DHCPv6Service(DHCPService):
+class DHCPv6Service(ToggleableService):
 
     name = "dhcpd6"
     service_name = "maas-dhcpd6"
@@ -106,6 +79,14 @@ class DNSServiceOnRack(RackOnlyModeService):
     snap_service_name = "bind9"
 
 
+class ProxyServiceOnRack(ToggleableService):
+    """Monitored proxy service on a rack controller host."""
+
+    name = "proxy_rack"
+    service_name = "maas-proxy"
+    snap_service_name = "proxy"
+
+
 # Global service monitor for rackd. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -114,4 +95,5 @@ service_monitor = ServiceMonitor(
     DHCPv6Service(),
     NTPServiceOnRack(),
     DNSServiceOnRack(),
+    ProxyServiceOnRack(),
 )

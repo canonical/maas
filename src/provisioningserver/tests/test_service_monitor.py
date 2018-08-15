@@ -5,9 +5,6 @@
 
 __all__ = []
 
-from unittest.mock import sentinel
-
-from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
@@ -16,7 +13,6 @@ from provisioningserver.rackdservices.testing import (
     prepareRegionForGetControllerType,
 )
 from provisioningserver.service_monitor import (
-    DHCPService,
     DHCPv4Service,
     DHCPv6Service,
     DNSServiceOnRack,
@@ -26,54 +22,6 @@ from provisioningserver.service_monitor import (
 from provisioningserver.utils.service_monitor import SERVICE_STATE
 from testtools.matchers import Equals
 from twisted.internet.defer import inlineCallbacks
-
-
-class TestDHCPService(MAASTestCase):
-
-    def make_dhcp_service(self):
-
-        class FakeDHCPService(DHCPService):
-
-            name = factory.make_name("name")
-            service_name = factory.make_name("service")
-            snap_service_name = factory.make_name("service")
-
-        return FakeDHCPService()
-
-    def test_expected_state_starts_off(self):
-        service = self.make_dhcp_service()
-        self.assertEqual(SERVICE_STATE.OFF, service.expected_state)
-
-    def test_getExpectedState_returns_from_expected_state(self):
-        service = self.make_dhcp_service()
-        service.expected_state = sentinel.state
-        self.assertEqual((sentinel.state, None), service.getExpectedState())
-
-    def test_is_on_returns_True_when_expected_state_on(self):
-        service = self.make_dhcp_service()
-        service.expected_state = SERVICE_STATE.ON
-        self.assertTrue(
-            service.is_on(),
-            "Did not return true when expected_state was on.")
-
-    def test_is_on_returns_False_when_expected_state_off(self):
-        service = self.make_dhcp_service()
-        service.expected_state = SERVICE_STATE.OFF
-        self.assertFalse(
-            service.is_on(),
-            "Did not return false when expected_state was off.")
-
-    def test_on_sets_expected_state_to_on(self):
-        service = self.make_dhcp_service()
-        service.expected_state = SERVICE_STATE.OFF
-        service.on()
-        self.assertEqual(SERVICE_STATE.ON, service.expected_state)
-
-    def test_off_sets_expected_state_to_off(self):
-        service = self.make_dhcp_service()
-        service.expected_state = SERVICE_STATE.ON
-        service.off()
-        self.assertEqual(SERVICE_STATE.OFF, service.expected_state)
 
 
 class TestDHCPv4Service(MAASTestCase):
@@ -198,5 +146,5 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["http", "dhcpd", "dhcpd6", "dns_rack", "ntp_rack"],
+            ["http", "dhcpd", "dhcpd6", "dns_rack", "ntp_rack", "proxy_rack"],
             service_monitor._services.keys())

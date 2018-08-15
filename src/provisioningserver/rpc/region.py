@@ -636,3 +636,23 @@ class GetDNSConfiguration(amp.Command):
     errors = {
         NoSuchNode: b"NoSuchNode",
     }
+
+
+class GetProxyConfiguration(amp.Command):
+    """Get settings to use for configuring proxy for a given system identifier.
+
+    :since: 2.5
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+    ]
+    response = [
+        (b"enabled", amp.Boolean()),
+        (b"port", amp.Integer()),
+        (b"allowed_cidrs", amp.ListOf(amp.Unicode())),
+        (b"prefer_v4_proxy", amp.Boolean()),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }
