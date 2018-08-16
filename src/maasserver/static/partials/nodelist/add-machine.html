@@ -69,19 +69,21 @@
 
     <section class="page-header__section col-12">
         <hr />
-        <div class="col-6">
-            <p data-ng-show="showErrors">
-                <maas-obj-errors></maas-obj-errors>
-            </p>
-        </div>
-        <div class="col-6 u-align--right">
-            <button class="p-button--base" type="button" data-ng-click="cancel()">Cancel</button>
-            <button class="p-button--neutral"
-                data-ng-disabled="machineHasError()"
-                data-ng-click="saveMachine(true)" maas-obj-save>Save and add another</button>
-            <button class="p-button--positive"
-                data-ng-disabled="machineHasError()"
-                data-ng-click="saveMachine(false)" maas-obj-save>Save machine</button>
+        <div class="row">
+            <div class="col-6">
+                <p data-ng-show="showErrors">
+                    <maas-obj-errors></maas-obj-errors>
+                </p>
+            </div>
+            <div class="col-6 u-align--right">
+                <button class="p-button--base" type="button" data-ng-click="cancel()">Cancel</button>
+                <button class="p-button--neutral"
+                    data-ng-disabled="machineHasError()"
+                    data-ng-click="saveMachine(true)" maas-obj-save>Save and add another</button>
+                <button class="p-button--positive"
+                    data-ng-disabled="machineHasError()"
+                    data-ng-click="saveMachine(false)" maas-obj-save>Save machine</button>
+            </div>
         </div>
     </section>
 </maas-obj-form>

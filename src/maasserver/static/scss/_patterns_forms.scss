@@ -1,28 +1,48 @@
+@import "../../../../node_modules/vanilla-framework/scss/grid/shelves/functions";
+
 @mixin maas-p-forms {
   @include maas-p-form-stacked;
   @include maas-p-form-inline;
+
+  .p-form__group {
+    @extend %vf-clearfix;
+  }
 }
 
 @mixin maas-p-form-stacked {
-  // Give the label a little more room from Vanilla's default
   .p-form--stacked {
-    .p-form__label {
-      max-width: 30%;
-      flex-basis: 30%;
+    .p-form__group {
+      align-items: flex-start;
+    }
 
-      @media (max-width: $breakpoint-small) {
-        max-width: 100%;
-        flex-basis: 100%;
-      }
+    .p-form__label,
+    .p-form__control {
+      flex: 0 0 auto;
+      max-width: none;
+    }
+
+    .p-form__label {
+      @extend .tablet-col-2;
+      @extend .col-2;
     }
 
     .p-form__control {
-      max-width: 70%;
-      flex-basis: 70%;
+      $input-v-padding-amount: $spv-nudge - $px;
+      $form-control-min-height: map-get($line-heights, default-text) + $input-v-padding-amount * 2 + 2 * $px;
+      @extend .tablet-col-4;
+      @extend .col-4;
 
-      @media (max-width: $breakpoint-small) {
-        max-width: 100%;
-        flex-basis: 100%;
+      & > .p-control-text {
+        @extend %default-text;
+        display: block;
+      }
+
+      &--placeholder {
+        display: block;
+        margin-bottom: $spv-inter--scaleable - $spv-nudge * 2 + $sp-unit;
+        min-height: $form-control-min-height;
+        padding-bottom: $input-v-padding-amount;
+        padding-top: $input-v-padding-amount;
       }
     }
   }
@@ -31,5 +51,16 @@
 @mixin maas-p-form-inline {
   .p-form--inline .p-form__group .p-form__label {
     flex-shrink: 1;
+  }
+
+  .p-form--inline,
+  .p-form--inline .p-form__group {
+    width: 100%;
+  }
+
+  .p-form--stacked {
+    .p-form__group + .p-form__group {
+      margin-top: 0;
+    }
   }
 }

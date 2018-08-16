@@ -1,36 +1,38 @@
-<header class="p-strip--light is-shallow is-bordered page-header u-no-padding--bottom">
+<header class="p-strip--light is-shallow u-no-padding--bottom page-header u-no-padding--bottom">
     <div class="row">
         <h1 class="page-header__title">Settings</h1>
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading">
             <i class="p-icon--spinner u-animation--spin"></i> Loading...</span>
         </p>
     </div>
-    <nav class="p-tabs">
-        <ul class="p-tabs__list" role="tablist">
-            <li class="p-tabs__item" role="presentation">
-                <a href="settings/users/" class="p-tabs__link" role="tab">Users</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="settings/general/" class="p-tabs__link" role="tab">General</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="settings/scripts/" class="p-tabs__link" role="tab">User scripts</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="settings/storage/" class="p-tabs__link" role="tab">Storage</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="settings/network/" class="p-tabs__link" role="tab">Network services</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="#/settings/dhcp" class="p-tabs__link" role="tab"
-                    data-ng-class="{ 'is-active': currentpage === 'dhcp'}">DHCP snippets</a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="#/settings/repositories" class="p-tabs__link" role="tab"
-                    data-ng-class="{ 'is-active': currentpage === 'repositories'}">Package repositories</a>
-            </li>
-        </ul>
+    <nav class="p-tabs u-hr--fixed-width">
+        <div class="row">
+            <ul class="p-tabs__list" role="tablist">
+                <li class="p-tabs__item" role="presentation">
+                    <a href="settings/users/" class="p-tabs__link" role="tab">Users</a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="settings/general/" class="p-tabs__link" role="tab">General</a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="settings/scripts/" class="p-tabs__link" role="tab">User scripts</a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="settings/storage/" class="p-tabs__link" role="tab">Storage</a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="settings/network/" class="p-tabs__link" role="tab">Network services</a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="#/settings/dhcp" class="p-tabs__link" role="tab"
+                        data-ng-class="{ 'is-active': currentpage === 'dhcp'}">DHCP snippets</a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="#/settings/repositories" class="p-tabs__link" role="tab"
+                        data-ng-class="{ 'is-active': currentpage === 'repositories'}">Package repositories</a>
+                </li>
+            </ul>
+        </div>
     </nav>
 </header>
 
@@ -40,7 +42,7 @@
             <!-- XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
             <div class="twelve-col">
                 <div class="four-col last-col align-right">
-                    <a href="" class="u-margin--top u-float--right">View compiled configuration</a>
+                    <a href="" class=" u-float--right">View compiled configuration</a>
                 </div>
             </div>
             -->
@@ -539,22 +541,25 @@
                                                         </dd>
                                                 </dl>
                                             </div>
-                                            <div class="p-form--inline">
+                                            <div>
                                                 <maas-obj-field type="textarea" key="key" label="Key"
                                                     label-width="2" input-width="3"></maas-obj-field>
                                             </div>
                                         </div>
                                         <div class="col-6">
-                                            <div class="p-form--inline">
-                                                <maas-obj-field type="checkboxes" key="arches" label="Architectures"
+                                            <div>
+                                                <maas-obj-field type="checkboxes" key="arches"
+                                                    label="Architectures"
                                                     label-width="2" input-width="3" values="known_architectures"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline" data-ng-if="!isPPA(newRepository)">
-                                                <maas-obj-field type="tags" key="distributions" label="Distributions"
+                                            <div data-ng-if="!isPPA(newRepository)">
+                                                <maas-obj-field type="tags" key="distributions"
+                                                    label="Distributions"
                                                     placeholder="Add a distribution" label-width="2" input-width="3"></maas-obj-field>
                                             </div>
-                                            <div class="p-form--inline" data-ng-if="!isPPA(newRepository)">
-                                                <maas-obj-field type="tags" key="components" label="Components"
+                                            <div data-ng-if="!isPPA(newRepository)">
+                                                <maas-obj-field type="tags" key="components"
+                                                    label="Components"
                                                     placeholder="Add a component" label-width="2" input-width="3"></maas-obj-field>
                                             </div>
                                         </div>

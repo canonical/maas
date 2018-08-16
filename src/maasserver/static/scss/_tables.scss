@@ -1,9 +1,4 @@
 @mixin maas-table-widths {
-  @function cell-percentage-width($percentage-width){
-    // Remove the table margin from the provided percentage
-    @return $percentage-width - 3.2877%;
-  }
-
   @mixin table-sortable-adjust($breakpoint) {
     // At a set breakpoint position the sorting chevron above the table header
     @media (max-width: $breakpoint) {
@@ -26,6 +21,43 @@
     }
   }
 
+  .p-table--network-discovery {
+    $chevron-cell-width: 50px;
+
+    tr {
+      justify-content: space-between;
+    }
+
+    th, td {
+      flex: 0 0 auto;
+    }
+
+    &__name {
+      width: 15%;
+    }
+
+    &__mac {
+      width: 20%;
+    }
+
+    &__ip {
+      width: 25%;
+    }
+
+    &__rack {
+      width: 15%;
+    }
+
+    &__last-seen {
+      width: calc(25% - #{$chevron-cell-width});
+    }
+
+    &__chevron {
+      flex: 0 0 auto;
+      width: $chevron-cell-width; // chevron needs a static width
+    }
+  }
+
   .p-table--pods {
     .p-table__row {
       .p-table__cell {
@@ -34,27 +66,27 @@
         }
 
         &:nth-child(2) {
-          width: cell-percentage-width(9%);
+          width: 9%;
         }
 
         &:nth-child(3) {
-          width: cell-percentage-width(14%);
+          width: 14%;
         }
 
         &:nth-child(4) {
-          width: cell-percentage-width(14%);
+          width: 14%;
         }
 
         &:nth-child(5) {
-          width: cell-percentage-width(10%);
+          width: 10%;
         }
 
         &:nth-child(6) {
-          width: cell-percentage-width(14%);
+          width: 14%;
         }
 
         &:nth-child(7) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
       }
     }
@@ -68,11 +100,11 @@
         }
 
         &:nth-child(2) {
-          width: cell-percentage-width(17%);
+          width: 17%;
         }
 
         &:nth-child(3) {
-          width: cell-percentage-width(15%);
+          width: 15%;
 
           @media (max-width: 1000px) {
             display: none !important;
@@ -80,11 +112,11 @@
         }
 
         &:nth-child(4) {
-          width: cell-percentage-width(20%);
+          width: 20%;
         }
 
         &:nth-child(5) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
       }
     }
@@ -98,23 +130,23 @@
         }
 
         &:nth-child(2) {
-          width: cell-percentage-width(10%);
+          width: 10%;
         }
 
         &:nth-child(3) {
-          width: cell-percentage-width(20%);
+          width: 20%;
         }
 
         &:nth-child(4) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
 
         &:nth-child(5) {
-          width: cell-percentage-width(20%);
+          width: 20%;
         }
 
         &:nth-child(6) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
       }
     }
@@ -128,19 +160,19 @@
         }
 
         &:nth-child(2) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
 
         &:nth-child(3) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
 
         &:nth-child(4) {
-          width: cell-percentage-width(35%);
+          width: 35%;
         }
 
         &:nth-child(5) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
       }
     }
@@ -154,35 +186,35 @@
         }
 
         &:nth-child(2) {
-          width: cell-percentage-width(15%);
+          width: 15%;
         }
 
         &:nth-child(3) {
-          width: cell-percentage-width(7%);
+          width: 7%;
         }
 
         &:nth-child(4) {
-          width: cell-percentage-width(9%);
+          width: 9%;
         }
 
         &:nth-child(5) {
-          width: cell-percentage-width(12%);
+          width: 12%;
         }
 
         &:nth-child(6) {
-          width: cell-percentage-width(10%);
+          width: 10%;
         }
 
         &:nth-child(7) {
-          width: cell-percentage-width(12%);
+          width: 12%;
         }
 
         &:nth-child(8) {
-          width: cell-percentage-width(10%);
+          width: 10%;
         }
 
         &:nth-child(9) {
-          width: cell-percentage-width(10%);
+          width: 10%;
         }
       }
     }
@@ -190,7 +222,7 @@
 
   .p-table--machines {
     .p-table__row {
-      th, td {
+      th {
         &:nth-child(1) {
           @include table-sortable-adjust(990px);
           width: 20%;
@@ -228,4 +260,166 @@
       }
     }
   }
+
+  .p-table--controller-interfaces {
+    .p-table--is-device {
+      th, td {
+        &:nth-child(1) {
+          width: 30%;
+        }
+        &:nth-child(2) {
+          width: 25%;
+        }
+        &:nth-child(3) {
+          width: 25%;
+        }
+        &:nth-child(4) {
+          width: 15%;
+        }
+      }
+    }
+
+    .p-table--is-not-device {
+      th, td {
+        &:nth-child(1) {
+          width: 16%;
+        }
+        &:nth-child(2) {
+          width: 7%;
+        }
+        &:nth-child(3) {
+          width: 9%;
+        }
+        &:nth-child(4) {
+          width: 13%;
+        }
+        &:nth-child(5) {
+          width: 13%;
+        }
+        &:nth-child(6) {
+          width: 13%;
+        }
+        &:nth-child(7) {
+          width: 19%;
+        }
+        &:nth-child(8) {
+          width: 10%;
+        }
+      }
+    }
+  }
+
+  .p-table--controllers-commissioning {
+    .p-table__row {
+      th, td {
+        &:nth-child(1) {
+          width: 15%;
+        }
+        &:nth-child(2) {
+          width: 15%;
+        }
+        &:nth-child(3) {
+          width: 20%;
+        }
+        &:nth-child(4) {
+          width: 20%;
+        }
+        &:nth-child(5) {
+          width: 25%;
+        }
+        &:nth-child(6) {
+          width: 5%;
+        }
+      }
+    }
+  }
+  .p-table--controller-vlans {
+    .p-table__row {
+      @media (min-width: $breakpoint-small) {
+        th, td {
+          &:nth-child(1) {
+            width: 15%;
+          }
+          &:nth-child(2) {
+            width: 15%;
+          }
+          &:nth-child(3) {
+            width: 10%;
+          }
+          &:nth-child(4) {
+            width: 20%;
+          }
+          &:nth-child(5) {
+            width: 20%;
+          }
+          &:nth-child(6) {
+            width: 20%;
+          }
+        }
+      }
+    }
+  }
+
+  .p-table--create-raid {
+    &__name {
+      @media (max-width: $breakpoint-medium) {
+        width: 50%;
+      }
+      @media (min-width: $breakpoint-medium) {
+        width: 30%;
+      }
+    }
+    &__size {
+      width: 10%;
+    }
+    &__type {
+      width: 20%;
+    }
+    &__active {
+      width: 10%;
+    }
+    &__spare {
+      width: 10%;
+    }
+  }
+
+  .p-table--create-volume-group {
+    &__name {
+      @media (max-width: $breakpoint-medium) {
+        width: 50%;
+      }
+      @media (min-width: $breakpoint-medium) {
+        width: 30%;
+      }
+    }
+    &__size {
+      width: 30%;
+    }
+    &__type {
+      width: 20%;
+    }
+    &__empty {
+      width: 10%;
+    }
+  }
+  .p-table--bcache {
+    &__name {
+      @media (max-width: $breakpoint-medium) {
+        width: 50%;
+      }
+      @media (min-width: $breakpoint-medium) {
+        width: 30%;
+      }
+    }
+    &__size {
+      width: 30%;
+    }
+    &__type {
+      width: 20%;
+    }
+    &__empty {
+      width: 10%;
+    }
+  }
 }
+

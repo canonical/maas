@@ -26,7 +26,7 @@
     "react-dom": "^16.2.0",
     "react2angular": "^3.2.1",
     "uglifyjs-webpack-plugin": "^1.2.2",
-    "vanilla-framework": "^1.6.6",
+    "vanilla-framework": "^1.8.0",
     "vanilla-framework-react": "^0.1.2",
     "webpack": "^4.1.1",
     "webpack-cli": "^2.0.10",

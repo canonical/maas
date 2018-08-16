@@ -1,6 +1,7 @@
 @mixin maas-page-header {
   .page-header {
     padding: 1.5rem 0;
+    @extend %vf-has-box-shadow;
     position: sticky;
     top: 0;
     z-index: 5;
@@ -31,7 +32,6 @@
 
       @media (max-width: $breakpoint-small) {
         float: none;
-        padding-top: 1rem;
       }
     }
   }

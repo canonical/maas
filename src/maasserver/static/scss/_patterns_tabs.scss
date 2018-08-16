@@ -1,5 +1,53 @@
 @mixin maas-tabs {
   .p-tabs {
+    &.p-tabs--machine-details {
+      &::before {
+        // enable on a case by case basis where needed
+        $measured-tabstrip-width: 986px;
+        @media screen and (max-width: $measured-tabstrip-width) {
+          display: block;
+        }
+      }
+    }
+
+    &::before {
+      display: none;
+      // white fade so chevron doesn't overlap tabs
+      background: -moz-linear-gradient(left, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%);
+      background: -webkit-linear-gradient(left, rgba(255,255,255,0) 0%,rgba(255,255,255,1) 100%);
+      background: linear-gradient(to right, rgba(255,255,255,0) 0%,rgba(255,255,255,1) 100%);
+      filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00ffffff', endColorstr='#ffffff',GradientType=1 );
+
+      padding-left: $sph-intra--expanded;
+      padding-right: 0;
+      right: $grid-margin-width;
+      $chevron-font-size: 2rem;
+      $chevron-width-at-1rem: 4.4; // in px
+      $chevron-rendered-width: $chevron-font-size * $chevron-width-at-1rem / 16; // divide by 16 to account for units (1 rem == 16px)
+      width: $chevron-rendered-width + $sph-intra--expanded; // spacing used in buttons + width of symbol
+      z-index: 1;
+    }
+
+    &__list {
+      margin-bottom: 0;
+      font-size: 0; //XXX (1): remove white-space around inline-block items
+
+      // remove pseudo hr underneath tabs, as it scrolls when items overflow
+      &::after {
+        content: none;
+      }
+
+      // XXX: 27.06.2018: apply the responsive behaviour (horizontal scroll on overflow) to desktop as well.
+      // This is because overflow depends on the width and number of tabs, not on screen size.
+      overflow-x: auto;
+    }
+
+    // XXX: 27.06.2018: remove the float as well when the above pr is merged into vanilla
+    &__item {
+      float: none;
+      font-size: $font-base-size; //XXX (2): restore font-size after removing white-space around inline-block items above
+    }
+
     &__link {
       &.is-active {
         @extend .p-tabs__link[aria-selected="true"];

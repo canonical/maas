@@ -1,0 +1,23 @@
+@mixin patterns_space-between {
+  // Allow items to stay on the same line until the space between them vanishes
+  // advantage over floats: when the width of the parent is less than the combined width of the children, the children stack, rather than force their contents to wrap.
+  // advantage over columns: wrapping only occurs when elements actually run into each other, rather than at a predefined breakpoint
+  // N.B.: Do not apply on the same level as elements having ::before or ::after, as it will factor them into the space-between calculation
+
+  .p-space-between {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+
+    @media (max-width: $breakpoint-small) {
+      flex-direction: column;
+    }
+
+    //utility to align things to the right in a container with flex-direction: column
+    .p-space-between__align-right {
+      @media (max-width: $breakpoint-small) {
+        align-self: flex-end;
+      }
+    }
+  }
+}

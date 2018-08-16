@@ -10,33 +10,33 @@
                 <h2 class="p-heading--four" data-ng-if="hardware_type.title !== 'null'">{$ hardware_type.title $}</h2>
                 <div data-ng-repeat="(title, results) in hardware_type.results">
                     <h3 class="p-heading--five" data-ng-if="title !== 'null'">{$ title $}</h3>
-                    <table class="p-table-expanding">
+                    <table class="p-table-expanding p-table--controllers-commissioning">
                         <thead>
                             <tr>
-                                <th class="table-col--15">Name</th>
-                                <th class="table-col--15">Tags</th>
-                                <th class="table-col--20">Runtime</th>
-                                <th class="table-col--20">Date</th>
-                                <th class="table-col--25">Result</th>
-                                <th class="table-col--5"><div class="u-align--right">Actions</div></th>
+                                <th class="col-3">Name</th>
+                                <th class="col-2">Tags</th>
+                                <th class="col-1">Runtime</th>
+                                <th class="col-3">Date</th>
+                                <th class="col-2">Result</th>
+                                <th><div class="u-align--right">Actions</div></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr data-ng-repeat="result in results" data-ng-class="{'is-active': result.showing_results || result.showing_history}">
-                                <td class="table-col--15" data-ng-click="result.showing_results = !result.showing_results" aria-label="Name" title="{$ result.name $}">
+                                <td class="col-3" data-ng-click="result.showing_results = !result.showing_results" aria-label="Name" title="{$ result.name $}">
                                     <span data-maas-script-status="script-status" data-script-status="result.status"></span>
                                     {$ result.name $}
                                 </td>
-                                <td class="table-col--15" aria-label="Tags"><span data-ng-hide="result.showing_history" title="{$ result.tags $}">{$ result.tags $}</span></td>
-                                <td class="table-col--20 p-table--action-cell u-wrap" aria-label="Runtime"><span data-ng-hide="result.showing_history" data-maas-script-run-time="script-runtime" data-start-time="result.starttime" data-run-time="{{result.runtime}}" data-estimated-run-time="{{result.estimated_runtime}}" data-script-status="result.status"></span></td>
-                                <td class="table-col--20" aria-label="Date"><span data-ng-hide="result.showing_history" title="{$ result.updated $}">{$ result.updated $}</span></td>
-                                <td class="table-col--25 p-table--action-cell u-wrap" aria-label="Result">
+                                <td class="col-2" aria-label="Tags"><span data-ng-hide="result.showing_history" title="{$ result.tags $}">{$ result.tags $}</span></td>
+                                <td class="col-1 p-table--action-cell u-wrap" aria-label="Runtime"><span data-ng-hide="result.showing_history" data-maas-script-run-time="script-runtime" data-start-time="result.starttime" data-run-time="{{result.runtime}}" data-estimated-run-time="{{result.estimated_runtime}}" data-script-status="result.status"></span></td>
+                                <td class="col-3" aria-label="Date"><span data-ng-hide="result.showing_history" title="{$ result.updated $}">{$ result.updated $}</span></td>
+                                <td class="col-2 p-table--action-cell u-wrap" aria-label="Result">
                                     <span data-ng-hide="result.showing_history">
                                         <!-- Only link to the testing result when we've received it. This is indicated with status 2(passed), 3(failed), 4(timedout), 6(degraded), 8(failed installing), 9(skipped)-->
                                         {$ result.status_name $} <a data-ng-if="result.status === 2 || result.status === 3 || result.status === 4 || result.status === 6 || result.status === 8 || result.status === 9" href="#/{$ type_name $}/{$ node.system_id $}/{$ section.area $}/{$ result.id $}">View log</a>
                                     </span>
                                 </td>
-                                <td class="table-col--5 p-table--action-cell">
+                                <td class="p-table--action-cell">
                                     <div class="u-align--right">
                                         <div class="p-contextual-menu" toggle-ctrl data-ng-hide="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd()">
                                             <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">

@@ -15,7 +15,7 @@
     {% if no_users and not external_auth_url %}
         <div class="col-8">
             <h1 class="p-heading--four">No admin user has been created yet</h1>
-            <p>Use the "init" administration command to create one:<br><br></p>
+            <p>Use the "init" administration command to create one:></p>
             <pre>{{ create_command }} init</pre>
             <form method="get" action="{% url 'login' %}">
                 <button type="submit" class="p-button--positive">Login</button>

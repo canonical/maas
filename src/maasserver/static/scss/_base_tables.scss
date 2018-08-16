@@ -1,9 +1,78 @@
 @mixin maas-tables {
   table {
     overflow-x: visible;
-
-    tr {
-      padding: 0 1rem;
+    input[type="radio"],
+    input[type="checkbox"] {
+      float: none;
     }
+
+    form {
+      input[type="radio"],
+      input[type="checkbox"] {
+        float: left;
+      }
+    }
+
+    thead {
+      th {
+        @extend %smallest-text;
+        margin-bottom: 0;
+        padding-bottom: map-get($line-heights, default-text) - $line-height--smallest - $nudge--smallest;
+        padding-top: map-get($nudges, nudge--smallest);
+        text-transform: uppercase;
+      }
+    }
+
+    th,
+    td {
+      display: table-cell !important;
+      flex-basis: auto !important;
+      flex-grow: 0;
+      vertical-align: top;
+
+      @media (min-width: $breakpoint-small) {
+        text-overflow: ellipsis;
+        overflow-x: hidden;
+        overflow-y: visible;
+        white-space: nowrap;
+      }
+
+      &:first-of-type {
+        padding-left: $sph-intra--condensed;
+      }
+
+      &:not(:last-child) {
+        padding-right: $sph-intra--condensed;
+      }
+    }
+  }
+
+  tr {
+    &.is-active {
+      background-color: $color-x-light;
+    }
+
+    thead & {
+      border-bottom-color: $color-mid-light;
+    }
+
+    tbody & {
+      &:not(:first-child){
+        border-top-color: $color-light-new;
+      }
+      &.vs-repeat-after-content,
+      &.vs-repeat-before-content,
+      &.vs-repeat-before-content + tr {
+        border-top-color: transparent; // invisible row after the last one; doesn't need a border-top
+      }
+    }
+  }
+
+  tr.ng-hide + tr {
+    border: 0;
+  }
+
+  .p-table--action-cell {
+    overflow: visible;
   }
 }

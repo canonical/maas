@@ -831,8 +831,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             } else if(!$scope.hasInvalidArchitecture()) {
                 $scope.summary.editing = false;
             }
-
-            updateSummary();
         };
 
         // Called to save the changes made in the summary section.

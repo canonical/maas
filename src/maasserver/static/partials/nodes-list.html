@@ -1,6 +1,6 @@
-<header class="p-strip--light is-shallow is-bordered page-header" data-ng-class="{'u-no-padding--bottom': currentpage === 'machines' || currentpage === 'pools'}" media-query="min-width: 769px">
+<header class="p-strip--light is-shallow u-no-padding--bottom page-header" data-ng-class="{'u-no-padding--bottom': currentpage === 'machines' || currentpage === 'pools'}" media-query="min-width: 769px">
     <div class="row">
-        <div class="col-8">
+        <div class="tablet-col-4 col-8">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <h1 class="page-header__title">{$ title $}</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading">
@@ -12,7 +12,7 @@
                 <ng-pluralize data-ng-if="currentpage === 'controllers'" count="controllers.length" when="{'one': '{$ controllers.length $} controller available', 'other': '{$ controllers.length $} controllers available'}"></ng-pluralize>
             </p>
         </div>
-        <div class="col-4 ng-hide" data-ng-show="currentpage === 'machines'">
+        <div class="tablet-col-2 col-4 ng-hide" data-ng-show="currentpage === 'machines'">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls u-float--right">
                 <div data-ng-hide="tabs.machines.selectedItems.length || !isSuperUser()">
@@ -21,7 +21,7 @@
                         data-ng-change="addHardwareOptionChanged()" data-default-title="Add hardware">
                     </div>
                 </div>
-                <ul class="p-inline-list u-no-margin--top ng-hide" data-ng-show="tabs.machines.selectedItems.length">
+                <ul class="p-inline-list u-no-margin--bottom ng-hide" data-ng-show="tabs.machines.selectedItems.length">
                     <li class="p-inline-list__item">
                         <a data-ng-click="showSelected('machines')">{$ tabs.machines.selectedItems.length $} selected</a>
                     </li>
@@ -32,8 +32,8 @@
             </div>
         </div>
 
-        <div class="page-header__controls u-no-margin--top" data-ng-show="currentpage === 'pools'">
-            <div class="page-header__controls u-no-margin--top"
+        <div class="page-header__controls" data-ng-show="currentpage === 'pools'">
+            <div class="page-header__controls"
                  data-ng-show="isSuperUser()">
               <button class="p-button--neutral"
                       data-ng-click="tabs.pools.addPool()"
@@ -46,7 +46,7 @@
 
         <div class="col-4" data-ng-show="currentpage === 'devices' || currentpage === 'controllers'">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <div class="page-header__controls u-no-margin--top" data-ng-show="currentpage === 'devices'">
+            <div class="page-header__controls" data-ng-show="currentpage === 'devices'">
                 <div data-ng-hide="tabs.devices.selectedItems.length">
                     <button class="p-button--neutral"
                         data-ng-click="addDevice()"
@@ -55,7 +55,7 @@
                         data-ng-click="cancelAddDevice()"
                         data-ng-show="addDeviceScope.viewable">Cancel add device</button>
                 </div>
-                <ul class="p-inline-list u-no-margin--top" data-ng-show="tabs.devices.selectedItems.length">
+                <ul class="p-inline-list u-no-margin--bottom" data-ng-show="tabs.devices.selectedItems.length">
                     <li class="p-inline-list__item">
                         <a data-ng-click="showSelected('devices')">{$ tabs.devices.selectedItems.length $} selected&nbsp;</a>
                     </li>
@@ -358,7 +358,7 @@
         <hr />
         <add-machine data-ng-show="showMachine()"></add-machine>
         <section class="page-header__section col-12 ng-hide" data-ng-show="showChassis()">
-            <h3 class="page-header__dropdown-title">Add chassis</h3>
+            <h4 class="page-header__dropdown-title">Add chassis</h4>
             <form action="post" class="p-form p-form--stacked">
                 <div class="col-6"
                     data-maas-power-parameters="chassisPowerTypes"
@@ -367,7 +367,7 @@
                 <div class="col-6">
                     <div class="p-form__group">
                         <label for="domain2" class="p-form__label col-2">Domain</label>
-                        <div class="p-form__group-input col-3">
+                        <div class="p-form__control">
                             <select name="domain" id="domain2"
                                 data-ng-model="chassis.domain"
                                 data-ng-options="domain as domain.name for domain in domains">
@@ -404,12 +404,12 @@
     <div class="page-header__dropdown" data-ng-class="{ 'u-hide': !addDeviceScope.viewable }" data-ng-controller="AddDeviceController">
         <section class="page-header__section row">
             <hr />
-            <h3 class="page-header__dropdown-title">Add device</h3>
+            <h4 class="page-header__dropdown-title">Add device</h4>
             <form class="p-form p-form--stacked">
-                <div class="col-6">
+                <div class="col-6 u-sv3">
                     <div class="p-form__group">
                         <label for="device-name" class="p-form__label col-2">Name</label>
-                        <div class="p-form__group-input col-3">
+                        <div class="p-form__control">
                             <div class="p-form-validation" data-ng-class="{ 'is-error': nameHasError() }">
                                 <input type="text" id="device-name" placeholder="Name your device"
                                     class="p-form-validation__input"
@@ -419,7 +419,7 @@
                     </div>
                     <div class="p-form__group">
                         <label for="domain3" class="p-form__label col-2">Domain</label>
-                        <div class="p-form__group-input col-3">
+                        <div class="p-form__control">
                             <select name="domain" id="domain3"
                                 data-ng-model="device.domain"
                                 data-ng-options="domain as domain.name for domain in domains">
@@ -428,7 +428,7 @@
                     </div>
                 </div>
             </form>
-            <table class="p-table-nodes-list">
+            <table class="p-table-nodes-list u-no-margin--bottom">
                 <thead>
                     <tr class="p-table__row">
                         <th class="p-table__cell">MAC address</th>
@@ -443,13 +443,14 @@
                         <td class="p-table__cell" aria-label="MAC address">
                             <div class="p-form-validation u-no-margin--top" data-ng-class="{ 'is-error': macHasError(interface) }">
                                 <input type="text" id="mac-address1" placeholder="00:00:00:00:00:00"
-                                    class="p-form-validation__input"
+                                    class="p-form-validation__input u-no-margin--bottom"
                                     data-ng-model="interface.mac">
                             </div>
                         </td>
                         <td class="p-table__cell" aria-label="IP assignment">
                             <select name="ip-assignment" id="ip-assignment"
                                 data-ng-model="interface.ipAssignment"
+                                class="u-no-margin--bottom"
                                 data-ng-options="assigment.title for assigment in ipAssignments">
                                 <option value="" disabled selected>Select IP assignment</option>
                             </select>
@@ -483,7 +484,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td class="u-no-padding--bottom">
+                        <td>
                             <button class="p-button--neutral" data-ng-click="addInterface()">+ Add another interface</button>
                         </td>
                     </tr>
@@ -620,7 +621,7 @@
         <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
         <div class="page-header__section col-12 ng-hide" data-ng-show="tabs.controllers.addController">
             <hr />
-            <h3 class="page-header__dropdown-title">Add rack controller</h3>
+            <h4 class="page-header__dropdown-title">Add rack controller</h4>
             <pre><code># To add a new rack controller, SSH into the rack controller.
 # Install the maas-rack-controller package.
 sudo apt install maas-rack-controller
@@ -633,21 +634,23 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     data-ng-click="tabs.controllers.addController = false">Close</a>
         </div>
     </div>
-    <nav class="p-tabs" data-ng-if="currentpage === 'machines' || currentpage === 'pools'">
-        <ul class="p-tabs__list" role="tablist">
-            <li class="p-tabs__item" role="presentation">
-                <a href="#/machines" class="p-tabs__link" role="tab"
-                    data-ng-class="{ 'is-active': currentpage === 'machines'}">
-                    <ng-pluralize count="machines.length" when="{'one': '{$ machines.length $} Machine', 'other': '{$ machines.length $} Machines'}"></ng-pluralize>
-                </a>
-            </li>
-            <li class="p-tabs__item" role="presentation">
-                <a href="#/pools" class="p-tabs__link" role="tab"
-                    data-ng-class="{ 'is-active': currentpage === 'pools'}">
-                    <ng-pluralize count="pools.length" when="{'one': '{$ pools.length $} Resource pool', 'other': '{$ pools.length $} Resource pools'}"></ng-pluralize>
-                </a>
-            </li>
-        </ul>
+    <nav class="p-tabs u-hr--fixed-width" data-ng-if="currentpage === 'machines' || currentpage === 'pools'">
+        <div class="row">
+            <ul class="p-tabs__list" role="tablist">
+                <li class="p-tabs__item" role="presentation">
+                    <a href="#/machines" class="p-tabs__link" role="tab"
+                        data-ng-class="{ 'is-active': currentpage === 'machines'}">
+                        <ng-pluralize count="machines.length" when="{'one': '{$ machines.length $} Machine', 'other': '{$ machines.length $} Machines'}"></ng-pluralize>
+                    </a>
+                </li>
+                <li class="p-tabs__item" role="presentation">
+                    <a href="#/pools" class="p-tabs__link" role="tab"
+                        data-ng-class="{ 'is-active': currentpage === 'pools'}">
+                        <ng-pluralize count="pools.length" when="{'one': '{$ pools.length $} Resource pool', 'other': '{$ pools.length $} Resource pools'}"></ng-pluralize>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </nav>
 </header>
 
@@ -657,7 +660,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
     </div>
 </div>
 <div class="p-strip is-shallow">
-    <div class="row">
+    <div class="row" ng-if="currentpage === 'machines' || currentpage === 'devices'">
         <aside class="col-3">
             <div class="maas-accordion p-navigation--sidebar">
                 <div class=" ng-hide" data-ng-show="currentpage === 'machines'"
@@ -815,7 +818,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         data-ng-model="tabs.machines.search" data-ng-change="updateFilters('machines')"
                         data-ng-class="{ error: !tabs.machines.searchValid }"
                         data-ng-disabled="tabs.machines.actionOption" />
-                    <button type="reset" class="p-search-box__reset" alt="reset"
+                    <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
                         data-ng-click="clearSearch('machines')"
                         data-ng-show="tabs.machines.search.length > 0"><i class="p-icon--close"></i></button>
                     <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
@@ -829,26 +832,20 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             </form>
         </div>
         <div class="col-9" class="ng-hide" data-ng-show="currentpage === 'devices'">
-            <div class="p-form-validation"
-                data-ng-class="{ 'is-error': !tabs.devices.searchValid }">
-                <div class="p-search-box">
-                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+            <form data-ng-class="{ 'is-error': !tabs.devices.searchValid }">
+                <div id="search-bar" class="p-search-box">
+                    <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                     <input
-                        type="search" placeholder="Search devices"
-                        class="p-search-boxh__input p-form-validation__input"
-                        data-ng-model="tabs.devices.search"
-                        data-ng-change="updateFilters('devices')"
+                        type="search" placeholder="Search devices" class="p-search-box__input"
+                        data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
+                        data-ng-class="{ error: !tabs.devices.searchValid }"
                         data-ng-disabled="tabs.devices.actionOption" />
-                    <button type="reset" class="p-search-box__reset" alt="reset"
-                        data-ng-show="tabs.machines.search.length > 0"
-                        data-ng-click="clearSearch('devices')">
-                        <i class="p-icon--close">Reset</i>
-                    </button>
-                    <button type="submit" class="p-search-box__button" alt="search">
-                        <i class="p-icon--search">Search</i>
-                    </button>
+                    <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
+                        data-ng-click="clearSearch('devices')"
+                        data-ng-show="tabs.devices.search.length > 0"><i class="p-icon--close"></i></button>
+                    <button type="submit" class="p-search-box__button" alt="search"><i class="p-icon--search"></i></button>
                 </div>
-            </div>
+            </form>
             <table class="p-table-expanding p-table--sortable p-table--devices">
                 <thead>
                     <tr class="p-table__row">
@@ -910,7 +907,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="p-table__row u-no-margin--top"
+                    <tr class="p-table__row"
                         data-ng-repeat="pool in tabs.pools.filtered_items = (pools | orderBy:tabs.pools.predicate:tabs.pools.reverse) track by pool.name"
                         data-ng-class="{'is-active': tabs.pools.isPoolAction(pool)}">
                         <td class="p-table__cell col-3" aria-label="Name">
@@ -933,11 +930,11 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         </td>
                         <td class="p-table__cell col-2 u-align--right" aria-label="Actions" data-ng-show="isSuperUser()">
                           <span data-ng-hide="tabs.pools.isPoolAction(pool)">
-                            <button class="p-button--base is-small">
-                              <i class="p-icon--edit" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">Edit</i>
+                            <button class="p-button--base is-small u-no-margin--right" data-ng-click="tabs.pools.initiatePoolAction(pool, 'edit')">
+                              <i class="p-icon--edit">Edit</i>
                             </button>
-                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)">
-                              <i class="p-icon--delete" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">Delete</i>
+                            <button class="p-button--base is-small" data-ng-hide="tabs.pools.isDefaultPool(pool)" data-ng-click="tabs.pools.initiatePoolAction(pool, 'delete')">
+                              <i class="p-icon--delete">Delete</i>
                             </button>
                           </span>
                         </td>
@@ -997,7 +994,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     type="search" placeholder="Search controllers" class="p-search-box__input p-form-validation__input"
                     data-ng-model="tabs.controllers.search" data-ng-change="updateFilters('controllers')"
                     data-ng-disabled="tabs.controllers.actionOption" />
-                <button type="reset" class="p-search-box__reset" alt="reset"
+                <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
                     data-ng-show="tabs.controllers.search.length > 0"
                     data-ng-click="clearSearch('controllers')">
                     <i class="p-icon--close">Reset</i>
@@ -1076,7 +1073,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 data-ng-model="tabs.switches.search"
                 data-ng-change="updateFilters('switches')"
                 data-ng-disabled="tabs.switches.actionOption" />
-            <button type="reset" class="p-search-box__reset" alt="reset"
+            <button type="reset" class="p-search-box__reset u-no-margin--right" alt="reset"
                 data-ng-show="tabs.switches.search.length > 0"
                 data-ng-click="clearSearch('switches')">
                 <i class="p-icon--close"></i>

@@ -1,17 +1,17 @@
 <div data-ng-hide="loaded">
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide u-no-margin--top" data-ng-show="loaded" data-window-width>
-    <header class="p-strip--light is-shallow is-bordered page-header u-no-padding--bottom" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header u-no-padding--bottom" media-query="min-width: 769px">
         <div class="row">
-            <div class="col-8">
+            <div class="tablet-col-4 col-8">
                 <h1 class="page-header__title">{$ pod.name $}</h1>
             </div>
-            <div class="col-4">
+            <div class="tablet-col-2 col-4">
                 <div class="page-header__controls " data-ng-if="isSuperUser()">
                     <div data-maas-cta="action.options"
                         data-ng-model="action.option"
@@ -31,20 +31,20 @@
                 </div>
                 <div class="row">
                     <div class="col-6">
-                        <maas-obj-field type="text" key="hostname" label="Hostname" subtle="false" placeholder="Hostname (optional)"></maas-obj-field>
+                        <maas-obj-field type="text" key="hostname" label="Hostname" subtle="false" placeholder="Hostname (optional)" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="domain" label="Domain" subtle="false" placeholder="Choose a domain"
-                            options="domain.id as domain.name for domain in domains"></maas-obj-field>
+                            options="domain.id as domain.name for domain in domains" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
-                            options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                            options="zone.id as zone.name for zone in zones" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="pool" label="Pool" subtle="false" placeholder="Choose a pool"
-                            options="pool.id as pool.name for pool in pools"></maas-obj-field>
+                            options="pool.id as pool.name for pool in pools" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>
                     <div class="col-6">
                         <maas-obj-field type="options" key="architecture" label="Architecture" subtle="false" placeholder="Any architecture" placeholder-enabled="true"
-                            options="arch for arch in pod.architectures" data-ng-if="pod.architectures.length > 1"></maas-obj-field>
-                        <maas-obj-field type="text" key="cores" label="Minimum Cores" subtle="false" placeholder="Number of cores (optional)" subtle-text="{$ pod.hints.cores $} cores available"></maas-obj-field>
-                        <maas-obj-field type="text" key="cpu_speed" label="Minimum Speed (MHz)" subtle="false" placeholder="CPU speed (optional)" subtle-text="{$ pod.hints.cpu_speed $}MHz maximum"></maas-obj-field>
-                        <maas-obj-field type="text" key="memory" label="Minimum RAM (MiB)" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ pod.hints.memory $}MiB available"></maas-obj-field>
+                            options="arch for arch in pod.architectures" data-ng-if="pod.architectures.length > 1" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                        <maas-obj-field type="text" key="cores" label="Minimum Cores" subtle="false" placeholder="Number of cores (optional)" subtle-text="{$ pod.hints.cores $} cores available" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                        <maas-obj-field type="text" key="cpu_speed" label="Minimum Speed (MHz)" subtle="false" placeholder="CPU speed (optional)" subtle-text="{$ pod.hints.cpu_speed $}MHz maximum" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                        <maas-obj-field type="text" key="memory" label="Minimum RAM (MiB)" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ pod.hints.memory $}MiB available" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>
                 </div>
                 <div class="row">
@@ -148,15 +148,17 @@
             </div>
         </div>
         <div class="p-strip is-shallow u-no-padding--bottom" media-query="min-width: 769px" offset="89">
-            <nav class="p-tabs">
-                <ul class="p-tabs__list" role="tablist" data-ng-class="{ 'u-hide': action.option }">
-                    <li class="p-tabs__item" role="presentation">
-                        <a href="" role="tab" class="p-tabs__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
-                    </li>
-                    <li class="p-tabs__item" role="presentation">
-                        <a href="" role="tab" class="p-tabs__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'configuration'}" data-ng-click="section.area= 'configuration'">Configuration</a>
-                    </li>
-                </nav>
+            <nav class="p-tabs u-hr--fixed-width">
+                <div class="row">
+                    <ul class="p-tabs__list" role="tablist" data-ng-class="{ 'u-hide': action.option }">
+                        <li class="p-tabs__item" role="presentation">
+                            <a href="" role="tab" class="p-tabs__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
+                        </li>
+                        <li class="p-tabs__item" role="presentation">
+                            <a href="" role="tab" class="p-tabs__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'configuration'}" data-ng-click="section.area= 'configuration'">Configuration</a>
+                        </li>
+                    </ul>
+                </div>
             </nav>
         </div>
     </header>
@@ -227,21 +229,20 @@
                 table-form="true" save-on-blur="false" after-save="exitEditPodConfiguration" data-ng-disabled="!editing">
                 <div class="col-6">
                     <div class="p-form__group">
-                        <label for="type" class="p-form__label col-2">Type</label>
-                        <div class="p-form__control u-no-margin--top col-5">
+                        <label for="type" class="p-form__label col-2 tablet-col-2">Type</label>
+                        <div class="p-form__control u-no-margin--top col-4 tablet-col-3">
                             <input type="text" id="type" disabled="disabled" value="{$ getPodTypeTitle() $}" />
                         </div>
                     </div>
                     <maas-obj-field type="options" key="zone" label="Zone"
                         subtle="false" placeholder="Choose a zone"
-                        options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                        options="zone.id as zone.name for zone in zones" label-width="2" label-width-tablet="2" input-width="4" input-width-tablet="3"></maas-obj-field>
                     <maas-obj-field type="options" key="default_pool"
                         label="Resource pool" subtle="false"
                         placeholder="Choose a pool"
-                        options="pool.id as pool.name for pool in pools"></maas-obj-field>
+                        options="pool.id as pool.name for pool in pools" label-width="2" label-width-tablet="2" input-width="4" input-width-tablet="3"></maas-obj-field>
                     <maas-obj-field type="tags" key="tags" label="Tags"
-                        label-width="2" input-width="5"
-                        disable-label="false" placeholder="Add a tag"></maas-obj-field>
+                        disable-label="false" placeholder="Add a tag" label-width="2" label-width-tablet="2" input-width="4" input-width-tablet="3"></maas-obj-field>
                 </div>
                 <div class="col-6">
                     <maas-pod-parameters hide-type="true"></maas-pod-parameters>

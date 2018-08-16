@@ -1,9 +1,32 @@
 @mixin maas {
-  // sticky-header - temporary fix
-  // Issue: https://github.com/ubuntudesign/MAAS-design-squad/issues/98
-  .p-sticky-header {
-    background-color: $color-x-light;
-    border-bottom: 1px solid $color-mid-light;
+
+  .u-baseline-grid {
+    $baseline-color: #f00 !default;
+    $baseline-offset: 0 !default;
+    $baseline-size: $sp-unit !default;
+
+    position: relative;
+
+    &::after {
+      background: linear-gradient(to top, transparentize($baseline-color, .7), transparentize($baseline-color, .7) 1px, transparent 1px, transparent);
+      background-size: 100% $baseline-size;
+      bottom: 0;
+      content: "";
+      display: block;
+      left: 0;
+      pointer-events: none;
+      position: absolute;
+      right: 0;
+      top: $baseline-offset;
+      z-index: 100;
+    }
+
+    &__toggle {
+      bottom: $spv-inter--scaleable;
+      position: fixed;
+      right: $sph-inter--expanded;
+      z-index: 101;
+    }
   }
 
   // XXX Footer link fix
@@ -18,6 +41,16 @@
 
   body {
     background-color: $color-light;
+  }
+
+  maas-obj-field,
+  maas-obj-errors,
+  maas-obj-form,
+  maas-machines-table,
+  storage-disks-partitions,
+  storage-filesystems {
+    display: block;
+    position: relative;
   }
 
   maas-obj-field[type="text"],
@@ -37,15 +70,6 @@
     min-height: initial;
   }
 
-  .p-table-expanding__panel {
-    background-color: $color-x-light;
-    margin-left: 0 !important;
-
-    .p-form-validation .p-form-validation__input {
-      padding: .5rem .75rem;
-    }
-  }
-
   .p-table--mobile-card {
     td[aria-label] {
       min-height: 2rem;
@@ -58,43 +82,8 @@
     }
   }
 
-  table {
-    input[type="radio"],
-    input[type="checkbox"] {
-      float: none;
-    }
-
-    form {
-      input[type="radio"],
-      input[type="checkbox"] {
-        float: left;
-      }
-    }
-
-    th,
-    td {
-      display: table-cell !important;
-      flex-basis: auto !important;
-      flex-grow: 0;
-      margin-left: 3.2877% !important;
-
-      &:first-child {
-        margin-left: 0 !important;
-      }
-    }
-
-    tr.is-active {
-      background-color: $color-x-light;
-    }
-  }
-
   .u-float-none {
     float: none !important;
-  }
-
-  .p-form--inline,
-  .p-form--inline .p-form__group {
-    width: 100%;
   }
 
   p:empty,
@@ -106,15 +95,6 @@
 
   .tags .input {
     width: 100% !important;
-  }
-
-  .row ~ .row,
-  * + * {
-    margin-top: $sp-large;
-  }
-
-  th, td {
-    padding: .5rem 0;
   }
 
   dl dt:first-of-type {
@@ -143,19 +123,20 @@
     max-width: none;
   }
 
-  // XXX Ant: 25.01.18 Can be removed when this issue is resolved
-  // https://github.com/vanilla-framework/vanilla-framework/issues/1542
-  .p-navigation--sidebar .sidebar__content {
-    position: relative;
+  .p-navigation--sidebar {
+    &::after {
+      background: transparent;
+    }
+    margin-bottom: $spv-inter--scaleable;
   }
 
-  .p-contextual-menu__dropdown {
-    display: block;
-  }
-
-  .p-form__controls {
+  .p-form__control {
     margin-top: 0;
     white-space: normal;
+  }
+
+  .p-form-help-text {
+    display: inline-block;
   }
 
   select {
@@ -189,11 +170,6 @@
     display: inline-block;
     width: auto;
     @include vf-heading-4;
-  }
-
-  //Fix for action buttons in headers
-  .p-inline-list__item div {
-    display: inline-block;
   }
 
   .col-12 {
@@ -239,33 +215,14 @@
   // The contextual menu action dropdown list should not be smaller than the
   // button
   .p-contextual-menu__dropdown {
+    display: block;
+    min-width: 13rem; // Enough to fit "Override faild texting without truncation. AMend if there's a longer one."
     width: 100%;
-  }
-
-  //Used to display an inline list of settings, usually labels and checkboxes
-  .p-inline-list--settings {
-
-    .p-inline-list__item {
-      display: inline-block;
-      margin-right: $sp-large;
-    }
-
-    [type='checkbox'] {
-      float: none;
-    }
-
-    label {
-      display: inline;
-    }
-  }
-
-  .p-button--base.is-small {
-    padding: .5rem;
-    margin: 0;
   }
 
   .p-tooltip__message {
     margin: 0;
+    z-index: 100;
   }
 
   .u-upper-case--first {
@@ -278,5 +235,22 @@
 
   .u-wrap {
     white-space: normal;
+  }
+
+  .p-form__group {
+    .col-1:first-child,
+    .col-2:first-child,
+    .col-3:first-child,
+    .col-4:first-child,
+    .col-5:first-child,
+    .col-6:first-child,
+    .col-7:first-child,
+    .col-8:first-child,
+    .col-9:first-child,
+    .col-10:first-child,
+    .col-11:first-child,
+    .col-12:first-child {
+      margin-left: 0;
+    }
   }
 }

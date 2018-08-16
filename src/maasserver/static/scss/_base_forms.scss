@@ -1,0 +1,88 @@
+@mixin maas-b-forms {
+  maas-obj-field {
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+  // XXX: Lyubo: override vertically-condensed an vertically narrow styling which is meant to happen only in narrow tds, not expanded ones.
+  // Can be removed once this is merged: https://github.com/vanilla-framework/vanilla-framework/pull/1920/commits/c48e325a842f5f73fc70dd1b727f70a68836fd28
+  [type='text'],
+  [type='date'],
+  [type='datetime'],
+  [type='datatime-local'],
+  [type='month'],
+  [type='time'],
+  [type='week'],
+  [type='color'],
+  [type='number'],
+  [type='search'],
+  [type='password'],
+  [type='email'],
+  [type='url'],
+  [type='tel'],
+  textarea,
+  select {
+    table & {
+      margin-bottom: $spv-inter--scaleable + $sp-unit - $spv-nudge * 2;
+      padding-bottom: $spv-nudge - $px;
+      padding-top: $spv-nudge - $px;
+    }
+
+    &.u-min-margin--bottom {
+      margin-bottom: $spv-nudge-compensation * 2;
+    }
+  }
+
+  // fix checkbox so it doesn't get misaligned when next to a label with a different padding-top than the default label
+  input[type="checkbox"] {
+    $box-size: $sp-unit * 2;
+    $box-offset-top: .1rem; //hardcoded value as it needs to sit very slightly under baseline to look balanced
+    $box-margin-right: $sp-unit * 2;
+    $tick-offset-top: $box-offset-top + 3 * $px;
+    $tick-height: 7px;
+
+    & + label {
+      margin-top: 0;
+
+      table & {
+        // in maas tables, we don't need the margin bottom;
+        margin-bottom: 0;
+        // text in most tables is not wrapped in a block-level tag, and effectively behaves as an inline element. This makes it unstylable. To compensate, vanilla applies padding to the tr.
+        // Elements like checkboxes have the same padding-top as paragraphs, to make them stay on the baseline grid. This needs to be zeroed out as the values have already been applied to trs
+        padding-top: 0;
+      }
+
+      // box
+      &::before {
+        margin-left: - ($box-size + $box-margin-right) !important;
+        margin-right: $box-margin-right !important;
+        position: relative !important;
+        top: $box-offset-top !important;
+      }
+
+      &::after {
+        // tick
+        $tick-thickness: 2;
+        $tick-side-a: 7;
+        $tick-side-b: 11;
+        $tick-diagonal: 13.0384048104; // sqrt($tick-side-a ^ 2 + $tick-side-b ^ 2)
+        $angle-alpha: 1.00406711; // in radians: arcsin($tick-side-b / $tick-diagonal)
+        $angle-gamma: 1.13345843359;// Math.PI - 2 * arcsin($angle-alpha) (angles in triangle add up to PI)
+        $tick-offset-top: $box-offset-top + ( ($tick-diagonal / 2) * $angle-gamma - $tick-thickness) * $px; // $tick-offset-top == sin($angle-gamma * $tick-diagonal/2)  - half the thckness of the tick in rems
+
+        float: left;
+        margin-top: $tick-offset-top;
+        top: 7px;
+
+        table & {
+          margin-left: -2rem;
+          position: relative;
+          top: 0;
+        }
+      }
+    }
+  }
+
+
+}
+
+

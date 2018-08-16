@@ -1,17 +1,17 @@
 <div data-ng-hide="loaded">
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide u-no-margin--top" data-ng-show="loaded" window-width>
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
-            <div class="col-8">
+            <div class="tablet-col-4 col-8">
                 <h1 class="page-header__title">{$ subnet.cidr $}</h1>
             </div>
-            <div class="col-4">
+            <div class="tablet-col-2 col-4">
                 <!-- "Take action" dropdown -->
                 <div class="page-header__controls u-float--right ng-hide" data-ng-show="isSuperUser() && !isDefaultSubnet() && !loading && actionOptions.length">
                     <div data-maas-cta="actionOptions"
@@ -84,44 +84,44 @@
         <div class="form p-form--stacked row" data-ng-if="editSummary != true">
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>Name</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>CIDR</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.cidr $}</span>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>Gateway IP</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p data-ng-if="subnet.gateway_ip">{$ subnet.gateway_ip $}</p>
                         <p data-ng-if="!subnet.gateway_ip">&nbsp;</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>DNS</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p data-ng-if="subnet.dns_servers">{$ subnet.dns_servers $}</p>
                         <p data-ng-if="!subnet.dns_servers">&nbsp;</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>Description</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p data-ng-if="subnet.description">{$ subnet.description $}</p>
                         <p data-ng-if="!subnet.description">&nbsp;</p>
                     </div>
@@ -129,7 +129,7 @@
             </div>
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p>
                             <strong>Managed allocation</strong>
                             <span data-ng-if="subnet.managed == false" class="p-tooltip p-tooltip--btm-right">
@@ -143,13 +143,13 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <span data-ng-if="subnet.managed == false">Disabled</span>
                         <span data-ng-if="subnet.managed == true">Enabled</span>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p>
                             <strong>Active discovery</strong>
                             <span data-ng-if="subnet.managed == true" class="p-tooltip p-tooltip--btm-right">
@@ -158,13 +158,13 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <span data-ng-if="subnet.active_discovery == false">Disabled</span>
                         <span data-ng-if="subnet.active_discovery == true">Enabled</span>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p>
                             <strong>Proxy access</strong>
                             <span data-ng-if="subnet.allow_proxy == false" class="p-tooltip p-tooltip--btm-right">
@@ -178,13 +178,13 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <span data-ng-if="subnet.allow_proxy == false">Disallowed</span>
                         <span data-ng-if="subnet.allow_proxy == true">Allowed</span>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p>
                             <strong>Allow DNS resolution</strong>
                             <span data-ng-if="subnet.allow_dns == false" class="p-tooltip p-tooltip--btm-right">
@@ -198,32 +198,32 @@
                             </span>
                         </p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <span data-ng-if="subnet.allow_dns == false">Disallowed</span>
                         <span data-ng-if="subnet.allow_dns == true">Allowed</span>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>Fabric</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.fabric_name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>VLAN</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <p>{$ subnet.vlan_name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 tablet-col-2">
                         <p><strong>Space</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-4 tablet-col-3">
                         <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
                         <span data-ng-if="space === null">
                             (undefined)
@@ -241,19 +241,19 @@
                 <div class="row">
                     <div class="col-6">
                         <maas-obj-field type="text" key="name" label="Name" placeholder="Subnet name"
-                            label-width="2" input-width="4"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="cidr" label="CIDR" placeholder="Subnet CIDR"
-                            label-width="2" input-width="4"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="gateway_ip" label="Gateway IP" placeholder="Gateway IP"
-                            label-width="2" input-width="4"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="dns_servers" label="DNS" placeholder="DNS nameservers for subnet"
-                            label-width="2" input-width="4"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="textarea" key="description" label="Description" placeholder="Subnet description"
-                            label-width="2" input-width="4"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>
                     <div class="col-6">
                         <maas-obj-field type="onoffswitch" key="managed" label="Managed allocation"
-                            label-width="3" input-width="3"
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
                             label-info="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration.">
                         </maas-obj-field>
                         <p class="row" data-ng-if="subnet.$maasForm.getValue('managed') != subnet.managed">
@@ -269,26 +269,27 @@
                             </div>
                         </p>
                         <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
-                            label-width="2" input-width="3" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                            input-width-tablet="4" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
                         <maas-obj-field type="onoffswitch" key="allow_proxy" label="Proxy access"
-                            label-width="3" input-width="3"
-			    label-info="When enabled, MAAS will allow clients from this subnet to access&#xa;the MAAS proxy.">
+                            llabel-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+			                label-info="When enabled, MAAS will allow clients from this subnet to access&#xa;the MAAS proxy.">
                         </maas-obj-field>
                         <maas-obj-field type="onoffswitch" key="allow_dns" label="Allow DNS resolution"
-                            label-width="3" input-width="3"
-			    label-info="When enabled, MAAS will allow clients from this subnet to use&#xa;MAAS for DNS resolution.">
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+			                label-info="When enabled, MAAS will allow clients from this subnet to use&#xa;MAAS for DNS resolution.">
                         </maas-obj-field>
                         <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
                             options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
-                            label-width="2" input-width="5"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="vlan" class="u-margin--bottom" label="VLAN" placeholder="Choose VLAN"
                             options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.$maasForm.getValue('fabric')"
-                            label-width="2" input-width="5"></maas-obj-field>
+                            label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <div class="p-form__group">
-                            <div class="p-form__label">
+                            <div class="p-form__label col-2 tablet-col-2">
                                 <p>Space</p>
                             </div>
-                            <div class="p-form__control">
+                            <div class="p-form__control col-4 tablet-col-3">
                                 <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
                                 <span data-ng-if="space === null">
                                     (undefined)
@@ -357,9 +358,11 @@
                             </div>
                         </td>
                         <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
-                            <div data-ng-if="windowWidth <= 768">
+                            <div class="u-clearfix" data-ng-if="windowWidth <= 768">
                                 <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left p-heading--four">Remove {$ staticRoute.gateway_ip $}</h2>
-                                <i data-ng-click="staticRouteCancelDelete()" class="p-icon--close u-float--right"></i>
+                                <button class="p-button--base is-small u-float--right" style="width: auto;" data-ng-click="staticRouteCancelDelete()">
+                                    <i class="p-icon--close u-float--right"></i>
+                                </button>
                             </div>
                             <hr />
                             <div class="row u-equal-height">
@@ -377,9 +380,11 @@
                         <td class="p-table-expanding__panel col-12" data-ng-if="isStaticRouteInEditMode(staticRoute)">
                             <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
                                 save-on-blur="false" after-save="ipRangeClearEditMode">
-                                <div data-ng-if="windowWidth <= 768">
+                                <div class="u-clearfix" data-ng-if="windowWidth <= 768">
                                     <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left p-heading--four">Editing {$ staticRoute.gateway_ip $}</h2>
-                                    <i data-ng-click="staticRouteToggleEditMode(staticRoute)" class="p-icon--close u-float--right"></i>
+                                    <button class="p-button--base is-small u-float--right" style="width: auto;" data-ng-click="staticRouteToggleEditMode(staticRoute)">
+                                        <i class="p-icon--close"></i>
+                                    </button>
                                 </div>
                                 <div class="row">
                                     <div class="col-3">
@@ -526,37 +531,37 @@
             </div>
         </div>
         <div class="row">
-            <table class="p-table-expanding">
+            <table class="p-table">
                 <thead>
                     <tr>
-                        <th class="col-2">
+                        <th>
                             <a href="" data-ng-click="sortIPTable(ipSort)" data-ng-class="{'is-sorted': predicate === ipSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP Address</a>
                         </th>
-                        <th class="col-1">
+                        <th>
                             <a href="" data-ng-click="sortIPTable(allocTypeSort)" data-ng-class="{'is-sorted': predicate === allocTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
                         </th>
-                        <th class="col-2">
+                        <th>
                             <a href="" data-ng-click="sortIPTable('node_summary.hostname')" data-ng-class="{'is-sorted': predicate === 'node_summary.hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Node</a>
                         </th>
-                        <th class="col-1">
+                        <th>
                             <a href="" data-ng-click="sortIPTable('node_summary.via')" data-ng-class="{'is-sorted': predicate === 'node_summary.via', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Interface</a>
                         </th>
-                        <th class="col-2">
+                        <th>
                             <a href="" data-ng-click="sortIPTable(nodeTypeSort)" data-ng-class="{'is-sorted': predicate === nodeTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Usage</a>
                         </th>
-                        <th class="col-1">
+                        <th>
                             <a href="" data-ng-click="sortIPTable(ownerSort)" data-ng-class="{'is-sorted': predicate === ownerSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Owner</a>
                         </th>
-                        <th class="col-3">
+                        <th>
                             <a href="" data-ng-click="sortIPTable('updated')" data-ng-class="{'is-sorted': predicate === 'updated', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</a>
                         </th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr data-ng-repeat="ip in subnet.ip_addresses | orderBy:predicate:reverse track by ip.ip">
-                        <td class="col-2" aria-label="IP Address">{$ ip.ip $}</td>
-                        <td class="col-1" aria-label="Type">{$ getAllocType(ip.alloc_type) $}</td>
-                        <td class="col-2" aria-label="Node" data-ng-switch="ip.node_summary.node_type">
+                        <td aria-label="IP Address">{$ ip.ip $}</td>
+                        <td aria-label="Type">{$ getAllocType(ip.alloc_type) $}</td>
+                        <td aria-label="Node" data-ng-switch="ip.node_summary.node_type">
                             <span data-ng-switch-when="0"><a href="#/machine/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                             <span data-ng-switch-when="1">{$ ip.node_summary.hostname $}</span>
                             <span data-ng-switch-when="2"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
@@ -564,7 +569,7 @@
                             <span data-ng-switch-when="4"><a href="#/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                             <span data-ng-switch-default>{$ ip.node_summary.hostname $}</span>
                         </td>
-                        <td class="col-1" aria-label="Interface" data-ng-switch="ip.node_summary.node_type">
+                        <td aria-label="Interface" data-ng-switch="ip.node_summary.node_type">
                             <span data-ng-switch-when="0">{$ ip.node_summary.via $}</span>
                             <span data-ng-switch-when="1">{$ ip.node_summary.via $}</span>
                             <span data-ng-switch-when="2">{$ ip.node_summary.via $}</span>
@@ -572,9 +577,9 @@
                             <span data-ng-switch-when="4">{$ ip.node_summary.via $}</span>
                             <span data-ng-switch-default>Unknown</span>
                         </td>
-                        <td class="col-2" aria-label="Usage">{$ getUsageForIP(ip) $}</td>
-                        <td class="col-1" aria-label="Owner">{$ ip.user ? ip.user : "MAAS" $}</td>
-                        <td class="col-3" aria-label="Last seen">
+                        <td aria-label="Usage">{$ getUsageForIP(ip) $}</td>
+                        <td aria-label="Owner">{$ ip.user ? ip.user : "MAAS" $}</td>
+                        <td aria-label="Last seen">
                             <time>{$ ip.updated $}</time>
                         </td>
                     </tr>

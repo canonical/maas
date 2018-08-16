@@ -7,7 +7,7 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject notifications.html into the template cache.
     $templateCache.put('directive/templates/notifications.html', [
-      '<div class="u-no-margin--top" data-ng-repeat="category in categories"',
+      '<div class="" data-ng-repeat="category in categories"',
         ' data-ng-init="notifications = categoryNotifications[category]">',
         // 1 notification.
         '<span class="row" data-ng-if="notifications.length == 1">',

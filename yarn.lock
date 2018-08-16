@@ -7263,9 +7263,13 @@ vanilla-framework-react@^0.1.2:
     react-dom "^16.1.0"
     vanilla-framework "^1.6.3"
 
-vanilla-framework@^1.6.3, vanilla-framework@^1.6.6:
+vanilla-framework@^1.6.3:
   version "1.6.6"
   resolved "https://registry.yarnpkg.com/vanilla-framework/-/vanilla-framework-1.6.6.tgz#705125b34f9317e7af8f30b62c10f303cb482767"
+
+vanilla-framework@^1.8.0:
+  version "1.8.0"
+  resolved "https://registry.yarnpkg.com/vanilla-framework/-/vanilla-framework-1.8.0.tgz#b5aacc3ce60a521b8de8f160cb505807aadc7869"
 
 verror@1.10.0:
   version "1.10.0"

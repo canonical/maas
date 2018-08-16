@@ -121,5 +121,28 @@
     </main>
     {% include "maasserver/footer.html" %}
     {% include "maasserver/js-conf.html" %}
+
+    <script>
+        // enable show/hide with an env variable, so this doesn't need to be removed / readed on every branch
+        var ENV = '';
+        if(ENV === 'DEBUG') {
+            function fragmentFromString(htmlString) {
+                var temp = document.createElement('template');
+                temp.innerHTML = htmlString;
+                return temp.content;
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var body = document.body;
+                var controls = fragmentFromString('<div class="u-baseline-grid__toggle"><label>Toggle baseline grid<input type="checkbox" class="p-switch js-baseline-toggle" /><div class="p-switch__slider"></div></label></div>');
+                body.appendChild(controls);
+
+                var toggle = document.querySelector('.js-baseline-toggle');
+                toggle.addEventListener('click', function (event) {
+                    body.classList.toggle('u-baseline-grid');
+                });
+            });
+        }
+    </script>
 </body>
 </html>

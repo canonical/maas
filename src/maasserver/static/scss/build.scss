@@ -1,15 +1,19 @@
 // Import MAAS-specific Vanilla configuration
 @import 'settings';
-@import 'utils';
 
 // Import Vanilla framework
 @import '../../../../node_modules/vanilla-framework/scss/vanilla';
 @include vanilla;
 
+@import 'utils';
 // Import local patterns
 @import 'maas';
+@import 'patterns_inline-list';
+@import 'base_typography';
 @import 'base_tables';
+@import 'base_forms';
 @import 'base_links';
+@import 'patterns_button';
 @import 'patterns_icons';
 @import 'patterns_navigation';
 @import 'patterns_page-header';
@@ -21,15 +25,20 @@
 @import 'patterns_strips';
 @import 'patterns_tag-input';
 @import 'patterns_forms';
+@import 'patterns_hr';
 @import 'patterns_notification';
 @import 'patterns_footer';
+@import 'patterns_search-box';
 @import 'patterns_table-sortable';
-@import 'patterns_table-columns';
 @import 'tables';
+@import 'patterns_space-between';
 
 // Include local patterns
 @include maas;
+@include maas-inline-lists;
 @include maas-tables;
+
+@include maas-b-forms;
 @include maas-b-links;
 @include maas-icons;
 @include maas-navigation;
@@ -41,9 +50,12 @@
 @include maas-meter;
 @include maas-p-strip;
 @include maas-tag-input;
+@include maas-p-buttons;
 @include maas-p-forms;
+@include maas-p-hr;
 @include maas-p-notifications;
+@include maas-p-search-box;
 @include maas-p-sticky-footer;
 @include maas-table-sortable;
-@include maas-table-columns(100);
 @include maas-table-widths;
+@include patterns_space-between;

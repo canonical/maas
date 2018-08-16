@@ -1,0 +1,63 @@
+@mixin maas-p-buttons {
+  .p-button--min-margin-bottom  {
+    margin-bottom: $spv-nudge-compensation;
+  }
+
+  .p-button--base.is-small {
+    padding: $sp-unit;
+    margin: 0;
+  }
+
+  %icon-button-padding {
+    padding: $spv-intra--condensed $spv-intra--expanded;
+  }
+
+  .p-button--icon {
+      @extend %icon-button-padding;
+  }
+
+  .p-button--close {
+    align-self: flex-start; // stay vertically at top
+    border: 0;
+    float: right; // in case it is not in a flex container, align it to the right
+    margin: 0 0 auto auto;
+    width: auto;
+
+    @extend %icon-button-padding;
+
+    [class^="p-icon"] {
+      margin-right: 0;
+    }
+  }
+
+  [class*='p-button'] [class^="p-icon"],
+  button [class^="p-icon"] {
+      margin-right: 0;
+    }
+
+  *[class*='p-button'] {
+    .p-table-expanding__panel & {
+      margin-bottom: 2 * $spv-nudge-compensation;
+      &:not(.p-button--close) {
+        padding: $spv-nudge - $px $sph-intra;
+      }
+    }
+    &.is-small {
+      padding: $spv-nudge - $px $sph-intra;
+    }
+  }
+}
+
+@media only screen and (max-width: 460px){
+  //XXX width: 100% is breaking many things, for example the check power button in the header causes horizontal scroll. Removing pending further discussion.
+  button,
+  [type='submit'],
+  .p-button,
+  .p-button--neutral,
+  .p-button--brand,
+  .p-button--positive,
+  .p-button--negative,
+  .p-button--base {
+      width: auto;
+  }
+}

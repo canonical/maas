@@ -4,15 +4,18 @@
 {% block page-title %}Delete commissioning script{% endblock %}
 
 {% block content %}
-<div class="eight-col">
-    <h2 class="p-heading--four">Are you sure you want to delete the commissioning script '{{ script_to_delete.name }}'?<br /></h2>
-    <p>This action is permanent and can not be undone.</p>
-    <form method="post">{% csrf_token %}
-        <input type="hidden" name="post" value="yes" />
-        <div class="u-float--right">
-            <a class="button--secondary button--inline" href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
-            <button type="submit" class="button--destructive button--inline" />Delete commissioning script</button>
-        </div>
-    </form>
+<div class="p-strip">
+    <div class="row">
+        <h2 class="p-heading--four">Are you sure you want to delete the commissioning script '{{ script_to_delete.name }}'?</h2>
+        <p>This action is permanent and can not be undone.</p>
+        <hr>
+        <form method="post">{% csrf_token %}
+            <input type="hidden" name="post" value="yes" />
+            <div class="u-align--right">
+                <a class="p-button--base" href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
+                <button type="submit" class="p-button--negative" />Delete commissioning script</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

@@ -1,0 +1,26 @@
+
+// Smaller headings for table headers. This is to address the fact that may columns take far pore space than needed,
+// just to accomodate the table headings.
+
+$line-height--smallest: $sp-unit * 2;
+$nudge--smallest: .15rem;
+
+%smallest-text {
+  font-size: pow($ms-ratio, -2) * 1rem;
+  font-weight: 400;
+  line-height: map-get($line-heights, smallest);
+  margin-bottom: map-get($sp-after, small) + map-get($line-heights, default-text) - $line-height--smallest - $nudge--smallest;
+  padding-top: $nudge--smallest;
+}
+
+h4,
+.p-heading--four {
+  & + & {
+    margin-top: - (map-get($sp-after, h4)) !important;
+  }
+}
+
+.default-text {
+  @extend %default-text;
+  display: block;
+}

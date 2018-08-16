@@ -1,0 +1,23 @@
+
+@mixin maas-inline-lists {
+  //Used to display an inline list of settings, usually labels and checkboxes
+  .p-inline-list--settings {
+    .p-inline-list__item {
+      display: inline-block;
+      margin-right: $sp-large;
+    }
+
+    [type='checkbox'] {
+      float: none;
+    }
+
+    label {
+      display: inline;
+    }
+  }
+
+  //Fix for action buttons in headers
+  .p-inline-list__item div {
+    display: inline-block;
+  }
+}

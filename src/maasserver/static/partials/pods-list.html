@@ -1,10 +1,10 @@
-<header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+<header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="col-8">
+        <div class="tablet-col-4 col-8">
             <h1 class="page-header__title">Pods</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading"><span class="u-text--loading"><i class="p-icon--spinner u-animation--spin"></i> Loading...</span></p>
         </div>
-        <div class="col-4">
+        <div class="tablet-col-2 col-4">
             <div class="page-header__controls">
                 <div data-ng-if="pods.length > 0 && !selectedItems.length">
                     <button class="p-button--neutral" data-ng-click="addPod()" data-ng-if="!add.open && canAddPod()">Add pod</button>
@@ -57,24 +57,24 @@
             </div>
             <div class="row">
                 <div class="col-5">
-                    <maas-obj-field type="text" key="name" label="Name" label-width="2" input-width="3" placeholder="Name (optional)"></maas-obj-field>
-                    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone"
-                        options="zone.id as zone.name for zone in zones"></maas-obj-field>
-                    <maas-obj-field type="options" key="default_pool" label="Resource pool" subtle="false" placeholder="Choose a pool"
-                        options="pool.id as pool.name for pool in pools"></maas-obj-field>
+                    <maas-obj-field type="text" key="name" label="Name" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" placeholder="Name (optional)"></maas-obj-field>
+                    <maas-obj-field type="options" key="zone" label="Zone" subtle="false" placeholder="Choose a zone" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                    <maas-obj-field type="options" key="default_pool" label="Resource pool" subtle="false" placeholder="Choose a pool" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4" options="pool.id as pool.name for pool in pools"></maas-obj-field>
                 </div>
                 <div class="col-6 prefix-1">
                     <maas-pod-parameters hide-slider="true"></maas-pod-parameters>
                 </div>
             </div>
-            <div class="row u-no-margin--top">
-                <hr />
-                <div class="col-12">
-                    <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
-                    <p maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
-                    <div class="page-header__controls u-no-margin--top" maas-obj-hide-saving>
-                        <button class="p-button--base is-inline" type="button" data-ng-click="cancelAddPod()">Cancel</button>
-                        <button class="p-button--positive is-inline u-no-margin--top" maas-obj-save>Save pod</button>
+            <div class="p-strip is-shallow">
+                <div class="row">
+                    <hr />
+                    <div class="col-12">
+                        <p maas-obj-hide-saving class="u-no-margin--bottom"><maas-obj-errors></maas-obj-errors></p>
+                        <p maas-obj-show-saving class="u-no-margin--bottom"><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
+                        <div class="page-header__controls u-no-margin--top" maas-obj-hide-saving>
+                            <button class="p-button--base is-inline" type="button" data-ng-click="cancelAddPod()">Cancel</button>
+                            <button class="p-button--positive is-inline u-no-margin--top" maas-obj-save>Save pod</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -116,7 +116,7 @@
         </div>
         <div class="row">
             <table class="p-table-expanding p-table--sortable p-table--pods" data-ng-if="pods.length > 0">
-                <thead>
+                <thead data-ng-if="windowWidth >= 768" offset="88" media-query="min-width: 768px">
                     <tr class="p-table__row">
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Name">
                             <div data-ng-if="isSuperUser()" class="u-float--left">

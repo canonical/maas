@@ -1,6 +1,6 @@
-<header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+<header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
     <div class="row">
-        <div class="col-8">
+        <div class="tablet-col-4 col-8">
             <h1 class="page-header__title">
                 {$ domain.name $}
             </h1>
@@ -15,7 +15,7 @@
                             when="{'0': 'No resource records', 'one': ' {$ domain.resource_count $} resource record', 'other': ' {$ domain.resource_count $} resource records'}"></ng-pluralize>
             </p>
         </div>
-        <div class="col-4">
+        <div class="tablet-col-2 col-4">
             <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !loading">
                 <button class="p-button--negative"
                     data-ng-click="deleteButton()"
@@ -79,27 +79,29 @@
         <maas-obj-form obj="newObject" manager="domainsManager" manager-method="createDNSRecord" class="p-form--stacked"
             table-form="true" save-on-blur="false" after-save="cancelAction">
             <!-- pre-process="actionDNSRecordPreSave" -->
-            <section class="row">
-              <div class="col-6">
-                <maas-obj-field
-                    subtle="false" type="text" key="name" label="Name" placeholder="Name"
-                    label-width="two" input-width="three"></maas-obj-field>
-                <maas-obj-field
-                    subtle="false" type="options" key="rrtype" label="Type"
-                    options="type as type for type in supportedRecordTypes"
-                    label-width="two" input-width="three"></maas-obj-field>
-              </div>
-              <div class="col-6">
-                <maas-obj-field
-                    subtle="false" type="text" key="rrdata" label="Data"
-                    placeholder="Data"
-                    label-width="two" input-width="three"></maas-obj-field>
-                <maas-obj-field
-                    subtle="false" type="text" key="ttl" label="TTL"
-                    placeholder="TTL in seconds (optional)"
-                    label-width="two" input-width="three"></maas-obj-field>
-                <maas-obj-field type="hidden" key="domain" value="{$ domain.id $}" />
-              </div>
+            <section class="p-strip is-shallow">
+                <div class="row">
+                    <div class="col-6">
+                        <maas-obj-field
+                            subtle="false" type="text" key="name" label="Name" placeholder="Name"
+                            label-width="two" input-width="three"></maas-obj-field>
+                        <maas-obj-field
+                            subtle="false" type="options" key="rrtype" label="Type"
+                            options="type as type for type in supportedRecordTypes"
+                            label-width="two" input-width="three"></maas-obj-field>
+                    </div>
+                    <div class="col-6">
+                        <maas-obj-field
+                            subtle="false" type="text" key="rrdata" label="Data"
+                            placeholder="Data"
+                            label-width="two" input-width="three"></maas-obj-field>
+                        <maas-obj-field
+                            subtle="false" type="text" key="ttl" label="TTL"
+                            placeholder="TTL in seconds (optional)"
+                            label-width="two" input-width="three"></maas-obj-field>
+                        <maas-obj-field type="hidden" key="domain" value="{$ domain.id $}" />
+                    </div>
+                </div>
             </section>
             <section class="row">
                 <div class="col-8">

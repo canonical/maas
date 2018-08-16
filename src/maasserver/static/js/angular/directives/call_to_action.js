@@ -9,7 +9,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     $templateCache.put('directive/templates/cta.html', [
       '<div class="p-contextual-menu">',
         '<button ',
-          'class="p-button p-contextual-menu__toggle" ',
+          'class="p-button p-contextual-menu__toggle',
+          ' p-button--min-margin-bottom" ',
           'aria-controls="#cta-menu" ',
           'aria-expanded="false" ',
           'aria-haspopup="true" ',

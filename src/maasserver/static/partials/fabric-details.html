@@ -1,12 +1,12 @@
 <div data-ng-hide="loaded">
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide u-no-margin--top" data-ng-show="loaded">
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
             <div>
                 <h1 class="page-header__title u-hide--small">{$ fabric.name $}</h1>
@@ -83,28 +83,28 @@
             <div class="form p-form--stacked row" data-ng-if="editSummary != true">
                 <div class="col-6">
                     <div class="p-form__group">
-                        <div class="p-form__label">
-                            <p><strong>Name:</strong></p>
+                        <div class="p-form__label col-2 tablet-col-2">
+                            <div><strong>Name:</strong></div>
                         </div>
-                        <div class="p-form__control">
+                        <div class="p-form__control col-3 tablet-col-4">
                             <p>{$ fabric.name $}</p>
                         </div>
                     </div>
                     <div class="p-form__group">
-                        <div class="p-form__label">
-                            <p><strong>Description:</strong></p>
+                        <div class="p-form__label col-2 tablet-col-2">
+                            <div><strong>Description:</strong></div>
                         </div>
-                        <div class="p-form__control">
+                        <div class="p-form__control col-4 tablet-col-4">
                             <p>{$ fabric.description $}</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="p-form__group">
-                        <div class="p-form__label">
-                            <p><strong>Rack controllers</strong></p>
+                        <div class="p-form__label col-2 tablet-col-2">
+                            <div><strong>Rack controllers</strong></div>
                         </div>
-                        <div class="p-form__control">
+                        <div class="p-form__control col-3 tablet-col-4">
                             <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
                                 <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
                             </span>
@@ -112,21 +112,20 @@
                     </div>
                 </div>
             </div>
+
             <div class="row">
-                <maas-obj-form obj="fabric" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="fabricManager" data-ng-disabled="!isSuperUser()">
+                <maas-obj-form obj="fabric" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="fabricManager" data-ng-disabled="!isSuperUser()" class="p-form--stacked">
                     <div class="row">
                         <div class="col-6">
-                            <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name"
-                                label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
-                            <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description"
-                                label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                            <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name" blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                            <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description" blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         </div>
                         <div class="col-6">
                             <div class="p-form__group">
-                                <div class="p-form__label">
-                                    <p><strong>Rack controllers</strong></p>
+                                <div class="p-form__label col-2 tablet-col-2">
+                                    <p>Rack controllers</p>
                                 </div>
-                                <div class="p-form__control">
+                                <div class="p-form__control col-3 tablet-col-4">
                                     <span data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
                                         <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
                                     </span>

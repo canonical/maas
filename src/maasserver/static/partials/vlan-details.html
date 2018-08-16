@@ -1,17 +1,17 @@
 <div data-ng-if="!vlanDetails.loaded">
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div data-ng-if="vlanDetails.loaded">
-    <header class="p-strip--light is-shallow is-bordered page-header" media-query="min-width: 769px">
+    <header class="p-strip--light is-shallow u-no-padding--bottom page-header" media-query="min-width: 769px">
         <div class="row">
-            <div class="col-8">
+            <div class="tablet-col-4 col-8">
                 <h1 class="page-header__title">{$ vlanDetails.title $}</h1>
             </div>
-            <div class="col-4">
+            <div class="tablet-col-2 col-4">
                 <!-- "Take action" dropdown -->
                 <div class="page-header__controls" data-ng-if="vlanDetails.actionOptions.length">
                     <div data-maas-cta="vlanDetails.actionOptions"
@@ -124,7 +124,7 @@
                 </div>
                 <div class="row">
                     <section class="page-header__section" data-ng-if="vlanDetails.actionOption.name === 'relay_dhcp'">
-                        <h3 class="page-header__dropdown-title">Relay DHCP</h3>
+                        <h4 class="page-header__dropdown-title">Relay DHCP</h4>
                         <form class="p-form p-form--stacked">
                             <!-- This is just for visual reasons, since we need an additional border to begin the form if there is no error. -->
                             <div class="p-form__fieldset col-6">
@@ -240,64 +240,64 @@
         <div class="p-form p-form--stacked row" data-ng-if="!vlanDetails.editSummary">
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>VID</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.vid $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>Name</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.name $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>MTU</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.mtu $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>Space</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.getSpaceName() $}</p>
                     </div>
                 </div>
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>Description</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p>{$ vlanDetails.vlan.description $}</p>
                     </div>
                 </div>
             </div>
             <div class="col-6">
                 <div class="p-form__group">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>Fabric</strong></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <p><a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a></p>
                     </div>
                 </div>
                 <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
-                    <div class="p-form__label">
+                    <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                         <p><strong>Rack controllers</strong>
                         <span class="p-tooltip p-tooltip--top-center">
                             <i class="p-icon--information">Help:</i>
                             <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                         </span></p>
                     </div>
-                    <div class="p-form__control">
+                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                         <span data-ng-repeat="rack in vlanDetails.relatedControllers">
                             <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
                         </span>
@@ -307,33 +307,33 @@
         </div>
         <div class="row">
             <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!vlanDetails.isSuperUser()" data-ng-if="vlanDetails.editSummary"
-            table-form="true" save-on-blur="false" after-save="vlanDetails.exitEditSummary">
+            table-form="true" save-on-blur="false" after-save="vlanDetails.exitEditSummary" class="p-form--stacked">
                 <div class="row">
                     <div class="col-6">
                         <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
-                            label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="name" label="Name" placeholder="VLAN name"
-                            label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="text" key="mtu" label="MTU" placeholder="VLAN MTU"
-                            label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <maas-obj-field type="options" key="space" label="Space" placeholder="(undefined)" placeholder-enabled="true"
-                            options="space.id as space.name for space in vlanDetails.spaces"
-                            label-width="2" input-width="5"></maas-obj-field>
+                            options="space.id as space.name for space in vlanDetails.spaces" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                            ></maas-obj-field>
                         <maas-obj-field type="textarea" key="description" label="Description" placeholder="VLAN description"
-                            label-width="2" input-width="5" blur-on-enter="true"></maas-obj-field>
+                            blur-on-enter="true" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>
                     <div class="col-6">
                         <maas-obj-field type="options" key="fabric" label="Fabric"
-                                        options="fabric.id as fabric.name for fabric in vlanDetails.fabrics"></maas-obj-field>
+                                        options="fabric.id as fabric.name for fabric in vlanDetails.fabrics" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                         <div class="p-form__group" data-ng-if="vlanDetails.relatedControllers">
-                            <div class="p-form__label">
+                            <div class="p-form__label col-2 mobile-col-2 tablet-col-2">
                                 <p><strong>Rack controllers</strong>
                                 <span class="p-tooltip p-tooltip--top-center">
                                     <i class="p-icon--information">Help:</i>
                                     <span class="p-tooltip__message" role="tooltip">A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs.</span>
                                 </span></p>
                             </div>
-                            <div class="p-form__control">
+                            <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
                                 <span data-ng-repeat="rack in vlanDetails.relatedControllers">
                                     <a href="#/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>,
                                 </span>
