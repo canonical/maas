@@ -298,6 +298,9 @@ class TestMachineHandler(MAASServerTestCase):
             "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
         }
+        if boot_interface:
+            data["ip_address"] = handler.dehydrate_ip_address(
+                node, boot_interface)
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data['pod'] = {'id': bmc.id, 'name': bmc.name}
@@ -314,6 +317,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "fabrics",
                 "fqdn",
                 "has_logs",
+                "ip_address",
                 "link_type",
                 "metadata",
                 "node_type_display",
@@ -1720,6 +1724,28 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertItemsEqual(
             [self.dehydrate_node(node, handler, for_list=True)],
             handler.list({}))
+
+    def test_list_includes_ip_with_boot_interface(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
+            interface=interface, subnet=subnet)
+        handler = MachineHandler(user, {})
+        self.assertEqual(
+            ip,
+            self.dehydrate_node(node, handler, for_list=True)['ip_address'])
+
+    def test_list_excludes_ip_without_boot_interface(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {})
+        self.assertNotIn(
+            'ip_address',
+            self.dehydrate_node(node, handler, for_list=True))
 
     def test_get_object_returns_node_if_super_user(self):
         user = factory.make_admin()

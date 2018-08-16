@@ -222,6 +222,10 @@
 
   .p-table--machines {
     .p-table__row {
+      td {
+        vertical-align: top;
+      }
+
       th {
         &:nth-child(1) {
           @include table-sortable-adjust(990px);

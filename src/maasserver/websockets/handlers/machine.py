@@ -211,6 +211,8 @@ class MachineHandler(NodeHandler):
             if boot_interface is not None:
                 data["pxe_mac"] = "%s" % boot_interface.mac_address
                 data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
+                data["ip_address"] = self.dehydrate_ip_address(
+                    obj, boot_interface)
             else:
                 data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 

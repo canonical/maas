@@ -203,16 +203,6 @@ class DeviceHandler(NodeHandler):
         data["ip_address"] = self.dehydrate_ip_address(obj, interface)
         return data
 
-    def _get_first_non_discovered_ip(self, ip_addresses):
-        for ip in ip_addresses:
-            if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                return ip
-
-    def _get_first_discovered_ip_with_ip(self, ip_addresses):
-        for ip in ip_addresses:
-            if ip.alloc_type == IPADDRESS_TYPE.DISCOVERED and ip.ip:
-                return ip
-
     def dehydrate_ip_assignment(self, obj, interface):
         """Return the calculated `DEVICE_IP_ASSIGNMENT` based on the model."""
         if interface is None:
@@ -228,25 +218,6 @@ class DeviceHandler(NodeHandler):
             else:
                 return DEVICE_IP_ASSIGNMENT_TYPE.STATIC
         return DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC
-
-    def dehydrate_ip_address(self, obj, interface):
-        """Return the IP address for the device."""
-        if interface is None:
-            return None
-
-        # Get ip address from StaticIPAddress if available.
-        ip_addresses = list(interface.ip_addresses.all())
-        first_ip = self._get_first_non_discovered_ip(ip_addresses)
-        if first_ip is not None:
-            if first_ip.alloc_type == IPADDRESS_TYPE.DHCP:
-                discovered_ip = self._get_first_discovered_ip_with_ip(
-                    ip_addresses)
-                if discovered_ip:
-                    return "%s" % discovered_ip.ip
-            elif first_ip.ip:
-                return "%s" % first_ip.ip
-        # Currently has no assigned IP address.
-        return None
 
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""

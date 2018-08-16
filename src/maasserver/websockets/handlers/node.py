@@ -17,6 +17,7 @@ from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_TYPE,
     POWER_STATE,
@@ -614,6 +615,35 @@ class NodeHandler(TimestampedModelHandler):
                 data["discovered"] = discovereds
 
         return data
+
+    def dehydrate_ip_address(self, obj, interface):
+        """Return the IP address for the device."""
+        if interface is None:
+            return None
+
+        # Get ip address from StaticIPAddress if available.
+        ip_addresses = list(interface.ip_addresses.all())
+        first_ip = self._get_first_non_discovered_ip(ip_addresses)
+        if first_ip is not None:
+            if first_ip.alloc_type == IPADDRESS_TYPE.DHCP:
+                discovered_ip = self._get_first_discovered_ip_with_ip(
+                    ip_addresses)
+                if discovered_ip:
+                    return "%s" % discovered_ip.ip
+            elif first_ip.ip:
+                return "%s" % first_ip.ip
+        # Currently has no assigned IP address.
+        return None
+
+    def _get_first_non_discovered_ip(self, ip_addresses):
+        for ip in ip_addresses:
+            if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                return ip
+
+    def _get_first_discovered_ip_with_ip(self, ip_addresses):
+        for ip in ip_addresses:
+            if ip.alloc_type == IPADDRESS_TYPE.DISCOVERED and ip.ip:
+                return ip
 
     def dehydrate_script_set_status(self, obj):
         """Dehydrate the script set status."""
