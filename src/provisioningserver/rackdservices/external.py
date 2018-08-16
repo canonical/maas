@@ -10,6 +10,11 @@ __all__ = [
     "RackExternalService",
 ]
 
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    abstractproperty,
+)
 from collections import defaultdict
 from datetime import timedelta
 
@@ -32,7 +37,10 @@ from provisioningserver.rpc.region import (
 )
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import snappy
-from provisioningserver.utils.twisted import callOut
+from provisioningserver.utils.twisted import (
+    callOut,
+    callOutToThread,
+)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     DeferredList,
@@ -45,10 +53,18 @@ from twisted.internet.threads import deferToThread
 log = LegacyLogger()
 
 
-class RackOnlyExternalService:
+class RackOnlyExternalService(metaclass=ABCMeta):
     """Service that should only run when it rack-only mode."""
 
     _configuration = None
+
+    @abstractproperty
+    def service_name(self):
+        """Name of the service in `service_monitor`."""
+
+    @abstractmethod
+    def _configure(self):
+        """Configure the service."""
 
     def _genRegionIps(self, connections, bracket_ipv6=False):
         """Generate IP addresses for all region controllers this rack
@@ -86,10 +102,16 @@ class RackOnlyExternalService:
 
         :param configuration: The configuration object.
         """
+        service = service_monitor.getServiceByName(self.service_name)
         if configuration.is_rack and not configuration.is_region:
-            d = deferToThread(
-                self._configure, configuration)
-            return d
+            # Service is managed by the rack controller, so the service
+            # should be on.
+            service.on()
+            return maybeDeferred(self._configure, configuration)
+        else:
+            # Service should not be managed by the rack controller. The region
+            # controller manages this service.
+            service.any("managed by the region")
 
     def _configurationApplied(self, configuration):
         """Record the currently applied external server configuration.
@@ -101,6 +123,8 @@ class RackOnlyExternalService:
 
 class RackNTP(RackOnlyExternalService):
     """External NTP service ran only in rack-only mode."""
+
+    service_name = "ntp_rack"
 
     def _tryUpdate(self, config):
         """Update the NTP server running on this host."""
@@ -124,21 +148,22 @@ class RackNTP(RackOnlyExternalService):
             is_region=controller_type["is_region"],
             is_rack=controller_type["is_rack"])
 
-    def _applyConfiguration(self, configuration):
+    def _configure(self, configuration):
         """Configure the NTP server.
 
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
         """
-        if configuration.is_rack and not configuration.is_region:
-            d = deferToThread(
-                configure_rack, configuration.references, configuration.peers)
-            d.addCallback(callOut, service_monitor.restartService, "ntp_rack")
-            return d
+        d = deferToThread(
+            configure_rack, configuration.references, configuration.peers)
+        d.addCallback(callOut, service_monitor.restartService, "ntp_rack")
+        return d
 
 
 class RackDNS(RackOnlyExternalService):
     """External DNS service ran only in rack-only mode."""
+
+    service_name = "dns_rack"
 
     def _tryUpdate(self, config):
         """Update the NTP server running on this host."""
@@ -165,7 +190,7 @@ class RackDNS(RackOnlyExternalService):
             is_region=controller_type["is_region"],
             is_rack=controller_type["is_rack"])
 
-    def _configure(self, configuration):
+    def _bindConfigure(self, configuration):
         """Update the DNS configuration for the rack.
 
         Possible node was converted from a region to a rack-only, so we always
@@ -181,12 +206,29 @@ class RackDNS(RackOnlyExternalService):
         bind_write_configuration(
             [], list(sorted(configuration.trusted_networks)))
 
+    def _bindReload(self):
+        """Reload bind for the rack controller."""
         # Reloading with retries to ensure that it actually works.
         bind_reload_with_retries()
+
+    def _configure(self, configuration):
+        """Configure the DNS server.
+
+        :param configuration: The configuration object obtained from
+            `_getConfiguration`.
+        """
+        d = deferToThread(self._bindConfigure, configuration)
+        d.addCallback(
+            callOut, service_monitor.ensureService, self.service_name)
+        d.addCallback(
+            callOutToThread, self._bindReload)
+        return d
 
 
 class RackProxy(RackOnlyExternalService):
     """External proxy service ran only in rack-only mode."""
+
+    service_name = "proxy_rack"
 
     def _tryUpdate(self, config):
         """Update the proxy server running on this host."""
@@ -222,12 +264,12 @@ class RackProxy(RackOnlyExternalService):
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
         """
-        service = service_monitor.getServiceByName("proxy_rack")
+        service = service_monitor.getServiceByName(self.service_name)
         if configuration.is_rack and not configuration.is_region:
             if not configuration.enabled:
                 # Proxy should be off and remain off.
                 service.off("not enabled")
-                return service_monitor.ensureService("proxy_rack")
+                return service_monitor.ensureService(self.service_name)
 
             # Proxy enabled; configure it.
             d = deferToThread(
@@ -239,14 +281,14 @@ class RackProxy(RackOnlyExternalService):
                 # snap, supervisord tracks services. It does not support
                 # reloading. Instead, we need to restart the service.
                 d.addCallback(
-                    lambda _: service_monitor.restartService("proxy_rack"))
+                    callOut, service_monitor.restartService, self.service_name)
             else:
                 d.addCallback(
-                    lambda _: service_monitor.reloadService("proxy_rack"))
+                    callOut, service_monitor.reloadService, self.service_name)
             return d
         else:
-            # Proxy is managed by region.
-            service.any("managed by region")
+            # Proxy is managed by the region.
+            service.any("managed by the region")
 
     def _configure(self, configuration):
         """Update the proxy configuration for the rack."""

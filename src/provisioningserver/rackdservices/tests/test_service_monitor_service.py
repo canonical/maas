@@ -33,6 +33,7 @@ from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
     SERVICE_STATE,
     ServiceState,
+    ToggleableService,
 )
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import (
@@ -46,6 +47,13 @@ from twisted.internet.task import Clock
 class TestServiceMonitorService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super(TestServiceMonitorService, self).setUp()
+        # Reset the all the toggleable services to off.
+        for service in service_monitor._services.values():
+            if isinstance(service, ToggleableService):
+                service.off()
 
     def pick_service(self):
         return random.choice(list(service_monitor._services.values()))

@@ -6,13 +6,8 @@
 __all__ = [
     ]
 
-from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.region import GetControllerType
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
-    Service,
-    SERVICE_STATE,
     ServiceMonitor,
     ToggleableService,
 )
@@ -40,30 +35,7 @@ class DHCPv6Service(ToggleableService):
     snap_service_name = "dhcpd6"
 
 
-class RackOnlyModeService(Service):
-    """Service that should only run when in rack-only mode."""
-
-    def getExpectedState(self):
-        try:
-            client = getRegionClient()
-        except NoConnectionsAvailable:
-            return SERVICE_STATE.ANY, None
-        else:
-            d = client(GetControllerType, system_id=client.localIdent)
-            d.addCallback(self._getExpectedStateForControllerType)
-            return d
-
-    def _getExpectedStateForControllerType(self, controller_type):
-        if controller_type["is_rack"]:
-            if controller_type["is_region"]:
-                return SERVICE_STATE.ANY, "managed by the region."
-            else:
-                return SERVICE_STATE.ON, None
-        else:
-            return SERVICE_STATE.ANY, None
-
-
-class NTPServiceOnRack(RackOnlyModeService):
+class NTPServiceOnRack(ToggleableService):
     """Monitored NTP service on a rack controller host."""
 
     name = "ntp_rack"
@@ -71,7 +43,7 @@ class NTPServiceOnRack(RackOnlyModeService):
     snap_service_name = "ntp"
 
 
-class DNSServiceOnRack(RackOnlyModeService):
+class DNSServiceOnRack(ToggleableService):
     """Monitored DNS service on a rack controller host."""
 
     name = "dns_rack"

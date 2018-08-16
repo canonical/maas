@@ -5,23 +5,15 @@
 
 __all__ = []
 
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
-from provisioningserver.rackdservices.testing import (
-    prepareRegionForGetControllerType,
-)
+from maastesting.testcase import MAASTestCase
 from provisioningserver.service_monitor import (
     DHCPv4Service,
     DHCPv6Service,
     DNSServiceOnRack,
     NTPServiceOnRack,
+    ProxyServiceOnRack,
     service_monitor,
 )
-from provisioningserver.utils.service_monitor import SERVICE_STATE
-from testtools.matchers import Equals
-from twisted.internet.defer import inlineCallbacks
 
 
 class TestDHCPv4Service(MAASTestCase):
@@ -54,46 +46,6 @@ class TestNTPServiceOnRack(MAASTestCase):
         self.assertEqual("ntp_rack", ntp.name)
 
 
-class TestNTPServiceOnRack_Scenarios(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    scenarios = (
-        ("rack", dict(
-            is_region=False, is_rack=True,
-            expected_state=SERVICE_STATE.ON,
-            expected_info=None,
-        )),
-        ("region", dict(
-            is_region=True, is_rack=False,
-            expected_state=SERVICE_STATE.ANY,
-            expected_info=None,
-        )),
-        ("region+rack", dict(
-            is_region=True, is_rack=True,
-            expected_state=SERVICE_STATE.ANY,
-            expected_info="managed by the region.",
-        )),
-        ("machine", dict(
-            is_region=False, is_rack=False,
-            expected_state=SERVICE_STATE.ANY,
-            expected_info=None,
-        )),
-    )
-
-    def setUp(self):
-        super(TestNTPServiceOnRack_Scenarios, self).setUp()
-        return prepareRegionForGetControllerType(
-            self, is_region=self.is_region, is_rack=self.is_rack)
-
-    @inlineCallbacks
-    def test_getExpectedState(self):
-        ntp = NTPServiceOnRack()
-        self.assertThat(
-            (yield ntp.getExpectedState()),
-            Equals((self.expected_state, self.expected_info)))
-
-
 class TestDNSServiceOnRack(MAASTestCase):
 
     def test_name_and_service_name(self):
@@ -102,44 +54,12 @@ class TestDNSServiceOnRack(MAASTestCase):
         self.assertEqual("dns_rack", dns.name)
 
 
-class TestDNSServiceOnRack_Scenarios(MAASTestCase):
+class TestPorxyServiceOnRack(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    scenarios = (
-        ("rack", dict(
-            is_region=False, is_rack=True,
-            expected_state=SERVICE_STATE.ON,
-            expected_info=None,
-        )),
-        ("region", dict(
-            is_region=True, is_rack=False,
-            expected_state=SERVICE_STATE.ANY,
-            expected_info=None,
-        )),
-        ("region+rack", dict(
-            is_region=True, is_rack=True,
-            expected_state=SERVICE_STATE.ANY,
-            expected_info="managed by the region.",
-        )),
-        ("machine", dict(
-            is_region=False, is_rack=False,
-            expected_state=SERVICE_STATE.ANY,
-            expected_info=None,
-        )),
-    )
-
-    def setUp(self):
-        super(TestDNSServiceOnRack_Scenarios, self).setUp()
-        return prepareRegionForGetControllerType(
-            self, is_region=self.is_region, is_rack=self.is_rack)
-
-    @inlineCallbacks
-    def test_getExpectedState(self):
-        dns = DNSServiceOnRack()
-        self.assertThat(
-            (yield dns.getExpectedState()),
-            Equals((self.expected_state, self.expected_info)))
+    def test_name_and_service_name(self):
+        dns = ProxyServiceOnRack()
+        self.assertEqual("maas-proxy", dns.service_name)
+        self.assertEqual("proxy_rack", dns.name)
 
 
 class TestGlobalServiceMonitor(MAASTestCase):

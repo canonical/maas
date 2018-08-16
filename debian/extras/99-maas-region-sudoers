@@ -1,2 +1,0 @@
-maas ALL= NOPASSWD: /bin/systemctl status bind9
-maas ALL= NOPASSWD: /bin/systemctl start bind9

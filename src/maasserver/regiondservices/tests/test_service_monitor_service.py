@@ -46,7 +46,12 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 class TestServiceMonitorService(MAASTransactionServerTestCase):
 
     def pick_service(self):
-        return random.choice(list(service_monitor._services.values()))
+        # Skip the proxy service because of the expected state is conditional.
+        return random.choice([
+            service
+            for service in service_monitor._services.values()
+            if service.name != 'proxy'
+        ])
 
     def test_init_sets_up_timer_correctly(self):
         monitor_service = ServiceMonitorService(sentinel.clock)

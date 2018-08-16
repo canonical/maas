@@ -32,10 +32,8 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.service_monitor import (
-    service_monitor,
-    SERVICE_STATE,
-)
+from provisioningserver.service_monitor import service_monitor
+from provisioningserver.utils.service_monitor import SERVICE_STATE
 from testtools.matchers import (
     Equals,
     Is,
@@ -271,6 +269,41 @@ class TestRackNTP(MAASTestCase):
         # Nothing was logged; there's no need for lots of chatter.
         self.assertThat(logger.output, Equals(""))
 
+    @inlineCallbacks
+    def test_sets_ntp_rack_service_to_any_when_is_region(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(common.log, 'debug')
+        self.useFixture(MAASRootFixture())
+        rpc_service, _ = yield prepareRegion(self, is_region=True)
+        service, ntp = self.make_RackNTP_ExternalService(
+            rpc_service, reactor)
+        self.patch_autospec(ntp, "_configure")  # No-op configuration.
+
+        # There is no most recently applied configuration.
+        self.assertThat(ntp._configuration, Is(None))
+
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
+
+        # Ensure that the service was set to any.
+        service = service_monitor.getServiceByName("ntp_rack")
+        self.assertEquals(
+            (SERVICE_STATE.ANY, "managed by the region"),
+            service.getExpectedState())
+        # The most recently applied configuration is set, though it was not
+        # actually "applied" because this host was configured as a region+rack
+        # controller, and the rack should not attempt to manage the DNS server
+        # on a region+rack.
+        self.assertThat(
+            ntp._configuration, IsInstance(external._NTPConfiguration))
+        # The configuration was not applied.
+        self.assertThat(ntp._configure, MockNotCalled())
+        # Nothing was logged; there's no need for lots of chatter.
+        self.assertThat(logger.output, Equals(""))
+
 
 class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
     """Tests for error handing in `RackExternalService`."""
@@ -374,6 +407,10 @@ class TestRackDNS(MAASTestCase):
         region_ips = self.extract_regions(rpc_service)
         service, _ = self.make_RackDNS_ExternalService(rpc_service, reactor)
 
+        mock_ensureService = self.patch_autospec(
+            service_monitor, "ensureService")
+        mock_ensureService.side_effect = always_succeed_with(None)
+
         bind_write_options = self.patch_autospec(
             external, "bind_write_options")
         bind_write_configuration = self.patch_autospec(
@@ -394,6 +431,8 @@ class TestRackDNS(MAASTestCase):
             bind_write_configuration,
             MockCalledOnceWith([], list(sorted(trusted_networks))))
         self.assertThat(
+            mock_ensureService, MockCalledOnceWith("dns_rack"))
+        self.assertThat(
             bind_reload_with_retries, MockCalledOnceWith())
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
@@ -405,6 +444,8 @@ class TestRackDNS(MAASTestCase):
         self.assertThat(
             bind_write_configuration,
             MockCalledOnceWith([], list(sorted(trusted_networks))))
+        self.assertThat(
+            mock_ensureService, MockCalledOnceWith("dns_rack"))
         self.assertThat(
             bind_reload_with_retries, MockCalledOnceWith())
 
@@ -426,6 +467,41 @@ class TestRackDNS(MAASTestCase):
             self.addCleanup((yield service.stopService))
             yield service._orig_tryUpdate()
 
+        # The most recently applied configuration is set, though it was not
+        # actually "applied" because this host was configured as a region+rack
+        # controller, and the rack should not attempt to manage the DNS server
+        # on a region+rack.
+        self.assertThat(
+            dns._configuration, IsInstance(external._DNSConfiguration))
+        # The configuration was not applied.
+        self.assertThat(dns._configure, MockNotCalled())
+        # Nothing was logged; there's no need for lots of chatter.
+        self.assertThat(logger.output, Equals(""))
+
+    @inlineCallbacks
+    def test_sets_dns_rack_service_to_any_when_is_region(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(common.log, 'debug')
+        self.useFixture(MAASRootFixture())
+        rpc_service, _ = yield prepareRegion(self, is_region=True)
+        service, dns = self.make_RackDNS_ExternalService(
+            rpc_service, reactor)
+        self.patch_autospec(dns, "_configure")  # No-op configuration.
+
+        # There is no most recently applied configuration.
+        self.assertThat(dns._configuration, Is(None))
+
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
+
+        # Ensure that the service was set to any.
+        service = service_monitor.getServiceByName("dns_rack")
+        self.assertEquals(
+            (SERVICE_STATE.ANY, "managed by the region"),
+            service.getExpectedState())
         # The most recently applied configuration is set, though it was not
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the DNS server
@@ -596,7 +672,7 @@ class TestRackProxy(MAASTestCase):
         # Ensure that the service was set to any.
         service = service_monitor.getServiceByName("proxy_rack")
         self.assertEquals(
-            (SERVICE_STATE.ANY, "managed by region"),
+            (SERVICE_STATE.ANY, "managed by the region"),
             service.getExpectedState())
         # The most recently applied configuration is set, though it was not
         # actually "applied" because this host was configured as a region+rack
