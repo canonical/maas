@@ -57,7 +57,7 @@
                         </td>
                     </tr>
                 </tbody>
-                <tbody vs-repeat vs-scroll-parent="window">
+                <tbody vs-repeat="{scrollParent: 'window'}">
                     <tr data-ng-repeat="discovery in discoveredDevices | orderBy:predicate:reverse track by discovery.first_seen"
                         data-ng-class="{'is-active' : discovery.first_seen === selectedDevice}">
                         <td class="p-table--network-discovery__name" aria-label="Name" data-ng-if="discovery.first_seen !== selectedDevice">

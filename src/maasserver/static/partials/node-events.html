@@ -46,7 +46,7 @@
                             <th class="col-9">Event</th>
                         </tr>
                     </thead>
-                    <tbody vs-repeat vs-scroll-parent="window">
+                    <tbody vs-repeat="{scrollParent: 'window'}">
                         <tr data-ng-repeat="event in events | filter:search | orderByDate:'created':'id' track by event.id">
                             <td class="col-3" title="{$ event.created $}">
                                 <span class="p-icon--{$ event.type.level $}"></span>&nbsp;

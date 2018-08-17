@@ -438,7 +438,7 @@
                         <th class="p-table__cell">Actions</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
+                <tbody vs-repeat="{scrollParent: 'window'}">
                     <tr class="p-table__row" data-ng-repeat="interface in device.interfaces">
                         <td class="p-table__cell" aria-label="MAC address">
                             <div class="p-form-validation u-no-margin--top" data-ng-class="{ 'is-error': macHasError(interface) }">
@@ -868,7 +868,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         </th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
+                <tbody vs-repeat="{scrollParent: 'window'}">
                     <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                     <tr class="p-table__row"
                         data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
@@ -1027,7 +1027,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <th class="p-table__cell" role="columnheader" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{'is-sorted': tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Images Status</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat vs-scroll-parent="window">
+                <tbody vs-repeat="{scrollParent: 'window'}">
                     <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                     <tr class="p-table__row"
                         data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"

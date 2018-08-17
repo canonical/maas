@@ -22,7 +22,7 @@
             <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Storage (GB)">Storage (GB)</th>
         </tr>
     </thead>
-    <tbody vs-repeat vs-scroll-parent="window">
+    <tbody vs-repeat="{scrollParent: 'window'}">
         <tr class="p-table__row" data-ng-repeat="node in table.filteredMachines = (table.machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id" data-ng-class="{ 'table--error': machineHasError({ $machine: node }), 'is-active': node.$selected }">
             <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'">
                 <div class="u-float--left" data-ng-if="!hideCheckboxes">

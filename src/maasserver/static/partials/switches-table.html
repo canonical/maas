@@ -22,7 +22,7 @@
             <th class="u-align--right" role="columnheader" data-ng-click="sortTable('serial')" data-ng-class="{'is-sorted': table.predicate === 'serial', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Serial</th>
         </tr>
     </thead>
-    <tbody vs-repeat vs-scroll-parent="window">
+    <tbody vs-repeat="{scrollParent: 'window'}">
         <tr
             data-ng-repeat="node in table.filteredSwitches = (table.switches | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id"
             data-ng-class="{ 'table--error': machineHasError({ $switch_: node }), selected: node.$selected }">
