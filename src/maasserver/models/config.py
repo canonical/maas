@@ -182,7 +182,7 @@ class ConfigManager(Manager):
         return {
             name: configs.get(name).value
             if configs.get(name)
-            else DEFAULT_CONFIG.get(name, default)
+            else copy.deepcopy(DEFAULT_CONFIG.get(name, default))
             for name, default in zip(names, defaults)
         }
 
