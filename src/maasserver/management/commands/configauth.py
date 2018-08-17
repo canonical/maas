@@ -8,6 +8,7 @@ __all__ = []
 import json
 
 import attr
+from django.contrib.sessions.models import Session
 from django.core.exceptions import ValidationError
 from django.core.management.base import (
     BaseCommand,
@@ -85,6 +86,10 @@ def set_auth_config(config_manager, auth_details):
         'external_auth_admin_group', auth_details.admin_group)
 
 
+def clear_user_sessions():
+    Session.objects.all().delete()
+
+
 class Command(BaseCommand):
     help = "Configure external authentication."
 
@@ -115,6 +120,7 @@ class Command(BaseCommand):
                 "Group of users whose members are made admins in MAAS "
                 "(leave blank for empty): ")
             set_auth_config(config_manager, auth_details)
+            clear_user_sessions()
             return
 
         auth_details.url = options.get('idm_url')
@@ -141,6 +147,7 @@ class Command(BaseCommand):
                 "(leave blank for empty): ")
 
         set_auth_config(config_manager, auth_details)
+        clear_user_sessions()
 
 
 def _get_or_prompt(options, option, message, replace_none=False):

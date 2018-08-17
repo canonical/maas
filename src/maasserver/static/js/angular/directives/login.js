@@ -50,6 +50,7 @@ angular.module('MAAS').factory('getBakery', function() {
                             $scope.errorMessage = (
                                 response.currentTarget.responseText);
                         });
+                        localStorage.clear();
                     } else {
                         $window.location.replace(nextPath);
                     }

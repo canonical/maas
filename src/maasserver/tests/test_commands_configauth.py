@@ -3,10 +3,15 @@
 
 """Test the configauth command."""
 
+from datetime import (
+    datetime,
+    timedelta,
+)
 import json
 import tempfile
 import unittest
 
+from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from maasserver.management.commands import configauth
 from maasserver.models import Config
@@ -74,6 +79,14 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.assertRaises(
             configauth.InvalidURLError,
             call_command, 'configauth', idm_url='example.com')
+
+    def test_configauth_delete_sessions(self):
+        session = Session(
+            session_key='session_key',
+            expire_date=datetime.utcnow() + timedelta(days=1))
+        session.save()
+        call_command('configauth', idm_url='')
+        self.assertFalse(Session.objects.all().exists())
 
     def test_update_auth_details(self):
         auth_details = configauth.AuthDetails()
