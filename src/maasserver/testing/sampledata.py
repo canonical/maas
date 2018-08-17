@@ -585,6 +585,7 @@ def populate_main():
 
     # Create a few pods to and assign a random set of the machines to the pods.
     pods = [None]
+    pod_storage_pools = defaultdict(list)
     machines_in_pods = defaultdict(list)
     for _ in range(3):
         subnet = random.choice(ipv4_subnets)
@@ -596,6 +597,11 @@ def populate_main():
             'power_address': power_address,
         }, ip_address=ip_address, capabilities=[
             Capabilities.DYNAMIC_LOCAL_STORAGE, Capabilities.COMPOSABLE])
+        for _ in range(3):
+            pool = factory.make_PodStoragePool(pod)
+            pod_storage_pools[pod].append(pool)
+        pod.default_storage_pool = pool
+        pod.save()
         pods.append(pod)
     for machine in machines:
         # Add the machine to the pod if its lucky day!
@@ -608,18 +614,20 @@ def populate_main():
             machine.save()
             machines_in_pods[pod].append(machine)
 
+            # Assign the block devices on the machine to a storage pool.
+            for block_device in machine.physicalblockdevice_set.all():
+                block_device.storage_pool = (
+                    random.choice(pod_storage_pools[pod]))
+                block_device.save()
+
     # Update the pod attributes so that it has more available then used.
     for pod in pods[1:]:
         pod.cores = pod.get_used_cores() + random.randint(4, 8)
         pod.memory = (
             pod.get_used_memory() +
             random.choice([1024, 2048, 4096, 4096 * 4, 4096 * 8]))
-        pod.local_storage = (
-            pod.get_used_local_storage() +
-            random.choice([
-                1024 ** 3, 2 * (1024 ** 3),
-                3 * (1024 ** 3), 4 * (1024 ** 3),
-                5 * (1024 ** 3)]))
+        pod.local_storage = sum(
+            pool.storage for pool in pod_storage_pools[pod])
         pod.save()
 
     # Create a few devices.
