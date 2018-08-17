@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 
 from django.urls import reverse
 from maasserver.clusterrpc.osystems import get_preseed_data
+from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     NODE_STATUS,
     POWER_STATE,
@@ -20,9 +21,13 @@ from maasserver.enum import (
 )
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
+from maasserver.models.subnet import Subnet
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
-from maasserver.utils import get_default_region_ip
+from maasserver.utils import (
+    get_default_region_ip,
+    get_remote_ip,
+)
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -38,7 +43,7 @@ def get_apt_proxy(request, rack_controller=None):
     """Return the APT proxy for the `rack_controller`."""
     config = Config.objects.get_configs([
         'enable_http_proxy', 'http_proxy', 'use_peer_proxy',
-        'maas_proxy_port'])
+        'maas_proxy_port', 'maas_internal_domain', 'use_rack_proxy'])
     if config["enable_http_proxy"]:
         http_proxy = config["http_proxy"]
         if http_proxy is not None:
@@ -47,14 +52,33 @@ def get_apt_proxy(request, rack_controller=None):
         if http_proxy and not use_peer_proxy:
             return http_proxy
         else:
-            region_ip = get_default_region_ip(request)
+            # Ensure the proxy port is the default if not set.
             maas_proxy_port = config["maas_proxy_port"]
             if not maas_proxy_port:
                 maas_proxy_port = 8000
-            url = "http://:%d/" % maas_proxy_port
-            return compose_URL(
-                url, get_maas_facing_server_host(
-                    rack_controller, default_region_ip=region_ip))
+            # Use the client requesting the preseed to determine how they
+            # should access the APT proxy.
+            subnet = None
+            remote_ip = get_remote_ip(request)
+            if remote_ip is not None:
+                subnet = Subnet.objects.get_best_subnet_for_ip(remote_ip)
+            if (config['use_rack_proxy'] and
+                    subnet is not None and
+                    not subnet.dns_servers):
+                # Client can use the MAAS proxy on the rack controller.
+                return "http://%s.%s:%d/" % (
+                    get_resource_name_for_subnet(subnet),
+                    config["maas_internal_domain"], maas_proxy_port)
+            else:
+                # Client cannot use the MAAS proxy on the rack controller
+                # because rack proxy is disabled, the subnet the IP belongs to
+                # is unknown or the subnet is using DNS servers that are not
+                # MAAS. Fallback to using the old way pre MAAS 2.5.
+                region_ip = get_default_region_ip(request)
+                url = "http://:%d/" % maas_proxy_port
+                return compose_URL(
+                    url, get_maas_facing_server_host(
+                        rack_controller, default_region_ip=region_ip))
     else:
         return None
 

@@ -7,10 +7,7 @@ __all__ = []
 
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
-from maasserver.audit import (
-    create_audit_event,
-    get_client_ip,
-)
+from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import (
     Event,
@@ -22,69 +19,6 @@ from provisioningserver.events import (
     AUDIT,
     EVENT_TYPES,
 )
-
-
-class GetClientIPTest(MAASServerTestCase):
-
-    def test__gets_client_ipv4_for_HTTP_X_FORWARDED_FOR(self):
-        ip_address = factory.make_ipv4_address()
-        request = HttpRequest()
-        request.META = {
-            'HTTP_X_FORWARDED_FOR': ip_address
-            }
-        self.assertEquals(ip_address, get_client_ip(request))
-
-    def test__gets_client_ipv6_for_HTTP_X_FORWARDED_FOR(self):
-        ip_address = factory.make_ipv6_address()
-        request = HttpRequest()
-        request.META = {
-            'HTTP_X_FORWARDED_FOR': ip_address
-            }
-        self.assertEquals(ip_address, get_client_ip(request))
-
-    def test__gets_client_ip_for_X_FORWARDED_FOR_with_proxies(self):
-        ip_address = factory.make_ipv4_address()
-        proxy1 = factory.make_ipv4_address()
-        proxy2 = factory.make_ipv4_address()
-        request = HttpRequest()
-        request.META = {
-            'HTTP_X_FORWARDED_FOR': "%s, %s, %s" % (
-                ip_address, proxy1, proxy2),
-            }
-        self.assertEquals(ip_address, get_client_ip(request))
-
-    def test__gets_client_ipv4_for_REMOTE_ADDR(self):
-        ip_address = factory.make_ipv4_address()
-        request = HttpRequest()
-        request.META = {
-            'REMOTE_ADDR': ip_address
-            }
-        self.assertEquals(ip_address, get_client_ip(request))
-
-    def test__gets_client_ipv6_for_REMOTE_ADDR(self):
-        ip_address = factory.make_ipv6_address()
-        request = HttpRequest()
-        request.META = {
-            'REMOTE_ADDR': ip_address
-            }
-        self.assertEquals(ip_address, get_client_ip(request))
-
-    def test__fallsback_to_REMOTE_ADDR_for_invalid_X_FORWARDED_FOR(self):
-        ip_address = factory.make_ipv4_address()
-        request = HttpRequest()
-        request.META = {
-            'HTTP_X_FORWARDED_FOR': factory.make_name('garbage ip'),
-            'REMOTE_ADDR': ip_address,
-            }
-        self.assertEquals(ip_address, get_client_ip(request))
-
-    def test__returns_None_for_invalid_ip(self):
-        ip_address = factory.make_name('garbage ip')
-        request = HttpRequest()
-        request.META = {
-            'REMOTE_ADDR': ip_address
-            }
-        self.assertIsNone(get_client_ip(request))
 
 
 class CreateAuditEventTest(MAASServerTestCase):

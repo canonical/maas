@@ -29,6 +29,7 @@ from maasserver.utils import (
     get_host_without_port,
     get_local_cluster_UUID,
     get_maas_user_agent,
+    get_remote_ip,
     strip_domain,
     synchronised,
 )
@@ -313,3 +314,71 @@ class TestGetDefaultRegionIP(MAASServerTestCase):
         self.assertThat(
             get_default_region_ip(make_request("127.0.0.1", "localhost:5240")),
             Equals("localhost"))
+
+
+class GetRemoteIPTest(MAASTestCase):
+
+    def test__gets_client_ipv4_for_HTTP_X_FORWARDED_FOR(self):
+        ip_address = factory.make_ipv4_address()
+        request = HttpRequest()
+        request.META = {
+            'HTTP_X_FORWARDED_FOR': ip_address
+            }
+        self.assertEquals(ip_address, get_remote_ip(request))
+
+    def test__gets_client_ipv6_for_HTTP_X_FORWARDED_FOR(self):
+        ip_address = factory.make_ipv6_address()
+        request = HttpRequest()
+        request.META = {
+            'HTTP_X_FORWARDED_FOR': ip_address
+            }
+        self.assertEquals(ip_address, get_remote_ip(request))
+
+    def test__gets_client_ip_for_X_FORWARDED_FOR_with_proxies(self):
+        ip_address = factory.make_ipv4_address()
+        proxy1 = factory.make_ipv4_address()
+        proxy2 = factory.make_ipv4_address()
+        request = HttpRequest()
+        request.META = {
+            'HTTP_X_FORWARDED_FOR': "%s, %s, %s" % (
+                ip_address, proxy1, proxy2),
+            }
+        self.assertEquals(ip_address, get_remote_ip(request))
+
+    def test__gets_client_ipv4_for_REMOTE_ADDR(self):
+        ip_address = factory.make_ipv4_address()
+        request = HttpRequest()
+        request.META = {
+            'REMOTE_ADDR': ip_address
+            }
+        self.assertEquals(ip_address, get_remote_ip(request))
+
+    def test__gets_client_ipv6_for_REMOTE_ADDR(self):
+        ip_address = factory.make_ipv6_address()
+        request = HttpRequest()
+        request.META = {
+            'REMOTE_ADDR': ip_address
+            }
+        self.assertEquals(ip_address, get_remote_ip(request))
+
+    def test__fallsback_to_REMOTE_ADDR_for_invalid_X_FORWARDED_FOR(self):
+        ip_address = factory.make_ipv4_address()
+        request = HttpRequest()
+        request.META = {
+            'HTTP_X_FORWARDED_FOR': factory.make_name('garbage ip'),
+            'REMOTE_ADDR': ip_address,
+            }
+        self.assertEquals(ip_address, get_remote_ip(request))
+
+    def test__returns_None_for_invalid_ip(self):
+        ip_address = factory.make_name('garbage ip')
+        request = HttpRequest()
+        request.META = {
+            'REMOTE_ADDR': ip_address
+            }
+        self.assertIsNone(get_remote_ip(request))
+
+    def test__returns_None_empty_META(self):
+        request = HttpRequest()
+        request.META = {}
+        self.assertIsNone(get_remote_ip(request))

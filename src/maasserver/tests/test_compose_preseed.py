@@ -56,7 +56,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://[2001:db8::1]:8000/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("ipv4", dict(
             default_region_ip=None,
             rack='10.0.1.1',
@@ -64,7 +65,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://10.0.1.1:8000/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("builtin", dict(
             default_region_ip=None,
             rack='region.example.com',
@@ -72,7 +74,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://region.example.com:8000/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("external", dict(
             default_region_ip=None,
             rack='region.example.com',
@@ -80,7 +83,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://proxy.example.com:111/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='http://proxy.example.com:111/')),
+            http_proxy='http://proxy.example.com:111/',
+            use_rack_proxy=False)),
         ("peer-proxy", dict(
             default_region_ip=None,
             rack='region.example.com',
@@ -88,7 +92,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://region.example.com:8000/',
             enable=True,
             use_peer_proxy=True,
-            http_proxy='http://proxy.example.com:111/')),
+            http_proxy='http://proxy.example.com:111/',
+            use_rack_proxy=False)),
         ("disabled", dict(
             default_region_ip=None,
             rack='example.com',
@@ -96,7 +101,8 @@ class TestAptProxy(MAASServerTestCase):
             result=None,
             enable=False,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         # If a default IP address for the region is passed in and the rack's
         # URL is empty, the default IP address that was provided should be
         # preferred.
@@ -107,7 +113,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://[2001:db8::2]:8000/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("ipv4_default", dict(
             default_region_ip='10.0.1.2',
             rack='',
@@ -115,7 +122,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://10.0.1.2:8000/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("builtin_default", dict(
             default_region_ip='region.example.com',
             rack='',
@@ -123,7 +131,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://region.example.com:8000/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("external_default", dict(
             default_region_ip='10.0.0.1',
             rack='',
@@ -131,7 +140,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://proxy.example.com:111/',
             enable=True,
             use_peer_proxy=False,
-            http_proxy='http://proxy.example.com:111/')),
+            http_proxy='http://proxy.example.com:111/',
+            use_rack_proxy=False)),
         ("peer-proxy_default", dict(
             default_region_ip='region2.example.com',
             rack='',
@@ -139,7 +149,8 @@ class TestAptProxy(MAASServerTestCase):
             result='http://region2.example.com:8000/',
             enable=True,
             use_peer_proxy=True,
-            http_proxy='http://proxy.example.com:111/')),
+            http_proxy='http://proxy.example.com:111/',
+            use_rack_proxy=False)),
         ("disabled_default", dict(
             default_region_ip='10.0.0.1',
             rack='',
@@ -147,7 +158,8 @@ class TestAptProxy(MAASServerTestCase):
             result=None,
             enable=False,
             use_peer_proxy=False,
-            http_proxy='')),
+            http_proxy='',
+            use_rack_proxy=False)),
         ("changed-maas_proxy_port", dict(
             default_region_ip='region2.example.com',
             rack='',
@@ -155,7 +167,41 @@ class TestAptProxy(MAASServerTestCase):
             result='http://region2.example.com:9000/',
             enable=True,
             use_peer_proxy=True,
-            http_proxy='http://proxy.example.com:111/')),
+            http_proxy='http://proxy.example.com:111/',
+            use_rack_proxy=False)),
+        ("rack-proxy", dict(
+            default_region_ip='',
+            rack='',
+            maas_proxy_port=9000,
+            result='http://192-168-122-0--24.maas-internal:9000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='',
+            use_rack_proxy=True,
+            cidr='192.168.122.0/24',
+            subnet_dns=None)),
+        ("rack-proxy-no-subnet", dict(
+            default_region_ip='region.example.com',
+            rack='',
+            maas_proxy_port=8000,
+            result='http://region.example.com:8000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='',
+            use_rack_proxy=True,
+            cidr=None,
+            subnet_dns=None)),
+        ("rack-proxy-subnet-with-dns", dict(
+            default_region_ip='region.example.com',
+            rack='',
+            maas_proxy_port=8000,
+            result='http://region.example.com:8000/',
+            enable=True,
+            use_peer_proxy=False,
+            http_proxy='',
+            use_rack_proxy=True,
+            cidr='192.168.122.0/24',
+            subnet_dns='192.168.122.10')),
     )
 
     def test__returns_correct_url(self):
@@ -175,11 +221,23 @@ class TestAptProxy(MAASServerTestCase):
         Config.objects.set_config("enable_http_proxy", self.enable)
         Config.objects.set_config("http_proxy", self.http_proxy)
         Config.objects.set_config("use_peer_proxy", self.use_peer_proxy)
+        Config.objects.set_config("use_rack_proxy", self.use_rack_proxy)
         if self.maas_proxy_port:
             Config.objects.set_config(
                 "maas_proxy_port", self.maas_proxy_port)
-        # Create the http request that would come in for the preseed.
         request = make_HttpRequest(http_host=self.default_region_ip)
+        if self.use_rack_proxy:
+            subnet = None
+            if self.cidr:
+                subnet = factory.make_Subnet(cidr=self.cidr)
+                if self.subnet_dns:
+                    subnet.dns_servers = [self.subnet_dns]
+                else:
+                    subnet.dns_servers = []
+                subnet.save()
+                request.META['REMOTE_ADDR'] = factory.pick_ip_in_Subnet(subnet)
+            else:
+                request.META['REMOTE_ADDR'] = factory.make_ipv4_address()
         actual = get_apt_proxy(request, node.get_boot_rack_controller())
         self.assertEqual(self.result, actual)
 

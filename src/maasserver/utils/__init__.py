@@ -24,6 +24,10 @@ from urllib.parse import (
 from django.conf import settings
 from maasserver.config import RegionConfiguration
 from maasserver.utils.django_urls import reverse
+from netaddr import (
+    valid_ipv4,
+    valid_ipv6,
+)
 from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
@@ -138,9 +142,22 @@ def get_request_host(request):
     return request_host
 
 
+def is_valid_ip(ip):
+    """Check the validity of an IP address."""
+    return valid_ipv4(ip) or valid_ipv6(ip)
+
+
 def get_remote_ip(request):
     """Returns the IP address of the host that initiated the request."""
-    return request.META.get('REMOTE_ADDR')
+    # Try to obtain IP Address from X-Forwarded-For first.
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+        if is_valid_ip(ip):
+            return ip
+
+    ip = request.META.get('REMOTE_ADDR')
+    return ip if is_valid_ip(ip) else None
 
 
 def find_rack_controller(request):
