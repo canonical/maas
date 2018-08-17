@@ -9,6 +9,7 @@ __all__ = [
     ]
 
 from collections import namedtuple
+import os
 import string
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
@@ -845,9 +846,11 @@ class VirshSSH(pexpect.spawn):
     def attach_local_volume(self, domain, pool, volume, device):
         """Attach `volume` in `pool` to `domain` as `device`."""
         vol_path = self.get_volume_path(pool, volume)
+        serial = os.path.basename(vol_path)
         self.run([
             'attach-disk', domain, vol_path, device,
-            '--targetbus', 'virtio', '--sourcetype', 'file', '--config'])
+            '--targetbus', 'virtio', '--sourcetype',
+            'file', '--config', '--serial', serial])
 
     def get_network_list(self):
         """Return the list of available networks."""

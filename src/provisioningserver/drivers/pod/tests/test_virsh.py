@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import os
 import random
 from textwrap import dedent
 from unittest.mock import (
@@ -1208,7 +1209,8 @@ class TestVirshSSH(MAASTestCase):
         domain = factory.make_name('domain')
         pool = factory.make_name('pool')
         volume_name = factory.make_name('volume')
-        volume_path = factory.make_name('path')
+        volume_path = factory.make_name('/some/path/to_vol_serial')
+        serial = os.path.basename(volume_path)
         device_name = factory.make_name('device')
         mock_run = self.patch(virsh.VirshSSH, "run")
         self.patch(
@@ -1216,7 +1218,8 @@ class TestVirshSSH(MAASTestCase):
         conn.attach_local_volume(domain, pool, volume_name, device_name)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-disk', domain, volume_path, device_name,
-            '--targetbus', 'virtio', '--sourcetype', 'file', '--config']))
+            '--targetbus', 'virtio', '--sourcetype',
+            'file', '--config', '--serial', serial]))
 
     def test_get_networks_list(self):
         networks = [
