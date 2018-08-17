@@ -1432,7 +1432,16 @@ class ProxyForm(ConfigForm):
     enable_http_proxy = get_config_field('enable_http_proxy')
     use_peer_proxy = get_config_field('use_peer_proxy')
     http_proxy = get_config_field('http_proxy')
-    maas_proxy_port = get_config_field('maas_proxy_port')
+    # LP: #1787381 - Fix an issue where the UI is overriding config fields
+    # that are *only* exposed over the API.
+    #
+    # XXX - since the UI for these options has been converted to Angular,
+    # MAAS no longer automatically creates fields for these based on the
+    # settings forms. As such, this form doesn't validate against the
+    # settings form (as the DNSForm would do, for example). As such
+    # .
+    # These fields need to be added back once LP: #1787467 is fixed.
+    # maas_proxy_port = get_config_field('maas_proxy_port')
 
 
 class DNSForm(ConfigForm):
