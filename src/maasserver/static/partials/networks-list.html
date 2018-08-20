@@ -171,7 +171,7 @@
                         <th><div class="u-align--right">Available IPs</div></th>
                     </tr>
                 </thead>
-                <tbody vs-repeat="{scrollParent: 'window'}">
+                <tbody vs-repeat vs-scroll-parent="window">
                     <tr data-ng-repeat="row in group.spaces.rows">
                         <!-- <td class="ng-hide">
                             <div data-ng-if="row.space_name">
@@ -241,7 +241,7 @@
                         <th>Space</th>
                     </tr>
                 </thead>
-                <tbody vs-repeat="{scrollParent: 'window'}">
+                <tbody vs-repeat vs-scroll-parent="window">
                     <tr data-ng-repeat="row in group.fabrics.rows">
                         <!-- <td class="ng-hide">
                             <div data-ng-if="row.fabric_name">
