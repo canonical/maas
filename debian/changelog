@@ -1,8 +1,17 @@
-maas (2.5.0~alpha1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
+  * Don't autostart maas-rackd on install to avoid initialization errors.
+    - debian/rules: add --no-start for maas-rackd.
+    - debian/maas-rack-controller.postinst: enable/start maas-rackd.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 21 May 2018 10:30:03 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 20 Aug 2018 14:19:25 -0400
+
+maas (2.5.0~alpha1-7104-g18ae9e407-0ubuntu1~18.10.1) cosmic; urgency=medium
+
+  * New upstream release.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 16 Jul 2018 14:30:06 -0400
 
 maas (2.4.0~rc2-6980-gc5ebdd7b1-0ubuntu1) bionic; urgency=medium
 

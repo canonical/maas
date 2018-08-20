@@ -12,7 +12,7 @@ override_dh_auto_test:
 
 override_dh_installinit:
 	dh_installinit -p maas-region-api --name=maas-regiond --no-start
-	dh_installinit -p maas-rack-controller --name=maas-rackd
+	dh_installinit -p maas-rack-controller --name=maas-rackd --no-start
 	dh_installinit -p maas-rack-controller --name=maas-http
 	dh_installinit -p maas-proxy --name=maas-proxy
 	dh_installinit -p maas-dhcp --name=maas-dhcpd
@@ -28,7 +28,7 @@ override_dh_systemd_enable:
 
 override_dh_systemd_start:
 	dh_systemd_start -p maas-region-api --no-start maas-regiond.service
-	dh_systemd_start -p maas-rack-controller maas-rackd.service
+	dh_systemd_start -p maas-rack-controller --no-start maas-rackd.service
 	dh_systemd_start -p maas-rack-controller maas-http.service
 	dh_systemd_start -p maas-proxy maas-proxy.service
 	dh_systemd_start -p maas-dhcp maas-dhcpd.service
