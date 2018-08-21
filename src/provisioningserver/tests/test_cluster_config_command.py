@@ -37,6 +37,7 @@ class TestAddArguments(MAASTestCase):
             '--init': False,
             '--tftp-port': None,
             '--tftp-root': None,
+            '--debug': None,
         }
 
         failures = {}
@@ -50,6 +51,7 @@ class TestAddArguments(MAASTestCase):
                     '--init': '',
                     '--tftp-port': str(factory.pick_port()),
                     '--tftp-root': factory.make_string(),
+                    '--debug': str(factory.pick_bool()),
                 }
 
                 # Build a query dictionary for the given combination of args
@@ -204,7 +206,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
             observed = config.tftp_port
         self.assertEqual(expected, observed)
 
-    def test_config_set_tftp_port_sets_tftp_root(self):
+    def test_config_set_tftp_root_sets_tftp_root(self):
         expected = self.make_dir()
         cluster_config_command.run(self.make_args(tftp_root=expected))
         with ClusterConfiguration.open() as config:
@@ -217,4 +219,19 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         cluster_config_command.run(self.make_args(tftp_root=None))
         with ClusterConfiguration.open() as config:
             observed = config.tftp_root
+        self.assertEqual(expected, observed)
+
+    def test_config_set_debug_sets_debug(self):
+        expected = factory.pick_bool()
+        cluster_config_command.run(self.make_args(debug=expected))
+        with ClusterConfiguration.open() as config:
+            observed = config.debug
+        self.assertEqual(str(expected).lower(), observed)
+
+    def test_config_set_debug_without_setting_does_nothing(self):
+        with ClusterConfiguration.open() as config:
+            expected = config.debug
+        cluster_config_command.run(self.make_args(debug=None))
+        with ClusterConfiguration.open() as config:
+            observed = config.debug
         self.assertEqual(expected, observed)

@@ -10,8 +10,11 @@ __all__ = [
 ]
 
 
+import argparse
 from uuid import uuid4
 
+from formencode.api import Invalid
+from formencode.validators import StringBool
 from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
@@ -19,7 +22,8 @@ from provisioningserver.config import (
 
 
 def update_maas_cluster_conf(
-        urls=None, uuid=None, init=None, tftp_port=None, tftp_root=None):
+        urls=None, uuid=None, init=None, tftp_port=None, tftp_root=None,
+        debug=None):
     """This function handles the logic behind using the parameters passed to
     run and setting / initializing values in the config backend.
 
@@ -32,6 +36,7 @@ def update_maas_cluster_conf(
     NOTE: that the argument parser will not let uuid
     and init be passed at the same time, as these are mutually exclusive
     parameters.
+    :param debug: Enables or disables debug mode.
     """
     with ClusterConfiguration.open_for_update() as config:
         if urls is not None:
@@ -46,6 +51,8 @@ def update_maas_cluster_conf(
             config.tftp_port = tftp_port
         if tftp_root is not None:
             config.tftp_root = tftp_root
+        if debug is not None:
+            config.debug = debug
 
 
 all_arguments = (
@@ -53,7 +60,20 @@ all_arguments = (
     '--uuid',
     '--init',
     '--tftp-port',
-    '--tftp-root')
+    '--tftp-root',
+    '--debug')
+
+
+def to(cast_type):
+    """Convert the value to python."""
+
+    def _inner(value):
+        try:
+            return cast_type().to_python(value)
+        except Invalid as exc:
+            raise argparse.ArgumentTypeError(str(exc))
+
+    return _inner
 
 
 def add_arguments(parser):
@@ -80,6 +100,9 @@ def add_arguments(parser):
     parser.add_argument(
         '--tftp-root', action='store', required=False,
         help=('The root directory for TFTP resources.'))
+    parser.add_argument(
+        '--debug', action='store', type=to(StringBool), required=False,
+        help=('Enable or disable debug mode.'))
 
 
 def run(args):
@@ -90,5 +113,6 @@ def run(args):
     init = params.pop('init', None)
     tftp_port = params.pop('tftp_port', None)
     tftp_root = params.pop('tftp_root', None)
+    debug = params.pop('debug', None)
 
-    update_maas_cluster_conf(urls, uuid, init, tftp_port, tftp_root)
+    update_maas_cluster_conf(urls, uuid, init, tftp_port, tftp_root, debug)
