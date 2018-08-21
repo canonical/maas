@@ -4,6 +4,10 @@ maas (2.5.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
   * Don't autostart maas-rackd on install to avoid initialization errors.
     - debian/rules: add --no-start for maas-rackd.
     - debian/maas-rack-controller.postinst: enable/start maas-rackd.
+  * Make package more lintian clean:
+    - debian/*.postinst: Remove of use of systemctl for deb-system-*
+    - debian/*.lintin-overrides: Add overrides for a few warnings.
+  * debian/rules: Do not override dh_installinit as we are using systemd.
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 20 Aug 2018 14:19:25 -0400
 

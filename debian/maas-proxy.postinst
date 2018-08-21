@@ -8,8 +8,8 @@ then
     # We run our own squid3 instances.
     # Handle both versions of the name, for safety.
     for SQUID in squid squid3; do
-        systemctl stop ${SQUID} >/dev/null 2>&1 || true
-        systemctl disable ${SQUID} >/dev/null 2>&1 || true
+        deb-systemd-invoke stop ${SQUID} >/dev/null || true
+        deb-systemd-helper disable ${SQUID} >/dev/null || true
     done
 
     # Ensure log folder is created.

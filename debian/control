@@ -279,7 +279,7 @@ Description: MAAS DHCP server
 
 Package: maas-dns
 Architecture: all
-Depends: maas-region-api (>= 2.4.0~beta1~)
+Depends: maas-region-api (>= 2.4.0~beta1~), ${misc:Depends}
 Description: dummy transitional package for MAAS DNS server
  This package can be safely removed, as the configuration this package
  performed is now integrated in 'maas-region-api'.

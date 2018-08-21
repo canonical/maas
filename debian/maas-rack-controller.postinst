@@ -148,8 +148,8 @@ fix_dns_permissions() {
 }
 
 disable_nginx() {
-    systemctl stop nginx >/dev/null 2>&1 || true
-    systemctl disable nginx >/dev/null 2>&1 || true
+    deb-systemd-invoke stop nginx >/dev/null || true
+    deb-systemd-helper disable nginx >/dev/null || true
 }
 
 # Unconditionally ensure that there is at least an empty configuration
@@ -197,9 +197,9 @@ elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0
     edit_named_options
 fi
 
-deb-systemd-invoke enable maas-rackd >/dev/null || true
+deb-systemd-helper enable maas-rackd >/dev/null || true
 deb-systemd-invoke restart maas-rackd >/dev/null || true
-invoke-rc.d bind9 restart || true
+deb-systemd-invoke restart bind9 >/dev/null || true
 
 db_stop
 

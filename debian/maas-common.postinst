@@ -11,7 +11,7 @@ configure_logging() {
     fi
     chown syslog:syslog /var/log/maas/maas.log
     # Make sure rsyslog reads our config
-    systemctl restart rsyslog >/dev/null 2>&1 || true
+    deb-systemd-invoke restart 'rsyslog.service' >/dev/null || true
 }
 
 configure_lib_dir() {

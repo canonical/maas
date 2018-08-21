@@ -1,1 +1,1 @@
-maas-proxy: maintainer-script-calls-systemctl
+maas-proxy: maintainer-script-should-not-use-recursive-chown-or-chmod

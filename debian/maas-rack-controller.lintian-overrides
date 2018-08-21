@@ -1,1 +1,2 @@
 maas-rack-controller: binary-without-manpage
+maas-rack-controller: maintainer-script-should-not-use-recursive-chown-or-chmod

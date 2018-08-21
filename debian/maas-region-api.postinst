@@ -20,8 +20,7 @@ configure_logging() {
 
     # Make sure rsyslog reads our config after creating the
     # destination folder.
-    systemctl restart rsyslog >/dev/null 2>&1 || true
-
+    deb-systemd-invoke restart 'rsyslog.service' >/dev/null || true
 }
 
 configure_libdir() {

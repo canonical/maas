@@ -71,7 +71,7 @@ configure_migrate_maas_dns() {
     maas-region edit_named_options \
         --migrate-conflicting-options --config-path \
         /etc/bind/named.conf.options
-    invoke-rc.d bind9 restart || true
+    deb-systemd-invoke bind9 restart || true
 }
 
 if [ "$1" = "configure" ] && [ -z "$2" ]; then

@@ -1,2 +1,4 @@
-maas-common: binary-without-manpage
-maas-common: maintainer-script-calls-systemctl
+maas-common: python-script-but-no-python-dep usr/lib/maas/maas-common
+maas-common: python-script-but-no-python-dep usr/lib/maas/maas-delete-file
+maas-common: python-script-but-no-python-dep usr/lib/maas/maas-write-file
+maas-common: maintainer-script-should-not-use-recursive-chown-or-chmod
