@@ -3,17 +3,33 @@ set timeout=0
 
 menuentry 'Local' {
     echo 'Booting local disk...'
-    {{if kernel_params.osystem == "windows"}}
-    search --set=root --file /efi/Microsoft/Boot/bootmgfw.efi
-    chainloader /efi/Microsoft/Boot/bootmgfw.efi
-    {{elif kernel_params.osystem == "centos"}}
-    search --set=root --file /efi/centos/grubx64.efi
-    chainloader /efi/centos/grubx64.efi
-    {{elif kernel_params.osystem == "rhel"}}
-    search --set=root --file /efi/redhat/grubx64.efi
-    chainloader /efi/redhat/grubx64.efi
-    {{else}}
     search --set=root --file /efi/ubuntu/grubx64.efi
-    chainloader /efi/ubuntu/grubx64.efi
-    {{endif}}
+    if [ $? -eq 0 ]; then
+        chainloader /efi/ubuntu/grubx64.efi
+        boot
+    fi
+    search --set=root --file /efi/centos/grubx64.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/centos/grubx64.efi
+        boot
+    fi
+    search --set=root --file /efi/redhat/grubx64.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/redhat/grubx64.efi
+        boot
+    fi
+    search --set=root --file /efi/Microsoft/Boot/bootmgfw.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/Microsoft/Boot/bootmgfw.efi
+        boot
+    fi
+    # This is the default bootloader location according to the UEFI spec.
+    # This path is used by ESXi.
+    search --set=root --file /efi/boot/bootx64.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/boot/bootx64.efi
+        boot
+    fi
+    # If no bootloader is found exit and allow the next device to boot.
+    exit
 }

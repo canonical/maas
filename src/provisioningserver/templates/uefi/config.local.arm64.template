@@ -4,5 +4,16 @@ set timeout=0
 menuentry 'Local' {
     echo 'Booting local disk...'
     search --set=root --file /efi/ubuntu/grubaa64.efi
-    chainloader /efi/ubuntu/grubaa64.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/ubuntu/grubaa64.efi
+        boot
+    fi
+    # This is the default bootloader location according to the UEFI spec.
+    search --set=root --file /efi/boot/bootaa64.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/boot/bootaa64.efi
+        boot
+    fi
+    # If no bootloader is found exit and allow the next device to boot.
+    exit
 }
