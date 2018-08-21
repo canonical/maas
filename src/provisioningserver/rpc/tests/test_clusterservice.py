@@ -2278,24 +2278,28 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             "command": cluster.ConfigureDHCPv4,
             "make_network": factory.make_ipv4_network,
             "make_shared_network": make_shared_network_v1,
+            "concurrency_lock": concurrency.dhcpv4,
         }),
         ("DHCPv4,V2", {
             "dhcp_server": (dhcp, "DHCPv4Server"),
             "command": cluster.ConfigureDHCPv4_V2,
             "make_network": factory.make_ipv4_network,
             "make_shared_network": make_shared_network,
+            "concurrency_lock": concurrency.dhcpv4,
         }),
         ("DHCPv6", {
             "dhcp_server": (dhcp, "DHCPv6Server"),
             "command": cluster.ConfigureDHCPv6,
             "make_network": factory.make_ipv6_network,
             "make_shared_network": make_shared_network_v1,
+            "concurrency_lock": concurrency.dhcpv6,
         }),
         ("DHCPv6,V2", {
             "dhcp_server": (dhcp, "DHCPv6Server"),
             "command": cluster.ConfigureDHCPv6_V2,
             "make_network": factory.make_ipv6_network,
             "make_shared_network": make_shared_network,
+            "concurrency_lock": concurrency.dhcpv6,
         }),
     )
 
@@ -2341,13 +2345,13 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         def check_dhcp_locked(
                 server, failover_peers, shared_networks, hosts, interfaces,
                 global_dhcp_snippets):
-            self.assertTrue(concurrency.dhcp.locked)
+            self.assertTrue(self.concurrency_lock.locked)
             # While we're here, check this is the IO thread.
             self.expectThat(isInIOThread(), Is(True))
 
         self.patch(dhcp, "configure", check_dhcp_locked)
 
-        self.assertFalse(concurrency.dhcp.locked)
+        self.assertFalse(self.concurrency_lock.locked)
         yield call_responder(Cluster(), self.command, {
             'omapi_key': factory.make_name('key'),
             'failover_peers': [],
@@ -2355,7 +2359,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             'hosts': [],
             'interfaces': [],
             })
-        self.assertFalse(concurrency.dhcp.locked)
+        self.assertFalse(self.concurrency_lock.locked)
 
     @inlineCallbacks
     def test__propagates_CannotConfigureDHCP(self):

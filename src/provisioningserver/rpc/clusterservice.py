@@ -448,7 +448,14 @@ class Cluster(RPCProtocol):
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
         server = dhcp.DHCPv4Server(omapi_key)
-        d = concurrency.dhcp.run(
+        if concurrency.dhcpv4.locked:
+            log.debug(
+                "DHCPv4 configure triggered; another is already processing, "
+                "scheduled next")
+        else:
+            log.debug(
+                "DHCPv4 configure triggered; processing immediately")
+        d = concurrency.dhcpv4.run(
             dhcp.configure, server,
             failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
@@ -490,7 +497,14 @@ class Cluster(RPCProtocol):
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
         server = dhcp.DHCPv6Server(omapi_key)
-        d = concurrency.dhcp.run(
+        if concurrency.dhcpv6.locked:
+            log.debug(
+                "DHCPv6 configure triggered; another is already processing, "
+                "scheduled next")
+        else:
+            log.debug(
+                "DHCPv6 configure triggered; processing immediately")
+        d = concurrency.dhcpv6.run(
             dhcp.configure, server,
             failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)

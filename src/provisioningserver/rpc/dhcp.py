@@ -24,7 +24,10 @@ from provisioningserver.dhcp import (
 )
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.omshell import Omshell
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
@@ -57,6 +60,7 @@ from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("dhcp")
+log = LegacyLogger()
 
 
 # Holds the current state of DHCPv4 and DHCPv6.
@@ -259,6 +263,37 @@ def _catch_service_error(server, action, call, *args, **kwargs):
     return maybeDeferred(call, *args, **kwargs).addErrback(eb)
 
 
+def _debug_hostmap_msg_remove(hosts):
+    """Helper to create the debug log message for OMAPI remove."""
+
+    def _inner():
+        if hosts:
+            return ', '.join(host["mac"] for host in hosts)
+        else:
+            return 'none'
+
+    # Uses and inner function so its only called if the rack controller is
+    # configured in debug mode. In normal mode this will not be called and
+    # no work will be performed.
+    return _inner
+
+
+def _debug_hostmap_msg(hosts):
+    """Helper to create the debug log message for OMAPI add/modify."""
+
+    def _inner():
+        if hosts:
+            return ', '.join(
+                "%s -> %s" % (host["mac"], host["ip"]) for host in hosts)
+        else:
+            return 'none'
+
+    # Uses and inner function so its only called if the rack controller is
+    # configured in debug mode. In normal mode this will not be called and
+    # no work will be performed.
+    return _inner
+
+
 @asynchronous
 @inlineCallbacks
 def configure(
@@ -286,6 +321,10 @@ def configure(
         global_dhcp_snippets = []
 
     if stopping:
+        log.debug(
+            "Deleting configuration and stopping the {name} service.",
+            name=server.descriptive_name)
+
         # Remove the config so that the even an administrator cannot turn it on
         # accidently when it should be off.
         yield deferToThread(_delete_config, server)
@@ -306,6 +345,9 @@ def configure(
         # Always write the config, that way its always up-to-date. Even if
         # we are not going to restart the services. This makes sure that even
         # the comments in the file are updated.
+        log.debug(
+            "Writing updated DHCP configuration for {name} service.",
+            name=server.descriptive_name)
         yield deferToThread(_write_config, server, new_state)
 
         # Service should always be on if shared_networks exists.
@@ -315,10 +357,17 @@ def configure(
         # Perform the required action based on the state change.
         current_state = _current_server_state.get(server.dhcp_service, None)
         if current_state is None:
+            log.debug(
+                "Unknown previous state; restarting {name} service.",
+                name=server.descriptive_name)
             yield _catch_service_error(
                 server, "restart",
                 service_monitor.restartService, server.dhcp_service)
         elif new_state.requires_restart(current_state):
+            log.debug(
+                "Restarting {name} service; configuration change requires "
+                "full restart.",
+                name=server.descriptive_name)
             yield _catch_service_error(
                 server, "restart",
                 service_monitor.restartService, server.dhcp_service)
@@ -327,10 +376,18 @@ def configure(
             remove, add, modify = new_state.host_diff(current_state)
             if len(remove) + len(add) + len(modify) == 0:
                 # Nothing has changed, do nothing but make sure its running.
+                log.debug(
+                    "Doing nothing; {name} service configuration has not "
+                    "changed.",
+                    name=server.descriptive_name)
                 yield _catch_service_error(
                     server, "start",
                     service_monitor.ensureService, server.dhcp_service)
             else:
+                log.debug(
+                    "Ensuring {name} service is running before updating "
+                    "using the OMAPI.",
+                    name=server.descriptive_name)
                 # Check the state of the service. Only if the services was on
                 # should the host maps be updated over the OMAPI.
                 before_state = yield service_monitor.getServiceState(
@@ -341,6 +398,15 @@ def configure(
                 if before_state.active_state == SERVICE_STATE.ON:
                     # Was already running, so update host maps over OMAPI
                     # instead of performing a full restart.
+                    log.debug(
+                        "Writing to OMAPI for {name} service:\n"
+                        "\tremove: {remove()}\n"
+                        "\tadd: {add()}\n"
+                        "\tmodify: {modify()}\n",
+                        name=server.descriptive_name,
+                        remove=_debug_hostmap_msg_remove(remove),
+                        add=_debug_hostmap_msg(add),
+                        modify=_debug_hostmap_msg(modify))
                     try:
                         yield deferToThread(
                             _update_hosts, server, remove, add, modify)
@@ -356,6 +422,11 @@ def configure(
                             server, "restart",
                             service_monitor.restartService,
                             server.dhcp_service)
+                else:
+                    log.debug(
+                        "Usage of OMAPI skipped; {name} service was started "
+                        "with new configuration.",
+                        name=server.descriptive_name)
 
         # Update the current state to the new state.
         _current_server_state[server.dhcp_service] = new_state

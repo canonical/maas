@@ -37,6 +37,7 @@ __all__ = [
 ]
 
 from functools import partial
+import os
 
 from maasserver import dhcp
 from maasserver.listener import PostgresListenerUnregistrationError
@@ -176,21 +177,43 @@ class RackControllerService(Service):
         """Called when the `sys_core_{regiond_id}` message is received."""
         action, rack_id = message.split("_", 1)
         rack_id = int(rack_id)
+
+        log.debug(
+            "[pid:{pid()}] recieved {action} action for rack: {rack_id}",
+            pid=os.getpid, action=action, rack_id=rack_id)
+
         if action == "unwatch":
             if rack_id in self.watching:
                 self.postgresListener.unregister(
                     "sys_dhcp_%s" % rack_id, self.dhcpHandler)
+            else:
+                log.warn(
+                    "[pid:{pid()}] recieved unwatched when not watching "
+                    "for rack: {rack_id}", pid=os.getpid, rack_id=rack_id)
             self.needsDHCPUpdate.discard(rack_id)
             self.watching.discard(rack_id)
         elif action == "watch":
             if rack_id not in self.watching:
                 self.postgresListener.register(
                     "sys_dhcp_%s" % rack_id, self.dhcpHandler)
+            else:
+                log.warn(
+                    "[pid:{pid()}] recieved watched when already watching "
+                    "for rack: {rack_id}", pid=os.getpid, rack_id=rack_id)
             self.watching.add(rack_id)
             self.needsDHCPUpdate.add(rack_id)
             self.startProcessing()
         else:
             raise ValueError("Unknown action: %s." % action)
+
+        log.debug(
+            "[pid:{pid()}] currently watching racks: {racks()}",
+            pid=os.getpid, racks=lambda: ', '.join(
+                [str(rack_id) for rack_id in self.watching]))
+        log.debug(
+            "[pid:{pid()}] racks requiring DHCP push: {racks()}",
+            pid=os.getpid, racks=lambda: ', '.join(
+                [str(rack_id) for rack_id in self.needsDHCPUpdate]))
 
     def dhcpHandler(self, channel, message):
         """Called when the `sys_dhcp_{rackd_id}` message is received."""
@@ -199,6 +222,15 @@ class RackControllerService(Service):
         if rack_id in self.watching:
             self.needsDHCPUpdate.add(rack_id)
             self.startProcessing()
+
+            log.debug(
+                "[pid:{pid()}] racks requiring DHCP push: {racks()}",
+                pid=os.getpid, racks=lambda: ', '.join(
+                    [str(rack_id) for rack_id in self.needsDHCPUpdate]))
+        else:
+            log.warn(
+                "[pid:{pid()}] recieved DHCP push notify when not watching "
+                "for rack: {rack_id}", pid=os.getpid, rack_id=rack_id)
 
     def startProcessing(self):
         """Start the process looping call."""
@@ -214,8 +246,13 @@ class RackControllerService(Service):
             # Nothing more to do.
             self.processing.stop()
         else:
+            def _retryOnFailure(failure, rack_id):
+                self.needsDHCPUpdate.add(rack_id)
+                return failure
+
             rack_id = self.needsDHCPUpdate.pop()
             d = maybeDeferred(self.processDHCP, rack_id)
+            d.addErrback(_retryOnFailure, rack_id)
             d.addErrback(lambda f: f.trap(NoConnectionsAvailable))
             d.addErrback(
                 log.err,
@@ -225,6 +262,10 @@ class RackControllerService(Service):
 
     def processDHCP(self, rack_id):
         """Process DHCP for the rack controller."""
+        log.debug(
+            "[pid:{pid()}] pushing DHCP to rack: {rack_id}",
+            pid=os.getpid, rack_id=rack_id)
+
         d = deferToDatabase(
             transactional(RackController.objects.get), id=rack_id)
         d.addCallback(dhcp.configure_dhcp)

@@ -11,7 +11,8 @@ Twisted concurrency primative, like `DeferredLock` or `DeferredSemaphore`.
 
 __all__ = [
     "boot_images",
-    "dhcp",
+    "dhcpv4",
+    "dhcpv6",
 ]
 
 from twisted.internet.defer import DeferredLock
@@ -19,5 +20,8 @@ from twisted.internet.defer import DeferredLock
 # Limit boot image imports to one at a time.
 boot_images = DeferredLock()
 
-# Limit DHCP changes to one at a time.
-dhcp = DeferredLock()
+# Limit DHCPv4 changes to one at a time.
+dhcpv4 = DeferredLock()
+
+# Limit DHCPv6 changes to one at a time.
+dhcpv6 = DeferredLock()

@@ -32,6 +32,7 @@ from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
+    fail,
     inlineCallbacks,
     succeed,
 )
@@ -356,6 +357,26 @@ class TestRackControllerService(MAASTransactionServerTestCase):
             yield service.processingDone
         for rack_id in rack_ids:
             self.assertThat(mock_processDHCP, MockAnyCall(rack_id))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_process_calls_processDHCP_multiple_times_on_failure(self):
+        rack_id = random.randint(0, 100)
+        service = RackControllerService(
+            sentinel.ipcWorker, sentinel.listener)
+        service.watching = set([rack_id])
+        service.needsDHCPUpdate = set([rack_id])
+        service.running = True
+        mock_processDHCP = self.patch(service, "processDHCP")
+        mock_processDHCP.side_effect = [
+            fail(factory.make_exception()),
+            succeed(None),
+        ]
+        service.startProcessing()
+        for _ in range(2):
+            yield service.processingDone
+        self.assertThat(
+            mock_processDHCP, MockCallsMatch(call(rack_id), call(rack_id)))
 
     @wait_for_reactor
     @inlineCallbacks
