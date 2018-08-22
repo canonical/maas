@@ -71,7 +71,7 @@ configure_migrate_maas_dns() {
     maas-region edit_named_options \
         --migrate-conflicting-options --config-path \
         /etc/bind/named.conf.options
-    deb-systemd-invoke bind9 restart || true
+    deb-systemd-invoke restart 'bind9.service' >/dev/null || true
 }
 
 if [ "$1" = "configure" ] && [ -z "$2" ]; then
@@ -179,11 +179,11 @@ elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0
     configure_migrate_maas_dns
 fi
 
-deb-systemd-invoke enable maas-regiond >/dev/null || true
-deb-systemd-invoke restart maas-regiond >/dev/null || true
+deb-systemd-helper enable 'maas-regiond.service' >/dev/null || true
+deb-systemd-invoke restart 'maas-regiond.service' >/dev/null || true
 
 if [ -f /lib/systemd/system/maas-rackd.service ]; then
-    deb-systemd-invoke restart maas-rackd >/dev/null || true
+    deb-systemd-invoke restart 'maas-rackd.service' >/dev/null || true
 fi
 
 db_stop

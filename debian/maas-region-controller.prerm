@@ -6,7 +6,7 @@ set -e
 
 #DEBHELPER#
 
-invoke-rc.d maas-regiond stop || true
+deb-systemd-invoke stop 'maas-regiond.service' >/dev/null || true
 
 . /usr/share/dbconfig-common/dpkg/prerm.pgsql
 dbc_go maas-region-controller $@

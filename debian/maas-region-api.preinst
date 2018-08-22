@@ -49,7 +49,7 @@ fi
 # to stop regiond to ensure old style regiond workers don't stay running, as
 # now MAAS doesn't run workers via systemd anymore.
 if [ "$1" = "upgrade" ] && dpkg --compare-versions "$2" le 2.4.0~alpha1-6555-g2acf28404-0ubuntu1; then
-       deb-systemd-invoke stop maas-regiond >/dev/null || true
+       deb-systemd-invoke stop 'maas-regiond.service' >/dev/null || true
 fi
 
 #DEBHELPER#
