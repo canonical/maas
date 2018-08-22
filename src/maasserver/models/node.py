@@ -623,7 +623,10 @@ class RackControllerManager(ControllerManager):
         a list of rack controllers which should have access to each IP."""
         if '://' not in url:
             # urlparse only works if given with a protocol
-            parsed_url = urlparse("FAKE://%s" % url)
+            if url.count(':') > 2:
+                parsed_url = urlparse("FAKE://[%s]" % url)
+            else:
+                parsed_url = urlparse("FAKE://%s" % url)
         else:
             parsed_url = urlparse(url)
         # getaddrinfo can return duplicates

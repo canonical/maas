@@ -126,7 +126,6 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'memory_over_commit_ratio',
                 'storage_pools',
                 'pool',
-                'host',
                 'default_macvlan_mode',
             ],
             list(parsed_result[0]))
@@ -339,36 +338,6 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         pod.refresh_from_db()
         self.assertEqual(new_name, pod.name)
         self.assertEqual(power_parameters, pod.power_parameters)
-
-    def test_PUT_update_updates_pod_host(self):
-        self.become_admin()
-        pod_info = self.make_pod_info()
-        pod = factory.make_Pod(pod_type=pod_info['type'])
-        host = factory.make_Node()
-        self.fake_pod_discovery()
-        self.assertIsNone(pod.host)
-        response = self.client.put(get_pod_uri(pod), {
-            'host': host.system_id,
-        })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        pod.refresh_from_db()
-        self.assertEqual(pod.host, host)
-
-    def test_PUT_update_updates_pod_host_to_None(self):
-        self.become_admin()
-        pod_info = self.make_pod_info()
-        host = factory.make_Node()
-        pod = factory.make_Pod(pod_type=pod_info['type'], host=host)
-        self.fake_pod_discovery()
-        self.assertIsNotNone(pod.host)
-        response = self.client.put(get_pod_uri(pod), {
-            'host': "",
-        })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        pod.refresh_from_db()
-        self.assertIsNone(pod.host)
 
     def test_PUT_update_updates_pod_default_macvlan_mode(self):
         self.become_admin()

@@ -14,7 +14,6 @@ from unittest.mock import (
 from crochet import wait_for
 from django.core.exceptions import ValidationError
 from django.db.models.deletion import ProtectedError
-from fixtures import FakeLogger
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -1026,8 +1025,8 @@ class TestPod(MAASServerTestCase):
         discovered_machine.interfaces[1].attach_name = eth1.name
         discovered_machine.interfaces[2].attach_type = 'macvlan'
         discovered_machine.interfaces[2].attach_name = eth2.name
-        pod = factory.make_Pod(
-            host=controller, ip_address=ip)
+        pod = factory.make_Pod(ip_address=ip)
+        print(pod.ip_address)
         machine = pod.create_machine(
             discovered_machine, factory.make_User(),
             interfaces=LabeledConstraintMap(
@@ -1603,107 +1602,6 @@ class TestPod(MAASServerTestCase):
             factory.make_ISCSIBlockDevice(node=node, size=storage)
         self.assertEquals(total_storage, pod.get_used_iscsi_storage())
 
-    def test_pod_save_updates_pod_host(self):
-        host = factory.make_Node()
-        boot_interface = factory.make_Interface(node=host)
-        host.boot_interface = boot_interface
-        host.save()
-        subnet = factory.make_Subnet()
-        sticky_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
-            interface=boot_interface)
-        pod = factory.make_Pod()
-        power_parameters = {
-            'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % (
-                factory.ip_to_url_format(sticky_ip.ip)),
-        }
-        pod.power_parameters = power_parameters
-        pod.save()
-        self.assertEqual(sticky_ip.ip, pod.ip_address.ip)
-        self.assertEqual(subnet, pod.ip_address.subnet)
-        self.assertEqual(host, pod.host)
-
-    def test_pod_save_logs_when_hosts_change(self):
-        host1 = factory.make_Node()
-        boot_interface1 = factory.make_Interface(node=host1)
-        host1.boot_interface = boot_interface1
-        host1.save()
-        subnet1 = factory.make_Subnet()
-        sticky_ip1 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet1,
-            interface=boot_interface1)
-        power_parameters = {
-            'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % (
-                factory.ip_to_url_format(sticky_ip1.ip)),
-        }
-        pod = factory.make_Pod(parameters=power_parameters)
-        host2 = factory.make_Node()
-        boot_interface2 = factory.make_Interface(node=host2)
-        host2.boot_interface = boot_interface2
-        host2.save()
-        subnet2 = factory.make_Subnet()
-        sticky_ip2 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet2,
-            interface=boot_interface2)
-        power_parameters = {
-            'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % (
-                factory.ip_to_url_format(sticky_ip2.ip)),
-        }
-        with FakeLogger("maas.node") as maaslog:
-            pod.power_parameters = power_parameters
-            pod.save()
-        self.assertDocTestMatches(
-            "...: host changed from...", maaslog.output)
-
-    def test_pod_save_logs_when_host_not_found_for_new_ip_address(self):
-        host = factory.make_Node()
-        boot_interface = factory.make_Interface(node=host)
-        host.boot_interface = boot_interface
-        host.save()
-        subnet = factory.make_Subnet()
-        sticky_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
-            interface=boot_interface)
-        power_parameters = {
-            'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % (
-                factory.ip_to_url_format(sticky_ip.ip)),
-        }
-        pod = factory.make_Pod(parameters=power_parameters)
-        power_parameters = {
-            'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % (
-                factory.ip_to_url_format(factory.make_ipv4_address())),
-        }
-        with FakeLogger("maas.node") as maaslog:
-            pod.power_parameters = power_parameters
-            pod.save()
-        self.assertDocTestMatches(
-            "...: host not found for new IP address...", maaslog.output)
-
-    def test_pod_save_logs_when_new_host(self):
-        host = factory.make_Node()
-        boot_interface = factory.make_Interface(node=host)
-        host.boot_interface = boot_interface
-        host.save()
-        subnet = factory.make_Subnet()
-        sticky_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
-            interface=boot_interface)
-        power_parameters = {
-            'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % (
-                factory.ip_to_url_format(sticky_ip.ip)),
-        }
-
-        with FakeLogger("maas.node") as maaslog:
-            factory.make_Pod(parameters=power_parameters)
-        self.assertDocTestMatches(
-            "...: host found for ...", maaslog.output)
-
 
 class TestPodDelete(MAASTransactionServerTestCase):
 
@@ -1776,40 +1674,6 @@ class TestPodDelete(MAASTransactionServerTestCase):
         self.assertIsNone(decomposable_machine_two)
         self.assertIsNone(delete_machine)
         self.assertIsNone(pod)
-
-
-class TestPodHost(MAASServerTestCase):
-
-    def test_allows_machine_host(self):
-        machine = factory.make_Machine()
-        pod = factory.make_Pod()
-        pod.host = machine
-        pod.save()
-        self.assertThat(pod.host, Equals(machine))
-
-    def test_allows_device_host(self):
-        device = factory.make_Device()
-        pod = factory.make_Pod()
-        pod.host = device
-        pod.save()
-        self.assertThat(pod.host, Equals(device))
-
-    def test_host_set_null_if_deleted(self):
-        machine = factory.make_Machine()
-        pod = factory.make_Pod()
-        pod.host = machine
-        pod.save()
-        self.assertThat(pod.host, Equals(machine))
-        machine.delete()
-        pod = reload_object(pod)
-        self.assertThat(pod.host, Equals(None))
-
-    def test_related_name(self):
-        machine = factory.make_Machine()
-        pod = factory.make_Pod()
-        pod.host = machine
-        pod.save()
-        self.assertThat(machine.hosted_pods.first(), Equals(pod))
 
 
 class TestPodDefaultMACVlanMode(MAASServerTestCase):

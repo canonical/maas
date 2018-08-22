@@ -34,7 +34,6 @@ from maasserver.enum import (
     NODE_CREATION_TYPE,
 )
 from maasserver.exceptions import PodProblem
-from maasserver.fields import NodeChoiceField
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
@@ -103,7 +102,6 @@ class PodForm(MAASModelForm):
             'memory_over_commit_ratio',
             'default_storage_pool',
             'default_macvlan_mode',
-            'host',
         ]
 
     name = forms.CharField(
@@ -135,11 +133,6 @@ class PodForm(MAASModelForm):
     default_macvlan_mode = forms.ChoiceField(
         label="Default MACVLAN mode", required=False,
         choices=MACVLAN_MODE_CHOICES, initial=MACVLAN_MODE_CHOICES[0])
-
-    host = NodeChoiceField(
-        label="Pod host", queryset=Node.objects.all(), required=False,
-        initial=None, help_text=(
-            "The node that hosts this Pod."))
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         self.is_new = instance is None
@@ -177,8 +170,6 @@ class PodForm(MAASModelForm):
             if instance.default_storage_pool:
                 self.initial['default_storage_pool'] = (
                     instance.default_storage_pool.pool_id)
-            if instance.host is not None:
-                self.initial['host'] = self.instance.host.system_id
 
     def _clean_fields(self):
         """Override to dynamically add fields based on the value of `type`
@@ -246,10 +237,6 @@ class PodForm(MAASModelForm):
             self.instance = super(PodForm, self).save(commit=False)
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
-            if (self.data.get('host') is "" and
-                    self.instance.host is not None):
-                # 'host' is being cleared.
-                self.instance.host = None
             return self.instance
 
         power_type = self.cleaned_data['type']

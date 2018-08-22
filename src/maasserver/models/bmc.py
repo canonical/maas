@@ -71,10 +71,7 @@ from maasserver.rpc import (
     getAllClients,
     getClientFromIdentifiers,
 )
-from maasserver.utils.orm import (
-    get_one,
-    transactional,
-)
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 import petname
 from provisioningserver.drivers import SETTING_SCOPE
@@ -215,12 +212,6 @@ class BMC(CleanSave, TimestampedModel):
         PodStoragePool, null=True, blank=True,
         related_name='+', on_delete=SET_NULL)
 
-    # Node this pod is hosted on. (Could be a machine or device.)
-    # This is used to determine the available networks on the pod.
-    host = ForeignKey(
-        Node, null=True, blank=True, related_name='hosted_pods',
-        on_delete=SET_NULL)
-
     # Default MACVLAN mode for the pod.
     # This is used as the default macvlan mode when a user wants
     # to create a macvlan interface for a VM.
@@ -318,44 +309,6 @@ class BMC(CleanSave, TimestampedModel):
                     maaslog.info(
                         "BMC could not save extracted IP "
                         "address '%s': '%s'", new_ip, error)
-
-                # If this is a pod, update the pod's host to
-                # the node with the new IP address found above.
-                if self.bmc_type == BMC_TYPE.POD:
-                    updated_host = get_one(
-                        Node.objects.filter(
-                            interface__ip_addresses__ip=new_ip))
-                    if self.pk is None:
-                        # If the pod is new (its ``pk`` is `None`),
-                        # so there is no previous host.
-                        previous_host = None
-                        if self.host is not None:
-                            # The only time that we would have self.pk
-                            # None and self.host not None is
-                            # when the user explicity is setting the
-                            # pod's host when creating a new pod.
-                            # Go with what user supplied for the host.
-                            updated_host = self.host
-                    else:
-                        previous_host = self.host
-                    self.host = updated_host
-                    if previous_host is not None and updated_host is not None:
-                        maaslog.info(
-                            "Pod '%s': host changed from '%s' to '%s'.",
-                            self.name,
-                            previous_host.hostname
-                            if previous_host is not None else None,
-                            updated_host.hostname
-                            if updated_host is not None else None)
-                    elif previous_host is not None and updated_host is None:
-                        maaslog.warn(
-                            "Pod '%s': host not found for new IP address "
-                            "'%s'; previous host was '%s'.",
-                            self.name, new_ip, previous_host.hostname)
-                    elif previous_host is None and updated_host is not None:
-                        maaslog.info(
-                            "Pod '%s': host found for '%s'; new host is '%s'.",
-                            self.name, new_ip, updated_host.hostname)
 
     @staticmethod
     def scope_power_parameters(power_type, power_params):
@@ -545,6 +498,14 @@ class Pod(BMC):
         super().clean()
         if self.pool is None:
             raise ValidationError('A pod needs to have a pool')
+
+    @property
+    def host(self):
+        if self.ip_address is not None:
+            interface = self.ip_address.get_interface()
+            if interface is not None:
+                return interface.node
+        return None
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('power_type', 'power_parameters', 'ip_address'):

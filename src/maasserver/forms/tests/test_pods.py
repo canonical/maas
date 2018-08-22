@@ -169,7 +169,6 @@ class TestPodForm(MAASTransactionServerTestCase):
                 'memory_over_commit_ratio',
                 'default_storage_pool',
                 'default_macvlan_mode',
-                'host',
             ], list(form.fields))
 
     def test_creates_pod_with_discovered_information(self):
@@ -283,16 +282,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pool.id, pod.pool.id)
-
-    def test_creates_pod_with_host(self):
-        self.fake_pod_discovery()
-        pod_info = self.make_pod_info()
-        host = factory.make_Node()
-        pod_info['host'] = host.system_id
-        form = PodForm(data=pod_info, request=self.request)
-        self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
-        self.assertEqual(host, pod.host)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -917,14 +906,14 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
 
     def test__get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
-        host.boot_interface.vlan.dhcp_on = False
-        host.boot_interface.vlan.save()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host.boot_interface.vlan.dhcp_on = False
+        pod_host.boot_interface.vlan.save()
         pod = make_pod_with_hints()
-        pod.host = host
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
         interfaces = "eth0:subnet=%s" % (
-            host.boot_interface.vlan.subnet_set.first().cidr)
+            pod_host.boot_interface.vlan.subnet_set.first().cidr)
         form = ComposeMachineForm(data={
             'interfaces': interfaces,
         }, request=request, pod=pod)
@@ -934,29 +923,14 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 ".*DHCP must be enabled on at least one VLAN*"):
             form.get_requested_machine()
 
-    def test__get_machine_with_interfaces_fails_for_no_pod_host(self):
-        request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
-        pod = make_pod_with_hints()
-        interfaces = "eth0:subnet=%s" % (
-            host.boot_interface.vlan.subnet_set.first().cidr)
-        form = ComposeMachineForm(data={
-            'interfaces': interfaces,
-        }, request=request, pod=pod)
-        self.assertTrue(form.is_valid(), form.errors)
-        with ExpectedException(
-                ValidationError,
-                ".*must be on a known host if interfaces are specified.*"):
-            form.get_requested_machine()
-
     def test__get_machine_with_interfaces_fails_for_no_matching_network(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod = make_pod_with_hints()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
+        pod.save()
         # Make a subnet that won't match the host via the constraint.
         subnet = factory.make_Subnet()
-        pod = make_pod_with_hints()
-        pod.host = host
-        pod.save()
         interfaces = "eth0:subnet=%s" % (
             subnet.cidr)
         form = ComposeMachineForm(data={
@@ -970,15 +944,15 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
 
     def test__get_machine_with_interfaces_by_subnet(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space('dmz')
-        host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
         pod = make_pod_with_hints()
-        pod.host = host
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
         interfaces = "eth0:subnet=%s" % (
-            host.boot_interface.vlan.subnet_set.first().cidr)
+            pod_host.boot_interface.vlan.subnet_set.first().cidr)
         form = ComposeMachineForm(data={
             'interfaces': interfaces,
         }, request=request, pod=pod)
@@ -991,24 +965,24 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     MatchesAll(
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
-                            attach_name=Equals(host.boot_interface.name),
+                            attach_name=Equals(pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(MACVLAN_MODE.BRIDGE)))
                 ]))))
 
     def test__get_machine_with_interfaces_by_subnet_with_default_mode(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space('dmz')
-        host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
         pod = make_pod_with_hints()
-        pod.host = host
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         attach_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         pod.default_macvlan_mode = attach_mode
         pod.save()
         interfaces = "eth0:subnet=%s" % (
-            host.boot_interface.vlan.subnet_set.first().cidr)
+            pod_host.boot_interface.vlan.subnet_set.first().cidr)
         form = ComposeMachineForm(data={
             'interfaces': interfaces,
         }, request=request, pod=pod)
@@ -1021,26 +995,26 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     MatchesAll(
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
-                            attach_name=Equals(host.boot_interface.name),
+                            attach_name=Equals(pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(attach_mode)))
                 ]))))
 
     def test__get_machine_with_interfaces_by_subnet_with_empty_mode(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space('dmz')
-        host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
         pod = make_pod_with_hints()
-        pod.host = host
         # We expect the macvlan mode to be the default choice...
         attach_mode = MACVLAN_MODE_CHOICES[0][1]
         # ... when the macvlan mode is set to the empty string.
         pod.default_macvlan_mode = ''
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
         interfaces = "eth0:subnet=%s" % (
-            host.boot_interface.vlan.subnet_set.first().cidr)
+            pod_host.boot_interface.vlan.subnet_set.first().cidr)
         form = ComposeMachineForm(data={
             'interfaces': interfaces,
         }, request=request, pod=pod)
@@ -1053,19 +1027,19 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     MatchesAll(
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
-                            attach_name=Equals(host.boot_interface.name),
+                            attach_name=Equals(pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(attach_mode)))
                 ]))))
 
     def test__get_machine_with_interfaces_by_space(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
         space = factory.make_Space('dmz')
-        host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
         pod = make_pod_with_hints()
-        pod.host = host
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
         interfaces = "eth0:space=dmz"
         form = ComposeMachineForm(data={
@@ -1080,23 +1054,23 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     MatchesAll(
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
-                            attach_name=Equals(host.boot_interface.name),
+                            attach_name=Equals(pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(MACVLAN_MODE.BRIDGE)))
                 ]))))
 
     def test__get_machine_with_interfaces_by_spaces(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod_host = factory.make_Machine_with_Interface_on_Subnet()
         dmz_space = factory.make_Space('dmz')
         storage_space = factory.make_Space('storage')
         # Because PXE booting from the DMZ is /always/ a great idea. ;-)
-        host.boot_interface.vlan.space = dmz_space
-        host.boot_interface.vlan.save()
+        pod_host.boot_interface.vlan.space = dmz_space
+        pod_host.boot_interface.vlan.save()
         storage_vlan = factory.make_VLAN(space=storage_space, dhcp_on=True)
-        storage_if = factory.make_Interface(node=host, vlan=storage_vlan)
+        storage_if = factory.make_Interface(node=pod_host, vlan=storage_vlan)
         pod = make_pod_with_hints()
-        pod.host = host
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
         interfaces = "eth0:space=dmz;eth1:space=storage"
         form = ComposeMachineForm(data={
@@ -1111,7 +1085,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     MatchesAll(
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
-                            attach_name=Equals(host.boot_interface.name),
+                            attach_name=Equals(pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(MACVLAN_MODE.BRIDGE))),
                     MatchesAll(
@@ -1124,16 +1098,16 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
 
     def test__get_machine_with_interfaces_by_space_as_bridge(self):
         request = MagicMock()
-        host = factory.make_Machine_with_Interface_on_Subnet(
+        pod_host = factory.make_Machine_with_Interface_on_Subnet(
             status=NODE_STATUS.READY)
         space = factory.make_Space('dmz')
-        host.boot_interface.vlan.space = space
-        host.boot_interface.vlan.save()
+        pod_host.boot_interface.vlan.space = space
+        pod_host.boot_interface.vlan.save()
         # This is just to make sure a bridge will be available for attachment.
         # We expect bridge mode to be preferred, when available.
-        host.acquire(factory.make_User(), bridge_all=True)
+        pod_host.acquire(factory.make_User(), bridge_all=True)
         pod = make_pod_with_hints()
-        pod.host = host
+        pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
         interfaces = "eth0:space=dmz"
         form = ComposeMachineForm(data={
@@ -1149,7 +1123,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
                             attach_name=Equals(
-                                "br-" + host.boot_interface.name),
+                                "br-" + pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.BRIDGE),
                             attach_options=Is(None)))
                 ]))))

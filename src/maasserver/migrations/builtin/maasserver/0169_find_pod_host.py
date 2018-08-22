@@ -3,56 +3,6 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-from maasserver.enum import IPADDRESS_TYPE
-
-
-def get_related_discovered_ip(ip_address):
-    StaticIPAddress = apps.get_model("maasserver", "StaticIPAddress")    
-    interfaces = list(ip_address.interface_set.all())
-    discovered_ips = [
-        ip
-        for ip in StaticIPAddress.objects.filter(
-            interface__in=interfaces,
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            ip__isnull=False).order_by('-id')
-        if ip.ip
-    ]
-    if len(discovered_ips) > 0:
-        return discovered_ips[0]
-    else:
-        return None
-
-def get_ip(ip_address):
-    if ip_address.alloc_type == IPADDRESS_TYPE.DHCP:
-        discovered_ip = get_related_discovered_ip(ip_address)
-        if discovered_ip is not None:
-            return discovered_ip.ip
-    return ip_address.ip
-        
-
-def find_pod_host(apps, schema_editor):
-    Pod = apps.get_model("maasserver", "Pod")
-    Node = apps.get_model("maasserver", "Node")
-    ip_node_mapping = {
-        get_ip(ip_address): node
-        for node in Node.objects.prefetch_related(
-                'interface_set__ip_addresses').all()
-        for ip_address in [
-            ip_address
-            for interface in node.interface_set.all()
-            for ip_address in interface.ip_addresses.all()
-            if ip_address.ip and ip_address.alloc_type in [
-                IPADDRESS_TYPE.DHCP,
-                IPADDRESS_TYPE.AUTO,
-                IPADDRESS_TYPE.STICKY,
-                IPADDRESS_TYPE.USER_RESERVED,
-            ]
-        ]
-    }
-    for pod in Pod.objects.all():
-        if pod.ip_address in ip_node_mapping:
-            pod.host = ip_node_mapping[pod.ip_address]
-            pod.save()
 
 
 class Migration(migrations.Migration):
@@ -62,5 +12,4 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(find_pod_host),
     ]

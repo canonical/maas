@@ -44,7 +44,6 @@ DISPLAYED_POD_FIELDS = (
     'memory_over_commit_ratio',
     'storage_pools',
     'pool',
-    'host',
     'default_macvlan_mode',
     )
 
@@ -150,9 +149,6 @@ class PodHandler(OperationsHandler):
         :type power_pass: unicode
         :param zone: Name of the zone for the pod
         :type zone: unicode
-        :param host: The node that hosts this Pod. Passing in an empty string
-            will cause the host be set to None.
-        :type host: unicode
         :param default_macvlan_mode: Default macvlan mode (bridge, passthru,
            private, vepa) for the pod.
         :type default_macvlan_mode: unicode
