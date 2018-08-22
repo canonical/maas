@@ -273,7 +273,9 @@ def get_allocated_composed_machine(
             if storage is None:
                 storage = {}
             if interfaces:
-                _, interfaces = nodes_by_interface(interfaces)
+                result = nodes_by_interface(interfaces, include_filter=dict(
+                    node__id=machine.id))
+                interfaces = result.label_map
             else:
                 interfaces = {}
     return machine, storage, interfaces

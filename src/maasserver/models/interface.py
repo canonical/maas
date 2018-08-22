@@ -189,7 +189,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         items = item.split("&&")
         return op(current_q, Q(tags__contains=items))
 
-    def get_matching_node_map(self, specifiers):
+    def get_matching_node_map(self, specifiers, include_filter=None):
         """Returns a tuple where the first element is a set of matching node
         IDs, and the second element is a dictionary mapping a node ID to a list
         of matching interfaces, such as:
@@ -200,10 +200,14 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             ...
         }
 
+        :param include_filter: A dictionary suitable for passing into the
+            Django QuerySet filter() arguments, representing the set of initial
+            objects to filter.
         :returns: tuple (set, dict)
+
         """
         return super(InterfaceQueriesMixin, self).get_matching_object_map(
-            specifiers, 'node__id')
+            specifiers, 'node__id', include_filter=include_filter)
 
     @staticmethod
     def _resolve_interfaces_for_root(
@@ -855,7 +859,7 @@ class Interface(CleanSave, TimestampedModel):
             return None
         return EUI(self.mac_address.raw).ipv6(network.first)
 
-    def _remove_link_dhcp(self, subnet_family=None):
+    def remove_link_dhcp(self, subnet_family=None):
         """Removes the DHCP links if they have no subnet or if the linked
         subnet is in the same `subnet_family`."""
         for ip in self.ip_addresses.all().select_related('subnet'):
@@ -865,7 +869,7 @@ class Interface(CleanSave, TimestampedModel):
                         ip.subnet.get_ipnetwork().version == subnet_family):
                     ip.delete()
 
-    def _remove_link_up(self):
+    def remove_link_up(self):
         """Removes the LINK_UP link if it exists."""
         for ip in self.ip_addresses.all():
             if (ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and
@@ -879,18 +883,18 @@ class Interface(CleanSave, TimestampedModel):
             alloc_type=IPADDRESS_TYPE.AUTO, ip=None, subnet=subnet)
         ip_address.save()
         self.ip_addresses.add(ip_address)
-        self._remove_link_dhcp(get_subnet_family(subnet))
-        self._remove_link_up()
+        self.remove_link_dhcp(get_subnet_family(subnet))
+        self.remove_link_up()
         return ip_address
 
     def _link_subnet_dhcp(self, subnet):
         """Link interface to subnet using DHCP."""
-        self._remove_link_dhcp(get_subnet_family(subnet))
+        self.remove_link_dhcp(get_subnet_family(subnet))
         ip_address = StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP, ip=None, subnet=subnet)
         ip_address.save()
         self.ip_addresses.add(ip_address)
-        self._remove_link_up()
+        self.remove_link_up()
         return ip_address
 
     def _link_subnet_static(
@@ -949,19 +953,19 @@ class Interface(CleanSave, TimestampedModel):
 
         # Was successful at creating the STATIC link. Remove the DHCP and
         # LINK_UP link if it exists.
-        self._remove_link_dhcp(get_subnet_family(subnet))
-        self._remove_link_up()
+        self.remove_link_dhcp(get_subnet_family(subnet))
+        self.remove_link_up()
         return static_ip
 
     def _link_subnet_link_up(self, subnet):
         """Link interface to subnet using LINK_UP."""
-        self._remove_link_up()
+        self.remove_link_up()
         ip_address = StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=subnet)
         ip_address.save()
         self.ip_addresses.add(ip_address)
         self.save()
-        self._remove_link_dhcp(get_subnet_family(subnet))
+        self.remove_link_dhcp(get_subnet_family(subnet))
         return ip_address
 
     def link_subnet(

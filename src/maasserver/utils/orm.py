@@ -1226,7 +1226,7 @@ class MAASQueriesMixin(object):
         current_q = op(current_q, Q(vlan__vid=vid))
         return current_q
 
-    def get_matching_object_map(self, specifiers, query):
+    def get_matching_object_map(self, specifiers, query, include_filter=None):
         """This method is intended to be called with a query for foreign object
         IDs. For example, if called from the Interface object (with a list
         of interface specifiers), it might be called with a query string like
@@ -1242,11 +1242,14 @@ class MAASQueriesMixin(object):
         object IDs (specified by 'query') to a list of objects (of the current
         type) which match a query.
         """
-        filter = self.filter_by_specifiers(specifiers)
+        matches = self
+        if include_filter is not None:
+            matches = matches.filter(**include_filter)
+        matches = matches.filter_by_specifiers(specifiers)
         # We'll be looping through the list assuming a particular order later
         # in this function, so make sure the interfaces are grouped by their
         # attached nodes.
-        matches = filter.order_by(query)
+        matches = matches.order_by(query)
         matches = matches.values_list('id', query)
         foreign_object_map = {}
         object_ids = set()

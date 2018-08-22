@@ -23,13 +23,17 @@ from maasserver.enum import (
     NODE_CREATION_TYPE,
     NODE_STATUS,
 )
-from maasserver.exceptions import PodProblem
+from maasserver.exceptions import (
+    PodProblem,
+    StaticIPAddressUnavailable,
+)
 from maasserver.forms import pods as pods_module
 from maasserver.forms.pods import (
     ComposeMachineForm,
     ComposeMachineForPodsForm,
     PodForm,
 )
+from maasserver.models import StaticIPAddress
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
 from maasserver.models.resourcepool import ResourcePool
@@ -50,6 +54,7 @@ from maastesting.matchers import (
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachine,
+    DiscoveredMachineInterface,
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodStoragePool,
@@ -969,6 +974,165 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(MACVLAN_MODE.BRIDGE)))
                 ]))))
+
+    def test__get_machine_with_interfaces_with_empty_interfaces_input(self):
+        request = MagicMock()
+        host = factory.make_Machine_with_Interface_on_Subnet()
+        space = factory.make_Space('dmz')
+        host.boot_interface.vlan.space = space
+        host.boot_interface.vlan.save()
+        pod = make_pod_with_hints()
+        pod.ip_address = host.boot_interface.ip_addresses.first()
+        pod.save()
+        form = ComposeMachineForm(
+            data=dict(interfaces=''), request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine()
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                interfaces=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            attach_name=Is(None),
+                            attach_type=Is(None),
+                            attach_options=Is(None)))
+                ]))))
+
+    def test__compose_with_interfaces_with_reserved_ip_fails(self):
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        pod = make_pod_with_hints()
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        self.patch(Machine, "start_commissioning")
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        composed_machine.interfaces = [
+            DiscoveredMachineInterface(mac_address='00:01:02:03:04:05')
+        ]
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        request = MagicMock()
+        subnet = factory.make_Subnet()
+        host = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
+        space = factory.make_Space('dmz')
+        host.boot_interface.vlan.dhcp_on = True
+        host.boot_interface.vlan.space = space
+        host.boot_interface.vlan.save()
+        ip = factory.make_StaticIPAddress(
+            interface=host.get_boot_interface(), subnet=subnet)
+        pod.ip_address = host.boot_interface.ip_addresses.first()
+        pod.save()
+        interfaces = "eth0:ip=%s" % str(ip.ip)
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        with ExpectedException(StaticIPAddressUnavailable):
+            form.compose()
+
+    def test__get_machine_with_interfaces_with_unreserved_ip(self):
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        pod = make_pod_with_hints()
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        self.patch(Machine, "start_commissioning")
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        composed_machine.interfaces = [
+            DiscoveredMachineInterface(
+                mac_address='00:01:02:03:04:05', boot=True)
+        ]
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+        request = MagicMock()
+        subnet = factory.make_Subnet()
+        host = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
+        space = factory.make_Space('dmz')
+        host.boot_interface.vlan.dhcp_on = True
+        host.boot_interface.vlan.space = space
+        host.boot_interface.vlan.save()
+        ip = factory.make_StaticIPAddress(
+            interface=host.get_boot_interface(), subnet=subnet)
+        expected_ip = str(ip.ip)
+        ip.delete()
+        pod.ip_address = host.boot_interface.ip_addresses.first()
+        pod.save()
+        interfaces = "eth0:ip=%s" % expected_ip
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine()
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                interfaces=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineInterface),
+                        MatchesStructure(
+                            requested_ips=Equals(['%s' % expected_ip]),
+                            ifname=Equals('eth0'),
+                            attach_name=Equals(host.boot_interface.name),
+                            attach_type=Equals(InterfaceAttachType.MACVLAN),
+                            attach_options=Equals(MACVLAN_MODE.BRIDGE)))
+                ]))))
+
+    def test__compose_with_interfaces_with_unreserved_ip(self):
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        pod = make_pod_with_hints()
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        self.patch(Machine, "start_commissioning")
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        composed_machine.interfaces = [
+            DiscoveredMachineInterface(
+                mac_address='00:01:02:03:04:05', boot=True)
+        ]
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+        request = MagicMock()
+        subnet = factory.make_Subnet()
+        host = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
+        space = factory.make_Space('dmz')
+        host.boot_interface.vlan.dhcp_on = True
+        host.boot_interface.vlan.space = space
+        host.boot_interface.vlan.save()
+        ip = factory.make_StaticIPAddress(
+            interface=host.get_boot_interface(), subnet=subnet)
+        expected_ip = str(ip.ip)
+        ip.delete()
+        pod.ip_address = host.boot_interface.ip_addresses.first()
+        pod.save()
+        interfaces = "eth0:ip=%s" % expected_ip
+        form = ComposeMachineForm(data={
+            'interfaces': interfaces,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        machine = form.compose()
+        ip = StaticIPAddress.objects.filter(ip=expected_ip).first()
+        self.assertThat(ip.get_interface().node, Equals(machine))
 
     def test__get_machine_with_interfaces_by_subnet_with_default_mode(self):
         request = MagicMock()

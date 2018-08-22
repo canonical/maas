@@ -400,6 +400,7 @@ class ComposeMachineForm(forms.Form):
         self.initial['interfaces'] = None
         self.fields['skip_commissioning'] = BooleanField(required=False)
         self.initial['skip_commissioning'] = False
+        self.allocated_ips = {}
 
     def get_value_for(self, field):
         """Get the value for `field`. Use initial data if missing or set to
@@ -439,7 +440,8 @@ class ComposeMachineForm(forms.Form):
             memory=self.get_value_for('memory'),
             cpu_speed=self.get_value_for('cpu_speed'),
             block_devices=block_devices,
-            interfaces=requested_machine_interfaces)
+            interfaces=requested_machine_interfaces,
+        )
 
     def _get_requested_machine_interfaces_via_constraints(
             self, interfaces_label_map):
@@ -447,29 +449,31 @@ class ComposeMachineForm(forms.Form):
         if self.pod.host is None:
             raise ValidationError(
                 "Pod must be on a known host if interfaces are specified.")
-        node_ids, compatible_interfaces = nodes_by_interface(
-            interfaces_label_map)
+        result = nodes_by_interface(
+            interfaces_label_map, preconfigured=False, include_filter=dict(
+                node__id=self.pod.host.id))
         pod_node_id = self.pod.host.id
-        if pod_node_id not in node_ids:
+        if pod_node_id not in result.node_ids:
             raise ValidationError(
                 "This pod does not match the specified networks.")
         has_bootable_vlan = False
-        for label in compatible_interfaces.keys():
+        for label in result.label_map.keys():
             # XXX: We might want to use the "deepest" interface in the
             # heirarchy, to ensure we get a bridge or bond (if configured)
             # rather than its parent. max() is a good approximation, since
             # child interfaces will be created after their parents.
-            interface_ids = compatible_interfaces[label][pod_node_id]
+            interface_ids = result.label_map[label][pod_node_id]
             interface_id = max(interface_ids)
             interface = Interface.objects.get(id=interface_id)
             # Check to see if we have a bootable VLAN,
             # we need at least one.
             if interface.has_bootable_vlan():
                 has_bootable_vlan = True
-            requested_machine_interfaces.append(
-                self.get_requested_machine_interface_by_interface(
-                    interface)
-            )
+            rmi = self.get_requested_machine_interface_by_interface(interface)
+            # Set the requested interface name and IP addresses.
+            rmi.ifname = label
+            rmi.requested_ips = result.allocated_ips.get(label, [])
+            requested_machine_interfaces.append(rmi)
         if not has_bootable_vlan:
             raise ValidationError(
                 "MAAS DHCP must be enabled on at least one VLAN attached "
@@ -519,13 +523,14 @@ class ComposeMachineForm(forms.Form):
                 raise PodProblem(over_commit_message)
             return result
 
-        def create_and_sync(result):
+        def create_and_sync(requested_machine, result):
             discovered_machine, pod_hints = result
             created_machine = self.pod.create_machine(
                 discovered_machine, self.request.user,
                 skip_commissioning=skip_commissioning,
                 creation_type=creation_type,
                 interfaces=self.get_value_for('interfaces'),
+                requested_machine=requested_machine,
                 domain=self.get_value_for('domain'),
                 pool=self.get_value_for('pool'),
                 zone=self.get_value_for('zone'),
@@ -548,12 +553,15 @@ class ComposeMachineForm(forms.Form):
                 partial(deferToDatabase, transactional(
                     check_over_commit_ratios)))
             d.addCallback(callOutToDatabase, _set_default_pool_id)
+            requested_machine = self.get_requested_machine()
             d.addCallback(
                 compose_machine, self.pod.power_type,
-                power_parameters, self.get_requested_machine(),
+                power_parameters, requested_machine,
                 pod_id=self.pod.id, name=self.pod.name)
             d.addCallback(
-                partial(deferToDatabase, transactional(create_and_sync)))
+                partial(
+                    deferToDatabase, transactional(create_and_sync),
+                    requested_machine))
             return d
         else:
             # Running outside of reactor. Do the work inside and then finish
@@ -574,11 +582,12 @@ class ComposeMachineForm(forms.Form):
 
             _set_default_pool_id()
             try:
+                requested_machine = self.get_requested_machine()
                 result = wrap_compose_machine(
                     self.pod.get_client_identifiers(),
                     self.pod.power_type,
                     power_parameters,
-                    self.get_requested_machine(),
+                    requested_machine,
                     pod_id=self.pod.id,
                     name=self.pod.name).wait(timeout)
             except crochet.TimeoutError:
@@ -586,7 +595,7 @@ class ComposeMachineForm(forms.Form):
                     "Unable to compose a machine because '%s' driver "
                     "timed out after %d seconds." % (
                         self.pod.power_type, timeout))
-            return create_and_sync(result)
+            return create_and_sync(requested_machine, result)
 
 
 class ComposeMachineForPodsForm(forms.Form):

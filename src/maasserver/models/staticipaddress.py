@@ -285,6 +285,14 @@ class StaticIPAddressManager(Manager):
                 requested_address, alloc_type, user=user, subnet=subnet)
         else:
             requested_address = IPAddress(requested_address)
+            # Circular imports.
+            from maasserver.models import StaticIPAddress
+            if StaticIPAddress.objects.filter(
+                ip=str(requested_address)).exclude(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED).count() > 0:
+                raise StaticIPAddressUnavailable(
+                    "The IP address %s is already in use." % requested_address)
+
             subnet.validate_static_ip(requested_address)
             return self._attempt_allocation(
                 requested_address, alloc_type, user=user, subnet=subnet)

@@ -75,7 +75,10 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 import petname
 from provisioningserver.drivers import SETTING_SCOPE
-from provisioningserver.drivers.pod import BlockDeviceType
+from provisioningserver.drivers.pod import (
+    BlockDeviceType,
+    InterfaceAttachType,
+)
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.logger import get_maas_logger
@@ -672,7 +675,7 @@ class Pod(BMC):
             self, discovered_machine, commissioning_user,
             skip_commissioning=False,
             creation_type=NODE_CREATION_TYPE.PRE_EXISTING, interfaces=None,
-            **kwargs):
+            requested_machine=None, **kwargs):
         """Create's a `Machine` from `discovered_machines` for this pod."""
         if skip_commissioning:
             status = NODE_STATUS.READY
@@ -702,6 +705,14 @@ class Pod(BMC):
         if interfaces is not None:
             assert isinstance(interfaces, LabeledConstraintMap)
 
+        if requested_machine is not None:
+            requested_ips = {
+                interface.ifname: interface.requested_ips
+                for interface in requested_machine.interfaces
+            }
+        else:
+            requested_ips = {}
+
         # Create the machine.
         machine = Machine(
             hostname=discovered_machine.hostname,
@@ -720,19 +731,86 @@ class Pod(BMC):
             machine.set_random_hostname()
         machine.save()
 
-        # Assign the discovered tags.
-        for discovered_tag in discovered_machine.tags:
-            tag, _ = Tag.objects.get_or_create(name=discovered_tag)
-            machine.tags.add(tag)
+        self._assign_tags(machine, discovered_machine)
+        self._assign_storage(machine, discovered_machine, skip_commissioning)
+        created_interfaces = self._assign_interfaces(
+            machine, discovered_machine, interfaces, skip_commissioning)
+        self._assign_ip_addresses(
+            discovered_machine, created_interfaces, requested_ips)
 
-        # Assign the Pod's tags.
-        existing_tags = machine.tags.all().values('name')
-        for pod_tag in self.tags:
-            # Only if not a duplicate.
-            if pod_tag not in existing_tags:
-                tag, _ = Tag.objects.get_or_create(name=pod_tag)
-                machine.tags.add(tag)
+        # New machines get commission started immediately unless skipped.
+        if not skip_commissioning:
+            skip_networking = False
+            if len(requested_ips) > 0:
+                skip_networking = True
+            machine.start_commissioning(
+                commissioning_user, skip_networking=skip_networking)
 
+        return machine
+
+    def _assign_ip_addresses(
+            self, discovered_machine, created_interfaces, allocated_ips):
+        # We need a second pass here to configure interfaces that the above
+        # function call would otherwise change.
+        if self.host is not None:
+            self._update_vlans_based_on_pod_host(
+                created_interfaces, discovered_machine)
+        # Allocate any IP addresses the user requested.
+        for interface in created_interfaces:
+            if interface.name in allocated_ips:
+                # Replace any pre-configured addresses with what the user
+                # has requested.
+                interface.ip_addresses.clear()
+                for address in allocated_ips[interface.name]:
+                    ip_address = StaticIPAddress.objects.allocate_new(
+                        requested_address=address)
+                    # The VLAN of the interface might be inconsistent with the
+                    # subnet's VLAN, if the pod doesn't have a host and MAAS
+                    # guessed incorrectly in an earlier step. So trust the
+                    # user's input here.
+                    if interface.vlan != ip_address.subnet.vlan:
+                        interface.vlan = ip_address.subnet.vlan
+                        interface.save()
+                    ip_address.save()
+                    interface.ip_addresses.add(ip_address)
+
+    def _assign_interfaces(
+            self, machine, discovered_machine, interface_constraints,
+            skip_commissioning):
+        # Enumerating the LabeledConstraintMap of interfaces will yield the
+        # name of each interface, in the same order that they will exist
+        # on the hypervisor. (This is a fortunate coincidence, since
+        # dictionaries in Python 3.6+ preserve insertion order.)
+        if interface_constraints is not None:
+            interface_names = [
+                label[:15]
+                for label in interface_constraints
+            ]
+        else:
+            interface_names = []
+        if len(discovered_machine.interfaces) > len(interface_names):
+            # The lists should never have different lengths, but use default
+            # names for all interfaces to avoid conflicts, just in case.
+            # (This also happens if no interface labels were supplied.)
+            interface_names = [
+                'eth%d' % i
+                for i in range(len(discovered_machine.interfaces))
+            ]
+        # Create the discovered interface and set the default networking
+        # configuration.
+        created_interfaces = []
+        for idx, discovered_nic in enumerate(discovered_machine.interfaces):
+            interface = self._create_interface(
+                discovered_nic, machine, name=interface_names[idx])
+            created_interfaces.append(interface)
+            if discovered_nic.boot:
+                machine.boot_interface = interface
+                machine.save(update_fields=['boot_interface'])
+        if skip_commissioning:
+            machine.set_initial_networking_configuration()
+        return created_interfaces
+
+    def _assign_storage(self, machine, discovered_machine, skip_commissioning):
         # Create the discovered block devices and set the initial storage
         # layout for the machine.
         for idx, discovered_bd in enumerate(discovered_machine.block_devices):
@@ -761,49 +839,18 @@ class Pod(BMC):
         if skip_commissioning:
             machine.set_default_storage_layout()
 
-        # Enumerating the LabeledConstraintMap of interfaces will yield the
-        # name of each interface, in the same order that they will exist
-        # on the hypervisor. (This is a fortunate coincidence, since
-        # dictionaries in Python 3.6+ preserve insertion order.)
-        if interfaces is not None:
-            interface_names = [
-                label[:15]
-                for label in interfaces
-            ]
-        else:
-            interface_names = []
-        if len(discovered_machine.interfaces) > len(interface_names):
-            # The lists should never have different lengths, but use default
-            # names for all interfaces to avoid conflicts, just in case.
-            # (This also happens if no interface labels were supplied.)
-            interface_names = [
-                'eth%d' % i
-                for i in range(len(discovered_machine.interfaces))
-            ]
-        # Create the discovered interface and set the default networking
-        # configuration.
-        created_interfaces = []
-        for idx, discovered_nic in enumerate(discovered_machine.interfaces):
-            interface = self._create_interface(
-                discovered_nic, machine, name=interface_names[idx])
-            created_interfaces.append(interface)
-            if discovered_nic.boot:
-                machine.boot_interface = interface
-                machine.save(update_fields=['boot_interface'])
-        if skip_commissioning:
-            machine.set_initial_networking_configuration()
-
-        # We need a second pass here to configure interfaces that the above
-        # function call would otherwise change.
-        if self.host is not None:
-            self._update_vlans_based_on_pod_host(
-                created_interfaces, discovered_machine)
-
-        # New machines get commission started immediately unless skipped.
-        if not skip_commissioning:
-            machine.start_commissioning(commissioning_user)
-
-        return machine
+    def _assign_tags(self, machine, discovered_machine):
+        # Assign the discovered tags.
+        for discovered_tag in discovered_machine.tags:
+            tag, _ = Tag.objects.get_or_create(name=discovered_tag)
+            machine.tags.add(tag)
+        # Assign the Pod's tags.
+        existing_tags = machine.tags.all().values('name')
+        for pod_tag in self.tags:
+            # Only if not a duplicate.
+            if pod_tag not in existing_tags:
+                tag, _ = Tag.objects.get_or_create(name=pod_tag)
+                machine.tags.add(tag)
 
     def _update_vlans_based_on_pod_host(
             self, created_interfaces, discovered_machine):
@@ -819,7 +866,8 @@ class Pod(BMC):
                 self.host)
         }
         for idx, discovered_nic in enumerate(discovered_machine.interfaces):
-            if discovered_nic.attach_type in ('bridge', 'macvlan'):
+            if discovered_nic.attach_type in (
+                    InterfaceAttachType.BRIDGE, InterfaceAttachType.MACVLAN):
                 host_attach_interface = interfaces.get(
                     discovered_nic.attach_name, None)
                 if host_attach_interface is not None:

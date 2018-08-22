@@ -621,6 +621,8 @@ class TestRequestClasses(MAASTestCase):
             "memory": Equals(memory),
             "interfaces": MatchesListwise([
                 MatchesDict({
+                    "ifname": Is(None),
+                    "requested_ips": Equals([]),
                     "attach_name": Equals(
                         interface.attach_name),
                     "attach_type": Equals(

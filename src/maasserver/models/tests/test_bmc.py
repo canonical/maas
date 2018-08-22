@@ -56,6 +56,9 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodStoragePool,
+    InterfaceAttachType,
+    RequestedMachine,
+    RequestedMachineInterface,
 )
 from provisioningserver.rpc.cluster import DecomposeMachine
 from provisioningserver.utils.constraints import LabeledConstraintMap
@@ -998,6 +1001,47 @@ class TestPod(MAASServerTestCase):
             list(machine.interface_set.order_by('id').values_list(
                 'name', flat=True)))
 
+    def test_create_machine_allocates_requested_ip_addresses(self):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip = factory.pick_ip_in_Subnet(subnet)
+        vlan2 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        ip2 = factory.pick_ip_in_Subnet(subnet2)
+        vlan3 = factory.make_VLAN(
+            fabric=fabric, dhcp_on=False,
+            primary_rack=factory.make_RackController())
+        subnet3 = factory.make_Subnet(vlan=vlan3)
+        ip3 = factory.pick_ip_in_Subnet(subnet3)
+        pod = factory.make_Pod()
+        rmi = RequestedMachineInterface(ifname='maas0', requested_ips=[ip])
+        rmi2 = RequestedMachineInterface(ifname='maas1', requested_ips=[ip2])
+        rmi3 = RequestedMachineInterface(ifname='maas2', requested_ips=[ip3])
+        requested_machine = RequestedMachine(
+            hostname='foo', architecture='amd64', cores=1, memory=1024,
+            block_devices=[], interfaces=[rmi, rmi2, rmi3])
+        machine = pod.create_machine(
+            discovered_machine, factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                'maas0:vlan=id:%d;maas1:vlan=id:%d;maas2:ip=%s' % (
+                    vlan.id, vlan2.id, ip3)),
+            requested_machine=requested_machine)
+        sip = StaticIPAddress.objects.filter(ip=ip).first()
+        self.assertThat(sip.get_interface().node, Equals(machine))
+        sip2 = StaticIPAddress.objects.filter(ip=ip2).first()
+        self.assertThat(sip2.get_interface().node, Equals(machine))
+        sip3 = StaticIPAddress.objects.filter(ip=ip3).first()
+        self.assertThat(sip3.get_interface().node, Equals(machine))
+
     def test_create_machine_sets_interface_vlans_using_attach_names(self):
         discovered_machine = self.make_discovered_machine()
         self.patch(Machine, "set_default_storage_layout")
@@ -1019,11 +1063,14 @@ class TestPod(MAASServerTestCase):
             iftype=INTERFACE_TYPE.BRIDGE, node=controller, vlan=vlan,
             parents=[eth0])
         ip = factory.make_StaticIPAddress(subnet=subnet, interface=br0)
-        discovered_machine.interfaces[0].attach_type = 'bridge'
+        discovered_machine.interfaces[0].attach_type = (
+            InterfaceAttachType.BRIDGE)
         discovered_machine.interfaces[0].attach_name = br0.name
-        discovered_machine.interfaces[1].attach_type = 'macvlan'
+        discovered_machine.interfaces[1].attach_type = (
+            InterfaceAttachType.MACVLAN)
         discovered_machine.interfaces[1].attach_name = eth1.name
-        discovered_machine.interfaces[2].attach_type = 'macvlan'
+        discovered_machine.interfaces[2].attach_type = (
+            InterfaceAttachType.MACVLAN)
         discovered_machine.interfaces[2].attach_name = eth2.name
         pod = factory.make_Pod(ip_address=ip)
         print(pod.ip_address)

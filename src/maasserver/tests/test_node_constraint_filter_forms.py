@@ -1298,6 +1298,23 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'interfaces': LabeledConstraintMap('label:fabric=fabric-0')})
         self.assertTrue(form.is_valid(), dict(form.errors))
 
+    def test_interfaces_constraint_works_for_subnet(self):
+        subnet = factory.make_Subnet()
+        factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        form = AcquireNodeForm({
+            'interfaces': LabeledConstraintMap(
+                'eth0:subnet=%s' % subnet.cidr)})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
+    def test_interfaces_constraint_works_for_ip_address(self):
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        ip = factory.make_StaticIPAddress(interface=node.get_boot_interface())
+        form = AcquireNodeForm({
+            'interfaces': LabeledConstraintMap(
+                'eth0:ip=%s' % str(ip.ip))})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
     def test_interfaces_constraint_with_multiple_labels_and_values_validated(
             self):
         factory.make_Node_with_Interface_on_Subnet()

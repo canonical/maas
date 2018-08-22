@@ -175,7 +175,7 @@ echo "Restarting services and ensuring migrations are up to date..."
     ssh_run maas-region dbupgrade
     sleep 1
     ssh_run service maas-regiond start
-    sleep 2  # Wait for the region to start up.
+    sleep 8  # Wait for the region to start up.
     ssh_run service maas-rackd start
 fi
 echo "Remote reinstall complete."

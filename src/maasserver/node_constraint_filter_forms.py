@@ -11,6 +11,7 @@ import itertools
 from itertools import chain
 import re
 
+import attr
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -40,6 +41,7 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.utils.forms import set_form_error
+from netaddr import IPAddress
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 # Matches the storage constraint from Juju. Format is an optional label,
@@ -90,6 +92,7 @@ def storage_validator(value):
     if ','.join(rendered_groups) != value:
         raise ValidationError('Malformed storage constraint, "%s".' % value)
 
+
 NETWORKING_CONSTRAINT_NAMES = {
     'id',
     'not_id',
@@ -129,6 +132,20 @@ IGNORED_FIELDS = {
     'op',
     'agent_name',
 }
+
+
+@attr.s
+class NodesByInterfaceResult:
+    """Return value for `nodes_by_interface()` function."""
+
+    # List of node IDs that match the constraints.
+    node_ids = attr.ib()
+
+    # Dictionary that maps interface labels to matching interfaces.
+    label_map = attr.ib()
+
+    # Dictionary of IP address allocations by label.
+    allocated_ips = attr.ib(default=None)
 
 
 def interfaces_validator(constraint_map):
@@ -419,7 +436,8 @@ def nodes_by_storage(storage, node_ids=None):
     return nodes
 
 
-def nodes_by_interface(interfaces_label_map):
+def nodes_by_interface(
+        interfaces_label_map, include_filter=None, preconfigured=True):
     """Determines the set of nodes that match the specified
     LabeledConstraintMap (which must be a map of interface constraints.)
 
@@ -434,17 +452,43 @@ def nodes_by_interface(interfaces_label_map):
     }
 
     :param interfaces_label_map: LabeledConstraintMap
-    :return: dict
+    :param include_filter: A dictionary suitable for passing into the Django
+        QuerySet filter() arguments, representing the set of initial interfaces
+        to filter.
+    :param preconfigured: If True, assumes that the specified constraint values
+        have already been configured. If False, also considers nodes whose
+        VLANs (but not necessarily subnets or IP addresses) match, so that
+        the node can be configured per the constraints post-allocation.
+    :return: NodesByInterfaceResult object
     """
     node_ids = None
     label_map = {}
+    allocated_ips = {}
     for label in interfaces_label_map:
         constraints = interfaces_label_map[label]
+        if not preconfigured:
+            # This code path is used for pods, where the machine doesn't yet
+            # exist, but will be created based on the constraints.
+            if 'ip' in constraints:
+                vlan_constraints = constraints.pop('vlan', [])
+                ip_constraints = constraints.pop('ip')
+                for ip in ip_constraints:
+                    allocations_by_label = allocated_ips.pop(label, [])
+                    allocations_by_label.append(str(IPAddress(ip)))
+                    allocated_ips[label] = allocations_by_label
+                    subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+                    # Convert the specified IP address constraint into a VLAN
+                    # constraint. At this point, we don't care if the IP
+                    # address matches. We only care that we have allocated
+                    # an IP address on a VLAN that will exist on the composed
+                    # machine.
+                    vlan_constraints.append('id:%d' % subnet.vlan.id)
+                constraints['vlan'] = vlan_constraints
         if node_ids is None:
             # The first time through the filter, build the list
             # of candidate nodes.
             node_ids, node_map = Interface.objects.get_matching_node_map(
-                constraints)
+                constraints, include_filter=include_filter)
             label_map[label] = node_map
         else:
             # For subsequent labels, only match nodes that already matched a
@@ -455,10 +499,11 @@ def nodes_by_interface(interfaces_label_map):
             # to filter the nodes starting from an 'id__in' filter using the
             # current 'node_ids' set.
             new_node_ids, node_map = Interface.objects.get_matching_node_map(
-                constraints)
+                constraints, include_filter=include_filter)
             label_map[label] = node_map
             node_ids &= new_node_ids
-    return node_ids, label_map
+    return NodesByInterfaceResult(
+        node_ids=node_ids, label_map=label_map, allocated_ips=allocated_ips)
 
 
 class LabeledConstraintMapField(Field):
@@ -832,11 +877,10 @@ class AcquireNodeForm(RenamableFieldsForm):
         interfaces_label_map = self.cleaned_data.get(
             self.get_field_name('interfaces'))
         if interfaces_label_map is not None:
-            node_ids, compatible_interfaces = nodes_by_interface(
-                interfaces_label_map)
-            if node_ids is not None:
-                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
-
+            result = nodes_by_interface(interfaces_label_map)
+            if result.node_ids is not None:
+                filtered_nodes = filtered_nodes.filter(id__in=result.node_ids)
+                compatible_interfaces = result.label_map
         return compatible_interfaces, filtered_nodes
 
     def filter_by_storage(self, filtered_nodes):
