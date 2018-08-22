@@ -797,7 +797,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Construct the checkbox list.
                     inputElement = angular.element([
-                        '<div class="width--full" ',
+                        '<div class="p-form__group" ',
+                            'style="padding-top: .2rem;" ',
                             'data-ng-repeat="val in ' + values +'">',
                             '<input id="' + attrs.key + '_' + '{$ val $}',
                                 '" type="checkbox" value="{$ val $}" ',
@@ -881,7 +882,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             attrs.key, switchScope.getValue());
                     };
 
-                    // Construct the on and off toggle.
+                    // Construct the on and off switch toggle.
                     inputElement = angular.element([
                       '<div class="maas-p-switch">',
                         '<input type="checkbox" name="' + attrs.key + '" ',

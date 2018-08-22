@@ -360,7 +360,7 @@ describe("maasObjForm", function() {
         });
 
         it("creates muliple divs with checkboxes", function() {
-            var divs = angular.element(directive.find("div.width--full"));
+            var divs = angular.element(directive.find("div.p-form__group"));
             expect(divs.length).toBe(3);
             angular.forEach($scope.values, function(value, idx) {
                 var div = angular.element(divs[idx]);
