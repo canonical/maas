@@ -12,6 +12,8 @@ __all__ = [
 import collections
 import gzip
 from io import BytesIO
+import random
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -109,7 +111,27 @@ class MAASDispatcher:
         if data is not None and not isinstance(data, bytes):
             data = bytes(data, 'utf-8')
         req = RequestWithMethod(request_url, data, headers, method=method)
-        res = urllib.request.urlopen(req)
+        # Retry the request maximum of 3 times.
+        for try_count in range(3):
+            try:
+                res = urllib.request.urlopen(req)
+            except urllib.error.HTTPError as exc:
+                if exc.code == 503:
+                    # HTTP 503 Service Unavailable - MAAS might still be
+                    # starting or the performing action hit a conflict. A
+                    # retry should work so lets try again.
+                    if try_count == 2:
+                        # This was the last try, raise the error to the caller.
+                        raise
+                    else:
+                        # Add a random tiny sleep to reduce the chance of
+                        # getting another conflict from occurring.
+                        time.sleep(random.randint(1, 4) / 10)
+                else:
+                    raise
+            else:
+                # Valid response, don't retry.
+                break
         # If we set the Accept-encoding header, then we decode the header for
         # the caller.
         is_gzip = (

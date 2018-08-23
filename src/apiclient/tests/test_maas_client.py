@@ -139,6 +139,48 @@ class TestMAASDispatcher(MAASTestCase):
             mode='rb', fileobj=BytesIO(raw_content)).read()
         self.assertEqual(content, read_content)
 
+    def test_retries_three_times_on_503_service_unavailable(self):
+        self.useFixture(TempWDFixture())
+        name = factory.make_string()
+        content = factory.make_string().encode('ascii')
+        factory.make_file(location='.', name=name, contents=content)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, name)
+            original_urlopen = urllib.request.urlopen
+
+            counter = {'count': 0}
+
+            def _wrap_urlopen(*args, **kwargs):
+                if counter['count'] < 2:
+                    counter['count'] += 1
+                    raise urllib.error.HTTPError(
+                        url, 503, "service unavailable", {}, None)
+                else:
+                    return original_urlopen(*args, **kwargs)
+
+            self.patch(urllib.request, "urlopen").side_effect = _wrap_urlopen
+            response = MAASDispatcher().dispatch_query(url, {})
+            self.assertEqual(200, response.code)
+            self.assertEqual(content, response.read())
+
+    def test_retries_three_times_raises_503_service_unavailable(self):
+        self.useFixture(TempWDFixture())
+        name = factory.make_string()
+        content = factory.make_string().encode('ascii')
+        factory.make_file(location='.', name=name, contents=content)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, name)
+
+            def _wrap_urlopen(*args, **kwargs):
+                raise urllib.error.HTTPError(
+                    url, 503, "service unavailable", {}, None)
+
+            self.patch(urllib.request, "urlopen").side_effect = _wrap_urlopen
+            err = self.assertRaises(
+                urllib.error.HTTPError,
+                MAASDispatcher().dispatch_query, url, {})
+            self.assertEqual(503, err.code)
+
 
 def make_path():
     """Create an arbitrary resource path."""
