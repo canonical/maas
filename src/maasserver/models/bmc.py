@@ -91,6 +91,19 @@ maaslog = get_maas_logger("node")
 podlog = get_maas_logger("pod")
 
 
+def get_requested_ips(requested_machine):
+    """Creates a map of requested IP addresses, given a RequestedMachine."""
+    if requested_machine is not None:
+        requested_ips = {
+            interface.ifname: interface.requested_ips
+            for interface in requested_machine.interfaces
+            if interface.ifname is not None
+        }
+    else:
+        requested_ips = {}
+    return requested_ips
+
+
 class BaseBMCManager(Manager):
     """A utility to manage the collection of BMCs."""
 
@@ -705,13 +718,7 @@ class Pod(BMC):
         if interfaces is not None:
             assert isinstance(interfaces, LabeledConstraintMap)
 
-        if requested_machine is not None:
-            requested_ips = {
-                interface.ifname: interface.requested_ips
-                for interface in requested_machine.interfaces
-            }
-        else:
-            requested_ips = {}
+        requested_ips = get_requested_ips(requested_machine)
 
         # Create the machine.
         machine = Machine(

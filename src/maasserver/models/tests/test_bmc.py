@@ -27,6 +27,7 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
+    get_requested_ips,
     Pod,
 )
 from maasserver.models.fabric import Fabric
@@ -1737,3 +1738,31 @@ class TestPodDefaultMACVlanMode(MAASServerTestCase):
     def test_default_default_macvlan_mode_is_None(self):
         pod = factory.make_Pod()
         self.assertThat(pod.default_macvlan_mode, Equals(None))
+
+
+class TestGetRequestedIPs(MAASServerTestCase):
+
+    def test__returns_empty_dict_if_no_requested_machine(self):
+        self.assertThat(get_requested_ips(None), Equals({}))
+
+    def test__returns_empty_dict_if_no_interfaces_are_named(self):
+        interface = RequestedMachineInterface()
+        interface2 = RequestedMachineInterface()
+        interfaces = [interface, interface2]
+        requested_machine = RequestedMachine(
+            factory.make_hostname(), 'amd64', 1, 1024, [], interfaces)
+        self.assertThat(get_requested_ips(requested_machine), Equals({}))
+
+    def test__returns_ifname_to_ip_list_dict_if_specified(self):
+        interface = RequestedMachineInterface(
+            ifname='eth0', requested_ips=['10.0.0.1', '2001:db8::1'])
+        interface2 = RequestedMachineInterface(
+            ifname='eth1', requested_ips=['10.0.0.2', '2001:db8::2'])
+        interfaces = [interface, interface2]
+        requested_machine = RequestedMachine(
+            factory.make_hostname(), 'amd64', 1, 1024, [], interfaces)
+        self.assertThat(
+            get_requested_ips(requested_machine), Equals({
+                "eth0": ['10.0.0.1', '2001:db8::1'],
+                "eth1": ['10.0.0.2', '2001:db8::2']
+            }))
