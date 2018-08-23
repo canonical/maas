@@ -117,7 +117,10 @@ from provisioningserver.utils.fs import (
 )
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
-from provisioningserver.utils.twisted import makeDeferredWithProcessProtocol
+from provisioningserver.utils.twisted import (
+    makeDeferredWithProcessProtocol,
+    pause,
+)
 from provisioningserver.utils.version import get_maas_version
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -2381,6 +2384,28 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
                 'shared_networks': shared_networks,
                 'hosts': hosts,
                 'interfaces': interfaces,
+                })
+
+    @inlineCallbacks
+    def test__times_out(self):
+        self.patch_autospec(*self.dhcp_server)
+        self.patch(clusterservice, 'DHCP_TIMEOUT', 1)
+
+        def check_dhcp_locked(
+                server, failover_peers, shared_networks, hosts, interfaces,
+                global_dhcp_snippets):
+            # Pause longer than the timeout.
+            return pause(5)
+
+        self.patch(dhcp, "configure", check_dhcp_locked)
+
+        with ExpectedException(exceptions.CannotConfigureDHCP):
+            yield call_responder(Cluster(), self.command, {
+                'omapi_key': factory.make_name('key'),
+                'failover_peers': [],
+                'shared_networks': [],
+                'hosts': [],
+                'interfaces': [],
                 })
 
 

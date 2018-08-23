@@ -67,6 +67,7 @@ from provisioningserver.rpc.common import (
     Ping,
     RPCProtocol,
 )
+from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
@@ -112,6 +113,7 @@ from provisioningserver.utils.twisted import (
     callOut,
     deferred,
     DeferredValue,
+    deferWithTimeout,
     makeDeferredWithProcessProtocol,
     suppress,
 )
@@ -120,6 +122,7 @@ from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    CancelledError,
     Deferred,
     DeferredList,
     inlineCallbacks,
@@ -148,6 +151,9 @@ from zope.interface import implementer
 
 maaslog = get_maas_logger("rpc.cluster")
 log = LegacyLogger()
+
+# Number of seconds before a DHCP configure command will timeout.
+DHCP_TIMEOUT = 30  # 30 seconds.
 
 
 def catch_probe_and_enlist_error(name, failure):
@@ -455,11 +461,24 @@ class Cluster(RPCProtocol):
         else:
             log.debug(
                 "DHCPv4 configure triggered; processing immediately")
+
+        # LP:1785078 - DHCP updating gets stuck and prevents sequential updates
+        # from occurring. Being defensive here and only allowing the DHCP
+        # configure 30 seconds to perform its work.
         d = concurrency.dhcpv4.run(
+            deferWithTimeout, DHCP_TIMEOUT,
             dhcp.configure, server,
             failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
         d.addCallback(lambda _: {})
+
+        # Catch the cancelled error, which means the work timed out.
+        def _timeoutEb(failure):
+            failure.trap(CancelledError)
+            log.err(failure, "DHCPv4 configure timed out")
+            raise CannotConfigureDHCP("timed out") from failure.value
+        d.addErrback(_timeoutEb)
+
         return d
 
     @cluster.ValidateDHCPv4Config.responder
@@ -504,11 +523,24 @@ class Cluster(RPCProtocol):
         else:
             log.debug(
                 "DHCPv6 configure triggered; processing immediately")
+
+        # LP:1785078 - DHCP updating gets stuck and prevents sequential updates
+        # from occurring. Being defensive here and only allowing the DHCP
+        # configure 30 seconds to perform its work.
         d = concurrency.dhcpv6.run(
+            deferWithTimeout, DHCP_TIMEOUT,
             dhcp.configure, server,
             failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
         d.addCallback(lambda _: {})
+
+        # Catch the cancelled error, which means the work timed out.
+        def _timeoutEb(failure):
+            failure.trap(CancelledError)
+            log.err(failure, "DHCPv6 configure timed out")
+            raise CannotConfigureDHCP("timed out") from failure.value
+        d.addErrback(_timeoutEb)
+
         return d
 
     @cluster.ValidateDHCPv6Config.responder

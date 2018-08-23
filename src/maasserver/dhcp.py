@@ -67,6 +67,7 @@ from provisioningserver.rpc.cluster import (
     ValidateDHCPv6Config,
     ValidateDHCPv6Config_V2,
 )
+from provisioningserver.rpc.clusterservice import DHCP_TIMEOUT
 from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import typed
@@ -827,6 +828,14 @@ def configure_dhcp(rack_controller):
             rack_controller, "dhcpd6", ipv6_status, ipv6_status_info)
     yield deferToDatabase(update_services)
 
+    # Raise the exceptions to the caller, it might want to retry. This raises
+    # IPv4 before IPv6 if they both fail. No specific reason for this, if
+    # the function is called again both will be performed.
+    if ipv4_exc:
+        raise ipv4_exc
+    elif ipv6_exc:
+        raise ipv6_exc
+
 
 def validate_dhcp_config(test_dhcp_snippet=None):
     """Validate a DHCPD config with uncommitted values.
@@ -960,11 +969,12 @@ def _perform_dhcp_config(
     :param args: Remaining arguments for `v2_command` and `v1_command`.
     """
     def call(command):
-        # DHCP command should not take more than 30 seconds to complete. Even
-        # 30 seconds is too high, but just in case of high load 30 seconds is
-        # used as a fail-safe.
+        # DHCP command should not take more than `DHCP_TIMEOUT` plus 5 seconds
+        # to complete. This gives the region controller a 5 second buffer to
+        # recieve the timeout error from the rack controller.
         return client(
-            command, _timeout=30, shared_networks=shared_networks, **args)
+            command, _timeout=DHCP_TIMEOUT + 5,
+            shared_networks=shared_networks, **args)
 
     def maybeDowngrade(failure):
         if failure.check(amp.UnhandledCommand):

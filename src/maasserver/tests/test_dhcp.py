@@ -67,6 +67,7 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.twisted import synchronous
+from testtools import ExpectedException
 from testtools.matchers import (
     AllMatch,
     ContainsAll,
@@ -2001,7 +2002,8 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         ipv6_exc = factory.make_name("ipv6_failure")
         ipv6_stub.side_effect = always_fail_with(CannotConfigureDHCP(ipv6_exc))
 
-        yield dhcp.configure_dhcp(rack_controller)
+        with ExpectedException(CannotConfigureDHCP):
+            yield dhcp.configure_dhcp(rack_controller)
 
         @transactional
         def service_status_updated():
