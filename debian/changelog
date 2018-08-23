@@ -1,6 +1,6 @@
-maas (2.5.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.0~alpha2-7175-gab01a63f2-0ubuntu1) bionic; urgency=medium
 
-  * UNRELEASED
+  * New upstream release.
   * Don't autostart maas-rackd on install to avoid initialization errors.
     - debian/rules: add --no-start for maas-rackd.
     - debian/maas-rack-controller.postinst: enable/start maas-rackd.
@@ -9,9 +9,9 @@ maas (2.5.0~alpha2-0ubuntu1) UNRELEASED; urgency=medium
     - debian/*.lintin-overrides: Add overrides for a few warnings.
   * debian/rules: Do not override dh_installinit as we are using systemd.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 20 Aug 2018 14:19:25 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 23 Aug 2018 08:04:57 -0400
 
-maas (2.5.0~alpha1-7104-g18ae9e407-0ubuntu1~18.10.1) cosmic; urgency=medium
+maas (2.5.0~alpha1-7104-g18ae9e407-0ubuntu1) bionic; urgency=medium
 
   * New upstream release.
 
