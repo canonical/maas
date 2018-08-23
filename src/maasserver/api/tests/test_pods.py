@@ -126,6 +126,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'memory_over_commit_ratio',
                 'storage_pools',
                 'pool',
+                'host',
                 'default_macvlan_mode',
             ],
             list(parsed_result[0]))

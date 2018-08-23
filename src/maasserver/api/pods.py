@@ -44,6 +44,7 @@ DISPLAYED_POD_FIELDS = (
     'memory_over_commit_ratio',
     'storage_pools',
     'pool',
+    'host',
     'default_macvlan_mode',
     )
 
