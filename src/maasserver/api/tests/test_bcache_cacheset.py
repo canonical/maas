@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for bcache cache set API."""
@@ -7,8 +7,11 @@ __all__ = []
 
 import http.client
 import random
+from unittest.mock import ANY
 
+from maasserver.api import bcache_cacheset as bcache_cacheset_module
 from maasserver.enum import (
+    ENDPOINT,
     FILESYSTEM_GROUP_TYPE,
     NODE_STATUS,
 )
@@ -17,6 +20,8 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.events import EVENT_TYPES
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -76,6 +81,8 @@ class TestBcacheCacheSetsAPI(APITestCase.ForUser):
         self.assertItemsEqual(expected_names, result_names)
 
     def test_create(self):
+        mock_create_audit_event = self.patch(
+            bcache_cacheset_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         cache_device = factory.make_PhysicalBlockDevice(node=node)
@@ -87,6 +94,10 @@ class TestBcacheCacheSetsAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content)
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(cache_device.id, parsed_device['cache_device']['id'])
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Created bcache cache set on " + "%s." %
+            node.hostname))
 
     def test_create_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -170,6 +181,8 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_deletes_cache_set(self):
+        mock_create_audit_event = self.patch(
+            bcache_cacheset_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
@@ -178,6 +191,10 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(cache_set))
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Deleted bcache cache set on " + "%s." %
+            node.hostname))
 
     def test_delete_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -222,6 +239,8 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             response.content)
 
     def test_update_change_cache_device(self):
+        mock_create_audit_event = self.patch(
+            bcache_cacheset_module, 'create_audit_event')
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
@@ -234,6 +253,10 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content)
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_device.id, parsed_device['cache_device']['id'])
+        self.assertThat(mock_create_audit_event, MockCalledOnceWith(
+            EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
+            "'%(username)s': Updated bcache cache set on " + "%s." %
+            node.hostname))
 
     def test_update_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)

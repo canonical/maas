@@ -1,10 +1,12 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `CacheSet`."""
 
 from maasserver.api.support import OperationsHandler
+from maasserver.audit import create_audit_event
 from maasserver.enum import (
+    ENDPOINT,
     NODE_PERMISSION,
     NODE_STATUS,
 )
@@ -22,6 +24,7 @@ from maasserver.models import (
     Machine,
 )
 from piston3.utils import rc
+from provisioningserver.events import EVENT_TYPES
 
 
 DISPLAYED_CACHE_SET_FIELDS = (
@@ -53,7 +56,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
         return CacheSet.objects.get_cache_sets_for_node(machine)
 
     def create(self, request, system_id):
-        """Creates a Bcache Cache Set.
+        """Creates a bcache Cache Set.
 
         :param cache_device: Cache block device.
         :param cache_partition: Cache partition.
@@ -70,6 +73,10 @@ class BcacheCacheSetsHandler(OperationsHandler):
                 "Cannot create cache set because the node is not Ready.")
         form = CreateCacheSetForm(machine, data=request.data)
         if form.is_valid():
+            create_audit_event(
+                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
+                "'%(username)s': Created bcache cache set on " + "%s." %
+                machine.hostname)
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -113,7 +120,7 @@ class BcacheCacheSetHandler(OperationsHandler):
             system_id, id, request.user, NODE_PERMISSION.VIEW)
 
     def delete(self, request, system_id, id):
-        """Delete cache set on a machine.
+        """Delete bcache cache set on a machine.
 
         Returns 400 if the cache set is in use.
         Returns 404 if the machine or cache set is not found.
@@ -130,10 +137,14 @@ class BcacheCacheSetHandler(OperationsHandler):
                 "Cannot delete cache set; it's currently in use.")
         else:
             cache_set.delete()
+            create_audit_event(
+                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
+                "'%(username)s': Deleted bcache cache set on " + "%s." %
+                node.hostname)
             return rc.DELETED
 
     def update(self, request, system_id, id):
-        """Delete bcache on a machine.
+        """Update bcache cache set on a machine.
 
         :param cache_device: Cache block device to replace current one.
         :param cache_partition: Cache partition to replace current one.
@@ -151,6 +162,10 @@ class BcacheCacheSetHandler(OperationsHandler):
                 "Cannot update cache set because the machine is not Ready.")
         form = UpdateCacheSetForm(cache_set, data=request.data)
         if form.is_valid():
+            create_audit_event(
+                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
+                "'%(username)s': Updated bcache cache set on " + "%s." %
+                node.hostname)
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
