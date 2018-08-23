@@ -441,8 +441,20 @@ class Factory(maastesting.factory.Factory):
         if node_type == NODE_TYPE.MACHINE and with_boot_disk:
             root_partition = self.make_Partition(node=node)
             acquired = node.status in ALLOCATED_NODE_STATUSES
+            if node.osystem in ['centos', 'rhel']:
+                # CentOS and RHEL do not support Bcache or ZFS so don't create
+                # a node using those filesystems if the caller told us the
+                # osystem is CentOS or RHEL.
+                fstype = self.pick_filesystem_type((
+                    FILESYSTEM_TYPE.BCACHE_BACKING,
+                    FILESYSTEM_TYPE.BCACHE_CACHE,
+                    FILESYSTEM_TYPE.ZFSROOT,
+                ))
+            else:
+                fstype = self.pick_filesystem_type()
             self.make_Filesystem(
-                partition=root_partition, mount_point='/', acquired=acquired)
+                fstype=fstype, partition=root_partition, mount_point='/',
+                acquired=acquired)
 
         # Setup the BMC connected to rack controller if a BMC is created.
         if bmc_connected_to is not None:
