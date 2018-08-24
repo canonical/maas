@@ -1215,6 +1215,16 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
+    def test__ignores_tunnel(self):
+        ip_addr = {
+            "vnet": {
+                "type": "ethernet.tunnel",
+                "flags": ["UP"],
+                "index": 2,
+            },
+        }
+        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
+
     def test__simple(self):
         ip_addr = {
             "eth0": {

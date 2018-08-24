@@ -365,7 +365,7 @@ class FakeSysProcTestCase(MAASTestCase):
     def createInterfaceType(
             self, ifname, iftype, is_bridge=False, is_vlan=False,
             is_bond=False, is_wireless=False, is_physical=False,
-            bonded_interfaces=None):
+            is_tunnel=False, bonded_interfaces=None):
         ifdir = os.path.join(self.tmp_sys_net, ifname)
         os.mkdir(ifdir)
         type_file = os.path.join(ifdir, 'type')
@@ -373,6 +373,9 @@ class FakeSysProcTestCase(MAASTestCase):
             f.write("%d\n" % iftype)
         if is_bridge:
             os.mkdir(os.path.join(ifdir, 'bridge'))
+        if is_tunnel:
+            with open(os.path.join(ifdir, "tun_flags"), 'w'):
+                pass  # Just touch.
         if is_vlan:
             with open(os.path.join(self.tmp_proc_net, "vlan", ifname), 'w'):
                 pass  # Just touch.
@@ -413,6 +416,14 @@ class TestGetInterfaceType(FakeSysProcTestCase):
             'br0', sys_class_net=self.tmp_sys_net,
             proc_net=self.tmp_proc_net),
             Equals('ethernet.bridge')
+        )
+
+    def test__identifies_tunnel_interface(self):
+        self.createEthernetInterface('vnet0', is_tunnel=True)
+        self.assertThat(get_interface_type(
+            'vnet0', sys_class_net=self.tmp_sys_net,
+            proc_net=self.tmp_proc_net),
+            Equals('ethernet.tunnel')
         )
 
     def test__identifies_bond_interface(self):
