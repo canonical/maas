@@ -1256,11 +1256,12 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh('')
         domain = factory.make_name('domain')
         network = factory.make_name('network')
+        self.patch(virsh.VirshSSH, "get_best_network").return_value = network
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface()
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
-        conn.attach_interface(interface, domain, network)
+        conn.attach_interface(interface, domain)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-interface', domain, 'network', network,
             '--mac', fake_mac,
@@ -1270,12 +1271,13 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh('')
         domain = factory.make_name('domain')
         network = factory.make_name('network')
+        self.patch(virsh.VirshSSH, "get_best_network").return_value = network
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=network, attach_type='network')
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
-        conn.attach_interface(interface, domain, network)
+        conn.attach_interface(interface, domain)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-interface', domain, 'network', network,
             '--mac', fake_mac,
@@ -1284,7 +1286,6 @@ class TestVirshSSH(MAASTestCase):
     def test_attach_interface_attaches_macvlan(self):
         conn = self.configure_virshssh('')
         domain = factory.make_name('domain')
-        network = factory.make_name('network')
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
@@ -1296,7 +1297,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        conn.attach_interface(interface, domain, network)
+        conn.attach_interface(interface, domain)
 
         device_params = {
             'mac_address': fake_mac,
@@ -1318,7 +1319,6 @@ class TestVirshSSH(MAASTestCase):
     def test_attach_interface_attaches_bridge(self):
         conn = self.configure_virshssh('')
         domain = factory.make_name('domain')
-        network = factory.make_name('network')
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
@@ -1330,7 +1330,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        conn.attach_interface(interface, domain, network)
+        conn.attach_interface(interface, domain)
 
         device_params = {
             'mac_address': fake_mac,
@@ -1434,8 +1434,37 @@ class TestVirshSSH(MAASTestCase):
         request = make_requested_machine()
         self.patch(virsh.VirshSSH, "create_local_volume").return_value = None
         error = self.assertRaises(
-            PodInvalidResources, conn.create_domain, request, )
+            PodInvalidResources, conn.create_domain, request)
         self.assertEqual("not enough space for disk 0.", str(error))
+
+    def test_create_domain_handles_no_network_for_requested_interface(self):
+        conn = self.configure_virshssh('')
+        request = make_requested_machine()
+        request.block_devices = request.block_devices[:1]
+        request.interfaces = request.interfaces[:1]
+        disk_info = (factory.make_name('pool'), factory.make_name('vol'))
+        domain_params = {
+            "type": "kvm",
+            "emulator": "/usr/bin/qemu-system-x86_64",
+        }
+        self.patch(
+            virsh.VirshSSH, "create_local_volume").return_value = disk_info
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params)
+        mock_uuid = self.patch(virsh_module, "uuid4")
+        mock_uuid.return_value = str(uuid4())
+        domain_params['name'] = request.hostname
+        domain_params['uuid'] = mock_uuid.return_value
+        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params['cores'] = str(request.cores)
+        domain_params['memory'] = str(request.memory)
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        self.patch(virsh.VirshSSH, "run")
+        self.patch(virsh.VirshSSH, "get_network_list").return_value = []
+        self.assertRaises(PodInvalidResources, conn.create_domain, request)
 
     def test_create_domain_calls_correct_methods_with_amd64_arch(self):
         conn = self.configure_virshssh('')
@@ -1462,7 +1491,6 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
@@ -1486,7 +1514,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1521,7 +1549,6 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
@@ -1545,7 +1572,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1580,7 +1607,6 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
@@ -1604,7 +1630,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1639,7 +1665,6 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        self.patch(virsh.VirshSSH, "get_best_network").return_value = "maas"
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
@@ -1663,7 +1688,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY, 'maas'))
+            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(

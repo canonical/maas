@@ -871,13 +871,14 @@ class VirshSSH(pexpect.spawn):
 
         return networks[0]
 
-    def attach_interface(self, interface, domain, network):
+    def attach_interface(self, interface, domain):
         """Attach new network interface on `domain` to `network`."""
         mac = generate_mac_address()
         # If attachment type is not specified, default to network.
         if interface.attach_type in (None, InterfaceAttachType.NETWORK):
             # Set the network if we are explicity attaching a network
             # specified by the user.
+            network = self.get_best_network()
             if interface.attach_type is not None:
                 network = interface.attach_name
             return self.run([
@@ -977,11 +978,7 @@ class VirshSSH(pexpect.spawn):
         return "vd" + name
 
     def create_domain(self, request, default_pool=None):
-        """Create a domain based on the `request` with hostname.
-
-        For now this just uses `get_best_network` to connect the interfaces
-        of the domain to the network.
-        """
+        """Create a domain based on the `request` with hostname."""
         # Create all the block devices first. If cannot complete successfully
         # then fail early. The driver currently doesn't do any tag matching
         # for block devices, and is not really required for Virsh.
@@ -1030,16 +1027,22 @@ class VirshSSH(pexpect.spawn):
             f.flush()
             self.run(['define', f.name])
 
+        # Attach the requested interfaces.
+        for interface in request.interfaces:
+            try:
+                self.attach_interface(interface, request.hostname)
+            except PodInvalidResources as error:
+                # Delete the defined domain in virsh.
+                self.run(['destroy', request.hostname])
+                self.run(['undefine', request.hostname])
+                # Re-raise the exception.
+                raise error
+
         # Attach the created disks in order.
         for idx, (pool, volume) in enumerate(created_disks):
             block_name = self.get_block_name_from_idx(idx)
             self.attach_local_volume(
                 request.hostname, pool, volume, block_name)
-
-        # Attach new interfaces to the best possible network.
-        best_network = self.get_best_network()
-        for interface in request.interfaces:
-            self.attach_interface(interface, request.hostname, best_network)
 
         # Set machine to autostart.
         self.set_machine_autostart(request.hostname)
