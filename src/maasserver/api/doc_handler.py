@@ -62,12 +62,14 @@ from functools import partial
 from inspect import getdoc
 from io import StringIO
 import json
+import os
 import sys
 from textwrap import dedent
 
 from django.http import HttpResponse
 from django.shortcuts import render
 from docutils import core
+from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.doc import (
     describe_api,
     find_api_resources,
@@ -76,6 +78,7 @@ from maasserver.api.doc import (
     generate_power_types_doc,
     get_api_description_hash,
 )
+from maasserver.api.templates import APITemplateRenderer
 from maasserver.utils import build_absolute_uri
 
 # Title section for the API documentation.  Matches in style, format,
@@ -93,6 +96,7 @@ api_doc_title = dedent("""
 
 def render_api_docs():
     """Render ReST documentation for the REST API.
+
 
     This module's docstring forms the head of the documentation; details of
     the API methods follow.
@@ -125,6 +129,8 @@ def render_api_docs():
         else:
             return http_method, op, function
 
+    annotation_parser = APIDocstringParser()
+    templates = APITemplateRenderer()
     resources = find_api_resources(urlconf)
     for doc in generate_api_docs(resources):
         uri_template = doc.resource_uri_template
@@ -139,18 +145,29 @@ def render_api_docs():
         for (http_method, op), function in sorted(exports, key=export_key):
             operation = " op=%s" % op if op is not None else ""
             subsection = "``%s %s%s``" % (http_method, uri_template, operation)
-            line("%s\n%s\n" % (subsection, '#' * len(subsection)))
-            line()
             docstring = getdoc(function)
             if docstring is not None:
-                for docline in dedent(docstring).splitlines():
-                    if docline.strip() == '':
-                        # Blank line.  Don't indent.
-                        line()
-                    else:
-                        # Print documentation line, indented.
-                        line(docline)
+                if APIDocstringParser.is_annotated_docstring(docstring):
+                    operation = "op=%s" % op if op is not None else ""
+                    annotation_parser.parse(
+                        docstring, http_method, uri_template, operation)
+                    line(templates.apply_template(os.path.dirname(__file__) +
+                         "/tmpl-apidoc.rst", annotation_parser))
+                else:
+                    line("%s\n%s\n" % (subsection, '#' * len(subsection)))
+                    line()
+                    for docline in dedent(docstring).splitlines():
+                        if docline.strip() == '':
+                            # Blank line.  Don't indent.
+                            line()
+                        else:
+                            # Print documentation line, indented.
+                            line(docline)
                 line()
+            else:
+                line("%s\n%s\n" % (subsection, '#' * len(subsection)))
+                line()
+
     line()
     line()
     line(generate_power_types_doc())

@@ -29,6 +29,7 @@ from django.core.urlresolvers import (
     RegexURLPattern,
     RegexURLResolver,
 )
+from maasserver.api.annotations import APIDocstringParser
 from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
@@ -217,8 +218,37 @@ def describe_actions(handler):
     for signature, function in handler.exports.items():
         http_method, operation = signature
         name = getname(http_method) if operation is None else operation
+
+        ap = APIDocstringParser()
+        doc = getdoc(function)
+
+        if doc is not None:
+            if APIDocstringParser.is_annotated_docstring(doc):
+                # Because the docstring contains annotations, we
+                # need to construct a string suitable for output
+                # to stdout that matches the style used for
+                # non-annotated docstrings in the CLI.
+                ap.parse(doc)
+                d = ap.get_dict()
+                if d['description_title'] != "":
+                    doc = d['description_title'] + "\n\n"
+                    doc += d['description'] + "\n\n"
+                else:
+                    doc = d['description'] + "\n\n"
+
+                # Here, we add the params, but we skip params
+                # surrounded by curly brackets (e.g. {foo})
+                # because these indicate params that appear in
+                # the URI (e.g. /zone/{name}/). I.e. positional
+                # arguments. These already appear in the CLI
+                # help command output so we don't want duplicates.
+                for p in d['params']:
+                    if p['name'].find("{") == -1 and p['name'].find("}") == -1:
+                        doc += ":param " + p['name'] + ": " + p['description']
+                        doc += ":type " + p['name'] + ": " + p['type'] + "\n"
+
         yield dict(
-            method=http_method, name=name, doc=getdoc(function),
+            method=http_method, name=name, doc=doc,
             op=operation, restful=(operation is None))
 
 

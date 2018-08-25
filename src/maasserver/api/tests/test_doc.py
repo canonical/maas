@@ -55,6 +55,7 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
+    Contains,
     ContainsAll,
     Equals,
     Is,
@@ -227,8 +228,27 @@ class TestHandlers(MAASTestCase):
             "GET a FileStorage object as a json object.",
             # Doc for a method parameter (:param: doc).
             "Optional prefix used to filter out the returned files.",
+            # Doc for a rendered docstring containing annotations
+            "\"resource_uri\": \"/MAAS/api",
+            # Doc for a rendered docstring containing annotations
+            "Required. The new zone's name.",
         ]
         self.assertThat(doc, ContainsAll(doc_snippets))
+
+    def test_does_not_contain_documentation_warnings_syntax_errors(self):
+        # We don't want any of these strings in the rendered docs ever.
+        doc = render_api_docs()
+        self.assertThat(doc, Not(Contains("API_WARNING")), """
+            The rendered API doc contains an API_WARNING flag. To fix this,
+            render the doc using `bin/maas-region generate_api_doc`, and
+            search for the API_WARNING flag to find the inline warning.
+        """)
+        self.assertThat(doc, Not(Contains("API_SYNTAX_ERROR")), """
+            The rendered API doc contains an API_SYNTAX_ERROR flag. To fix
+            this, render the doc using `bin/maas-region generate_api_doc`,
+            and search for the API_SYNTAX_ERROR flag to find the inline
+            warning.
+        """)
 
 
 class ExampleHandler(OperationsHandler):

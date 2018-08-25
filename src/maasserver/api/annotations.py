@@ -1,0 +1,569 @@
+# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""
+This idea borrows heavily from apidocjs. It's been simplified
+and adapted for a python environment where in-place dynamic output is
+needed based on a docstring and template.
+
+The APIDocstringParser accepts docstrings for parsing and
+returns a dictionary containing the values given with
+embedded annoations of the form:
+
+    @description arbitrary text
+    @description-title arbitrary text
+
+    OR
+
+    @tag (typeinfo) "id or name" [opt1=foo,opt2=bar] arbitrary text
+    @tag-example "id or name" [opt1=foo,opt2=bar] arbitrary text
+
+@tag can be:
+
+    @param: Describes an API parameter
+    @param-example: A typical param
+    @success: Describes a successful API return value
+    @success-example: A typical successful return value
+    @error: Describes an error state
+    @error-example: A typical error return value
+
+With the exception of the description tag, docstrings can
+contain as many tags as necessary to describe an API call.
+
+Notes:
+
+Description annotations can be interpreted in a couple of ways:
+
+  Implicit titles:
+    In this scenario, the first line of a description field can be
+    considered a 'title' of sorts. The CLI help, for example, follows
+    this convention.
+
+  Explicit title:
+    The APIDocstringParser also contains support for an explicit
+    title, which the CLI-help code should honor if present.
+
+For an example tag to be successfully associated with
+a tag, the name or ID fields of the annotations must match:
+
+    E.g.
+
+    @param (string) "p1" Some text.
+    @param-example "p1" foobarbaz
+
+In this case, param "p1" and param-example "p1" will be
+paired together in the output dictionary.
+
+This class is typically used in conjunction with the
+APITemplateRenderer class.
+
+OUTPUT:
+
+    The get_dict class member will return a dictionary. Here is an
+    example:
+
+    {
+      "http_method": "GET",
+      "uri": "/myuri/{foo}/",
+      "operation": "arg1=foo&arg2=bar",
+      "description-title": "A brief, title-like description",
+      "description": "Some longer description.",
+      "description_stripped": "description without formatting",
+      "params": [
+        {
+          "name": "param",
+          "type": "string",
+          "description": "Some description.\n",
+          "options": {
+              "testopt1": "foo",
+              "testopt2": "bar"
+          },
+          "example": " my param example\n",
+        }
+      ],
+      "successes": [
+        {
+          "name": "success1",
+          "type": "json",
+          "description": "A JSON object. See example for more detail.\n",
+          "options": {
+              "testopt1": "foo"
+          },
+          "example": "\n    {\n        \"key1\":10    }\n",
+        }
+      ],
+      "errors": [
+        {
+          "name": "403",
+          "type": "http-header",
+          "description": "If user is not authorized.\n",
+          "description": "If user is not authorized.\n",
+          "options": {
+              "testopt1": "bar"
+              "some-opt": "foobar"
+          },
+          "example": "\n    { \"not authorized\" }",
+        }
+      ]
+    }
+
+NOTES:
+    1. We don't pre-compile the regexes and instead rely on
+    Python's internal caching. This wouldn't be hard to
+    change if a speed improvement is needed.
+"""
+
+__all__ = [
+    'APIDocstringParser',
+]
+
+import re
+from textwrap import indent
+
+
+class APIDocstringParser:
+    @staticmethod
+    def is_annotated_docstring(docstring):
+        """Returns True if a given docstring contains a known tag."""
+
+        tags = [
+            "@description",
+            "@description-title",
+            "@param",
+            "@param-example",
+            "@success",
+            "@success-example",
+            "@error",
+            "@error-example"
+        ]
+
+        for tag in tags:
+            if docstring.find(tag) != -1:
+                return True
+
+        return False
+
+    def _warn(self, msg, context=""):
+        """Collects a given warning for later use."""
+
+        if context != "":
+            context = indent("in:\n%s" % context, "    ")
+
+        self.warnings = (
+            self.warnings + "API_WARNING: %s\n\n%s" %
+            (msg, context))
+
+    def _syntax_error(self, msg, context=""):
+        """Collects a given syntax error for later use."""
+
+        if context != "":
+            context = indent("in:\n%s" % context, "    ")
+
+        self.warnings = (
+            self.warnings + "API_SYNTAX_ERROR: %s\n\n%s" %
+            (msg, context))
+
+    def _get_named_example_for_named_tag(
+            self, tag_cat, tag_name, examples):
+        """Maps examples to associated named tags.
+
+        Given a tag's name -- "tag_name" -- this function searches
+        through a list of associated example tags to find one with
+        the same name. tag_cat is used as a clue in case a name
+        doesn't match.
+
+        E.g.
+            @param (string) "param_id" some description
+            @param-example "param_id" param example
+
+        The text 'param example' will be added to param_id's example
+        key as a value.
+
+        A warning is collected if the name is empty.
+        """
+
+        for example in examples:
+            if example['name'] == tag_name:
+                if tag_name == "":
+                    self._warn(
+                        "Mapped empty name to an empty name. Did you "
+                        "forget to name your example to match a '%s'?\nThis "
+                        "can result in double examples." % tag_cat)
+                return example
+
+        self._warn(
+            "No matching example found for '%s' '%s'" %
+            (tag_cat, tag_name))
+        return {}
+
+    def _get_options_dict(self, options_string):
+        """Converts a string of key, value pairs into a dictionary.
+
+        The options field of an annotation can hold any tag-specific
+        instructions to be added later on. For example, the following
+        might indicate to use bold when outputting:
+
+        @tag (type) "tagid" [format=bold] some description
+        """
+        # hasopt1=foo,hasopt2=bar
+        d = {}
+
+        if options_string != "":
+            for opt in options_string.split(","):
+                key, val = opt.split("=")
+                if key in d:
+                    self._warn(
+                        "Found duplicate key '%s' in options '%s'" %
+                        (key, options_string))
+                d[key] = val
+
+        return d
+
+    def _map_named_tags_to_named_examples(self, tag_cat, tags, examples):
+        """Maps a list of tags to a list of examples.
+
+        Given a list of similar tags (e.g. params) and associated examples
+        (e.g. param-examples), this function maps an example to a tag via
+        the tag's name key.
+
+        When a match is found, the example's description field becomes the
+        tag's example field.
+
+        For now, the tag will inherit the example's option field, but this
+        behavior will likely change as the option's role is put into
+        practice.
+        """
+        return_list = []
+        for tag in tags:
+            e = self._get_named_example_for_named_tag(
+                tag_cat, tag['name'], examples)
+            if e:
+                tag['example'] = e['description']
+                tag['options'] = e['options']
+            else:
+                tag['example'] = ""
+
+            return_list.append(tag)
+
+        return return_list
+
+    def _clear_docstring_vars(self):
+        # Chunk of plain-text, usually single-line
+        self.description_title = ""
+        # Chunk of plain-text, multi-line
+        self.description = ""
+        # params are name, type, description, and example
+        # (populated after the fact), multiline
+        self.params = []
+        # examples are name (should match a param name),
+        # type, description, multiline
+        self.examples = []
+        # Success name, type and description, multiline
+        self.successes = []
+        # Success example, name (should match success name),
+        # description, multi-line
+        self.success_examples = []
+        # Error description, name, type, description, multi-line
+        self.errors = []
+        # Error example, name (should match error name),
+        # description, multi-line
+        self.error_examples = []
+        # Clear out any collected warnings
+        self.warnings = ""
+
+    # Strips multiple inline spaces, all newlines, and
+    # leading and trailing spaces
+    def _strip_spaces_and_newlines(self, s):
+        s_stripped = re.sub('\s{2,}', ' ', s)
+        s_stripped = re.sub('\n', ' ', s_stripped)
+
+        return s_stripped.rstrip().lstrip()
+
+    def _create_tag_dict(self, tname, ttype, opts, desc):
+        desc_stripped = self._strip_spaces_and_newlines(desc)
+
+        d = {
+            "name": tname,
+            "type": ttype,
+            "description": desc,
+            "description_stripped": desc_stripped,
+            "options": self._get_options_dict(opts),
+            "example": ""
+        }
+        return d
+
+    def _process_docstring_tag(self, tag, tname, ttype, opts, desc, docstring):
+        """Processes parsed tag information in contextual way.
+
+        Given a tag, tag name, tag type, options, description and the original
+        docstring, process the separate bits of info into a coherent dictionary
+        based on what kind of tag is found.
+
+        This function will also warn if something looks fishy, like if a
+        developer puts options in a description tag.
+        """
+
+        # @description-title
+        if tag == "description-title":
+            if self.description_title != "":
+                self._warn(
+                    "Found another description-title field. Will "
+                    "overwrite the original.", docstring)
+
+            if ttype != "" or tname != "" or opts != "":
+                self._warn(
+                    "type, name, and options are not "
+                    "available for the description-title tag.", docstring)
+
+            self.description_title = self._strip_spaces_and_newlines(desc)
+        #
+        # @description
+        #
+        elif tag == "description":
+            if self.description != "":
+                self._warn(
+                    "Found another description field. "
+                    "Will overwrite the original.", docstring)
+
+            if ttype != "" or tname != "" or opts != "":
+                self._warn(
+                    "type, name, and options are not "
+                    "available for the description tag.", docstring)
+
+            self.description = desc
+        #
+        # @param
+        #
+        elif tag == "param":
+            self.params.append(
+                self._create_tag_dict(tname, ttype, opts, desc))
+        #
+        # @param-example
+        #
+        elif tag == "param-example":
+            self.examples.append(
+                self._create_tag_dict(tname, ttype, opts, desc))
+        #
+        # @success
+        #
+        elif tag == "success":
+            self.successes.append(
+                self._create_tag_dict(tname, ttype, opts, desc))
+        #
+        # @success-example
+        #
+        elif tag == "success-example":
+            self.success_examples.append(
+                self._create_tag_dict(tname, ttype, opts, desc))
+        #
+        # @error
+        #
+        elif tag == "error":
+            self.errors.append(
+                self._create_tag_dict(tname, ttype, opts, desc))
+        #
+        # @error-example
+        #
+        elif tag == "error-example":
+            self.error_examples.append(
+                self._create_tag_dict(tname, ttype, opts, desc))
+        #
+        # Fall through to warning message
+        #
+        else:
+            self._syntax_error("Unknown tag: %s" % tag, docstring)
+
+    def _sanity_check_tag_and_get_warning(self, tag, tname, ttype, opts, desc):
+        """Returns a string warning if there are semantic issues.
+
+        Based on the tag, we look for the other things to
+        be present. E.g. if the tag is @description and there
+        is no actual description, that's likely an issue.
+        """
+        if tag == "description-title":
+            if desc == "":
+                return "description-title tag contains no description"
+        if tag == "description":
+            if desc == "":
+                return "description tag contains no description"
+        elif tag == "param":
+            if tname == "" or ttype == "" or desc == "":
+                return "a param tag may be incomplete"
+        elif tag == "param-example":
+            if tname == "" or desc == "":
+                return "a param-example tag may be incomplete"
+        elif tag == "success":
+            if tname == "" or ttype == "" or desc == "":
+                return "a success tag may be incomplete"
+        elif tag == "success-example":
+            if tname == "" or desc == "":
+                return "a success-example tag may be incomplete"
+        elif tag == "error":
+            if tname == "" or ttype == "" or desc == "":
+                return "an error tag may be incomplete"
+        elif tag == "error-example":
+            if tname == "" or desc == "":
+                return "an error-example tag may be incomplete"
+
+        return ""
+
+    def parse(self, docstring, http_method='', uri='', operation=''):
+        """State machine that parses annotated API docstrings.
+
+        This function parses a docstring by looking for a series of
+        structured text blocks that follow a basic format:
+
+            @tag (type) "name" [key1=val1,...,keyn=valn] description
+
+        In order to retain basic formatting, it splits the
+        docstring by newline and space while retaining both.
+
+        The only required argument is 'docstring'. When rendering the
+        API docstrings for the web, we use the optional arguments. For
+        CLI help and testing, we don't need them.
+        """
+        from enum import Enum
+
+        class ParseState(Enum):
+            TAG = 0
+            TYPE = 1
+            NAME = 2
+            OPTS = 3
+            DESC = 4
+
+        # Reset the state machine with the given variables so
+        # we can reuse the same APIParseDocstring class instance
+        # for multiple runs over many docstrings, rather than
+        # instantiating a new class over and over.
+        #
+        # E.g.
+        #     ap = APIDocstringParser()
+        #     for docstring in all_docstrings:
+        #         ap.parse(m, u, o, docstring)
+        #
+        self.http_method = http_method
+        self.uri = uri
+        self.operation = operation
+        self._clear_docstring_vars()
+
+        # Init parse state
+        ps = ParseState.TAG
+
+        # These help us to remember state as we parse docstrings
+        tag = ""
+        ttype = ""
+        tname = ""
+        opts = ""
+        desc = ""
+
+        # Use an indexed array so we can simulate a "put back" operation for
+        # a one-word lookahead. Split on space (or repeated space) as well as
+        # newlines and keep the split chars so indentation will be kept intact.
+        words = re.split(r'(\s+|\n)', docstring)
+        max_idx = len(words)
+        idx = 0
+
+        done = False
+        while not done:
+            word = words[idx]
+
+            # Looking for a tag -- @tag
+            if ps == ParseState.TAG:
+                m = re.search("@([a-z\-]+)", word)
+                if m:
+                    tag = m.group(1)
+                    ps = ParseState.TYPE
+                else:
+                    self._syntax_error(
+                        "expecting annotation tag. Found '%s' "
+                        "' instead." % word, docstring)
+
+            # Looking for a type -- (type)
+            elif ps == ParseState.TYPE:
+                m = re.search("\(([a-zA-Z0-9\-_]+)\)", word)
+                if m:
+                    ttype = m.group(1)
+                    ps = ParseState.NAME
+                elif not re.search("^[\s]+$", word):
+                    ps = ParseState.NAME
+                    # Put the word back
+                    idx -= 1
+
+            # Looking for a name -- "name"/'name'
+            elif ps == ParseState.NAME:
+                m = re.search("[\"\']([a-zA-Z0-9\-_{}]+)[\"\']", word)
+                if m:
+                    tname = m.group(1)
+                    ps = ParseState.OPTS
+                elif not re.search("^[\s]+$", word):
+                    ps = ParseState.OPTS
+                    # Put the word back
+                    idx -= 1
+
+            # Looking for options -- [options]
+            elif ps == ParseState.OPTS:
+                m = re.search("\[([a-zA-Z0-9\-_=\/;,\.~]+)\]", word)
+                if m:
+                    opts = m.group(1)
+                    ps = ParseState.DESC
+                elif not re.search("^[\s]+$", word):
+                    ps = ParseState.DESC
+                    # Put the word back
+                    idx -= 1
+
+            # Looking for description text -- any text
+            elif ps == ParseState.DESC:
+                # If we stumble onto another annotation, we put back the word
+                # by decreasing the index so the next iteration of the loop
+                # will look at this word with a different state active.
+                if word.find("@") != -1:
+                    idx -= 1
+                    ps = ParseState.TAG
+
+                    warn = self._sanity_check_tag_and_get_warning(
+                        tag, tname, ttype, opts, desc)
+                    if warn != "":
+                        self._warn(warn, docstring)
+                    self._process_docstring_tag(
+                        tag, tname, ttype, opts, desc, docstring)
+
+                    tname = ""
+                    ttype = ""
+                    desc = ""
+                    opts = ""
+
+                else:
+                    desc += word
+
+            idx += 1
+            if idx >= max_idx:
+                done = True
+
+        warn = self._sanity_check_tag_and_get_warning(
+            tag, tname, ttype, opts, desc)
+        if warn != "":
+            self._warn(warn, docstring)
+        self._process_docstring_tag(tag, tname, ttype, opts, desc, docstring)
+
+    def get_dict(self):
+        """Returns a dictionary based on the collected pieces."""
+
+        d = {}
+
+        d['http_method'] = self.http_method
+        d['uri'] = self.uri
+        d['operation'] = self.operation
+        d['description_title'] = self.description_title
+        d['description'] = self.description
+        d['params'] = self._map_named_tags_to_named_examples(
+            'param', self.params, self.examples)
+        d['successes'] = self._map_named_tags_to_named_examples(
+            'success', self.successes, self.success_examples)
+        d['errors'] = self._map_named_tags_to_named_examples(
+            'error', self.errors, self.error_examples)
+
+        # We must add warnings last because they are populated
+        # in _map_list_to_examples
+        d['warnings'] = self.warnings
+
+        return d
