@@ -717,6 +717,24 @@ class VirshSSH(pexpect.spawn):
         discovered_machine.interfaces = interfaces
         return discovered_machine
 
+    def check_machine_can_startup(self, machine):
+        """Check the machine for any startup errors
+        after the domain is created in virsh.
+
+        If an error is reported, delete the domain and raise an exception.
+        If no error is reported, destroy the domain to put it back into a
+        'shut off' state.
+        """
+        output = self.run(['start', '--paused', machine]).strip()
+        if output.startswith("error:"):
+            # Delete the domain.
+            self.delete_domain(machine)
+            # Raise the error.
+            raise VirshError("Unable to compose %s: %s" % (machine, output))
+        else:
+            # No errors, so set machine back to 'shut off' state.
+            self.run(['destroy', machine])
+
     def set_machine_autostart(self, machine):
         """Set machine to autostart."""
         output = self.run(['autostart', machine]).strip()
@@ -1043,6 +1061,9 @@ class VirshSSH(pexpect.spawn):
             block_name = self.get_block_name_from_idx(idx)
             self.attach_local_volume(
                 request.hostname, pool, volume, block_name)
+
+        # Check machine for any startup errors.
+        self.check_machine_can_startup(request.hostname)
 
         # Set machine to autostart.
         self.set_machine_autostart(request.hostname)

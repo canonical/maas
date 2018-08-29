@@ -982,6 +982,29 @@ class TestVirshSSH(MAASTestCase):
         discovered_machine = conn.get_discovered_machine(hostname)
         self.assertIsNone(discovered_machine)
 
+    def test_check_machine_can_startup(self):
+        machine = factory.make_name('machine')
+        conn = self.configure_virshssh('')
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.side_effect = ("", "")
+        conn.check_machine_can_startup(machine)
+        self.assertThat(
+            mock_run, MockCallsMatch(
+                call(['start', '--paused', machine]),
+                call(['destroy', machine])))
+
+    def test_check_machine_can_startup_raises_exception(self):
+        machine = factory.make_name('machine')
+        conn = self.configure_virshssh('')
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.side_effect = ("error: some error", "")
+        mock_delete_domain = self.patch(virsh.VirshSSH, "delete_domain")
+        self.assertRaises(
+            virsh.VirshError, conn.check_machine_can_startup, machine)
+        self.assertThat(mock_delete_domain, MockCalledOnceWith(machine))
+        self.assertThat(
+            mock_run, MockCalledOnceWith(['start', '--paused', machine]))
+
     def test_poweron(self):
         conn = self.configure_virshssh('')
         expected = conn.poweron(factory.make_name('machine'))
@@ -1494,6 +1517,8 @@ class TestVirshSSH(MAASTestCase):
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_check_machine_can_startup = self.patch(
+            virsh.VirshSSH, "check_machine_can_startup")
         mock_set_machine_autostart = self.patch(
             virsh.VirshSSH, "set_machine_autostart")
         mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
@@ -1515,6 +1540,9 @@ class TestVirshSSH(MAASTestCase):
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
             mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1552,6 +1580,8 @@ class TestVirshSSH(MAASTestCase):
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_check_machine_can_startup = self.patch(
+            virsh.VirshSSH, "check_machine_can_startup")
         mock_set_machine_autostart = self.patch(
             virsh.VirshSSH, "set_machine_autostart")
         mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
@@ -1573,6 +1603,9 @@ class TestVirshSSH(MAASTestCase):
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
             mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1610,6 +1643,8 @@ class TestVirshSSH(MAASTestCase):
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_check_machine_can_startup = self.patch(
+            virsh.VirshSSH, "check_machine_can_startup")
         mock_set_machine_autostart = self.patch(
             virsh.VirshSSH, "set_machine_autostart")
         mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
@@ -1631,6 +1666,9 @@ class TestVirshSSH(MAASTestCase):
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
             mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
@@ -1668,6 +1706,8 @@ class TestVirshSSH(MAASTestCase):
         mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
+        mock_check_machine_can_startup = self.patch(
+            virsh.VirshSSH, "check_machine_can_startup")
         mock_set_machine_autostart = self.patch(
             virsh.VirshSSH, "set_machine_autostart")
         mock_configure_pxe = self.patch(virsh.VirshSSH, "configure_pxe_boot")
@@ -1689,6 +1729,9 @@ class TestVirshSSH(MAASTestCase):
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
             mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname))
         self.assertThat(
             mock_set_machine_autostart, MockCalledOnceWith(request.hostname))
         self.assertThat(
