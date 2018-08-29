@@ -55,7 +55,10 @@ from provisioningserver.utils.shell import (
     has_command_available,
 )
 from provisioningserver.utils.twisted import asynchronous
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Contains,
+    Equals,
+)
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -1004,6 +1007,49 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(mock_delete_domain, MockCalledOnceWith(machine))
         self.assertThat(
             mock_run, MockCalledOnceWith(['start', '--paused', machine]))
+
+    def test_set_machine_autostart(self):
+        conn = self.configure_virshssh('')
+        expected = conn.set_machine_autostart(factory.make_name('machine'))
+        self.assertEqual(True, expected)
+
+    def test_set_machine_autostart_error(self):
+        conn = self.configure_virshssh('error:')
+        expected = conn.poweron(factory.make_name('machine'))
+        self.assertEqual(False, expected)
+
+    def test_configure_pxe_boot(self):
+        conn = self.configure_virshssh('')
+        mock_get_machine_xml = self.patch(virsh.VirshSSH, "get_machine_xml")
+        mock_get_machine_xml.return_value = SAMPLE_DUMPXML
+        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
+        tmpfile = NamedTemporaryFile.return_value
+        tmpfile.__enter__.return_value = tmpfile
+        tmpfile.name = factory.make_name("filename")
+        conn.configure_pxe_boot(factory.make_name('machine'))
+
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write.call_args_list[0][0][0],
+            Contains(b'boot dev="network"'))
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+
+    def test_configure_pxe_boot_true_for_xml_with_netboot_already_set(self):
+        conn = self.configure_virshssh('')
+        mock_get_machine_xml = self.patch(virsh.VirshSSH, "get_machine_xml")
+        mock_get_machine_xml.return_value = SAMPLE_DUMPXML_2
+        expected = conn.configure_pxe_boot(factory.make_name('machine'))
+        self.assertEqual(True, expected)
+
+    def test_configure_pxe_boot_false_no_xml(self):
+        conn = self.configure_virshssh('')
+        mock_get_machine_xml = self.patch(virsh.VirshSSH, "get_machine_xml")
+        mock_get_machine_xml.return_value = None
+        expected = conn.configure_pxe_boot(factory.make_name('machine'))
+        self.assertEqual(False, expected)
 
     def test_poweron(self):
         conn = self.configure_virshssh('')
