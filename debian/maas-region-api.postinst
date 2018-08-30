@@ -16,11 +16,7 @@ configure_logging() {
 
     # Create log directory base
     mkdir -p /var/log/maas/rsyslog
-    chown -R syslog:syslog /var/log/maas/rsyslog
-
-    # Make sure rsyslog reads our config after creating the
-    # destination folder.
-    deb-systemd-invoke restart 'rsyslog.service' >/dev/null || true
+    chown -R maas:maas /var/log/maas/rsyslog
 }
 
 configure_libdir() {

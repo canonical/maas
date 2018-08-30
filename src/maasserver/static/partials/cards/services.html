@@ -19,16 +19,22 @@
                 <span data-ng-if="services.bind9.status_info"> &ndash;  <small>{$ services.bind9.status_info $}</small></span>
             </span>
         </li>
+        <li class="p-list-tree__item" data-ng-if="(node.node_type == 3 || node.node_type == 4) && services.ntp_region">
+            <span>
+                <span class="p-icon--{$ getServiceClass(services.ntp_region) $}"></span>&nbsp;ntp
+                <span data-ng-if="services.ntp_region.status_info"> &ndash;  <small>{$ services.ntp_region.status_info $}</small></span>
+            </span>
+        </li>
         <li class="p-list-tree__item" data-ng-if="node.node_type == 3 || node.node_type == 4">
             <span>
                 <span class="p-icon--{$ getServiceClass(services.proxy) $}"></span>&nbsp;proxy
                 <span data-ng-if="services.proxy.status_info"> &ndash;  <small>{$ services.proxy.status_info $}</small></span>
             </span>
         </li>
-        <li class="p-list-tree__item" data-ng-if="(node.node_type == 3 || node.node_type == 4) && services.ntp_region">
+        <li class="p-list-tree__item" data-ng-if="(node.node_type == 3 || node.node_type == 4) && services.syslog_region">
             <span>
-                <span class="p-icon--{$ getServiceClass(services.ntp_region) $}"></span>&nbsp;ntp
-                <span data-ng-if="services.ntp_region.status_info"> &ndash;  <small>{$ services.ntp_region.status_info $}</small></span>
+                <span class="p-icon--{$ getServiceClass(services.syslog_region) $}"></span>&nbsp;syslog
+                <span data-ng-if="services.syslog_region.status_info"> &ndash;  <small>{$ services.syslog_region.status_info $}</small></span>
             </span>
         </li>
         <li class="p-list-tree__item" data-ng-if="node.node_type == 2 || node.node_type == 4">
@@ -79,6 +85,12 @@
             <span>
                 <span class="p-icon--{$ getServiceClass(services.proxy_rack) $}"></span>&nbsp;proxy
                 <span data-ng-if="services.proxy_rack.status_info"> &ndash; <small>{$ services.proxy_rack.status_info $}</small></span>
+            </span>
+        </li>
+        <li class="p-list-tree__item" data-ng-if="(node.node_type == 2 || node.node_type == 4) && services.syslog_rack">
+            <span>
+                <span class="p-icon--{$ getServiceClass(services.syslog_rack) $}"></span>&nbsp;syslog
+                <span data-ng-if="services.syslog_rack.status_info"> &ndash; <small>{$ services.syslog_rack.status_info $}</small></span>
             </span>
         </li>
     </ul>

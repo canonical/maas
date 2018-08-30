@@ -14,6 +14,7 @@ from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
 )
+from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -34,7 +35,6 @@ from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
 )
-from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import transactional
 from maasserver.utils.osystems import validate_hwe_kernel
@@ -276,10 +276,6 @@ def get_config(
         region_ip = get_source_address(remote_ip)
     machine = get_node_from_mac_string(mac)
 
-    # Get the service address to the region for that given rack controller.
-    server_host = get_maas_facing_server_host(
-        rack_controller=rack_controller, default_region_ip=region_ip)
-
     # Fail with no response early so no extra work is performed.
     if machine is None and arch is None and mac is not None:
         # Request was pxelinux.cfg/01-<mac> for a machine MAAS does not know
@@ -366,7 +362,8 @@ def get_config(
                 "domain": domain,
                 "preseed_url": preseed_url,
                 "fs_host": local_ip,
-                "log_host": server_host,
+                "log_host": local_ip,
+                "log_port": RSYSLOG_PORT,
                 "extra_opts": '',
                 "http_boot": True,
             }
@@ -487,7 +484,8 @@ def get_config(
         "domain": domain,
         "preseed_url": preseed_url,
         "fs_host": local_ip,
-        "log_host": server_host,
+        "log_host": local_ip,
+        "log_port": RSYSLOG_PORT,
         "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
         # As of MAAS 2.4 only HTTP boot is supported. This ensures MAAS 2.3
         # rack controllers use HTTP boot as well.

@@ -162,6 +162,11 @@ def make_NetworkTimeProtocolService():
     return ntp.RegionNetworkTimeProtocolService(reactor)
 
 
+def make_SyslogService():
+    from maasserver.regiondservices import syslog
+    return syslog.RegionSyslogService(reactor)
+
+
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
@@ -331,6 +336,11 @@ class RegionEventLoop:
         "ntp": {
             "only_on_master": True,
             "factory": make_NetworkTimeProtocolService,
+            "requires": [],
+        },
+        "syslog": {
+            "only_on_master": True,
+            "factory": make_SyslogService,
             "requires": [],
         },
         "workers": {

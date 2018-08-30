@@ -34,7 +34,7 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["bind9", "ntp_region", "proxy"],
+            ["bind9", "ntp_region", "proxy", "syslog_region"],
             service_monitor._services.keys())
 
 

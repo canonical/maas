@@ -636,6 +636,13 @@
                             <span data-ng-if="services.bind9.status_info"> &mdash; {$ services.bind9.status_info $}</span>
                         </span>
                     </li>
+                    <li class="p-list-tree__item" data-ng-if="services.ntp_region">
+                        <span>
+                            <span class="p-icon--{$ getServiceClass(services.ntp_region) $}"></span>
+                            &nbsp;ntp
+                            <span data-ng-if="services.ntp_region.status_info"> &mdash; {$ services.ntp_region.status_info $}</span>
+                        </span>
+                    </li>
                     <li class="p-list-tree__item">
                         <span>
                             <span class="p-icon--{$ getServiceClass(services.proxy) $}"></span>
@@ -643,11 +650,11 @@
                             <span data-ng-if="services.proxy.status_info"> &mdash; {$ services.proxy.status_info $}</span>
                         </span>
                     </li>
-                    <li class="p-list-tree__item" data-ng-if="services.ntp_region">
+                    <li class="p-list-tree__item" data-ng-if="services.syslog_region">
                         <span>
-                            <span class="p-icon--{$ getServiceClass(services.ntp_region) $}"></span>
-                            &nbsp;ntp
-                            <span data-ng-if="services.ntp_region.status_info"> &mdash; {$ services.ntp_region.status_info $}</span>
+                            <span class="p-icon--{$ getServiceClass(services.syslog_region) $}"></span>
+                            &nbsp;syslog
+                            <span data-ng-if="services.syslog_region.status_info"> &mdash; {$ services.syslog_region.status_info $}</span>
                         </span>
                     </li>
                 </ul>
@@ -713,6 +720,13 @@
                             <span class="p-icon--{$ getServiceClass(services.proxy_rack) $}"></span>
                             &nbsp;proxy
                             <span data-ng-if="services.proxy_rack.status_info"> &mdash; {$ services.proxy_rack.status_info $}</span>
+                        </span>
+                    </li>
+                    <li class="p-list-tree__item" data-ng-if="services.syslog_rack">
+                        <span>
+                            <span class="p-icon--{$ getServiceClass(services.syslog_rack) $}"></span>
+                            &nbsp;syslog
+                            <span data-ng-if="services.syslog_rack.status_info"> &mdash; {$ services.syslog_rack.status_info $}</span>
                         </span>
                     </li>
                 </ul>

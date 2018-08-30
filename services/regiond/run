@@ -25,7 +25,7 @@ fi
 
 # DNS settings, for driving BIND.
 export MAAS_DNS_CONFIG_DIR="$(readlink -f run/named)"
-export MAAS_DNS_RNDC_PORT=5247
+export MAAS_DNS_RNDC_PORT=5246
 export MAAS_DNS_DEFAULT_CONTROLS=0
 
 # Exec the MAAS API and Web UI Server.

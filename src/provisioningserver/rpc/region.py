@@ -141,6 +141,7 @@ class GetBootConfig(amp.Command):
         (b"preseed_url", amp.Unicode()),
         (b"fs_host", amp.Unicode()),
         (b"log_host", amp.Unicode()),
+        (b"log_port", amp.Integer(optional=True)),
         (b"extra_opts", amp.Unicode()),
         (b"system_id", amp.Unicode(optional=True)),
         # MAAS 2.3 introduced this parameter to toggle using TGT or HTTP to

@@ -135,6 +135,7 @@ class TestGetConfig(MAASServerTestCase):
                 "preseed_url",
                 "fs_host",
                 "log_host",
+                "log_port",
                 "extra_opts",
             ]))
 
@@ -175,7 +176,8 @@ class TestGetConfig(MAASServerTestCase):
             "domain": node.domain.name,
             "preseed_url": ANY,
             "fs_host": local_ip,
-            "log_host": ANY,
+            "log_host": local_ip,
+            "log_port": 5247,
             "extra_opts": '',
             "http_boot": True,
         }, config)

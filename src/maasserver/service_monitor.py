@@ -39,6 +39,14 @@ class NTPServiceOnRegion(AlwaysOnService):
     snap_service_name = "ntp"
 
 
+class SyslogServiceOnRegion(AlwaysOnService):
+    """Monitored syslog service on a region controller host."""
+
+    name = "syslog_region"
+    service_name = "maas-syslog"
+    snap_service_name = "syslog"
+
+
 class ProxyService(Service):
     """Monitored proxy service."""
 
@@ -68,5 +76,6 @@ class ProxyService(Service):
 service_monitor = ServiceMonitor(
     BIND9Service(),
     NTPServiceOnRegion(),
+    SyslogServiceOnRegion(),
     ProxyService(),
 )

@@ -30,7 +30,11 @@ from maasserver.eventloop import (
     DEFAULT_PORT,
     MAASServices,
 )
-from maasserver.regiondservices import service_monitor_service
+from maasserver.regiondservices import (
+    ntp,
+    service_monitor_service,
+    syslog,
+)
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.listener import FakePostgresListenerService
@@ -473,6 +477,36 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["status-worker"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["status-worker"]["only_on_master"])
+
+    def test_make_NetworkTimeProtocolService(self):
+        service = eventloop.make_NetworkTimeProtocolService()
+        self.assertThat(service, IsInstance(
+            ntp.RegionNetworkTimeProtocolService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_NetworkTimeProtocolService,
+            eventloop.loop.factories["ntp"]["factory"])
+        # Has a no dependencies.
+        self.assertEquals(
+            [],
+            eventloop.loop.factories["ntp"]["requires"])
+        self.assertTrue(
+            eventloop.loop.factories["ntp"]["only_on_master"])
+
+    def test_make_SyslogService(self):
+        service = eventloop.make_SyslogService()
+        self.assertThat(service, IsInstance(
+            syslog.RegionSyslogService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_SyslogService,
+            eventloop.loop.factories["syslog"]["factory"])
+        # Has a no dependencies.
+        self.assertEquals(
+            [],
+            eventloop.loop.factories["syslog"]["requires"])
+        self.assertTrue(
+            eventloop.loop.factories["syslog"]["only_on_master"])
 
     def test_make_WorkersService(self):
         service = eventloop.make_WorkersService()

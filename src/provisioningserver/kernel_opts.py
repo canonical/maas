@@ -43,6 +43,7 @@ KernelParametersBase = namedtuple(
         "domain",       # Machine domain name, e.g. "example.com"
         "preseed_url",  # URL from which a preseed can be obtained.
         "log_host",     # Host/IP to which syslog can be streamed.
+        "log_port",     # Port to which syslog can be streamed.
         "fs_host",      # Host/IP on which ephemeral filesystems are hosted.
         "extra_opts",   # String of extra options to supply, will be appended
                         # verbatim to the kernel command line
@@ -56,11 +57,18 @@ class KernelParameters(KernelParametersBase):
     # foo._replace() is just ugly, so alias it to __call__.
     __call__ = KernelParametersBase._replace
 
+    def __new__(cls, *args, **kwargs):
+        if 'log_port' not in kwargs or not kwargs['log_port']:
+            # Fallback to the default log_port, when an older region
+            # controller doesn't provide that value.
+            kwargs['log_port'] = 5247
+        return super().__new__(cls, *args, **kwargs)
 
-def compose_logging_opts(log_host):
+
+def compose_logging_opts(params):
     return [
-        'log_host=%s' % log_host,
-        'log_port=%d' % 514,
+        'log_host=%s' % params.log_host,
+        'log_port=%d' % params.log_port,
         ]
 
 
@@ -147,7 +155,7 @@ def compose_kernel_command_line(params):
     # Note: logging opts are not respected by ephemeral images, so
     #       these are actually "purpose_opts" but were left generic
     #       as it would be nice to have.
-    options += compose_logging_opts(params.log_host)
+    options += compose_logging_opts(params)
     options += compose_arch_opts(params)
     cmdline_sep = get_curtin_kernel_cmdline_sep()
     if params.extra_opts:

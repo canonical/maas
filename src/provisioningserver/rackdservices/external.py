@@ -27,7 +27,7 @@ from provisioningserver.dns.actions import (
 )
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_rack
-from provisioningserver.proxy.config import write_config
+from provisioningserver.proxy import config as proxy_config
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.region import (
     GetControllerType,
@@ -36,6 +36,7 @@ from provisioningserver.rpc.region import (
     GetTimeConfiguration,
 )
 from provisioningserver.service_monitor import service_monitor
+from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snappy
 from provisioningserver.utils.twisted import (
     callOut,
@@ -66,14 +67,22 @@ class RackOnlyExternalService(metaclass=ABCMeta):
     def _configure(self):
         """Configure the service."""
 
-    def _genRegionIps(self, connections, bracket_ipv6=False):
+    def _genRegionIps(
+            self, connections, bracket_ipv6=False, include_name=False):
         """Generate IP addresses for all region controllers this rack
         controller is connected to."""
+
+        def _getNameFromEventloop(eventloop):
+            if ':' in eventloop:
+                return eventloop.split(':', 1)[0]
+            else:
+                return eventloop
+
         # Filter the connects by region.
         conn_per_region = defaultdict(set)
         for eventloop, connection in connections.items():
             conn_per_region[eventloop.split(':')[0]].add(connection)
-        for _, connections in conn_per_region.items():
+        for eventloop, connections in conn_per_region.items():
             # Sort the connections so the same IP is always picked per
             # region controller. This ensures that the HTTP configuration
             # is not reloaded unless its actually required to reload.
@@ -81,11 +90,15 @@ class RackOnlyExternalService(metaclass=ABCMeta):
                 connections, key=lambda conn: conn.address[0]))[0]
             addr = IPAddress(conn.address[0])
             if addr.is_ipv4_mapped():
-                yield str(addr.ipv4())
+                addr = str(addr.ipv4())
             elif addr.version == 6 and bracket_ipv6:
-                yield '[%s]' % addr
+                addr = '[%s]' % addr
             else:
-                yield str(addr)
+                addr = str(addr)
+            if include_name:
+                yield (_getNameFromEventloop(eventloop), addr)
+            else:
+                yield addr
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the external server if the configuration changes.
@@ -259,7 +272,7 @@ class RackProxy(RackOnlyExternalService):
             is_rack=controller_type["is_rack"])
 
     def _applyConfiguration(self, configuration):
-        """Configure the NTP server.
+        """Configure the proxy server.
 
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
@@ -296,11 +309,73 @@ class RackProxy(RackOnlyExternalService):
             'http://%s:%s' % (upstream, configuration.port)
             for upstream in configuration.upstream_proxies
         ])
-        write_config(
+        proxy_config.write_config(
             configuration.allowed_cidrs,
             peer_proxies=peers,
             prefer_v4_proxy=configuration.prefer_v4_proxy,
             maas_proxy_port=configuration.port)
+
+
+class RackSyslog(RackOnlyExternalService):
+    """External syslog service ran only in rack-only mode."""
+
+    service_name = "syslog_rack"
+
+    def _tryUpdate(self, config):
+        """Update the syslog server running on this host."""
+        d = maybeDeferred(
+            self._getConfiguration,
+            config.controller_type,
+            config.connections)
+        d.addCallback(self._maybeApplyConfiguration)
+        return d
+
+    def _getConfiguration(
+            self, controller_type, connections):
+        """Return syslog server configuration.
+
+        The configuration object returned is comparable with previous and
+        subsequently obtained configuration objects, allowing this service to
+        determine whether a change needs to be applied to the syslog server.
+        """
+        forwarders = list(self._genRegionIps(
+            connections, bracket_ipv6=True, include_name=True))
+        return _SyslogConfiguration(
+            forwarders=forwarders,
+            is_region=controller_type["is_region"],
+            is_rack=controller_type["is_rack"])
+
+    def _applyConfiguration(self, configuration):
+        """Configure the proxy server.
+
+        :param configuration: The configuration object obtained from
+            `_getConfiguration`.
+        """
+        service = service_monitor.getServiceByName(self.service_name)
+        if configuration.is_rack and not configuration.is_region:
+            service.on()
+            d = deferToThread(
+                self._configure, configuration)
+            d.addCallback(
+                callOut, service_monitor.restartService, self.service_name)
+            return d
+        else:
+            # Proxy is managed by the region.
+            service.any("managed by the region")
+
+    def _configure(self, configuration):
+        """Update the syslog configuration for the rack."""
+        # Convert the frozenset to a dictionary before constructing the
+        # dictionary that `syslog_config.write_config` expects. This ensures
+        # that only unique regions are included in the forwarders.
+        forwarders = [
+            {
+                'name': name,
+                'ip': ip,
+            }
+            for name, ip in dict(configuration.forwarders).items()
+        ]
+        syslog_config.write_config(False, forwarders=forwarders)
 
 
 class RackExternalService(TimerService):
@@ -328,6 +403,7 @@ class RackExternalService(TimerService):
                 ('NTP', RackNTP()),
                 ('DNS', RackDNS()),
                 ('proxy', RackProxy()),
+                ('syslog', RackSyslog()),
             ]
 
     def _update_interval(self, config):
@@ -451,6 +527,19 @@ class _ProxyConfiguration:
 
     # Addresses of upstream proxy servers.
     upstream_proxies = attr.ib(converter=frozenset)
+
+    # The type of this controller. It's fair to assume that is_rack is true,
+    # but check nevertheless before applying this configuration.
+    is_region = attr.ib(converter=bool)
+    is_rack = attr.ib(converter=bool)
+
+
+@attr.s
+class _SyslogConfiguration:
+    """Configuration for the rack's syslog server."""
+
+    # Forwards to send the logs to.
+    forwarders = attr.ib(converter=frozenset)
 
     # The type of this controller. It's fair to assume that is_rack is true,
     # but check nevertheless before applying this configuration.

@@ -29,6 +29,7 @@ REGION_SERVICES = frozenset({
     "bind9",
     "ntp_region",
     "proxy",
+    "syslog_region",
 })
 
 # Services that run on the rack controller. NOTE that this needs to include
@@ -42,6 +43,7 @@ RACK_SERVICES = frozenset({
     "ntp_rack",
     "dns_rack",
     "proxy_rack",
+    "syslog_rack",
 })
 
 # Statuses that should be set on each service when node is marked dead. NOTE
@@ -55,10 +57,12 @@ DEAD_STATUSES = {
     "dhcpd": SERVICE_STATUS.DEAD,
     "dhcpd6": SERVICE_STATUS.DEAD,
     "http": SERVICE_STATUS.UNKNOWN,
-    "ntp_region": SERVICE_STATUS.DEAD,
+    "ntp_region": SERVICE_STATUS.UNKNOWN,
+    "syslog_region": SERVICE_STATUS.UNKNOWN,
     "ntp_rack": SERVICE_STATUS.DEAD,
     "dns_rack": SERVICE_STATUS.UNKNOWN,
     "proxy_rack": SERVICE_STATUS.UNKNOWN,
+    "syslog_rack": SERVICE_STATUS.UNKNOWN,
 }
 
 

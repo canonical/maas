@@ -13,6 +13,7 @@ from provisioningserver.service_monitor import (
     NTPServiceOnRack,
     ProxyServiceOnRack,
     service_monitor,
+    SyslogServiceOnRack,
 )
 
 
@@ -54,17 +55,28 @@ class TestDNSServiceOnRack(MAASTestCase):
         self.assertEqual("dns_rack", dns.name)
 
 
-class TestPorxyServiceOnRack(MAASTestCase):
+class TestProxyServiceOnRack(MAASTestCase):
 
     def test_name_and_service_name(self):
-        dns = ProxyServiceOnRack()
-        self.assertEqual("maas-proxy", dns.service_name)
-        self.assertEqual("proxy_rack", dns.name)
+        proxy = ProxyServiceOnRack()
+        self.assertEqual("maas-proxy", proxy.service_name)
+        self.assertEqual("proxy", proxy.snap_service_name)
+        self.assertEqual("proxy_rack", proxy.name)
+
+
+class TestSyslogServiceOnRack(MAASTestCase):
+
+    def test_name_and_service_name(self):
+        syslog = SyslogServiceOnRack()
+        self.assertEqual("maas-syslog", syslog.service_name)
+        self.assertEqual("syslog", syslog.snap_service_name)
+        self.assertEqual("syslog_rack", syslog.name)
 
 
 class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
-        self.assertItemsEqual(
-            ["http", "dhcpd", "dhcpd6", "dns_rack", "ntp_rack", "proxy_rack"],
+        self.assertItemsEqual([
+            "http", "dhcpd", "dhcpd6", "dns_rack",
+            "ntp_rack", "proxy_rack", "syslog_rack"],
             service_monitor._services.keys())

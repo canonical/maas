@@ -43,10 +43,14 @@ def make_kernel_parameters(testcase=None, **parms):
     # fs_host needs to be an IP address, set it if it was not passed.
     if 'fs_host' not in parms:
         parms.update({'fs_host': factory.make_ip_address()})
+    had_log_port = 'log_port' in parms
     parms.update(
         {field: factory.make_name(field)
          for field in KernelParameters._fields
          if field not in parms})
+    # KernelParameters will handle setting the default.
+    if not had_log_port:
+        del parms['log_port']
     params = KernelParameters(**parms)
 
     if testcase is not None:
@@ -110,6 +114,15 @@ class TestKernelOpts(MAASTestCase):
 
     def make_kernel_parameters(self, *args, **kwargs):
         return make_kernel_parameters(self, *args, **kwargs)
+
+    def test_log_port_sets_default(self):
+        params = self.make_kernel_parameters()
+        self.assertEqual(5247, params.log_port)
+
+    def test_log_port_overrides_default(self):
+        new_port = factory.pick_port()
+        params = self.make_kernel_parameters(log_port=new_port)
+        self.assertEqual(new_port, params.log_port)
 
     def test_compose_kernel_command_line_includes_disable_overlay_cfg(self):
         params = self.make_kernel_parameters(

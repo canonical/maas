@@ -31,6 +31,12 @@ maas ALL= NOPASSWD: /bin/systemctl start maas-proxy
 maas ALL= NOPASSWD: /bin/systemctl stop maas-proxy
 maas ALL= NOPASSWD: /bin/systemctl status maas-proxy
 
+# Control of the syslog server: MAAS needs to restart it after editing
+# its configuration file, and start it again if stopped manually.
+maas ALL= NOPASSWD: /bin/systemctl restart maas-syslog
+maas ALL= NOPASSWD: /bin/systemctl start maas-syslog
+maas ALL= NOPASSWD: /bin/systemctl status maas-syslog
+
 # Writing and deleting files as root.
 maas ALL= NOPASSWD: /usr/lib/maas/maas-delete-file
 maas ALL= NOPASSWD: /usr/lib/maas/maas-write-file

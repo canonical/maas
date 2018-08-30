@@ -233,6 +233,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "active-discovery",
             "reverse-dns",
             "ntp",
+            "syslog",
             "workers",
             "ipc-master",
         ]
@@ -328,6 +329,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "active-discovery",
             "reverse-dns",
             "ntp",
+            "syslog",
             # "workers",  Prevented in all-in-one.
             "ipc-master",
         ]

@@ -1,0 +1,18 @@
+[Unit]
+Description=MAAS Syslog Service
+Documentation=man:rsyslogd(8)
+Documentation=http://docs.maas.io/
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/var/lib/maas/rsyslog.conf
+
+[Service]
+Type=notify
+ExecStartPre=/bin/mkdir -p /var/lib/maas/rsyslog
+ExecStart=/usr/sbin/rsyslogd -n -f /var/lib/maas/rsyslog.conf -i /var/lib/maas/rsyslog.pid
+StandardOutput=null
+Restart=on-failure
+PIDFile=/var/lib/maas/rsyslog.pid
+
+[Install]
+WantedBy=multi-user.target

@@ -59,6 +59,14 @@ class ProxyServiceOnRack(ToggleableService):
     snap_service_name = "proxy"
 
 
+class SyslogServiceOnRack(ToggleableService):
+    """Monitored syslog service on a rack controller host."""
+
+    name = "syslog_rack"
+    service_name = "maas-syslog"
+    snap_service_name = "syslog"
+
+
 # Global service monitor for rackd. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -68,4 +76,5 @@ service_monitor = ServiceMonitor(
     NTPServiceOnRack(),
     DNSServiceOnRack(),
     ProxyServiceOnRack(),
+    SyslogServiceOnRack(),
 )

@@ -605,7 +605,7 @@ class TestRackProxy(MAASTestCase):
                 is_region=is_region, is_rack=is_rack))
 
     @inlineCallbacks
-    def test__tryUpdate_updates_dns_server(self):
+    def test__tryUpdate_updates_proxy_server(self):
         self.useFixture(MAASRootFixture())
         allowed_cidrs = self.make_cidrs()
         proxy_prefer_v4_proxy = factory.pick_bool()
@@ -616,7 +616,8 @@ class TestRackProxy(MAASTestCase):
         region_ips = self.extract_regions(rpc_service)
         service, _ = self.make_RackProxy_ExternalService(rpc_service, reactor)
 
-        write_config = self.patch_autospec(external, "write_config")
+        write_config = self.patch_autospec(
+            external.proxy_config, "write_config")
         service_monitor = self.patch_autospec(external, 'service_monitor')
 
         yield service.startService()
@@ -682,5 +683,118 @@ class TestRackProxy(MAASTestCase):
             proxy._configuration, IsInstance(external._ProxyConfiguration))
         # The configuration was not applied.
         self.assertThat(proxy._configure, MockNotCalled())
+        # Nothing was logged; there's no need for lots of chatter.
+        self.assertThat(logger.output, Equals(""))
+
+
+class TestRackSyslog(MAASTestCase):
+    """Tests for `RackSyslog` for `RackExternalService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
+
+    def extract_regions(self, rpc_service):
+        return frozenset({
+            (eventloop, client.address[0])
+            for eventloop, client in rpc_service.connections.items()
+        })
+
+    def make_RackSyslog_ExternalService(self, rpc_service, reactor):
+        syslog = external.RackSyslog()
+        service = make_startable_RackExternalService(
+            self, rpc_service, reactor, [('syslog', syslog)])
+        return service, syslog
+
+    @inlineCallbacks
+    def test__getConfiguration_returns_configuration_object(self):
+        is_region, is_rack = factory.pick_bool(), factory.pick_bool()
+        rpc_service, protocol = yield prepareRegion(
+            self, is_region=is_region, is_rack=is_rack)
+        forwarders = self.extract_regions(rpc_service)
+        service, syslog = self.make_RackSyslog_ExternalService(
+            rpc_service, reactor)
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+
+        config = yield service._getConfiguration()
+        observed = syslog._getConfiguration(
+            config.controller_type, config.connections)
+
+        self.assertThat(observed, IsInstance(external._SyslogConfiguration))
+        self.assertThat(
+            observed, MatchesStructure.byEquality(
+                forwarders=forwarders,
+                is_region=is_region, is_rack=is_rack))
+
+    @inlineCallbacks
+    def test__tryUpdate_updates_syslog_server(self):
+        self.useFixture(MAASRootFixture())
+        rpc_service, _ = yield prepareRegion(self)
+        forwarders = self.extract_regions(rpc_service)
+        service, _ = self.make_RackSyslog_ExternalService(rpc_service, reactor)
+
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config")
+        service_monitor = self.patch_autospec(external, 'service_monitor')
+
+        yield service.startService()
+        self.addCleanup((yield service.stopService))
+
+        yield service._orig_tryUpdate()
+
+        expected_forwards = [
+            {
+                'name': name,
+                'ip': ip,
+            }
+            for name, ip in forwarders
+        ]
+        self.assertThat(
+            write_config,
+            MockCalledOnceWith(
+                False, forwarders=expected_forwards))
+        self.assertThat(
+            service_monitor.restartService, MockCalledOnceWith("syslog_rack"))
+        # If the configuration has not changed then a second call to
+        # `_tryUpdate` does not result in another call to `_configure`.
+        yield service._orig_tryUpdate()
+        self.assertThat(
+            write_config,
+            MockCalledOnceWith(
+                False, forwarders=expected_forwards))
+        self.assertThat(
+            service_monitor.restartService, MockCalledOnceWith("syslog_rack"))
+
+    @inlineCallbacks
+    def test_sets_syslog_rack_service_to_any_when_is_region(self):
+        # Patch the logger in the clusterservice so no log messages are printed
+        # because the tests run in debug mode.
+        self.patch(common.log, 'debug')
+        self.useFixture(MAASRootFixture())
+        rpc_service, _ = yield prepareRegion(self, is_region=True)
+        service, syslog = self.make_RackSyslog_ExternalService(
+            rpc_service, reactor)
+        self.patch_autospec(syslog, "_configure")  # No-op configuration.
+
+        # There is no most recently applied configuration.
+        self.assertThat(syslog._configuration, Is(None))
+
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+            self.addCleanup((yield service.stopService))
+            yield service._orig_tryUpdate()
+
+        # Ensure that the service was set to any.
+        service = service_monitor.getServiceByName("syslog_rack")
+        self.assertEquals(
+            (SERVICE_STATE.ANY, "managed by the region"),
+            service.getExpectedState())
+        # The most recently applied configuration is set, though it was not
+        # actually "applied" because this host was configured as a region+rack
+        # controller, and the rack should not attempt to manage the DNS server
+        # on a region+rack.
+        self.assertThat(
+            syslog._configuration, IsInstance(external._SyslogConfiguration))
+        # The configuration was not applied.
+        self.assertThat(syslog._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
         self.assertThat(logger.output, Equals(""))

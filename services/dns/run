@@ -16,7 +16,7 @@ cd "$(dirname "$0")/../.."
 
 # DNS settings, for driving BIND.
 export MAAS_DNS_CONFIG_DIR="${MAAS_ROOT}/etc/bind/maas"
-export MAAS_DNS_RNDC_PORT=5247
+export MAAS_DNS_RNDC_PORT=5246
 export MAAS_DNS_DEFAULT_CONTROLS=0
 
 # Ensure that we've got a configuration directory.

@@ -36,7 +36,7 @@ from provisioningserver.utils.url import compose_URL
 import yaml
 
 # Default port for RSYSLOG
-RSYSLOG_PORT = 514
+RSYSLOG_PORT = 5247
 
 
 def get_apt_proxy(request, rack_controller=None):
@@ -266,10 +266,7 @@ def get_cloud_init_reporting(request, node, token):
 
 def get_rsyslog_host_port(request, node):
     """Return the rsyslog host and port to use."""
-    region_ip = get_default_region_ip(request)
-    host = get_maas_facing_server_host(
-        node.get_boot_rack_controller(), default_region_ip=region_ip)
-    return "%s:%d" % (host, RSYSLOG_PORT)
+    return "%s:%d" % (node.boot_cluster_ip, RSYSLOG_PORT)
 
 
 def get_system_info():

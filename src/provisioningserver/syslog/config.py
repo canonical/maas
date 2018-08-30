@@ -1,0 +1,79 @@
+# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Syslog config management module."""
+
+__all__ = [
+    'get_syslog_config_path',
+    'get_syslog_workdir_path',
+    'is_config_present',
+    'write_config',
+    ]
+
+from operator import itemgetter
+import os
+import sys
+
+from provisioningserver.utils import locate_template
+from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.twisted import synchronous
+import tempita
+
+
+MAAS_SYSLOG_CONF_NAME = 'rsyslog.conf'
+MAAS_SYSLOG_CONF_TEMPLATE = 'rsyslog.conf.template'
+MAAS_SYSLOG_WORK_DIR = 'rsyslog'
+
+
+class SyslogConfigFail(Exception):
+    """Raised if there is a problem with the syslog configuration."""
+
+
+def get_syslog_config_path():
+    """Location of syslog configuration file."""
+    setting = os.getenv("MAAS_SYSLOG_CONFIG_DIR", "/var/lib/maas")
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        setting = setting.decode(fsenc)
+    setting = os.sep.join([setting, MAAS_SYSLOG_CONF_NAME])
+    return setting
+
+
+def get_syslog_workdir_path():
+    """Location of syslog work directory."""
+    setting = os.getenv("MAAS_SYSLOG_CONFIG_DIR", "/var/lib/maas")
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        setting = setting.decode(fsenc)
+    setting = os.sep.join([setting, MAAS_SYSLOG_WORK_DIR])
+    return setting
+
+
+def is_config_present():
+    """Check if there is a configuration file for the syslog server."""
+    return os.access(get_syslog_config_path(), os.R_OK)
+
+
+@synchronous
+def write_config(write_local, forwarders=None):
+    """Write the syslog configuration."""
+    context = {
+        'work_dir': get_syslog_workdir_path(),
+        'write_local': write_local,
+        'forwarders': (
+            sorted(forwarders, key=itemgetter('name'))
+            if forwarders is not None else []),
+    }
+
+    template_path = locate_template('syslog', MAAS_SYSLOG_CONF_TEMPLATE)
+    template = tempita.Template.from_filename(
+        template_path, encoding="UTF-8")
+    try:
+        content = template.substitute(context)
+    except NameError as error:
+        raise SyslogConfigFail(*error.args)
+
+    # Squid prefers ascii.
+    content = content.encode("ascii")
+    target_path = get_syslog_config_path()
+    atomic_write(content, target_path, overwrite=True, mode=0o644)
