@@ -34,8 +34,11 @@ def gen_available_browsers():
     and ``environ`` is a dict of additional environment variables needed to
     run the given browser.
     """
-    # PhantomJS is always enabled.
-    yield "PhantomJS", {}
+    #  XXX disable PhantomJS for now because it doesn't support ES6 yet. It
+    #  should be re-enabled once 2.5 is out of beta and there's a prebuilt
+    #  package we can use.
+    # # PhantomJS is always enabled.
+    # yield "PhantomJS", {}
 
     # XXX: allenap bug=1427492 2015-03-03: Firefox has been very unreliable
     # both with Karma and with Selenium. Disabling it.

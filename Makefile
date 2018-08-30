@@ -217,15 +217,6 @@ $(strip $(js_bins)): node_modules
 	ln -sf ../node_modules/.bin/$(notdir $@) $@
 	@touch --no-create $@
 
-js-update-macaroonbakery:
-	mkdir -p src/masserver/static/js/macaroon
-	wget -O src/maasserver/static/js/macaroon/js-macaroon.js \
-		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/assets/javascripts/js-macaroon.js'
-	wget -O src/maasserver/static/js/macaroon/bakery.js \
-		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/jujulib/bakery.js'
-	wget -O src/maasserver/static/js/macaroon/web-handler.js \
-		'https://raw.githubusercontent.com/juju/juju-gui/develop/jujugui/static/gui/src/app/store/env/web-handler.js'
-
 define node_packages
   @babel/core
   @babel/preset-react
@@ -246,6 +237,7 @@ define node_packages
   karma-opera-launcher
   karma-phantomjs-launcher
   karma-sourcemap-loader
+  macaroon-bakery
   node-sass
   phantomjs-prebuilt
   prop-types
@@ -393,7 +385,7 @@ lint-doc:
 lint-js: sources = src/maasserver/static/js
 lint-js:
 	@find $(sources) -type f -not -path '*/angular/3rdparty/*' -a \
-		-not -path '*-min.js' -a -not -name js-macaroon.js -a \
+		-not -path '*-min.js' -a \
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
 

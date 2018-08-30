@@ -29,7 +29,6 @@
                     <p>Login to continue to {% include "maasserver/site_title.html" %}</p>
                 </header>
                 {% if external_auth_url %}
-                <script type="text/javascript" src="/MAAS/combo/macaroons.js"></script>
                 <external-login auth-url="{{ external_auth_url }}" next-path="{{ next }}">
                 {% else %}
                 {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}

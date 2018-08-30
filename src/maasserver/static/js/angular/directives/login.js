@@ -4,11 +4,14 @@
  * Login button for external authentication.
  */
 
+const bakery = require('macaroon-bakery');
+
 angular.module('MAAS').factory('getBakery', function() {
     return function(visitPage) {
-        return new Bakery(
-            new WebHandler(),
-            new BakeryStorage(localStorage, {}), {visitPage: visitPage});
+        return new bakery.Bakery({
+            storage: new bakery.BakeryStorage(localStorage, {}),
+            visitPage: visitPage
+        });
     };
 }).directive('externalLogin', ['$window', 'getBakery',
                                function($window, getBakery) {
@@ -37,7 +40,7 @@ angular.module('MAAS').factory('getBakery', function() {
                     $scope.loginURL =  error.Info.VisitURL;
                     $scope.errorMessage = '';
                 });
-            }
+            };
             const bakery = getBakery(visitPage);
             const nextPath = $element.attr('next-path');
             bakery.get(

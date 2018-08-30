@@ -75,7 +75,6 @@ class IsPublicPathTest(MAASServerTestCase):
     def test_public_path_static_files(self):
         self.assertTrue(is_public_path('/MAAS/combo/angular.js'))
         self.assertTrue(is_public_path('/MAAS/combo/jquery.js'))
-        self.assertTrue(is_public_path('/MAAS/combo/macaroons.js'))
         self.assertTrue(is_public_path('/MAAS/static/js/bundle/maas-min.js'))
         self.assertTrue(is_public_path('/MAAS/static/js/bundle/vendor-min.js'))
 

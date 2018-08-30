@@ -2,12 +2,13 @@ const glob = require('glob');
 const path = require('path');
 const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 
+
 module.exports = {
     entry: {
         vendor: [].concat(
             glob.sync('./src/maasserver/static/js/angular/3rdparty/*.js')
         ),
-        maas: ['babel-polyfill'].concat(
+        maas: ['babel-polyfill', 'macaroon-bakery'].concat(
             glob.sync('./src/maasserver/static/js/*.js'),
             glob.sync('./src/maasserver/static/js/ui/*.js'),
             glob.sync('./src/maasserver/static/js/angular/*.js'),
@@ -37,7 +38,6 @@ module.exports = {
         rules: [{
             test: /\.js$/,
             loader: 'babel-loader',
-            exclude: /node_modules/,
             query: {
                 presets: ['@babel/preset-es2015', '@babel/preset-react']
             }
