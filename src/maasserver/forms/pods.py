@@ -75,6 +75,7 @@ from provisioningserver.enum import (
     MACVLAN_MODE,
     MACVLAN_MODE_CHOICES,
 )
+from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
 from twisted.python.threadable import isInIOThread
 
@@ -471,7 +472,7 @@ class ComposeMachineForm(forms.Form):
                 has_bootable_vlan = True
             rmi = self.get_requested_machine_interface_by_interface(interface)
             # Set the requested interface name and IP addresses.
-            rmi.ifname = label
+            rmi.ifname = get_ifname_for_label(label)
             rmi.requested_ips = result.allocated_ips.get(label, [])
             requested_machine_interfaces.append(rmi)
         if not has_bootable_vlan:

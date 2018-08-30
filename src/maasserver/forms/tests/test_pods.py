@@ -956,7 +956,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod = make_pod_with_hints()
         pod.ip_address = pod_host.boot_interface.ip_addresses.first()
         pod.save()
-        interfaces = "eth0:subnet=%s" % (
+        # Test with a numeric label, since that's what Juju will pass in.
+        interfaces = "0:subnet=%s" % (
             pod_host.boot_interface.vlan.subnet_set.first().cidr)
         form = ComposeMachineForm(data={
             'interfaces': interfaces,
@@ -970,6 +971,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                     MatchesAll(
                         IsInstance(RequestedMachineInterface),
                         MatchesStructure(
+                            # Make sure the numeric label gets converted
+                            # to a sane interface name.
+                            ifname=Equals("eth0"),
                             attach_name=Equals(pod_host.boot_interface.name),
                             attach_type=Equals(InterfaceAttachType.MACVLAN),
                             attach_options=Equals(MACVLAN_MODE.BRIDGE)))

@@ -41,6 +41,7 @@ from typing import (
     Optional,
     TypeVar,
 )
+from zlib import crc32
 
 from netaddr import (
     EUI,
@@ -1512,3 +1513,21 @@ def convert_host_to_uri_str(host):
             return str(ip)
         else:
             return '[%s]' % str(ip)
+
+
+def get_ifname_for_label(label: str) -> str:
+    """Given a generic interface label, return a suitable interface name.
+
+    If the label is numeric, appends 'eth' to the beginning.
+
+    If the name is more than 15 characters, shortens it using a hash algorithm.
+    """
+    if label.isnumeric():
+        label = 'eth%d' % int(label)
+    # Need to measure the length of the interface name in bytes, not
+    # characters, since that is how it's represented in the kernel.
+    label = label.encode('utf-8')
+    if len(label) > 15:
+        ifname_hash = (b"%05x" % (crc32(label) & 0xffffffff))[-5:]
+        label = b"eth-%s-%s" % (ifname_hash, label[len(label) - 5:])
+    return label.decode('utf-8')

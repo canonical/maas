@@ -62,6 +62,7 @@ from provisioningserver.utils.network import (
     get_all_interfaces_definition,
     get_default_monitored_interfaces,
     get_eui_organization,
+    get_ifname_for_label,
     get_ifname_ifdata_for_destination,
     get_interface_children,
     get_mac_organization,
@@ -2389,3 +2390,37 @@ class TestConvertHostToUriStr(MAASTestCase):
     def test__ipv6(self):
         ipv6 = factory.make_ipv6_address()
         self.assertEquals('[%s]' % ipv6, convert_host_to_uri_str(ipv6))
+
+
+class TestGetIfnameForLabel(MAASTestCase):
+
+    scenarios = [
+        ('numeric', {
+            'input': '0',
+            'expected': 'eth0'
+        }),
+        ('numeric_zero_pad', {
+            'input': '0000000000000000000000000000000000000000000000000000200',
+            'expected': 'eth200'
+        }),
+        ('normal_interface_name', {
+            'input': 'eth0',
+            'expected': 'eth0'
+        }),
+        ('long_but_not_too_long_name', {
+            'input': 'eth012345678901',
+            'expected': 'eth012345678901'
+        }),
+        ('name_a_little_too_long', {
+            'input': 'eth0123456789012',
+            'expected': 'eth-ff5c2-89012'
+        }),
+        ('crazy_long_numeric_name', {
+            'input': '1000000000000000000000000000000000000000000000000000001',
+            'expected': 'eth-8d3de-00001'
+        }),
+    ]
+
+    def test__scenarios(self):
+        self.assertThat(
+            get_ifname_for_label(self.input), Equals(self.expected))
