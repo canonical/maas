@@ -1416,20 +1416,41 @@ def coerce_to_valid_hostname(hostname):
     return hostname
 
 
-def get_source_address(destination_ip: IPAddressOrNetwork):
-    """Returns the local source address for the specified destination IP.
+def get_source_address(destination: IPAddressOrNetwork):
+    """Returns the local source address for the specified destination.
+
+    :param destination: Can be an IP address in string format, an IPNetwork,
+        or an IPAddress object.
+    :return: the string representation of the local IP address that would be
+        used for communication with the specified destination.
+    """
+    if isinstance(destination, IPNetwork):
+        if destination.prefixlen == 128:
+            # LP: #1789721 - netaddr raises an exception when using
+            # iter_hosts() with a /128 address.
+            destination = destination.ip
+        else:
+            # Make sure to return a host (not a network) if possible.
+            # Using iter_hosts() here is a general way to accomplish that.
+            destination = IPAddress(next(destination.iter_hosts()))
+    else:
+        destination = make_ipaddress(destination)
+    if destination.is_ipv4_mapped():
+        destination = destination.ipv4()
+    return get_source_address_for_ipaddress(destination)
+
+
+def get_source_address_for_ipaddress(destination_ip: IPAddress):
+    """Returns the local source address for the specified IPAddress.
+
+    Callers should generally use the `get_source_address()` utility instead;
+    it is more flexible about the type of the input parameter.
 
     :param destination_ip: Can be an IP address in string format, an IPNetwork,
         or an IPAddress object.
     :return: the string representation of the local IP address that would be
         used for communication with the specified destination.
     """
-    if isinstance(destination_ip, IPNetwork):
-        destination_ip = IPAddress(destination_ip.first + 1)
-    else:
-        destination_ip = make_ipaddress(destination_ip)
-    if destination_ip.is_ipv4_mapped():
-        destination_ip = destination_ip.ipv4()
     af = AF_INET if destination_ip.version == 4 else AF_INET6
     with socket.socket(af, socket.SOCK_DGRAM) as sock:
         peername = str(destination_ip)

@@ -2289,6 +2289,33 @@ class TestGetSourceAddress(MAASTestCase):
         self.assertThat(
             get_source_address(IPNetwork("127.0.0.1/8")), Equals("127.0.0.1"))
 
+    def test__ipnetwork_works_for_ipv4_slash32(self):
+        mock = self.patch(network_module, 'get_source_address_for_ipaddress')
+        mock.return_value = "10.0.0.1"
+        self.assertThat(
+            get_source_address(IPNetwork("10.0.0.1/32")), Equals("10.0.0.1"))
+
+    def test__ipnetwork_works_for_ipv6_slash128(self):
+        mock = self.patch(network_module, 'get_source_address_for_ipaddress')
+        mock.return_value = "2001:67c:1560::1"
+        self.assertThat(
+            get_source_address(
+                IPNetwork("2001:67c:1560::/128")), Equals("2001:67c:1560::1"))
+
+    def test__ipnetwork_works_for_ipv6_slash48(self):
+        mock = self.patch(network_module, 'get_source_address_for_ipaddress')
+        mock.return_value = "2001:67c:1560::1"
+        self.assertThat(
+            get_source_address(
+                IPNetwork("2001:67c:1560::/48")), Equals("2001:67c:1560::1"))
+
+    def test__ipnetwork_works_for_ipv6_slash64(self):
+        mock = self.patch(network_module, 'get_source_address_for_ipaddress')
+        mock.return_value = "2001:67c:1560::1"
+        self.assertThat(
+            get_source_address(
+                IPNetwork("2001:67c:1560::1/64")), Equals("2001:67c:1560::1"))
+
     def test__accepts_ipaddress(self):
         self.assertThat(
             get_source_address(IPAddress("127.0.0.1")), Equals("127.0.0.1"))
