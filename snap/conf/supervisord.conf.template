@@ -105,4 +105,13 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/proxy.log
+
+[program:syslog]
+process_name=syslog
+command=%(ENV_SNAP)s/bin/run-rsyslog
+autostart=false
+stopasgroup=true
+killasgroup=true
+redirect_stderr=true
+stdout_logfile=%(ENV_SNAP_COMMON)s/log/rsyslog.log
 {{endif}}

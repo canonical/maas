@@ -13,6 +13,7 @@ from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.syslog import config
+from provisioningserver.utils import snappy
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -57,6 +58,29 @@ class TestWriteConfig(MAASTestCase):
             if match in line:
                 return
         self.fail('%s was not present in: %s' % (match, lines))
+
+    def test__packaging_maas_user_group_with_drop(self):
+        config.write_config(False)
+        matchers = [
+            Contains('$FileOwner maas'),
+            Contains('$FileGroup maas'),
+            Contains('$PrivDropToUser maas'),
+            Contains('$PrivDropToGroup maas'),
+        ]
+        self.assertThat(
+            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            FileContains(matcher=MatchesAll(*matchers)))
+
+    def test__snappy_root_user_group_no_drop(self):
+        self.patch(snappy, 'running_in_snap').return_value = True
+        config.write_config(False)
+        matchers = [
+            Contains('$FileOwner root'),
+            Contains('$FileGroup root'),
+        ]
+        self.assertThat(
+            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            FileContains(matcher=MatchesAll(*matchers)))
 
     def test__udp_and_tcp(self):
         config.write_config(False)

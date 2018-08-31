@@ -15,6 +15,7 @@ chown -R nobody:nogroup "$SNAP_COMMON/proxy/spool"
 mkdir -p "$SNAP_DATA/preseeds"
 mkdir -p "$SNAP_DATA/bind"
 mkdir -p "$SNAP_DATA/proxy"
+mkdir -p "$SNAP_DATA/syslog"
 mkdir -p "$SNAP_DATA/supervisord"
 mkdir -p "$SNAP_DATA/var/lib/maas"
 

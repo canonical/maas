@@ -10,13 +10,15 @@ input(type="imudp" port="5247")
 $RepeatedMsgReduction on
 
 # Set the default permissions for all log files.
-$FileOwner maas
-$FileGroup maas
+$FileOwner {{user}}
+$FileGroup {{group}}
 $FileCreateMode 0640
 $DirCreateMode 0755
 $Umask 0022
-$PrivDropToUser maas
-$PrivDropToGroup maas
+{{if drop_priv}}
+$PrivDropToUser {{user}}
+$PrivDropToGroup {{group}}
+{{endif}}
 
 # Work directory.
 $WorkDirectory {{work_dir}}

@@ -89,6 +89,7 @@ parts:
       - python3-attr
       - python3-simplejson
       - python3-markupsafe
+      - rsyslog
       - squid
       - tcpdump
       - ubuntu-keyring

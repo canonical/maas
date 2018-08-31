@@ -34,6 +34,9 @@ def run():
         "MAAS_PROXY_CONFIG_DIR",
         os.path.join(os.environ.get("SNAP_DATA"), "proxy"))
     os.environ.setdefault(
+        "MAAS_SYSLOG_CONFIG_DIR",
+        os.path.join(os.environ.get("SNAP_DATA"), "syslog"))
+    os.environ.setdefault(
         "MAAS_IMAGES_KEYRING_FILEPATH",
         "/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
     os.environ.setdefault(

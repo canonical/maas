@@ -14,7 +14,10 @@ from operator import itemgetter
 import os
 import sys
 
-from provisioningserver.utils import locate_template
+from provisioningserver.utils import (
+    locate_template,
+    snappy,
+)
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
 import tempita
@@ -58,12 +61,21 @@ def is_config_present():
 def write_config(write_local, forwarders=None):
     """Write the syslog configuration."""
     context = {
+        'user': 'maas',
+        'group': 'maas',
+        'drop_priv': True,
         'work_dir': get_syslog_workdir_path(),
         'write_local': write_local,
         'forwarders': (
             sorted(forwarders, key=itemgetter('name'))
             if forwarders is not None else []),
     }
+
+    # Running inside the snap rsyslog is root.
+    if snappy.running_in_snap():
+        context['user'] = 'root'
+        context['group'] = 'root'
+        context['drop_priv'] = False
 
     template_path = locate_template('syslog', MAAS_SYSLOG_CONF_TEMPLATE)
     template = tempita.Template.from_filename(

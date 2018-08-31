@@ -23,6 +23,9 @@ rm -f "$SNAP_DATA/var/lib/maas/dhcpd6.conf"
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_CLUSTER_CONFIG="$SNAP_DATA/rackd.conf"
+export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
+export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"
+export MAAS_SYSLOG_CONFIG_DIR="$SNAP_DATA/syslog"
 
 # Run the rackd.
 exec $SNAP/sbin/rackd
