@@ -11,6 +11,7 @@ from unittest.mock import (
     ANY,
     sentinel,
 )
+from urllib.parse import urlparse
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -57,7 +58,9 @@ from twisted.internet.task import Clock
 
 
 def make_sources():
-    hosts = [factory.make_name('host').lower() for _ in range(3)]
+    hosts = [factory.make_hostname().lower() for _ in range(2)]
+    hosts.append(factory.make_ipv4_address())
+    hosts.append("[%s]" % factory.make_ipv6_address())
     urls = [
         'http://%s:%s/images-stream/streams/v1/index.json' % (
             host, randint(1, 1000))
@@ -119,7 +122,16 @@ class TestReloadBootImages(MAASTestCase):
 class TestGetHostsFromSources(MAASTestCase):
 
     def test__returns_set_of_hosts_from_sources(self):
-        sources, hosts = make_sources()
+        sources, _ = make_sources()
+        hosts = set()
+        for source in sources:
+            # Use the source to obtain the hosts and add it to a list.
+            host = urlparse(source["url"]).hostname
+            hosts.add(host)
+            # If the host is an IPv6 address, add an extra fixed IPv6
+            # with brackets.
+            if ':' in host:
+                hosts.add("[%s]" % host)
         self.assertItemsEqual(hosts, get_hosts_from_sources(sources))
 
 
@@ -240,7 +252,8 @@ class TestRunImport(MAASTestCase):
         _run_import(sources=[], maas_url=factory.make_simple_http_url())
         self.assertEqual(
             fake.env['no_proxy'],
-            "localhost,::ffff:127.0.0.1,127.0.0.1,::1")
+            ("localhost,::ffff:127.0.0.1,127.0.0.1,::1,"
+             "[::ffff:127.0.0.1],[::1]"))
 
     def test__run_import_sets_proxy_for_source_host(self):
         host = factory.make_name("host").lower()
@@ -250,7 +263,8 @@ class TestRunImport(MAASTestCase):
         _run_import(sources=sources, maas_url=maas_url)
         self.assertItemsEqual(
             fake.env['no_proxy'].split(','),
-            ["localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1"] + [host])
+            ["localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1",
+             "[::ffff:127.0.0.1]", "[::1]"] + [host])
 
     def test__run_import_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')

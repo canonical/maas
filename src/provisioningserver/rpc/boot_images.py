@@ -63,12 +63,19 @@ def reload_boot_images():
 
 
 def get_hosts_from_sources(sources):
-    """Return set of hosts that are contained in the given sources."""
+    """Return set of hosts that are contained in the given sources.
+
+    If the host is an IPv6 address, we also return it in the format
+    of [<ipv6-address>] because things like no_proxy (which this
+    function is used for), need it that way."""
     hosts = set()
     for source in sources:
         url = urlparse(source['url'])
         if url.hostname is not None:
             hosts.add(url.hostname)
+        # If it's the IPv6 address, we add also add it inside []
+        if ':' in url.hostname:
+            hosts.add('[%s]' % url.hostname)
     return hosts
 
 
@@ -110,7 +117,9 @@ def _run_import(sources, maas_url, http_proxy=None, https_proxy=None):
     if https_proxy is not None:
         variables['https_proxy'] = https_proxy
     # Communication to the sources and loopback should not go through proxy.
-    no_proxy_hosts = ["localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1"]
+    no_proxy_hosts = [
+        "localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1",
+        "[::ffff:127.0.0.1]", "[::1]"]
     no_proxy_hosts += list(get_hosts_from_sources(sources))
     variables['no_proxy'] = ','.join(no_proxy_hosts)
     with environment_variables(variables):
