@@ -22,6 +22,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodStoragePool,
     get_error_message,
     JSON_POD_DRIVER_SCHEMA,
+    KnownHostInterface,
     PodActionError,
     PodAuthError,
     PodConnError,
@@ -601,6 +602,10 @@ class TestRequestClasses(MAASTestCase):
             RequestedMachineInterface()
             for _ in range(3)
         ]
+        known_host_interfaces = [
+            KnownHostInterface()
+            for _ in range(3)
+        ]
         block_devices = [
             RequestedMachineBlockDevice(
                 size=random.randint(512, 1024), tags=[
@@ -612,7 +617,9 @@ class TestRequestClasses(MAASTestCase):
         machine = RequestedMachine(
             hostname=hostname, architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
-            interfaces=interfaces, block_devices=block_devices)
+            interfaces=interfaces,
+            known_host_interfaces=known_host_interfaces,
+            block_devices=block_devices)
         self.assertThat(machine.asdict(), MatchesDict({
             "hostname": Equals(hostname),
             "architecture": Equals("amd64/generic"),
@@ -631,6 +638,16 @@ class TestRequestClasses(MAASTestCase):
                         interface.attach_options),
                 })
                 for interface in interfaces
+            ]),
+            "known_host_interfaces": MatchesListwise([
+                MatchesDict({
+                    "ifname": Equals(
+                        known_host_interface.ifname),
+                    "attach_type": Equals(
+                        known_host_interface.attach_type),
+                    "dhcp_enabled": Equals(False),
+                })
+                for known_host_interface in known_host_interfaces
             ]),
             "block_devices": MatchesListwise([
                 MatchesDict({

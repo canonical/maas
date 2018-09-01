@@ -328,6 +328,14 @@ class RequestedMachineInterface(AttrHelperMixin):
 
 
 @attr.s
+class KnownHostInterface(AttrHelperMixin):
+    """Known host interface information."""
+    ifname = attr.ib(converter=str, default=None)
+    attach_type = attr.ib(converter=str, default=None)
+    dhcp_enabled = attr.ib(converter=bool, default=False)
+
+
+@attr.s
 class RequestedMachine(AttrHelperMixin):
     """Requested machine information."""
     hostname = attr.ib(converter=str)
@@ -341,6 +349,9 @@ class RequestedMachine(AttrHelperMixin):
     # Optional fields.
     cpu_speed = attr.ib(
         converter=converter_obj(int, optional=True), default=None)
+    known_host_interfaces = attr.ib(
+        converter=converter_list(KnownHostInterface),
+        default=attr.Factory(list))
 
     @classmethod
     def fromdict(cls, data):
