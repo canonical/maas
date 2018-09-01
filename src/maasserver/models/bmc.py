@@ -83,6 +83,7 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.constraints import LabeledConstraintMap
+from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks
 
@@ -97,7 +98,10 @@ def get_requested_ips(requested_machine):
         requested_ips = {
             interface.ifname: interface.requested_ips
             for interface in requested_machine.interfaces
-            if interface.ifname is not None
+            if (
+                interface.ifname is not None and
+                len(interface.requested_ips) > 0
+            )
         }
     else:
         requested_ips = {}
@@ -748,7 +752,10 @@ class Pod(BMC):
         # New machines get commission started immediately unless skipped.
         if not skip_commissioning:
             skip_networking = False
-            if len(requested_ips) > 0:
+            # If an interfaces constraint was specified, don't reset the
+            # networking parameters. (Instead, allow them to be set based on
+            # what was requested in the constraints string.)
+            if interfaces is not None and len(interfaces) > 0:
                 skip_networking = True
             machine.start_commissioning(
                 commissioning_user, skip_networking=skip_networking)
@@ -790,7 +797,7 @@ class Pod(BMC):
         # dictionaries in Python 3.6+ preserve insertion order.)
         if interface_constraints is not None:
             interface_names = [
-                label[:15]
+                get_ifname_for_label(label)
                 for label in interface_constraints
             ]
         else:
@@ -882,9 +889,12 @@ class Pod(BMC):
                     # the VM has been attached to. Update the VLAN (but
                     # only if necessary).
                     host_vlan = host_attach_interface.vlan
-                    if host_vlan != created_interfaces[idx].vlan:
-                        created_interfaces[idx].vlan = host_vlan
-                        created_interfaces[idx].save()
+                    interface = created_interfaces[idx]
+                    if host_vlan != interface.vlan:
+                        interface.vlan = host_vlan
+                        interface.save()
+                    if interface.ip_addresses.count() == 0:
+                        interface.force_auto_or_dhcp_link()
                     continue
 
     def _sync_machine(self, discovered_machine, existing_machine):

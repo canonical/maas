@@ -1043,7 +1043,7 @@ class TestPod(MAASServerTestCase):
         sip3 = StaticIPAddress.objects.filter(ip=ip3).first()
         self.assertThat(sip3.get_interface().node, Equals(machine))
 
-    def test_create_machine_sets_interface_vlans_using_attach_names(self):
+    def test_create_machine_sets_up_interface_vlans_correctly(self):
         discovered_machine = self.make_discovered_machine()
         self.patch(Machine, "set_default_storage_layout")
         self.patch(Machine, "set_initial_networking_configuration")
@@ -1052,11 +1052,14 @@ class TestPod(MAASServerTestCase):
         controller = factory.make_RackController()
         vlan = factory.make_VLAN(
             fabric=fabric, dhcp_on=True, primary_rack=controller)
-        subnet = factory.make_Subnet()
         vlan2 = factory.make_VLAN(
             fabric=fabric, dhcp_on=False, primary_rack=controller)
         vlan3 = factory.make_VLAN(
             fabric=fabric, dhcp_on=False, primary_rack=controller)
+        # Create subnets, so we can test to ensure they get linked up.
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Subnet(vlan=vlan2)
+        factory.make_Subnet(vlan=vlan3)
         eth0 = factory.make_Interface(node=controller, vlan=vlan)
         eth1 = factory.make_Interface(node=controller, vlan=vlan2)
         eth2 = factory.make_Interface(node=controller, vlan=vlan3)
@@ -1074,11 +1077,13 @@ class TestPod(MAASServerTestCase):
             InterfaceAttachType.MACVLAN)
         discovered_machine.interfaces[2].attach_name = eth2.name
         pod = factory.make_Pod(ip_address=ip)
-        print(pod.ip_address)
+        # Skip commissioning on creation so that we can test that VLANs
+        # are properly set based on the interface constraint.
         machine = pod.create_machine(
             discovered_machine, factory.make_User(),
+            # Use numeric names to mimic what Juju will do.
             interfaces=LabeledConstraintMap(
-                'eth0:vlan=id:%d;eth1:vlan=id:%d;eth2:vlan=id:%d' % (
+                '0:vlan=id:%d;1:vlan=id:%d;2:vlan=id:%d' % (
                     vlan.id, vlan2.id, vlan3.id),
             )
         )
@@ -1089,6 +1094,10 @@ class TestPod(MAASServerTestCase):
         self.assertThat(interfaces['eth0'].vlan, Equals(vlan))
         self.assertThat(interfaces['eth1'].vlan, Equals(vlan2))
         self.assertThat(interfaces['eth2'].vlan, Equals(vlan3))
+        # Make sure all interfaces also have a subnet link.
+        self.assertThat(interfaces['eth0'].ip_addresses.count(), Equals(1))
+        self.assertThat(interfaces['eth1'].ip_addresses.count(), Equals(1))
+        self.assertThat(interfaces['eth2'].ip_addresses.count(), Equals(1))
 
     def test_create_machine_uses_default_ifnames_if_discovered_mismatch(self):
         """This makes sure that if the discovered machine comes back with
@@ -1765,4 +1774,17 @@ class TestGetRequestedIPs(MAASServerTestCase):
             get_requested_ips(requested_machine), Equals({
                 "eth0": ['10.0.0.1', '2001:db8::1'],
                 "eth1": ['10.0.0.2', '2001:db8::2']
+            }))
+
+    def test__leaves_out_keys_with_no_assigned_ips(self):
+        interface = RequestedMachineInterface(
+            ifname='eth0', requested_ips=['10.0.0.1', '2001:db8::1'])
+        interface2 = RequestedMachineInterface(
+            ifname='eth1', requested_ips=[])
+        interfaces = [interface, interface2]
+        requested_machine = RequestedMachine(
+            factory.make_hostname(), 'amd64', 1, 1024, [], interfaces)
+        self.assertThat(
+            get_requested_ips(requested_machine), Equals({
+                "eth0": ['10.0.0.1', '2001:db8::1'],
             }))

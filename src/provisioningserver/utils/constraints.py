@@ -30,6 +30,11 @@ class LabeledConstraintMap(object):
     def __str__(self):
         return self.value
 
+    def __len__(self):
+        if self.map is None:
+            return 0
+        return len(self.map)
+
     def __iter__(self):
         if self.map is None:
             return iter([])

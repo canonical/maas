@@ -7,12 +7,14 @@ __all__ = []
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.constraints import (
+    LabeledConstraintMap,
     parse_labeled_constraint_map,
     validate_constraint_label_name,
 )
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    HasLength,
     Is,
 )
 
@@ -113,3 +115,18 @@ class TestGetLabeledConstraintsMap(MAASTestCase):
             "foo": {"a": ["b"], "c": ["d"]},
             "bar": {"e": ["f"], "g": ["h"]},
         }))
+
+
+class TestLabeledConstraintMap(MAASTestCase):
+
+    def test__len__for_null_map(self):
+        lcm = LabeledConstraintMap(None)
+        self.assertThat(lcm, HasLength(0))
+
+    def test__len__for_empty_map(self):
+        lcm = LabeledConstraintMap('')
+        self.assertThat(lcm, HasLength(0))
+
+    def test__len__for_populated_map(self):
+        lcm = LabeledConstraintMap('eth0:space=1;eth1:space=2')
+        self.assertThat(lcm, HasLength(2))
