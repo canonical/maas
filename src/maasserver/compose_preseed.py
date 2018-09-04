@@ -266,7 +266,11 @@ def get_cloud_init_reporting(request, node, token):
 
 def get_rsyslog_host_port(request, node):
     """Return the rsyslog host and port to use."""
-    return "%s:%d" % (node.boot_cluster_ip, RSYSLOG_PORT)
+    syslog = Config.objects.get_config('remote_syslog')
+    if syslog:
+        return syslog
+    else:
+        return "%s:%d" % (node.boot_cluster_ip, RSYSLOG_PORT)
 
 
 def get_system_info():

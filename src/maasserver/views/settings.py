@@ -44,6 +44,7 @@ from maasserver.forms import (
     NTPForm,
     ProxyForm,
     StorageSettingsForm,
+    SyslogForm,
     ThirdPartyDriversForm,
     UbuntuForm,
     WindowsForm,
@@ -362,6 +363,13 @@ def network(request):
     if response is not None:
         return response
 
+    # Process the Syslog form.
+    syslog_form, response = process_form(
+        request, SyslogForm, reverse('settings_network'), 'syslog',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the network discovery form.
     network_discovery_form, response = process_form(
         request, NetworkDiscoveryForm, reverse('settings_network'),
@@ -376,6 +384,7 @@ def network(request):
             'proxy_form': proxy_form,
             'dns_form': dns_form,
             'ntp_form': ntp_form,
+            'syslog_form': syslog_form,
             'network_discovery_form': network_discovery_form,
             'show_license_keys': show_license_keys(),
         })

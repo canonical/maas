@@ -1519,6 +1519,11 @@ class NTPForm(ConfigForm):
     ntp_external_only = get_config_field('ntp_external_only')
 
 
+class SyslogForm(ConfigForm):
+    """Settings page, Syslog section."""
+    remote_syslog = get_config_field('remote_syslog')
+
+
 class NetworkDiscoveryForm(ConfigForm):
     """Settings page, Network Discovery section."""
     network_discovery = get_config_field('network_discovery')

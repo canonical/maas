@@ -9,7 +9,10 @@ from random import randint
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.url import compose_URL
+from provisioningserver.utils.url import (
+    compose_URL,
+    splithost,
+)
 
 
 class TestComposeURL(MAASTestCase):
@@ -96,3 +99,32 @@ class TestComposeURL(MAASTestCase):
         self.assertEqual(
             'https://%s:%s/' % (hostname, port),
             compose_URL('https://:%s/' % port, hostname))
+
+
+class TestSplithost(MAASTestCase):
+
+    scenarios = (
+        ('ipv4', {
+            'host': '192.168.1.1:21',
+            'result': ('192.168.1.1', 21)
+        }),
+        ('ipv6', {
+            'host': '[::f]:21',
+            'result': ('[::f]', 21)
+        }),
+        ('ipv4_no_port', {
+            'host': '192.168.1.1',
+            'result': ('192.168.1.1', None)
+        }),
+        ('ipv6_no_port', {
+            'host': '[::f]',
+            'result': ('[::f]', None)
+        }),
+        ('ipv6_no_bracket', {
+            'host': '::ffff',
+            'result': ('[::ffff]', None)
+        }),
+    )
+
+    def test__result(self):
+        self.assertEqual(self.result, splithost(self.host))

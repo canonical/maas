@@ -42,6 +42,7 @@ from maasserver.utils.osystems import (
     release_a_newer_than_b,
 )
 from provisioningserver.utils.text import normalise_whitespace
+from provisioningserver.utils.url import splithost
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
@@ -231,6 +232,21 @@ def make_maas_internal_domain_field(*args, **kwargs):
         **kwargs)
 
 
+class RemoteSyslogField(forms.CharField):
+    """
+    A `CharField` that formats the input into the expected value for syslog.
+    """
+
+    def clean(self, value):
+        value = super(RemoteSyslogField, self).clean(value)
+        if not value:
+            return None
+        host, port = splithost(value)
+        if not port:
+            port = 514
+        return '%s:%d' % (host, port)
+
+
 CONFIG_ITEMS = {
     'maas_name': {
         'default': gethostname(),
@@ -402,6 +418,20 @@ CONFIG_ITEMS = {
                 servers, rack contoller hosts will in turn refer to the
                 regions' NTP servers, and deployed machines will refer to the
                 racks' NTP servers.
+            """),
+        }
+    },
+    'remote_syslog': {
+        'default': None,
+        'form': RemoteSyslogField,
+        'form_kwargs': {
+            'label': "Remote syslog server to forward machine logs",
+            'required': False,
+            'help_text': normalise_whitespace("""\
+                A remote syslog server that MAAS will set on enlisting,
+                commissioning, testing, and deploying machines to send all
+                log messages. Clearing this value will restore the default
+                behaviour of forwarding syslog to MAAS.
             """),
         }
     },

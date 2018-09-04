@@ -84,6 +84,8 @@ def get_default_config():
         'ntp_servers': 'ntp.ubuntu.com',
         'ntp_external_only': False,
         'omapi_key': '',
+        # Syslog settings
+        'remote_syslog': None,
         # Network discovery.
         'network_discovery': 'enabled',
         'active_discovery_interval': int(timedelta(hours=3).total_seconds()),

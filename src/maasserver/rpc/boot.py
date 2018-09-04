@@ -45,6 +45,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
     undefined,
 )
+from provisioningserver.utils.url import splithost
 
 
 DEFAULT_ARCH = 'i386'
@@ -283,6 +284,7 @@ def get_config(
         # for arch detection.
         raise BootConfigNoResponse()
 
+    # Get all required configuration objects in a single query.
     configs = Config.objects.get_configs([
         'commissioning_osystem',
         'commissioning_distro_series',
@@ -293,7 +295,16 @@ def get_config(
         'kernel_opts',
         'use_rack_proxy',
         'maas_internal_domain',
+        'remote_syslog',
     ])
+
+    # Compute the syslog server.
+    log_host, log_port = local_ip, RSYSLOG_PORT
+    if configs['remote_syslog']:
+        log_host, log_port = splithost(configs['remote_syslog'])
+        if log_port is None:
+            log_port = 514  # Fallback to default UDP syslog port.
+
     if machine is not None:
         # Update the last interface, last access cluster IP address, and
         # the last used BIOS boot method.
@@ -362,8 +373,8 @@ def get_config(
                 "domain": domain,
                 "preseed_url": preseed_url,
                 "fs_host": local_ip,
-                "log_host": local_ip,
-                "log_port": RSYSLOG_PORT,
+                "log_host": log_host,
+                "log_port": log_port,
                 "extra_opts": '',
                 "http_boot": True,
             }
@@ -484,8 +495,8 @@ def get_config(
         "domain": domain,
         "preseed_url": preseed_url,
         "fs_host": local_ip,
-        "log_host": local_ip,
-        "log_port": RSYSLOG_PORT,
+        "log_host": log_host,
+        "log_port": log_port,
         "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
         # As of MAAS 2.4 only HTTP boot is supported. This ensures MAAS 2.3
         # rack controllers use HTTP boot as well.

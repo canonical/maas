@@ -65,3 +65,18 @@ class TestSpecificConfigSettings(MAASServerTestCase):
         ips2 = [factory.make_ip_address() for _ in range(3)]
         input = ' '.join(ips1) + ' ' + ','.join(ips2)
         self.assertEqual(' '.join(ips1 + ips2), field.clean(input))
+
+
+class TestRemoteSyslogConfigSettings(MAASServerTestCase):
+
+    def test_sets_empty_to_none(self):
+        field = get_config_field('remote_syslog')
+        self.assertIsNone(field.clean('   '))
+
+    def test_adds_port(self):
+        field = get_config_field('remote_syslog')
+        self.assertEqual('192.168.1.1:514', field.clean('192.168.1.1'))
+
+    def test_wraps_ipv6(self):
+        field = get_config_field('remote_syslog')
+        self.assertEqual('[::ffff]:514', field.clean('::ffff'))

@@ -104,6 +104,24 @@
 
     <div class="p-strip is-bordered">
         <div class="row">
+            <div id="syslog" class="col-8">
+                <h2 class="p-heading--four">Syslog</h2>
+                <form action="{% url 'settings_network' %}" method="post">
+                    {% csrf_token %}
+                    <ul class="p-list">
+                        {% for field in syslog_form %}
+                            {% include "maasserver/form_field.html" %}
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" name="syslog_submit" value="1" />
+                    <button type="submit" class="p-button--positive u-float--right">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-strip is-bordered">
+        <div class="row">
             <div id="network" class="col-8">
                 <h2 class="p-heading--four">Network Discovery</h2>
                 <form action="{% url 'settings_network' %}" method="post">

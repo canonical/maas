@@ -420,6 +420,24 @@ class TestComposePreseed(MAASServerTestCase):
                 reverse('metadata-status', args=[node.system_id])),
             preseed['reporting']['maas']['endpoint'])
 
+    def test_compose_preseed_uses_remote_syslog(self):
+        remote_syslog = '192.168.1.1:514'
+        Config.objects.set_config('remote_syslog', remote_syslog)
+        rack_controller = factory.make_RackController(url='')
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_preseed(
+                request, PRESEED_TYPE.COMMISSIONING, node))
+        self.assertEqual(
+            remote_syslog,
+            preseed['rsyslog']['remotes']['maas'])
+
     def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(

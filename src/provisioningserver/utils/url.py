@@ -43,3 +43,21 @@ def compose_URL(base_url, host):
     else:
         netloc = '%s:%d' % (netloc_host, parsed_url.port)
     return urlunparse(parsed_url._replace(netloc=netloc))
+
+
+def splithost(host):
+    """Split `host` into hostname and port.
+
+    If no :port is in `host` the port with return as None.
+    """
+    parsed = urlparse('//' + host)
+    hostname = parsed.hostname
+    if hostname is None:
+        # This only occurs when the `host` is an IPv6 address without brakets.
+        # Lets try again but add the brackets.
+        parsed = urlparse('//[%s]' % host)
+        hostname = parsed.hostname
+    if ':' in hostname:
+        # IPv6 hostname, place back into brackets.
+        hostname = '[%s]' % hostname
+    return hostname, parsed.port
