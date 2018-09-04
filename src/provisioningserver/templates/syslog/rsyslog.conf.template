@@ -1,3 +1,7 @@
+# Unix socket.
+module(load="imuxsock")
+input(type="imuxsock" socket="{{work_dir}}/log")
+
 # Enable tcp.
 module(load="imtcp")
 input(type="imtcp" port="5247")
@@ -26,13 +30,17 @@ $WorkDirectory {{work_dir}}
 
 {{if write_local}}
 # Log the messages to disk based on the hostname of the log message.
-$template MAASenlist,"/var/log/maas/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/%fromhost-ip%"
-$template MAASboot,"/var/log/maas/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/messages"
+$template MAASenlist,"{{log_dir}}/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/%fromhost-ip%"
+$template MAASboot,"{{log_dir}}/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/messages"
 
-if $hostname == "maas-enlisting-node" then {
-  :fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist
+if $syslogtag contains "maas" {
+  *.* {{log_dir}}/maas.log
 } else {
-  :fromhost-ip, !isequal, "127.0.0.1" ?MAASboot
+  if $hostname == "maas-enlisting-node" then {
+    :fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist
+  } else {
+    :fromhost-ip, !isequal, "127.0.0.1" ?MAASboot
+  }
 }
 {{endif}}
 
@@ -52,6 +60,12 @@ if $hostname == "maas-enlisting-node" then {
            queue.type="LinkedList" queue.filename="{{server['name']}}"
            queue.saveonshutdown="on")
 {{endfor}}
+{{endif}}
+
+
+{{if not write_local}}
+# rack-only controller still logs to a local maas.log.
+:syslogtag, contains, "maas" {{log_dir}}/maas.log
 {{endif}}
 
 # Done.

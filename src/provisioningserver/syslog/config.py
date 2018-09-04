@@ -32,6 +32,15 @@ class SyslogConfigFail(Exception):
     """Raised if there is a problem with the syslog configuration."""
 
 
+def get_syslog_log_path():
+    """Location of syslog log file outputs."""
+    setting = os.getenv("MAAS_SYSLOG_LOG_DIR", "/var/log/maas")
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        setting = setting.decode(fsenc)
+    return setting
+
+
 def get_syslog_config_path():
     """Location of syslog configuration file."""
     setting = os.getenv("MAAS_SYSLOG_CONFIG_DIR", "/var/lib/maas")
@@ -65,6 +74,7 @@ def write_config(write_local, forwarders=None):
         'group': 'maas',
         'drop_priv': True,
         'work_dir': get_syslog_workdir_path(),
+        'log_dir': get_syslog_log_path(),
         'write_local': write_local,
         'forwarders': (
             sorted(forwarders, key=itemgetter('name'))

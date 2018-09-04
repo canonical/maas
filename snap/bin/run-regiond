@@ -15,6 +15,7 @@ export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"
 export MAAS_SYSLOG_CONFIG_DIR="$SNAP_DATA/syslog"
+export MAAS_SYSLOG_LOG_DIR="$SNAP_COMMON/log"
 export MAAS_IMAGES_KEYRING_FILEPATH="/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 export MAAS_THIRD_PARTY_DRIVER_SETTINGS="$SNAP/etc/maas/drivers.yaml"
 

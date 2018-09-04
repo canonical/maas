@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
+
+    if [ -f /etc/rsyslog.d/99-maas.conf ]; then
+        rm -rf /etc/rsyslog.d/99-maas.conf
+        deb-systemd-invoke restart 'rsyslog.service' >/dev/null || true
+    fi
+
+    if [ -f /usr/share/maas/maas-rsyslog.conf ]; then
+        rm -rf /usr/share/maas/maas-rsyslog.conf
+    fi
+
+fi
+
+#DEBHELPER#

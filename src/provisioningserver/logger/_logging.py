@@ -10,6 +10,7 @@ __all__ = [
 import logging
 import logging.config
 import logging.handlers
+import os
 import sys
 
 from provisioningserver.logger._common import (
@@ -72,6 +73,16 @@ def configure_standard_logging(verbosity: int, mode: LoggingMode):
 
 
 @typed
+def get_syslog_address_path() -> str:
+    """Return the path to the syslog unix socket."""
+    path = os.getenv("MAAS_SYSLOG_CONFIG_DIR", "/var/lib/maas")
+    if isinstance(path, bytes):
+        fsenc = sys.getfilesystemencoding()
+        path = path.decode(fsenc)
+    return os.sep.join([path, 'rsyslog', 'log'])
+
+
+@typed
 def get_logging_config(verbosity: int):
     """Return a configuration dict usable with `logging.config.dictConfig`.
 
@@ -101,7 +112,7 @@ def get_logging_config(verbosity: int):
             'syslog': {
                 'class': 'logging.handlers.SysLogHandler',
                 'facility': logging.handlers.SysLogHandler.LOG_DAEMON,
-                'address': '/dev/log',
+                'address': get_syslog_address_path(),
                 'formatter': 'syslog',
             },
         },

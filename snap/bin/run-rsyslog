@@ -4,15 +4,16 @@
 
 set -e
 
+# Ensure that the work directory is created.
+mkdir -p "$SNAP_DATA/syslog/rsyslog"
+
+# Ensure that the log output directory is created.
+mkdir -p "$SNAP_COMMON/log/rsyslog"
+
 # Do not proceed unless rsyslog.conf exists.
 if [ ! -e "$SNAP_DATA/syslog/rsyslog.conf" ]; then
     echo "Cannot start rsyslog as $SNAP_DATA/syslog/rsyslog.conf does not exist."
     exit 1
-fi
-
-# Ensure that the work directory is created.
-if [ ! -d "$SNAP_DATA/syslog/rsyslog" ]; then
-    mkdir -p "$SNAP_DATA/syslog/rsyslog"
 fi
 
 # Set the modules directory so rsyslogd can find them in the snap.

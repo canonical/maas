@@ -116,9 +116,12 @@ class TestWriteConfig(MAASTestCase):
             Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist'))
         matcher_two = Not(
             Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot'))
+        # maas.log is still local when no write local.
+        matcher_three = Contains(':syslogtag, contains, "maas"')
         self.assertThat(
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)))
+            FileContains(
+                matcher=MatchesAll(matcher_one, matcher_two, matcher_three)))
 
     def test__forwarders(self):
         forwarders = [

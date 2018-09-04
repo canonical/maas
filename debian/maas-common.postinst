@@ -9,9 +9,7 @@ configure_logging() {
     if [ ! -f /var/log/maas/maas.log ]; then
         touch /var/log/maas/maas.log
     fi
-    chown syslog:syslog /var/log/maas/maas.log
-    # Make sure rsyslog reads our config
-    deb-systemd-invoke restart 'rsyslog.service' >/dev/null || true
+    chown maas:maas /var/log/maas/maas.log
 }
 
 configure_lib_dir() {
@@ -30,8 +28,6 @@ add_user_group(){
     addgroup --quiet --system "$group" || true
     adduser --quiet --system --group --home "$home" "$user" || true
 }
-
-ln -sf /usr/share/maas/maas-rsyslog.conf /etc/rsyslog.d/99-maas.conf
 
 add_user_group
 configure_logging
