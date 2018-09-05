@@ -33,7 +33,7 @@ $WorkDirectory {{work_dir}}
 $template MAASenlist,"{{log_dir}}/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/%fromhost-ip%"
 $template MAASboot,"{{log_dir}}/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/messages"
 
-if $syslogtag contains "maas" {
+if $syslogtag contains "maas" then {
   *.* {{log_dir}}/maas.log
 } else {
   if $hostname == "maas-enlisting-node" then {
