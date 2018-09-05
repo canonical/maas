@@ -150,6 +150,7 @@ class TestRackControllersAPI(APITestCase.ForUser):
                 'other_test_status',
                 'other_test_status_name',
                 'hardware_info',
+                'tag_names',
             ],
             list(parsed_result[0]))
 

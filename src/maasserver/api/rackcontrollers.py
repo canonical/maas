@@ -70,6 +70,7 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'other_test_status',
     'other_test_status_name',
     'hardware_info',
+    'tag_names',
 )
 
 
