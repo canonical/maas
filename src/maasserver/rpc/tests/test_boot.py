@@ -182,6 +182,42 @@ class TestGetConfig(MAASServerTestCase):
             "http_boot": True,
         }, config)
 
+    def test__purpose_local_uses_maas_syslog_port(self):
+        syslog_port = factory.pick_port()
+        Config.objects.set_config('maas_syslog_port', syslog_port)
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED, netboot=False)
+        node.boot_cluster_ip = local_ip
+        node.osystem = factory.make_name('osystem')
+        node.distro_series = factory.make_name('distro_series')
+        node.save()
+        mac = node.get_boot_interface().mac_address
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac,
+            query_count=7)
+        self.assertEquals({
+            "system_id": node.system_id,
+            "arch": node.split_arch()[0],
+            "subarch": node.split_arch()[1],
+            "osystem": node.osystem,
+            "release": node.distro_series,
+            "kernel": '',
+            "initrd": '',
+            "boot_dtb": '',
+            "purpose": 'local',
+            "hostname": node.hostname,
+            "domain": node.domain.name,
+            "preseed_url": ANY,
+            "fs_host": local_ip,
+            "log_host": local_ip,
+            "log_port": syslog_port,
+            "extra_opts": '',
+            "http_boot": True,
+        }, config)
+
     def test__returns_kparams_for_known_node(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()

@@ -84,6 +84,7 @@ from provisioningserver.rpc.region import (
     GetDNSConfiguration,
     GetProxies,
     GetProxyConfiguration,
+    GetSyslogConfiguration,
     GetTimeConfiguration,
     Identify,
     ListNodePowerParameters,
@@ -1429,4 +1430,31 @@ class TestRegionProtocol_GetProxyConfiguration(MAASTransactionServerTestCase):
             'port': port,
             'allowed_cidrs': cidrs,
             'prefer_v4_proxy': prefer_v4_proxy,
+        }))
+
+
+class TestRegionProtocol_GetSyslogConfiguration(MAASTransactionServerTestCase):
+
+    def test_get_proxy_configuration_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            GetSyslogConfiguration.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_returns_syslog_configuration(self):
+
+        def _db_work():
+            port = random.randint(1000, 8000)
+            Config.objects.set_config('maas_syslog_port', port)
+            return port
+
+        port = yield deferToDatabase(_db_work)
+
+        system_id = factory.make_name("id")
+        response = yield call_responder(
+            Region(), GetSyslogConfiguration, {'system_id': system_id})
+        self.assertThat(response, Equals({
+            'port': port,
         }))

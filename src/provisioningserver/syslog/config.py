@@ -67,7 +67,7 @@ def is_config_present():
 
 
 @synchronous
-def write_config(write_local, forwarders=None):
+def write_config(write_local, forwarders=None, port=None):
     """Write the syslog configuration."""
     context = {
         'user': 'maas',
@@ -76,6 +76,7 @@ def write_config(write_local, forwarders=None):
         'work_dir': get_syslog_workdir_path(),
         'log_dir': get_syslog_log_path(),
         'write_local': write_local,
+        'port': port if port else 5247,
         'forwarders': (
             sorted(forwarders, key=itemgetter('name'))
             if forwarders is not None else []),

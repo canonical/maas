@@ -76,10 +76,13 @@ def make_default_osystem_field(*args, **kwargs):
     return field
 
 
-def validate_port(value):
+def validate_port(value, allow_ports=None):
     """Raise `ValidationError` when the value is set to a port number. that is
     either reserved for known services, or for MAAS services to ensure this
     doesn't break MAAS or other applications."""
+    if allow_ports and value in allow_ports:
+        # Value is in the allowed ports override.
+        return
     msg = "Unable to change port number"
     if value > 65535 or value <= 0:
         raise ValidationError(
@@ -94,6 +97,11 @@ def validate_port(value):
     if (value >= 5240 and value <= 5270):
         raise ValidationError(
             "%s. Port number is reserved for MAAS services." % msg)
+
+
+def validate_syslog_port(value):
+    """A `validate_port` that allows the internal syslog port."""
+    return validate_port(value, allow_ports=[5247])
 
 
 def get_default_usable_osystem(default_osystem):
@@ -118,6 +126,13 @@ def make_maas_proxy_port_field(*args, **kwargs):
     """Build and return the maas_proxy_port field."""
     return forms.IntegerField(
         validators=[validate_port],
+        **kwargs)
+
+
+def make_maas_syslog_port_field(*args, **kwargs):
+    """Build and return the maas_syslog_port field."""
+    return forms.IntegerField(
+        validators=[validate_syslog_port],
         **kwargs)
 
 
@@ -433,6 +448,17 @@ CONFIG_ITEMS = {
                 log messages. Clearing this value will restore the default
                 behaviour of forwarding syslog to MAAS.
             """),
+        }
+    },
+    'maas_syslog_port': {
+        'default': 5247,
+        'form': make_maas_syslog_port_field,
+        'form_kwargs': {
+            'label': "Port to bind the MAAS built-in syslog (default: 5247)",
+            'required': False,
+            'help_text': (
+                "Defines the port used to bind the built-in syslog. The "
+                "default port is 5247.")
         }
     },
     'network_discovery': {

@@ -533,6 +533,25 @@ class Region(RPCProtocol):
 
         return deferToDatabase(get_from_db)
 
+    @region.GetSyslogConfiguration.responder
+    def get_syslog_configuration(self, system_id):
+        """Get settings to use for configuring syslog.
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetSyslogConfiguration`.
+        """
+        # For consistency `system_id` is passed, but at the moment it is not
+        # used to customise the syslog configuration.
+
+        @transactional
+        def get_from_db():
+            port = Config.objects.get_config('maas_syslog_port')
+            return {
+                'port': port,
+            }
+
+        return deferToDatabase(get_from_db)
+
 
 @inlineCallbacks
 def isLoopbackURL(url):

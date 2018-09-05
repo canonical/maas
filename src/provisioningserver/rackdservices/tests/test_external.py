@@ -48,18 +48,20 @@ def prepareRegion(
         test, *, is_region=False, is_rack=True,
         servers=None, peers=None, trusted_networks=None,
         proxy_enabled=True, proxy_port=8000, proxy_allowed_cidrs=None,
-        proxy_prefer_v4_proxy=False):
+        proxy_prefer_v4_proxy=False, syslog_port=5247):
     """Set up a mock region controller.
 
     It responds to `GetControllerType`, `GetTimeConfiguration`,
-    `GetDNSConfiguration` and `GetProxyConfiguration`.
+    `GetDNSConfiguration`, `GetProxyConfiguration`, and
+    `GetSyslogConfiguration`.
 
     :return: The running RPC service, and the protocol instance.
     """
     fixture = test.useFixture(MockLiveClusterToRegionRPCFixture())
     protocol, connecting = fixture.makeEventLoop(
         region.GetControllerType, region.GetTimeConfiguration,
-        region.GetDNSConfiguration, region.GetProxyConfiguration)
+        region.GetDNSConfiguration, region.GetProxyConfiguration,
+        region.GetSyslogConfiguration)
     protocol.RegisterRackController.side_effect = always_succeed_with(
         {"system_id": factory.make_name("maas-id")})
     protocol.GetControllerType.side_effect = always_succeed_with(
@@ -79,6 +81,9 @@ def prepareRegion(
         "port": proxy_port,
         "allowed_cidrs": proxy_allowed_cidrs,
         "prefer_v4_proxy": proxy_prefer_v4_proxy,
+    })
+    protocol.GetSyslogConfiguration.side_effect = always_succeed_with({
+        "port": syslog_port,
     })
 
     def connected(teardown):
@@ -706,9 +711,10 @@ class TestRackSyslog(MAASTestCase):
 
     @inlineCallbacks
     def test__getConfiguration_returns_configuration_object(self):
+        port = factory.pick_port()
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
         rpc_service, protocol = yield prepareRegion(
-            self, is_region=is_region, is_rack=is_rack)
+            self, is_region=is_region, is_rack=is_rack, syslog_port=port)
         forwarders = self.extract_regions(rpc_service)
         service, syslog = self.make_RackSyslog_ExternalService(
             rpc_service, reactor)
@@ -717,18 +723,20 @@ class TestRackSyslog(MAASTestCase):
 
         config = yield service._getConfiguration()
         observed = syslog._getConfiguration(
-            config.controller_type, config.connections)
+            config.controller_type, config.syslog_configuration,
+            config.connections)
 
         self.assertThat(observed, IsInstance(external._SyslogConfiguration))
         self.assertThat(
             observed, MatchesStructure.byEquality(
-                forwarders=forwarders,
+                port=port, forwarders=forwarders,
                 is_region=is_region, is_rack=is_rack))
 
     @inlineCallbacks
     def test__tryUpdate_updates_syslog_server(self):
         self.useFixture(MAASRootFixture())
-        rpc_service, _ = yield prepareRegion(self)
+        port = factory.pick_port()
+        rpc_service, _ = yield prepareRegion(self, syslog_port=port)
         forwarders = self.extract_regions(rpc_service)
         service, _ = self.make_RackSyslog_ExternalService(rpc_service, reactor)
 
@@ -751,7 +759,7 @@ class TestRackSyslog(MAASTestCase):
         self.assertThat(
             write_config,
             MockCalledOnceWith(
-                False, forwarders=expected_forwards))
+                False, forwarders=expected_forwards, port=port))
         self.assertThat(
             service_monitor.restartService, MockCalledOnceWith("syslog_rack"))
         # If the configuration has not changed then a second call to
@@ -760,7 +768,7 @@ class TestRackSyslog(MAASTestCase):
         self.assertThat(
             write_config,
             MockCalledOnceWith(
-                False, forwarders=expected_forwards))
+                False, forwarders=expected_forwards, port=port))
         self.assertThat(
             service_monitor.restartService, MockCalledOnceWith("syslog_rack"))
 

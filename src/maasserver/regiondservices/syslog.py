@@ -10,6 +10,7 @@ __all__ = [
 from datetime import timedelta
 
 import attr
+from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.routablepairs import get_routable_address_map
 from maasserver.service_monitor import service_monitor
@@ -78,7 +79,8 @@ class RegionSyslogService(TimerService):
                 # Only a region controller, no need to forward logs.
                 peers = frozenset()
 
-        return _Configuration(peers)
+        port = Config.objects.get_config('maas_syslog_port')
+        return _Configuration(port, peers)
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the syslog server if the configuration changes.
@@ -116,7 +118,7 @@ class RegionSyslogService(TimerService):
                     'name': hostname,
                 }
                 for hostname, ip in configuration.peers
-            ])
+            ], port=configuration.port)
         d.addCallback(
             callOut, service_monitor.restartService, "syslog_region")
         return d
@@ -133,6 +135,9 @@ class RegionSyslogService(TimerService):
 @attr.s
 class _Configuration:
     """Configuration for the region's syslog servers."""
+
+    # Port syslog binds to.
+    port = attr.ib(converter=int)
 
     # Addresses of peer region controller hosts.
     peers = attr.ib(converter=frozenset)

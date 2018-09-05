@@ -438,6 +438,27 @@ class TestComposePreseed(MAASServerTestCase):
             remote_syslog,
             preseed['rsyslog']['remotes']['maas'])
 
+    def test_compose_preseed_uses_maas_syslog_port(self):
+        syslog_port = factory.pick_port()
+        Config.objects.set_config('maas_syslog_port', syslog_port)
+        rack_controller = factory.make_RackController(url='')
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        ip_address = factory.make_ipv4_address()
+        node.boot_cluster_ip = ip_address
+        node.save()
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_preseed(
+                request, PRESEED_TYPE.COMMISSIONING, node))
+        self.assertEqual(
+            '%s:%d' % (ip_address, syslog_port),
+            preseed['rsyslog']['remotes']['maas'])
+
     def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(

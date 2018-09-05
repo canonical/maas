@@ -33,6 +33,7 @@ from provisioningserver.rpc.region import (
     GetControllerType,
     GetDNSConfiguration,
     GetProxyConfiguration,
+    GetSyslogConfiguration,
     GetTimeConfiguration,
 )
 from provisioningserver.service_monitor import service_monitor
@@ -326,12 +327,13 @@ class RackSyslog(RackOnlyExternalService):
         d = maybeDeferred(
             self._getConfiguration,
             config.controller_type,
+            config.syslog_configuration,
             config.connections)
         d.addCallback(self._maybeApplyConfiguration)
         return d
 
     def _getConfiguration(
-            self, controller_type, connections):
+            self, controller_type, syslog_configuration, connections):
         """Return syslog server configuration.
 
         The configuration object returned is comparable with previous and
@@ -341,6 +343,7 @@ class RackSyslog(RackOnlyExternalService):
         forwarders = list(self._genRegionIps(
             connections, bracket_ipv6=True, include_name=True))
         return _SyslogConfiguration(
+            port=syslog_configuration['port'],
             forwarders=forwarders,
             is_region=controller_type["is_region"],
             is_rack=controller_type["is_rack"])
@@ -375,7 +378,8 @@ class RackSyslog(RackOnlyExternalService):
             }
             for name, ip in dict(configuration.forwarders).items()
         ]
-        syslog_config.write_config(False, forwarders=forwarders)
+        syslog_config.write_config(
+            False, forwarders=forwarders, port=configuration.port)
 
 
 class RackExternalService(TimerService):
@@ -424,11 +428,14 @@ class RackExternalService(TimerService):
             GetDNSConfiguration, system_id=client.localIdent)
         proxy_configuration = yield client(
             GetProxyConfiguration, system_id=client.localIdent)
+        syslog_configuration = yield client(
+            GetSyslogConfiguration, system_id=client.localIdent)
         return _Configuration(
             controller_type=controller_type,
             time_configuration=time_configuration,
             dns_configuration=dns_configuration,
             proxy_configuration=proxy_configuration,
+            syslog_configuration=syslog_configuration,
             connections=self._rpc_service.connections
         )
 
@@ -474,6 +481,9 @@ class _Configuration:
 
     # Proxy configuration for the controller.
     proxy_configuration = attr.ib(converter=dict)
+
+    # Syslog configuration for the controller.
+    syslog_configuration = attr.ib(converter=dict)
 
     # Current RPC connections for the controller.
     connections = attr.ib(converter=dict)
@@ -537,6 +547,9 @@ class _ProxyConfiguration:
 @attr.s
 class _SyslogConfiguration:
     """Configuration for the rack's syslog server."""
+
+    # Port to run syslog on.
+    port = attr.ib(converter=int)
 
     # Forwards to send the logs to.
     forwarders = attr.ib(converter=frozenset)

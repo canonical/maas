@@ -753,9 +753,13 @@ def get_preseed_context(
         rack_controller=rack_controller, default_region_ip=region_ip)
     server_url = request.build_absolute_uri(reverse('machines_handler'))
     metadata_enlist_url = request.build_absolute_uri(reverse('enlist'))
-    syslog = Config.objects.get_config('remote_syslog')
+    configs = Config.objects.get_configs(['remote_syslog', 'maas_syslog_port'])
+    syslog = configs['remote_syslog']
     if not syslog:
-        syslog = '%s:%d' % (server_host, RSYSLOG_PORT)
+        syslog_port = configs['maas_syslog_port']
+        if not syslog_port:
+            syslog_port = RSYSLOG_PORT
+        syslog = '%s:%d' % (server_host, syslog_port)
     return {
         'osystem': osystem,
         'release': release,

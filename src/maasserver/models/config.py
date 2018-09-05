@@ -86,6 +86,7 @@ def get_default_config():
         'omapi_key': '',
         # Syslog settings
         'remote_syslog': None,
+        'maas_syslog_port': 5247,
         # Network discovery.
         'network_discovery': 'enabled',
         'active_discovery_interval': int(timedelta(hours=3).total_seconds()),

@@ -92,6 +92,17 @@ class TestWriteConfig(MAASTestCase):
             "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)))
 
+    def test__udp_and_tcp_both_use_different_port(self):
+        port = factory.pick_port()
+        config.write_config(False, port=port)
+        matcher_one = Contains(
+            'input(type="imtcp" port="%d")' % port)
+        matcher_two = Contains(
+            'input(type="imudp" port="%d")' % port)
+        self.assertThat(
+            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            FileContains(matcher=MatchesAll(matcher_one, matcher_two)))
+
     def test__adds_tcp_stop(self):
         cidr = factory.make_ipv4_network()
         config.write_config([cidr])
@@ -139,6 +150,24 @@ class TestWriteConfig(MAASTestCase):
                     'target="%s"' % host['ip'], lines)
                 self.assertLinesContain(
                     'queue.filename="%s"' % host['name'], lines)
+
+    def test__forwarders_diff_port(self):
+        port = factory.pick_port()
+        forwarders = [
+            {
+                'ip': factory.make_ip_address(),
+                'name': factory.make_name('name')
+            }
+            for _ in range(3)
+        ]
+        config.write_config(False, forwarders, port=port)
+        with self.syslog_path.open() as syslog_file:
+            lines = [line.strip() for line in syslog_file.readlines()]
+            for host in forwarders:
+                self.assertLinesContain(
+                    'target="%s"' % host['ip'], lines)
+                self.assertLinesContain(
+                    'port="%d"' % port, lines)
 
     def test__write_local_and_forwarders(self):
         forwarders = [

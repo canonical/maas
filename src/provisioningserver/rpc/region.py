@@ -657,3 +657,20 @@ class GetProxyConfiguration(amp.Command):
     errors = {
         NoSuchNode: b"NoSuchNode",
     }
+
+
+class GetSyslogConfiguration(amp.Command):
+    """Get settings to use for configuring syslog for a given system identifier.
+
+    :since: 2.5
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+    ]
+    response = [
+        (b"port", amp.Integer()),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }

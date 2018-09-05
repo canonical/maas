@@ -266,11 +266,14 @@ def get_cloud_init_reporting(request, node, token):
 
 def get_rsyslog_host_port(request, node):
     """Return the rsyslog host and port to use."""
-    syslog = Config.objects.get_config('remote_syslog')
-    if syslog:
-        return syslog
+    configs = Config.objects.get_configs(['remote_syslog', 'maas_syslog_port'])
+    if configs['remote_syslog']:
+        return configs['remote_syslog']
     else:
-        return "%s:%d" % (node.boot_cluster_ip, RSYSLOG_PORT)
+        port = configs['maas_syslog_port']
+        if not port:
+            port = RSYSLOG_PORT
+        return "%s:%d" % (node.boot_cluster_ip, port)
 
 
 def get_system_info():

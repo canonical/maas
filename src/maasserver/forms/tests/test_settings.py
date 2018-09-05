@@ -6,6 +6,7 @@
 __all__ = []
 
 from django import forms
+from django.core.exceptions import ValidationError
 from maasserver.forms.settings import (
     CONFIG_ITEMS,
     get_config_doc,
@@ -80,3 +81,14 @@ class TestRemoteSyslogConfigSettings(MAASServerTestCase):
     def test_wraps_ipv6(self):
         field = get_config_field('remote_syslog')
         self.assertEqual('[::ffff]:514', field.clean('::ffff'))
+
+
+class TestMAASSyslogPortConfigSettings(MAASServerTestCase):
+
+    def test_allows_port_5247(self):
+        field = get_config_field('maas_syslog_port')
+        self.assertEqual(5247, field.clean('5247'))
+
+    def test_doesnt_allow_port_5248(self):
+        field = get_config_field('maas_syslog_port')
+        self.assertRaises(ValidationError, field.clean, '5248')

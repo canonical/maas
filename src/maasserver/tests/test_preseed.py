@@ -470,6 +470,13 @@ class TestPreseedContext(MAASServerTestCase):
         context = get_preseed_context(make_HttpRequest())
         self.assertEquals(remote_syslog, context['syslog_host_port'])
 
+    def test_get_preseed_context_uses_maas_syslog_port(self):
+        syslog_port = factory.pick_port()
+        Config.objects.set_config('maas_syslog_port', syslog_port)
+        context = get_preseed_context(make_HttpRequest())
+        self.assertTrue(
+            context['syslog_host_port'].endswith(':%d' % syslog_port))
+
 
 class TestNodeDeprecatedPreseedContext(
         PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):

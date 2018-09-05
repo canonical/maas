@@ -296,10 +296,14 @@ def get_config(
         'use_rack_proxy',
         'maas_internal_domain',
         'remote_syslog',
+        'maas_syslog_port',
     ])
 
     # Compute the syslog server.
-    log_host, log_port = local_ip, RSYSLOG_PORT
+    log_host, log_port = local_ip, (
+        configs['maas_syslog_port']
+        if configs['maas_syslog_port']
+        else RSYSLOG_PORT)
     if configs['remote_syslog']:
         log_host, log_port = splithost(configs['remote_syslog'])
         if log_port is None:

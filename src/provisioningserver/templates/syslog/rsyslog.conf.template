@@ -4,11 +4,11 @@ input(type="imuxsock" socket="{{work_dir}}/log")
 
 # Enable tcp.
 module(load="imtcp")
-input(type="imtcp" port="5247")
+input(type="imtcp" port="{{port}}")
 
 # Enable udp.
 module(load="imudp")
-input(type="imudp" port="5247")
+input(type="imudp" port="{{port}}")
 
 # Reduce message repetition.
 $RepeatedMsgReduction on
@@ -55,7 +55,7 @@ if $syslogtag contains "maas" then {
 # Forward all UDP messages to all the region controllers. TCP messages will
 # not make it to this point because of the stop above.
 {{for server in forwarders}}
-*.* action(type="omfwd" target="{{server['ip']}}" port="5247" protocol="tcp"
+*.* action(type="omfwd" target="{{server['ip']}}" port="{{port}}" protocol="tcp"
            action.resumeRetryCount="-1"
            queue.type="LinkedList" queue.filename="{{server['name']}}"
            queue.saveonshutdown="on")

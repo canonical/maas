@@ -6,6 +6,7 @@
 __all__ = []
 
 from crochet import wait_for
+from maasserver.models.config import Config
 from maasserver.regiondservices import syslog
 from maasserver.service_monitor import service_monitor
 from maasserver.testing.factory import factory
@@ -73,6 +74,9 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
 
     @transactional
     def make_example_configuration(self):
+        # Set the syslog port.
+        port = factory.pick_port()
+        Config.objects.set_config('maas_syslog_port', port)
         # Populate the database with example peers.
         space = factory.make_Space()
         region, addr4, addr6 = make_region_rack_with_address(space)
@@ -80,7 +84,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         peer1, addr1_4, addr1_6 = make_region_rack_with_address(space)
         peer2, addr2_4, addr2_6 = make_region_rack_with_address(space)
         # Return the servers and all possible peer IP addresses.
-        return [
+        return port, [
             (peer1, sorted([IPAddress(addr1_4.ip), IPAddress(addr1_6.ip)])[0]),
             (peer2, sorted([IPAddress(addr2_4.ip), IPAddress(addr2_6.ip)])[0]),
         ]
@@ -89,7 +93,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__tryUpdate_updates_syslog_server(self):
         service = syslog.RegionSyslogService(reactor)
-        peers = yield deferToDatabase(self.make_example_configuration)
+        port, peers = yield deferToDatabase(self.make_example_configuration)
         write_config = self.patch_autospec(syslog, "write_config")
         restartService = self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
@@ -101,7 +105,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
                         'name': node.hostname,
                     }
                     for node, ip in peers
-                ]))))
+                ])), port=port))
         self.assertThat(restartService, MockCalledOnceWith("syslog_region"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `write_config`.
