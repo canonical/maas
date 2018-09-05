@@ -79,7 +79,7 @@ def get_syslog_address_path() -> str:
     if isinstance(path, bytes):
         fsenc = sys.getfilesystemencoding()
         path = path.decode(fsenc)
-    return os.sep.join([path, 'rsyslog', 'log'])
+    return os.sep.join([path, 'rsyslog', 'log.sock'])
 
 
 @typed

@@ -1,6 +1,6 @@
 # Unix socket.
 module(load="imuxsock")
-input(type="imuxsock" socket="{{work_dir}}/log")
+input(type="imuxsock" socket="{{work_dir}}/log.sock")
 
 # Enable tcp.
 module(load="imtcp")
