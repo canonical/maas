@@ -17,6 +17,7 @@ from netaddr import IPAddress
 from provisioningserver.ntp import config
 from provisioningserver.path import get_data_path
 from testtools.matchers import (
+    Contains,
     Equals,
     Is,
     IsInstance,
@@ -51,8 +52,10 @@ def extract_peers(configuration):
 
 
 def extract_peers_full(configuration):
+    # We expect each peer to be annotated with `xleave`, so include that
+    # in the regular expression as well.
     return re.findall(
-        r"^ *(peer) +(\S+)(?: +([^\r\n]+))?$",
+        r"^ *(peer) +(\S+) xleave(?: +([^\r\n]+))?$",
         configuration, re.MULTILINE)
 
 
@@ -268,6 +271,10 @@ class TestRenderNTPMAASConf(MAASTestCase):
         self.assertThat(
             extract_tos_options(ntp_maas_conf),
             Equals([str(offset + 8), "orphan"]))
+
+    def test_configures_hwtimestamp_mode(self):
+        ntp_maas_conf = config._render_ntp_maas_conf([], [], 0)
+        self.assertThat(ntp_maas_conf, Contains("\nhwtimestamp *\n"))
 
 
 example_ntp_conf = """\

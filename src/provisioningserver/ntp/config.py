@@ -110,14 +110,21 @@ def _render_ntp_maas_conf(servers, peers, offset):
     :param offset: A relative stratum used when calculating the stratum for
         orphan mode (https://chrony.tuxfamily.org/doc/3.2/chrony.conf.html).
     """
-    lines = ["# MAAS NTP configuration."]
+    lines = [
+        "# MAAS NTP configuration.",
+        # LP: #1789872 - Use hardware timestamps (on interfaces where it is
+        # available).
+        "hwtimestamp *",
+    ]
     servers = map(normalise_address, servers)
     lines.extend(
         "%s %s iburst" % (
             ("server" if isinstance(server, IPAddress) else "pool"), server)
         for server in servers)
     peers = map(normalise_address, peers)
-    lines.extend("peer %s" % peer for peer in peers)
+    # Note: `xleave` is needed here in order to take advantage of the increased
+    # accuracy that comes with enabling hardware timestamps.
+    lines.extend("peer %s xleave" % peer for peer in peers)
     # Chrony provides a special 'orphan' mode that is compatible
     # with ntpd's 'tos orphan' mode. (see
     # https://chrony.tuxfamily.org/doc/devel/chrony.conf.html)
