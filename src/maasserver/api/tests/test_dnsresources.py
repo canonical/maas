@@ -10,6 +10,7 @@ import json
 import random
 
 from django.conf import settings
+from maasserver.api.dnsresources import get_dnsresource_queryset
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 from maasserver.testing.api import APITestCase
@@ -58,6 +59,27 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
+    def test_read_all(self):
+        self.become_admin()
+        for _ in range(3):
+            factory.make_DNSResource()
+        factory.make_RegionRackController()
+        uri = get_dnsresources_uri()
+        response = self.client.get(uri, {'all': 'true'})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        expected_ids = [
+            dnsresource.id
+            for dnsresource in get_dnsresource_queryset(all_records=True)
+        ]
+        result_ids = [
+            dnsresource["id"]
+            for dnsresource in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
+        ]
+        self.assertItemsEqual(expected_ids, result_ids)
+
     def test_read_with_domain(self):
         for _ in range(3):
             factory.make_DNSResource()
@@ -74,6 +96,29 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
             for dnsresource in json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))
             ]
+        self.assertItemsEqual(expected_ids, result_ids)
+
+    def test_read_all_with_domain(self):
+        self.become_admin()
+        for _ in range(3):
+            factory.make_DNSResource()
+        dnsrr = DNSResource.objects.first()
+        uri = get_dnsresources_uri()
+        response = self.client.get(
+            uri,
+            {
+                'all': 'true',
+                'domain': [dnsrr.domain.name]
+            }
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        expected_ids = [-1, dnsrr.id]
+        result_ids = [
+            dnsresource["id"]
+            for dnsresource in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
+        ]
         self.assertItemsEqual(expected_ids, result_ids)
 
     def test_read_with_name(self):

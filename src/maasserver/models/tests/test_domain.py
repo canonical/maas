@@ -32,7 +32,11 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPAddress
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    MatchesStructure,
+)
 from testtools.testcase import ExpectedException
 
 
@@ -372,6 +376,9 @@ class DomainTest(MAASServerTestCase):
                 dnsresource__domain_id=domain.id)
             self.assertEqual("0 0 1688 %s." % target, srvrr.rrdata)
 
+
+class TestRenderRRData(MAASServerTestCase):
+
     def render_rrdata(self, domain, for_list=False):
         rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
             domain, raw_ttl=True)
@@ -434,3 +441,18 @@ class DomainTest(MAASServerTestCase):
         self.assertEqual(actual, expected)
         for record in actual:
             self.assertEqual(record['user_id'], user.id)
+
+    def test_renders_as_dictionary(self):
+        domain = factory.make_Domain()
+        name1 = factory.make_name(prefix='a')
+        name2 = factory.make_name(prefix='b')
+        factory.make_DNSData(name=name1, domain=domain, rrtype='MX')
+        rrdata_list = domain.render_json_for_related_rrdata(as_dict=False)
+        rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
+        self.assertThat(rrdata_dict[name1], Equals([rrdata_list[0]]))
+        self.assertThat(rrdata_dict[name1], HasLength(1))
+        factory.make_DNSData(name=name1, domain=domain, rrtype='MX')
+        factory.make_DNSData(name=name2, domain=domain, rrtype='NS')
+        rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
+        self.assertThat(rrdata_dict[name1], HasLength(2))
+        self.assertThat(rrdata_dict[name2], HasLength(1))

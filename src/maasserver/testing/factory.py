@@ -721,7 +721,7 @@ class Factory(maastesting.factory.Factory):
                 else ip
                 for ip in ip_addresses
             ]
-        dnsrr = DNSResource(
+        dnsrr, _ = DNSResource.objects.get_or_create(
             name=name, address_ttl=address_ttl,
             domain=domain)
         dnsrr.save()

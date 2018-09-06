@@ -56,10 +56,8 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         ]
 
     def dehydrate(self, domain, data, for_list=False):
-        rrsets = domain.render_json_for_related_rrdata(for_list=for_list)
-        if not self.user.is_superuser:
-            rrsets = [
-                rrset for rrset in rrsets if rrset['user_id'] == self.user.id]
+        rrsets = domain.render_json_for_related_rrdata(
+            for_list=for_list, user=self.user)
         if not for_list:
             data["rrsets"] = rrsets
         data["hosts"] = len({
