@@ -335,7 +335,8 @@ class BootMethod(metaclass=ABCMeta):
         dtb_subarchs = ['xgene-uboot-mustang']
 
         def fs_host(params):
-            return convert_host_to_uri_str(params.fs_host)
+            return 'http://%s:5248/images/' % (
+                convert_host_to_uri_str(params.fs_host))
 
         def image_dir(params):
             return compose_image_path(
