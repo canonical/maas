@@ -132,6 +132,10 @@ class DNSDataTest(MAASServerTestCase):
                     "{'__all__': [\"%s\"]}" % INVALID_CNAME_MSG)):
             dnsdata.save()
 
+    def test_rejects_bad_srv(self):
+        with ExpectedException(ValidationError):
+            factory.make_DNSData(rrtype="SRV", rrdata="")
+
     def test_rejects_bad_sshfp_record(self):
         dnsresource = factory.make_DNSResource(no_ip_addresses=True)
         dnsdata = DNSData(

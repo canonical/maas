@@ -327,9 +327,9 @@ class DNSData(CleanSave, TimestampedModel):
                 r"^(?P<pri>[0-9]+)\s+(?P<weight>[0-9]+)\s+(?P<port>[0-9]+)\s+"
                 r"(?P<target>.*)")
             res = spec.search(self.rrdata)
-            srv_host = res.groupdict()['target']
             if res is None:
                 raise ValidationError(INVALID_SRV_MSG)
+            srv_host = res.groupdict()['target']
             pri = int(res.groupdict()['pri'])
             weight = int(res.groupdict()['weight'])
             port = int(res.groupdict()['port'])
