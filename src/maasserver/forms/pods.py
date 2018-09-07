@@ -58,15 +58,13 @@ from maasserver.node_constraint_filter_forms import (
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import transactional
-from maasserver.utils.threads import (
-    callOutToDatabase,
-    deferToDatabase,
-)
+from maasserver.utils.threads import deferToDatabase
 import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
     InterfaceAttachType,
+    KnownHostInterface,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -414,7 +412,7 @@ class ComposeMachineForm(forms.Form):
         else:
             return None
 
-    def get_requested_machine(self):
+    def get_requested_machine(self, known_host_interfaces):
         """Return the `RequestedMachine`."""
         block_devices = []
 
@@ -442,6 +440,7 @@ class ComposeMachineForm(forms.Form):
             cpu_speed=self.get_value_for('cpu_speed'),
             block_devices=block_devices,
             interfaces=requested_machine_interfaces,
+            known_host_interfaces=known_host_interfaces,
         )
 
     def _get_requested_machine_interfaces_via_constraints(
@@ -515,16 +514,44 @@ class ComposeMachineForm(forms.Form):
         if skip_commissioning is None:
             skip_commissioning = self.get_value_for('skip_commissioning')
 
-        def check_over_commit_ratios(result):
+        def db_work(client):
             # Check over commit ratios.
             over_commit_message = self.pod.check_over_commit_ratios(
                 requested_cores=self.get_value_for('cores'),
                 requested_memory=self.get_value_for('memory'))
             if over_commit_message:
                 raise PodProblem(over_commit_message)
-            return result
 
-        def create_and_sync(requested_machine, result):
+            # Update the default storage pool.
+            if self.pod.default_storage_pool is not None:
+                power_parameters['default_storage_pool_id'] = (
+                    self.pod.default_storage_pool.pool_id)
+
+            # Find the pod's known host interfaces.
+            if self.pod.host is not None:
+                result = [
+                    KnownHostInterface(
+                        ifname=interface.name,
+                        attach_type=(
+                            InterfaceAttachType.BRIDGE
+                            if interface.type == INTERFACE_TYPE.BRIDGE
+                            else InterfaceAttachType.MACVLAN),
+                        dhcp_enabled=(
+                            True
+                            if (interface.vlan is not None and
+                                interface.vlan.dhcp_on) or (
+                                    interface.vlan.relay_vlan is not None and
+                                    interface.vlan.relay_vlan.dhcp_on)
+                            else False))
+                    for interface in self.pod.host.interface_set.all()
+                ]
+            else:
+                result = []
+
+            return (client, result)
+
+        def create_and_sync(result):
+            requested_machine, result = result
             discovered_machine, pod_hints = result
             created_machine = self.pod.create_machine(
                 discovered_machine, self.request.user,
@@ -539,30 +566,30 @@ class ComposeMachineForm(forms.Form):
             self.pod.sync_hints(pod_hints)
             return created_machine
 
-        power_parameters = self.pod.power_parameters.copy()
+        def async_compose_machine(
+                result, power_type, power_paramaters, **kwargs):
+            client, result = result
+            requested_machine = self.get_requested_machine(result)
+            d = compose_machine(
+                client, power_type, power_paramaters, requested_machine,
+                **kwargs)
+            d.addCallback(lambda result: (requested_machine, result))
+            return d
 
-        def _set_default_pool_id():
-            if self.pod.default_storage_pool is not None:
-                power_parameters['default_storage_pool_id'] = (
-                    self.pod.default_storage_pool.pool_id)
+        power_parameters = self.pod.power_parameters.copy()
 
         if isInIOThread():
             # Running under the twisted reactor, before the work from inside.
             d = deferToDatabase(transactional(self.pod.get_client_identifiers))
             d.addCallback(getClientFromIdentifiers)
             d.addCallback(
-                partial(deferToDatabase, transactional(
-                    check_over_commit_ratios)))
-            d.addCallback(callOutToDatabase, _set_default_pool_id)
-            requested_machine = self.get_requested_machine()
+                partial(deferToDatabase, transactional(db_work)))
             d.addCallback(
-                compose_machine, self.pod.power_type,
-                power_parameters, requested_machine,
-                pod_id=self.pod.id, name=self.pod.name)
+                async_compose_machine, self.pod.power_type,
+                power_parameters, pod_id=self.pod.id, name=self.pod.name)
             d.addCallback(
                 partial(
-                    deferToDatabase, transactional(create_and_sync),
-                    requested_machine))
+                    deferToDatabase, transactional(create_and_sync)))
             return d
         else:
             # Running outside of reactor. Do the work inside and then finish
@@ -574,16 +601,13 @@ class ComposeMachineForm(forms.Form):
                 """Wrapper to get the client."""
                 d = getClientFromIdentifiers(client_idents)
                 d.addCallback(
-                    partial(deferToDatabase, transactional(
-                        check_over_commit_ratios)))
-                d.addCallback(
                     compose_machine, pod_type, parameters, request,
                     pod_id=pod_id, name=name)
                 return d
 
-            _set_default_pool_id()
+            _, result = db_work(None)
             try:
-                requested_machine = self.get_requested_machine()
+                requested_machine = self.get_requested_machine(result)
                 result = wrap_compose_machine(
                     self.pod.get_client_identifiers(),
                     self.pod.power_type,
@@ -596,7 +620,7 @@ class ComposeMachineForm(forms.Form):
                     "Unable to compose a machine because '%s' driver "
                     "timed out after %d seconds." % (
                         self.pod.power_type, timeout))
-            return create_and_sync(requested_machine, result)
+            return create_and_sync((requested_machine, result))
 
 
 class ComposeMachineForPodsForm(forms.Form):

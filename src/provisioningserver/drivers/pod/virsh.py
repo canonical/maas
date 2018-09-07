@@ -34,6 +34,7 @@ from provisioningserver.drivers.pod import (
     InterfaceAttachType,
     PodDriver,
 )
+from provisioningserver.enum import LIBVIRT_NETWORK
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.rpc.utils import (
@@ -56,6 +57,11 @@ from twisted.internet.threads import deferToThread
 
 maaslog = get_maas_logger("drivers.pod.virsh")
 
+ADD_DEFAULT_NETWORK = dedent("""
+    Please add a 'default' or 'maas' network whose bridge is
+    on a MAAS DHCP enabled VLAN. Ensure that libvirt DHCP is
+    not enabled.
+    """)
 
 XPATH_ARCH = "/domain/os/type/@arch"
 XPATH_BOOT = "/domain/os/boot"
@@ -315,6 +321,13 @@ class VirshSSH(pexpect.spawn):
         """Spawns the pexpect command."""
         cmd = 'virsh --connect %s' % poweraddr
         self._spawn(cmd)
+
+    def get_network_xml(self, network):
+        output = self.run(['net-dumpxml', network]).strip()
+        if output.startswith("error:"):
+            maaslog.error("%s: Failed to get XML for network", network)
+            return None
+        return output
 
     def get_machine_xml(self, machine):
         # Check if we have a cached version of the XML.
@@ -875,46 +888,123 @@ class VirshSSH(pexpect.spawn):
         output = self.run(['net-list', '--name'])
         return output.strip().splitlines()
 
-    def get_best_network(self):
-        """Return the best possible network."""
+    def check_network_maas_dhcp_enabled(
+            self, network, host_interfaces):
+        xml = self.get_network_xml(network)
+        tree = etree.fromstring(xml)
+        # Check that libvirt DHCP is not enabled.
+        if not tree.xpath('//dhcp'):
+            # Validate that network is attached to a bridge
+            # whose VLAN is enabled for MAAS DHCP.
+            bridge_element = tree.xpath('//bridge')[0]
+            ifname = bridge_element.get('name')
+            if (ifname in host_interfaces and host_interfaces[ifname]):
+                return ifname
+
+    def get_default_interface_attachment(self, known_host_interfaces):
+        """Return the interface attachment for the best attachment option
+        currenlty available for the libvirt networks.
+
+        The criteria for retrieving the best possible interface attachments
+        here is done by:
+
+        (1) If a `maas` or `default` network is defined in libvirt, continue
+        to prefer network attachments in that order of preference However,
+        DO NOT attach to either network by default if libvirt's DHCP is
+        enabled (this is virtually guaranteed to break the operation of MAAS).
+
+        (2) If a `maas` or `default` network is selected, validate that it is
+        attached to a bridge whose VLAN is enabled for MAAS DHCP (or DHCP
+        relay). If no libvirt network is found to be attached to a
+        DHCP-enabled network in MAAS, skip to (c).
+
+        (3) If no MAAS-managed DHCP network was found after checking (1) and
+        (2), prefer attachments in the following order of precedence:
+          (3.1) A bridge interface on the pod host whose VLAN is DHCP-enabled.
+          (3.2) A macvlan attachment on the pod host whose VLAN is
+                DHCP-enabled.
+
+        (4) If known_host_interfaces is None, return interface attachments for
+        `maas` or `default` network, checked in that order, if they exist
+        within the available libvirt networks.
+        """
         networks = self.get_network_list()
-        if 'maas' in networks:
-            return 'maas'
-        elif 'default' in networks:
-            return 'default'
-        elif not networks:
-            raise PodInvalidResources(
-                "Pod does not have a network defined. "
-                "Please add a 'default' or 'maas' network.")
 
-        return networks[0]
+        # When there are not any known_host_interfaces,
+        # default to checking for the `maas` and `default` libvirt networks.
+        if known_host_interfaces is None:
+            if LIBVIRT_NETWORK.MAAS in networks:
+                return LIBVIRT_NETWORK.MAAS, InterfaceAttachType.NETWORK
+            elif LIBVIRT_NETWORK.DEFAULT in networks:
+                return LIBVIRT_NETWORK.DEFAULT, InterfaceAttachType.NETWORK
+            raise PodInvalidResources(ADD_DEFAULT_NETWORK)
 
-    def attach_interface(self, interface, domain):
+        host_interfaces = {
+            host_interface.ifname: host_interface.dhcp_enabled
+            for host_interface in known_host_interfaces
+        }
+
+        # Check the 'maas' network.
+        if LIBVIRT_NETWORK.MAAS in networks:
+            maas_network_ifname = self.check_network_maas_dhcp_enabled(
+                LIBVIRT_NETWORK.MAAS, host_interfaces)
+            if maas_network_ifname is not None:
+                return LIBVIRT_NETWORK.MAAS, InterfaceAttachType.NETWORK
+
+        # Check the 'default' network.
+        if LIBVIRT_NETWORK.DEFAULT in networks:
+            default_network_ifname = self.check_network_maas_dhcp_enabled(
+                LIBVIRT_NETWORK.DEFAULT, host_interfaces)
+            if default_network_ifname is not None:
+                return LIBVIRT_NETWORK.DEFAULT, InterfaceAttachType.NETWORK
+
+        # Check for a bridge interface on the pod host whose VLAN
+        # is DHCP enabled.
+        for host_interface in known_host_interfaces:
+            if (host_interface.attach_type == InterfaceAttachType.BRIDGE and
+                    host_interface.dhcp_enabled):
+                return host_interface.ifname, InterfaceAttachType.BRIDGE
+
+        # Check for a macvlan interface on the pod host whose VLAN
+        # is DHCP enabled.
+        for host_interface in known_host_interfaces:
+            if (host_interface.attach_type == InterfaceAttachType.MACVLAN and
+                    host_interface.dhcp_enabled):
+                return host_interface.ifname, InterfaceAttachType.MACVLAN
+
+        # If no interface attachments were found, raise an error.
+        raise PodInvalidResources(ADD_DEFAULT_NETWORK)
+
+    def attach_interface(self, request, interface, domain):
         """Attach new network interface on `domain` to `network`."""
         mac = generate_mac_address()
+        attach_type = interface.attach_type
+        attach_name = interface.attach_name
         # If attachment type is not specified, default to network.
-        if interface.attach_type in (None, InterfaceAttachType.NETWORK):
-            # Set the network if we are explicity attaching a network
-            # specified by the user.
-            network = self.get_best_network()
-            if interface.attach_type is not None:
-                network = interface.attach_name
-            return self.run([
-                'attach-interface', domain, 'network', network,
-                '--mac', mac, '--model', 'virtio', '--config'])
+        if attach_type in (None, InterfaceAttachType.NETWORK):
+            # Retreive the best possible interface attachments.
+            # If a viable network cannot be found, resort to
+            # trying to attach to a bridge or macvlan interface,
+            # which is used below.
+            attach_name, attach_type = self.get_default_interface_attachment(
+                request.known_host_interfaces)
+            if attach_type == InterfaceAttachType.NETWORK:
+                return self.run([
+                    'attach-interface', domain, 'network', attach_name,
+                    '--mac', mac, '--model', 'virtio', '--config'])
 
         # For macvlans and bridges, we need to pass an XML template to
         # virsh's attach-device command since the attach-interface
         # command doesn't have a flag for setting the macvlan's mode.
         device_params = {
             'mac_address': mac,
-            'attach_name': interface.attach_name,
+            'attach_name': attach_name,
         }
-        if interface.attach_type == InterfaceAttachType.MACVLAN:
+        if attach_type == InterfaceAttachType.BRIDGE:
+            device_xml = DOM_TEMPLATE_BRIDGE_INTERFACE.format(**device_params)
+        elif attach_type == InterfaceAttachType.MACVLAN:
             device_params['attach_options'] = interface.attach_options
             device_xml = DOM_TEMPLATE_MACVLAN_INTERFACE.format(**device_params)
-        elif interface.attach_type == InterfaceAttachType.BRIDGE:
-            device_xml = DOM_TEMPLATE_BRIDGE_INTERFACE.format(**device_params)
 
         # Rewrite the XML in a temporary file to use with 'virsh define'.
         with NamedTemporaryFile() as f:
@@ -1048,7 +1138,7 @@ class VirshSSH(pexpect.spawn):
         # Attach the requested interfaces.
         for interface in request.interfaces:
             try:
-                self.attach_interface(interface, request.hostname)
+                self.attach_interface(request, interface, request.hostname)
             except PodInvalidResources as error:
                 # Delete the defined domain in virsh.
                 self.run(['destroy', request.hostname])

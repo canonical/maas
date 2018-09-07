@@ -31,6 +31,7 @@ from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPodStoragePool,
     InterfaceAttachType,
+    KnownHostInterface,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -48,7 +49,10 @@ from provisioningserver.drivers.pod.virsh import (
     InterfaceInfo,
     VirshPodDriver,
 )
-from provisioningserver.enum import MACVLAN_MODE_CHOICES
+from provisioningserver.enum import (
+    LIBVIRT_NETWORK,
+    MACVLAN_MODE_CHOICES,
+)
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils.shell import (
     get_env_with_locale,
@@ -157,6 +161,42 @@ SAMPLE_IFLIST = dedent("""
     -------------------------------------------------------
     -          bridge     br0        e1000       %s
     -          bridge     br1        e1000       %s
+    """)
+
+SAMPLE_NETWORK_DUMPXML = dedent("""
+    <network>
+      <name>default</name>
+      <uuid>6d477dbc-c6d6-46c1-97c8-665ecab001f3</uuid>
+      <forward mode='nat'>
+        <nat>
+          <port start='1024' end='65535'/>
+        </nat>
+      </forward>
+      <bridge name='virbr0' stp='on' delay='0'/>
+      <mac address='52:54:00:85:fc:da'/>
+      <ip address='192.168.123.1' netmask='255.255.255.0'>
+        <dhcp>
+          <range start='192.168.123.2' end='192.168.123.254'/>
+        </dhcp>
+      </ip>
+    </network>
+    """)
+
+SAMPLE_NETWORK_DUMPXML_2 = dedent("""
+    <network>
+      <name>maas</name>
+      <uuid>8ef77750-edb2-11e7-b8c7-b3f6673ef6b2</uuid>
+      <forward mode='nat'>
+        <nat>
+          <port start='1024' end='65535'/>
+        </nat>
+      </forward>
+      <bridge name='virbr1' stp='on' delay='0'/>
+      <mac address='52:54:00:df:83:6c'/>
+      <domain name='testnet'/>
+      <ip address='172.16.99.1' netmask='255.255.255.0'>
+      </ip>
+    </network>
     """)
 
 SAMPLE_DUMPXML = dedent("""
@@ -1298,39 +1338,164 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh('\n'.join(networks))
         self.assertEquals(networks, conn.get_network_list())
 
-    def test_get_best_network_returns_maas(self):
+    def test_check_network_maas_dhcp_enabled_returns_None_virsh_dhcp(self):
+        bridge = 'virbr0'
+        conn = self.configure_virshssh('')
+        host_interfaces = {
+            factory.make_name('ifname'): False,
+            bridge: True,
+        }
+        mock_get_network_xml = self.patch(virsh.VirshSSH, "get_network_xml")
+        mock_get_network_xml.return_value = SAMPLE_NETWORK_DUMPXML
+        expected = conn.check_network_maas_dhcp_enabled(
+            bridge, host_interfaces)
+        self.assertIsNone(expected)
+
+    def test_check_network_maas_dhcp_enabled_returns_network(self):
+        bridge = 'virbr1'
+        conn = self.configure_virshssh('')
+        host_interfaces = {
+            factory.make_name('ifname'): False,
+            bridge: True,
+        }
+        mock_get_network_xml = self.patch(virsh.VirshSSH, "get_network_xml")
+        mock_get_network_xml.return_value = SAMPLE_NETWORK_DUMPXML_2
+        bridge_name = conn.check_network_maas_dhcp_enabled(
+            bridge, host_interfaces)
+        self.assertEquals(bridge_name, bridge)
+
+    def test_get_default_interface_attachment_no_host_interfaces_maas(self):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "get_network_list").return_value = [
-            'maas', 'default', 'other']
-        self.assertEquals('maas', conn.get_best_network())
+            LIBVIRT_NETWORK.MAAS, LIBVIRT_NETWORK.DEFAULT, 'other']
+        network, attach_type = conn.get_default_interface_attachment(None)
+        self.assertEquals(LIBVIRT_NETWORK.MAAS, network)
+        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
 
-    def test_get_best_network_returns_default(self):
+    def test_get_default_interface_attachment_no_host_interfaces_default(self):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "get_network_list").return_value = [
-            'default', 'other']
-        self.assertEquals('default', conn.get_best_network())
+            LIBVIRT_NETWORK.DEFAULT, 'other']
+        network, attach_type = conn.get_default_interface_attachment(None)
+        self.assertEquals(LIBVIRT_NETWORK.DEFAULT, network)
+        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
 
-    def test_get_best_network_returns_first(self):
-        conn = self.configure_virshssh('')
-        self.patch(virsh.VirshSSH, "get_network_list").return_value = [
-            'first', 'second']
-        self.assertEquals('first', conn.get_best_network())
-
-    def test_get_best_network_no_network(self):
+    def test_get_default_interface_attachment_errors_no_nics_or_networks(self):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "get_network_list").return_value = []
-        self.assertRaises(PodInvalidResources, conn.get_best_network)
+        self.assertRaises(
+            PodInvalidResources, conn.get_default_interface_attachment, None)
+
+    def test_get_default_interface_attachment_maas_bridge_no_virsh_dhcp(self):
+        conn = self.configure_virshssh('')
+        self.patch(virsh.VirshSSH, "get_network_list").return_value = [
+            LIBVIRT_NETWORK.MAAS, LIBVIRT_NETWORK.DEFAULT, 'other']
+        self.patch(
+            virsh.VirshSSH, "check_network_maas_dhcp_enabled").return_value = (
+                'virbr0')
+        host_interfaces = [
+            KnownHostInterface(
+                ifname=LIBVIRT_NETWORK.MAAS,
+                attach_type=InterfaceAttachType.NETWORK,
+                dhcp_enabled=True)
+        ]
+        network, attach_type = conn.get_default_interface_attachment(
+            host_interfaces)
+        # This shows us that the method returned with these values.
+        self.assertEquals(LIBVIRT_NETWORK.MAAS, network)
+        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
+
+    def test_get_default_interface_attachment_default_brd_no_virsh_dhcp(self):
+        conn = self.configure_virshssh('')
+        self.patch(virsh.VirshSSH, "get_network_list").return_value = [
+            LIBVIRT_NETWORK.DEFAULT, 'other']
+        self.patch(
+            virsh.VirshSSH, "check_network_maas_dhcp_enabled").return_value = (
+                'virbr1')
+        host_interfaces = [
+            KnownHostInterface(
+                ifname=LIBVIRT_NETWORK.DEFAULT,
+                attach_type=InterfaceAttachType.NETWORK,
+                dhcp_enabled=True)
+        ]
+        network, attach_type = conn.get_default_interface_attachment(
+            host_interfaces)
+        # This shows us that the method returned with these values.
+        self.assertEquals(LIBVIRT_NETWORK.DEFAULT, network)
+        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
+
+    def test_get_default_interface_attachment_vlan_bridge_no_virsh_dhcp(self):
+        conn = self.configure_virshssh('')
+        self.patch(virsh.VirshSSH, "get_network_list").return_value = [
+            LIBVIRT_NETWORK.MAAS, LIBVIRT_NETWORK.DEFAULT, 'other']
+        self.patch(
+            virsh.VirshSSH, "check_network_maas_dhcp_enabled").side_effect = (
+                None, None, 'br0')
+        host_interfaces = [
+            KnownHostInterface(
+                ifname='br0',
+                attach_type=InterfaceAttachType.BRIDGE,
+                dhcp_enabled=True)
+        ]
+        ifname, attach_type = conn.get_default_interface_attachment(
+            host_interfaces)
+        # This shows us that the method returned with these values.
+        self.assertEquals('br0', ifname)
+        self.assertEquals(InterfaceAttachType.BRIDGE, attach_type)
+
+    def test_get_default_interface_attachment_macvlan_no_virsh_dhcp(self):
+        conn = self.configure_virshssh('')
+        self.patch(virsh.VirshSSH, "get_network_list").return_value = [
+            LIBVIRT_NETWORK.MAAS, LIBVIRT_NETWORK.DEFAULT, 'other']
+        self.patch(
+            virsh.VirshSSH, "check_network_maas_dhcp_enabled").side_effect = (
+                None, None, 'br0')
+        host_interfaces = [
+            KnownHostInterface(
+                ifname='eth0',
+                attach_type=InterfaceAttachType.MACVLAN,
+                dhcp_enabled=True)
+        ]
+        ifname, attach_type = conn.get_default_interface_attachment(
+            host_interfaces)
+        # This shows us that the method returned with these values.
+        self.assertEquals('eth0', ifname)
+        self.assertEquals(InterfaceAttachType.MACVLAN, attach_type)
+
+    def test_get_default_interface_attachment_errors_no_match(self):
+        conn = self.configure_virshssh('')
+        self.patch(virsh.VirshSSH, "get_network_list").return_value = []
+        self.patch(
+            virsh.VirshSSH, "check_network_maas_dhcp_enabled").side_effect = (
+                None, None, 'br0')
+        host_interfaces = [
+            KnownHostInterface(
+                ifname=factory.make_name('error'),
+                attach_type=InterfaceAttachType.MACVLAN,
+                dhcp_enabled=False)
+        ]
+        self.assertRaises(
+            PodInvalidResources,
+            conn.get_default_interface_attachment,
+            host_interfaces)
 
     def test_attach_interface_defaults_to_network_attachment(self):
         conn = self.configure_virshssh('')
-        domain = factory.make_name('domain')
+        request = make_requested_machine()
         network = factory.make_name('network')
-        self.patch(virsh.VirshSSH, "get_best_network").return_value = network
+        request.known_host_interfaces = {
+            network: True,
+        }
+        domain = factory.make_name('domain')
+        mock_get_default_interface_attachment = self.patch(
+            virsh.VirshSSH, "get_default_interface_attachment")
+        mock_get_default_interface_attachment.return_value = (
+            network, InterfaceAttachType.NETWORK)
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface()
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
-        conn.attach_interface(interface, domain)
+        conn.attach_interface(request, interface, domain)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-interface', domain, 'network', network,
             '--mac', fake_mac,
@@ -1338,15 +1503,22 @@ class TestVirshSSH(MAASTestCase):
 
     def test_attach_interface_calls_attaches_network(self):
         conn = self.configure_virshssh('')
-        domain = factory.make_name('domain')
+        request = make_requested_machine()
         network = factory.make_name('network')
-        self.patch(virsh.VirshSSH, "get_best_network").return_value = network
+        request.known_host_interfaces = {
+            network: True,
+        }
+        domain = factory.make_name('domain')
+        mock_get_default_interface_attachment = self.patch(
+            virsh.VirshSSH, "get_default_interface_attachment")
+        mock_get_default_interface_attachment.return_value = (
+            network, InterfaceAttachType.NETWORK)
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=network, attach_type='network')
         self.patch(virsh, 'generate_mac_address').return_value = fake_mac
-        conn.attach_interface(interface, domain)
+        conn.attach_interface(request, interface, domain)
         self.assertThat(mock_run, MockCalledOnceWith([
             'attach-interface', domain, 'network', network,
             '--mac', fake_mac,
@@ -1354,6 +1526,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test_attach_interface_attaches_macvlan(self):
         conn = self.configure_virshssh('')
+        request = make_requested_machine()
         domain = factory.make_name('domain')
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
@@ -1366,7 +1539,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        conn.attach_interface(interface, domain)
+        conn.attach_interface(request, interface, domain)
 
         device_params = {
             'mac_address': fake_mac,
@@ -1387,6 +1560,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test_attach_interface_attaches_bridge(self):
         conn = self.configure_virshssh('')
+        request = make_requested_machine()
         domain = factory.make_name('domain')
         mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
@@ -1399,7 +1573,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
-        conn.attach_interface(interface, domain)
+        conn.attach_interface(request, interface, domain)
 
         device_params = {
             'mac_address': fake_mac,
@@ -1506,35 +1680,6 @@ class TestVirshSSH(MAASTestCase):
             PodInvalidResources, conn.create_domain, request)
         self.assertEqual("not enough space for disk 0.", str(error))
 
-    def test_create_domain_handles_no_network_for_requested_interface(self):
-        conn = self.configure_virshssh('')
-        request = make_requested_machine()
-        request.block_devices = request.block_devices[:1]
-        request.interfaces = request.interfaces[:1]
-        disk_info = (factory.make_name('pool'), factory.make_name('vol'))
-        domain_params = {
-            "type": "kvm",
-            "emulator": "/usr/bin/qemu-system-x86_64",
-        }
-        self.patch(
-            virsh.VirshSSH, "create_local_volume").return_value = disk_info
-        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
-            domain_params)
-        mock_uuid = self.patch(virsh_module, "uuid4")
-        mock_uuid.return_value = str(uuid4())
-        domain_params['name'] = request.hostname
-        domain_params['uuid'] = mock_uuid.return_value
-        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
-        domain_params['cores'] = str(request.cores)
-        domain_params['memory'] = str(request.memory)
-        NamedTemporaryFile = self.patch(virsh_module, "NamedTemporaryFile")
-        tmpfile = NamedTemporaryFile.return_value
-        tmpfile.__enter__.return_value = tmpfile
-        tmpfile.name = factory.make_name("filename")
-        self.patch(virsh.VirshSSH, "run")
-        self.patch(virsh.VirshSSH, "get_network_list").return_value = []
-        self.assertRaises(PodInvalidResources, conn.create_domain, request)
-
     def test_create_domain_calls_correct_methods_with_amd64_arch(self):
         conn = self.configure_virshssh('')
         request = make_requested_machine()
@@ -1585,7 +1730,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+            mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
         self.assertThat(
             mock_check_machine_can_startup,
             MockCalledOnceWith(request.hostname))
@@ -1648,7 +1793,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+            mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
         self.assertThat(
             mock_check_machine_can_startup,
             MockCalledOnceWith(request.hostname))
@@ -1711,7 +1856,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+            mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
         self.assertThat(
             mock_check_machine_can_startup,
             MockCalledOnceWith(request.hostname))
@@ -1774,7 +1919,7 @@ class TestVirshSSH(MAASTestCase):
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], 'vda'))
         self.assertThat(
-            mock_attach_nic, MockCalledOnceWith(ANY, ANY))
+            mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
         self.assertThat(
             mock_check_machine_can_startup,
             MockCalledOnceWith(request.hostname))

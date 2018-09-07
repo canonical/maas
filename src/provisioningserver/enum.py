@@ -28,3 +28,15 @@ MACVLAN_MODE_CHOICES = (
     (MACVLAN_MODE.PRIVATE, "private"),
     (MACVLAN_MODE.VEPA, "vepa"),
 )
+
+
+class LIBVIRT_NETWORK:
+
+    DEFAULT = "default"
+    MAAS = "maas"
+
+
+LIBVIRT_NETWORK_CHOICES = (
+    (LIBVIRT_NETWORK.DEFAULT, "default"),
+    (LIBVIRT_NETWORK.MAAS, "maas"),
+)
