@@ -11,8 +11,10 @@ import random
 
 from django.conf import settings
 from maasserver.api.dnsresources import get_dnsresource_queryset
+from maasserver.enum import NODE_STATUS
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
+from maasserver.models.domain import Domain
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
@@ -114,6 +116,29 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         expected_ids = [-1, dnsrr.id]
+        result_ids = [
+            dnsresource["id"]
+            for dnsresource in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
+        ]
+        self.assertItemsEqual(expected_ids, result_ids)
+
+    def test_read_all_with_only_implicit_records(self):
+        self.become_admin()
+        domain = Domain.objects.get_default_domain()
+        uri = get_dnsresources_uri()
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYED, domain=domain)
+        factory.make_StaticIPAddress(interface=machine.boot_interface)
+        response = self.client.get(
+            uri,
+            {
+                'all': 'true',
+            }
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        expected_ids = [-1]
         result_ids = [
             dnsresource["id"]
             for dnsresource in json.loads(

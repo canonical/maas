@@ -34,41 +34,50 @@ class DNSResourcesQuerySet(QuerySet):
 
     def __iter__(self):
         """Custom iterator which also includes implicit DNS records."""
-        previous_domain = None
+        domain = None
+        if self._domain_filter is not None:
+            unvisited_domains = set()
+            unvisited_domains.add(self._domain_filter)
+        else:
+            unvisited_domains = set(Domain.objects.all())
         for record in super().__iter__():
             # This works because the query always either contains a single
             # domain, or is sorted by domain.
-            if record.domain != previous_domain:
-                previous_domain = record.domain
-                rrdata = record.domain.render_json_for_related_rrdata(
-                    include_dnsdata=False, as_dict=True,
-                    user=self._user_filter)
-                for name, value in rrdata.items():
-                    name = name.split('.')[0]
-                    # Remove redundant info (this is provided in the top
-                    # level 'fqdn' field).
-                    if (self._name_filter is not None and
-                            name != self._name_filter):
-                        continue
-                    items = []
-                    for rr in value:
-                        if (self._rrtype_filter is not None and
-                                rr['rrtype'] != self._rrtype_filter):
-                            continue
-                        del rr['name']
-                        items.append(rr)
-                    if len(items) > 0:
-                        resource = DNSResource(
-                            id=-1, name=name, domain=record.domain)
-                        resource._rrdata = items
-                        yield resource
+            if record.domain != domain:
+                domain = record.domain
+                unvisited_domains.remove(domain)
+                yield from self._generate_synthetic_rrdata(domain)
             yield record
+        for domain in unvisited_domains:
+            yield from self._generate_synthetic_rrdata(domain)
+
+    def _generate_synthetic_rrdata(self, domain):
+        rrdata = domain.render_json_for_related_rrdata(
+            include_dnsdata=False, as_dict=True, user=self._user_filter)
+        for name, value in rrdata.items():
+            name = name.split('.')[0]
+            # Remove redundant info (this is provided in the top
+            # level 'fqdn' field).
+            if (self._name_filter is not None and name != self._name_filter):
+                continue
+            items = []
+            for rr in value:
+                if (self._rrtype_filter is not None and
+                        rr['rrtype'] != self._rrtype_filter):
+                    continue
+                del rr['name']
+                items.append(rr)
+            if len(items) > 0:
+                resource = DNSResource(id=-1, name=name, domain=domain)
+                resource._rrdata = items
+                yield resource
 
 
 def get_dnsresource_queryset(
         all_records: bool, domainname: str=None, name: str=None,
         rrtype: str=None, user=None):
     # If the domain is a name, make it an id.
+    domain = None
     if domainname is not None:
         if domainname.isdigit():
             domain = Domain.objects.get_domain_or_404(
@@ -96,6 +105,7 @@ def get_dnsresource_queryset(
         query.__class__ = DNSResourcesQuerySet
         query._name_filter = name_filter
         query._rrtype_filter = rrtype_filter
+        query._domain_filter = domain
         # Note: the _user_filter should be set to None we want to display
         # all records, even for non-superusers.
         query._user_filter = user
