@@ -25,7 +25,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from provisioningserver.utils import snappy
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -168,19 +167,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_reloadService(self):
-        self.patch(settings, "PROXY_CONNECT", True)
-        yield deferToDatabase(self.make_subnet)
-        yield proxyconfig.proxy_update_config()
-        self.assertThat(
-            self.service_monitor.reloadService,
-            MockCalledOnceWith("proxy", if_on=True))
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test__calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
-        self.patch(snappy, 'running_in_snap').return_value = True
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
         self.assertThat(
