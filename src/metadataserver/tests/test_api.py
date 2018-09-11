@@ -1632,6 +1632,24 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
         self.assertIsNone(reload_object(nmd))
 
+    def test_signaling_commissioning_OK_repopulates_tags_when_enlisting(self):
+        # Regression test for LP:1787492
+        populate_tags_for_single_node = self.patch(
+            api, "populate_tags_for_single_node")
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        nmd = NodeMetadata.objects.create(
+            node=node, key='enlisting', value='True')
+        client = make_node_client(node)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
+        self.assertIsNone(reload_object(nmd))
+        self.assertThat(
+            populate_tags_for_single_node,
+            MockCalledOnceWith(ANY, node))
+
     def test_signaling_requires_status_code(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)

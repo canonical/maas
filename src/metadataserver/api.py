@@ -608,7 +608,8 @@ class VersionIndexHandler(MetadataViewHandler):
             enlisting.delete()
             target_status = NODE_STATUS.NEW
 
-        if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
+        if target_status in [
+                NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.TESTING]:
             # Commissioning has ended. Check if any scripts failed during
             # post-processing; if so, the commissioning counts as a failure.
             qs = node.current_commissioning_script_set.scriptresult_set.filter(
@@ -620,7 +621,7 @@ class VersionIndexHandler(MetadataViewHandler):
                 try_or_log_event(
                     node, status, "Failed to update tags.",
                     populate_tags_for_single_node,
-                    Tag.objects.all(), node)
+                    Tag.objects.exclude(definition=None), node)
 
         if (target_status == NODE_STATUS.FAILED_COMMISSIONING and
                 node.current_testing_script_set is not None):
