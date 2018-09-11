@@ -2,14 +2,21 @@
 <table class="p-table--sortable p-table--machines" role="grid">
     <thead>
         <tr class="p-table__row">
-            <th class="u-align--left">
-                <div class="u-float--left" data-ng-if="!hideCheckboxes">
+            <th class="u-align--left p-double-row">
+                <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
-                    <label class="checkbox-label u-no-margin--top" for="check-all"></label>
+                    <label for="check-all"></label>
                 </div>
-                <span role="columnheader" data-ng-click="selectColumnOrSort('fqdn')" data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="FQDN">FQDN</span>
-                |
-                <span role="columnheader" data-ng-click="selectColumnOrSort('pxe_mac')" data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="MAC">MAC</span>
+                <div class="p-double-row__rows-container--checkbox">
+                    <div>
+                        <span role="columnheader" data-ng-click="selectColumnOrSort('fqdn')" data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="FQDN">FQDN</span>
+                        |
+                        <span role="columnheader" data-ng-click="selectColumnOrSort('pxe_mac')" data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="MAC">MAC</span>
+                    </div>
+                    <div>
+                        <span role="columnheader" data-ng-click="sortTable('ip_address')" data-ng-class="{'is-active': table.column === 'ip_address', 'is-sorted': table.predicate === 'ip_address', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="IP">IP</span>
+                    </div>
+                </div>
             </th>
             <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">Power</th>
             <th class="u-hide--small"></th>
@@ -24,17 +31,23 @@
     </thead>
     <tbody vs-repeat vs-scroll-parent="window">
         <tr class="p-table__row" data-ng-repeat="node in table.filteredMachines = (table.machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id" data-ng-class="{ 'table--error': machineHasError({ $machine: node }), 'is-active': node.$selected }">
-            <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'">
-                <div class="u-float--left" data-ng-if="!hideCheckboxes">
-                    <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
-                    <label class="checkbox-label" for="{$ node.fqdn $}"></label>
+            <td class="p-double-row u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
+                <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
+                    <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
+                    <label for="{$ node.fqdn $}"></label>
                 </div>
-                <span data-ng-if="node.locked" title="This machine is locked. You have to unlock it to perform any actions." aria-describedby="{$ node.fqdn $}-locked-state">
-                    <i class="p-icon--locked">Locked: </i>
-                </span>
-                <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">{$ node.fqdn $}</a>
-                <div data-ng-if="node.ip_address" class="u-align--center u-no-margin--top">
-                    <small>{$ node.ip_address $}</small>
+                <div class="p-double-row__rows-container--checkbox">
+                    <div class="p-double-row__main-row">
+                        <span data-ng-if="node.locked" title="This machine is locked. You have to unlock it to perform any actions." aria-describedby="{$ node.fqdn $}-locked-state">
+                            <i class="p-icon--locked">Locked: </i>
+                        </span>
+                        <a class="p-domain-name" href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.fqdn $}">
+                            <span class="p-domain-name__host">{$ node.hostname $}</span><span class="p-domain-name__tld">.{$ node.domain.name $}</span>
+                        </a>
+                    </div>
+                    <div data-ng-if="node.ip_address" class="p-double-row__muted-row">
+                        <span>{$ node.ip_address $}</span>
+                    </div>
                 </div>
             </td>
             <td class="u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'">

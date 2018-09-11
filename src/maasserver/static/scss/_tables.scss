@@ -263,6 +263,20 @@
         }
       }
     }
+
+    .p-domain-name {
+      display: inline-block;
+
+      .p-domain-name__host {
+        color: $color-dark;
+      }
+
+      .p-domain-name__tld {
+        @extend %small-text;
+        color: $color-mid-dark;
+        margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
+      }
+    }
   }
 
   .p-table--controller-interfaces {
@@ -425,5 +439,38 @@
       width: 10%;
     }
   }
-}
 
+  $checkbox-space: 1rem + $sph-intra;
+
+  .p-double-row {
+    .p-double-row__checkbox {
+      display: block;
+      float: left;
+      margin-right: $sph-intra;
+      width: map-get($icon-sizes, default);
+    }
+
+    .p-double-row__rows-container--checkbox {
+      float: left;
+      width: calc(100% - #{$checkbox-space});
+    }
+
+    %p-double-row__row {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    .p-double-row__main-row {
+      @extend %p-double-row__row;
+    }
+
+    .p-double-row__muted-row {
+      @extend %small-text;
+      @extend %p-double-row__row;
+      color: $color-mid-dark;
+      margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
+    }
+  }
+}
