@@ -133,6 +133,12 @@
                                 <i class="p-icon--error">Error:</i> Performing {$ action.option.sentence $} failed: {$ action.error $}
                             </p>
                         </div>
+                        <div data-ng-if="action.option.name === 'refresh'">
+                            <p class="u-remove-max-width u-align--left">
+                                Refreshing this pod will cause MAAS to recalculate usage metrics, update information about storage pools,
+                                and commission any machines present in the pod that are not yet known to MAAS.
+                            </p>
+                        </div>
                     </div>
                     <div class="col-4">
                         <div class="u-align--right">
