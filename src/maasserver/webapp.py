@@ -9,11 +9,9 @@ __all__ = [
 
 import copy
 from functools import partial
-from http.client import SERVICE_UNAVAILABLE
 import re
 
 from django.conf import settings
-from lxml import html
 from maasserver import concurrency
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.views import WebApplicationHandler
@@ -32,10 +30,8 @@ from provisioningserver.utils.twisted import (
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import failure
 from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import (
-    ErrorPage,
     NoResource,
     Resource,
 )
@@ -49,27 +45,6 @@ from twisted.web.wsgi import WSGIResource
 
 
 log = LegacyLogger()
-
-
-class StartPage(ErrorPage, object):
-    def __init__(self):
-        super(StartPage, self).__init__(
-            status=int(SERVICE_UNAVAILABLE), brief="MAAS is starting",
-            detail="Please try again in a few seconds.")
-
-    def render(self, request):
-        request.setHeader(b"Retry-After", b"5")
-        return super(StartPage, self).render(request)
-
-
-class StartFailedPage(ErrorPage, object):
-
-    def __init__(self, failure):
-        traceback = html.Element("pre")
-        traceback.text = failure.getTraceback()
-        super(StartFailedPage, self).__init__(
-            status=int(SERVICE_UNAVAILABLE), brief="MAAS failed to start",
-            detail=html.tostring(traceback, encoding=str))
 
 
 class CleanPathRequest(Request, object):
@@ -184,8 +159,11 @@ class WebApplicationService(StreamServerEndpointService):
     """
 
     def __init__(self, endpoint, listener, status_worker):
+        # Start with an empty `Resource`, `installApplication` will configure
+        # the root resource. This must be seperated because Django must be
+        # start from inside a thread with database access.
         self.site = OverlaySite(
-            StartPage(), logFormatter=reducedWebLogFormatter, timeout=None)
+            Resource(), logFormatter=reducedWebLogFormatter, timeout=None)
         self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
         self.websocket = WebSocketFactory(listener)
@@ -242,25 +220,21 @@ class WebApplicationService(StreamServerEndpointService):
         self.site.resource = root
         self.site.underlay = underlay_site
 
-    def installFailed(self, failure):
-        """Display a page explaining why the web app could not start."""
-        self.site.resource = StartFailedPage(failure)
-        log.err(failure, "MAAS web application failed to start")
-
     @inlineCallbacks
     def startApplication(self):
         """Start the Django application, and install it."""
-        try:
-            application = yield deferToDatabase(self.prepareApplication)
-            self.startWebsocket()
-            self.installApplication(application)
-        except:
-            self.installFailed(failure.Failure())
+        application = yield deferToDatabase(self.prepareApplication)
+        self.startWebsocket()
+        self.installApplication(application)
 
     @asynchronous(timeout=30)
+    @inlineCallbacks
     def startService(self):
+        # Start the application first before starting the service. This ensures
+        # that the application is running correctly before any requests
+        # can be handled.
+        yield self.startApplication()
         super(WebApplicationService, self).startService()
-        return self.startApplication()
 
     @asynchronous(timeout=30)
     def stopService(self):
