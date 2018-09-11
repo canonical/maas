@@ -45,7 +45,7 @@ angular.module('MAAS').directive('maasScriptStatus', function() {
                     case 6:
                     // SCRIPT_STATUS.FAILED_INSTALLING
                     case 8:
-                        $scope.icon = 'p-icon--power-error';
+                        $scope.icon = 'p-icon--error';
                         break;
                     // SCRIPT_STATUS.TIMEDOUT
                     case 4:

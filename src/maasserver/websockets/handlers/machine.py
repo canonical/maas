@@ -213,6 +213,7 @@ class MachineHandler(NodeHandler):
                 data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
                 data["ip_address"] = self.dehydrate_ip_address(
                     obj, boot_interface)
+                data["power_type"] = obj.power_type
             else:
                 data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 

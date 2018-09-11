@@ -18,7 +18,9 @@
                     </div>
                 </div>
             </th>
-            <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">Power</th>
+            <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">
+                <i class="p-icon--placeholder u-hide--small u-hide--medium"></i>Power
+            </th>
             <th class="u-hide--small"></th>
             <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</th>
             <th class="p-double-row" title="Owner, Tags">
@@ -60,8 +62,16 @@
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
-            <td class="powerstate u-upper-case--first" aria-label="Power state">
-                <span data-ng-if="node.power_state != 'unknown'" class="p-icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}
+            <td class="p-double-row" aria-label="Power state">
+                <div class="p-double-row__icon p-icon--power-{$ node.power_state $}"></div>
+                <div class="p-double-row__rows-container--icon u-hide--small u-hide--medium">
+                    <div class="p-double-row__main-row u-upper-case--first">
+                        <span>{$ node.power_state $}</span>
+                    </div>
+                    <div class="p-double-row__muted-row u-upper-case--first">
+                        <span>{$ node.power_type $}</span>
+                    </div>
+                </div>
             </td>
             <td class="u-hide--small u-align--center p-table--action-cell">
                 <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin u-hide--small"></i>
