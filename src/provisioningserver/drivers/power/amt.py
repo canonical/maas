@@ -352,7 +352,9 @@ class AMTPowerDriver(PowerDriver):
         # If so, we need wsman, not amttool
         env = self._get_amt_environment(power_pass)
         process = Popen(
-            ('amttool', ip_address, 'info'), stdout=PIPE, stderr=PIPE, env=env)
+            ('wsman', 'identify', '--port', '16992', '--hostname',
+             ip_address, '--username', 'admin', '--password', power_pass),
+            stdout=PIPE, stderr=PIPE, env=env)
         stdout, stderr = process.communicate()
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
@@ -364,7 +366,7 @@ class AMTPowerDriver(PowerDriver):
             raise PowerConnError(
                 "Unable to retrieve AMT version: %s" % stderr)
         else:
-            match = re.search("AMT version:\s*([0-9]+)", stdout)
+            match = re.search("ProductVersion>AMT\s*([0-9]+)", stdout)
             if match is None:
                 raise PowerActionError(
                     "Unable to extract AMT version from "

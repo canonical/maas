@@ -52,6 +52,19 @@ Remote Control Capabilities:
 """).encode('utf-8')
 
 
+WSMAN_IDENTIFY_OUTPUT = dedent("""\
+  <a:Header/>
+  <a:Body>
+    <b:IdentifyResponse>
+      <b:ProtocolVersion>http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd</b:ProtocolVersion>
+      <b:ProductVendor>Intel(r)</b:ProductVendor>
+      <b:ProductVersion>AMT %s</b:ProductVersion>
+      <c:DASHVersion>1.0.0</c:DASHVersion>
+      <b:SecurityProfiles>
+        ...
+""").encode('utf-8')
+
+
 WSMAN_OUTPUT = dedent("""\
 ...
   <a:Body>
@@ -599,7 +612,7 @@ class TestAMTPowerDriver(MAASTestCase):
             amt_power_driver, '_get_amt_environment')
         amt_environment_mock.return_value = None
         popen_mock = self.patch_popen(return_value=(
-            AMTTOOL_OUTPUT % (b'8.1.57', b''), b'stderr'))
+            WSMAN_IDENTIFY_OUTPUT % b'8.1.57', b'stderr'))
 
         result = amt_power_driver._get_amt_command(ip_address, power_pass)
 
@@ -616,7 +629,7 @@ class TestAMTPowerDriver(MAASTestCase):
             amt_power_driver, '_get_amt_environment')
         amt_environment_mock.return_value = None
         popen_mock = self.patch_popen(return_value=(
-            AMTTOOL_OUTPUT % (b'10.0.47', b''), b'stderr'))
+            WSMAN_IDENTIFY_OUTPUT % b'10.0.47', b'stderr'))
 
         result = amt_power_driver._get_amt_command(ip_address, power_pass)
 
