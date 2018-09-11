@@ -7,9 +7,11 @@
 __all__ = []
 
 import random
+from textwrap import dedent
 from unittest.mock import sentinel
 
 from django.core.handlers.wsgi import WSGIHandler
+from lxml import html
 from maasserver import (
     eventloop,
     webapp,
@@ -20,8 +22,10 @@ from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.twisted import reducedWebLogFormatter
 from testtools.matchers import (
+    Equals,
     Is,
     IsInstance,
     MatchesStructure,
@@ -209,6 +213,25 @@ class TestWebApplicationService(MAASTestCase):
         ))
         self.assertThat(service.websocket, IsInstance(WebSocketFactory))
 
+    def test__default_site_renders_starting_page(self):
+        service = self.make_webapp()
+        request = DummyRequest("any/where".split("/"))
+        resource = service.site.getResourceFor(request)
+        content = resource.render(request)
+        page = html.fromstring(content)
+        self.expectThat(
+            page.find(".//title").text_content(),
+            Equals("503 - MAAS is starting"))
+        self.expectThat(
+            page.find(".//h1").text_content(),
+            Equals("MAAS is starting"))
+        self.expectThat(
+            page.find(".//p").text_content(),
+            Equals("Please try again in a few seconds."))
+        self.assertEqual(
+            ['5'],
+            request.responseHeaders.getRawHeaders("retry-after"))
+
     def test__startService_starts_application(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
@@ -216,6 +239,56 @@ class TestWebApplicationService(MAASTestCase):
         service.startService()
 
         self.assertTrue(service.running)
+
+    def test__error_when_starting_is_logged(self):
+        service = self.make_webapp()
+        self.addCleanup(service.stopService)
+
+        mock_prepare = self.patch_autospec(service, "prepareApplication")
+        mock_prepare.side_effect = factory.make_exception()
+
+        # The failure is logged.
+        with TwistedLoggerFixture() as logger:
+            service.startService()
+
+        self.assertDocTestMatches(
+            dedent("""\
+            MAAS web application failed to start
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """),
+            logger.output)
+
+    def test__error_when_starting_changes_page_to_error(self):
+        service = self.make_webapp()
+        self.addCleanup(service.stopService)
+
+        mock_prepare = self.patch_autospec(service, "prepareApplication")
+        mock_prepare.side_effect = factory.make_exception()
+
+        # No error is returned.
+        with TwistedLoggerFixture():
+            service.startService()
+
+        # The site's page (for any path) shows the error.
+        request = DummyRequest("any/where".split("/"))
+        resource = service.site.getResourceFor(request)
+        content = resource.render(request)
+        page = html.fromstring(content)
+        self.expectThat(
+            page.find(".//title").text_content(),
+            Equals("503 - MAAS failed to start"))
+        self.expectThat(
+            page.find(".//h1").text_content(),
+            Equals("MAAS failed to start"))
+        self.assertDocTestMatches(
+            dedent("""\
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """),
+            page.find(".//pre").text_content())
 
     def test__successful_start_installs_wsgi_resource(self):
         service = self.make_webapp()
