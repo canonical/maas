@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Management command: upgrade the cluster.
@@ -30,6 +30,7 @@ from subprocess import check_call
 from textwrap import dedent
 
 from provisioningserver.auth import get_maas_user_gpghome
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import (
     drill_down,
     list_subdirs,
@@ -42,16 +43,14 @@ from provisioningserver.utils import snappy
 maaslog = get_maas_logger("rack_upgrade")
 
 
-def make_maas_own_boot_resources():
+def make_maas_own_boot_resources(tftp_root):
     """Upgrade hook: make the `maas` user the owner of the boot resources."""
     # This reduces the privileges required for importing and managing images.
-    with ClusterConfiguration.open() as config:
-        boot_resources_storage = config.tftp_root
-    if os.path.isdir(boot_resources_storage):
-        check_call(['chown', '-R', 'maas', boot_resources_storage])
+    if os.path.isdir(tftp_root):
+        check_call(['chown', '-R', 'maas', tftp_root])
 
 
-def create_gnupg_home():
+def create_gnupg_home(tftp_root=None):
     """Upgrade hook: create maas user's GNUPG home directory."""
     gpghome = get_maas_user_gpghome()
     if not os.path.isdir(gpghome):
@@ -109,7 +108,7 @@ BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
     """) + '\n'
 
 
-def retire_bootresources_yaml():
+def retire_bootresources_yaml(tftp_root=None):
     """Upgrade hook: mark `/etc/maas/bootresources.yaml` as obsolete.
 
     Prefixes `BOOTRESOURCES_WARNING` to the config file, if present.
@@ -143,7 +142,7 @@ def filter_out_directories_with_extra_levels(paths):
             yield (arch, subarch, release, label)
 
 
-def migrate_architectures_into_ubuntu_directory():
+def migrate_architectures_into_ubuntu_directory(tftp_root):
     """Upgrade hook: move architecture folders under the ubuntu folder.
 
     With the support of multiple operating systems the structure of the
@@ -155,24 +154,22 @@ def migrate_architectures_into_ubuntu_directory():
     folders have structure arch/subarch/release/label and move them into
     ubuntu folder. Making the final path ubuntu/arch/subarch/release/label.
     """
-    with ClusterConfiguration.open() as config:
-        current_dir = config.tftp_root
-    if not os.path.isdir(current_dir):
+    if not os.path.isdir(tftp_root):
         return
     # If ubuntu folder already exists, then no reason to continue
-    if 'ubuntu' in list_subdirs(current_dir):
+    if 'ubuntu' in list_subdirs(tftp_root):
         return
 
     # Starting point for iteration: paths that contain only the
     # top-level subdirectory of tftproot, i.e. the architecture name.
-    potential_arches = list_subdirs(current_dir)
+    potential_arches = list_subdirs(tftp_root)
     paths = [[subdir] for subdir in potential_arches]
 
     # Extend paths deeper into the filesystem, through the levels that
     # represent sub-architecture, release, and label.
     # Any directory that doesn't extend this deep isn't a boot image.
     for level in ['subarch', 'release', 'label']:
-        paths = drill_down(current_dir, paths)
+        paths = drill_down(tftp_root, paths)
     paths = filter_out_directories_with_extra_levels(paths)
 
     # Extract the only top directories (arch) from the paths, as we only need
@@ -183,10 +180,26 @@ def migrate_architectures_into_ubuntu_directory():
 
     # Create the ubuntu directory and move the archiecture folders under that
     # directory.
-    ubuntu_dir = os.path.join(current_dir, 'ubuntu')
+    ubuntu_dir = os.path.join(tftp_root, 'ubuntu')
     os.mkdir(ubuntu_dir)
     for arch in arches:
-        shutil.move(os.path.join(current_dir, arch), ubuntu_dir)
+        shutil.move(os.path.join(tftp_root, arch), ubuntu_dir)
+
+
+def create_bootloader_sym_links(tftp_root):
+    """LP:1788884 - Make sure all bootloader sym links are created on start.
+
+    A bootloader in the stream may be updated to include a new file which the
+    current version of MAAS doesn't support. The file will extracted into the
+    bootloaders directory but no sym link will be created. When MAAS is
+    upgraded to a version which does use the new file the sym link will be
+    missing. This ensures the sym links are always created if the resource is
+    found on upgrade.
+    """
+    # Check if the tftp_root exists, if it doesn't imports haven't yet run.
+    if os.path.isdir(tftp_root):
+        for _, method in BootMethodRegistry:
+            method.link_bootloader(tftp_root)
 
 
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no
@@ -199,6 +212,7 @@ UPGRADE_HOOKS = [
     create_gnupg_home,
     retire_bootresources_yaml,
     migrate_architectures_into_ubuntu_directory,
+    create_bootloader_sym_links,
     ]
 
 
@@ -213,9 +227,11 @@ def add_arguments(parser):
 # The docstring for the "run" function is also the command's documentation.
 def run(args):
     """Perform any data migrations needed for upgrading this cluster."""
+    with ClusterConfiguration.open() as config:
+        tftp_root = config.tftp_root
     for hook in UPGRADE_HOOKS:
         maaslog.info(
             "Rack controller upgrade hook '%s' started." % hook.__name__)
-        hook()
+        hook(tftp_root)
         maaslog.info(
             "Rack controller upgrade hook '%s' finished." % hook.__name__)

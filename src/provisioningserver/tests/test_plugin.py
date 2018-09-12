@@ -87,7 +87,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(provisioningserver, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")
-        self.tempdir = self.make_dir()
 
     def test_init(self):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")

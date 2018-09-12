@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `upgrade-cluster` command."""
@@ -20,7 +20,9 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from provisioningserver import upgrade_cluster
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_subdirs
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import snappy
 from provisioningserver.utils.fs import read_text_file
@@ -50,7 +52,8 @@ class TestUpgradeCluster(MAASTestCase):
         upgrade_hook.__name__ = "upgrade_hook"
         self.patch_upgrade_hooks([upgrade_hook])
         self.run_command()
-        self.assertThat(upgrade_hook, MockCalledOnceWith())
+        with ClusterConfiguration.open() as config:
+            self.assertThat(upgrade_hook, MockCalledOnceWith(config.tftp_root))
 
     def test_calls_hooks_in_order(self):
         calls = []
@@ -59,13 +62,13 @@ class TestUpgradeCluster(MAASTestCase):
         # listed (not in the order in which they are defined, or alphabetical
         # order, or any other order).
 
-        def last_hook():
+        def last_hook(tftp_root=None):
             calls.append('last')
 
-        def first_hook():
+        def first_hook(tftp_root=None):
             calls.append('first')
 
-        def middle_hook():
+        def middle_hook(tftp_root=None):
             calls.append('middle')
 
         self.patch_upgrade_hooks([first_hook, middle_hook, last_hook])
@@ -84,7 +87,7 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
         self.patch(upgrade_cluster, 'check_call')
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
-        upgrade_cluster.make_maas_own_boot_resources()
+        upgrade_cluster.make_maas_own_boot_resources(storage_dir)
         self.assertThat(
             upgrade_cluster.check_call,
             MockCalledOnceWith(['chown', '-R', 'maas', storage_dir]))
@@ -95,7 +98,7 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
         os.mkdir(storage_dir)
         self.configure_storage(storage_dir)
         os.rmdir(storage_dir)
-        upgrade_cluster.make_maas_own_boot_resources()
+        upgrade_cluster.make_maas_own_boot_resources(storage_dir)
         self.assertThat(upgrade_cluster.check_call, MockNotCalled())
 
 
@@ -207,17 +210,19 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
 
     def configure_storage(self, storage_dir, make_current_dir=True):
         """Create a storage config."""
-        current_dir = os.path.join(storage_dir, "current")
-        os.makedirs(current_dir)
-        self.useFixture(ClusterConfigurationFixture(tftp_root=current_dir))
+        self.current_dir = os.path.join(storage_dir, "current")
+        os.makedirs(self.current_dir)
+        self.useFixture(ClusterConfigurationFixture(
+            tftp_root=self.current_dir))
         if not make_current_dir:
-            os.rmdir(current_dir)
+            os.rmdir(self.current_dir)
 
     def test__list_subdirs_under_current_directory(self):
         self.patch(upgrade_cluster, 'list_subdirs').return_value = ['ubuntu']
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertThat(
             upgrade_cluster.list_subdirs,
             MockCalledOnceWith(os.path.join(storage_dir, "current")))
@@ -228,7 +233,8 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         self.patch(upgrade_cluster, 'list_subdirs')
         storage_dir = os.path.join(self.make_dir(), factory.make_name('none'))
         self.configure_storage(storage_dir, make_current_dir=False)
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
 
     def test__exits_early_if_current_dir_does_not_exist(self):
@@ -237,7 +243,8 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         self.patch(upgrade_cluster, 'list_subdirs')
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir, make_current_dir=False)
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
 
     def test__exits_early_if_ubuntu_dir_exist(self):
@@ -246,14 +253,16 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         self.patch(upgrade_cluster, 'drill_down')
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
-        os.mkdir(os.path.join(storage_dir, 'current', 'ubuntu'))
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        os.makedirs(os.path.join(storage_dir, 'current', 'ubuntu'))
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertThat(upgrade_cluster.drill_down, MockNotCalled())
 
     def test__doesnt_create_ubuntu_dir_when_no_valid_directories(self):
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertFalse(
             os.path.exists(os.path.join(storage_dir, 'current', 'ubuntu')))
 
@@ -270,7 +279,8 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 os.path.join(
                     storage_dir, 'current', arch, subarch, release, label))
         self.patch(upgrade_cluster, 'update_targets_conf')
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertItemsEqual(
             arches,
             list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
@@ -296,7 +306,8 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 factory.make_name('release'),
                 factory.make_name('label')))
         self.patch(upgrade_cluster, 'update_targets_conf')
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertItemsEqual(
             [move_arch],
             list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
@@ -326,7 +337,8 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 factory.make_name('release'),
                 factory.make_name('label')))
         self.patch(upgrade_cluster, 'update_targets_conf')
-        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory(
+            self.current_dir)
         self.assertItemsEqual(
             [move_arch],
             list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
@@ -344,3 +356,27 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 os.path.join(
                     storage_dir, 'current', arch, subarch, release, label))
         return storage_dir
+
+
+class TestCreateBootloaderSymLinks(MAASTestCase):
+    """Tests for the `create_bootloader_sym_links` upgrade."""
+
+    def test_does_nothing_if_no_tftp_root(self):
+        non_existing_path = os.path.join('/tmp', factory.make_name())
+        mocks = [
+            self.patch(bootloader, 'link_bootloader')
+            for _, bootloader in BootMethodRegistry
+        ]
+        upgrade_cluster.create_bootloader_sym_links(non_existing_path)
+        for mock in mocks:
+            self.assertThat(mock, MockNotCalled())
+
+    def test_links_bootloaders(self):
+        path = self.make_dir()
+        mocks = [
+            self.patch(bootloader, 'link_bootloader')
+            for _, bootloader in BootMethodRegistry
+        ]
+        upgrade_cluster.create_bootloader_sym_links(path)
+        for mock in mocks:
+            self.assertThat(mock, MockCalledOnceWith(path))
