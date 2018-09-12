@@ -12,6 +12,7 @@ from datetime import (
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
+from maasserver.api import auth as api_auth
 from maasserver.api.auth import (
     MAASAPIAuthentication,
     OAuthUnauthorized,
@@ -21,6 +22,7 @@ from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
+from metadataserver.nodeinituser import get_node_init_user
 from oauth import oauth
 from testtools.matchers import Contains
 
@@ -56,8 +58,8 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         auth = MAASAPIAuthentication()
         self.assertTrue(auth.is_authenticated(request))
 
-    @mock.patch('maasserver.api.auth.validate_user_external_auth')
-    def test_is_authenticated_external_auth_validate_user(self, mock_validate):
+    def test_is_authenticated_external_auth_validate_user(self):
+        mock_validate = self.patch(api_auth, 'validate_user_external_auth')
         mock_validate.return_value = True
 
         auth = MAASAPIAuthentication()
@@ -72,8 +74,8 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         self.assertTrue(auth.is_authenticated(request))
         mock_validate.assert_called_with(user, admin_group='admins')
 
-    @mock.patch('maasserver.api.auth.validate_user_external_auth')
-    def test_is_authenticated_external_auth_validate_fail(self, mock_validate):
+    def test_is_authenticated_external_auth_validate_fail(self):
+        mock_validate = self.patch(api_auth, 'validate_user_external_auth')
         mock_validate.return_value = False
 
         auth = MAASAPIAuthentication()
@@ -88,16 +90,29 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         # check interval not expired, the user isn't checked
         mock_validate.assert_called_with(user, admin_group='admins')
 
-    @mock.patch('maasserver.api.auth.validate_user_external_auth')
-    def test_is_authenticated_external_auth_user_local(self, mock_validate):
+    def test_is_authenticated_external_auth_user_local(self):
+        mock_validate = self.patch(api_auth, 'validate_user_external_auth')
         mock_validate.return_value = True
 
         auth = MAASAPIAuthentication()
         user = factory.make_User()
         user.userprofile.is_local = True
         user.userprofile.save()
-        request = self.make_request()
+        request = self.make_request(user=user)
         self.assertFalse(auth.is_authenticated(request))
+        mock_validate.assert_not_called()
+
+    def test_is_authenticated_external_auth_system_user(self):
+        mock_validate = self.patch(api_auth, 'validate_user_external_auth')
+        mock_validate.return_value = True
+
+        auth = MAASAPIAuthentication()
+        user = get_node_init_user()
+        request = self.make_request()
+        mock_token = mock.Mock(user=user)
+        auth.is_valid_request = lambda request: True
+        auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
+        self.assertTrue(auth.is_authenticated(request))
         mock_validate.assert_not_called()
 
     def test_is_authenticated_false_external_user_no_external_auth(self):
@@ -105,8 +120,11 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         user = factory.make_User()
         user.userprofile.is_local = False
         user.userprofile.save()
-        request = self.make_request(user=user)
+        mock_token = mock.Mock(user=user)
+        request = self.make_request()
         auth = MAASAPIAuthentication()
+        auth.is_valid_request = lambda request: True
+        auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertFalse(auth.is_authenticated(request))
 
 
