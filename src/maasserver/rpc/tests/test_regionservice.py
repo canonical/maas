@@ -217,9 +217,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertDocTestMatches(
             """\
             Rack controller '...' could not be authenticated; dropping
-            connection.
-            Traceback (most recent call last):...
-            """,
+            connection. Check that /var/lib/maas/secret...""",
             logger.dump())
 
     def test_handshakeFailed_does_not_log_when_connection_is_closed(self):

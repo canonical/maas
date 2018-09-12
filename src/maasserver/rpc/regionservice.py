@@ -725,10 +725,14 @@ class RegionServer(Region):
             # logged elsewhere.
             return
         else:
-            log.err(
-                failure, "Rack controller '%s' could not be authenticated; "
-                "dropping connection." % self.ident)
-            return self.transport.loseConnection()
+            log.msg(
+                "Rack controller '%s' could not be authenticated; dropping "
+                "connection. Check that /var/lib/maas/secret on the "
+                "controller contains the correct shared key." % self.ident)
+            if self.transport is not None:
+                return self.transport.loseConnection()
+            else:
+                return
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()
