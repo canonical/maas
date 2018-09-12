@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The BootResource handler for the WebSocket connection."""
@@ -26,7 +26,6 @@ from maasserver.clusterrpc.boot_images import (
     get_common_available_boot_images,
     is_import_boot_images_running,
 )
-from maasserver.clusterrpc.osystems import get_os_release_title
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
@@ -53,6 +52,7 @@ from provisioningserver.config import (
     DEFAULT_IMAGES_URL,
     DEFAULT_KEYRINGS_PATH,
 )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     image_passes_filter,
@@ -286,7 +286,8 @@ class BootResourceHandler(Handler):
             if 'title' in image.extra and image.extra != '':
                 title = image.extra['title']
             else:
-                title = get_os_release_title(image.os, image.release)
+                osystem = OperatingSystemRegistry['ubuntu-core']
+                title = osystem.get_release_title(image.release)
             if title is None:
                 title = '%s/%s' % (image.os, image.release)
             images.append({
@@ -306,11 +307,13 @@ class BootResourceHandler(Handler):
             Q(os='ubuntu') | Q(os='ubuntu-core')).filter(bootloader_type=None)
         for image in qs:
             resource = self.get_matching_resource_for_image(resources, image)
+            title = None
             if 'title' in image.extra and image.extra != '':
                 title = image.extra['title']
-            else:
-                title = get_os_release_title(image.os, image.release)
-            if title is None:
+            elif image.os in OperatingSystemRegistry:
+                osystem = OperatingSystemRegistry[image.os]
+                title = osystem.get_release_title(image.release)
+            if not title:
                 title = '%s/%s' % (image.os, image.release)
             images.append({
                 'name': '%s/%s/%s/%s' % (
@@ -432,8 +435,11 @@ class BootResourceHandler(Handler):
             if resource.name.startswith('ubuntu/'):
                 return format_ubuntu_distro_series(series)
             else:
-                title = get_os_release_title(os, series)
-                if title is None:
+                title = None
+                if os in OperatingSystemRegistry:
+                    osystem = OperatingSystemRegistry[os]
+                    title = osystem.get_release_title(series)
+                if not title:
                     return resource.name
                 else:
                     return title

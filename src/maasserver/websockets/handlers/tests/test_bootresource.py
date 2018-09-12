@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.bootresource`"""
@@ -629,7 +629,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertEquals([{
             'name': '%s/%s/%s/%s' % (
                 cache.os, cache.arch, cache.subarch, cache.release),
-            'title': '%s/%s' % (cache.os, cache.release),
+            'title': cache.release,
             'checked': False,
             'deleted': False,
         }], ubuntu_core_images)
@@ -647,7 +647,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertEquals([{
             'name': '%s/%s/%s/%s' % (
                 cache.os, cache.arch, cache.subarch, cache.release),
-            'title': '%s/%s' % (cache.os, cache.release),
+            'title': cache.release,
             'checked': True,
             'deleted': False,
         }], ubuntu_core_images)

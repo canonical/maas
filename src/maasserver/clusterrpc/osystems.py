@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Obtain OS information from clusters."""
@@ -22,7 +22,6 @@ from maasserver.rpc import (
 from maasserver.utils import async
 from maasserver.utils.orm import get_one
 from provisioningserver.rpc.cluster import (
-    GetOSReleaseTitle,
     GetPreseedData,
     ListOperatingSystems,
     ValidateLicenseKey,
@@ -79,21 +78,6 @@ def gen_all_known_operating_systems():
                 if name == "custom":
                     osystem = fix_custom_osystem_release_titles(osystem)
                 yield osystem
-
-
-@synchronous
-def get_os_release_title(osystem, release):
-    """Get the title for the operating systems release."""
-    title = ""
-    responses = async.gather(
-        partial(client, GetOSReleaseTitle, osystem=osystem, release=release)
-        for client in getAllClients())
-    for response in suppress_failures(responses):
-        if response["title"] != "":
-            title = response["title"]
-    if title == "":
-        return None
-    return title
 
 
 @synchronous

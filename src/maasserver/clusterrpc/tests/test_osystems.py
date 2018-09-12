@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `osystems` module."""
@@ -12,7 +12,6 @@ from collections import (
 
 from maasserver.clusterrpc.osystems import (
     gen_all_known_operating_systems,
-    get_os_release_title,
     get_preseed_data,
     validate_license_key,
 )
@@ -153,46 +152,6 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         self.assertItemsEqual(
             [{"name": "custom", "releases": releases_with_titles}],
             gen_all_known_operating_systems())
-
-
-class TestGetOSReleaseTitle(MAASServerTestCase):
-    """Tests for `get_os_release_title`."""
-
-    def test_ignores_failures_when_talking_to_clusters(self):
-        factory.make_RackController()
-        factory.make_RackController()
-        factory.make_RackController()
-        self.useFixture(RunningClusterRPCFixture())
-
-        title = factory.make_name('title')
-        clients = getAllClients()
-        for index, client in enumerate(clients):
-            callRemote = self.patch(client._conn, "callRemote")
-            if index == 0:
-                # The first client found returns dummy title.
-                example = {"title": title}
-                callRemote.return_value = succeed(example)
-            else:
-                # All clients but the first raise an exception.
-                callRemote.side_effect = ZeroDivisionError()
-
-        # The only title to get through is that from the first. The
-        # failures arising from communicating with the other clusters have all
-        # been suppressed.
-        self.assertEqual(
-            title,
-            get_os_release_title("bogus-os", "bogus-release"))
-
-    def test_returns_None_if_title_is_blank(self):
-        factory.make_RackController()
-        self.useFixture(RunningClusterRPCFixture())
-
-        clients = getAllClients()
-        for index, client in enumerate(clients):
-            callRemote = self.patch(client._conn, "callRemote")
-            example = {"title": ""}
-            callRemote.return_value = succeed(example)
-        self.assertIsNone(get_os_release_title("bogus-os", "bogus-release"))
 
 
 class TestGetPreseedData(MAASServerTestCase):
