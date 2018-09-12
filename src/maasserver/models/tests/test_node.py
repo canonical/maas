@@ -3170,6 +3170,12 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(
             UnknownPowerType, node.start_testing, admin)
 
+    def test_start_testing_errors_for_new_node_no_commissioning(self):
+        node = factory.make_Node(interface=True, status=NODE_STATUS.NEW)
+        admin = factory.make_admin()
+        self.assertRaises(
+            ValidationError, node.start_testing, admin)
+
     def test_start_testing_logs_user_request(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(
@@ -3188,6 +3194,23 @@ class TestNode(MAASServerTestCase):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYED, power_type='manual')
+        mock_node_power_cycle = self.patch(node, '_power_cycle')
+        mock_node_power_cycle.return_value = None
+        admin = factory.make_admin()
+        node.start_testing(admin, testing_scripts=[script.name])
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        self.assertEquals(NODE_STATUS.TESTING, node.status)
+        self.assertThat(mock_node_power_cycle, MockCalledOnce())
+
+    def test_start_testing_changes_status_and_starts_new_node(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.NEW, power_type='manual')
+        node.current_commissioning_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        factory.make_ScriptResult(
+            script_set=node.current_commissioning_script_set)
         mock_node_power_cycle = self.patch(node, '_power_cycle')
         mock_node_power_cycle.return_value = None
         admin = factory.make_admin()
