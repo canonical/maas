@@ -8,12 +8,12 @@ angular.module('MAAS').controller('PodDetailsController', [
     '$scope', '$rootScope', '$location', '$routeParams',
     'PodsManager', 'GeneralManager', 'UsersManager', 'DomainsManager',
     'ZonesManager', 'MachinesManager', 'ManagerHelperService', 'ErrorService',
-    'ResourcePoolsManager',
+    'ResourcePoolsManager', 'ValidationService',
     function(
         $scope, $rootScope, $location, $routeParams,
         PodsManager, GeneralManager, UsersManager, DomainsManager,
         ZonesManager, MachinesManager, ManagerHelperService, ErrorService,
-        ResourcePoolsManager) {
+        ResourcePoolsManager, ValidationService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -67,6 +67,12 @@ angular.module('MAAS').controller('PodDetailsController', [
         $scope.machinesSearch = 'pod-id:=invalid';
         $scope.editing = false;
 
+        // Pod name section.
+        $scope.name = {
+            editing: false,
+            value: "",
+        };
+
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
             return UsersManager.isSuperUser();
@@ -97,6 +103,78 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Called when the cancel or save button is pressed.
         $scope.exitEditPodConfiguration = function() {
             $scope.editing = false;
+        };
+
+        // Called to edit the pod name.
+        $scope.editName = function() {
+            if(!$scope.canEdit()) {
+                return;
+            }
+
+            // Do nothing if already editing because we don't
+            // want to reset the current value.
+            if($scope.name.editing) {
+                return;
+            }
+            $scope.name.editing = true;
+            $scope.name.value = $scope.pod.name;
+        };
+
+        // Return true when the pod name is invalid.
+        $scope.editNameInvalid = function() {
+            // Not invalid unless editing.
+            if(!$scope.name.editing) {
+                return false;
+            }
+
+            // The value cannot be blank.
+            var value = $scope.name.value;
+            if(value.length === 0) {
+                return true;
+            }
+            return !ValidationService.validateHostname(value);
+        };
+
+
+        // Called to cancel editing of the pod name.
+        $scope.cancelEditName = function() {
+            $scope.name.editing = false;
+            updateName();
+        };
+
+        // Called to save editing of pod name.
+        $scope.saveEditName = function() {
+            // Does nothing if invalid.
+            if($scope.editNameInvalid()) {
+                return;
+            }
+            $scope.name.editing = false;
+
+            // Copy the pod and make the changes.
+            var pod = angular.copy($scope.pod);
+            pod.name = $scope.name.value;
+
+            // Update the pod.
+            $scope.updatePod(pod);
+        };
+
+        function updateName() {
+            // Don't update the value if in editing mode.
+            // As this would overwrite the users changes.
+            if($scope.name.editing) {
+                return;
+            }
+            $scope.name.value = $scope.pod.name;
+        }
+
+        // Update the pod with new data on the region.
+        $scope.updatePod = function(pod) {
+            return $scope.podManager.updateItem(pod).then(function(pod) {
+                updateName();
+            }, function(error) {
+                console.log(error);
+                updateName();
+            });
         };
 
         // Return true if there is an action error.
@@ -236,6 +314,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         $scope.startWatching = function() {
             $scope.$watch("pod.name", function() {
                 $rootScope.title = 'Pod ' + $scope.pod.name;
+                updateName();
             });
             $scope.$watch("pod.capabilities", function() {
                 // Show the composable action if the pod supports composition.

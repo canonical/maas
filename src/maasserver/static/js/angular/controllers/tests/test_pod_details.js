@@ -1,7 +1,7 @@
 /* Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * Unit tests for NodesListController.
+ * Unit tests for PodDetailsController.
  */
 
 // Make a fake user.
@@ -245,6 +245,183 @@ describe("PodDetailsController", function() {
                 $scope,
                 "isRackControllerConnected").and.returnValue(true);
             expect($scope.canEdit()).toBe(true);
+        });
+    });
+
+    describe("editName", function() {
+
+        it("doesnt set editing true",
+           function() {
+            var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.name.editing = false;
+            $scope.editName();
+            expect($scope.name.editing).toBe(false);
+        });
+
+        it("sets editing to true",
+           function() {
+            var controller = makeController();
+            $scope.pod = pod;
+            spyOn($scope, "canEdit").and.returnValue(true);
+            $scope.name.editing = false;
+            $scope.editName();
+            expect($scope.name.editing).toBe(true);
+        });
+
+        it("sets name.value to pod name", function() {
+            var controller = makeController();
+            $scope.pod = pod;
+            spyOn($scope, "canEdit").and.returnValue(true);
+            $scope.editName();
+            expect($scope.name.value).toBe(pod.name);
+        });
+
+        it("doesnt reset name.value on multiple calls", function() {
+            var controller = makeController();
+            $scope.pod = pod;
+            spyOn($scope, "canEdit").and.returnValue(true);
+            $scope.editName();
+            var updatedName = makeName("name");
+            $scope.name.value = updatedName;
+            $scope.editName();
+            expect($scope.name.value).toBe(updatedName);
+        });
+    });
+
+    describe("editNameInvalid", function() {
+
+        it("returns false if not editing", function() {
+            var controller = makeController();
+            $scope.name.editing = false;
+            $scope.name.value = "abc_invalid.local";
+            expect($scope.editNameInvalid()).toBe(false);
+        });
+
+        it("returns true for bad values", function() {
+            var controller = makeController();
+            $scope.name.editing = true;
+            var values = [
+                {
+                    input: "aB0-z",
+                    output: false
+                },
+                {
+                    input: "abc_alpha",
+                    output: true
+                },
+                {
+                    input: "ab^&c",
+                    output: true
+                },
+                {
+                    input: "abc.local",
+                    output: true
+                }
+            ];
+            angular.forEach(values, function(value) {
+                $scope.name.value = value.input;
+                expect($scope.editNameInvalid()).toBe(value.output);
+            });
+        });
+    });
+
+    describe("cancelEditName", function() {
+
+        it("sets editing to false for name section",
+           function() {
+            var controller = makeController();
+            $scope.pod = pod;
+            $scope.name.editing = true;
+            $scope.cancelEditName();
+            expect($scope.name.editing).toBe(false);
+        });
+
+        it("sets name.value back to original", function() {
+            var controller = makeController();
+            $scope.pod = pod;
+            $scope.name.editing = true;
+            $scope.name.value = makeName("name");
+            $scope.cancelEditName();
+            expect($scope.name.value).toBe(pod.name);
+        });
+    });
+
+    describe("saveEditName", function() {
+
+        it("does nothing if value is invalid", function() {
+            var controller = makeController();
+            $scope.pod = pod;
+            spyOn($scope, "editNameInvalid").and.returnValue(true);
+            var sentinel = {};
+            $scope.name.editing = sentinel;
+            $scope.saveEditName();
+            expect($scope.name.editing).toBe(sentinel);
+        });
+
+        it("sets editing to false", function() {
+            var controller = makeController();
+            spyOn(PodsManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            spyOn($scope, "editNameInvalid").and.returnValue(false);
+
+            $scope.pod = pod;
+            $scope.name.editing = true;
+            $scope.name.value = makeName("name");
+            $scope.saveEditName();
+
+            expect($scope.name.editing).toBe(false);
+        });
+
+        it("calls updateItem with copy of pod", function() {
+            var controller = makeController();
+            spyOn(PodsManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            spyOn($scope, "editNameInvalid").and.returnValue(false);
+
+            $scope.pod = pod;
+            $scope.name.editing = true;
+            $scope.name.value = makeName("name");
+            $scope.saveEditName();
+
+            var calledWithPod = PodsManager.updateItem.calls.argsFor(0)[0];
+            expect(calledWithPod).not.toBe(pod);
+        });
+
+        it("calls updateItem with new name on pod", function() {
+            var controller = makeController();
+            spyOn(PodsManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            spyOn($scope, "editNameInvalid").and.returnValue(false);
+
+            var newName = makeName("name");
+            $scope.pod = pod;
+            $scope.name.editing = true;
+            $scope.name.value = newName;
+            $scope.saveEditName();
+
+            var calledWithPod = PodsManager.updateItem.calls.argsFor(0)[0];
+            expect(calledWithPod.name).toBe(newName);
+        });
+
+        it("calls updateName once updateItem resolves", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(PodsManager, "updateItem").and.returnValue(
+                defer.promise);
+            spyOn($scope, "editNameInvalid").and.returnValue(false);
+
+            $scope.pod = pod;
+            $scope.name.editing = true;
+            $scope.name.value = makeName("name");
+            $scope.saveEditName();
+
+            defer.resolve(pod);
+            $rootScope.$digest();
+
+            // Since updateName is private in the controller, check
+            // that the name.value is set to the pod's name.
+            expect($scope.name.value).toBe(pod.name);
         });
     });
 

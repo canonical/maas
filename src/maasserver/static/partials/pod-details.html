@@ -9,7 +9,21 @@
     <header class="p-strip--light is-shallow u-no-padding--bottom page-header u-no-padding--bottom" media-query="min-width: 769px">
         <div class="row">
             <div class="tablet-col-4 col-8">
-                <h1 class="page-header__title">{$ pod.name $}</h1>
+                <h1 class="page-header__title">
+                    <span contenteditable="true"
+                        data-ng-class="{ editable: canEdit(), 'is-error': editNameInvalid(), editmode: name.editing }"
+                        data-ng-show="canEdit()"
+                        data-ng-model="name.value"
+                        data-ng-disabled="!canEdit()"
+                        data-ng-click="editName()"></span>
+	        </h1>		    
+                <button class="p-button--base u-no-margin--top ng-hide"
+                    data-ng-show="name.editing"
+                    data-ng-click="cancelEditName()">Cancel</button>
+                <button class="p-button--positive ng-hide"
+                    data-ng-show="name.editing"
+                    data-ng-disabled="editNameInvalid()"
+                    data-ng-click="saveEditName()">Save</button>
             </div>
             <div class="tablet-col-2 col-4">
                 <div class="page-header__controls " data-ng-if="isSuperUser()">
