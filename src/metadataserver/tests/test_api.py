@@ -1763,18 +1763,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_signaling_commissioning_failure_deletes_enlisting(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
-        nmd = NodeMetadata.objects.create(
-            node=node, key='enlisting', value='True')
-        client = make_node_client(node=node)
-        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
-        self.assertIsNone(reload_object(nmd))
-
     def test_signaling_commissioning_failure_makes_node_failed_tests(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)

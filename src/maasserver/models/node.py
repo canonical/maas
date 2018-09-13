@@ -2039,15 +2039,6 @@ class Node(CleanSave, TimestampedModel):
                 "Unconfigured power type. "
                 "Please configure the power type and try again.")
 
-        # If this is an enlisted node make sure commissioning during enlistment
-        # finished successfully.
-        if (self.status == NODE_STATUS.NEW and
-                not self.current_commissioning_script_set):
-            raise ValidationError(
-                "Unable to start machine testing; this node has never been "
-                "commissioned. Please use the 'Commission' action to "
-                "commission & test this machine.")
-
         # Create a new ScriptSet for the tests to be run.
         script_set = ScriptSet.objects.create_testing_script_set(
             self, testing_scripts)
