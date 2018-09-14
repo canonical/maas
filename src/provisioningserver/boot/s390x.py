@@ -32,8 +32,7 @@ re_config_file = r'''
     ^/*
     s390x           # S390x pxe prefix, set by dhcpd
     /
-    pxelinux[.]cfg    # PXELINUX expects this.
-    /
+    (pxelinux[.]cfg/)?    # Not sent on s390x KVM
     (?: # either a MAC
         {htype:02x}    # ARP HTYPE.
         -
@@ -77,6 +76,8 @@ class S390XBootMethod(BootMethod):
     name = "s390x"
     bios_boot_method = "s390x"
     template_subdir = "pxe"
+    # boots390x.bin is a place holder to allow the path_prefix to be set.
+    # s390x KVM uses a bootloader shipped with KVM.
     bootloader_path = "boots390x.bin"
     arch_octet = "00:1F"
     path_prefix = "s390x/"

@@ -338,6 +338,12 @@ class TestS390XBootMethodRegex(MAASTestCase):
         self.assertIsNotNone(match)
         self.assertEqual({'mac': mac}, match.groupdict())
 
+    def test_re_config_file_matches_pxelinux_cfg_without_pxelinux_cfg(self):
+        mac = factory.make_mac_address("-").encode("ascii")
+        match = re_config_file.match(b'/s390x/01-%s' % mac)
+        self.assertIsNotNone(match)
+        self.assertEqual({'mac': mac}, match.groupdict())
+
     def test_re_config_file_does_not_match_non_config_file(self):
         self.assertIsNone(re_config_file.match(b's390x/pxelinux.cfg/kernel'))
 
