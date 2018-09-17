@@ -69,17 +69,18 @@ class MAASAPIAuthentication(OAuthAuthentication):
 
             if consumer and token:
                 user = token.user
-                is_local_user = (
-                    user.username in SYSTEM_USERS or user.userprofile.is_local)
-                external_auth_info = request.external_auth_info
-                if external_auth_info:
-                    if is_local_user:
+                if user.username not in SYSTEM_USERS:
+                    external_auth_info = request.external_auth_info
+                    is_local_user = user.userprofile.is_local
+                    if external_auth_info:
+                        if is_local_user:
+                            return False
+                        if not validate_user_external_auth(
+                                user,
+                                admin_group=external_auth_info.admin_group):
+                            return False
+                    elif not is_local_user:
                         return False
-                    if not validate_user_external_auth(
-                            user, admin_group=external_auth_info.admin_group):
-                        return False
-                elif not is_local_user:
-                    return False
 
                 request.user = user
                 request.consumer = consumer
