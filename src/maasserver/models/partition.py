@@ -216,7 +216,12 @@ class Partition(CleanSave, TimestampedModel):
             if (arch == "ppc64el" and block_device.id == boot_disk.id):
                 return idx + 2
             elif arch == "amd64" and bios_boot_method != "uefi":
-                return idx + 2
+                # Delay the `type` check because it can cause a query. Only
+                # physical block devices get the bios_grub partition.
+                if block_device.type == 'physical':
+                    return idx + 2
+                else:
+                    return idx + 1
             else:
                 return idx + 1
         elif self.partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
