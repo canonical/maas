@@ -2004,7 +2004,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Partition(
             self, partition_table=None, uuid=None, size=None, bootable=None,
-            node=None, block_device_size=None):
+            node=None, block_device_size=None, tags=None):
         if partition_table is None:
             partition_table = self.make_PartitionTable(
                 node=node, block_device_size=block_device_size)
@@ -2017,9 +2017,11 @@ class Factory(maastesting.factory.Factory):
             size = random.randint(MIN_PARTITION_SIZE, available_size)
         if bootable is None:
             bootable = random.choice([True, False])
+        if tags is None:
+            tags = [self.make_name('tag') for _ in range(3)]
         return Partition.objects.create(
             partition_table=partition_table, uuid=uuid,
-            size=size, bootable=bootable)
+            size=size, bootable=bootable, tags=tags)
 
     def pick_filesystem_type(self, but_not=()):
         """Pick a filesystem that requires block storage and a mount point."""

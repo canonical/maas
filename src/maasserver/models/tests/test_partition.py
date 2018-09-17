@@ -146,6 +146,66 @@ class TestPartitionManager(MAASServerTestCase):
             Partition.objects.get_partition_by_device_name_and_number(
                 block_device.get_name(), partition_two.get_partition_number()))
 
+    def test_filter_by_tags_returns_partitions_with_one_tag(self):
+        tags = [factory.make_name('tag') for _ in range(3)]
+        other_tags = [factory.make_name('tag') for _ in range(3)]
+        partitions_with_tags = [
+            factory.make_Partition(tags=tags)
+            for _ in range(3)
+            ]
+        for _ in range(3):
+            factory.make_Partition(tags=other_tags)
+        self.assertItemsEqual(
+            partitions_with_tags,
+            Partition.objects.filter_by_tags([tags[0]]))
+
+    def test_filter_by_tags_returns_partitions_with_all_tags(self):
+        tags = [factory.make_name('tag') for _ in range(3)]
+        other_tags = [factory.make_name('tag') for _ in range(3)]
+        partitions_with_tags = [
+            factory.make_Partition(tags=tags)
+            for _ in range(3)
+            ]
+        for _ in range(3):
+            factory.make_Partition(tags=other_tags)
+        self.assertItemsEqual(
+            partitions_with_tags,
+            Partition.objects.filter_by_tags(tags))
+
+    def test_filter_by_tags_returns_no_devices(self):
+        tags = [factory.make_name('tag') for _ in range(3)]
+        for _ in range(3):
+            factory.make_Partition(tags=tags)
+        self.assertItemsEqual(
+            [],
+            Partition.objects.filter_by_tags([factory.make_name('tag')]))
+
+    def test_filter_by_tags_returns_devices_with_iterable(self):
+        tags = [factory.make_name('tag') for _ in range(3)]
+        other_tags = [factory.make_name('tag') for _ in range(3)]
+        devices_with_tags = [
+            factory.make_Partition(tags=tags)
+            for _ in range(3)
+            ]
+        for _ in range(3):
+            factory.make_Partition(tags=other_tags)
+
+        def tag_generator():
+            for tag in tags:
+                yield tag
+
+        self.assertItemsEqual(
+            devices_with_tags,
+            Partition.objects.filter_by_tags(tag_generator()))
+
+    def test_filter_by_tags_raise_TypeError_when_unicode(self):
+        self.assertRaises(
+            TypeError, Partition.objects.filter_by_tags, 'test')
+
+    def test_filter_by_tags_raise_TypeError_when_not_iterable(self):
+        self.assertRaises(
+            TypeError, Partition.objects.filter_by_tags, object())
+
 
 class TestPartition(MAASServerTestCase):
     """Tests for the `Partition` model."""
@@ -418,3 +478,23 @@ class TestPartition(MAASServerTestCase):
         factory.make_Partition(partition_table=partition_table)
         # Test is that no error is raised.
         partition_table.delete()
+
+    def test_add_tag_adds_new_tag(self):
+        partition = Partition()
+        tag = factory.make_name('tag')
+        partition.add_tag(tag)
+        self.assertItemsEqual([tag], partition.tags)
+
+    def test_add_tag_doesnt_duplicate(self):
+        partition = Partition()
+        tag = factory.make_name('tag')
+        partition.add_tag(tag)
+        partition.add_tag(tag)
+        self.assertItemsEqual([tag], partition.tags)
+
+    def test_remove_tag_deletes_tag(self):
+        partition = Partition()
+        tag = factory.make_name('tag')
+        partition.add_tag(tag)
+        partition.remove_tag(tag)
+        self.assertItemsEqual([], partition.tags)

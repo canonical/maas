@@ -33,6 +33,7 @@ from maasserver.models import (
     BlockDevice,
     Filesystem,
     Interface,
+    Partition,
     Pod,
     ResourcePool,
     Subnet,
@@ -325,6 +326,18 @@ def get_storage_constraints_from_string(storage):
     return head + tail
 
 
+def format_device_key(device_info):
+    """Format the `device_info` into a key for the storage constraint output.
+    """
+    device_type, device_id = device_info
+    if device_type == 'blockdev':
+        return device_id
+    elif device_type == 'partition':
+        return 'partition:%d' % device_id
+    else:
+        raise ValueError("Unknown device_type: %s" % device_type)
+
+
 def nodes_by_storage(storage, node_ids=None):
     """Return list of dicts describing matching nodes and matched block devices
 
@@ -353,29 +366,48 @@ def nodes_by_storage(storage, node_ids=None):
         if root_device:
             # This branch of the if is only used on first iteration.
             root_device = False
+            part_match = False
 
             # Use only block devices that are mounted as '/'. Either the
             # block device has root sitting on it or its on a partition on
             # that block device.
             filesystems = Filesystem.objects.filter(
                 mount_point='/', acquired=False)
-            filesystems = filesystems.filter(
-                Q(block_device__size__gte=size) |
-                Q(partition__partition_table__block_device__size__gte=size))
-            if tags is not None:
+            if tags is not None and 'partition' in tags:
+                part_match = True
+                part_tags = list(tags)
+                part_tags.remove('partition')
+                filesystems = filesystems.filter(partition__size__gte=size)
+                if part_tags:
+                    filesystems = filesystems.filter(
+                        partition__tags__contains=part_tags)
+                if node_ids is not None:
+                    filesystems = filesystems.filter(
+                        Q(**{
+                            'partition__partition_table__block_device'
+                            '__node_id__in': node_ids
+                        }))
+            else:
                 filesystems = filesystems.filter(
-                    Q(block_device__tags__contains=tags) |
+                    Q(block_device__size__gte=size) |
                     Q(**{
                         'partition__partition_table__block_device'
-                        '__tags__contains': tags
+                        '__size__gte': size
                     }))
-            if node_ids is not None:
-                filesystems = filesystems.filter(
-                    Q(block_device__node_id__in=node_ids) |
-                    Q(**{
-                        'partition__partition_table__block_device'
-                        '__node_id__in': node_ids
-                    }))
+                if tags:
+                    filesystems = filesystems.filter(
+                        Q(block_device__tags__contains=tags) |
+                        Q(**{
+                            'partition__partition_table__block_device'
+                            '__tags__contains': tags
+                        }))
+                if node_ids is not None:
+                    filesystems = filesystems.filter(
+                        Q(block_device__node_id__in=node_ids) |
+                        Q(**{
+                            'partition__partition_table__block_device'
+                            '__node_id__in': node_ids
+                        }))
             filesystems = filesystems.prefetch_related(
                 'block_device', 'partition__partition_table__block_device')
 
@@ -386,15 +418,34 @@ def nodes_by_storage(storage, node_ids=None):
             found_nodes = set()
             matched_devices = []
             for filesystem in filesystems:
-                if filesystem.block_device is not None:
+                if part_match:
+                    device = filesystem.partition
+                    node_id = device.partition_table.block_device.node_id
+                elif filesystem.block_device is not None:
                     device = filesystem.block_device
+                    node_id = device.node_id
                 else:
                     device = (
                         filesystem.partition.partition_table.block_device)
-                if device.node_id in found_nodes:
+                    node_id = device.node_id
+                if node_id in found_nodes:
                     continue
                 matched_devices.append(device)
-                found_nodes.add(device.node_id)
+                found_nodes.add(node_id)
+        elif tags is not None and 'partition' in tags:
+            # Query for any partition the closest size and the given tags.
+            # The partition must also be unused in the storage model.
+            part_tags = list(tags)
+            part_tags.remove('partition')
+            matched_devices = Partition.objects.filter(size__gte=size)
+            matched_devices = matched_devices.filter(filesystem__isnull=True)
+            if part_tags:
+                matched_devices = matched_devices.filter(
+                    tags__contains=part_tags)
+            if node_ids is not None:
+                matched_devices = matched_devices.filter(
+                    partition_table__block_device__node_id__in=node_ids)
+            matched_devices = list(matched_devices.order_by('size'))
         else:
             # Query for any block device the closest size and, if specified,
             # the given tags. # The block device must also be unused in the
@@ -414,20 +465,28 @@ def nodes_by_storage(storage, node_ids=None):
         matched_in_loop = []
         for device in matched_devices:
             device_id = device.id
-            device_node_id = device.node_id
+            if isinstance(device, Partition):
+                device_type = 'partition'
+                device_node_id = device.partition_table.block_device.node_id
+            elif isinstance(device, BlockDevice):
+                device_type = 'blockdev'
+                device_node_id = device.node_id
+            else:
+                raise TypeError(
+                    "Unknown device type: %s" % type(device).__name__)
 
             if device_node_id in matched_in_loop:
                 continue
-            if device_id in matches[device_node_id]:
+            if (device_type, device_id) in matches[device_node_id]:
                 continue
-            matches[device_node_id][device_id] = constraint_name
+            matches[device_node_id][(device_type, device_id)] = constraint_name
             matched_in_loop.append(device_node_id)
 
     # Return only the nodes that have the correct number of disks.
     nodes = {
         node_id: {
-            disk_id: name
-            for disk_id, name in disks.items()
+            format_device_key(device_info): name
+            for device_info, name in disks.items()
             if name != ''  # Map only those w/ named constraints
         }
         for node_id, disks in matches.items()

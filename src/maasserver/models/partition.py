@@ -7,9 +7,11 @@ __all__ = [
     'Partition',
     ]
 
+from collections import Iterable
 from operator import attrgetter
 from uuid import uuid4
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db.models import (
@@ -19,6 +21,7 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
+    TextField,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
@@ -28,6 +31,7 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     round_size_to_nearest_block,
 )
+from maasserver.utils.orm import psql_array
 from maasserver.utils.storage import (
     get_effective_filesystem,
     used_for,
@@ -100,6 +104,18 @@ class PartitionManager(Manager):
                 return partition
         raise self.model.DoesNotExist()
 
+    def filter_by_tags(self, tags):
+        if not isinstance(tags, list):
+            if isinstance(tags, str) or not isinstance(tags, Iterable):
+                raise TypeError(
+                    "`tags` is not iterable, it is: %s" % type(tags).__name__)
+            tags = list(tags)
+        tags_where, tags_params = psql_array(tags, sql_type="text")
+        where_contains = (
+            '"maasserver_partition"."tags"::text[] @> %s' % tags_where)
+        return self.extra(
+            where=[where_contains], params=tags_params)
+
 
 class Partition(CleanSave, TimestampedModel):
     """A partition in a partition table.
@@ -126,6 +142,9 @@ class Partition(CleanSave, TimestampedModel):
         null=False, validators=[MinValueValidator(MIN_PARTITION_SIZE)])
 
     bootable = BooleanField(default=False)
+
+    tags = ArrayField(
+        TextField(), blank=True, null=True, default=list)
 
     @property
     def name(self):
@@ -293,3 +312,15 @@ class Partition(CleanSave, TimestampedModel):
                     "Cannot delete partition because its part of "
                     "a %s." % filesystem_group.get_nice_name())
         super(Partition, self).delete()
+
+    def add_tag(self, tag):
+        """Add tag to partition."""
+        if tag not in self.tags:
+            self.tags = self.tags + [tag]
+
+    def remove_tag(self, tag):
+        """Remove tag from partition."""
+        if tag in self.tags:
+            tags = self.tags.copy()
+            tags.remove(tag)
+            self.tags = tags

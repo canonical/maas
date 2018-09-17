@@ -507,10 +507,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 9,
+            queries_one, 11,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 9,
+            queries_total, 11,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
@@ -539,7 +539,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 47,
+            queries, 49,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):
@@ -1099,6 +1099,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "size": partition.size,
                 "size_human": human_readable_bytes(partition.size),
                 "used_for": partition.used_for,
+                "tags": partition.tags,
             })
         self.assertItemsEqual(
             expected, handler.dehydrate_partitions(partition_table))
@@ -2233,10 +2234,12 @@ class TestMachineHandler(MAASServerTestCase):
         partition_table = factory.make_PartitionTable(
             block_device=block_device, node=node)
         size = partition_table.block_device.size // 2
+        tags = [factory.make_name('tag') for _ in range(3)]
         handler.create_partition({
             'system_id': node.system_id,
             'block_id': partition_table.block_device_id,
-            'partition_size': size
+            'partition_size': size,
+            'tags': tags,
             })
         partition = partition_table.partitions.first()
         self.assertEqual(
@@ -2246,6 +2249,7 @@ class TestMachineHandler(MAASServerTestCase):
                 round_size_to_nearest_block(
                     size, PARTITION_ALIGNMENT_SIZE, False)),
             human_readable_bytes(partition.size))
+        self.assertItemsEqual(tags, partition.tags)
 
     def test_create_partition_with_filesystem(self):
         user = factory.make_admin()

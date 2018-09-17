@@ -10,6 +10,7 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -43,6 +44,7 @@ DISPLAYED_PARTITION_FIELDS = (
     'bootable',
     'filesystem',
     'used_for',
+    'tags',
 )
 
 
@@ -305,4 +307,42 @@ class PartitionHandler(OperationsHandler):
         filesystem.mount_point = None
         filesystem.mount_options = None
         filesystem.save()
+        return partition
+
+    @operation(idempotent=False)
+    def add_tag(self, request, system_id, device_id, id):
+        """Add a tag to partition.
+
+        :param tag: The tag being added.
+
+        Returns 403 when the user doesn't have the ability to add tag.
+        Returns 404 if the node, block device, or partition is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_partition_by_id_or_name__or_404(
+            id, partition_table)
+        partition.add_tag(get_mandatory_param(request.POST, 'tag'))
+        partition.save()
+        return partition
+
+    @operation(idempotent=False)
+    def remove_tag(self, request, system_id, device_id, id):
+        """Remove a tag from partition.
+
+        :param tag: The tag being removed.
+
+        Returns 403 when the user doesn't have the ability to add tag.
+        Returns 404 if the node, block device, or partition is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_partition_by_id_or_name__or_404(
+            id, partition_table)
+        partition.remove_tag(get_mandatory_param(request.POST, 'tag'))
+        partition.save()
         return partition

@@ -99,9 +99,15 @@ class MachineHandler(NodeHandler):
         list_queryset = (
             Machine.objects.select_related(
                 'boot_interface', 'owner', 'zone', 'domain', 'bmc')
-            .prefetch_related('blockdevice_set__iscsiblockdevice')
-            .prefetch_related('blockdevice_set__physicalblockdevice')
-            .prefetch_related('blockdevice_set__virtualblockdevice')
+            .prefetch_related(
+                'blockdevice_set__iscsiblockdevice__'
+                'partitiontable_set__partitions')
+            .prefetch_related(
+                'blockdevice_set__physicalblockdevice__'
+                'partitiontable_set__partitions')
+            .prefetch_related(
+                'blockdevice_set__virtualblockdevice__'
+                'partitiontable_set__partitions')
             .prefetch_related(
                 'interface_set__ip_addresses__subnet__vlan__space')
             .prefetch_related(
@@ -623,6 +629,7 @@ class MachineHandler(NodeHandler):
         else:
             partition = form.save()
 
+        self._update_obj_tags(partition, params)
         if 'fstype' in params:
             self.update_partition_filesystem(
                 node, partition.id, params.get("fstype"),

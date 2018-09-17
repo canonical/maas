@@ -16,7 +16,10 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.utils.converters import round_size_to_nearest_block
+from maasserver.utils.converters import (
+    json_load_bytes,
+    round_size_to_nearest_block,
+)
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
@@ -623,3 +626,58 @@ class TestPartitions(APITestCase.ForUser):
                 mount_options=Is(None),
                 is_mounted=Is(False),
             ))
+
+    def test_add_tag_returns_403_when_not_admin(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        response = self.client.post(
+            uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_add_tag_to_partition(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        tag_to_be_added = factory.make_name('tag')
+        response = self.client.post(
+            uri, {'op': 'add_tag', 'tag': tag_to_be_added})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_partition = json_load_bytes(response.content)
+        self.assertIn(tag_to_be_added, parsed_partition['tags'])
+        partition = reload_object(partition)
+        self.assertIn(tag_to_be_added, partition.tags)
+
+    def test_remove_tag_returns_403_when_not_admin(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        response = self.client.post(
+            uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_remove_tag_from_block_device(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        tag_to_be_removed = partition.tags[0]
+        response = self.client.post(
+            uri, {'op': 'remove_tag', 'tag': tag_to_be_removed})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_partition = json_load_bytes(response.content)
+        self.assertNotIn(tag_to_be_removed, parsed_partition['tags'])
+        partition = reload_object(partition)
+        self.assertNotIn(tag_to_be_removed, partition.tags)

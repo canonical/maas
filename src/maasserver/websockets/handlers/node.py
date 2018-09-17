@@ -74,6 +74,7 @@ def node_prefetch(queryset, *args):
         queryset
         .select_related(
             'boot_interface', 'owner', 'zone', 'pool', 'domain', 'bmc', *args)
+        .prefetch_related('blockdevice_set__partitiontable_set__partitions')
         .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
         .prefetch_related('blockdevice_set__virtualblockdevice')
@@ -539,6 +540,7 @@ class NodeHandler(TimestampedModelHandler):
                 "size": partition.size,
                 "size_human": human_readable_bytes(partition.size),
                 "used_for": partition.used_for,
+                "tags": partition.tags,
             })
         return partitions
 
@@ -683,6 +685,10 @@ class NodeHandler(TimestampedModelHandler):
         tags = set()
         for blockdevice in blockdevices:
             tags = tags.union(blockdevice.tags)
+            partition_table = blockdevice.get_partitiontable()
+            if partition_table is not None:
+                for partition in partition_table.partitions.all():
+                    tags = tags.union(partition.tags)
         return list(tags)
 
     def get_all_subnets(self, obj):
