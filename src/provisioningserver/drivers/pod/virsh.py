@@ -932,7 +932,7 @@ class VirshSSH(pexpect.spawn):
 
         # When there are not any known_host_interfaces,
         # default to checking for the `maas` and `default` libvirt networks.
-        if known_host_interfaces is None:
+        if not known_host_interfaces:
             if LIBVIRT_NETWORK.MAAS in networks:
                 return LIBVIRT_NETWORK.MAAS, InterfaceAttachType.NETWORK
             elif LIBVIRT_NETWORK.DEFAULT in networks:

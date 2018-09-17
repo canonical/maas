@@ -1368,7 +1368,7 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "get_network_list").return_value = [
             LIBVIRT_NETWORK.MAAS, LIBVIRT_NETWORK.DEFAULT, 'other']
-        network, attach_type = conn.get_default_interface_attachment(None)
+        network, attach_type = conn.get_default_interface_attachment([])
         self.assertEquals(LIBVIRT_NETWORK.MAAS, network)
         self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
 
@@ -1376,7 +1376,7 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh('')
         self.patch(virsh.VirshSSH, "get_network_list").return_value = [
             LIBVIRT_NETWORK.DEFAULT, 'other']
-        network, attach_type = conn.get_default_interface_attachment(None)
+        network, attach_type = conn.get_default_interface_attachment([])
         self.assertEquals(LIBVIRT_NETWORK.DEFAULT, network)
         self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
 
