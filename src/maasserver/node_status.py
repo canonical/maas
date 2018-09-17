@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node status utilities."""
@@ -18,6 +18,7 @@ from provisioningserver.utils.enum import map_enum
 # This is a subset of the statuses NODE_STATUS.TESTING can transition to. This
 # allows testing to be aborted.
 NODE_TESTING_RESET_READY_TRANSITIONS = {
+    NODE_STATUS.NEW,
     NODE_STATUS.COMMISSIONING,
     NODE_STATUS.FAILED_DEPLOYMENT,
     NODE_STATUS.MISSING,
@@ -52,6 +53,7 @@ NODE_TRANSITIONS = {
         ],
     NODE_STATUS.NEW: [
         NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.TESTING,
         NODE_STATUS.MISSING,
         NODE_STATUS.READY,
         NODE_STATUS.RETIRED,

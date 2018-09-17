@@ -604,9 +604,11 @@ class VersionIndexHandler(MetadataViewHandler):
         }
         target_status = signaling_statuses.get(status)
         enlisting = NodeMetadata.objects.get(node=node, key='enlisting')
-        if enlisting is not None and status == SIGNAL_STATUS.OK:
+        if enlisting is not None and target_status in [
+                NODE_STATUS.READY, NODE_STATUS.FAILED_COMMISSIONING]:
             enlisting.delete()
-            target_status = NODE_STATUS.NEW
+            if target_status == NODE_STATUS.READY:
+                target_status = NODE_STATUS.NEW
 
         if target_status in [
                 NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.TESTING]:

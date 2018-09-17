@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node actions.
@@ -283,6 +283,7 @@ class Test(NodeAction):
     display_sentence = "tested"
     actionable_statuses = (
         NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.NEW,
         NODE_STATUS.READY,
         NODE_STATUS.RESERVED,
         NODE_STATUS.ALLOCATED,
