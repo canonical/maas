@@ -1,6 +1,16 @@
-maas (2.5.0~alpha3-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
 
-  * UNRELEASED
+  * New upstream release (LP: #1792389)
+  * debian/control: Depend on python3-jinja2
+  * MAAS now manages its own rsyslog daemon:
+    - d/maas-common.maas-syslog.service: Add service.
+    - d/extras/99-maas-common-sudoers: start/stop/status for maas-rsyslog.
+    - d/rules: Handle installation of maas-rsyslog.
+    - d/extras/20-maas.conf: Drop as MAAS now generates its own config.
+    - d/maas-region-api.install: Drop install of 20-maas.conf.
+    - d/maas-region-api.postinst: Drop restart of rsyslog.
+    - d/maas-common.install: Drop install of maas-rsyslog.conf.
+    - d/maas-common.{preinst,postinst}: Handle upgrades.
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 28 Aug 2018 09:53:21 -0700
 
