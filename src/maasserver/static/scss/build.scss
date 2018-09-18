@@ -32,6 +32,7 @@
 @import 'patterns_table-sortable';
 @import 'tables';
 @import 'patterns_space-between';
+@import 'patterns_filter';
 
 // Include local patterns
 @include maas;
@@ -56,6 +57,7 @@
 @include maas-p-notifications;
 @include maas-p-search-box;
 @include maas-p-sticky-footer;
+@include maas-p-filter;
 @include maas-table-sortable;
 @include maas-table-widths;
 @include patterns_space-between;

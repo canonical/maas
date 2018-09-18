@@ -1,5 +1,7 @@
 @mixin maas-p-search-box {
   .p-search-box {
+    box-shadow: none;
+
     &.u-min-margin--bottom{
       margin-bottom: $spv-nudge-compensation * 2;
     }

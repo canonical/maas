@@ -1,0 +1,112 @@
+@mixin maas-icon-tick($color) {
+  background-image: url("data:image/svg+xml,%3C%3Fxml version='1.0' encoding='UTF-8'%3F%3E%3Csvg width='22px' height='16px' viewBox='0 0 22 16' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'%3E%3Cdefs%3E%3C/defs%3E%3Cg id='Page-1' stroke='none' stroke-width='1' fill='none' fill-rule='evenodd'%3E%3Cg id='confirm-tick' transform='translate(-1.000000, -1.000000)'%3E%3Cpolygon id='Shape' points='0 0 24 0 24 24 0 24'%3E%3C/polygon%3E%3Cpolygon id='Shape' fill-opacity='0.999998987' fill='" + encodecolor($color) + "' fill-rule='nonzero' points='3.872 6.93333333 1.6 9.20533333 9.33333333 16.9386667 22.4 3.872 20.128 1.6 9.33333333 12.3973333'%3E%3C/polygon%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+@mixin maas-p-filter {
+  %p-filter-icon {
+    background-position-y: center;
+    background-repeat: no-repeat;
+    background-size: map-get($icon-sizes, default);
+    content: '';
+    height: map-get($icon-sizes, default);
+    position: absolute;
+    width: map-get($icon-sizes, default);
+  }
+
+  %p-filter-button {
+    margin: 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .p-filter {
+    position: relative;
+
+    .p-filter__dropdown {
+      @extend %vf-bg--x-light;
+      position: absolute;
+      top: 0;
+      z-index: 2;
+    }
+
+    .p-filter__dropdown-button {
+      @extend %p-filter-button;
+
+      &::after {
+        @extend %p-filter-icon;
+        @include vf-icon-chevron($color-mid-dark);
+        right: $sph-intra;
+        top: ($spv-nudge - $px) * 2;
+      }
+
+      &.is-selected {
+        + .p-accordion {
+          display: block;
+        }
+
+        &::after {
+          transform: rotate(180deg);
+        }
+      }
+    }
+
+    .p-accordion {
+      @extend %vf-has-box-shadow;
+      @extend %vf-has-round-corners;
+      @extend %vf-is-bordered;
+      border-top: 0;
+      display: none;
+      max-height: 66vh;
+      overflow-y: auto;
+    }
+
+    .p-accordion__list {
+      margin-bottom: 0;
+    }
+
+    .p-accordion__tab {
+      @include vf-focus;
+      @include vf-icon-plus($color-mid-dark);
+      background-position: right $sph-intra center;
+      background-size: map-get($icon-sizes, accordion);
+      border-bottom: 0 !important;
+      padding: $spv-intra $sph-intra;
+
+      &.is-selected {
+        @include vf-icon-minus($color-mid-dark);
+
+        + .p-accordion__panel {
+          display: block;
+        }
+      }
+    }
+
+    .p-accordion__panel {
+      border: 0;
+      display: none;
+      padding: 0;
+    }
+
+    .p-list {
+      margin: 0;
+    }
+
+    .p-button--base {
+      @extend %p-filter-button;
+      padding: 0 ($sp-unit * 5);
+      position: relative;
+      transition-duration: 0s;
+
+      &.is-active {
+        font-weight: 400;
+
+        &::after {
+          @extend %p-filter-icon;
+          @include maas-icon-tick($color-mid-dark);
+          left: $sph-intra;
+          top: $spv-intra--condensed;
+        }
+      }
+    }
+  }
+}
