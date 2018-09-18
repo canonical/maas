@@ -410,7 +410,7 @@ class ServiceMonitor:
             raise ServiceActionError(error_msg)
         yield self._performServiceAction(service, "reload")
 
-    def _execCmd(self, cmd, env, timeout=5):
+    def _execCmd(self, cmd, env, timeout=10):
 
         def decode(result):
             out, err, code = result
