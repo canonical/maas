@@ -124,6 +124,7 @@ def get_default_config():
         'macaroon_private_key': None,
         # MAAS Architecture.
         'use_rack_proxy': True,
+        'node_timeout': 30,
     }
 
 

@@ -713,6 +713,22 @@ CONFIG_ITEMS = {
                 "isolated region controllers from machines.")
         }
     },
+    'node_timeout': {
+        'default': 30,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Time, in minutes, until the node times out during "
+                "commissioning, testing, deploying, or entering rescue mode."),
+            'help_text': (
+                "Commissioning, testing, deploying, and entering rescue mode "
+                "all set a timeout when beginning. If MAAS does not hear from "
+                "the node within the specified number of minutes the node is "
+                "powered off and set into a failed status."),
+            'min_value': 1,
+        },
+    },
 }
 
 

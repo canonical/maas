@@ -4,13 +4,15 @@
 """Node status utilities."""
 
 __all__ = [
-    "get_failed_status",
-    "is_failed_status",
     "NODE_TRANSITIONS",
+    "get_failed_status",
+    "get_node_timeout",
+    "is_failed_status",
     ]
 
 
 from maasserver.enum import NODE_STATUS
+from maasserver.models.config import Config
 from provisioningserver.utils.enum import map_enum
 
 # State transitions for where running testing will automatically reset the node
@@ -285,13 +287,10 @@ NODE_FAILURE_MONITORED_STATUS_TRANSITIONS = {
     NODE_STATUS.TESTING: NODE_STATUS.FAILED_TESTING,
 }
 
+# Hard coded timeouts. All other statuses uses the config option 'node_timeout'
 NODE_FAILURE_MONITORED_STATUS_TIMEOUTS = {
-    NODE_STATUS.COMMISSIONING: 20,
-    NODE_STATUS.DEPLOYING: 40,
     NODE_STATUS.RELEASING: 5,
-    NODE_STATUS.ENTERING_RESCUE_MODE: 20,
     NODE_STATUS.EXITING_RESCUE_MODE: 5,
-    NODE_STATUS.TESTING: 20,
 }
 
 # Statuses that correspond to managed steps for which MAAS actively
@@ -356,3 +355,16 @@ def get_failed_status(status):
 def is_failed_status(status):
     """Returns if the status is a 'failed' status."""
     return status in FAILED_STATUSES
+
+
+def get_node_timeout(status, node_timeout=None):
+    """Returns the timeout for the given status in minutes."""
+    if status in MONITORED_STATUSES:
+        if status in NODE_FAILURE_MONITORED_STATUS_TIMEOUTS:
+            return NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[status]
+        else:
+            if node_timeout is None:
+                return Config.objects.get_config('node_timeout')
+            else:
+                return node_timeout
+    return None

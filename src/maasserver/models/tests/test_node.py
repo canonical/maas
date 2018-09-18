@@ -115,7 +115,8 @@ from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
-    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
+    get_node_timeout,
+    MONITORED_STATUSES,
     NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TESTING_RESET_READY_TRANSITIONS,
@@ -2197,7 +2198,7 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.expectThat(
             Node._set_status_expires,
-            MockCalledOnceWith(node.system_id, node.get_releasing_time()))
+            MockCalledOnceWith(node.system_id, NODE_STATUS.RELEASING))
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
@@ -3000,19 +3001,15 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         admin = factory.make_admin()
 
-        timeout = random.randint(1, 100)
         set_status_expires = self.patch_autospec(
             Node, "_set_status_expires")
 
         self.patch(Node, "_start").return_value = None
-        self.patch(node, 'get_commissioning_time')
-        node.get_commissioning_time.return_value = timeout
 
         with post_commit_hooks:
             node.start_commissioning(admin)
 
-        self.assertThat(
-            set_status_expires, MockCalledOnceWith(node.system_id, timeout))
+        self.assertThat(set_status_expires, MockCalledOnceWith(node.system_id))
 
     def test_abort_commissioning_clears_status_expires(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -3329,19 +3326,15 @@ class TestNode(MAASServerTestCase):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         admin = factory.make_admin()
 
-        timeout = random.randint(1, 100)
         set_status_expires = self.patch_autospec(
             Node, "_set_status_expires")
 
         self.patch(node, '_power_cycle').return_value = None
-        self.patch(node, 'get_testing_time')
-        node.get_testing_time.return_value = timeout
 
         with post_commit_hooks:
             node.start_testing(admin, testing_scripts=[script.name])
 
-        self.assertThat(
-            set_status_expires, MockCalledOnceWith(node.system_id, timeout))
+        self.assertThat(set_status_expires, MockCalledOnceWith(node.system_id))
 
     def test_abort_testing_clears_status_expires(self):
         node = factory.make_Node(status=NODE_STATUS.TESTING)
@@ -4268,22 +4261,21 @@ class TestNode(MAASServerTestCase):
         self.assertEqual([], node.storage_layout_issues())
 
     def test_reset_status_expires(self):
-        status = random.choice(list(NODE_FAILURE_MONITORED_STATUS_TIMEOUTS))
+        status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)
         node.status_expires = factory.make_date()
         node.reset_status_expires()
         # Testing for the exact time will fail during testing due to now()
         # being different in reset_status_expires vs here. Pad by 1 minute
         # to make sure its reset but won't fail testing.
-        expected_time = now() + timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[status])
+        expected_time = now() + timedelta(minutes=get_node_timeout(status))
         self.assertGreaterEqual(
             node.status_expires, expected_time - timedelta(minutes=1))
         self.assertLessEqual(
             node.status_expires, expected_time + timedelta(minutes=1))
 
     def test_reset_status_expires_does_nothing_when_not_set(self):
-        status = random.choice(list(NODE_FAILURE_MONITORED_STATUS_TIMEOUTS))
+        status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)
         node.reset_status_expires()
         self.assertIsNone(node.status_expires)
@@ -6505,7 +6497,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(
             post_commit_defer.addCallback, MockCalledOnceWith(
                 callOutToDatabase, Node._set_status_expires,
-                node.system_id, node.get_deployment_time()))
+                node.system_id, NODE_STATUS.DEPLOYING))
 
         # Adds errback to reset status and release auto ips.
         self.assertThat(

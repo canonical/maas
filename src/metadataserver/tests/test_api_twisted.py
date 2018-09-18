@@ -28,7 +28,7 @@ from maasserver.models import (
 )
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
-from maasserver.node_status import NODE_FAILURE_MONITORED_STATUS_TIMEOUTS
+from maasserver.node_status import get_node_timeout
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -982,8 +982,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         # being different in reset_status_expires vs here. Pad by 1 minute
         # to make sure its reset but won't fail testing.
         expected_time = now() + timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
-                NODE_STATUS.DEPLOYING])
+            minutes=get_node_timeout(NODE_STATUS.DEPLOYING))
         self.assertGreaterEqual(
             node.status_expires, expected_time - timedelta(minutes=1))
         self.assertLessEqual(

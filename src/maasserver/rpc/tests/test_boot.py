@@ -22,7 +22,10 @@ from maasserver.models import (
     Event,
 )
 from maasserver.models.timestampedmodel import now
-from maasserver.node_status import NODE_FAILURE_MONITORED_STATUS_TIMEOUTS
+from maasserver.node_status import (
+    get_node_timeout,
+    MONITORED_STATUSES,
+)
 from maasserver.preseed import compose_enlistment_preseed_url
 from maasserver.rpc import boot as boot_module
 from maasserver.rpc.boot import (
@@ -54,8 +57,8 @@ def get_config(*args, **kwargs):
     if explicit_count is None:
         # If you need to adjust this value up be sure that 100% you cannot
         # lower this value. If you want to adjust this value down, big +1!
-        assert count <= 21, (
-            '%d > 21; Query count should remain below 21 queries '
+        assert count <= 22, (
+            '%d > 22; Query count should remain below 22 queries '
             'at all times.' % count)
     else:
         # This test sets an explicit count. This should *ONLY* be used if
@@ -708,7 +711,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        status = random.choice(list(NODE_FAILURE_MONITORED_STATUS_TIMEOUTS))
+        status = random.choice(MONITORED_STATUSES)
         node = self.make_node(
             status=status, status_expires=factory.make_date())
         mac = node.get_boot_interface().mac_address
@@ -718,8 +721,7 @@ class TestGetConfig(MAASServerTestCase):
         # Testing for the exact time will fail during testing due to now()
         # being different in reset_status_expires vs here. Pad by 1 minute
         # to make sure its reset but won't fail testing.
-        expected_time = now() + timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[status])
+        expected_time = now() + timedelta(minutes=get_node_timeout(status))
         self.assertGreaterEqual(
             node.status_expires, expected_time - timedelta(minutes=1))
         self.assertLessEqual(

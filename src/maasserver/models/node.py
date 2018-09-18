@@ -135,9 +135,9 @@ from maasserver.models.zone import Zone
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
     get_failed_status,
+    get_node_timeout,
     is_failed_status,
     MONITORED_STATUSES,
-    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
     NODE_TRANSITIONS,
 )
 from maasserver.routablepairs import (
@@ -1236,64 +1236,12 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.hostname
 
-    def get_deployment_time(self):
-        """Return the deployment time of this node (in seconds).
-
-        This is the maximum time the deployment is allowed to take.
-        """
-        # Return a *very* conservative estimate for now.
-        # Something that shouldn't conflict with any deployment.
-        return timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
-                NODE_STATUS.DEPLOYING]).total_seconds()
-
-    def get_commissioning_time(self):
-        """Return the commissioning time of this node (in seconds).
-
-        This is the maximum time the commissioning is allowed to take.
-        """
-        # Return a *very* conservative estimate for now.
-        return timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
-                NODE_STATUS.COMMISSIONING]).total_seconds()
-
-    def get_testing_time(self):
-        """Return the testing time of this node (in seconds).
-
-        This is the maximum time a node is allowed to take to start testing.
-        Once testing has begun MAAS relies on a heartbeat to know if the node
-        has failed testing.
-        """
-        # Return a *very* conservative estimate for now.
-        return timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
-                NODE_STATUS.TESTING]).total_seconds()
-
-    def get_entering_rescue_mode_time(self):
-        """Return the entering-rescue-mode time of this node (in seconds).
-
-        This is the maximum time the entering-rescue-mode is allowed to take.
-        """
-        # Return a *very* conservative estimate for now.
-        return timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
-                NODE_STATUS.ENTERING_RESCUE_MODE]).total_seconds()
-
-    def get_releasing_time(self):
-        """Return the releasing time of this node (in seconds).
-
-        This is the maximum time that releasing is allowed to take.
-        """
-        return timedelta(
-            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
-                NODE_STATUS.RELEASING]).total_seconds()
-
     def reset_status_expires(self):
         """Reset status_expires if set and in a monitored status."""
-        if (self.status_expires is not None and
-                self.status in NODE_FAILURE_MONITORED_STATUS_TIMEOUTS):
-            minutes = NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[self.status]
-            self.status_expires = now() + timedelta(minutes=minutes)
+        if self.status_expires is not None:
+            minutes = get_node_timeout(self.status)
+            if minutes is not None:
+                self.status_expires = now() + timedelta(minutes=minutes)
 
     def _register_request_event(
             self, user, type_name, action='', comment=None):
@@ -1844,16 +1792,20 @@ class Node(CleanSave, TimestampedModel):
 
     @classmethod
     @transactional
-    def _set_status_expires(self, system_id, seconds):
+    def _set_status_expires(self, system_id, status=None):
         """Set the status_expires field on node."""
         try:
             node = Node.objects.get(system_id=system_id)
         except Node.DoesNotExist:
             return
 
-        db_time = now()
-        node.status_expires = db_time + timedelta(seconds=seconds)
-        node.save(update_fields=['status_expires'])
+        if status is None:
+            status = node.status
+
+        minutes = get_node_timeout(status)
+        if minutes is not None:
+            node.status_expires = now() + timedelta(minutes=minutes)
+            node.save(update_fields=['status_expires'])
 
     @classmethod
     @transactional
@@ -1980,8 +1932,7 @@ class Node(CleanSave, TimestampedModel):
             assert isinstance(starting, Deferred) or starting is None
 
             post_commit().addCallback(
-                callOutToDatabase, Node._set_status_expires,
-                self.system_id, self.get_commissioning_time())
+                callOutToDatabase, Node._set_status_expires, self.system_id)
 
             if starting is None:
                 starting = post_commit()
@@ -2110,8 +2061,7 @@ class Node(CleanSave, TimestampedModel):
                 is_cycling = True
 
             post_commit().addCallback(
-                callOutToDatabase, Node._set_status_expires,
-                self.system_id, self.get_testing_time())
+                callOutToDatabase, Node._set_status_expires, self.system_id)
 
             cycling.addCallback(
                 callOut, self._start_testing_async, is_cycling, self.hostname)
@@ -2947,7 +2897,7 @@ class Node(CleanSave, TimestampedModel):
             # addresses when the power is finally off.
             post_commit().addCallback(
                 callOutToDatabase, Node._set_status_expires,
-                self.system_id, self.get_releasing_time())
+                self.system_id, NODE_STATUS.RELEASING)
             finalize_release = False
         else:
             # The node's power cannot be reliably controlled. Frankly, this
@@ -3954,11 +3904,11 @@ class Node(CleanSave, TimestampedModel):
             # The current state being ALLOCATED is our indication that the node
             # is being deployed for the first time.
             self.claim_auto_ips()
-            deployment_timeout = self.get_deployment_time()
+            set_deployment_timeout = True
             self._start_deployment()
             claimed_ips = True
         else:
-            deployment_timeout = None
+            set_deployment_timeout = False
             claimed_ips = False
 
         power_info = self.get_effective_power_info()
@@ -3977,10 +3927,10 @@ class Node(CleanSave, TimestampedModel):
 
         # Set the deployment timeout so the node is marked failed after
         # a period of time.
-        if deployment_timeout is not None:
+        if set_deployment_timeout:
             d.addCallback(
                 callOutToDatabase, Node._set_status_expires,
-                self.system_id, deployment_timeout)
+                self.system_id, NODE_STATUS.DEPLOYING)
 
         if old_status is not None:
             d.addErrback(
@@ -4257,8 +4207,7 @@ class Node(CleanSave, TimestampedModel):
             assert isinstance(cycling, Deferred) or cycling is None
 
             post_commit().addCallback(
-                callOutToDatabase, Node._set_status_expires,
-                self.system_id, self.get_entering_rescue_mode_time())
+                callOutToDatabase, Node._set_status_expires, self.system_id)
 
             if cycling is None:
                 cycling = post_commit()

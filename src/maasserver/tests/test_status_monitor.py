@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the status monitor module."""
@@ -6,18 +6,19 @@
 __all__ = []
 
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import timedelta
 from unittest.mock import call
 
 from maasserver import status_monitor
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Node
+from maasserver.models import (
+    Config,
+    Node,
+)
 from maasserver.models.signals.testing import SignalsDisabled
+from maasserver.models.timestampedmodel import now
 from maasserver.node_status import (
-    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
+    get_node_timeout,
     NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
 )
 from maasserver.status_monitor import (
@@ -50,14 +51,13 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
     def test__marks_all_possible_failed_status_as_failed(self):
         maaslog = self.patch(status_monitor.maaslog, 'info')
         self.useFixture(SignalsDisabled("power"))
-        current_time = datetime.now()
-        self.patch(status_monitor, "now").return_value = current_time
+        current_time = now()
         expired_time = current_time - timedelta(minutes=1)
         nodes = [
             factory.make_Node(status=status, status_expires=expired_time)
             for status in NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys()
         ]
-        mark_nodes_failed_after_expiring()
+        mark_nodes_failed_after_expiring(current_time, 20)
         failed_statuses = [
             reload_object(node).status
             for node in nodes
@@ -74,14 +74,13 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
     def test__skips_those_that_have_not_expired(self):
         maaslog = self.patch(status_monitor.maaslog, 'info')
         self.useFixture(SignalsDisabled("power"))
-        current_time = datetime.now()
-        self.patch(status_monitor, "now").return_value = current_time
+        current_time = now()
         expired_time = current_time + timedelta(minutes=1)
         nodes = [
             factory.make_Node(status=status, status_expires=expired_time)
             for status in NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys()
         ]
-        mark_nodes_failed_after_expiring()
+        mark_nodes_failed_after_expiring(current_time, 20)
         failed_statuses = [
             reload_object(node).status
             for node in nodes
@@ -130,14 +129,17 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
                 script_set=script_set, status=SCRIPT_STATUS.PENDING)
 
         # No exception should be raised.
-        mark_nodes_failed_after_missing_script_timeout()
+        mark_nodes_failed_after_missing_script_timeout(now(), 20)
         node = reload_object(node)
         self.assertEquals(self.status, node.status)
         self.assertThat(self.maaslog, MockNotCalled())
 
     def test_mark_nodes_failed_after_missing_timeout_heartbeat(self):
         node, script_set = self.make_node()
-        script_set.last_ping = datetime.now() - timedelta(minutes=11)
+        current_time = now()
+        node_timeout = Config.objects.get_config('node_timeout')
+        script_set.last_ping = current_time - timedelta(
+            minutes=(node_timeout + 1))
         script_set.save()
         script_results = [
             factory.make_ScriptResult(
@@ -145,17 +147,18 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
             for _ in range(3)
         ]
 
-        mark_nodes_failed_after_missing_script_timeout()
+        mark_nodes_failed_after_missing_script_timeout(
+            current_time, node_timeout)
         node = reload_object(node)
 
         self.assertEquals(self.failed_status, node.status)
         self.assertEquals(
-            "Node has not been heard from for the last 10 minutes",
-            node.error_description)
+            "Node has not been heard from for the last %s minutes" %
+            node_timeout, node.error_description)
         self.assertIn(
             call(
-                "%s: Has not been heard from for the last 10 minutes" %
-                node.hostname),
+                "%s: Has not been heard from for the last %s minutes" % (
+                    node.hostname, node_timeout)),
             self.maaslog.call_args_list)
         if node.enable_ssh:
             self.assertThat(self.mock_stop, MockNotCalled())
@@ -170,7 +173,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
 
     def test_sets_status_expires_when_flatlined_with_may_reboot_script(self):
         node, script_set = self.make_node()
-        now = datetime.now()
+        current_time = now()
         if self.status == NODE_STATUS.COMMISSIONING:
             script_type = SCRIPT_TYPE.COMMISSIONING
         else:
@@ -178,21 +181,21 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         script = factory.make_Script(script_type=script_type, may_reboot=True)
         factory.make_ScriptResult(
             script=script, script_set=script_set, status=SCRIPT_STATUS.RUNNING)
-        script_set.last_ping = now - timedelta(11)
+        script_set.last_ping = current_time - timedelta(11)
         script_set.save()
 
-        mark_nodes_failed_after_missing_script_timeout()
+        mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
         self.assertEquals(
-            now - (now - script_set.last_ping) + timedelta(
-                minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[self.status]),
+            current_time - (current_time - script_set.last_ping) + timedelta(
+                minutes=get_node_timeout(self.status, 20)),
             node.status_expires)
 
     def test_mark_nodes_failed_after_script_overrun(self):
         node, script_set = self.make_node()
-        now = datetime.now()
-        script_set.last_ping = now
+        current_time = now()
+        script_set.last_ping = current_time
         script_set.save()
         passed_script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PASSED)
@@ -203,9 +206,9 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         script = factory.make_Script(timeout=timedelta(seconds=60))
         running_script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.RUNNING, script=script,
-            started=now - timedelta(minutes=10))
+            started=current_time - timedelta(minutes=10))
 
-        mark_nodes_failed_after_missing_script_timeout()
+        mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
         self.assertEquals(self.failed_status, node.status)
@@ -243,8 +246,8 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         script_set = ScriptSet.objects.create_commissioning_script_set(node)
         node.current_commissioning_script_set = script_set
         node.save()
-        now = datetime.now()
-        script_set.last_ping = now
+        current_time = now()
+        script_set.last_ping = current_time
         script_set.save()
         pending_script_results = list(script_set.scriptresult_set.all())
         passed_script_result = pending_script_results.pop()
@@ -255,10 +258,10 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         failed_script_result.save()
         running_script_result = pending_script_results.pop()
         running_script_result.status = SCRIPT_STATUS.RUNNING
-        running_script_result.started = now - timedelta(minutes=10)
+        running_script_result.started = current_time - timedelta(minutes=10)
         running_script_result.save()
 
-        mark_nodes_failed_after_missing_script_timeout()
+        mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
         self.assertEquals(NODE_STATUS.FAILED_COMMISSIONING, node.status)
@@ -294,8 +297,8 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
 
     def test_uses_param_runtime(self):
         node, script_set = self.make_node()
-        now = datetime.now()
-        script_set.last_ping = now
+        current_time = now()
+        script_set.last_ping = current_time
         script_set.save()
         passed_script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PASSED)
@@ -306,12 +309,13 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         script = factory.make_Script(timeout=timedelta(minutes=2))
         running_script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.RUNNING, script=script,
-            started=now - timedelta(minutes=50), parameters={'runtime': {
+            started=current_time - timedelta(minutes=50),
+            parameters={'runtime': {
                 'type': 'runtime',
                 'value': 60 * 60,
                 }})
 
-        mark_nodes_failed_after_missing_script_timeout()
+        mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
         self.assertEquals(self.status, node.status)
@@ -329,33 +333,33 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
 
     def test_mark_nodes_failed_after_missing_timeout_prefetches(self):
         self.patch(Node, 'mark_failed')
-        now = datetime.now()
+        current_time = now()
         node, script_set = self.make_node()
-        script_set.last_ping = now
+        script_set.last_ping = current_time
         script_set.save()
         script = factory.make_Script(timeout=timedelta(seconds=60))
         factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.RUNNING,
-            script=script, started=now - timedelta(minutes=3))
+            script=script, started=current_time - timedelta(minutes=3))
 
         counter_one = CountQueries()
         with counter_one:
-            mark_nodes_failed_after_missing_script_timeout()
+            mark_nodes_failed_after_missing_script_timeout(current_time, 20)
 
         nodes = []
         for _ in range(6):
             node, script_set = self.make_node()
-            script_set.last_ping = now
+            script_set.last_ping = current_time
             script_set.save()
             script = factory.make_Script(timeout=timedelta(seconds=60))
             factory.make_ScriptResult(
                 script_set=script_set, status=SCRIPT_STATUS.RUNNING,
-                script=script, started=now - timedelta(minutes=3))
+                script=script, started=current_time - timedelta(minutes=3))
             nodes.append(node)
 
         counter_many = CountQueries()
         with counter_many:
-            mark_nodes_failed_after_missing_script_timeout()
+            mark_nodes_failed_after_missing_script_timeout(current_time, 20)
 
         # Lookup takes 7 queries no matter the amount of Nodes
         # 1. Get all Nodes in commissioning or testing

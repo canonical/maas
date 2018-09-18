@@ -8,21 +8,19 @@ __all__ = [
     'StatusMonitorService',
     ]
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import timedelta
 
 from django.db.models import Prefetch
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
 )
+from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import (
-    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
-    NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
+    get_node_timeout,
+    MONITORED_STATUSES,
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -41,43 +39,39 @@ from twisted.application.internet import TimerService
 maaslog = get_maas_logger("node")
 
 
-def mark_nodes_failed_after_expiring():
+def mark_nodes_failed_after_expiring(now, node_timeout):
     """Mark all nodes in that database as failed where the status did not
     transition in time. `status_expires` is checked on the node to see if the
     current time is newer than the expired time.
     """
-    current_db_time = now()
     expired_nodes = Node.objects.filter(
-        status__in=NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys(),
-        status_expires__isnull=False,
-        status_expires__lte=current_db_time)
+        status__in=MONITORED_STATUSES, status_expires__isnull=False,
+        status_expires__lte=now)
     for node in expired_nodes:
+        minutes = get_node_timeout(node.status, node_timeout)
         maaslog.info("%s: Operation '%s' timed out after %s minutes." % (
             node.hostname,
             NODE_STATUS_CHOICES_DICT[node.status],
-            NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
+            minutes,
             ))
         node.mark_failed(
             comment="Node operation '%s' timed out after %s minutes." % (
                 NODE_STATUS_CHOICES_DICT[node.status],
-                NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
+                minutes,
             ), script_result_status=SCRIPT_STATUS.ABORTED)
 
 
-def mark_nodes_failed_after_missing_script_timeout():
+def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
     """Check on the status of commissioning or testing nodes.
 
     For any node currently commissioning or testing check that a region is
     still receiving its heartbeat and no running script has gone past its
     run limit. If the node fails either condition its put into a failed status.
     """
-    now = datetime.now()
-    # maas-run-remote-scripts sends a heartbeat every two minutes. We allow
-    # for a node to miss up to five heartbeats to account for network blips.
-    # XXX ltrager 2017-11-03 - The timeout should be stored in an enum or a
-    # user configurable variable. If this is changed the log messages below
-    # should also be updated.
-    heartbeat_expired = now - timedelta(minutes=(2 * 5))
+    # maas-run-remote-scripts sends a heartbeat every two minutes. If we
+    # haven't received a heartbeat within node_timeout(20 min by default)
+    # it's dead.
+    heartbeat_expired = now - timedelta(minutes=node_timeout)
     # Get the list of nodes currently running testing. status_expires is used
     # while the node is booting. Once MAAS receives the signal that testing
     # has begun it resets status_expires and checks for the heartbeat instead.
@@ -120,20 +114,22 @@ def mark_nodes_failed_after_missing_script_timeout():
             # heartbeat has flatlined assume the node is rebooting. Set the
             # node.status_expires time to the boot timeout minus what has
             # already passed.
+            minutes = get_node_timeout(node.status, node_timeout)
             node.status_expires = (
                 now -
                 (now - script_set.last_ping) +
-                timedelta(
-                    minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status]
-                ))
+                timedelta(minutes=minutes)
+            )
             node.save(update_fields=['status_expires'])
             continue
         elif flatlined:
             maaslog.info(
-                '%s: Has not been heard from for the last 10 minutes' %
-                node.hostname)
+                '%s: Has not been heard from for the last %s minutes' % (
+                    node.hostname, node_timeout))
             node.mark_failed(
-                comment='Node has not been heard from for the last 10 minutes',
+                comment=(
+                    'Node has not been heard from for the last %s minutes' %
+                    node_timeout),
                 script_result_status=SCRIPT_STATUS.TIMEDOUT)
             if not node.enable_ssh:
                 maaslog.info(
@@ -182,8 +178,10 @@ def mark_nodes_failed_after_missing_script_timeout():
 @transactional
 def check_status():
     """Check the status_expires and script timeout on all nodes."""
-    mark_nodes_failed_after_expiring()
-    mark_nodes_failed_after_missing_script_timeout()
+    current_time = now()
+    node_timeout = Config.objects.get_config('node_timeout')
+    mark_nodes_failed_after_expiring(current_time, node_timeout)
+    mark_nodes_failed_after_missing_script_timeout(current_time, node_timeout)
 
 
 class StatusMonitorService(TimerService, object):
