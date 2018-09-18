@@ -12,6 +12,7 @@ from uuid import uuid4
 from django.core.exceptions import ValidationError
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.filesystemgroup import RAID_SUPERBLOCK_OVERHEAD
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -77,7 +78,8 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # filesystems in it.
         array_size = new_size * filesystem_group.filesystems.count()
         self.assertEqual(
-            array_size, reload_object(filesystem_group.virtual_device).size)
+            array_size - RAID_SUPERBLOCK_OVERHEAD,
+            reload_object(filesystem_group.virtual_device).size)
 
     def test_create_or_update_for_bcache_updates_block_device(self):
         # This will create the filesystem group and a virtual block device.

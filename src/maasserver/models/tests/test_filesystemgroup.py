@@ -31,6 +31,7 @@ from maasserver.models.filesystemgroup import (
     FilesystemGroup,
     LVM_PE_SIZE,
     RAID,
+    RAID_SUPERBLOCK_OVERHEAD,
     RAIDManager,
     VolumeGroup,
     VolumeGroupManager,
@@ -687,7 +688,8 @@ class TestFilesystemGroup(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0, filesystems=filesystems)
         # Size should be twice the smallest device (the rest of the larger
         # device remains unused.
-        self.assertEqual(small_size * 2, fsgroup.get_size())
+        self.assertEqual(
+            (small_size * 2) - RAID_SUPERBLOCK_OVERHEAD, fsgroup.get_size())
 
     def test_get_size_returns_smallest_disk_size_for_raid_1(self):
         node = factory.make_Node()
@@ -706,7 +708,8 @@ class TestFilesystemGroup(MAASServerTestCase):
         ]
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_1, filesystems=filesystems)
-        self.assertEqual(small_size, fsgroup.get_size())
+        self.assertEqual(
+            small_size - RAID_SUPERBLOCK_OVERHEAD, fsgroup.get_size())
 
     def test_get_size_returns_correct_disk_size_for_raid_5(self):
         node = factory.make_Node()
@@ -736,7 +739,8 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_5, filesystems=filesystems)
         self.assertEqual(
-            small_size * number_of_raid_devices, fsgroup.get_size())
+            (small_size * number_of_raid_devices) - RAID_SUPERBLOCK_OVERHEAD,
+            fsgroup.get_size())
 
     def test_get_size_returns_correct_disk_size_for_raid_6(self):
         node = factory.make_Node()
@@ -766,7 +770,8 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_6, filesystems=filesystems)
         self.assertEqual(
-            small_size * (number_of_raid_devices - 1), fsgroup.get_size())
+            (small_size * (number_of_raid_devices - 1)) - (
+                RAID_SUPERBLOCK_OVERHEAD), fsgroup.get_size())
 
     @skip("XXX: GavinPanella 2015-12-04 bug=1522965: Fails spuriously.")
     def test_get_size_returns_correct_disk_size_for_raid_10(self):
@@ -797,7 +802,8 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_10, filesystems=filesystems)
         self.assertEqual(
-            small_size * (number_of_raid_devices + 1) // 2, fsgroup.get_size())
+            (small_size * (number_of_raid_devices + 1) // 2) - (
+                RAID_SUPERBLOCK_OVERHEAD), fsgroup.get_size())
 
     def test_get_size_returns_0_if_bcache_without_backing(self):
         fsgroup = FilesystemGroup(group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
@@ -1612,7 +1618,9 @@ class TestRAID(MAASServerTestCase):
             spare_devices=[spare_block_device],
             spare_partitions=[spare_partition])
         self.assertEqual('md0', raid.name)
-        self.assertEqual(6 * partitions[1].size, raid.get_size())
+        self.assertEqual(
+            (6 * partitions[1].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertEqual(uuid, raid.uuid)
         self.assertEqual(10, raid.filesystems.count())
@@ -1702,7 +1710,8 @@ class TestRAID(MAASServerTestCase):
             spare_devices=[spare_block_device],
             spare_partitions=[spare_partition])
         self.assertEqual('md0', raid.name)
-        self.assertEqual(partitions[1].size, raid.get_size())
+        self.assertEqual(
+            partitions[1].size - RAID_SUPERBLOCK_OVERHEAD, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_1, raid.group_type)
         self.assertEqual(uuid, raid.uuid)
         self.assertEqual(10, raid.filesystems.count())
@@ -1754,7 +1763,9 @@ class TestRAID(MAASServerTestCase):
             spare_devices=[spare_block_device],
             spare_partitions=[spare_partition])
         self.assertEqual('md0', raid.name)
-        self.assertEqual(7 * partitions[1].size, raid.get_size())
+        self.assertEqual(
+            (7 * partitions[1].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_5, raid.group_type)
         self.assertEqual(uuid, raid.uuid)
         self.assertEqual(10, raid.filesystems.count())
@@ -1868,7 +1879,9 @@ class TestRAID(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(node=node, size=device_size)
         raid.add_device(device, FILESYSTEM_TYPE.RAID)
         self.assertEqual(11, raid.filesystems.count())
-        self.assertEqual(10 * device_size, raid.get_size())
+        self.assertEqual(
+            (10 * device_size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_add_spare_device_to_array(self):
         node = factory.make_Node()
@@ -1886,7 +1899,9 @@ class TestRAID(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(node=node, size=device_size)
         raid.add_device(device, FILESYSTEM_TYPE.RAID_SPARE)
         self.assertEqual(11, raid.filesystems.count())
-        self.assertEqual(9 * device_size, raid.get_size())
+        self.assertEqual(
+            (9 * device_size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_add_partition_to_array(self):
         node = factory.make_Node()
@@ -1906,7 +1921,9 @@ class TestRAID(MAASServerTestCase):
                 node=node, size=device_size)).add_partition()
         raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
         self.assertEqual(11, raid.filesystems.count())
-        self.assertEqual(10 * partition.size, raid.get_size())
+        self.assertEqual(
+            (10 * partition.size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_add_spare_partition_to_array(self):
         node = factory.make_Node()
@@ -1926,7 +1943,9 @@ class TestRAID(MAASServerTestCase):
                 node=node, size=device_size)).add_partition()
         raid.add_partition(partition, FILESYSTEM_TYPE.RAID_SPARE)
         self.assertEqual(11, raid.filesystems.count())
-        self.assertEqual(9 * partition.size, raid.get_size())
+        self.assertEqual(
+            (9 * partition.size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_add_device_from_another_node_to_array_fails(self):
         node = factory.make_Node()
@@ -1951,7 +1970,8 @@ class TestRAID(MAASServerTestCase):
                 "array.']")):
             raid.add_device(device, FILESYSTEM_TYPE.RAID)
         self.assertEqual(10, raid.filesystems.count())  # Still 10 devices
-        self.assertEqual(9 * device_size, raid.get_size())
+        self.assertEqual(
+            (9 * device_size) - RAID_SUPERBLOCK_OVERHEAD, raid.get_size())
 
     def test_add_partition_from_another_node_to_array_fails(self):
         node = factory.make_Node()
@@ -1977,7 +1997,8 @@ class TestRAID(MAASServerTestCase):
                     "the rest of the array.']")):
             raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
         self.assertEqual(10, raid.filesystems.count())  # Nothing added
-        self.assertEqual(9 * device_size, raid.get_size())
+        self.assertEqual(
+            (9 * device_size) - RAID_SUPERBLOCK_OVERHEAD, raid.get_size())
 
     def test_add_already_used_device_to_array_fails(self):
         node = factory.make_Node()
@@ -2002,7 +2023,8 @@ class TestRAID(MAASServerTestCase):
                 "['There is another filesystem on this device.']")):
             raid.add_device(device, FILESYSTEM_TYPE.RAID)
         self.assertEqual(10, raid.filesystems.count())  # Nothing added.
-        self.assertEqual(9 * device_size, raid.get_size())
+        self.assertEqual(
+            (9 * device_size) - RAID_SUPERBLOCK_OVERHEAD, raid.get_size())
 
     def test_remove_device_from_array_invalidates_array_fails(self):
         """Checks it's not possible to remove a device from an RAID in such way
@@ -2029,7 +2051,9 @@ class TestRAID(MAASServerTestCase):
                 "devices and any number of spares.']}")):
             raid.remove_device(block_devices[0])
         self.assertEqual(4, raid.filesystems.count())
-        self.assertEqual(2 * device_size, raid.get_size())
+        self.assertEqual(
+            (2 * device_size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
         # Ensure the filesystems are the exact same before and after.
         self.assertItemsEqual(
             fsids_before, [fs.id for fs in raid.filesystems.all()])
@@ -2062,7 +2086,9 @@ class TestRAID(MAASServerTestCase):
                 "devices and any number of spares.']}")):
             raid.remove_partition(partitions[0])
         self.assertEqual(4, raid.filesystems.count())
-        self.assertEqual(2 * partitions[0].size, raid.get_size())
+        self.assertEqual(
+            (2 * partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
         # Ensure the filesystems are the exact same before and after.
         self.assertItemsEqual(
             fsids_before, [fs.id for fs in raid.filesystems.all()])
@@ -2083,7 +2109,9 @@ class TestRAID(MAASServerTestCase):
             spare_devices=block_devices[-2:])
         raid.remove_device(block_devices[0])
         self.assertEqual(9, raid.filesystems.count())
-        self.assertEqual(6 * device_size, raid.get_size())
+        self.assertEqual(
+            (6 * device_size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_remove_partition_from_array(self):
         node = factory.make_Node()
@@ -2103,7 +2131,9 @@ class TestRAID(MAASServerTestCase):
             spare_partitions=partitions[-2:])
         raid.remove_partition(partitions[0])
         self.assertEqual(9, raid.filesystems.count())
-        self.assertEqual(6 * partitions[0].size, raid.get_size())
+        self.assertEqual(
+            (6 * partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_remove_invalid_partition_from_array_fails(self):
         node = factory.make_Node(bios_boot_method="uefi")
@@ -2130,7 +2160,9 @@ class TestRAID(MAASServerTestCase):
                     block_device=factory.make_PhysicalBlockDevice(
                         node=node, size=device_size)).add_partition())
         self.assertEqual(10, raid.filesystems.count())
-        self.assertEqual(9 * partitions[0].size, raid.get_size())
+        self.assertEqual(
+            (9 * partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
     def test_remove_device_from_array_fails(self):
         node = factory.make_Node()
@@ -2151,7 +2183,9 @@ class TestRAID(MAASServerTestCase):
             raid.remove_device(
                 factory.make_PhysicalBlockDevice(node=node, size=device_size))
         self.assertEqual(10, raid.filesystems.count())
-        self.assertEqual(9 * device_size, raid.get_size())
+        self.assertEqual(
+            (9 * device_size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
 
 
 class TestBcache(MAASServerTestCase):
@@ -2215,7 +2249,8 @@ class TestBcache(MAASServerTestCase):
             cache_mode=CACHE_MODE_TYPE.WRITEAROUND)
 
         # Verify the filesystems were properly created on the target devices
-        self.assertEqual(10 * backing_size, bcache.get_size())
+        self.assertEqual(
+            (10 * backing_size) - RAID_SUPERBLOCK_OVERHEAD, bcache.get_size())
         self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_CACHE,
             cache_device.get_effective_filesystem().fstype)
