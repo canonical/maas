@@ -38,6 +38,7 @@ from provisioningserver.utils.service_monitor import (
     ToggleableService,
 )
 from provisioningserver.utils.shell import get_env_with_bytes_locale
+from provisioningserver.utils.twisted import pause
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -447,6 +448,14 @@ class TestServiceMonitor(MAASTestCase):
             ServiceState(SERVICE_STATE.OFF, "dead"))
         with ExpectedException(ServiceActionError):
             yield service_monitor.reloadService(fake_service.name, if_on=True)
+
+    @inlineCallbacks
+    def test___execCmd_times_out(self):
+        monitor = ServiceMonitor(make_fake_service())
+        with ExpectedException(ServiceActionError):
+            yield monitor._execCmd(["sleep", "0.3"], {}, timeout=0.1)
+        # Pause long enough for the reactor to cleanup the process.
+        yield pause(0.5)
 
     @inlineCallbacks
     def test___execSystemDServiceAction_calls_systemctl(self):

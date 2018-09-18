@@ -35,8 +35,12 @@ from provisioningserver.utils import (
     typed,
 )
 from provisioningserver.utils.shell import get_env_with_bytes_locale
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    deferWithTimeout,
+)
 from twisted.internet.defer import (
+    CancelledError,
     DeferredList,
     DeferredLock,
     inlineCallbacks,
@@ -406,6 +410,35 @@ class ServiceMonitor:
             raise ServiceActionError(error_msg)
         yield self._performServiceAction(service, "reload")
 
+    def _execCmd(self, cmd, env, timeout=5):
+
+        def decode(result):
+            out, err, code = result
+            return code, out.decode("utf-8"), err.decode("utf-8")
+
+        def log_code(result, cmd):
+            _, _, code = result
+            log.debug(
+                "Service monitor got exit code '{code}' from cmd: {cmd()}",
+                code=code, cmd=lambda: ' '.join(cmd))
+            return result
+
+        def handle_timeout(failure, timeout, cmd):
+            failure.trap(CancelledError)
+            raise ServiceActionError(
+                "Service monitor timed out after '%d' "
+                "seconds running cmd: %s" % (timeout, ' '.join(cmd)))
+
+        log.debug(
+            "Service monitor executing cmd: {cmd()}",
+            cmd=lambda: ' '.join(cmd))
+
+        d = deferWithTimeout(
+            timeout, getProcessOutputAndValue, cmd[0], cmd[1:], env=env)
+        d.addErrback(handle_timeout, timeout, cmd)
+        d.addCallback(log_code, cmd)
+        return d.addCallback(decode)
+
     @asynchronous
     def _execSystemDServiceAction(self, service_name, action, extra_opts=None):
         """Perform the action with the systemctl command.
@@ -417,13 +450,7 @@ class ServiceMonitor:
         if extra_opts is not None:
             cmd.extend(extra_opts)
         cmd.append(service_name)
-
-        def decode(result):
-            out, err, code = result
-            return code, out.decode("utf-8"), err.decode("utf-8")
-
-        d = getProcessOutputAndValue(cmd[0], cmd[1:], env=env)
-        return d.addCallback(decode)
+        return self._execCmd(cmd, env)
 
     @asynchronous
     def _execSupervisorServiceAction(self, service_name, action):
@@ -434,13 +461,7 @@ class ServiceMonitor:
         env = get_env_with_bytes_locale()
         cmd = os.path.join(snappy.get_snap_path(), "bin", "run-supervisorctl")
         cmd = (cmd, action, service_name)
-
-        def decode(result):
-            out, err, code = result
-            return code, out.decode("utf-8"), err.decode("utf-8")
-
-        d = getProcessOutputAndValue(cmd[0], cmd[1:], env=env)
-        return d.addCallback(decode)
+        return self._execCmd(cmd, env)
 
     @inlineCallbacks
     def _performServiceAction(self, service, action):
