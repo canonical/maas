@@ -194,6 +194,31 @@ angular.module('MAAS').directive('maasMachinesTable', [
           scope.updateAllChecked();
           scope.onListingChange({$machines: scope.table.filteredMachines});
         });
+
+        // Truncates leading zeroes in RAM and returns unit separately
+        scope.formatMemoryUnit = function(ram) {
+          var memory = parseFloat(ram);
+          return {
+            value: memory.toString(),
+            unit: 'GiB',
+          }
+        }
+
+        // Converts GB into TB if necessary and output three sig-figs
+        scope.formatStorageUnit = function(gb) {
+          var storage = parseFloat(gb);
+          if (storage < 1000) {
+            return {
+              value: Number(storage.toPrecision(3)).toString(),
+              unit: 'GB',
+            };
+          } else {
+            return {
+              value: Number((storage / 1000).toPrecision(3)).toString(),
+              unit: 'TB',
+            };
+          }
+        };
       }
     };
 }]);

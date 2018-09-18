@@ -466,4 +466,66 @@ describe("maasMachinesTable", function() {
             expect($scope.onListingChange).toHaveBeenCalledWith(machines);
         });
     });
+
+    describe("formatMemoryUnit", function() {
+
+        it("returns unit and value separately", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var memory = Math.floor(Math.random() * 10) + 1;
+            var formattedMemory = scope.formatMemoryUnit(memory);
+
+            var actual = Object.keys(formattedMemory).sort();
+            var expected = ['unit', 'value'];
+            expect(actual).toEqual(expected);
+        });
+
+        it("removes leading zeroes and converts to string", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var rand = Math.floor(Math.random() * 10) + 1;
+            var memory = rand.toFixed(1);
+
+            var actual = scope.formatMemoryUnit(memory).value;
+            var expected = rand.toString();
+            expect(actual).toEqual(expected);
+        });
+    });
+
+    describe("formatStorageUnit", function() {
+
+        it("returns unit and value separately", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var storage = Math.random().toFixed(1) * 100;
+            var formattedStorage = scope.formatStorageUnit(storage);
+
+            var actual = Object.keys(formattedStorage).sort();
+            var expected = ['unit', 'value'];
+            expect(actual).toEqual(expected);
+        });
+
+        it("displays three significant figures", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var storage = Math.random() * 10;
+
+            var actual = scope.formatStorageUnit(storage).value;
+            var expected = Number(storage.toPrecision(3)).toString();
+            expect(actual).toEqual(expected);
+        });
+
+        it("converts unit to TB at or above 1000 GB", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var storage = 1000.0;
+
+            var actual = scope.formatStorageUnit(storage);
+            var expected = {
+                unit: 'TB',
+                value: '1',
+            }
+            expect(actual).toEqual(expected);
+        });
+    });
 });

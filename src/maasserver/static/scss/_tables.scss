@@ -500,4 +500,11 @@
       margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
     }
   }
+
+  .p-muted-text {
+    @extend %small-text;
+    color: $color-mid-dark;
+    margin: 0;
+    padding: 0;
+  }
 }
