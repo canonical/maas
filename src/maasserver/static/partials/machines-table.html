@@ -21,8 +21,14 @@
             <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">
                 <i class="p-icon--placeholder u-hide--small u-hide--medium"></i>Power
             </th>
-            <th class="u-hide--small"></th>
-            <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</th>
+            <th class="p-double-row" title="Status">
+                <div class="p-double-row__icon-container">
+                    <i class="p-icon--placeholder"></i>
+                </div>
+                <div class="p-double-row__rows-container">
+                    <span role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</span>
+                </div>
+            </th>
             <th class="p-double-row" title="Owner, Tags">
                 <span role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner,</span>
                 <div>Tags</div>
@@ -68,7 +74,9 @@
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
             <td class="p-double-row" aria-label="Power state">
-                <div class="p-double-row__icon p-icon--power-{$ node.power_state $}"></div>
+                <div class="p-double-row__icon-container">
+                    <i class="p-icon--power-{$ node.power_state $}"></i>
+                </div>
                 <div class="p-double-row__rows-container--icon u-hide--small u-hide--medium">
                     <div class="p-double-row__main-row u-upper-case--first">
                         <span>{$ node.power_state $}</span>
@@ -78,25 +86,26 @@
                     </div>
                 </div>
             </td>
-            <td class="u-hide--small u-align--center p-table--action-cell">
-                <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin u-hide--small"></i>
-                <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" class="tooltip tooltip--left" aria-label="{$ node.other_test_status_tooltip $}"></i>
-                <span class="p-tooltip p-tooltip--top-right">
-                    <i data-ng-if="showFailedTestWarning(node)" class="p-icon--warning u-hide--small" aria-describedby="failed-test-warning-tooltip-{$ node.fqdn $}"></i>
-                    <span class="p-tooltip__message" role="tooltip" id="failed-test-warning-tooltip-{$ node.fqdn $}">Machine has failed tests; use with caution!</span>
-                </span>
-            </td>
-            <td class="" aria-label="Status" title="{$ getStatusText(node) $}">
-                {$ getStatusText(node) $}
-                <span class="u-hide--medium u-hide--large">
-                    <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
-                    <span class="p-tooltip p-tooltip--left">
-                        <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" aria-labelledby="{$ node.other_test_status_tooltip $}"></i>
-                        <span data-ng-if="showNodeStatus(node)" class="p-tooltip__message" role="tooltip" id="other-status-tooltip-{$ node.fqdn $}">{$ node.other_test_status_tooltip $}</span>
-                    </span>
-                    <span class="p-tooltip p-tooltip--left">
-                        <i data-ng-if="showFailedTestWarning(node)" class="p-icon--warning" aria-describedby="failed-test-tooltip-large-{$ node.fqdn $}"></i>
-                        <span data-ng-if="showFailedTestWarning(node)" class="p-tooltip__message" role="tooltip" id="failed-test-tooltip-large-{$ node.fqdn $}">{$ node.other_test_status_tooltip $}</span>
+            <td class="p-double-row" aria-label="Status, Events" title="{$ getStatusText(node) $}">
+                <span class="p-tooltip p-tooltip--top-left" aria-describedby="latest-event-{$ node.fqdn $}">
+                    <div class="p-double-row__icon-container">
+                        <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
+                        <i data-ng-if="showNodeStatus(node)" data-maas-script-status="script-status" data-script-status="node.other_test_status" aria-label="{$ node.other_test_status_tooltip $}"></i>
+                        <i data-ng-if="showFailedTestWarning(node)" class="p-icon--warning" aria-describedby="failed-test-warning-tooltip-{$ node.fqdn $}"></i>
+                        <i data-ng-if="!showSpinner(node) && !showNodeStatus(node) && !showFailedTestWarning(node)" class="p-icon--placeholder"></i>
+                    </div>
+                    <div class="p-double-row__rows-container--icon">
+                        <div class="p-double-row__main-row" aria-label="Status">
+                            <span>{$ getStatusText(node) $}</span>
+                        </div>
+                        <div data-ng-if="node.latest_event.type.description" class="p-double-row__muted-row" aria-label="Latest event">
+                            <span>{$ node.latest_event.type.description $}</span>
+                        </div>
+                    </div>
+                    <span data-ng-if="showFailedTestWarning(node)" class="p-tooltip__message" role="tooltip" id="failed-test-warning-tooltip-{$ node.fqdn $}">Machine has failed tests; use with caution!</span>
+                    <span data-ng-if="!showFailedTestWarning(node) && node.latest_event" class="p-tooltip__message p-tooltip__message--latest-event" role="tooltip" id="latest-event-{$ node.system_id $}">
+                        <span data-ng-if="node.latest_event.type.description">{$ node.latest_event.type.description $}</span>
+                        <span data-ng-if="node.latest_event.description"><br>{$ node.latest_event.description $}</span>
                     </span>
                 </span>
             </td>

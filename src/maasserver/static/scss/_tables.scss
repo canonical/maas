@@ -236,32 +236,28 @@
           width: 10%;
         }
         &:nth-child(3) {
-          width: 4%;
+          width: 22%;
         }
         &:nth-child(4) {
-          width: 18%;
+          width: 10%;
         }
         &:nth-child(5) {
           @include table-sortable-adjust(1100px);
-          width: 12%;
-        }
-        &:nth-child(6) {
-          @include table-sortable-adjust(1600px);
           width: 10%;
         }
-        &:nth-child(7) {
+        &:nth-child(6) {
           @include table-sortable-adjust(1390px);
           width: 6%;
         }
-        &:nth-child(8) {
+        &:nth-child(7) {
           @include table-sortable-adjust(1600px);
           width: 8%;
         }
-        &:nth-child(9) {
+        &:nth-child(8) {
           @include table-sortable-adjust(1600px);
           width: 6%;
         }
-        &:nth-child(10) {
+        &:nth-child(9) {
           @include table-sortable-adjust(1600px);
           width: 8%;
         }
@@ -287,6 +283,11 @@
       height: map-get($icon-sizes, default);
       margin-right: $sph-intra--condensed;
       width: map-get($icon-sizes, default);
+    }
+
+    .p-tooltip__message--latest-event {
+      max-width: 500px;
+      white-space: inherit;
     }
   }
 
@@ -454,6 +455,7 @@
   .p-double-row {
     $checkbox-space: 1rem + $sph-intra;
     $icon-space: map-get($icon-sizes, default) + $sph-intra--condensed;
+    overflow: visible;
 
     %p-double-row__icon-container {
       display: block;
@@ -473,10 +475,9 @@
       margin-right: $sph-intra;
     }
 
-    .p-double-row__icon {
+    .p-double-row__icon-container {
       @extend %p-double-row__icon-container;
       margin-right: $sph-intra--condensed;
-      margin-top: map-get($nudges, nudge--p);
     }
 
     .p-double-row__rows-container--icon {
