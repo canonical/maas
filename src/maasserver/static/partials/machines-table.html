@@ -24,8 +24,11 @@
             <th class="u-hide--small"></th>
             <th role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</th>
             <th class="p-double-row" title="Owner, Tags">
-                <span role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true, 'p-double-row': true}">Owner,</span>
+                <span role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner,</span>
                 <div>Tags</div>
+            </th>
+            <th class="p-double-row u-hide--small" title="Zone">
+                <span role="columnheader" data-ng-click="sortTable('zone.name')" data-ng-class="{'is-sorted': table.predicate === 'zone.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Zone</span>
             </th>
             <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Cores">Cores</th>
             <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="RAM (GiB)">RAM (GiB)</th>
@@ -103,6 +106,14 @@
                     </div>
                     <div data-ng-if="node.tags.length !== 0" class="p-double-row__muted-row" aria-label="Tags" title="{$ node.tags.join(', ') $}">
                         <span>{$ node.tags.join(', ') $}</span>
+                    </div>
+                </div>
+            </td>
+            <td class="p-double-row u-hide--small" aria-label="Zone" title="{$ node.zone.name $}">
+                <div class="p-double-row__rows-container">
+                    <div class="p-double-row__main-row" aria-label="Zone">
+                        <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}">{$ node.zone.name $}</a></span>
+                        <span data-ng-if="!node.zone.name">-</span>
                     </div>
                 </div>
             </td>
