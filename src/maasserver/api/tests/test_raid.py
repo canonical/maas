@@ -17,6 +17,7 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystem import Filesystem
+from maasserver.models.filesystemgroup import RAID_SUPERBLOCK_OVERHEAD
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
@@ -28,6 +29,12 @@ from testtools.matchers import (
     ContainsDict,
     Equals,
 )
+
+# Use the following block devices and partition sizes in these tests. This
+# ensures that there will be enough space available to handle the partition
+# table overhead and RAID overhead.
+BLOCK_SIZE = MIN_BLOCK_DEVICE_SIZE * 2
+PART_SIZE = MIN_PARTITION_SIZE * 2
 
 
 def get_raid_devices_uri(node):
@@ -117,7 +124,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         bds = [
             factory.make_PhysicalBlockDevice(
                 node=node,
-                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
+                size=(BLOCK_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -127,7 +134,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             for bd in bds[:5]
         ]
         partitions = [
-            bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
+            bd.get_partitiontable().add_partition(size=PART_SIZE).id
             for bd in bds[5:]
         ]
         uuid4 = str(uuid.uuid4())
@@ -150,7 +157,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         bds = [
             factory.make_PhysicalBlockDevice(
                 node=node,
-                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
+                size=(BLOCK_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -160,7 +167,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             for bd in bds[:5]
         ]
         partitions = [
-            bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
+            bd.get_partitiontable().add_partition(size=PART_SIZE).id
             for bd in bds[5:]
         ]
         uuid4 = str(uuid.uuid4())
@@ -185,7 +192,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         bds = [
             factory.make_PhysicalBlockDevice(
                 node=node,
-                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
+                size=(BLOCK_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -195,7 +202,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             for bd in bds[:5]
         ]
         partitions = [
-            bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
+            bd.get_partitiontable().add_partition(size=PART_SIZE).id
             for bd in bds[5:]
         ]
         uuid4 = str(uuid.uuid4())
@@ -216,7 +223,9 @@ class TestRaidsAPI(APITestCase.ForUser):
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
-        self.assertEqual(10 * MIN_PARTITION_SIZE, parsed_device['size'])
+        self.assertEqual(
+            (10 * PART_SIZE) - RAID_SUPERBLOCK_OVERHEAD,
+            parsed_device['size'])
         self.assertItemsEqual(uuid4, parsed_device['uuid'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
@@ -232,7 +241,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         bds = [
             factory.make_PhysicalBlockDevice(
                 node=node,
-                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
+                size=(BLOCK_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -243,7 +252,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             if bd.get_partitiontable() is None
         ]
         partitions = [
-            bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
+            bd.get_partitiontable().add_partition(size=PART_SIZE).id
             for bd in bds[5:]
         ]
         uuid4 = factory.make_UUID()
@@ -268,7 +277,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         bds = [
             factory.make_PhysicalBlockDevice(
                 node=node,
-                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
+                size=(BLOCK_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -278,7 +287,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             for bd in bds[:5]
         ]
         partitions = [
-            bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
+            bd.get_partitiontable().add_partition(size=PART_SIZE).id
             for bd in bds[5:]
         ]
         uuid4 = str(uuid.uuid4())
@@ -299,7 +308,9 @@ class TestRaidsAPI(APITestCase.ForUser):
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
-        self.assertEqual(MIN_PARTITION_SIZE, parsed_device['size'])
+        self.assertEqual(
+            PART_SIZE - RAID_SUPERBLOCK_OVERHEAD,
+            parsed_device['size'])
         self.assertItemsEqual(uuid4, parsed_device['uuid'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
@@ -314,13 +325,13 @@ class TestRaidsAPI(APITestCase.ForUser):
         bds = [
             factory.make_PhysicalBlockDevice(
                 node=node,
-                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
+                size=(BLOCK_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
             factory.make_PartitionTable(block_device=bd)
         large_partitions = [
-            bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE)
+            bd.get_partitiontable().add_partition(size=PART_SIZE)
             for bd in bds[5:]
         ]
         block_devices = [
@@ -351,7 +362,9 @@ class TestRaidsAPI(APITestCase.ForUser):
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
-        self.assertEqual(MIN_PARTITION_SIZE, parsed_device['size'])
+        self.assertEqual(
+            PART_SIZE - RAID_SUPERBLOCK_OVERHEAD,
+            parsed_device['size'])
         self.assertItemsEqual(uuid4, parsed_device['uuid'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
@@ -406,7 +419,9 @@ class TestRaidsAPI(APITestCase.ForUser):
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
         # Size is equivalent to 7 of the smallest device (the partitions).
-        self.assertEqual(7 * large_partitions[0].size, parsed_device['size'])
+        self.assertEqual(
+            (7 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
         self.assertItemsEqual(spare_devices, parsed_block_device_spares)
@@ -453,7 +468,9 @@ class TestRaidsAPI(APITestCase.ForUser):
          parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
         # Size is equivalent to 6 of the smallest device (the partitions).
-        self.assertEqual(6 * large_partitions[0].size, parsed_device['size'])
+        self.assertEqual(
+            (6 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
         self.assertItemsEqual(spare_devices, parsed_block_device_spares)
@@ -500,7 +517,9 @@ class TestRaidsAPI(APITestCase.ForUser):
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
         # Size is equivalent to 4 of the smallest device (the partitions).
-        self.assertEqual(4 * large_partitions[0].size, parsed_device['size'])
+        self.assertEqual(
+            (4 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
         self.assertItemsEqual(spare_devices, parsed_block_device_spares)

@@ -16,7 +16,10 @@ from maasserver.forms import (
     CreateRaidForm,
     UpdateRaidForm,
 )
-from maasserver.models.filesystemgroup import RAID
+from maasserver.models.filesystemgroup import (
+    RAID,
+    RAID_SUPERBLOCK_OVERHEAD,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -130,7 +133,9 @@ class TestCreateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         self.assertEqual('md1', raid.name)
-        self.assertEqual(8 * partition_objs[0].size, raid.get_size())
+        self.assertEqual(
+            (8 * partition_objs[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertItemsEqual(
             block_devices,
@@ -181,7 +186,9 @@ class TestCreateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         self.assertEqual('md1', raid.name)
-        self.assertEqual(8 * partitions[0].size, raid.get_size())
+        self.assertEqual(
+            (8 * partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
+            raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertItemsEqual(
             block_devices_ids,
