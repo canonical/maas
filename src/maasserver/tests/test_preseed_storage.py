@@ -1872,3 +1872,151 @@ class TestBootableRaidLayoutGPT(MAASServerTestCase, AssertStorageConfigMixin):
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestBootableRaidLayoutGPTWithPartition(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            model: vendor
+            name: sda
+            ptable: gpt
+            serial: serial-a
+            type: disk
+            wipe: superblock
+            grub_device: true
+          - device: sda
+            flag: bios_grub
+            id: sda-part1
+            number: 1
+            offset: 4194304B
+            size: 1048576B
+            type: partition
+            wipe: zero
+          - grub_device: true
+            id: sdb
+            model: vendor
+            name: sdb
+            ptable: gpt
+            serial: serial-b
+            type: disk
+            wipe: superblock
+          - device: sdb
+            flag: bios_grub
+            id: sdb-part1
+            number: 1
+            offset: 4194304B
+            size: 1048576B
+            type: partition
+            wipe: zero
+          - grub_device: true
+            id: sdc
+            model: vendor
+            name: sdc
+            ptable: gpt
+            serial: serial-c
+            type: disk
+            wipe: superblock
+          - device: sdc
+            flag: bios_grub
+            id: sdc-part1
+            number: 1
+            offset: 4194304B
+            size: 1048576B
+            type: partition
+            wipe: zero
+          - device: sda
+            flag: boot
+            id: sda-part2
+            name: sda-part2
+            number: 2
+            size: 5497549750272B
+            type: partition
+            uuid: uuid-a
+            wipe: superblock
+          - device: sdb
+            flag: boot
+            id: sdb-part2
+            name: sdb-part2
+            number: 2
+            size: 5497549750272B
+            type: partition
+            uuid: uuid-b
+            wipe: superblock
+          - device: sdc
+            flag: boot
+            id: sdc-part2
+            name: sdc-part2
+            number: 2
+            size: 5497549750272B
+            type: partition
+            uuid: uuid-c
+            wipe: superblock
+          - devices:
+            - sda-part2
+            - sdb-part2
+            - sdc-part2
+            id: md0
+            name: md0
+            ptable: gpt
+            raidlevel: 1
+            spare_devices: []
+            type: raid
+          - device: md0
+            id: md0-part1
+            name: md0-part1
+            number: 1
+            offset: 4194304B
+            size: 1099511627776B
+            type: partition
+            uuid: uuid-raid-part
+            wipe: superblock
+          - fstype: ext4
+            id: md0-part1_format
+            label: null
+            type: format
+            uuid: root-part
+            volume: md0-part1
+          - device: md0-part1_format
+            id: md0-part1_mount
+            path: /
+            type: mount
+    """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture="amd64/generic",
+            with_boot_disk=False)
+        size = 5 * 1024 ** 4  # 5Tb
+        partitions = []
+        for letter in 'abc':
+            disk = factory.make_PhysicalBlockDevice(
+                node=node, model='vendor', serial='serial-' + letter,
+                size=size, name='sd' + letter)
+            table_type = PARTITION_TABLE_TYPE.GPT
+            part_table = factory.make_PartitionTable(
+                table_type=table_type, block_device=disk)
+            partitions.append(
+                factory.make_Partition(
+                    partition_table=part_table,
+                    uuid='uuid-' + letter,
+                    size=size - PARTITION_TABLE_EXTRA_SPACE,
+                    bootable=True))
+        raid = RAID.objects.create_raid(
+            level=FILESYSTEM_GROUP_TYPE.RAID_1,
+            name="md0", uuid='uuid-raid',
+            partitions=partitions)
+        raid_part_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT,
+            block_device=raid.virtual_device)
+        raid_partition = factory.make_Partition(
+            partition_table=raid_part_table, uuid='uuid-raid-part',
+            size=1 * 1024 ** 4, bootable=False)
+        factory.make_Filesystem(
+            partition=raid_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="root-part", mount_point="/", mount_options=None)
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
