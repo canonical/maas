@@ -10338,14 +10338,91 @@ class TestRackController(MAASTransactionServerTestCase):
         self.assertRaises(CannotDisableAndShutoffRackd, rackcontroller.delete)
         self.expectThat(protocol.DisableAndShutoffRackd, MockCalledOnce())
 
+    def test_migrate_dhcp_from_rack_sets_new_primary_and_secondary(self):
+        rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=rack, secondary_rack=secondary_rack)
+        new_secondary = factory.make_RackController()
+        factory.make_Interface(node=new_secondary, vlan=vlan)
+        changes = rack.migrate_dhcp_from_rack()
+        self.assertEqual([(vlan, secondary_rack, new_secondary)], changes)
+        vlan = reload_object(vlan)
+        self.assertEqual(secondary_rack, vlan.primary_rack)
+        self.assertEqual(new_secondary, vlan.secondary_rack)
+
+    def test_migrate_dhcp_from_rack_sets_new_primary(self):
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=rack)
+        new_primary = factory.make_RackController()
+        factory.make_Interface(node=new_primary, vlan=vlan)
+        changes = rack.migrate_dhcp_from_rack()
+        self.assertEqual([(vlan, new_primary, None)], changes)
+        vlan = reload_object(vlan)
+        self.assertEqual(new_primary, vlan.primary_rack)
+        self.assertIsNone(vlan.secondary_rack)
+
+    def test_migrate_dhcp_from_rack_stops_dhcp(self):
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=rack)
+        changes = rack.migrate_dhcp_from_rack()
+        self.assertEqual([(vlan, None, None)], changes)
+        vlan = reload_object(vlan)
+        self.assertFalse(vlan.dhcp_on)
+        self.assertIsNone(vlan.primary_rack)
+        self.assertIsNone(vlan.secondary_rack)
+
+    def test_migrate_dhcp_from_rack_sets_new_secondary(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        new_secondary = factory.make_RackController()
+        factory.make_Interface(node=new_secondary, vlan=vlan)
+        changes = secondary_rack.migrate_dhcp_from_rack()
+        self.assertEqual([(vlan, primary_rack, new_secondary)], changes)
+        vlan = reload_object(vlan)
+        self.assertEqual(primary_rack, vlan.primary_rack)
+        self.assertEqual(new_secondary, vlan.secondary_rack)
+
+    def test_migrate_dhcp_from_rack_sets_to_None(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        changes = secondary_rack.migrate_dhcp_from_rack()
+        self.assertEqual([(vlan, primary_rack, None)], changes)
+        vlan = reload_object(vlan)
+        self.assertEqual(primary_rack, vlan.primary_rack)
+        self.assertIsNone(vlan.secondary_rack)
+
+    def test_migrate_dhcp_no_commit(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        changes = secondary_rack.migrate_dhcp_from_rack(commit=False)
+        self.assertEqual([(vlan, primary_rack, None)], changes)
+        vlan = reload_object(vlan)
+        self.assertEqual(primary_rack, vlan.primary_rack)
+        self.assertEqual(secondary_rack, vlan.secondary_rack)
+
     def test_prevents_delete_when_primary_rack(self):
         rackcontroller = factory.make_RackController()
-        factory.make_VLAN(primary_rack=rackcontroller)
+        factory.make_VLAN(dhcp_on=True, primary_rack=rackcontroller)
         self.assertRaises(ValidationError, rackcontroller.delete)
 
     def test_delete_removes_secondary_link(self):
+        primary_rack = factory.make_RackController()
         rackcontroller = factory.make_RackController()
-        vlan = factory.make_VLAN(secondary_rack=rackcontroller)
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=rackcontroller)
         rackcontroller.delete()
         self.assertIsNone(reload_object(vlan).secondary_rack)
         self.assertRaises(

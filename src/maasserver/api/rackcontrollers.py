@@ -9,6 +9,7 @@ __all__ = [
 
 from django.conf import settings
 from django.http import HttpResponse
+from formencode.validators import StringBool
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.nodes import (
     NodeHandler,
@@ -20,12 +21,14 @@ from maasserver.api.support import (
     admin_method,
     operation,
 )
+from maasserver.api.utils import get_optional_param
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
 from maasserver.models import RackController
 from maasserver.utils.orm import post_commit_do
+from piston3.utils import rc
 
 # Rack controller's fields exposed on the API.
 DISPLAYED_RACK_CONTROLLER_FIELDS = (
@@ -83,9 +86,32 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     model = RackController
     fields = DISPLAYED_RACK_CONTROLLER_FIELDS
 
+    def delete(self, request, system_id):
+        """Delete a specific rack controller.
+
+        A rack controller cannot be deleted if it is set to `primary_rack` on
+        a `VLAN` and another rack controller cannot be used to provide DHCP for
+        said VLAN. Use `force` to override this behavior.
+
+        :param force: Always delete the rack controller even if its the
+            `primary_rack` on a `VLAN` and another rack controller cannot
+            provide DHCP on said VLAN. This will disable DHCP on those VLANs.
+        :type force: boolean
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to delete the node.
+        Returns 204 if the node is successfully deleted.
+        """
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        node.as_self().delete(
+            force=get_optional_param(request.GET, 'force', False, StringBool))
+        return rc.DELETED
+
     @admin_method
     def update(self, request, system_id):
-        """Update a specific Rack controller.
+        """Update a specific rack controller.
 
         :param power_type: The new power type for this rack controller. If you
             use the default value, power_parameters will be set to the empty

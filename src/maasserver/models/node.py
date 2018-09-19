@@ -5278,18 +5278,89 @@ class RackController(Controller):
             bmc__ip_address__subnet_id__in=subnet_ids).distinct()
         return nodes
 
-    def delete(self):
+    def migrate_dhcp_from_rack(self, commit: bool=True):
+        """Migrate the DHCP away from the rack controller.
+
+        :param commit: Whether to commit the change to the database. When False
+            the change will not be committed and only what would have happened
+            would be returned.
+        :returns: List of tuples with (VLAN, new primary rack,
+            new secondary rack). If both primary is set to `None` then
+            `dhcp_on` will also be set to `False` for the VLAN.
+        """
+        changes = []
+
+        controlled_vlans = VLAN.objects.filter(dhcp_on=True)
+        controlled_vlans = controlled_vlans.filter(
+            Q(primary_rack=self) | Q(secondary_rack=self))
+        controlled_vlans = controlled_vlans.prefetch_related(
+            'primary_rack', 'secondary_rack')
+        for controlled_vlan in controlled_vlans:
+            if controlled_vlan.primary_rack_id == self.id:
+                if controlled_vlan.secondary_rack_id is not None:
+                    new_rack, new_racks = (
+                        None, controlled_vlan.connected_rack_controllers(
+                            exclude_racks=[
+                                self, controlled_vlan.secondary_rack]))
+                    if new_racks:
+                        new_rack = new_racks[0]
+                    changes.append((
+                        controlled_vlan,
+                        controlled_vlan.secondary_rack,
+                        new_rack))
+                    controlled_vlan.primary_rack = (
+                        controlled_vlan.secondary_rack)
+                    controlled_vlan.secondary_rack = new_rack
+                else:
+                    new_rack, new_racks = (
+                        None, controlled_vlan.connected_rack_controllers(
+                            exclude_racks=[self]))
+                    if new_racks:
+                        new_rack = new_racks[0]
+                    changes.append((
+                        controlled_vlan, new_rack, None))
+                    controlled_vlan.primary_rack = new_rack
+                    if new_rack is None:
+                        # No primary_rack now for the VLAN, so DHCP
+                        # gets disabled.
+                        controlled_vlan.dhcp_on = False
+            elif controlled_vlan.secondary_rack_id == self.id:
+                new_rack, new_racks = (
+                    None, controlled_vlan.connected_rack_controllers(
+                        exclude_racks=[self]))
+                if new_racks:
+                    new_rack = new_racks[0]
+                changes.append((
+                    controlled_vlan, controlled_vlan.primary_rack, new_rack))
+                controlled_vlan.secondary_rack = new_rack
+
+        if commit:
+            for controlled_vlan in controlled_vlans:
+                controlled_vlan.save()
+
+        return changes
+
+    def delete(self, force=False):
         """Delete this rack controller."""
         # Avoid circular imports
         from maasserver.models import RegionRackRPCConnection
 
-        primary_vlans = VLAN.objects.filter(primary_rack=self)
-        if len(primary_vlans) != 0:
-            raise ValidationError(
-                "Unable to delete '%s'; it is currently set as a primary rack"
-                " controller on VLANs %s" %
-                (self.hostname,
-                    ', '.join([str(vlan) for vlan in primary_vlans])))
+        # Migrate this rack controller away from managing any VLAN's.
+        changes = self.migrate_dhcp_from_rack(commit=True)
+        if not force:
+            # Ensure that none of the VLAN's DHCP would have been disabled.
+            disabled = [
+                vlan
+                for vlan, primary_rack, secondary_rack in changes
+                if primary_rack is None
+            ]
+            if len(disabled) != 0:
+                raise ValidationError(
+                    "Unable to delete '%s'; it is currently set as a "
+                    "primary rack controller on VLANs %s and no other rack "
+                    "controller can provide DHCP." % (
+                        self.hostname,
+                        ', '.join([str(vlan) for vlan in disabled])))
 
         # Disable and delete all services related to this node
         Service.objects.mark_dead(self, dead_rack=True)

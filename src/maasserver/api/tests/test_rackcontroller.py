@@ -5,6 +5,7 @@
 
 import http.client
 
+from django.utils.http import urlencode
 from maasserver.api import rackcontrollers
 from maasserver.testing.api import (
     APITestCase,
@@ -90,6 +91,33 @@ class TestRackControllerAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code,
             explain_unexpected_response(http.client.FORBIDDEN, response))
+
+    def test_DELETE_cannot_delete_if_primary_rack(self):
+        self.become_admin()
+        vlan = factory.make_VLAN()
+        rack = factory.make_RackController(vlan=vlan)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack
+        vlan.save()
+        response = self.client.delete(self.get_rack_uri(rack))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            explain_unexpected_response(http.client.BAD_REQUEST, response))
+
+    def test_DELETE_delete_with_force(self):
+        self.become_admin()
+        vlan = factory.make_VLAN()
+        rack = factory.make_RackController(vlan=vlan)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack
+        vlan.save()
+        response = self.client.delete(
+            self.get_rack_uri(rack), QUERY_STRING=urlencode({
+                'force': 'true'
+            }, doseq=True))
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code,
+            explain_unexpected_response(http.client.NO_CONTENT, response))
 
 
 class TestRackControllersAPI(APITestCase.ForUser):

@@ -225,6 +225,14 @@ class TestVLAN(MAASServerTestCase):
         self.assertFalse(Notification.objects.filter(
             ident="dhcp_disabled_all_vlans").exists())
 
+    def test_connected_rack_controllers(self):
+        vlan = factory.make_VLAN()
+        racks = [
+            factory.make_RackController(vlan=vlan)
+            for _ in range(3)
+        ]
+        self.assertItemsEqual(racks, vlan.connected_rack_controllers())
+
 
 class TestVLANVidValidation(MAASServerTestCase):
 

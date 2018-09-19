@@ -25,6 +25,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
+from maasserver.enum import NODE_TYPE
 from maasserver.fields import (
     MAASIPAddressField,
     MODEL_NAME_VALIDATOR,
@@ -284,3 +285,19 @@ class VLAN(CleanSave, TimestampedModel):
         fabrics_with_vlan_count = Fabric.objects.annotate(
             vlan_count=Count("vlan"))
         fabrics_with_vlan_count.filter(vlan_count=0).delete()
+
+    def connected_rack_controllers(self, exclude_racks=None):
+        """Return list of rack controllers that are connected to this VLAN.
+
+        :param exclude_racks: Exclude these rack controllers from the returned
+            connected list.
+        :returns: Returns a list of rack controllers that have a connection
+            to this VLAN.
+        """
+        query = self.interface_set.filter(
+            node__node_type__in=[
+                NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER])
+        if exclude_racks is not None:
+            query = query.exclude(node__in=exclude_racks)
+        return [nic.node.as_rack_controller() for nic in query]
