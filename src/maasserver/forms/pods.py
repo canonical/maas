@@ -133,9 +133,11 @@ class PodForm(MAASModelForm):
         label="Default MACVLAN mode", required=False,
         choices=MACVLAN_MODE_CHOICES, initial=MACVLAN_MODE_CHOICES[0])
 
-    def __init__(self, data=None, instance=None, request=None, **kwargs):
+    def __init__(
+            self, data=None, instance=None, request=None, user=None, **kwargs):
         self.is_new = instance is None
         self.request = request
+        self.user = user
         super(PodForm, self).__init__(
             data=data, instance=instance, **kwargs)
         if data is None:
@@ -273,7 +275,11 @@ class PodForm(MAASModelForm):
             # also create it in the database.
             if not self.instance.name:
                 self.instance.set_random_name()
-            self.instance.sync(discovered_pod, self.request.user)
+            if self.request is not None:
+                user = self.request.user
+            else:
+                user = self.user
+            self.instance.sync(discovered_pod, user)
 
             # Save which rack controllers can route and which cannot.
             discovered_rack_ids = [

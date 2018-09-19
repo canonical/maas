@@ -178,6 +178,7 @@ class MachineHandler(NodeHandler):
             "managing_process",
             "last_image_sync",
             "install_rackd",
+            "install_kvm",
         ]
         list_fields = [
             "id",

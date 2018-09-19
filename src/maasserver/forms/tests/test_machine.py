@@ -50,6 +50,7 @@ class TestMachineForm(MAASServerTestCase):
                 'min_hwe_kernel',
                 'hwe_kernel',
                 'install_rackd',
+                'install_kvm',
             ], list(form.fields))
 
     def test_accepts_usable_architecture(self):
@@ -366,6 +367,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'min_hwe_kernel',
                 'hwe_kernel',
                 'install_rackd',
+                'install_kvm',
                 'cpu_count',
                 'memory',
                 'zone',

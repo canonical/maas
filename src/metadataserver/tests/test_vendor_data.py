@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from maasserver.models.config import Config
+from maasserver.models import (
+    Config,
+    NodeMetadata,
+)
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -21,6 +24,7 @@ from testtools.matchers import (
     Contains,
     ContainsDict,
     Equals,
+    HasLength,
     Is,
     IsInstance,
     KeysEqual,
@@ -221,3 +225,20 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                 "%s --maas-url %s --secret %s" % (cmd, maas_url, secret),
                 ]
             }))
+
+    def test_yields_configuration_when_machine_install_kvm_true(self):
+        node = factory.make_Node(osystem='ubuntu', netboot=False)
+        node.install_kvm = True
+        configuration = get_vendor_data(node)
+        config = str(dict(configuration))
+        self.assertThat(config, Contains("virsh"))
+        self.assertThat(config, Contains("ssh_pwauth"))
+        self.assertThat(config, Contains("rbash"))
+        self.assertThat(config, Contains("libvirt-qemu"))
+        self.assertThat(config, Contains("ForceCommand"))
+        self.assertThat(config, Contains("qemu-kvm"))
+        self.assertThat(config, Contains("libvirt-bin"))
+        # Check that a password was saved for the pod-to-be.
+        virsh_password_meta = NodeMetadata.objects.filter(
+            node=node, key="virsh_password").first()
+        self.assertThat(virsh_password_meta.value, HasLength(32))

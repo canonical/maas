@@ -864,6 +864,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar objects: The :class:`GeneralManager`.
     :ivar install_rackd: An optional flag to indicate if this node should be
         deployed with the rack controller.
+    :ivar install_kvm: An optional flag to indicate if this node should be
+        deployed with KVM and added to MAAS.
     :ivar enable_ssh: An optional flag to indicate if this node can have
         ssh enabled during commissioning, allowing the user to ssh into the
         machine's commissioning environment using the user's SSH key.
@@ -1045,6 +1047,9 @@ class Node(CleanSave, TimestampedModel):
 
     # Used to deploy the rack controller on a installation machine.
     install_rackd = BooleanField(default=False)
+
+    # Used to deploy the rack controller on a installation machine.
+    install_kvm = BooleanField(default=False)
 
     # Used to determine whether to:
     #  1. Import the SSH Key during commissioning and keep power on.
@@ -2916,6 +2921,7 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = None
         self.current_installation_script_set = None
         self.install_rackd = False
+        self.install_kvm = False
         self.save()
 
         # Clear the nodes acquired filesystems.

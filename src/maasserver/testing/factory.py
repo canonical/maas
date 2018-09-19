@@ -203,17 +203,29 @@ class Messages:
 
 class Factory(maastesting.factory.Factory):
 
-    def make_fake_request(self, path, method="GET", cookies={}):
+    def make_fake_request(
+            self, path="/", method="GET", cookies=None, data=None):
         """Create a fake request.
 
         :param path: The path to which to make the request.
         :param method: The method to use for the request
             ('GET' or 'POST').
-        :param cookies: A `dict` with the cookies for the request.
+        :param cookies: Optional `dict` with the cookies for the request.
+        :param data: Optional `dict` of parameters.
         """
         rf = MAASSensibleRequestFactory()
-        request = rf.get(path)
-        request.method = method
+        if data is None:
+            data = {}
+        if cookies is None:
+            cookies = {}
+        if method == "GET":
+            request = rf.get(path, data=data)
+        elif method == "POST":
+            request = rf.post(path, data=data)
+        else:
+            request = rf.get(path, data=data)
+            request.method = method
+        request.data = data
         request._messages = Messages()
         request.COOKIES = cookies.copy()
         return request

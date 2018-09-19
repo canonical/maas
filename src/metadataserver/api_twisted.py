@@ -14,7 +14,11 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.models.node import Node
+from maasserver.forms.pods import PodForm
+from maasserver.models import (
+    Node,
+    NodeMetadata,
+)
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.orm import (
     in_transaction,
@@ -175,6 +179,47 @@ class StatusHandlerResource(Resource):
         return NOT_DONE_YET
 
 
+POD_CREATION_ERROR = (
+    "Internal error while creating KVM pod. (See regiond.log for details.)"
+)
+
+
+def _create_pod_for_deployment(node):
+    virsh_password_meta = NodeMetadata.objects.filter(
+        node=node, key="virsh_password").first()
+    if virsh_password_meta is None:
+        node.mark_failed(
+            comment="Failed to deploy KVM: Password not found.", commit=False)
+    else:
+        virsh_password = virsh_password_meta.value
+        virsh_password_meta.delete()
+        # XXX: Should find the best IP to communicate with, given what the rack
+        # controller can access, or use the boot interface IP address.
+        ip = node.ip_addresses()[0]
+        if ':' in ip:
+            ip = "[%s]" % ip
+        power_address = "qemu+ssh://virsh@%s/system" % ip
+        pod_form = PodForm(data=dict(
+            type="virsh",
+            name=node.hostname,
+            power_address=power_address,
+            power_pass=virsh_password,
+            zone=node.zone.name,
+            pool=node.pool.name,
+        ), user=node.owner)
+        if pod_form.is_valid():
+            try:
+                pod_form.save()
+            except Exception:
+                node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
+                log.err(None, "Exception while saving pod form.")
+            else:
+                node.status = NODE_STATUS.DEPLOYED
+        else:
+            node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
+            log.msg("Error while creating KVM pod: %s" % dict(pod_form.errors))
+
+
 class StatusWorkerService(TimerService, object):
     """Service to update nodes from recieved status messages."""
 
@@ -257,7 +302,8 @@ class StatusWorkerService(TimerService, object):
         # LP:1701352 - If no exit code is given by the client default to
         # 0(pass) unless the signal is fail then set to 1(failure). This allows
         # a Curtin failure to cause the ScriptResult to fail.
-        default_exit_status = 1 if result in ['FAIL', 'FAILURE'] else 0
+        failed = result in ['FAIL', 'FAILURE']
+        default_exit_status = 1 if failed else 0
 
         # Add this event to the node event log.
         add_event_to_node_event_log(
@@ -310,7 +356,7 @@ class StatusWorkerService(TimerService, object):
                 # cloud-init may send a failure message if a script reboots
                 # the system. If a script is running which may_reboot ignore
                 # the signal.
-                if result in ['FAIL', 'FAILURE']:
+                if failed:
                     script_set = node.current_commissioning_script_set
                     if (script_set is None or not
                             script_set.scriptresult_set.filter(
@@ -323,18 +369,28 @@ class StatusWorkerService(TimerService, object):
                             script_result_status=SCRIPT_STATUS.ABORTED)
                         save_node = True
             elif node.status == NODE_STATUS.DEPLOYING:
-                if result in ['FAIL', 'FAILURE']:
+                # XXX: when activity_name == moudles-config, this currently
+                # /always/ fails, since MAAS passes two different versions
+                # for the apt configuration. The only reason why we don't
+                # see additional issues because of this is due to the node
+                # already being marked "Deployed". Right now this is prevented
+                # only in the install_kvm case, but we should make this check
+                # more general when time allows.
+                if failed and not node.install_kvm:
                     node.mark_failed(
                         comment="Installation failed (refer to the "
                                 "installation log for more information).",
                         commit=False)
                     save_node = True
+                elif (not failed and activity_name == "modules-final" and
+                      node.install_kvm and node.agent_name == "maas-kvm-pod"):
+                    save_node = True
+                    _create_pod_for_deployment(node)
             elif node.status == NODE_STATUS.DISK_ERASING:
-                if result in ['FAIL', 'FAILURE']:
+                if failed:
                     node.mark_failed(
                         comment="Failed to erase disks.", commit=False)
                     save_node = True
-
             # Deallocate the node if we enter any terminal state.
             if node.node_type == NODE_TYPE.MACHINE and node.status in [
                     NODE_STATUS.READY,

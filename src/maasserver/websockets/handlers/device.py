@@ -131,6 +131,7 @@ class DeviceHandler(NodeHandler):
             "last_image_sync",
             "default_user",
             "install_rackd",
+            "install_kvm",
             ]
         list_fields = [
             "id",

@@ -870,7 +870,20 @@ class UserDataHandler(MetadataViewHandler):
             # for user-data is when MAAS hands the node
             # off to a user.
             if node.status == NODE_STATUS.DEPLOYING:
-                node.end_deployment()
+                if node.install_kvm:
+                    # Rather than ending deployment here, note that we're
+                    # installing a KVM pod.
+                    node.agent_name = "maas-kvm-pod"
+                    node.save()
+                else:
+                    # MAAS currently considers a machine "Deployed" when the
+                    # cloud-init user data is requested. Note that this doesn't
+                    # mean the machine is ready for use yet; cloud-init will
+                    # also send a 'finish' event for the 'modules-final'
+                    # activity name. However, that check is ambiguous because
+                    # it occurs both when curtin is installing, and when
+                    # the machine reboots to finish its deployment.
+                    node.end_deployment()
             # If this node is supposed to be powered off, serve the
             # 'poweroff' userdata.
             if node.get_boot_purpose() == 'poweroff':

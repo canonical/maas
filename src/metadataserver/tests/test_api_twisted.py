@@ -24,6 +24,7 @@ from crochet import wait_for
 from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Event,
+    NodeMetadata,
     Tag,
 )
 from maasserver.models.signals.testing import SignalsDisabled
@@ -42,13 +43,19 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
+    DocTestMatches,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from metadataserver import api
+from metadataserver import (
+    api,
+    api_twisted as api_twisted_module,
+)
 from metadataserver.api_twisted import (
+    _create_pod_for_deployment,
+    POD_CREATION_ERROR,
     StatusHandlerResource,
     StatusWorkerService,
 )
@@ -60,6 +67,7 @@ from metadataserver.models import NodeKey
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    Is,
     MatchesListwise,
     MatchesSetwise,
 )
@@ -343,7 +351,7 @@ def encode_as_base64(content):
 class TestStatusWorkerService(MAASServerTestCase):
 
     def setUp(self):
-        super(TestStatusWorkerService, self).setUp()
+        super().setUp()
         self.useFixture(SignalsDisabled("power"))
 
     def processMessage(self, node, payload):
@@ -504,6 +512,23 @@ class TestStatusWorkerService(MAASServerTestCase):
             "Installation failed (refer to the installation"
             " log for more information).",
             Event.objects.filter(node=node).last().description)
+
+    def test_status_ok_for_modules_final_triggers_kvm_install(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING,
+            agent_name="maas-kvm-pod", install_kvm=True)
+        payload = {
+            'event_type': 'finish',
+            'result': 'OK',
+            'origin': 'cloud-init',
+            'name': 'modules-final',
+            'description': 'America for Make Benefit Glorious Nation',
+            'timestamp': datetime.utcnow(),
+        }
+        mock_create_pod = self.patch(
+            api_twisted_module, '_create_pod_for_deployment')
+        self.processMessage(node, payload)
+        self.assertThat(mock_create_pod, MockCalledOnceWith(node))
 
     def test_status_installation_fail_leaves_node_failed(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
@@ -987,3 +1012,71 @@ class TestStatusWorkerService(MAASServerTestCase):
             node.status_expires, expected_time - timedelta(minutes=1))
         self.assertLessEqual(
             node.status_expires, expected_time + timedelta(minutes=1))
+
+
+class TestCreatePodForDeployment(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.mock_PodForm = self.patch(api_twisted_module, "PodForm")
+
+    def test__marks_failed_if_no_virsh_password(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING,
+            agent_name="maas-kvm-pod", install_kvm=True)
+        _create_pod_for_deployment(node)
+        self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
+        self.assertThat(node.error_description, DocTestMatches(
+            "...Password not found..."))
+
+    def test__deletes_virsh_password_metadata_and_sets_deployed(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, agent_name="maas-kvm-pod",
+            install_kvm=True)
+        factory.make_StaticIPAddress(interface=node.boot_interface)
+        meta = NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123")
+        _create_pod_for_deployment(node)
+        meta = reload_object(meta)
+        self.assertThat(meta, Is(None))
+        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
+
+    def test__marks_failed_if_is_valid_returns_false(self):
+        mock_pod_form = Mock()
+        self.mock_PodForm.return_value = mock_pod_form
+        mock_pod_form.errors = {}
+        mock_pod_form.is_valid = Mock()
+        mock_pod_form.is_valid.return_value = False
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, agent_name="maas-kvm-pod",
+            install_kvm=True)
+        factory.make_StaticIPAddress(interface=node.boot_interface)
+        meta = NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123")
+        _create_pod_for_deployment(node)
+        meta = reload_object(meta)
+        self.assertThat(meta, Is(None))
+        self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
+        self.assertThat(node.error_description, DocTestMatches(
+            POD_CREATION_ERROR))
+
+    def test__marks_failed_if_save_raises(self):
+        mock_pod_form = Mock()
+        self.mock_PodForm.return_value = mock_pod_form
+        mock_pod_form.errors = {}
+        mock_pod_form.is_valid = Mock()
+        mock_pod_form.is_valid.return_value = True
+        mock_pod_form.save = Mock()
+        mock_pod_form.save.side_effect = ValueError
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, agent_name="maas-kvm-pod",
+            install_kvm=True)
+        factory.make_StaticIPAddress(interface=node.boot_interface)
+        meta = NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123")
+        _create_pod_for_deployment(node)
+        meta = reload_object(meta)
+        self.assertThat(meta, Is(None))
+        self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
+        self.assertThat(node.error_description, DocTestMatches(
+            POD_CREATION_ERROR))

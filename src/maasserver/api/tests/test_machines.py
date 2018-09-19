@@ -16,6 +16,10 @@ from maasserver import (
     middleware,
 )
 from maasserver.api import machines as machines_module
+from maasserver.api.machines import (
+    AllocationOptions,
+    get_allocation_options,
+)
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
@@ -2774,3 +2778,35 @@ class TestPowerState(APITransactionTestCase.ForUser):
         self.assertEqual({"state": random_state}, response)
         # The machine's power state is now `random_state`.
         self.assertPowerState(machine, random_state)
+
+
+class TestGetAllocationOptions(MAASTestCase):
+
+    def test_defaults(self):
+        request = factory.make_fake_request(method="POST", data={})
+        options = get_allocation_options(request)
+        expected_options = AllocationOptions(
+            agent_name='', bridge_all=False, bridge_fd=0, bridge_stp=False,
+            comment=None, install_rackd=False, install_kvm=False)
+        self.assertThat(options, Equals(expected_options))
+
+    def test_sets_bridge_all_if_install_kvm(self):
+        request = factory.make_fake_request(
+            method="POST", data=dict(install_kvm='true'))
+        options = get_allocation_options(request)
+        expected_options = AllocationOptions(
+            agent_name='', bridge_all=True, bridge_fd=0, bridge_stp=False,
+            comment=None, install_rackd=False, install_kvm=True)
+        self.assertThat(options, Equals(expected_options))
+
+    def test_non_defaults(self):
+        request = factory.make_fake_request(method="POST", data=dict(
+            install_rackd="true", install_kvm="true", bridge_all="true",
+            bridge_stp="true", bridge_fd="42", agent_name="maas",
+            comment="don't panic"
+        ))
+        options = get_allocation_options(request)
+        expected_options = AllocationOptions(
+            agent_name='maas', bridge_all=True, bridge_fd=42, bridge_stp=True,
+            comment="don't panic", install_rackd=True, install_kvm=True)
+        self.assertThat(options, Equals(expected_options))

@@ -8,6 +8,7 @@ __all__ = [
     "get_storage_layout_params",
 ]
 
+from collections import namedtuple
 import json
 import re
 
@@ -193,6 +194,19 @@ DISPLAYED_ANON_MACHINE_FIELDS = (
 )
 
 
+AllocationOptions = namedtuple(
+    'AllocationOptions', (
+        'agent_name',
+        'bridge_all',
+        'bridge_fd',
+        'bridge_stp',
+        'comment',
+        'install_rackd',
+        'install_kvm',
+    )
+)
+
+
 def get_storage_layout_params(request, required=False, extract_params=False):
     """Return and validate the storage_layout parameter."""
     form = StorageLayoutForm(required=required, data=request.data)
@@ -218,11 +232,18 @@ def get_storage_layout_params(request, required=False, extract_params=False):
     return storage_layout, params
 
 
-def get_allocation_parameters(request):
-    """Returns shared parameters for deploy and allocate operations."""
+def get_allocation_options(request) -> AllocationOptions:
+    """Parses optional parameters for allocation and deployment."""
     comment = get_optional_param(request.POST, 'comment')
+    default_bridge_all = False
+    install_rackd = get_optional_param(
+        request.POST, 'install_rackd', default=False, validator=StringBool)
+    install_kvm = get_optional_param(
+        request.POST, 'install_kvm', default=False, validator=StringBool)
+    if install_kvm:
+        default_bridge_all = True
     bridge_all = get_optional_param(
-        request.POST, 'bridge_all', default=False,
+        request.POST, 'bridge_all', default=default_bridge_all,
         validator=StringBool)
     bridge_stp = get_optional_param(
         request.POST, 'bridge_stp', default=False,
@@ -230,7 +251,15 @@ def get_allocation_parameters(request):
     bridge_fd = get_optional_param(
         request.POST, 'bridge_fd', default=0, validator=Int)
     agent_name = request.data.get('agent_name', '')
-    return agent_name, bridge_all, bridge_fd, bridge_stp, comment
+    return AllocationOptions(
+        agent_name,
+        bridge_all,
+        bridge_fd,
+        bridge_stp,
+        comment,
+        install_rackd,
+        install_kvm
+    )
 
 
 def get_allocated_composed_machine(
@@ -556,6 +585,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         :param install_rackd: If True, the Rack Controller will be installed on
             this machine.
         :type install_rackd: boolean
+        :param install_kvm: If True, KVM will be installed on this machine and
+            added to MAAS.
+        :type install_kvm: boolean
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
@@ -571,27 +603,24 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
         hwe_kernel = request.POST.get('hwe_kernel', None)
-        install_rackd = get_optional_param(
-            request.POST, 'install_rackd', default=False, validator=StringBool)
         # Acquiring a node requires VIEW permissions.
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.VIEW)
+        options = get_allocation_options(request)
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
                 if machine.owner is not None and machine.owner != request.user:
                     raise NodeStateViolation(
                         "Can't allocate a machine belonging to another user.")
-                agent_name, bridge_all, bridge_fd, bridge_stp, comment = (
-                    get_allocation_parameters(request))
                 maaslog.info(
                     "Request from user %s to acquire machine: %s (%s)",
                     request.user.username, machine.fqdn, machine.system_id)
                 machine.acquire(
                     request.user, get_oauth_token(request),
-                    agent_name=agent_name, comment=comment,
-                    bridge_all=bridge_all, bridge_stp=bridge_stp,
-                    bridge_fd=bridge_fd)
+                    agent_name=options.agent_name, comment=options.comment,
+                    bridge_all=options.bridge_all,
+                    bridge_stp=options.bridge_stp, bridge_fd=options.bridge_fd)
         if NODE_STATUS.DEPLOYING not in NODE_TRANSITIONS[machine.status]:
             raise NodeStateViolation(
                 "Can't deploy a machine that is in the '{}' state".format(
@@ -600,7 +629,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         if not request.user.has_perm(NODE_PERMISSION.EDIT, machine):
             raise PermissionDenied()
         # Deploying with 'install_rackd' requires ADMIN permissions.
-        if (install_rackd and not
+        if (options.install_rackd and not
+                request.user.has_perm(NODE_PERMISSION.ADMIN, machine)):
+            raise PermissionDenied()
+        # Deploying with 'install_kvm' requires ADMIN permissions.
+        if (options.install_kvm and not
                 request.user.has_perm(NODE_PERMISSION.ADMIN, machine)):
             raise PermissionDenied()
         if not machine.distro_series and not series:
@@ -613,8 +646,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             form.set_license_key(license_key=license_key)
         if hwe_kernel is not None:
             form.set_hwe_kernel(hwe_kernel=hwe_kernel)
-        if install_rackd:
-            form.set_install_rackd(install_rackd=install_rackd)
+        if options.install_rackd:
+            form.set_install_rackd(install_rackd=options.install_rackd)
+        if options.install_kvm:
+            form.set_install_kvm(install_kvm=options.install_kvm)
         if form.is_valid():
             form.save()
         else:
@@ -1747,8 +1782,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         maaslog.info(
             "Request from user %s to acquire a machine with constraints: %s",
             request.user.username, str(input_constraints))
-        agent_name, bridge_all, bridge_fd, bridge_stp, comment = (
-            get_allocation_parameters(request))
+        options = get_allocation_options(request)
         verbose = get_optional_param(
             request.POST, 'verbose', default=False, validator=StringBool)
         dry_run = get_optional_param(
@@ -1814,9 +1848,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
             if not dry_run:
                 machine.acquire(
                     request.user, get_oauth_token(request),
-                    agent_name=agent_name, comment=comment,
-                    bridge_all=bridge_all, bridge_stp=bridge_stp,
-                    bridge_fd=bridge_fd)
+                    agent_name=options.agent_name, comment=options.comment,
+                    bridge_all=options.bridge_all,
+                    bridge_stp=options.bridge_stp, bridge_fd=options.bridge_fd)
             machine.constraint_map = storage.get(machine.id, {})
             machine.constraints_by_type = {}
             # Need to get the interface constraints map into the proper format

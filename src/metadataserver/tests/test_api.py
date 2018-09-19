@@ -948,6 +948,17 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
+    def test_skips_status_change_if_installing_kvm_and_sets_agent_name(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, install_kvm=True)
+        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        client = make_node_client(node)
+        response = client.get(reverse('metadata-user-data', args=['latest']))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
+        node = reload_object(node)
+        self.assertEqual(node.agent_name, "maas-kvm-pod")
+
 
 class TestCurtinMetadataUserData(
         PreseedRPCMixin, MAASTransactionServerTestCase):

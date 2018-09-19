@@ -842,6 +842,11 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data['install_rackd'] = install_rackd
 
+    def set_install_kvm(self, install_kvm=False):
+        """Sets whether to deploy the rack alongside this machine."""
+        self.is_bound = True
+        self.data['install_kvm'] = install_kvm
+
     class Meta:
         model = Machine
 
@@ -853,6 +858,7 @@ class MachineForm(NodeForm):
             'min_hwe_kernel',
             'hwe_kernel',
             'install_rackd',
+            'install_kvm',
         )
 
 
