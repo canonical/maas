@@ -1,4 +1,12 @@
-maas (2.5.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.0~beta1-0ubuntu2) UNRELEASED; urgency=medium
+
+  * UNRELEASED
+  * debian/maas-dhcp.maas-{dhcpd,dhcpd6}.service: Require dhcpd stop
+    in 8 seconds, if not kill it with 'mixed' mode.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 19 Sep 2018 03:10:49 -0400
+
+maas (2.5.0~beta1-7225-g817fb216d-0ubuntu1) cosmic; urgency=medium
 
   * New upstream release (LP: #1792389)
   * debian/control: Depend on python3-jinja2
@@ -12,7 +20,7 @@ maas (2.5.0~beta1-0ubuntu1) UNRELEASED; urgency=medium
     - d/maas-common.install: Drop install of maas-rsyslog.conf.
     - d/maas-common.{preinst,postinst}: Handle upgrades.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 28 Aug 2018 09:53:21 -0700
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 17 Sep 2018 05:30:25 -0400
 
 maas (2.5.0~alpha2-7175-gab01a63f2-0ubuntu1) bionic; urgency=medium
 
