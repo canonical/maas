@@ -40,6 +40,9 @@ from maasserver.utils.orm import get_one
 # Size of LVM physical extent. 4MiB
 LVM_PE_SIZE = 4 * 1024 * 1024
 
+# Size of the RAID overhead. 128k is maximum used.
+RAID_SUPERBLOCK_OVERHEAD = 128 * 1024
+
 
 class BaseFilesystemGroupManager(Manager):
     """A utility to manage the collection of FilesystemGroup."""
@@ -397,9 +400,11 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # Possible when no filesytems are attached to this group.
             return 0
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
-            return min_size * self.filesystems.count()
+            return (
+                (min_size * self.filesystems.count()) -
+                RAID_SUPERBLOCK_OVERHEAD)
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
-            return min_size
+            return min_size - RAID_SUPERBLOCK_OVERHEAD
         else:
             num_raid = len([
                 fstype
@@ -407,11 +412,14 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 if fstype == FILESYSTEM_TYPE.RAID
                 ])
             if self.group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
-                return min_size * (num_raid - 1)
+                return (
+                    (min_size * (num_raid - 1)) - RAID_SUPERBLOCK_OVERHEAD)
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
-                return min_size * (num_raid - 2)
+                return (
+                    (min_size * (num_raid - 2)) - RAID_SUPERBLOCK_OVERHEAD)
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
-                return min_size * num_raid / 2
+                return (
+                    (min_size * num_raid / 2) - RAID_SUPERBLOCK_OVERHEAD)
         raise ValidationError("Unknown raid type: %s" % self.group_type)
 
     def get_bcache_backing_filesystem(self):
