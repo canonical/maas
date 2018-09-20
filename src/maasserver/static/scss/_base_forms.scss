@@ -26,6 +26,11 @@
       padding-bottom: $spv-nudge - $px;
       padding-top: $spv-nudge - $px;
     }
+    .is-small & {
+      margin-bottom: $spv-nudge-compensation;
+      padding-bottom: $spv-nudge - $sp-unit * .5 - $px;
+      padding-top: $spv-nudge - $sp-unit * .5 - $px;
+    }
 
     &.u-min-margin--bottom {
       margin-bottom: $spv-nudge-compensation * 2;

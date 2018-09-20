@@ -1,0 +1,28 @@
+//XXX: patch - add missing autoprefixed rules; remove once an autoprefixer has been added to maas
+.p-slider {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+}
+.p-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  -webkit-box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+.p-slider__wrapper {
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+}
+
+.p-slider {
+  margin: 0 0 1rem 0;
+
+  &__wrapper {
+    margin-top: -1rem;//XXX
+  }
+
+  &__input {
+    height: inherit !important;
+  }
+  & + button {
+    margin-left: $sph-inter;
+  }
+}

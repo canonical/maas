@@ -9,7 +9,7 @@ $nudge--smallest: .15rem;
   font-size: pow($ms-ratio, -2) * 1rem;
   font-weight: 400;
   line-height: map-get($line-heights, smallest);
-  margin-bottom: map-get($sp-after, small) + map-get($line-heights, default-text) - $line-height--smallest - $nudge--smallest;
+  margin-bottom: map-get($sp-after, default-text) - map-get($nudges, nudge--p);
   padding-top: $nudge--smallest;
 }
 
@@ -23,4 +23,8 @@ h4,
 .default-text {
   @extend %default-text;
   display: block;
+}
+
+.u-no-max-width {
+  max-width: unset;
 }

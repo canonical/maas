@@ -1,31 +1,160 @@
 @mixin maas-meter {
+  $color--used: #1f78b4;
+  $color--free: #a6cee3;
+
+  %align-with-p {
+      padding-top: .2rem; // to align it vertically with h5,p etc
+      margin-bottom: -.2rem;
+  }
+
   .p-meter {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    width: 100%;
-    height: 20px;
-    border-radius: 10px;
+    &__container {
+      position: relative;
+      @extend %align-with-p;
+    }
+
+    border-radius: $sp-unit;
+    display: block;
+    height: $sp-unit * 2;
+    position: relative;
     overflow: hidden;
+    width: 100%;
+    -moz-appearance: none;
+    -webkit-appearance: none;
 
     // Firefox
     background: none; // Required to get rid of the default background prop.
-    background-color: $color-mid-light;
-    box-shadow: none;
+    background-color: $color--free;
 
     &::-webkit-meter-inner-element {
       display: block;
     }
 
     &::-webkit-meter-bar {
-      background: $color-mid-light;
+      background: $color--free;
     }
 
     &::-webkit-meter-optimum-value {
-      background: $color-link;
+      background: $color--used;
     }
 
     &::-moz-meter-bar {
-      background: $color-link;
+      background: $color--used;
+    }
+
+    &--kvm {
+      &::-webkit-meter-bar {
+        background-color: transparent;
+      }
+
+      &::-webkit-meter-optimum-value {
+        background-color: transparent;
+      }
+
+      &::-moz-meter-bar {
+        background: $color--used;
+      }
+    }
+
+    &--cpu-cores {
+      @extend %align-with-p;
+
+      &__container {
+        @extend %vf-clearfix;
+        border-radius: $sp-unit;
+        display: flex;
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+      }
+
+      %cpu-core {
+        border-right: 1px solid $color-x-light;
+        display: block;
+        float: left;
+        height: $sp-unit * 2;
+        position: relative;
+        flex: 1;
+      }
+
+      &__core--used {
+        @extend %cpu-core;
+        background: $color--used;
+      }
+
+      &__core--available {
+        @extend %cpu-core;
+        background: $color--free;
+      }
+    }
+
+    &__graph {
+      position: absolute;
+      top: 0;
+      width: 100%;
+    }
+
+    &__graph-content {
+      background-image: linear-gradient( 90deg,
+        $color--used 0%,
+        $color--used 100%,
+        transparent 100%,
+        transparent 100%);
+      background-size: 100% 100%;
+      display: block;
+      text-indent: -9999px;
+      height: inherit;
     }
   }
+
+  .p-legend {
+    @extend %vf-clearfix;
+    list-style: none;
+    margin-bottom: 0;
+    padding: 0;
+
+    &--numbers {
+      margin-left: 0;
+      padding-left: 0;
+    }
+
+    &::after {content: unset}
+
+    &__item {
+      display: block;
+      @extend %vf-clearfix;
+      float: left;
+
+      &:not(:first-child) {
+        margin-left: $sph-intra;
+        float: right;
+      }
+
+      &::before {
+        content: "•";
+
+        padding-top: map-get($nudges, nudge--p);
+        float: left;
+        font-size: 2rem;
+        line-height: map-get($line-heights, default-text);
+        display: inline-block;
+        margin-right: $sph-intra--condensed;
+        width: $sp-unit;
+      }
+
+      &--used::before {
+        color: $color--used;
+      }
+
+      &--free::before {
+        color: $color--free;
+      }
+    }
+
+    &__text {
+      float: left;
+      margin-bottom: $sp-unit * 2 - map-get($nudges, nudge--p);
+    }
+  }
+
 }

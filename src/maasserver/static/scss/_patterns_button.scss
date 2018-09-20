@@ -1,6 +1,10 @@
 @mixin maas-p-buttons {
-  .p-button--min-margin-bottom  {
+  %p-button--min-margin-bottom {
     margin-bottom: $spv-nudge-compensation;
+  }
+
+  .p-button--min-margin-bottom  {
+      @extend %p-button--min-margin-bottom;
   }
 
   .p-button--base.is-small {
@@ -9,11 +13,20 @@
   }
 
   %icon-button-padding {
-    padding: $spv-intra--condensed $spv-intra--expanded;
+    padding: $spv-nudge - $px $sph-intra--condensed;
+  }
+
+  .p-button--lock {
+    margin-left: -.5rem;
   }
 
   .p-button--icon {
-      @extend %icon-button-padding;
+    input + & {
+      margin-left: $sph-inter;
+    }
+
+    @extend %p-button--min-margin-bottom;
+    padding: $spv-intra $sph-intra--condensed;
   }
 
   .p-button--close {

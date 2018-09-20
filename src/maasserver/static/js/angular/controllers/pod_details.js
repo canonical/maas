@@ -267,6 +267,17 @@ angular.module('MAAS').controller('PodDetailsController', [
             return params;
         };
 
+        $scope.copyToClipboard = function($event) {
+            var clipboardParent = $event.currentTarget.previousSibling;
+            var clipboardValue = clipboardParent.previousSibling.value;
+            var el = document.createElement('textarea');
+            el.value = clipboardValue;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        };
+
         // Called to cancel composition.
         $scope.cancelCompose = function() {
           $scope.compose.obj = {

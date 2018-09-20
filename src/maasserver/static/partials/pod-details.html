@@ -5,8 +5,8 @@
         </div>
     </header>
 </div>
-<div class="ng-hide u-no-margin--top" data-ng-show="loaded" data-window-width>
-    <header class="p-strip--light is-shallow u-no-padding--bottom page-header u-no-padding--bottom" media-query="min-width: 769px">
+<div class="ng-hide" data-ng-show="loaded" data-window-width>
+    <header class="p-strip--light is-shallow page-header u-no-padding--bottom" media-query="min-width: 769px">
         <div class="row">
             <div class="tablet-col-4 col-8">
                 <h1 class="page-header__title">
@@ -16,7 +16,7 @@
                         data-ng-model="name.value"
                         data-ng-disabled="!canEdit()"
                         data-ng-click="editName()"></span>
-	        </h1>		    
+                </h1>
                 <button class="p-button--base u-no-margin--top ng-hide"
                     data-ng-show="name.editing"
                     data-ng-click="cancelEditName()">Cancel</button>
@@ -26,7 +26,7 @@
                     data-ng-click="saveEditName()">Save</button>
             </div>
             <div class="tablet-col-2 col-4">
-                <div class="page-header__controls " data-ng-if="isSuperUser()">
+                <div class="page-header__controls" data-ng-if="isSuperUser()">
                     <div data-maas-cta="action.options"
                         data-ng-model="action.option"
                         data-ng-change="actionOptionChanged()">
@@ -183,55 +183,138 @@
         </div>
     </header>
 
-    <section class="p-strip" data-ng-if="section.area === 'summary'">
+    <section data-ng-if="section.area === 'summary'">
         <div class="row">
-            <aside class="col-3">
-                <div class="p-card">
-                    <h3 class="p-heading--four">CPU ({$ pod.total.cores $} cores)</h3>
-                    <meter class="p-meter" max="{$ pod.total.cores $}" value="{$ pod.used.cores $}"></meter>
-                    <p>
-                        <span>{$ pod.available.cores $} cores available</span>
-                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
-                    </p>
+            <section class="p-strip">
+                <div class="p-pod-edit">
+                    <label class="p-pod-edit__label" for="virsh">Virsh:</label>
+                    <div class="p-code-snippet-wrapper">
+                        <div class="p-code-snippet">
+                            <input class="p-code-snippet__input" value="{$ pod.power_address $}" readonly="readonly">
+                            <button class="p-code-snippet__action" data-ng-click="copyToClipboard($event)">Copy to clipboard</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="p-card">
-                    <h3 class="p-heading--four">RAM ({$ pod.total.memory_gb $}&nbsp;GiB)</h3>
-                    <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
-                    <p>
-                        <span>{$ pod.available.memory_gb $} GiB available</span>
-                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
-                    </p>
-                </div>
-                <div class="p-card">
-                    <h3 class="p-heading--four">Local storage ({$ pod.total.local_storage_gb $}&nbsp;GiB)</h3>
-                    <meter class="p-meter" max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}"></meter>
-                    <p>
-                        <span>{$ pod.available.local_storage_gb $} GiB available</span>
-                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
-                    </p>
-                </div>
-                <div class="p-card" data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
-                    <h3 class="p-heading--four">iSCSI storage ({$ pod.total.iscsi_storage_gb $}&nbsp;GiB)</h3>
-                    <meter class="p-meter" max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
-                    <p>
-                        <span>{$ pod.available.iscsi_storage_gb $} GiB available</span>
-                        <span class="u-float--right u-no-margin--top" data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
-                    </p>
-                </div>
-            </aside>
-
-            <div class="col-9" data-ng-if="pod.composed_machines_count">
-                <maas-machines-table search="machinesSearch" hide-checkboxes="true"></maas-machines-table>
-            </div>
-
-            <div class="col-9" data-ng-if="!pod.composed_machines_count">
-                <div class="u-align--center u-vertical--align u-align--center">
-                    <i class="p-icon--compose-machine" style="width: 128px; height: 128px;"></i>
-                    <h3 class="p-heading--four">You have not composed any machines yet.</h3>
-                    <button class="p-button--positive is-inline" data-ng-if="canCompose()" data-ng-click="composeMachine()">Compose machine</button>
+            </section>
+            <div class="p-card--highlighted">
+                <div class="p-pod-summary">
+                    <div class="p-pod-summary__aside">
+                        <div class="p-pod-summary__cpu">
+                            <div class="row">
+                                <h4>CPU cores: {$ pod.total.cores $}</h4>
+                            </div>
+                            <div class="p-meter--cpu-cores">
+                                <div class="p-meter--cpu-cores__container">
+                                    <span class="p-meter--cpu-cores__core--used" ng-repeat="i in pod.used.cores | range"></span>
+                                    <span class="p-meter--cpu-cores__core--available" ng-repeat="i in pod.available.cores | range"></span>
+                                </div>
+                            </div>
+                            <p class="u-no-max-width">
+                                <span>{$ pod.used.cores $} used</span>
+                                <span class="u-float--right">{$ pod.available.cores $} available</span>
+                            </p>
+                        </div>
+                        <div class="p-pod-summary__ram">
+                            <div class="row">
+                                <h4>RAM: {$ pod.total.memory_gb $} (GiB)</h4>
+                            </div>
+                            <div class="p-meter__container">
+                                <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
+                            </div>
+                            <p class="u-no-max-width">
+                                <span>{$ pod.used.memory_gb $} GiB used</span>
+                                <span class="u-float--right">{$ pod.available.memory_gb $} GiB available</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="p-pod-summary__storage">
+                        <div class="row u-hide--large">
+                            <hr>
+                        </div>
+                        <div class="row">
+                            <div class="mobile-col-2 tablet-col-3 col-4">
+                                <h3 class="p-heading--four">Storage</h3>
+                            </div>
+                        </div>
+                        <ul class="p-list--divided">
+                            <li class="p-list__item u-no-padding" data-ng-repeat="storage in pod.storage_pools">
+                                <div class="p-storage row u-no-padding--top">
+                                    <div class="p-storage__name tablet-col-3 col-4 u-clearfix">
+                                        <p class="p-storage__disk-name">
+                                        <strong>{$ storage.name $}</strong>
+                                        <span class="p-storage__path">
+                                            {$ storage.path $}
+                                        </span>
+                                        </p>
+                                        <div class="p-storage__info">
+                                            <p class="p-storage__type">{$ storage.type $}<br>
+                                                <span class="p-storage__size">{$ storage.total $}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="p-storage__meter tablet-col-3 col-4">
+                                        <div class="p-meter__container">
+                                            <meter class="p-meter p-meter--kvm" max="{$ storage.total $}" value="{$ storage.used $}">
+                                            <div class="p-meter__graph">
+                                                <span class="p-meter__graph-content" style="width: calc(65600%/1024);">Disk Usage - {$ storage.used $} out of {$ storage.total $}</span>
+                                            </div>
+                                            </meter>
+                                        </div>
+                                        <div class="p-legend--numbers u-clearfix">
+                                            <span class="p-legend__text default-text u-float--left">
+                                                {$ storage.available $}
+                                            </span>
+                                            <span class="p-legend__text default-text u-float--right">
+                                                {$ storage.used $}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="row">
+                            <ul class="p-legend mobile-col-2 tablet-col-3 col-4 push-4">
+                                <li class="p-legend__item p-legend__item--used">
+                                    <span class="p-legend__text default-text">
+                                        Used
+                                    </span>
+                                </li>
+                                <li class="p-legend__item p-legend__item--free">
+                                    <span class="p-legend__text default-text">
+                                        Free
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-6"
+                        data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
+                        <h3 class="p-heading--four">iSCSI storage ({$ pod.total.iscsi_storage_gb $}&nbsp;GiB)</h3>
+                        <div class="p-meter__container">
+                            <meter class="p-meter" max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
+                        </div>
+                        <p class="u-no-max-width">
+                            <span>{$ pod.used.iscsi_storage_gb $} GiB used</span>
+                            <span class="u-float--right">{$ pod.available.iscsi_storage_gb $} GiB available</span>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
+        <section class="p-strip">
+            <div class="row">
+                <div class="col-12" data-ng-if="pod.composed_machines_count">
+                    <maas-machines-table search="machinesSearch" hide-checkboxes="true"></maas-machines-table>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 u-align--center" data-ng-if="!pod.composed_machines_count">
+                    <i class="p-icon--compose-machine u-no-margin" style="width: 128px; height: 128px;"></i>
+                    <h3 class="p-heading--four u-no-max-width">You have not composed any machines yet.</h3>
+                    <button class="p-button--positive is-inline u-no-margin" data-ng-if="canCompose()" data-ng-click="composeMachine()">Compose machine</button>
+                </div>
+            </div>
+        </section>
     </section>
     <section class="p-strip" data-ng-if="pod && section.area === 'configuration'">
         <div class="row">
@@ -291,7 +374,9 @@
               <h3 class="p-heading--four">Total local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
               <div class="action-card u-margin--bottom">
                   <h3 class="p-heading--four">0 drives</h3>
-                  <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}">{$ pod.used.local_storage $} Mb</meter>
+                  <div class="p-meter__container">
+                    <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}">{$ pod.used.local_storage $} Mb</meter>
+                  </div>
                   <p>
                       <span>0 GiB used</span>
                       <span class="u-float--right">{$ pod.total.local_storage_gb $} GiB available</span>

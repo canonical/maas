@@ -27,12 +27,14 @@
 @import 'patterns_forms';
 @import 'patterns_hr';
 @import 'patterns_notification';
+@import 'patterns_pod-summary';
 @import 'patterns_footer';
 @import 'patterns_search-box';
 @import 'patterns_table-sortable';
 @import 'tables';
 @import 'patterns_space-between';
 @import 'patterns_filter';
+@import 'patterns_slider';
 
 // Include local patterns
 @include maas;
@@ -55,6 +57,7 @@
 @include maas-p-forms;
 @include maas-p-hr;
 @include maas-p-notifications;
+@include maas-p-pod-summary;
 @include maas-p-search-box;
 @include maas-p-sticky-footer;
 @include maas-p-filter;

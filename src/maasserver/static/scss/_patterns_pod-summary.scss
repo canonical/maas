@@ -1,0 +1,191 @@
+@mixin maas-p-pod-summary {
+  .p-input--overcommit {
+    float: left;
+    width: 3rem;
+    max-width: 3rem !important;
+    min-width: 3rem;
+  }
+
+  .p-pod-summary {
+    display: flex;
+    @media (max-width: $breakpoint-large) {
+      flex-direction: column;
+    }
+
+    @media (min-width: $breakpoint-large) {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    &__cpu,
+    &__ram,
+    &__aside,
+    &__storage {
+      flex: 0 0 auto;
+    }
+
+    &__cpu,
+    &__ram {
+      @media (min-width: $breakpoint-large) {
+        margin-bottom: $spv-inter--shallow-scaleable;
+      }
+    }
+
+    &__ram {
+      position: relative;
+
+      @media (min-width: $breakpoint-small) and (max-width: $breakpoint-large) {
+        &::after {
+          content: unset;
+        }
+      }
+    }
+
+    &__storage {
+      @extend .col-8;
+
+      position: relative;
+
+      @media (max-width: $breakpoint-large) {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        &::after {
+          content: unset;
+        }
+
+        &::before {
+          background-color: $color-mid-light;
+          content: '';
+          height: 100%;
+          $factor: 100 / 65.47483;
+          $gutter-width--inside-8-col-nested: 3.57551%;
+          $offset: $gutter-width--inside-8-col-nested * .5 * $factor;
+          left: - $offset;
+          position: absolute;
+          width: 1px;
+        }
+      }
+    }
+
+    &__aside {
+      @extend .col-4;
+
+      @media (max-width: $breakpoint-large - 1px) {
+        width: 100%;
+      }
+    }
+
+    &__cpu,
+    &__ram {
+      @extend .tablet-col-3;
+
+      @media (min-width: $breakpoint-large) {
+        width: 100%;
+        margin-left: 0; //clear .tablet-* class as it leaks outside its intended breakpoint
+      }
+    }
+  }
+
+  .p-storage {
+    $p-storage-info-width: 5rem;
+    margin-bottom: $px;
+    padding-top: $spv-intra;
+
+    @media (max-width: $breakpoint-large - 1px) {
+      &::after {
+        background: transparent;
+      }
+    }
+
+    &__name {
+      @extend .col-4;
+
+      margin-top: - $sp-unit;
+    }
+
+    &__meter {
+      @extend .col-3;
+
+      @media (max-width: $breakpoint-large) {
+        float: left;
+      }
+
+      @media (max-width: $breakpoint-small) {
+        width: 100%;
+      }
+
+    }
+
+    &__disk-name {
+      float: left;
+      margin-bottom: map-get($sp-after, default-text) - map-get($nudges, nudge--p);
+      margin-right: - $p-storage-info-width;
+      width: calc(100% - #{$p-storage-info-width});
+    }
+
+    &__info {
+      float: right;
+      text-align: right;
+      width: $p-storage-info-width;
+    }
+
+    &__path {
+      display: block;
+      color: $color-mid-dark;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &__type {
+      @extend %default-text;
+    }
+  }
+
+  .p-list--divided .p-list__item {
+    &::after {
+      border-bottom-style: solid;
+      border-bottom-color: $color-light-new;
+    }
+  }
+
+  .faded {
+    opacity: .5
+  }
+
+  .p-overcommit-switch {
+    float: left;
+    width: 100%;
+  }
+
+  .p-pod-edit {
+    align-items: flex-start;
+    display: flex;
+    justify-content: space-between;
+
+    &__label {
+      @media (max-width: $breakpoint-small) {
+        display: none;
+      }
+    }
+
+    &__label,
+    & .p-button {
+      flex: 0 0 auto;
+    }
+
+    * + * {
+      margin-left: $sph-inter;
+    }
+
+    & .p-code-snippet-wrapper {
+      flex: 1 0 auto;
+      @media (max-width: $breakpoint-small) {
+        margin-left: 0; // the label is hidden on small, so margin not needed
+      }
+    }
+  }
+}
