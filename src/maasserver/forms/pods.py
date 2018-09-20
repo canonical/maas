@@ -73,9 +73,14 @@ from provisioningserver.enum import (
     MACVLAN_MODE,
     MACVLAN_MODE_CHOICES,
 )
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
+
+
+log = LegacyLogger()
 
 
 def make_unique_hostname():
@@ -318,6 +323,7 @@ class PodForm(MAASModelForm):
                 if failure.check(PodProblem):
                     return failure
                 else:
+                    log.err(failure, "Failed to discover pod.")
                     raise PodProblem(str(failure.value))
 
             d.addCallback(catch_no_racks)
@@ -572,15 +578,16 @@ class ComposeMachineForm(forms.Form):
             self.pod.sync_hints(pod_hints)
             return created_machine
 
+        @inlineCallbacks
         def async_compose_machine(
                 result, power_type, power_paramaters, **kwargs):
             client, result = result
-            requested_machine = self.get_requested_machine(result)
-            d = compose_machine(
+            requested_machine = yield deferToDatabase(
+                self.get_requested_machine, result)
+            result = yield compose_machine(
                 client, power_type, power_paramaters, requested_machine,
                 **kwargs)
-            d.addCallback(lambda result: (requested_machine, result))
-            return d
+            return requested_machine, result
 
         power_parameters = self.pod.power_parameters.copy()
 

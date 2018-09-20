@@ -29,7 +29,11 @@ from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 from provisioningserver.drivers.pod import Capabilities
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import asynchronous
+
+
+log = LegacyLogger()
 
 
 class PodHandler(TimestampedModelHandler):
@@ -303,6 +307,7 @@ class PodHandler(TimestampedModelHandler):
             return form, obj
 
         def wrap_errors(failure):
+            log.err(failure, "Failed to compose machine.")
             raise PodProblem(
                 "Pod unable to compose machine: %s" % str(failure.value))
 

@@ -111,15 +111,21 @@ def make_known_host_interfaces(pod):
     ]
 
 
-def make_pod_with_hints():
+def make_pod_with_hints(with_host=False):
     architectures = [
-        "amd64/generic", "i386/generic", "arm64/generic",
-        "armhf/generic"
+        "amd64/generic", "i386/generic", "arm64/generic", "armhf/generic"
     ]
+    if with_host:
+        host = factory.make_Machine_with_Interface_on_Subnet()
+        ip = factory.make_StaticIPAddress(interface=host.boot_interface)
+        parameters = None
+    else:
+        parameters = {}
+        ip = factory.make_StaticIPAddress()
     pod = factory.make_Pod(
         architectures=architectures, cores=random.randint(8, 16),
-        memory=random.randint(4096, 8192),
-        cpu_speed=random.randint(2000, 3000), parameters={})
+        memory=random.randint(4096, 8192), ip_address=ip,
+        cpu_speed=random.randint(2000, 3000), parameters=parameters)
     for _ in range(3):
         pool = factory.make_PodStoragePool(pod)
     pod.default_storage_pool = pool
@@ -1642,7 +1648,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__compose_with_commissioning_in_reactor(self):
         request = MagicMock()
-        pod = yield deferToDatabase(make_pod_with_hints)
+        pod = yield deferToDatabase(make_pod_with_hints, with_host=True)
 
         # Mock the RPC client.
         client = MagicMock()
@@ -1650,7 +1656,6 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
-#        requested_machine = self.make_requested_machine_result(pod)
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
         mock_compose_machine = self.patch(pods_module, "compose_machine")
         mock_compose_machine.return_value = succeed(
@@ -1659,8 +1664,20 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         # Mock start_commissioning so it doesn't use post commit hooks.
         mock_commissioning = self.patch(Machine, "start_commissioning")
 
+        def get_free_ip():
+            free_ip = factory.make_StaticIPAddress(
+                interface=pod.host.boot_interface)
+            requested_ip = free_ip.ip
+            free_ip.delete()
+            return requested_ip
+
+        ip = yield deferToDatabase(get_free_ip)
+
+        # Make sure to pass in 'interfaces' so that we fully test the functions
+        # that must be deferred to the database.
         form = yield deferToDatabase(
-            ComposeMachineForm, data={}, request=request, pod=pod)
+            ComposeMachineForm, data=dict(
+                interfaces='eth0:ip=%s' % ip), request=request, pod=pod)
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid)
         created_machine = yield form.compose()
