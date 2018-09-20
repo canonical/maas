@@ -12,71 +12,32 @@ from maasserver.testing.api import APITestCase
 class TestAPIAnnotations(APITestCase.ForUser):
     """Tests for API docstring annotations parsing."""
 
+    # Allowed tags
+    allowed_tags = APIDocstringParser.allowed_tags
+    # Allowed types
+    allowed_types = APIDocstringParser.allowed_types
+
+    # Use this sample and modify it in various ways
+    # inline to perform tests. Note that all allowed
+    # types/tags are (and should be) represented here, and
+    # there are tests below that check this.
     sample_api_annotated_docstring = """@description-title Docstring title
-    @description This is a longer description with
+    @description Longer description with
     multiple lines.
 
-    @param (ptype) "param_name" param description
+    @param (string) "param_name" [required=true] param description
     @param-example "param_name" param-ex
 
-    @success (stype) "success_name" success description
+    @param (int) "param_name2" [required=false] param2 description
+    @param-example "param_name2" param2-ex
+
+    @param (url-string) "param_name3" [required=false] param3 description
+    @param-example "param_name3" param3-ex
+
+    @success (content) "success_name" success description
     @success-example "success_name" success content
 
-    @error (etype) "error_name" error description
-    @error-example "error_name" error content
-    """
-
-    bad_tag_api_docstring = """@description-title Docstring title
-    @description This is a longer description with
-    multiple lines.
-
-    @param-foo (ptype) "param_name" param description
-    @param-example "param_name" param-ex
-
-    @success (stype) "success_name" success description
-    @success-example "success_name" success content
-
-    @error (etype) "error_name" error description
-    @error-example "error_name" error content
-    """
-
-    mismatched_example_api_docstring = """@description-title Docstring title
-    @description This is a longer description with
-    multiple lines.
-
-    @param (ptype) "param_name" param description
-    @param-example "param_name_foo" param-ex
-
-    @success (stype) "success_name" success description
-    @success-example "success_name" success content
-
-    @error (etype) "error_name" error description
-    @error-example "error_name" error content
-    """
-
-    missing_description1_api_docstring = """@description-title
-    @description This is a longer description with
-    multiple lines.
-
-    @param (ptype) "param_name" param description
-    @param-example "param_name_foo" param-ex
-
-    @success (stype) "success_name" success description
-    @success-example "success_name" success content
-
-    @error (etype) "error_name" error description
-    @error-example "error_name" error content
-    """
-
-    missing_description2_api_docstring = """@description-title Docstring title
-    @description
-    @param (ptype) "param_name" param description
-    @param-example "param_name_foo" param-ex
-
-    @success (stype) "success_name" success description
-    @success-example "success_name" success content
-
-    @error (etype) "error_name" error description
+    @error (http-status-code) "error_name" error description
     @error-example "error_name" error content
     """
 
@@ -105,7 +66,23 @@ class TestAPIAnnotations(APITestCase.ForUser):
         api_docstring_parser.parse(docstring)
         return api_docstring_parser.get_dict()
 
+    def test_all_allowed_tags_are_represented_in_test(self):
+        """Tests that we have all the allowed tags in our sample docstring."""
+        ds_orig = self.sample_api_annotated_docstring
+
+        for t in self.allowed_tags:
+            self.assertTrue(ds_orig.find("@%s" % t) != -1)
+
+    def test_all_allowed_types_are_represented_in_test(self):
+        """Tests that we have all the allowed types in our sample docstring."""
+        ds_orig = self.sample_api_annotated_docstring
+
+        for t in self.allowed_types:
+            self.assertTrue(ds_orig.find("(%s)" % t) != -1)
+
     def test_parse_annotations(self):
+        """Tests whether we can parse the sample."""
+
         docstring = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
         api_docstring_parser.parse(docstring, "method", "uri", "operation")
@@ -121,30 +98,45 @@ class TestAPIAnnotations(APITestCase.ForUser):
         self.assertEqual(d['description_title'], "Docstring title")
         self.assertEqual(
             " ".join(d['description'].split()),
-            "This is a longer description with multiple lines.")
+            "Longer description with multiple lines.")
 
         p = params[0]
-        self.assertEqual(p['type'], "ptype")
+        self.assertEqual(p['type'], "String")
         self.assertEqual(p['name'], "param_name")
         self.assertEqual(
             " ".join(p['description'].split()), "param description")
         self.assertEqual(" ".join(p['example'].split()), "param-ex")
 
+        p = params[1]
+        self.assertEqual(p['type'], "Int")
+        self.assertEqual(p['name'], "param_name2")
+        self.assertEqual(
+            " ".join(p['description'].split()), "param2 description")
+        self.assertEqual(" ".join(p['example'].split()), "param2-ex")
+
+        p = params[2]
+        self.assertEqual(p['type'], "URL String")
+        self.assertEqual(p['name'], "param_name3")
+        self.assertEqual(
+            " ".join(p['description'].split()), "param3 description")
+        self.assertEqual(" ".join(p['example'].split()), "param3-ex")
+
         s = successes[0]
-        self.assertEqual(s['type'], "stype")
+        self.assertEqual(s['type'], "Content")
         self.assertEqual(s['name'], "success_name")
         self.assertEqual(
             " ".join(s['description'].split()), "success description")
         self.assertEqual(" ".join(s['example'].split()), "success content")
 
         e = errors[0]
-        self.assertEqual(e['type'], "etype")
+        self.assertEqual(e['type'], "HTTP Status Code")
         self.assertEqual(e['name'], "error_name")
         self.assertEqual(
             " ".join(e['description'].split()), "error description")
         self.assertEqual(" ".join(e['example'].split()), "error content")
 
     def test_annotations_present(self):
+        """Tests to ensure annotations-present is functioning."""
         docstring_no_annotations = self.sample_api_docstring
         self.assertFalse(APIDocstringParser.is_annotated_docstring(
             docstring_no_annotations))
@@ -153,23 +145,48 @@ class TestAPIAnnotations(APITestCase.ForUser):
             docstring_annotations))
 
     def test_annotations_bad_tag(self):
-        docstring = self.bad_tag_api_docstring
+        """Replace a good tag with a bad one and get a syntax error."""
+        docstring = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring.replace("@param", "@bad"))
         d = api_docstring_parser.get_dict()
         self.assert_has_syntax_error(d)
 
-    def test_annotations_mismatched_example(self):
-        docstring = self.mismatched_example_api_docstring
+    def test_annotations_orphaned_example_tags(self):
+        """Tests to ensure orphaned examples are found.
+
+        Orphaned examples are example tags that have no matching
+        non-example tag: E.g. param/param-example. The name field
+        is used to determine matches.
+        """
+        docstring = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
+        docstring = docstring.replace(
+            "@param-example \"param_name\"",
+            "@param-example \"param_name_bad\"")
+        api_docstring_parser.parse(docstring)
+        d = api_docstring_parser.get_dict()
+        self.assert_has_api_warning(d)
+
+        docstring = docstring.replace(
+            "@error-example \"error_name\"",
+            "@error-example \"error_name_bad\"")
+        api_docstring_parser.parse(docstring)
+        d = api_docstring_parser.get_dict()
+        self.assert_has_api_warning(d)
+
+        docstring = docstring.replace(
+            "@success-example \"success_name\"",
+            "@success-example \"success_name_bad\"")
         api_docstring_parser.parse(docstring)
         d = api_docstring_parser.get_dict()
         self.assert_has_api_warning(d)
 
     def test_parse_annotations_indent(self):
+        """Indentation should be kept when present."""
         docstring = self.sample_api_annotated_docstring
         ref_string = (
-            "This is a longer description with\n"
+            "Longer description with\n"
             "    multiple lines.\n\n    "
         )
         api_docstring_parser = APIDocstringParser()
@@ -182,42 +199,95 @@ class TestAPIAnnotations(APITestCase.ForUser):
         self.assertEqual(d['description'], ref_string)
 
     def test_whether_name_in_single_quotes_works(self):
+        """Single quotes should be allowed in annotations."""
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
-        # No warnings here
         ds_single_quotes = ds_orig.replace('"', '\'')
         self.assert_has_no_api_warning(
             self.do_parse(api_docstring_parser, ds_single_quotes))
 
     def test_missing_param_annotation_pieces(self):
+        """Tests that missing annotation pieces raises warning.
+
+        Starts with a known good docstring and modifies it inline
+        to remove various parts, which should raise warnings.
+        """
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
+        # @param (string) "param_name" [required=true] param description
+
         # All of these should issue warnings
-        # @param (ptype) "param_name" param description
-        ds_missing_type = ds_orig.replace('@param (ptype)', '@param')
+        ds_missing_type = ds_orig.replace('@param (string)', '@param')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_type))
 
         ds_missing_name = ds_orig.replace(
-            '@param (ptype) "param_name"', '@param (ptype)')
+            '@param (string) "param_name"', '@param (string)')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_name))
 
+        ds_missing_required = ds_orig.replace(
+            '@param (string) "param_name" [required=true]',
+            '@param (string) "param_name"')
+        self.assert_has_api_warning(
+            self.do_parse(api_docstring_parser, ds_missing_required))
+
         ds_missing_desc = ds_orig.replace(
-            '@param (ptype) "param_name" param description',
-            '@param (ptype) "param_name"')
+            '@param (string) "param_name" [required=true] param description',
+            '@param (string) "param_name" [required=true]')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_desc))
 
         ds_empty_name = ds_orig.replace(
-            '@param (ptype) "param_name"',
-            '@param (ptype) ""')
+            '@param (string) "param_name"',
+            '@param (string) ""')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_empty_name))
 
+    def test_param_required_type_has_correct_value(self):
+        """'required' option should only allow true and false.
+
+        Take a known good docstring and replace the 'required'
+        option values inline to make sure only true and false
+        are accepted (regardless of capitalization).
+        """
+        ds_orig = self.sample_api_annotated_docstring
+        api_docstring_parser = APIDocstringParser()
+
+        ds_req = ds_orig.replace("required=true", "required=false")
+        self.assert_has_no_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+        ds_req = ds_orig.replace("required=true", "required=True")
+        self.assert_has_no_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+        ds_req = ds_orig.replace("required=true", "required=False")
+        self.assert_has_no_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+        ds_req = ds_orig.replace("required=true", "required=yes")
+        self.assert_has_api_warning(
+            self.do_parse(api_docstring_parser, ds_req))
+
+    def test_valid_types(self):
+        """Ensure that non-valid types raise warnings."""
+        ds_orig = self.sample_api_annotated_docstring
+        api_docstring_parser = APIDocstringParser()
+
+        ds_bad_type = ds_orig.replace("(int)", "(badtype)")
+
+        self.assert_has_api_warning(
+            self.do_parse(api_docstring_parser, ds_bad_type))
+
     def test_missing_param_example_annotation_pieces(self):
+        """Test for missing pieces of param-example tag.
+
+        Take a known good docstring and remove pieces inline
+        to make sure a warning is raised.
+        """
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
@@ -241,33 +311,43 @@ class TestAPIAnnotations(APITestCase.ForUser):
             self.do_parse(api_docstring_parser, ds_empty_name))
 
     def test_missing_success_annotation_pieces(self):
+        """Test for missing pieces of success tag.
+
+        Take a known good docstring and remove pieces inline
+        to make sure a warning is raised.
+        """
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
         # All of these should issue warnings
-        # @success (stype) "success_name" success description
-        ds_missing_type = ds_orig.replace('@success (stype)', '@success')
+        # @success (content) "success_name" success description
+        ds_missing_type = ds_orig.replace('@success (content)', '@success')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_type))
 
         ds_missing_name = ds_orig.replace(
-            '@success (stype) "success_name"', '@success (stype)')
+            '@success (content) "success_name"', '@success (content)')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_name))
 
         ds_missing_desc = ds_orig.replace(
-            '@success (stype) "success_name" success description',
-            '@success (stype) "success_name"')
+            '@success (content) "success_name" success description',
+            '@success (content) "success_name"')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_desc))
 
         ds_empty_name = ds_orig.replace(
-            '@success (stype) "success_name"',
-            '@success (stype) ""')
+            '@success (content) "success_name"',
+            '@success (content) ""')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_empty_name))
 
     def test_missing_success_example_annotation_pieces(self):
+        """Test for missing pieces of success-example tag.
+
+        Take a known good docstring and remove pieces inline
+        to make sure a warning is raised.
+        """
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
@@ -292,33 +372,45 @@ class TestAPIAnnotations(APITestCase.ForUser):
             self.do_parse(api_docstring_parser, ds_empty_name))
 
     def test_missing_error_annotation_pieces(self):
+        """Test for missing pieces of error tag.
+
+        Take a known good docstring and remove pieces inline
+        to make sure a warning is raised.
+        """
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
         # All of these should issue warnings
-        # @error (etype) "error_name" error description
-        ds_missing_type = ds_orig.replace('@error (etype)', '@error')
+        # @error (http-status-code) "error_name" error description
+        ds_missing_type = ds_orig.replace(
+            '@error (http-status-code)', '@error')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_type))
 
         ds_missing_name = ds_orig.replace(
-            '@error (etype) "error_name"', '@error (etype)')
+            '@error (http-status-code) "error_name"',
+            '@error (http-status-code)')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_name))
 
         ds_missing_desc = ds_orig.replace(
-            '@error (etype) "error_name" error description',
-            '@error (etype) "error_name"')
+            '@error (http-status-code) "error_name" error description',
+            '@error (http-status-code) "error_name"')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_missing_desc))
 
         ds_empty_name = ds_orig.replace(
-            '@error (etype) "error_name"',
-            '@error (etype) ""')
+            '@error (http-status-code) "error_name"',
+            '@error (http-status-code) ""')
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_empty_name))
 
     def test_missing_error_example_annotation_pieces(self):
+        """Test for missing pieces of error-example tag.
+
+        Take a known good docstring and remove pieces inline
+        to make sure a warning is raised.
+        """
         ds_orig = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
 
@@ -342,16 +434,20 @@ class TestAPIAnnotations(APITestCase.ForUser):
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_empty_name))
 
-    def test_missing_description1(self):
-        ds_md1 = self.missing_description1_api_docstring
+    def test_empty_description1(self):
+        """Test for empty description field in description-title tag."""
+        ds_md = self.sample_api_annotated_docstring.replace(
+            "Docstring title", "")
         api_docstring_parser = APIDocstringParser()
 
         self.assert_has_api_warning(
-            self.do_parse(api_docstring_parser, ds_md1))
+            self.do_parse(api_docstring_parser, ds_md))
 
-    def test_missing_description2(self):
-        ds_md2 = self.missing_description1_api_docstring
+    def test_empty_description2(self):
+        """Test for empty description field in description tag."""
+        ds_md = self.sample_api_annotated_docstring.replace(
+            "Longer description with\n    multiple lines.", "")
         api_docstring_parser = APIDocstringParser()
 
         self.assert_has_api_warning(
-            self.do_parse(api_docstring_parser, ds_md2))
+            self.do_parse(api_docstring_parser, ds_md))

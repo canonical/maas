@@ -15,8 +15,8 @@ embedded annoations of the form:
 
     OR
 
-    @tag (typeinfo) "id or name" [opt1=foo,opt2=bar] arbitrary text
-    @tag-example "id or name" [opt1=foo,opt2=bar] arbitrary text
+    @tag (type) "id-or-name" [opt1=foo,opt2=bar] arbitrary text
+    @tag-example "id-or-name" [opt1=foo,opt2=bar] arbitrary text
 
 @tag can be:
 
@@ -27,8 +27,24 @@ embedded annoations of the form:
     @error: Describes an error state
     @error-example: A typical error return value
 
+"type" can be:
+
+    string: a unicode string
+    int: an integer
+    url-string: a URL-encoded string
+    http-status-code: an HTTP status code
+    content: content served via a MAAS server
+
+"id-or-name" can be any string that doesn't contain spaces.
+
+Arbitrary text can contain any string with or without spaces.
+In most cases, formatting is preserved when presenting output.
+
 With the exception of the description tag, docstrings can
 contain as many tags as necessary to describe an API call.
+
+The [required=true|false] option is a requirement for the
+@param tag.
 
 Notes:
 
@@ -75,7 +91,7 @@ OUTPUT:
           "type": "string",
           "description": "Some description.\n",
           "options": {
-              "testopt1": "foo",
+              "required": "true",
               "testopt2": "bar"
           },
           "example": " my param example\n",
@@ -96,7 +112,6 @@ OUTPUT:
         {
           "name": "403",
           "type": "http-header",
-          "description": "If user is not authorized.\n",
           "description": "If user is not authorized.\n",
           "options": {
               "testopt1": "bar"
@@ -122,26 +137,60 @@ from textwrap import indent
 
 
 class APIDocstringParser:
+    allowed_tags = [
+        "description",
+        "description-title",
+        "param",
+        "param-example",
+        "success",
+        "success-example",
+        "error",
+        "error-example"
+    ]
+
+    allowed_types = [
+        "string",
+        "url-string",
+        "int",
+        "content",
+        "http-status-code"
+    ]
+
     @staticmethod
     def is_annotated_docstring(docstring):
         """Returns True if a given docstring contains a known tag."""
-
-        tags = [
-            "@description",
-            "@description-title",
-            "@param",
-            "@param-example",
-            "@success",
-            "@success-example",
-            "@error",
-            "@error-example"
-        ]
-
-        for tag in tags:
-            if docstring.find(tag) != -1:
+        for tag in APIDocstringParser.allowed_tags:
+            if docstring.find("@%s" % tag) != -1:
                 return True
 
         return False
+
+    @staticmethod
+    def is_valid_type(ttype):
+        """Returns True if type is valid, False if not."""
+        return ttype in APIDocstringParser.allowed_types
+
+    def _get_pretty_type_string(self, ttype):
+        """Returns a version suitable for printing
+
+        Capitalizes like a title and replaces hyphens
+        with spaces.
+        """
+
+        if ttype == "url-string":
+            return "URL String"
+        elif ttype == "http-status-code":
+            return "HTTP Status Code"
+
+        return ttype.title().replace("-", " ")
+
+    def _warn_on_invalid_type(self, ttype, tname, tag):
+        """Issues a warning if type is not valid."""
+
+        if not self.is_valid_type(ttype):
+            self._warn(
+                "%s is not a valid type for %s in '%s' tag" %
+                (ttype, tname, tag))
 
     def _warn(self, msg, context=""):
         """Collects a given warning for later use."""
@@ -162,6 +211,36 @@ class APIDocstringParser:
         self.warnings = (
             self.warnings + "API_SYNTAX_ERROR: %s\n\n%s" %
             (msg, context))
+
+    def _is_name_in_tags(self, name, tags):
+        """Tries to find the given name value in the tags.
+
+        Returns True if the given tags contain a tag with the
+        key 'name' and value name.
+        """
+        for tag in tags:
+            if tag['name'] == name:
+                return True
+
+        return False
+
+    def _warn_on_orphaned_examples(self, tag_cat, tags, examples):
+        """Issues warning if orphaned examples are found
+
+        Params, successes and errors can have examples associated
+        with them, but they are not required. We need to know if
+        a user intended to include an example and made a mistake
+        naming it, thereby stranding the example with no associated
+        tag.
+
+        In other words, not every tag should have an example, but
+        every example should have a tag.
+        """
+        for example in examples:
+            if not self._is_name_in_tags(example['name'], tags):
+                self._warn(
+                    "Couldn't find matching tag named '%s' in "
+                    "%s tags." % (example['name'], tag_cat))
 
     def _get_named_example_for_named_tag(
             self, tag_cat, tag_name, examples):
@@ -191,9 +270,6 @@ class APIDocstringParser:
                         "can result in double examples." % tag_cat)
                 return example
 
-        self._warn(
-            "No matching example found for '%s' '%s'" %
-            (tag_cat, tag_name))
         return {}
 
     def _get_options_dict(self, options_string):
@@ -228,10 +304,6 @@ class APIDocstringParser:
 
         When a match is found, the example's description field becomes the
         tag's example field.
-
-        For now, the tag will inherit the example's option field, but this
-        behavior will likely change as the option's role is put into
-        practice.
         """
         return_list = []
         for tag in tags:
@@ -239,7 +311,6 @@ class APIDocstringParser:
                 tag_cat, tag['name'], examples)
             if e:
                 tag['example'] = e['description']
-                tag['options'] = e['options']
             else:
                 tag['example'] = ""
 
@@ -284,7 +355,7 @@ class APIDocstringParser:
 
         d = {
             "name": tname,
-            "type": ttype,
+            "type": self._get_pretty_type_string(ttype),
             "description": desc,
             "description_stripped": desc_stripped,
             "options": self._get_options_dict(opts),
@@ -335,8 +406,26 @@ class APIDocstringParser:
         # @param
         #
         elif tag == "param":
-            self.params.append(
-                self._create_tag_dict(tname, ttype, opts, desc))
+            tag_dict = self._create_tag_dict(tname, ttype, opts, desc)
+
+            # Here, make sure [required=true|false] is given
+            warn = False
+
+            if tag_dict['options'].get('required') is None:
+                warn = True
+            else:
+                val = tag_dict['options']['required'].lower()
+                if val != 'true' and val != 'false':
+                    warn = True
+
+            if warn:
+                self._warn(
+                    "In param tag '%s', option 'required' "
+                    "is missing or is not 'true' or 'false'" % tname)
+
+            self._warn_on_invalid_type(ttype, tname, 'param')
+
+            self.params.append(tag_dict)
         #
         # @param-example
         #
@@ -349,6 +438,8 @@ class APIDocstringParser:
         elif tag == "success":
             self.successes.append(
                 self._create_tag_dict(tname, ttype, opts, desc))
+
+            self._warn_on_invalid_type(ttype, tname, 'success')
         #
         # @success-example
         #
@@ -361,6 +452,8 @@ class APIDocstringParser:
         elif tag == "error":
             self.errors.append(
                 self._create_tag_dict(tname, ttype, opts, desc))
+
+            self._warn_on_invalid_type(ttype, tname, 'error')
         #
         # @error-example
         #
@@ -380,13 +473,12 @@ class APIDocstringParser:
         be present. E.g. if the tag is @description and there
         is no actual description, that's likely an issue.
         """
-        if tag == "description-title":
-            if desc == "":
-                return "description-title tag contains no description"
-        if tag == "description":
-            if desc == "":
-                return "description tag contains no description"
-        elif tag == "param":
+
+        # Empty descriptions are never allowed for any tag
+        if desc.strip() == "":
+            return "%s had an empty description" % tag
+
+        if tag == "param":
             if tname == "" or ttype == "" or desc == "":
                 return "a param tag may be incomplete"
         elif tag == "param-example":
@@ -561,6 +653,14 @@ class APIDocstringParser:
             'success', self.successes, self.success_examples)
         d['errors'] = self._map_named_tags_to_named_examples(
             'error', self.errors, self.error_examples)
+
+        # The user might have examples that do not have corresponding
+        # tags.
+        self._warn_on_orphaned_examples('params', self.params, self.examples)
+        self._warn_on_orphaned_examples(
+            'successes', self.successes, self.success_examples)
+        self._warn_on_orphaned_examples(
+            'errors', self.errors, self.error_examples)
 
         # We must add warnings last because they are populated
         # in _map_list_to_examples

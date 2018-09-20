@@ -32,7 +32,8 @@ class AnonZoneHandler(AnonymousOperationsHandler):
 
 
 class ZoneHandler(ModelOperationsHandler):
-    """Manage a physical zone.
+    """
+    Manage a physical zone.
 
     Any node is in a physical zone, or "zone" for short.  The meaning of a
     physical zone is up to you: it could identify e.g. a server rack, a
@@ -52,18 +53,11 @@ class ZoneHandler(ModelOperationsHandler):
 
     def read(self, request, name):
         """@description Returns a named zone.
-        @param (URI-string) "{name}" Required. A zone name
+        @param (url-string) "{name}" [required=true] A zone name
         @param-example "{name}" myzone
 
-        @success (HTTP-header) "server_success" 200 - A pseudo-JSON object
-            containing the MAAS server's response
-        @success-example "server_success"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "content_success" A JSON object containing zone
+        @success (http-status-code) "server_success" 200
+        @success (content) "content_success" A JSON object containing zone
             information
         @success-example "content_success"
             {
@@ -73,14 +67,8 @@ class ZoneHandler(ModelOperationsHandler):
                 "resource_uri": "/MAAS/api/2.0/zones/default/"
             }
 
-        @error (HTTP-header) "404" 404 if the zone name is not found.
-        @error-example "404"
-            {
-                ...
-                'status': '404',
-                ...
-            }
-        @error (Content) "notfound" The zone name is not found.
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The zone name is not found.
         @error-example "notfound"
             Not Found
         """
@@ -92,23 +80,16 @@ class ZoneHandler(ModelOperationsHandler):
         Note that only 'name' and 'description' parameters are honored. Others,
         such as 'resource-uri' or 'id' will be ignored.
 
-        @param (URI-string) "{name}" Required. The zone to update.
-        @param (string) "description" Optional. A brief description of the
-            new zone.
-        @param (string) "name" Optional. The zone's new name.
+        @param (url-string) "{name}" [required=true] The zone to update.
+        @param (string) "description" [required=false] A brief description of
+            the new zone.
+        @param (string) "name" [required=false] The zone's new name.
         @param-example "{name}" myzone
         @param-example "name" newname
         @param-example "description" An updated zone description.
 
-        @success (HTTP-header) "serversuccess" 200 A pseudo-JSON object
-            containing the MAAS server's response
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "contentsuccess" A JSON object containing details
+        @success (http-status-code) "serversuccess" 200
+        @success (content) "contentsuccess" A JSON object containing details
             about your new zone.
         @success-example "contentsuccess"
             {
@@ -118,14 +99,8 @@ class ZoneHandler(ModelOperationsHandler):
                 "resource_uri": "/MAAS/api/2.0/zones/test-update-renamed/"
             }
 
-        @error (HTTP-header) "404" Zone not found
-        @error-example "404"
-            {
-                ...
-                'status': '404',
-                ...
-            }
-        @error (Content) "notfound" Zone not found
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" Zone not found
         @error-example "notfound"
             Not Found
         """
@@ -134,29 +109,16 @@ class ZoneHandler(ModelOperationsHandler):
     def delete(self, request, name):
         """@description Deletes a zone.
 
-        @param (URI-string) "{name}" Required. The zone to delete.
+        @param (url-string) "{name}" [required=true] The zone to delete.
         @param-example "{name}" myzone
 
-        @success (HTTP-header) "serversuccess" 204 A pseudo-JSON object
-            containing the MAAS server's response
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '204',
-                ...
-            }
-        @success (Content) "contentsuccess" An empty string
+        @success (http-status-code) "serversuccess" 204
+        @success (content) "contentsuccess" An empty string
         @success-example "contentsuccess"
             <no content>
 
-        @error (HTTP-header) "204" Always returns 204.
-        @error-example "204"
-            {
-                ...
-                'status': '204',
-                ...
-            }
-        @error (Content) "notfound" An empty string
+        @error (http-status-code) "204" Always returns 204.
+        @error (content) "notfound" An empty string
         @error-example "notfound"
             <no content>
         """
@@ -174,22 +136,15 @@ class ZonesHandler(ModelCollectionOperationsHandler):
 
     def create(self, request):
         """@description Creates a new zone.
-        @param (string) "name" Required. The new zone's name.
-        @param (string) "description" Optional. A brief description of the
-            new zone.
+        @param (string) "name" [required=true] The new zone's name.
+        @param (string) "description" [required=false] A brief description of
+            the new zone.
         @param-example "name" mynewzone
         @param-example "description" mynewzone is the name of my
             new zone.
 
-        @success (HTTP-header) "serversuccess" 200 A pseudo-JSON object
-            containing the MAAS server's response.
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '204',
-                ...
-            }
-        @success (Content) "contentsuccess" A JSON object containing details
+        @success (http-status-code) "serversuccess" 204
+        @success (content) "contentsuccess" A JSON object containing details
             about your new zone.
         @success-example "contentsuccess"
             {
@@ -199,14 +154,8 @@ class ZonesHandler(ModelCollectionOperationsHandler):
                 "resource_uri": "/MAAS/api/2.0/zones/test-hYnxCnjS/"
             }
 
-        @error (HTTP-header) "400" The zone already exists
-        @error-example "400"
-            {
-                ...
-                'status': '400',
-                ...
-            }
-        @error (Content) "alreadyexists" The zone already exists
+        @error (http-status-code) "400" 400
+        @error (content) "alreadyexists" The zone already exists
         @error-example "alreadyexists"
             {"name": ["Physical zone with this Name already exists."]}
         """
@@ -216,15 +165,8 @@ class ZonesHandler(ModelCollectionOperationsHandler):
         """@description Get a listing of all zones. Note that there is always
         at least one zone: default.
 
-        @success (HTTP-header) "serversuccess" 200 A pseudo-JSON object
-        containing the MAAS server's response.
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "contentsuccess" A JSON object containing a list
+        @success (http-status-code) "serversuccess" 200
+        @success (content) "contentsuccess" A JSON object containing a list
         of zones.
         @success-example "contentsuccess"
             [

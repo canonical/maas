@@ -45,18 +45,11 @@ class ResourcePoolHandler(ModelOperationsHandler):
 
     def read(self, request, id):
         """@description Returns a resource pool.
-        @param (URI-string) "{id}" Required. A resource pool id/name.
+        @param (url-string) "{id}" [required=true] A resource pool id/name.
         @param-example "{id}" mypool
 
-        @success (HTTP-header) "server_success" 200 - A pseudo-JSON object
-            containing the MAAS server's response
-        @success-example "server_success"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "content_success" A JSON object containing
+        @success (http-status-code) "server_success" 200
+        @success (content) "content_success" A JSON object containing
             resource pool information
         @success-example "content_success"
             {
@@ -66,15 +59,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
                 "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
             }
 
-        @error (HTTP-header) "404" 404 if the resource pool name is not found.
-        @error-example "404"
-            {
-                ...
-                'status': '404',
-                ...
-            }
-
-        @error (Content) "notfound" The resource pool name is not found.
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The resource pool name is not found.
         @error-example "notfound"
             Not Found
         """
@@ -86,25 +72,18 @@ class ResourcePoolHandler(ModelOperationsHandler):
 
         Note that any other given parameters are silently ignored.
 
-        @param (URI-string) "{id}" Required. The resource pool id/name to
+        @param (url-string) "{id}" [required=true] The resource pool id/name to
             update.
-        @param (string) "description" Optional. A brief description of the
-            resource pool.
-        @param (string) "name" Optional. The resource pool's new name.
+        @param (string) "description" [required=false] A brief description of
+            the resource pool.
+        @param (string) "name" [required=false] The resource pool's new name.
         @param-example "{id}" myresourcepool
         @param-example "name" newname
         @param-example "description" An updated resource pool
             description.
 
-        @success (HTTP-header) "serversuccess" 200 A pseudo-JSON object
-            containing the MAAS server's response
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "contentsuccess" A JSON object containing details
+        @success (http-status-code) "serversuccess" 200
+        @success (content) "contentsuccess" A JSON object containing details
             about your new resource pool.
         @success-example "contentsuccess"
             {
@@ -114,14 +93,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
                 "resource_uri": "/MAAS/api/2.0/resourcepool/80/"
             }
 
-        @error (HTTP-header) "404" Zone not found
-        @error-example "404"
-            {
-                ...
-                'status': '404',
-                ...
-            }
-        @error (Content) "notfound" Zone not found
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" Zone not found
         @error-example "notfound"
             Not Found
         """
@@ -137,30 +110,17 @@ class ResourcePoolHandler(ModelOperationsHandler):
     def delete(self, request, id):
         """@description Deletes a resource pool.
 
-        @param (URI-string) "{id}" Required. The resource pool name/id to
+        @param (url-string) "{id}" [required=true] The resource pool name/id to
             delete.
         @param-example "{id}" myresourcepool
 
-        @success (HTTP-header) "serversuccess" 204 A pseudo-JSON object
-            containing the MAAS server's response
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '204',
-                ...
-            }
-        @success (Content) "contentsuccess" An empty string
+        @success (http-status-code) "serversuccess" 204
+        @success (content) "contentsuccess" An empty string
         @success-example "contentsuccess"
             <no content>
 
-        @error (HTTP-header) "204" Always returns 204.
-        @error-example "204"
-            {
-                ...
-                'status': '204',
-                ...
-            }
-        @error (Content) "notfound" An empty string
+        @error (http-status-code) "204" Always returns 204.
+        @error (content) "notfound" An empty string
         @error-example "notfound"
             <no content>
         """
@@ -181,22 +141,15 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
 
     def create(self, request):
         """@description Creates a new resource pool.
-        @param (string) "name" Required. The new resource pool's name.
-        @param (string) "description" Optional. A brief description of the
-            new resource pool.
+        @param (string) "name" [required=true] The new resource pool's name.
+        @param (string) "description" [required=false] A brief description of
+            the new resource pool.
         @param-example "name" mynewresourcepool
         @param-example "description" mynewresourcepool is the name
             of my new resource pool.
 
-        @success (HTTP-header) "serversuccess" 200 A pseudo-JSON object
-            containing the MAAS server's response.
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "contentsuccess" A JSON object containing details
+        @success (http-status-code) "serversuccess" 200
+        @success (content) "contentsuccess" A JSON object containing details
             about your new resource pool.
         @success-example "contentsuccess"
             {
@@ -206,14 +159,8 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
                 "resource_uri": "/MAAS/api/2.0/resourcepool/82/"
             }
 
-        @error (HTTP-header) "400" The resource pool already exists
-        @error-example "400"
-            {
-                ...
-                'status': '400',
-                ...
-            }
-        @error (Content) "alreadyexists" The resource pool already exists
+        @error (http-status-code) "400" 400
+        @error (content) "alreadyexists" The resource pool already exists
         @error-example "alreadyexists"
             {"name": ["Resource pool with this Name already exists."]}
         """
@@ -224,15 +171,8 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
 
         Note that there is always at least one resource pool: default.
 
-        @success (HTTP-header) "serversuccess" 200 A pseudo-JSON object
-            containing the MAAS server's response.
-        @success-example "serversuccess"
-            {
-                ...
-                'status': '200',
-                ...
-            }
-        @success (Content) "contentsuccess" A JSON object containing a
+        @success (http-status-code) "serversuccess" 200
+        @success (content) "contentsuccess" A JSON object containing a
             list of resource pools.
         @success-example "contentsuccess"
             [

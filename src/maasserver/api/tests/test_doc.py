@@ -231,7 +231,7 @@ class TestHandlers(MAASTestCase):
             # Doc for a rendered docstring containing annotations
             "\"resource_uri\": \"/MAAS/api",
             # Doc for a rendered docstring containing annotations
-            "Required. The new zone's name.",
+            "Required.  The new zone's name.",
         ]
         self.assertThat(doc, ContainsAll(doc_snippets))
 

@@ -1,71 +1,60 @@
-``{{ http_method }} {{ uri }}{% if operation != "" %}?op={{ operation }}{% endif %}``
+.. raw:: html
+
+  <details>
+    <summary>``{{ http_method }} {{ uri }}{{if operation != ""}}?op={{ operation }}{{endif}}``</summary>
+
 ######################################################################################################
 
-{% if warnings != "" %}
+{{py:
+params_length = len(params)
+successes_length = len(successes)
+errors_length = len(errors)
+}}
+
+{{if warnings != ""}}
 THERE ARE PROBLEMS WITH THE DOCSTRING:
 
 {{ warnings }}
 
-{% endif %}
+{{endif}}
 
 
-{% if description == "" %}
+{{if description == ""}}
+
 {{ description_title }}
-{% else %}
+
+{{else}}
+
 {{ description }}
-{% endif %}
 
-{% if http_method == "POST" or http_method == "PUT" %}
+{{endif}}
 
-.. raw:: html
-  
-  <details>
-  <summary><b>Using {{ http_method }} methods</b></summary>
-  <p>
+{{if params_length > 0}}
 
-``{{ http_method }}`` methods require a list of URL-encoded parameters to be passed in the BODY
-of the request (e.g. ``name=test-update&description=This+is+a+new+resource+pool+for+updating.``)
-and must contain ``Content-Type:'application/x-www-form-urlencoded'`` in the HEADER
-in addition to the OAuth authentication headers `as discussed here <https://docs.maas.io/2.4/en/api-authentication>`_.
-
-.. raw:: html
-
-  </p>
-  </details>
-
-{% endif %}
-
-{% if params|length > 0 %}
-
-.. raw:: html
-  
-  <details>
-  <summary><b>Parameters</b></summary>
+**Parameters**
 
 --------------------------
-{% endif %}
+{{endif}}
 
-{% for p in params %}
-* **{{ p['name'] }}** (*{{ p['type'] }}*): {{ p['description_stripped'] }}
-{% endfor %}
+{{for p in params}}
 
-.. raw:: html
+* **{{ p['name'] }}** (*{{ p['type'] }}*): {{if p['options']['required'] == "true"}} Required. {{else}} Optional. {{endif}} {{ p['description_stripped'] }}
+{{endfor}}
 
-  </details>
+{{if successes_length > 0}}
 
-
-{% if successes|length > 0 %}
-
-.. raw:: html
-  
-  <details>
-  <summary><b>Success</b></summary>
-
+**Success**
 
 --------------------------
-{% endif %}
+{{endif}}
 
-{% for p in successes %}
+{{for p in successes}}
+
+{{if p['example'] == ""}}
+
+*{{ p['type'] }}* : {{ p['description_stripped'] }}
+
+{{else}}
 
 *{{ p['type'] }}*
 
@@ -73,33 +62,36 @@ in addition to the OAuth authentication headers `as discussed here <https://docs
 
     {{ p['example'] }}
 
-{% endfor %}
+{{endif}}
 
-.. raw:: html
+{{endfor}}
 
-  </details>
+{{if errors_length > 0}}
 
-{% if errors|length > 0 %}
-
-.. raw:: html
-  
-  <details>
-  <summary><b>Error</b></summary>
+**Error**
 
 --------------------------
-{% endif %}
+{{endif}}
 
-{% for p in errors %}
+{{for p in errors}}
+
+{{if p['example'] == ""}}
+
+*{{ p['type'] }}* : {{ p['description_stripped'] }}
+
+{{else}}
 
 *{{ p['type'] }}*
 
 ::
 
     {{ p['example'] }}
-    
 
-{% endfor %}
+{{endif}}
+
+{{endfor}}
 
 .. raw:: html
 
   </details>
+

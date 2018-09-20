@@ -244,8 +244,13 @@ def describe_actions(handler):
                 # help command output so we don't want duplicates.
                 for p in d['params']:
                     if p['name'].find("{") == -1 and p['name'].find("}") == -1:
-                        doc += ":param " + p['name'] + ": " + p['description']
-                        doc += ":type " + p['name'] + ": " + p['type'] + "\n"
+                        required = "Required. "
+                        if p['options']['required'] == "false":
+                            required = "Optional. "
+
+                        doc += (":param %s: %s%s" %
+                                (p['name'], required, p['description']))
+                        doc += (":type %s: %s\n " % (p['name'], p['type']))
 
         yield dict(
             method=http_method, name=name, doc=doc,

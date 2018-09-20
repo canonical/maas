@@ -139,6 +139,32 @@ def render_api_docs():
         section_name = doc.handler.api_doc_section_name
         line(section_name)
         line('=' * len(section_name))
+        # Note:
+        # The following dedent is useless in the following situation:
+        #
+        # def somefunc(foo)
+        #     """No indent here
+        #
+        #     Here, there is an indent, so dedent doesn't do
+        #     anything.
+        #    """
+        #
+        # This fixes the problem:
+        #
+        # def somefunc(foo)
+        #     """
+        #     Indent here
+        #
+        #     Now dedent works because the entire docstring appears
+        #     to be indented.
+        #    """
+        #
+        # This also works because the dedent version is the same
+        # as the non-dented version:
+        #
+        # def somefunc(foo)
+        #     """No indent here"""
+        #
         line(dedent(doc.handler.__doc__).strip())
         line()
         line()

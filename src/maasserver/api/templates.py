@@ -30,46 +30,17 @@ __all__ = [
     "APITemplateRenderer",
 ]
 
-import os
-
-import jinja2
+import tempita
 
 
 class APITemplateRenderer:
-    # A simple path-based loader
-    class PathLoader(jinja2.BaseLoader):
-        def __init__(self):
-            self.path = ""
-
-        def get_source(self, environment, template):
-            path = template
-            if not os.path.exists(path):
-                raise jinja2.TemplateNotFound(template)
-            mtime = os.path.getmtime(path)
-            with open(path) as f:
-                source = f.read()
-            return source, path, lambda: mtime == os.path.getmtime(path)
-
-    def __init__(self):
-        # Create a simple loader that will simply load a template
-        # from a given path.
-        self.loader = APITemplateRenderer.PathLoader()
-
-        # Set up a simple jinja2 environment
-        # autoescape=jinja2.select_autoescape(['html']),
-        self.env = jinja2.Environment(
-            loader=self.loader,
-            trim_blocks=True,
-            lstrip_blocks=True
-        )
-
-    # Applies the given jinja2 template on path using the
+    # Applies the given tempita template on path using the
     # the dictionary supplied by the given APIDocstringParser
     def apply_template(self, path, doc_string_parser):
         # Load the given template
-        template = self.env.get_template(path)
+        template = tempita.Template.from_filename(path)
 
         d = doc_string_parser.get_dict()
 
         # Render the template
-        return template.render(d)
+        return template.substitute(d)
