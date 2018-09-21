@@ -10,6 +10,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
         '<maas-obj-field type="options" key="type" label="Pod type" ',
           'placeholder="Select the pod type" ',
           'options="type.name as type.description for type in podTypes" ',
+          'label-width="2" label-width-tablet="2" ',
+          'input-width="3" input-width-tablet="4" ',
           'ng-if="!hideType">',
         '</maas-obj-field>',
         '<div pod-fields></div>'

@@ -64,41 +64,103 @@
                 <div class="row">
                     <div class="col-12">
                         <h3 class="p-heading--four">Storage configuration</h3>
-                        <table class="p-table-expanding">
+                        <table class="p-table-expanding p-table--pod-storage-config">
                             <thead>
-                                <tr>
-                                    <th class="col-2">Location</th>
-                                    <th class="col-3">Capacity (GB)</th>
-                                    <th class="col-4">Tags</th>
-                                    <th class="col-1">
+                                <tr class="p-table__row">
+                                    <th></th>
+                                    <th>Capacity (GB)</th>
+                                    <th>Location</th>
+                                    <th>Tags</th>
+                                    <th>
                                         <div class="u-align--center">Boot</div>
                                     </th>
-                                    <th class="col-2"></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr data-ng-repeat="storage in compose.obj.storage">
-                                    <td class="col-2">
-                                        <div class="form__group-input">
-                                            <select data-ng-model="storage.type">
-                                                <option value="local">Local</option>
-                                                <option value="iscsi"
-                                                    data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0"
-                                                    data-ng-disabled="storage.boot">iSCSI</option>
-                                            </select>
+                                <tr class="p-table__row" data-ng-repeat="storage in compose.obj.storage">
+                                    <td>
+                                        <div data-ng-if="!storage.boot">
+                                            <button class="p-button--base" data-ng-click="composeRemoveDisk(storage)">
+                                                <i class="p-icon--close"></i>
+                                                <span class="u-off-screen">Remove</span>
+                                            </button>
                                         </div>
                                     </td>
-                                    <td class="col-3">
+                                    <td>
                                         <div class="form__group-input">
-                                            <input type="text" placeholder="Enter capacity" data-ng-model="storage.size">
+                                            <input type="text" class="u-no-margin--bottom" placeholder="Enter capacity" data-ng-model="storage.size">
                                         </div>
                                     </td>
-                                    <td class="col-4">
-                                        <div class="form__group-input">
-                                            <tags-input data-ng-model="storage.tags" allow-tags-pattern="[\\w-]+"></tags-input>
+                                    <td style="overflow: visible">
+                                        <select data-ng-model="storage.type" ng-if="pod.type === 'rsd'">
+                                            <option value="local">Local</option>
+                                            <option value="iscsi"
+                                                data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0"
+                                                data-ng-disabled="storage.boot">iSCSI</option>
+                                        </select>
+                                        <div class="form__group-input" ng-if="pod.type === 'virsh'">
+                                            <div class="p-option-selector" tabindex="0">
+                                                <input class="p-option-selector__input u-no-margin--bottom" type="text" data-ng-model="storage.pool.name" ng-focus="openOptions(storage)">
+                                                <div class="p-option-selector__options" ng-if="storage.showOptions" ng-keyup="$event.keyCode == 27 ? closeOptions(storage) : null">
+                                                    <button class="p-button--base u-float--left" ng-click="closeOptions(storage)">
+                                                        <i class="p-icon--close">Close</i>
+                                                    </button>
+                                                    <ul class="p-inline-list u-align--right p-option-selector__options-key">
+                                                        <li class="p-inline-list__item">
+                                                            <span class="p-key-icon--used"></span> Used
+                                                        </li>
+                                                        <li class="p-inline-list__item">
+                                                            <span class="p-key-icon--requests"></span> Requests
+                                                        </li>
+                                                        <li class="p-inline-list__item">
+                                                            <span class="p-key-icon--free"></span> Free
+                                                        </li>
+                                                    </ul>
+                                                    <hr class="u-no-margin--bottom">
+                                                    <div class="p-option-selector__option"
+                                                        tabindex="0"
+                                                        ng-repeat="storage_pool in pod.storage_pools" ng-click="selectStoragePool(storage_pool, storage)" ng-keyup="$event.keyCode == 13 ? selectStoragePool(storage_pool, storage) : null" ng-class="{'is-selected': storage.pool === storage_pool}">
+                                                        <div class="p-option-selector__option-cell">
+                                                            <div><strong>{$ storage_pool.name $}</strong></div>
+                                                            <div class="u-text--light">{$ storage_pool.path $}</div>
+                                                        </div>
+                                                        <div class="p-option-selector__option-cell u-align--right">
+                                                            <div>{$ storage_pool.type | formatStorageType $}</div>
+                                                            <div>{$ storage_pool.total | formatBytes $}</div>
+                                                        </div>
+                                                        <div class="p-option-selector__option-cell">
+                                                            <div class="p-chart">
+                                                                <div class="p-chart__bar--requests" style="width: {$ (storage_pool.used / storage_pool.total * 100) + ((storage.size | convertGigabyteToBytes) / storage_pool.total * 100) $}%"
+                                                                ng-class="{'is-over': (storage_pool.used / storage_pool.total * 100) + ((storage.size | convertGigabyteToBytes) / storage_pool.total * 100) >= 100}"></div>
+                                                                <div class="p-chart__bar--used" style="width: {$ storage_pool.used / storage_pool.total * 100 $}%"></div>
+                                                            </div>
+
+                                                            <ul class="p-inline-list u-no-margin--bottom p-space-between">
+                                                                <li class="p-inline-list__item">
+                                                                    <span class="p-key-icon--used"></span>
+                                                                    {$ storage_pool.used | formatBytes $}
+                                                                </li>
+                                                                <li class="p-inline-list__item">
+                                                                    <span class="p-key-icon--requests"></span>
+                                                                    {$ storage.size $} GB
+                                                                </li>
+                                                                <li class="p-inline-list__item">
+                                                                    <span class="p-key-icon--free"></span>
+                                                                    {$ storage_pool.available | formatBytes $}
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td class="col-1">
+                                    <td>
+                                        <div class="form__group-input">
+                                            <tags-input data-ng-model="storage.tags" class="u-no-margin--bottom" allow-tags-pattern="[\\w-]+"></tags-input>
+                                        </div>
+                                    </td>
+                                    <td>
                                         <div class="u-align--center">
                                             <input type="radio" id="{$ $index $}-boot" class="u-no-margin--right"
                                                 data-ng-click="composeSetBootDisk(storage)"
@@ -107,19 +169,21 @@
                                             <label for="{$ $index $}-boot"></label>
                                         </div>
                                     </td>
-                                    <td class="col-2">
-                                        <div class="u-align--right" data-ng-if="!storage.boot">
-                                            <button data-ng-click="composeRemoveDisk(storage)">Remove</button>
-                                        </div>
-                                    </td>
                                 </tr>
+                                <tr class="p-table__row">
+                                    <td>
+                                        <button class="p-button--base" data-ng-click="composeAddStorage()">
+                                            <i class="p-icon--plus"></i>
+                                            <span class="u-off-screen">Add another device</span>
+                                        </button>
+                                    </td>
                             </tbody>
                         </table>
-                        <button class="p-button--neutral" data-ng-click="composeAddStorage()">Add another device</button>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12">
+                        <hr>
                         <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
                         <p maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
                         <div class="u-align--right u-no-margin--top" maas-obj-hide-saving>

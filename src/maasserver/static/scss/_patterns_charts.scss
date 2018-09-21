@@ -1,0 +1,40 @@
+@mixin patterns_charts {
+  .p-chart {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 1rem;
+    border-radius: 1rem;
+    background-color: $color-x-light;
+    border: 1px solid $color-mid-light;
+    margin-top: .25rem;
+    margin-bottom: .25rem;
+  }
+
+  .p-chart__bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .p-chart__bar--used {
+    @extend .p-chart__bar;
+    background-color: #c6b3d4;
+    border-right: 1px solid $color-x-light;
+  }
+
+  .p-chart__bar--other {
+    @extend .p-chart__bar;
+    background-color: #adcde1;
+  }
+
+  .p-chart__bar--requests {
+    @extend .p-chart__bar;
+    background-color: #3a77af;
+
+    &.is-over {
+      background-color: #ff8936;
+    }
+  }
+}

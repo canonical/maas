@@ -157,6 +157,7 @@ describe("PodDetailsController", function() {
               type: 'local',
               size: 8,
               tags: [],
+              pool: {},
               boot: true
             }]
           }
@@ -599,14 +600,16 @@ describe("PodDetailsController", function() {
 
         it("sets id to pod id", function() {
             var controller = makeControllerResolveSetActiveItem();
+            $scope.pod.type = 'rsd';
             expect($scope.composePreProcess({})).toEqual({
               id: $scope.pod.id,
               storage: '0:8(local)'
             });
         });
 
-        it("sets storage based on compose.obj.storage", function() {
+        it("sets rsd storage based on compose.obj.storage", function() {
             var controller = makeControllerResolveSetActiveItem();
+            $scope.pod.type = 'rsd';
             $scope.compose.obj.storage = [
               {
                 type: 'iscsi',
@@ -644,6 +647,53 @@ describe("PodDetailsController", function() {
                 '1:20(iscsi,one,two),2:60(local,other)')
             });
         });
+
+        it("sets virsh storage based on compose.obj.storage", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.pod.type = 'virsh';
+            $scope.compose.obj.storage = [
+              {
+                size: 20,
+                pool: {
+                    name: 'pool1'
+                },
+                tags: [{
+                    text: 'one'
+                }, {
+                    text: 'two'
+                }],
+                boot: false
+              },
+              {
+                size: 50,
+                pool: {
+                    name: 'pool2'
+                },
+                tags: [{
+                  text: 'happy'
+                }, {
+                  text: 'days'
+                }],
+                boot: true
+              },
+              {
+                size: 60,
+                pool: {
+                    name: 'pool3'
+                },
+                tags: [{
+                  text: 'other'
+                }],
+                boot: false
+              }
+            ];
+            expect($scope.composePreProcess({})).toEqual({
+              id: $scope.pod.id,
+              storage: (
+                '0:50(pool2,happy,days),' +
+                '1:20(pool1,one,two),2:60(pool3,other)')
+            });
+        });
     });
 
     describe("cancelCompose", function() {
@@ -660,6 +710,7 @@ describe("PodDetailsController", function() {
                 type: 'local',
                 size: 8,
                 tags: [],
+                pool: {},
                 boot: true
               }]
             });
@@ -678,6 +729,7 @@ describe("PodDetailsController", function() {
               type: 'local',
               size: 8,
               tags: [],
+              pool: {},
               boot: false
             });
         });
@@ -692,6 +744,7 @@ describe("PodDetailsController", function() {
               type: 'iscsi',
               size: 8,
               tags: [],
+              pool: {},
               boot: false
             });
         });

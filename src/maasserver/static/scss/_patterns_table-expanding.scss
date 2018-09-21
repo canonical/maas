@@ -1,10 +1,4 @@
 @mixin maas-table-expanding {
-  .p-table-expanding__panel {
-    // .p-form-validation .p-form-validation__input {
-    //   padding: .5rem .75rem;
-    // }
-  }
-
   .p-table-expanding {
     .p-table-expanding__panel {
       @extend %vf-card;
@@ -30,7 +24,6 @@
       }
     }
 
-
     tr {
       display: table-row; //XXX (2) ove flex to only direct descendants as it is breaking nexsted tables
       .is-active {
@@ -38,8 +31,14 @@
       }
     }
   }
+
   .p-table-expanding > thead > tr,
   .p-table-expanding > tbody > tr {
     display: flex; //XXX (1): move flex to only direct descendants as it is breaking nexsted tables
+  }
+
+  // Remove margins from tag inputs within tables
+  .p-table-expanding .tags-input .tags .input {
+    margin-bottom: 0;
   }
 }

@@ -34,6 +34,8 @@
 @import 'tables';
 @import 'patterns_space-between';
 @import 'patterns_filter';
+@import 'patterns_charts';
+@import 'patterns_option-selector';
 @import 'patterns_slider';
 
 // Include local patterns
@@ -64,3 +66,5 @@
 @include maas-table-sortable;
 @include maas-table-widths;
 @include patterns_space-between;
+@include patterns_charts;
+@include patterns_option-selector;

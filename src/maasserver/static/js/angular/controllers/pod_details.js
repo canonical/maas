@@ -53,6 +53,7 @@ angular.module('MAAS').controller('PodDetailsController', [
               type: 'local',
               size: 8,
               tags: [],
+              pool: {},
               boot: true
             }]
           }
@@ -211,6 +212,21 @@ angular.module('MAAS').controller('PodDetailsController', [
               });
         };
 
+        $scope.openOptions = function(storage) {
+            angular.forEach($scope.compose.obj.storage, function(disk) {
+                disk.showOptions = false;
+            });
+            storage.showOptions = true;
+        }
+
+        $scope.closeOptions = function(storage) {
+            storage.showOptions = false;
+        }
+
+        $scope.selectStoragePool = function(storagePool, storage) {
+            storage.pool = storagePool;
+        }
+
         // Return the title of the pod type.
         $scope.getPodTypeTitle = function() {
             var i;
@@ -259,7 +275,11 @@ angular.module('MAAS').controller('PodDetailsController', [
               var tags = disk.tags.map(function(tag) {
                 return tag.text;
               });
-              tags.splice(0, 0, disk.type);
+              if($scope.pod.type === 'rsd') {
+                tags.splice(0, 0, disk.type);
+              } else if($scope.pod.type === 'virsh') {
+                tags.splice(0, 0, disk.pool.name);
+              }
               constraint += '(' + tags.join(',') + ')';
               storage.push(constraint);
             });
@@ -285,6 +305,7 @@ angular.module('MAAS').controller('PodDetailsController', [
               type: 'local',
               size: 8,
               tags: [],
+              pool: {},
               boot: true
             }]
           };
@@ -293,16 +314,18 @@ angular.module('MAAS').controller('PodDetailsController', [
 
         // Add another storage device.
         $scope.composeAddStorage = function() {
-          var storage = {
-            type: 'local',
-            size: 8,
-            tags: [],
-            boot: false
-          };
-          if($scope.pod.capabilities.indexOf('iscsi_storage') >= 0) {
-            storage.type = 'iscsi';
-          }
-          $scope.compose.obj.storage.push(storage);
+            var storage = {
+                type: 'local',
+                size: 8,
+                tags: [],
+                pool: $scope.getDefaultStoragePool(),
+                boot: false
+            };
+
+            if($scope.pod.capabilities.indexOf('iscsi_storage') >= 0) {
+                storage.type = 'iscsi';
+            }
+            $scope.compose.obj.storage.push(storage);
         };
 
         // Change which disk is the boot disk.
@@ -311,6 +334,18 @@ angular.module('MAAS').controller('PodDetailsController', [
             disk.boot = false;
           });
           storage.boot = true;
+        };
+
+        // Get the default pod pool
+        $scope.getDefaultStoragePool = function () {
+            var defaultPool = {};
+            console.log($scope);
+            if($scope.pod.storage_pools && $scope.pod.default_storage_pool) {
+                defaultPool = $scope.pod.storage_pools.filter(
+                    pool => pool.id == $scope.pod.default_storage_pool
+                )[0];
+            }
+            return defaultPool;
         };
 
         // Remove a disk from storage config.
@@ -368,8 +403,10 @@ angular.module('MAAS').controller('PodDetailsController', [
             // the activeItem.
             var activePod = PodsManager.getActiveItem();
             if(angular.isObject(activePod) &&
-                activePod.id === parseInt($routeParams.id, 10)) {
+            activePod.id === parseInt($routeParams.id, 10)) {
                 $scope.pod = activePod;
+                $scope.compose.obj.storage[0].pool = (
+                    $scope.getDefaultStoragePool());
                 $scope.loaded = true;
                 $scope.machinesSearch = 'pod-id:=' + $scope.pod.id;
                 $scope.startWatching();
@@ -377,6 +414,8 @@ angular.module('MAAS').controller('PodDetailsController', [
                 PodsManager.setActiveItem(
                     parseInt($routeParams.id, 10)).then(function(pod) {
                         $scope.pod = pod;
+                        $scope.compose.obj.storage[0].pool = (
+                            $scope.getDefaultStoragePool());
                         $scope.loaded = true;
                         $scope.machinesSearch = 'pod-id:=' + $scope.pod.id;
                         $scope.startWatching();

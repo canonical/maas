@@ -18,9 +18,9 @@
 
 .u-flex--no-wrap {
   display: flex;
+  flex-wrap: wrap;
 }
 
-.u-flex--no-wrap {
-  display: flex;
-  flex-wrap: wrap;
+.u-text--light {
+  color: $color-mid-dark;
 }

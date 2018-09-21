@@ -20,7 +20,7 @@
         </div>
     </div>
     <div class="row" data-ng-class="{ 'u-hide': !action.option }">
-        <div class="col-12 u-align--right" data-ng-if="!isActionError() && !hasActionsInProgress()">
+        <div class="col-12 u-align--right" data-ng-if="!isActionErFror() && !hasActionsInProgress()">
             <form>
                 <p data-ng-if="hasActionsFailed()">
                     Performing {$ action.option.sentence $} failed for {$ action.progress.errors $}
@@ -50,8 +50,7 @@
     </div>
     <div data-ng-class="{ 'u-hide': !add.open }">
         <maas-obj-form obj="add.obj" manager="podManager" manager-method="createItem"
-            table-form="true" save-on-blur="false" after-save="cancelAddPod" data-ng-if="add.open"
-            class="p-form--stacked">
+            save-on-blur="false" after-save="cancelAddPod" data-ng-if="add.open">
             <div class="row">
                 <h3 class="page-header__dropdown-title p-heading--five">Add pod</h3>
             </div>

@@ -1,0 +1,130 @@
+@mixin patterns_option-selector {
+  .p-option-selector {
+    position: relative;
+  }
+
+  .p-option-selector__input {
+    @extend select;
+  }
+
+  .p-option-selector__options {
+    position: absolute;
+    top: 2.25rem;
+    padding: $sph-intra 0 0;
+    border: 1px solid $color-mid-light;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow;
+    background-color: $color-x-light;
+    z-index: 10;
+    width: 100%;
+
+    @media (min-width: $breakpoint-medium) {
+      width: 70vw;
+    }
+
+    @media (min-width: $breakpoint-large) {
+      width: 750px;
+    }
+  }
+
+  .p-option-selector__options-key {
+    padding: 0 $sph-intra;
+  }
+
+  .p-option-selector__option {
+    @include vf-focus;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: $sph-intra $sph-intra;
+    border-bottom: 1px solid $color-mid-light;
+    cursor: pointer;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &:hover {
+      background-color: $color-light;
+    }
+
+    &.is-selected {
+      background-color: $color-light;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg width='17' height='17' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform='translate(1 1)' fill='none' fill-rule='evenodd'%3E%3Ccircle stroke='%230e8420' stroke-width='1.5' fill='%230e8420' cx='7.25' cy='7.25' r='7.25'/%3E%3Cpath fill='%23fff' d='M11.05 4.173l-.066.058L6.25 8.378l-2.776-2.38-.839.948L6.25 10.75l5.5-5.787-.7-.79z'/%3E%3C/g%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 10px center;
+    }
+  }
+
+  .p-option-selector__option-cell {
+    padding: $sp-small $sp-medium;
+
+    &:first-child {
+      width: 70%;
+
+      @media (min-width: $breakpoint-medium) {
+        border-right: 1px solid $color-mid-light;
+        width: 35%;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        width: 40%;
+      }
+    }
+
+    > * {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &:nth-child(2) {
+      width: 30%;
+
+      @media (min-width: $breakpoint-medium) {
+        width: 20%;
+        border-right: 1px solid $color-mid-light;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        width: 15%;
+      }
+    }
+
+    &:nth-child(3) {
+      width: 100%;
+
+      @media (min-width: $breakpoint-medium) {
+        width: 45%;
+      }
+    }
+  }
+}
+
+// Key inside option selector
+.p-key-icon {
+  display: inline-block;
+  width: .75rem;
+  height: .75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 50%;
+}
+
+.p-key-icon--free {
+  @extend .p-key-icon;
+  background-color: $color-x-light;
+  border-color: $color-mid-light;
+}
+
+.p-key-icon--used {
+  @extend .p-key-icon;
+  background-color: #c6b3d4;
+  border-color: #c6b3d4;
+}
+
+.p-key-icon--requests {
+  @extend .p-key-icon;
+  background-color: #3a77af;
+  border-color: #3a77af;
+}
