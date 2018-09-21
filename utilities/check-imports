@@ -260,7 +260,6 @@ RegionControllerRule = Rule(
     Allow("django|django.**"),
     Allow("docutils.core"),
     Allow("formencode|formencode.**"),
-    Allow("jinja2"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
     Allow("maascli.init.add_idm_options"),

@@ -1,8 +1,10 @@
-maas (2.5.0~beta1-0ubuntu2) UNRELEASED; urgency=medium
+maas (2.5.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
   * debian/maas-dhcp.maas-{dhcpd,dhcpd6}.service: Require dhcpd stop
     in 8 seconds, if not kill it with 'mixed' mode.
+  * debian/control: Drop python3-jinja2 as it is no longer needed to
+    generate documentation.
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 19 Sep 2018 03:10:49 -0400
 
