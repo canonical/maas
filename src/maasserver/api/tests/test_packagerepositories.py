@@ -235,8 +235,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Package repository '%s'" % package_repository.name +
-            " deleted by '%(username)s.'")
+            "Deleted package repository '%s'." % package_repository.name)
 
     def test_delete_admin_only(self):
         package_repository = factory.make_PackageRepository()

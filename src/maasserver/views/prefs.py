@@ -68,8 +68,7 @@ class SSLKeyDeleteView(HelpfulDeleteView):
             raise PermissionDenied("Can't delete this key.  It's not yours.")
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, self.request, None,
-            description=(
-                "SSL key id=%s" % keyid + " deleted by '%(username)s'."))
+            description="Deleted SSL key id='%s'." % keyid)
         return key
 
     def get_next_url(self):
@@ -92,8 +91,8 @@ def userprefsview(request):
     password_form.fields['old_password'].widget.attrs.pop('autofocus', None)
     if response is not None:
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-            description="Password changed for '%(username)s'.")
+            EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request,
+            None, description="Updated password.")
         return response
 
     return render(

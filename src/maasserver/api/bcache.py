@@ -85,9 +85,8 @@ class BcachesHandler(OperationsHandler):
         form = CreateBcacheForm(machine, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
-                "'%(username)s': Created bcache on " +
-                "%s." % machine.hostname)
+                EVENT_TYPES.NODE, ENDPOINT.API, request,
+                system_id, "Created bcache.")
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -157,8 +156,8 @@ class BcacheHandler(OperationsHandler):
                 "Cannot delete Bcache because the machine is not Ready.")
         bcache.delete()
         create_audit_event(
-            EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
-            "'%(username)s': Deleted bcache on " + "%s." % node.hostname)
+            EVENT_TYPES.NODE, ENDPOINT.API, request,
+            system_id, "Deleted bcache.")
         return rc.DELETED
 
     def update(self, request, system_id, id):
@@ -186,8 +185,8 @@ class BcacheHandler(OperationsHandler):
         form = UpdateBcacheForm(bcache, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
-                "'%(username)s': Updated bcache on " + "%s." % node.hostname)
+                EVENT_TYPES.NODE, ENDPOINT.API, request,
+                system_id, "Updated bcache.")
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)

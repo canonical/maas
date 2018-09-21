@@ -62,7 +62,7 @@ class AccountHandler(OperationsHandler):
         consumer, token = profile.create_authorisation_token(consumer_name)
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.API,
-            request, None, "Created token for '%(username)s'.")
+            request, None, "Created token.")
         auth_info = {
             'token_key': token.key, 'token_secret': token.secret,
             'consumer_key': consumer.key, 'name': consumer.name
@@ -84,7 +84,7 @@ class AccountHandler(OperationsHandler):
         profile.delete_authorisation_token(token_key)
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.API,
-            request, None, "Deleted token for '%(username)s'.")
+            request, None, "Deleted token.")
         return rc.DELETED
 
     @operation(idempotent=False)
@@ -107,7 +107,7 @@ class AccountHandler(OperationsHandler):
         profile.modify_consumer_name(token_key, consumer_name)
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request,
-            None, "Modified consumer name of token for '%(username)s'.")
+            None, "Modified consumer name of token.")
         return rc.ACCEPTED
 
     @operation(idempotent=True)

@@ -109,8 +109,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
             MockCalledOnceWith(user=user, protocol=protocol, auth_id=auth_id))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(
-            event.description, "SSH keys imported by '%(username)s'.")
+        self.assertEqual(event.description, "Imported SSH keys.")
 
     def test_import_keys_raises_HandlerError(self):
         user = factory.make_User()

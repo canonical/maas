@@ -100,7 +100,7 @@ class SSHKeyHandler(TimestampedModelHandler):
             request = HttpRequest()
             request.user = self.user
             create_audit_event(
-                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-                description="SSH keys imported by '%(username)s'.")
+                EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request,
+                None, description="Imported SSH keys.")
         except ImportSSHKeysError as e:
             raise HandlerError(str(e))

@@ -144,9 +144,7 @@ class TestUsers(APITestCase.ForUser):
             })
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description,
-            "User %s" % username + " created by '%(username)s'.")
+        self.assertEquals(event.description, "Created user '%s'." % username)
 
     def test_POST_creates_audit_event_for_admin(self):
         self.become_admin()
@@ -161,9 +159,7 @@ class TestUsers(APITestCase.ForUser):
             })
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description,
-            "Admin %s" % username + " created by '%(username)s'.")
+        self.assertEquals(event.description, "Created admin '%s'." % username)
 
     def test_POST_password_required_without_external_auth(self):
         self.become_admin()
@@ -474,8 +470,7 @@ class TestUser(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEquals(
-            event.description,
-            "User %s" % user.username + " deleted by '%(username)s'.")
+            event.description, "Deleted user '%s'." % user.username)
 
     def test_DELETE_admin_creates_audit_event(self):
         self.become_admin()
@@ -485,5 +480,4 @@ class TestUser(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEquals(
-            event.description,
-            "Admin %s" % user.username + " deleted by '%(username)s'.")
+            event.description, "Deleted admin '%s'." % user.username)

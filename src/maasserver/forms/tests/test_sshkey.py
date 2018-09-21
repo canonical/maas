@@ -29,5 +29,4 @@ class TestSSHKeyForm(MAASServerTestCase):
         form.save(factory.pick_choice(ENDPOINT_CHOICES), request)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(
-            event.description, "SSH key created by '%(username)s'.")
+        self.assertEqual(event.description, "Created SSH key.")

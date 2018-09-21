@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.event`"""
@@ -36,12 +36,13 @@ class TestEventHandler(MAASServerTestCase):
         data = {
             "id": event.id,
             "node_id": event.node.id,
+            "node_system_id": event.node_system_id,
             "node_hostname": event.node_hostname,
-            "user": event.user.id,
             "username": event.username,
             "ip_address": event.ip_address,
             "endpoint": event.endpoint,
             "user_agent": event.user_agent,
+            "user_id": event.user_id,
             "action": event.action,
             "description": event.description,
             "type": {

@@ -275,8 +275,7 @@ class NodeScriptHandler(OperationsHandler):
         script.delete()
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
-            description=(
-                "Script %s" % script.name + " deleted for '%(username)s'."))
+            description="Deleted script '%s'." % script.name)
         return rc.DELETED
 
     @admin_method
@@ -418,9 +417,8 @@ class NodeScriptHandler(OperationsHandler):
             create_audit_event(
                 EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
                 description=(
-                    "Script %s" % script.name +
-                    " reverted to revision %s" % revert_to +
-                    " for '%(username)s'."))
+                    "Reverted script '%s' to revision '%s'." % (
+                        script.name, revert_to)))
             return script
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])
@@ -450,8 +448,7 @@ class NodeScriptHandler(OperationsHandler):
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
             description=(
-                "Script %s" % script.name + " had tag %s" % tag +
-                " added for '%(username)s'."))
+                "Added tag '%s' to script '%s'." % (tag, script.name)))
         return script
 
     @admin_method
@@ -476,6 +473,5 @@ class NodeScriptHandler(OperationsHandler):
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
             description=(
-                "Script %s" % script.name + " had tag %s" % tag +
-                " removed for '%(username)s'."))
+                "Removed tag '%s' from script '%s'." % (tag, script.name)))
         return script

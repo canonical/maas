@@ -29,5 +29,4 @@ class TestSSLKeyForm(MAASServerTestCase):
         form.save(factory.pick_choice(ENDPOINT_CHOICES), request)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description, "SSL key created by '%(username)s'.")
+        self.assertEquals(event.description, "Created SSL key.")

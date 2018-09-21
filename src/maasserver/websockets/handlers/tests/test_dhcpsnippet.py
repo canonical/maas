@@ -113,8 +113,8 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "DHCP snippet '%s'" % dhcp_snippet_name +
-            " created by '%(username)s'.")
+            event.description,
+            "Created DHCP snippet '%s'." % dhcp_snippet_name)
 
     def test_update_is_admin_only(self):
         user = factory.make_User()
@@ -137,8 +137,8 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "DHCP snippet '%s'" % dhcp_snippet.name +
-            " updated by '%(username)s'.")
+            event.description,
+            "Updated DHCP snippet '%s'." % dhcp_snippet.name)
 
     def test_delete_is_admin_only(self):
         user = factory.make_User()

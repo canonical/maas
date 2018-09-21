@@ -100,7 +100,7 @@ class UserHandler(Handler):
         consumer, token = profile.create_authorisation_token()
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.UI,
-            request, None, "Created token for '%(username)s'.")
+            request, None, "Created token.")
         return {
             'key': token.key,
             'secret': token.secret,
@@ -122,5 +122,5 @@ class UserHandler(Handler):
         profile.delete_authorisation_token(params['key'])
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.UI,
-            request, None, "Deleted token for '%(username)s'.")
+            request, None, "Deleted token.")
         return {}

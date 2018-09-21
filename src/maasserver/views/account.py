@@ -60,9 +60,8 @@ def login(request):
             create_audit_event(
                 EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
                 description=(
-                    "%s" % (
-                        'Admin' if request.user.is_superuser else 'User') +
-                    " '%(username)s' logged in."))
+                    "Logged in %s." % (
+                        'admin' if request.user.is_superuser else 'user')))
         return result
 
 
@@ -81,9 +80,8 @@ def logout(request):
             create_audit_event(
                 EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
                 description=(
-                    "%s" % (
-                        'Admin' if request.user.is_superuser else 'User') +
-                    " '%(username)s' logged out."))
+                    "Logged out %s." % (
+                        'admin' if request.user.is_superuser else 'user')))
             return dj_logout(request, next_page=reverse('login'))
     else:
         form = LogoutForm()
@@ -137,12 +135,12 @@ def authenticate(request):
     if token is None:
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-            description="Created API (OAuth) token for '%(username)s'.")
+            description="Created API (OAuth) token.")
         token = create_auth_token(user, consumer)
     else:
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.UI, request, None,
-            description="Retrieved API (OAuth) token for '%(username)s'.")
+            description="Retrieved API (OAuth) token.")
 
     # Return something with the same shape as that rendered by
     # AccountHandler.create_authorisation_token.

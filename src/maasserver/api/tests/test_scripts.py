@@ -348,8 +348,7 @@ class TestScriptAPI(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Script %s" % script.name +
-            " deleted for '%(username)s'.")
+            event.description, "Deleted script '%s'." % script.name)
 
     def test_DELETE_admin_only(self):
         script = factory.make_Script()
@@ -547,8 +546,8 @@ class TestScriptAPI(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Script %s" % script.name +
-            " reverted to revision %s" % revert_to + " for '%(username)s'.")
+            event.description, "Reverted script '%s' to revision '%s'." % (
+                script.name, revert_to))
 
     def test_revert_admin_only(self):
         script = factory.make_Script()
@@ -616,9 +615,8 @@ class TestScriptAPI(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Script %s" % script.name +
-            " had tag %s" % new_tag +
-            " added for '%(username)s'.")
+            event.description, "Added tag '%s' to script '%s'." % (
+                new_tag, script.name))
 
     def test_add_tag_disallows_comma(self):
         self.become_admin()
@@ -663,8 +661,8 @@ class TestScriptAPI(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Script %s" % script.name + " had tag %s" %
-            removed_tag + " removed for '%(username)s'.")
+            event.description, "Removed tag '%s' from script '%s'." % (
+                removed_tag, script.name))
 
     def test_remove_tag_admin_only(self):
         script = factory.make_Script(destructive=False)

@@ -125,8 +125,7 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description,
-            "Script %s" % script.name + " deleted for '%(username)s'.")
+            event.description, "Deleted script '%s'." % script.name)
 
 
 class CommissioningScriptAPITest(APITestCase.ForUser):

@@ -9,7 +9,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from django.db.models import Q
 from formencode.validators import Int
 from maasserver.api.nodes import filtered_nodes_list_from_request
 from maasserver.api.support import (
@@ -149,12 +148,11 @@ class EventsHandler(OperationsHandler):
         events = (
             events.all()
             .select_related('type')
-            .select_related('node')
-            .select_related('user'))
+            .select_related('node'))
 
         # Filter events for owner.
         if owner is not None:
-            events = events.filter(Q(user__username=owner) | Q(username=owner))
+            events = events.filter(username=owner)
 
         # Future feature:
         # This is where we would filter for events 'since last node deployment'

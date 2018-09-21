@@ -157,7 +157,7 @@ class ConfigTest(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Config setting 'name' set to 'value' for '%(username)s'.")
+            "Updated configuration setting 'name' to 'value'.")
 
     def test_manager_config_changed_connect_connects(self):
         recorder = CallRecorder()

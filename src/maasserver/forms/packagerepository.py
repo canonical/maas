@@ -161,7 +161,7 @@ class PackageRepositoryForm(MAASModelForm):
         package_repository = super(PackageRepositoryForm, self).save()
         create_audit_event(
             EVENT_TYPES.SETTINGS, endpoint, request, None, description=(
-                "Package repository '%s'" % package_repository.name +
-                " %s" % ('updated' if self.is_update else 'created') +
-                " by '%(username)s'."))
+                "%s package repository '%s'." % (
+                    'Updated' if self.is_update else 'Created',
+                    package_repository.name)))
         return package_repository

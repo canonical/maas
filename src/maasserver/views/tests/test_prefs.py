@@ -104,8 +104,7 @@ class UserPrefsViewTest(MAASServerTestCase):
         self.assertNotEqual(old_pw, user.password)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(
-            event.description, "Password changed for '%(username)s'.")
+        self.assertEqual(event.description, "Updated password.")
 
     def test_create_ssl_key_POST(self):
         user = factory.make_admin()
@@ -127,6 +126,4 @@ class UserPrefsViewTest(MAASServerTestCase):
         self.client.post(del_link, {'post': 'yes'})
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(
-            event.description,
-            "SSL key id=%s" % keyid + " deleted by '%(username)s'.")
+        self.assertEqual(event.description, "Deleted SSL key id='%s'." % keyid)

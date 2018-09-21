@@ -108,8 +108,7 @@ class PackageRepositoryHandler(OperationsHandler):
         package_repository.delete()
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
-                "Package repository '%s'" % package_repository.name +
-                " deleted by '%(username)s.'"))
+                "Deleted package repository '%s'." % package_repository.name))
         return rc.DELETED
 
 

@@ -103,7 +103,7 @@ class EventTest(MAASServerTestCase):
 
         # Check whether we created the event type.
         self.assertIsNotNone(EventType.objects.get(name=type_name))
-        self.assertIsNotNone(Event.objects.get(user=node.owner))
+        self.assertIsNotNone(Event.objects.get(node_system_id=node.system_id))
 
     def test_create_node_event_creates_event(self):
         # EventTypes that are currently being used for
@@ -113,7 +113,7 @@ class EventTest(MAASServerTestCase):
         Event.objects.create_node_event(
             system_id=node.system_id, event_type=event_type, user=node.owner)
         self.assertIsNotNone(EventType.objects.get(name=event_type))
-        self.assertIsNotNone(Event.objects.get(node=node, user=node.owner))
+        self.assertIsNotNone(Event.objects.get(node=node))
 
     def test_create_region_event_creates_region_event(self):
         region = factory.make_RegionRackController()
@@ -122,7 +122,7 @@ class EventTest(MAASServerTestCase):
             event_type=EVENT_TYPES.REGION_IMPORT_ERROR, user=region.owner)
         self.assertIsNotNone(
             EventType.objects.get(name=EVENT_TYPES.REGION_IMPORT_ERROR))
-        self.assertIsNotNone(Event.objects.get(node=region, user=region.owner))
+        self.assertIsNotNone(Event.objects.get(node=region))
 
     def test_register_event_and_event_type_handles_integrity_errors(self):
         # It's possible that two calls to

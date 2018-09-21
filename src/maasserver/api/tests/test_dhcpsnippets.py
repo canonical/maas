@@ -145,8 +145,8 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "DHCP snippet '%s'" % dhcp_snippet.name +
-            " deleted by '%(username)s'.")
+            event.description,
+            "Deleted DHCP snippet '%s'." % dhcp_snippet.name)
 
     def test_delete_admin_only(self):
         dhcp_snippet = factory.make_DHCPSnippet()
@@ -197,8 +197,8 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "DHCP snippet '%s' reverted to revision '%s'" %
-            (dhcp_snippet.name, revert_to) + " by '%(username)s'.")
+            event.description, "Reverted DHCP snippet '%s' to revision '%s'." %
+            (dhcp_snippet.name, revert_to))
 
     def test_revert_admin_only(self):
         dhcp_snippet = factory.make_DHCPSnippet()

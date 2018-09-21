@@ -145,8 +145,7 @@ class DHCPSnippetHandler(TimestampedModelHandler):
             request.user = self.user
             create_audit_event(
                 EVENT_TYPES.SETTINGS, ENDPOINT.UI, request, None, description=(
-                    "DHCP snippet '%s' reverted to revision '%s'" % (
-                        dhcp_snippet.name, revert_to) +
-                    " by '%(username)s'."))
+                    "Reverted DHCP snippet '%s' to revision '%s'." % (
+                        dhcp_snippet.name, revert_to)))
         except ValueError as e:
             raise HandlerValidationError(e.args[0])

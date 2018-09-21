@@ -62,8 +62,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "DHCP snippet '%s'" % dhcp_snippet.name +
-            " created by '%(username)s'.")
+            event.description,
+            "Created DHCP snippet '%s'." % dhcp_snippet.name)
 
     def test__create_dhcp_snippet_defaults_to_enabled(self):
         name = factory.make_name('name')
@@ -181,8 +181,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "DHCP snippet '%s'" % dhcp_snippet.name +
-            " updated by '%(username)s'.")
+            event.description,
+            "Updated DHCP snippet '%s'." % dhcp_snippet.name)
 
     def test__updates_value(self):
         dhcp_snippet = factory.make_DHCPSnippet()

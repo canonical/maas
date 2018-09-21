@@ -486,9 +486,7 @@ class UserManagementTest(MAASServerTestCase):
         self.client.post(reverse('accounts-add'), params)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description,
-            "User %s" % username + " created by '%(username)s'.")
+        self.assertEquals(event.description, "Created user '%s'." % username)
 
     def test_add_admin_POST_creates_audit_event(self):
         self.client.login(user=factory.make_admin())
@@ -505,9 +503,7 @@ class UserManagementTest(MAASServerTestCase):
         self.client.post(reverse('accounts-add'), params)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description,
-            "Admin %s" % username + " created by '%(username)s'.")
+        self.assertEquals(event.description, "Created admin '%s'." % username)
 
     def test_edit_user_POST_profile_updates_attributes(self):
         self.client.login(user=factory.make_admin())
@@ -550,10 +546,9 @@ class UserManagementTest(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEquals(
             event.description, (
-                "User profile (username: %s, full name: %s, email: %s, "
-                "administrator: %s)"
-            ) % (new_username, last_name, email, is_superuser) +
-            " updated by '%(username)s'.")
+                "Updated user profile (username: %s, full name: %s, " +
+                "email: %s, administrator: %s)") % (
+                    new_username, last_name, email, is_superuser))
 
     def test_edit_user_POST_updates_password(self):
         self.client.login(user=factory.make_admin())
@@ -576,8 +571,7 @@ class UserManagementTest(MAASServerTestCase):
             get_prefixed_form_data('password', params))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description, "Password changed for '%(username)s'.")
+        self.assertEquals(event.description, "Updated password.")
 
     def test_delete_user_GET(self):
         # The user delete page displays a confirmation page with a form.
@@ -611,8 +605,7 @@ class UserManagementTest(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEquals(
-            event.description,
-            "User %s" % user.username + " deleted by '%(username)s'.")
+            event.description, "Deleted user '%s'." % user.username)
 
     def test_delete_admin_POST_creates_audit_event(self):
         self.client.login(user=factory.make_admin())
@@ -622,8 +615,7 @@ class UserManagementTest(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEquals(
-            event.description,
-            "Admin %s" % user.username + " deleted by '%(username)s'.")
+            event.description, "Deleted admin '%s'." % user.username)
 
     def test_view_user(self):
         # The user page feature the basic information about the user.

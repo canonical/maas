@@ -47,7 +47,7 @@ class CommissioningScriptDelete(DeleteView):
         script.delete()
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.UI, request, None, description=(
-                "Script %s" % script.name + " deleted for '%(username)s'."))
+                "Deleted script '%s'." % script.name))
         messages.info(
             request, "Commissioning script %s deleted." % script.name)
         return HttpResponseRedirect(self.get_next_url())

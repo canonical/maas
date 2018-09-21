@@ -97,8 +97,7 @@ class TestScriptDeleteTest(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Script %s" % script_name +
-            " deleted for '%(username)s'.")
+            event.description, "Deleted script '%s'." % script_name)
 
 
 class TestScriptUploadTest(MAASServerTestCase):

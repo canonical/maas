@@ -63,8 +63,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Package repository '%s'" % package_repository.name +
-            " created by '%(username)s'.")
+            "Created package repository '%s'." % package_repository.name)
 
     def test__create_package_repository_requires_name(self):
         form = PackageRepositoryForm(
@@ -120,9 +119,8 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description,
-            "Package repository '%s'" % package_repository.name +
-            " updated by '%(username)s'.")
+            event.description, "Updated package repository '%s'." % (
+                package_repository.name))
 
     def test__updates_url(self):
         package_repository = factory.make_PackageRepository()

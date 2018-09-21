@@ -133,8 +133,7 @@ class TestLogin(MAASServerTestCase):
             })
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description, "User '%(username)s' logged in.")
+        self.assertEquals(event.description, "Logged in user.")
 
     def test_login_external_auth(self):
         self.patch(settings, 'DEBUG', False)
@@ -183,8 +182,7 @@ class TestLogout(MAASServerTestCase):
         self.client.post(reverse('logout'))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description, "User '%(username)s' logged out.")
+        self.assertEquals(event.description, "Logged out user.")
 
 
 def token_to_dict(token):
@@ -349,9 +347,7 @@ class TestAuthenticate(MAASServerTestCase):
             })
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description,
-            "Retrieved API (OAuth) token for '%(username)s'.")
+        self.assertEquals(event.description, "Retrieved API (OAuth) token.")
 
     def test_authenticate_creates_audit_event_without_tokens(self):
         username = factory.make_name("username")
@@ -367,5 +363,4 @@ class TestAuthenticate(MAASServerTestCase):
             })
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(
-            event.description, "Created API (OAuth) token for '%(username)s'.")
+        self.assertEquals(event.description, "Created API (OAuth) token.")

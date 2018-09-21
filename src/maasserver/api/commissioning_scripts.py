@@ -127,7 +127,7 @@ class CommissioningScriptHandler(OperationsHandler):
         script.delete()
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
-                "Script %s" % script.name + " deleted for '%(username)s'."))
+                "Deleted script '%s'." % script.name))
         return rc.DELETED
 
     def update(self, request, name):

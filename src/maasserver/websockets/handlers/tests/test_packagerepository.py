@@ -79,8 +79,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Package repository '%s'" % package_repository_name +
-            " created by '%(username)s'.")
+            "Created package repository '%s'." % package_repository_name)
 
     def test_update_is_admin_only(self):
         user = factory.make_User()
@@ -104,8 +103,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Package repository '%s'" % package_repository.name +
-            " updated by '%(username)s'.")
+            "Updated package repository '%s'." % package_repository.name)
 
     def test_delete_is_admin_only(self):
         user = factory.make_User()

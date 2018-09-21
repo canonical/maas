@@ -130,8 +130,7 @@ class DHCPSnippetHandler(OperationsHandler):
         dhcp_snippet.delete()
         create_audit_event(
             EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None, description=(
-                "DHCP snippet '%s'" % dhcp_snippet.name +
-                " deleted by '%(username)s'."))
+                "Deleted DHCP snippet '%s'." % dhcp_snippet.name))
         return rc.DELETED
 
     @admin_method
@@ -164,9 +163,8 @@ class DHCPSnippetHandler(OperationsHandler):
             create_audit_event(
                 EVENT_TYPES.SETTINGS, ENDPOINT.API, request, None,
                 description=(
-                    "DHCP snippet '%s' reverted to revision '%s'" % (
-                        dhcp_snippet.name, revert_to) +
-                    " by '%(username)s'."))
+                    "Reverted DHCP snippet '%s' to revision '%s'." % (
+                        dhcp_snippet.name, revert_to)))
             return dhcp_snippet
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])

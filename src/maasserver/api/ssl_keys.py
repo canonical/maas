@@ -103,8 +103,7 @@ class SSLKeyHandler(OperationsHandler):
         key.delete()
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-            description=(
-                "SSL key id=%s" % id + " deleted by '%(username)s'."))
+            description="Deleted SSL key id='%s'." % id)
         return rc.DELETED
 
     @classmethod

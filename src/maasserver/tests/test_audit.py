@@ -9,10 +9,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT_CHOICES
-from maasserver.models import (
-    Event,
-    EventType,
-)
+from maasserver.models import Event
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import (
@@ -32,9 +29,8 @@ class CreateAuditEventTest(MAASServerTestCase):
             }
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         create_audit_event(EVENT_TYPES.NODE_PXE_REQUEST, endpoint, request)
-        event = Event.objects.get(node=None, user=user)
+        event = Event.objects.get(node=None, type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertIsNotNone(EventType.objects.get(level=AUDIT))
         self.assertEquals(endpoint, event.endpoint)
         self.assertEquals('', event.user_agent)
 
@@ -50,9 +46,8 @@ class CreateAuditEventTest(MAASServerTestCase):
         create_audit_event(
             EVENT_TYPES.NODE_PXE_REQUEST, endpoint,
             request, system_id=node.system_id)
-        event = Event.objects.get(node=node, user=node.owner)
+        event = Event.objects.get(node=node, type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertIsNotNone(EventType.objects.get(level=AUDIT))
         self.assertEquals(request.META['HTTP_USER_AGENT'], event.user_agent)
 
     def test_create_audit_event_creates_audit_event_with_description(self):
@@ -68,9 +63,8 @@ class CreateAuditEventTest(MAASServerTestCase):
         create_audit_event(
             EVENT_TYPES.NODE_PXE_REQUEST, endpoint, request,
             system_id=node.system_id, description=description)
-        event = Event.objects.get(node=node, user=node.owner)
+        event = Event.objects.get(node=node, type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertIsNotNone(EventType.objects.get(level=AUDIT))
         self.assertEquals(request.META['HTTP_USER_AGENT'], event.user_agent)
         self.assertEquals(description, event.description)
 
@@ -85,5 +79,4 @@ class CreateAuditEventTest(MAASServerTestCase):
         create_audit_event(EVENT_TYPES.NODE_PXE_REQUEST, endpoint, request)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertIsNotNone(EventType.objects.get(level=AUDIT))
-        self.assertIsNone(event.user)
+        self.assertIsNone(event.user_id)

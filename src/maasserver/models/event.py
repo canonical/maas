@@ -9,7 +9,6 @@ __all__ = [
 
 import logging
 
-from django.contrib.auth.models import User
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -53,12 +52,26 @@ class EventManager(Manager):
         else:
             node = (Node.objects.get(system_id=system_id)
                     if system_id is not None else None)
+        if node is not None:
+            node_hostname = node.hostname
+            node_system_id = node.system_id
+        else:
+            node_hostname = ''
+            node_system_id = None
+        if user is not None:
+            username = user.username
+            user_id = user.id
+        else:
+            user_id = None
+            username = ''
         event_type = EventType.objects.register(
             type_name, type_description, type_level)
         return Event.objects.create(
-            type=event_type, node=node, user=user, ip_address=ip_address,
-            endpoint=endpoint, user_agent=user_agent, action=event_action,
-            description=event_description, created=created)
+            type=event_type, node=node, node_system_id=node_system_id,
+            node_hostname=node_hostname, user_id=user_id, username=username,
+            ip_address=ip_address, endpoint=endpoint, user_agent=user_agent,
+            action=event_action, description=event_description,
+            created=created)
 
     def create_node_event(
             self, system_id, event_type, event_action='',
@@ -83,8 +96,9 @@ class Event(CleanSave, TimestampedModel):
 
     :ivar type: The event's type.
     :ivar node: The node of the event.
+    :ivar node_system_id: The system_id of the node of the event.
     :ivar node_hostname: The hostname of the node of the event.
-    :ivar user: The user responsible for this event.
+    :ivar user_id: The user's id responsible for this event.
     :ivar username: The username of the user responsible for this event.
     :ivar ip_address: IP address used in the request for this event.
     :ivar endpoint: Endpoint used in the request for this event.
@@ -98,15 +112,15 @@ class Event(CleanSave, TimestampedModel):
 
     node = ForeignKey('Node', null=True, editable=False, on_delete=SET_NULL)
 
+    node_system_id = CharField(
+        max_length=41, blank=True, null=True, editable=False)
+
     # Set on node deletion.
     node_hostname = CharField(
         max_length=255, default='', blank=True, validators=[validate_hostname])
 
-    user = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False,
-        on_delete=SET_NULL)
+    user_id = IntegerField(blank=True, null=True, editable=False)
 
-    # Set on user deletion.
     username = CharField(max_length=32, blank=True, default='')
 
     # IP address of the request that caused this event.
@@ -140,8 +154,6 @@ class Event(CleanSave, TimestampedModel):
     def owner(self):
         if self.username:
             return self.username
-        elif self.user is not None:
-            return self.user.username
         else:
             return 'unknown'
 

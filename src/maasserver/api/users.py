@@ -87,9 +87,8 @@ class UsersHandler(OperationsHandler):
 
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-            description=(
-                "%s %s" % ('Admin' if is_superuser else 'User', username) +
-                " created by '%(username)s'."))
+            description=("Created %s '%s'." % (
+                'admin' if is_superuser else 'user', username)))
         if is_superuser:
             return User.objects.create_superuser(
                 username=username, password=password, email=email)
@@ -139,10 +138,8 @@ class UserHandler(OperationsHandler):
                 user.userprofile.delete()
                 create_audit_event(
                     EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-                    description=(
-                        "%s %s" % (
-                            'Admin' if user.is_superuser else 'User',
-                            username) + " deleted by '%(username)s'."))
+                    description=("Deleted %s '%s'." % (
+                        'admin' if user.is_superuser else 'user', username)))
             except CannotDeleteUserException as e:
                 raise ValidationError(str(e))
 

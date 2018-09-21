@@ -451,8 +451,7 @@ class ScriptForm(ModelForm):
         if request is not None and endpoint is not None:
             create_audit_event(
                 EVENT_TYPES.SETTINGS, endpoint, request, None,
-                description=(
-                    "Script %s" % script.name + " saved for '%(username)s'."))
+                description="Saved script '%s'." % script.name)
         return script
 
 

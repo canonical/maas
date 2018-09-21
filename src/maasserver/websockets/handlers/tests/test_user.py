@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.user`"""
@@ -6,12 +6,14 @@
 __all__ = []
 
 from django.contrib.auth.models import User
+from maasserver.models.event import Event
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.user import UserHandler
 from piston3.models import Token
+from provisioningserver.events import AUDIT
 
 
 class TestUserHandler(MAASServerTestCase):
@@ -85,6 +87,9 @@ class TestUserHandler(MAASServerTestCase):
         observed = handler.create_authorisation_token({})
         self.assertItemsEqual(['key', 'secret', 'consumer'], observed.keys())
         self.assertItemsEqual(['key', 'name'], observed['consumer'].keys())
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.description, "Created token.")
 
     def test_delete_authorisation_token(self):
         user = factory.make_User()
@@ -92,3 +97,6 @@ class TestUserHandler(MAASServerTestCase):
         observed = handler.create_authorisation_token({})
         handler.delete_authorisation_token({'key': observed['key']})
         self.assertIsNone(Token.objects.filter(key=observed['key']).first())
+        event = Event.objects.filter(type__level=AUDIT).last()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.description, "Deleted token.")

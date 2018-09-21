@@ -96,8 +96,7 @@ class TestBcacheCacheSetsAPI(APITestCase.ForUser):
         self.assertEqual(cache_device.id, parsed_device['cache_device']['id'])
         self.assertThat(mock_create_audit_event, MockCalledOnceWith(
             EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
-            "'%(username)s': Created bcache cache set on " + "%s." %
-            node.hostname))
+            "Created bcache cache set."))
 
     def test_create_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -193,8 +192,7 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
         self.assertIsNone(reload_object(cache_set))
         self.assertThat(mock_create_audit_event, MockCalledOnceWith(
             EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
-            "'%(username)s': Deleted bcache cache set on " + "%s." %
-            node.hostname))
+            "Deleted bcache cache set."))
 
     def test_delete_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -255,8 +253,7 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
         self.assertEqual(new_device.id, parsed_device['cache_device']['id'])
         self.assertThat(mock_create_audit_event, MockCalledOnceWith(
             EVENT_TYPES.NODE, ENDPOINT.API, ANY, node.system_id,
-            "'%(username)s': Updated bcache cache set on " + "%s." %
-            node.hostname))
+            "Updated bcache cache set."))
 
     def test_update_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)

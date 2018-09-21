@@ -74,9 +74,8 @@ class BcacheCacheSetsHandler(OperationsHandler):
         form = CreateCacheSetForm(machine, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
-                "'%(username)s': Created bcache cache set on " + "%s." %
-                machine.hostname)
+                EVENT_TYPES.NODE, ENDPOINT.API, request,
+                system_id, "Created bcache cache set.")
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
@@ -138,9 +137,8 @@ class BcacheCacheSetHandler(OperationsHandler):
         else:
             cache_set.delete()
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
-                "'%(username)s': Deleted bcache cache set on " + "%s." %
-                node.hostname)
+                EVENT_TYPES.NODE, ENDPOINT.API, request,
+                system_id, "Deleted bcache cache set.")
             return rc.DELETED
 
     def update(self, request, system_id, id):
@@ -163,9 +161,8 @@ class BcacheCacheSetHandler(OperationsHandler):
         form = UpdateCacheSetForm(cache_set, data=request.data)
         if form.is_valid():
             create_audit_event(
-                EVENT_TYPES.NODE, ENDPOINT.API, request, system_id,
-                "'%(username)s': Updated bcache cache set on " + "%s." %
-                node.hostname)
+                EVENT_TYPES.NODE, ENDPOINT.API, request,
+                system_id, "Updated bcache cache set.")
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)

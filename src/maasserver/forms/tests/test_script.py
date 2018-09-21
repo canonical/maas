@@ -972,9 +972,7 @@ class TestCommissioningScriptForm(MAASServerTestCase):
         form.save(request)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(
-            event.description, "Script %s" % name +
-            " saved for '%(username)s'.")
+        self.assertEqual(event.description, "Saved script '%s'." % name)
 
     def test_propagates_script_form_errors(self):
         # Regression test for LP:1712422
@@ -1050,8 +1048,7 @@ class TestTestingScriptForm(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "Script %s" % new_script.name +
-            " saved for '%(username)s'.")
+            event.description, "Saved script '%s'." % new_script.name)
 
     def test_propagates_script_form_errors(self):
         # Regression test for LP:1712422

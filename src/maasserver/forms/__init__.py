@@ -1126,8 +1126,8 @@ class SSHKeyForm(MAASModelForm):
     def save(self, endpoint, request):
         sshkey = super(SSHKeyForm, self).save()
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, endpoint, request, None,
-            description=("SSH key created by '%(username)s'."))
+            EVENT_TYPES.AUTHORISATION, endpoint, request,
+            None, description="Created SSH key.")
         return sshkey
 
 
@@ -1144,8 +1144,8 @@ class SSLKeyForm(KeyForm):
     def save(self, endpoint, request):
         sslkey = super(SSLKeyForm, self).save()
         create_audit_event(
-            EVENT_TYPES.AUTHORISATION, endpoint, request, None,
-            description="SSL key created by '%(username)s'.")
+            EVENT_TYPES.AUTHORISATION, endpoint, request,
+            None, description="Created SSL key.")
         return sslkey
 
 

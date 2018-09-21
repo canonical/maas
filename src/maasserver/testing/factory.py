@@ -1725,9 +1725,8 @@ class Factory(maastesting.factory.Factory):
             node_hostname = node.hostname
         if user is None:
             user = self.make_User()
-            username = ''
-        else:
-            username = user.username
+        user_id = user.id
+        username = user.username
         if ip_address is None:
             ip_address = factory.make_ipv4_address()
         if endpoint is None:
@@ -1739,9 +1738,10 @@ class Factory(maastesting.factory.Factory):
         if description is None:
             description = self.make_name('desc')
         return Event.objects.create(
-            type=type, node=node, node_hostname=node_hostname, user=user,
-            username=username, ip_address=ip_address, endpoint=endpoint,
-            user_agent=user_agent, action=action, description=description)
+            type=type, node=node, node_system_id=node.system_id,
+            node_hostname=node_hostname, user_id=user_id, username=username,
+            ip_address=ip_address, endpoint=endpoint, user_agent=user_agent,
+            action=action, description=description)
 
     @typed
     def make_LargeFile(self, content: bytes=None, size=512):

@@ -92,7 +92,7 @@ class SSHKeysHandler(OperationsHandler):
                     user=request.user, protocol=protocol, auth_id=auth_id)
                 create_audit_event(
                     EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-                    description=("SSH keys imported by '%(username)s'."))
+                    description="Imported SSH keys.")
                 return keysource
             except (ImportSSHKeysError, RequestException) as e:
                 raise MAASAPIBadRequest(e.args[0])
@@ -141,8 +141,7 @@ class SSHKeyHandler(OperationsHandler):
         key.delete()
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, ENDPOINT.API, request, None,
-            description=(
-                "SSH key id=%s" % id + " deleted by '%(username)s'."))
+            description="Deleted SSH key id='%s'." % id)
         return rc.DELETED
 
     @classmethod

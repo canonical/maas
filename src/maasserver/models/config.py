@@ -216,8 +216,8 @@ class ConfigManager(Manager):
         if endpoint is not None and request is not None:
             create_audit_event(
                 EVENT_TYPES.SETTINGS, endpoint, request, None, description=(
-                    "Config setting '%s' set to '%s'" % (name, value) +
-                    " for '%(username)s'."))
+                    "Updated configuration setting '%s' to '%s'." % (
+                        name, value)))
 
     def config_changed_connect(self, config_name, method):
         """Connect a method to Django's 'update' signal for given config name.

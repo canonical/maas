@@ -141,8 +141,7 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
         self.assertEqual(keys[1].id, keys_after[0].id)
         self.assertIsNotNone(event)
         self.assertEquals(
-            event.description,
-            "SSL key id=%s" % keys[0].id + " deleted by '%(username)s'.")
+            event.description, "Deleted SSL key id='%s'." % keys[0].id)
 
     def test_delete_fails_if_not_your_key(self):
         user, keys = factory.make_user_with_ssl_keys(n_keys=1)

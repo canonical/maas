@@ -510,8 +510,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description,
-            "SSH key id=%s" % keys[0].id + " deleted by '%(username)s'.")
+            event.description, "Deleted SSH key id='%s'." % keys[0].id)
 
     def test_delete_fails_if_not_your_key(self):
         user, keys = factory.make_user_with_keys(n_keys=1)
@@ -567,7 +566,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
-            event.description, "SSH keys imported by '%(username)s'.")
+            event.description, "Imported SSH keys.")
 
     def test_import_ssh_keys_creates_keys_not_duplicate_keysource(self):
         protocol = random.choice(

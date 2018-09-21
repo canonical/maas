@@ -123,7 +123,7 @@ class DHCPSnippetForm(MAASModelForm):
         dhcp_snippet = super(DHCPSnippetForm, self).save()
         create_audit_event(
             EVENT_TYPES.SETTINGS, endpoint, request, None, description=(
-                "DHCP snippet '%s'" % dhcp_snippet.name +
-                " %s" % ('updated' if self.is_update else 'created') +
-                " by '%(username)s'."))
+                "%s DHCP snippet '%s'." % (
+                    'Updated' if self.is_update else 'Created',
+                    dhcp_snippet.name)))
         return dhcp_snippet
