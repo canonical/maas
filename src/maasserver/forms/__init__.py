@@ -2301,6 +2301,8 @@ class BootResourceForm(MAASModelForm):
     content = forms.FileField(
         label="File", allow_empty_file=False)
 
+    keep_old = forms.BooleanField(required=False)
+
     def __init__(self, *args, **kwargs):
         super(BootResourceForm, self).__init__(*args, **kwargs)
         self.set_up_architecture_field()
@@ -2437,6 +2439,15 @@ class BootResourceForm(MAASModelForm):
         resource_set = self.create_resource_set(resource, 'uploaded')
         self.create_resource_file(
             resource_set, self.cleaned_data)
+
+        # LP:1660418 - Delete new versions of user uploaded BootResources to
+        # avoid duplicated images in the database that are unusable.
+        if not self.cleaned_data['keep_old']:
+            old_brfs = BootResourceFile.objects.filter(
+                resource_set__resource=resource)
+            old_brfs = old_brfs.exclude(resource_set=resource_set)
+            old_brfs.delete()
+
         return resource
 
 

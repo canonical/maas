@@ -13,8 +13,14 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
 )
 from maasserver.forms import BootResourceForm
-from maasserver.models import BootResource
-from maasserver.models.signals import bootsources
+from maasserver.models import (
+    BootResource,
+    BootResourceFile,
+)
+from maasserver.models.signals import (
+    bootresourcefiles,
+    bootsources,
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -31,6 +37,8 @@ class TestBootResourceForm(MAASServerTestCase):
         super().setUp()
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
+        self.addCleanup(bootresourcefiles.signals.enable)
+        bootresourcefiles.signals.disable()
 
     def pick_filetype(self):
         filetypes = {
@@ -193,6 +201,7 @@ class TestBootResourceForm(MAASServerTestCase):
             'name': name,
             'architecture': architecture,
             'filetype': upload_type,
+            'keep_old': True,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -260,6 +269,7 @@ class TestBootResourceForm(MAASServerTestCase):
             'name': name,
             'architecture': architecture,
             'filetype': upload_type,
+            'keep_old': True,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -295,6 +305,7 @@ class TestBootResourceForm(MAASServerTestCase):
             'name': name,
             'architecture': architecture,
             'filetype': upload_type,
+            'keep_old': True,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -317,3 +328,32 @@ class TestBootResourceForm(MAASServerTestCase):
             'name', 'architecture', 'filetype', 'content',
             ],
             form.errors.keys())
+
+    def test_removes_old_bootresourcefiles(self):
+        # Regression test for LP:1660418
+        os = factory.make_name('os')
+        series = factory.make_name('series')
+        OperatingSystemRegistry.register_item(os, CustomOS())
+        self.addCleanup(
+            OperatingSystemRegistry.unregister_item, os)
+        name = '%s/%s' % (os, series)
+        architecture = make_usable_architecture(self)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name=name, architecture=architecture)
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode('utf-8')
+        upload_name = factory.make_name('filename')
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            'name': name,
+            'architecture': architecture,
+            'filetype': upload_type,
+            }
+        form = BootResourceForm(data=data, files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        self.assertEqual(
+            1, BootResourceFile.objects.filter(
+                resource_set__resource=resource).count())
