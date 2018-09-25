@@ -205,20 +205,29 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_action_performs_action(self):
         admin = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = admin
         device = factory.make_Device(owner=admin)
         factory.make_Switch(node=device)
         handler = SwitchHandler(admin, {})
-        handler.action({"system_id": device.system_id, "action": "delete"})
+        handler.action({
+            "request": request,
+            "system_id": device.system_id,
+            "action": "delete"
+        })
         self.assertIsNone(reload_object(device))
 
     @transactional
     def test_action_performs_action_passing_extra(self):
         admin = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = admin
         device = factory.make_Device(owner=admin)
         factory.make_Switch(node=device)
         zone = factory.make_Zone()
         handler = SwitchHandler(admin, {})
         handler.action({
+            "request": request,
             "system_id": device.system_id,
             "action": "set-zone",
             "extra": {

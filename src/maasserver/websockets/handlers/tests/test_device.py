@@ -733,18 +733,27 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
     @transactional
     def test_action_performs_action(self):
         user = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = user
         device = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {})
-        handler.action({"system_id": device.system_id, "action": "delete"})
+        handler.action({
+            "request": request,
+            "system_id": device.system_id,
+            "action": "delete"
+        })
         self.assertIsNone(reload_object(device))
 
     @transactional
     def test_action_performs_action_passing_extra(self):
         user = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = user
         device = self.make_device_with_ip_address(owner=user)
         zone = factory.make_Zone()
         handler = DeviceHandler(user, {})
         handler.action({
+            "request": request,
             "system_id": device.system_id,
             "action": "set-zone",
             "extra": {

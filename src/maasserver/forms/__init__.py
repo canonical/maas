@@ -1816,9 +1816,10 @@ class BulkNodeActionForm(Form):
     # a list of system ids.
     system_id = UnconstrainedMultipleChoiceField()
 
-    def __init__(self, user, *args, **kwargs):
+    def __init__(self, user, request=None, *args, **kwargs):
         super(BulkNodeActionForm, self).__init__(*args, **kwargs)
         self.user = user
+        self.request = request
         action_choices = (
             # Put an empty action as the first displayed option to avoid
             # fat-fingered bulk actions.
@@ -1881,7 +1882,8 @@ class BulkNodeActionForm(Form):
         """
         node = Node.objects.get(system_id=system_id)
         if node.status in action_class.actionable_statuses:
-            action_instance = action_class(node=node, user=self.user)
+            action_instance = action_class(
+                node=node, user=self.user, request=self.request)
             if action_instance.inhibit() is not None:
                 return "not_actionable"
             else:

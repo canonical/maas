@@ -749,8 +749,9 @@ class MachineHandler(NodeHandler):
     def action(self, params):
         """Perform the action on the object."""
         obj = self.get_object(params)
+        request = params.get("request")
         action_name = params.get("action")
-        actions = compile_node_actions(obj, self.user)
+        actions = compile_node_actions(obj, self.user, request=request)
         action = actions.get(action_name)
         if action is None:
             raise NodeActionError(

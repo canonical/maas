@@ -142,9 +142,13 @@ class TestBulkNodeActionFormSave(MAASTransactionServerTestCase):
             node1 = factory.make_Node()
             node2 = factory.make_Node()
             node3 = factory.make_Node()
+            admin = factory.make_admin()
+            request = factory.make_fake_request('/')
+            request.user = admin
             system_id_to_delete = [node1.system_id, node2.system_id]
             form = BulkNodeActionForm(
-                user=factory.make_admin(),
+                request=request,
+                user=admin,
                 data=dict(
                     action=Delete.name,
                     system_id=system_id_to_delete))
