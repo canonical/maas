@@ -28,6 +28,7 @@ from provisioningserver.utils.shell import (
 
 class DLIPowerDriver(PowerDriver):
     name = 'dli'
+    chassis = True
     description = "Digital Loggers, Inc. PDU"
     settings = [
         make_setting_field(

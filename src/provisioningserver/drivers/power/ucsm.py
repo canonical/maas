@@ -29,6 +29,7 @@ def extract_ucsm_parameters(context):
 class UCSMPowerDriver(PowerDriver):
 
     name = 'ucsm'
+    chassis = True
     description = "Cisco UCS Manager"
     settings = [
         make_setting_field(

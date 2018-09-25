@@ -64,6 +64,7 @@ class MSCMState:
 class MSCMPowerDriver(PowerDriver):
 
     name = 'mscm'
+    chassis = True
     description = "HP Moonshot - iLO Chassis Manager"
     settings = [
         make_setting_field(

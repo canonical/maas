@@ -187,6 +187,10 @@ class PowerDriverBase(metaclass=ABCMeta):
     def queryable(self):
         """Whether or not the power driver is queryable."""
 
+    @abstractproperty
+    def chassis(self):
+        """Return True if the power driver is for a chassis."""
+
     @abstractmethod
     def detect_missing_packages(self):
         """Implement this method for the actual implementation

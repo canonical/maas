@@ -37,6 +37,7 @@ def extract_vmware_parameters(context):
 class VMwarePowerDriver(PowerDriver):
 
     name = 'vmware'
+    chassis = True
     description = "VMware"
     settings = [
         make_setting_field(

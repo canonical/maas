@@ -1208,27 +1208,37 @@ class Node(CleanSave, TimestampedModel):
 
         # Circular imports.
         from maasserver.models.bmc import BMC
-        bmc_params, node_params = BMC.scope_power_parameters(
+        chassis, bmc_params, node_params = BMC.scope_power_parameters(
             self.bmc.power_type, power_params)
         self.instance_power_parameters = node_params
 
         if self.bmc.power_parameters == bmc_params:
             return
 
-        conflicts = len(BMC.objects.filter(
-            power_type=self.bmc.power_type, power_parameters=bmc_params)) > 0
-        if not conflicts:
+        if chassis:
+            # Update either our BMC or link this node to another existing
+            # of the same type.
+            another_exists = BMC.objects.filter(
+                power_type=self.bmc.power_type,
+                power_parameters=bmc_params).count() > 0
+            if not another_exists:
+                self.bmc.power_parameters = bmc_params
+                self.bmc.save()
+            else:
+                (bmc, _) = BMC.objects.get_or_create(
+                    power_type=self.bmc.power_type,
+                    power_parameters=bmc_params)
+                # Point all nodes using old BMC at the new one.
+                if self.bmc is not None and self.bmc_id != bmc.id:
+                    for node in self.bmc.node_set.exclude(id=self.id):
+                        node.bmc = bmc
+                        node.save()
+                self.bmc = bmc
+        else:
+            # This power_type is not linked to more than 1 BMC per node, just
+            # update the BMC power parameters.
             self.bmc.power_parameters = bmc_params
             self.bmc.save()
-        else:
-            (bmc, _) = BMC.objects.get_or_create(
-                power_type=self.bmc.power_type, power_parameters=bmc_params)
-            # Point all nodes using old BMC at the new one.
-            if self.bmc is not None and self.bmc_id != bmc.id:
-                for node in self.bmc.node_set.exclude(id=self.id):
-                    node.bmc = bmc
-                    node.save()
-            self.bmc = bmc
 
     @property
     def fqdn(self):

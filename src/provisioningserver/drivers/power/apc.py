@@ -39,6 +39,7 @@ class APCState:
 class APCPowerDriver(PowerDriver):
 
     name = 'apc'
+    chassis = True
     description = "American Power Conversion (APC) PDU"
     settings = [
         make_setting_field('power_address', "IP for APC PDU", required=True),

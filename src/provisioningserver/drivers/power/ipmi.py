@@ -190,6 +190,7 @@ IPMI_BOOT_TYPE_MAPPING = {
 class IPMIPowerDriver(PowerDriver):
 
     name = 'ipmi'
+    chassis = False
     description = "IPMI"
     settings = [
         make_setting_field(

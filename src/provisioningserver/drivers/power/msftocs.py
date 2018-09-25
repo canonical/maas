@@ -38,6 +38,7 @@ class MicrosoftOCSState(object):
 class MicrosoftOCSPowerDriver(PowerDriver):
 
     name = 'msftocs'
+    chassis = True
     description = "Microsoft OCS - Chassis Manager"
     settings = [
         make_setting_field('power_address', "Power address", required=True),

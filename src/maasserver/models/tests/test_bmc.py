@@ -344,8 +344,9 @@ class TestBMC(MAASServerTestCase):
             )
         parameters = {**bmc_parameters, **node_parameters}
         result = BMC.scope_power_parameters('vmware', parameters)
-        self.assertEqual(bmc_parameters, result[0])
-        self.assertEqual(node_parameters, result[1])
+        self.assertTrue(result[0])
+        self.assertEqual(bmc_parameters, result[1])
+        self.assertEqual(node_parameters, result[2])
 
     def test_scope_power_parameters_unknown_parameter(self):
         bmc_parameters = dict(power_address=factory.make_string())
@@ -354,8 +355,9 @@ class TestBMC(MAASServerTestCase):
         node_parameters[factory.make_string()] = factory.make_string()
         parameters = {**bmc_parameters, **node_parameters}
         result = BMC.scope_power_parameters('hmc', parameters)
-        self.assertEqual(bmc_parameters, result[0])
-        self.assertEqual(node_parameters, result[1])
+        self.assertTrue(result[0])
+        self.assertEqual(bmc_parameters, result[1])
+        self.assertEqual(node_parameters, result[2])
 
     def test_bmc_extract_ip_address_whole_value(self):
         power_parameters = {'power_address': "192.168.1.1"}

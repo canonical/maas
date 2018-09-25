@@ -57,6 +57,7 @@ REQUIRED_PACKAGES = [["amttool", "amtterm"], ["wsman", "wsmancli"]]
 class AMTPowerDriver(PowerDriver):
 
     name = 'amt'
+    chassis = False
     description = "Intel AMT"
     settings = [
         make_setting_field(

@@ -28,6 +28,7 @@ from provisioningserver.utils.shell import (
 class MoonshotIPMIPowerDriver(PowerDriver):
 
     name = 'moonshot'
+    chassis = True
     description = "HP Moonshot - iLO4 (IPMI)"
     settings = [
         make_setting_field('power_address', "Power address", required=True),

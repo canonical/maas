@@ -16,6 +16,7 @@ maaslog = get_maas_logger("drivers.power.manual")
 class ManualPowerDriver(PowerDriver):
 
     name = 'manual'
+    chassis = False
     description = "Manual"
     settings = []
     ip_extractor = None

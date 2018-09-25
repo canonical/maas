@@ -33,6 +33,7 @@ def extract_virsh_parameters(context):
 class VirshPowerDriver(PowerDriver):
 
     name = 'virsh'
+    chassis = True
     description = "Virsh (virtual systems)"
     settings = [
         make_setting_field('power_address', "Power address", required=True),

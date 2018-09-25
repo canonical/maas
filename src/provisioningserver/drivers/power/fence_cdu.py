@@ -28,6 +28,7 @@ from provisioningserver.utils.shell import (
 class FenceCDUPowerDriver(PowerDriver):
 
     name = 'fence_cdu'
+    chassis = True
     description = "Sentry Switch CDU"
     settings = [
         make_setting_field('power_address', "Power address", required=True),

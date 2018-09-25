@@ -706,6 +706,7 @@ class TestRequestClasses(MAASTestCase):
 class FakePodDriverBase(PodDriverBase):
 
     name = ""
+    chassis = True
     description = ""
     settings = []
     ip_extractor = None

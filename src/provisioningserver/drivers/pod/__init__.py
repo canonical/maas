@@ -420,3 +420,5 @@ def get_error_message(err):
 
 class PodDriver(PowerDriver, PodDriverBase):
     """Default pod driver."""
+
+    chassis = True  # Pods are always a chassis

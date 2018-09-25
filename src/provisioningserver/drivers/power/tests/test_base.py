@@ -50,6 +50,7 @@ from twisted.internet.defer import (
 class FakePowerDriverBase(PowerDriverBase):
 
     name = ""
+    chassis = False
     description = ""
     settings = []
     ip_extractor = None
@@ -219,6 +220,7 @@ class TestGetErrorMessage(MAASTestCase):
 class FakePowerDriver(PowerDriver):
 
     name = ""
+    chassis = False
     description = ""
     settings = []
     ip_extractor = None

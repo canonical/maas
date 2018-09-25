@@ -42,6 +42,7 @@ class NovaPowerState:
 class NovaPowerDriver(PowerDriver):
 
     name = 'nova'
+    chassis = True
     description = "OpenStack Nova"
     settings = [
         make_setting_field(

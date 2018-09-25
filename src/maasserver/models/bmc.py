@@ -336,15 +336,15 @@ class BMC(CleanSave, TimestampedModel):
         node-specific ones."""
         if not power_type:
             # If there is no power type, treat all params as node params.
-            return ({}, power_params)
+            return (False, {}, power_params)
         power_driver = PowerDriverRegistry.get_item(power_type)
         if power_driver is None:
             # If there is no power driver, treat all params as node params.
-            return ({}, power_params)
+            return (False, {}, power_params)
         power_fields = power_driver.settings
         if not power_fields:
             # If there is no parameter info, treat all params as node params.
-            return ({}, power_params)
+            return (False, {}, power_params)
         bmc_params = {}
         node_params = {}
         for param_name in power_params:
@@ -354,7 +354,7 @@ class BMC(CleanSave, TimestampedModel):
                 bmc_params[param_name] = power_params[param_name]
             else:
                 node_params[param_name] = power_params[param_name]
-        return (bmc_params, node_params)
+        return (power_driver.chassis, bmc_params, node_params)
 
     @staticmethod
     def extract_ip_address(power_type, power_parameters):
