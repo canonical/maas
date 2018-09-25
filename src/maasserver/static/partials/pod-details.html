@@ -63,6 +63,93 @@
                 </div>
                 <div class="row">
                     <div class="col-12">
+                        <h3 class="p-heading--four">Interfaces</h3>
+                        <table class="p-table-expanding p-table--pod-networking-config">
+                            <thead>
+                                <tr class="p-table__row">
+                                    <th></th>
+                                    <th>Name</th>
+                                    <th>IP Address</th>
+                                    <th>Subnet</th>
+                                    <th>Fabric</th>
+                                    <th>VLAN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="p-table__row" data-ng-repeat="iface in compose.obj.interfaces">
+                                    <td>
+                                        <div data-ng-if="iface.name !== 'default'">
+                                            <button class="p-button--base" data-ng-click="composeRemoveInterface(iface)">
+                                                <i class="p-icon--close"></i>
+                                                <span class="u-off-screen">Remove</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div ng-switch on="iface.name">
+                                            <div ng-switch-when="default">
+                                                default
+                                            </div>
+                                            <div ng-switch-default>
+                                                <div class="form__group-input">
+                                                    <input type="text" placeholder="Enter name" data-ng-model="iface.name">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div ng-switch on="iface.name">
+                                            <div ng-switch-when="default">
+                                                <span>Created by hypervisor at compose time.</span>
+                                            </div>
+                                            <div ng-switch-default>
+                                                <div class="form__group-input">
+                                                    <span>auto-assigned</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div data-ng-if="iface.name !== 'default'" class="form__group-input">
+                                            <select
+                                                data-ng-model="iface.subnet"
+                                                data-ng-options="subnet as subnet.displayName for subnet in subnets track by subnet.id"
+                                                data-ng-change="setFabricAndVlan(iface)">
+                                                <option value="" disabled selected>Select a subnet</option>
+                                            </select>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div data-ng-if="iface.name !== 'default'">
+                                            {$ iface.fabric.name $}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div data-ng-if="iface.name !== 'default'">
+                                            <div ng-switch on="iface.vlan.vid">
+                                                <div ng-switch-when="0">untagged</div>
+                                                <div ng-switch-default>
+                                                    <span>{$ iface.vlan.vid $}</span>
+                                                    <span data-ng-if="iface.vlan.name">({$ iface.vlan.name $})</span>
+                                                </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <button class="p-button--base" data-ng-click="composeAddInterface()">
+                                            <i class="p-icon--plus"></i>
+                                            <span class="u-off-screen">Add another interface</span>
+                                        </button>
+                                        <span ng-if="compose.obj.interfaces[0].name == 'default'">Define (optional)</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
                         <h3 class="p-heading--four">Storage configuration</h3>
                         <table class="p-table-expanding p-table--pod-storage-config">
                             <thead>

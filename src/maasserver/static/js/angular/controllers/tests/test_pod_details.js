@@ -36,6 +36,7 @@ describe("PodDetailsController", function() {
     // Load the required managers.
     var PodsManager, UsersManager, GeneralManager, DomainsManager;
     var ZonesManager, ManagerHelperService, ErrorService;
+    var SubnetsManager, VLANsManager, FabricsManager;
     var ResourcePoolsManager;
     beforeEach(inject(function($injector) {
         PodsManager = $injector.get("PodsManager");
@@ -46,6 +47,9 @@ describe("PodDetailsController", function() {
         MachinesManager = $injector.get("MachinesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
+        SubnetsManager = $injector.get("SubnetsManager");
+        VLANsManager = $injector.get("VLANsManager");
+        FabricsManager = $injector.get("FabricsManager");
         ResourcePoolsManager = $injector.get("ResourcePoolsManager");
     }));
 
@@ -110,6 +114,9 @@ describe("PodDetailsController", function() {
             MachinesManager: MachinesManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService,
+            SubnetsManager: SubnetsManager,
+            VLANsManager: VLANsManager,
+            FabricsManager: FabricsManager,
             ResourcePoolsManager: ResourcePoolsManager
         });
 
@@ -159,18 +166,23 @@ describe("PodDetailsController", function() {
               tags: [],
               pool: {},
               boot: true
+            }],
+            interfaces: [{
+              name: 'default'
             }]
           }
         });
         expect($scope.power_types).toBe(GeneralManager.getData('power_types'));
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
+        expect($scope.subnets).toBe(SubnetsManager.getItems());
         expect($scope.pools).toBe(ResourcePoolsManager.getItems());
         expect($scope.editing).toBe(false);
     });
 
     it("calls loadManagers with PodsManager, UsersManager, GeneralManager, \
-        DomainsManager, ZonesManager, MachinesManager", function() {
+        DomainsManager, ZonesManager, SubnetsManager, VLANsManager, \
+        FabricsManager, MachinesManager", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope,
@@ -181,7 +193,10 @@ describe("PodDetailsController", function() {
                     DomainsManager,
                     ZonesManager,
                     MachinesManager,
-                    ResourcePoolsManager
+                    ResourcePoolsManager,
+                    SubnetsManager,
+                    VLANsManager,
+                    FabricsManager
                 ]);
         });
 
@@ -603,7 +618,8 @@ describe("PodDetailsController", function() {
             $scope.pod.type = 'rsd';
             expect($scope.composePreProcess({})).toEqual({
               id: $scope.pod.id,
-              storage: '0:8(local)'
+              storage: '0:8(local)',
+              interfaces: ''
             });
         });
 
@@ -644,7 +660,27 @@ describe("PodDetailsController", function() {
               id: $scope.pod.id,
               storage: (
                 '0:50(local,happy,days),' +
-                '1:20(iscsi,one,two),2:60(local,other)')
+                '1:20(iscsi,one,two),2:60(local,other)'),
+              interfaces: ''
+            });
+        });
+
+        it("sets interface based on compose.obj.iterfaces", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.compose.obj.interfaces = [
+              {
+                name: 'eth0',
+                subnet: {cidr: '172.16.4.0/24'}
+              },
+              {
+                name: 'eth1',
+                subnet: {cidr: '192.168.1.0/24'}
+              }
+            ];
+            expect($scope.composePreProcess({})).toEqual({
+              id: $scope.pod.id,
+              storage: '0:8()',
+              interfaces: 'eth0:subnet=172.16.4.0/24;eth1:subnet=192.168.1.0/24'
             });
         });
 
@@ -691,7 +727,56 @@ describe("PodDetailsController", function() {
               id: $scope.pod.id,
               storage: (
                 '0:50(pool2,happy,days),' +
-                '1:20(pool1,one,two),2:60(pool3,other)')
+                '1:20(pool1,one,two),2:60(pool3,other)'),
+              interfaces: ''
+            });
+        });
+
+        it("sets virsh storage based on compose.obj.storage", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.pod.type = 'virsh';
+            $scope.compose.obj.storage = [
+              {
+                size: 20,
+                pool: {
+                    name: 'pool1'
+                },
+                tags: [{
+                    text: 'one'
+                }, {
+                    text: 'two'
+                }],
+                boot: false
+              },
+              {
+                size: 50,
+                pool: {
+                    name: 'pool2'
+                },
+                tags: [{
+                  text: 'happy'
+                }, {
+                  text: 'days'
+                }],
+                boot: true
+              },
+              {
+                size: 60,
+                pool: {
+                    name: 'pool3'
+                },
+                tags: [{
+                  text: 'other'
+                }],
+                boot: false
+              }
+            ];
+            expect($scope.composePreProcess({})).toEqual({
+              id: $scope.pod.id,
+              storage: (
+                '0:50(pool2,happy,days),' +
+                '1:20(pool1,one,two),2:60(pool3,other)'),
+              interfaces: ''
             });
         });
     });
@@ -712,6 +797,9 @@ describe("PodDetailsController", function() {
                 tags: [],
                 pool: {},
                 boot: true
+              }],
+              interfaces: [{
+                name: 'default'
               }]
             });
             expect($scope.action.option).toBeNull();
@@ -776,4 +864,49 @@ describe("PodDetailsController", function() {
             expect($scope.compose.obj.storage.indexOf(deleteStorage)).toBe(-1);
         });
     });
+
+    describe("composeAddInterface", function() {
+
+        it("adds a new interface item and removes the default", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.compose.obj.interfaces.length).toBe(1);
+            expect($scope.compose.obj.interfaces[0]).toEqual({
+                name: 'default'
+            });
+            $scope.composeAddInterface();
+            expect($scope.compose.obj.interfaces.length).toBe(1);
+            expect($scope.compose.obj.interfaces[0]).toEqual({
+                name: 'eth0'
+            });
+        });
+
+        it("increments the default interface name", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.composeAddInterface();
+            $scope.composeAddInterface();
+            expect($scope.compose.obj.interfaces[0]).toEqual({
+                name: 'eth0'
+            });
+            expect($scope.compose.obj.interfaces[1]).toEqual({
+                name: 'eth1'
+            });
+        });
+    });
+
+    describe("composeRemoveInterface", function() {
+
+        it("removes interface from interfaces table", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.composeAddInterface();
+            $scope.composeAddInterface();
+            $scope.composeAddInterface();
+            var deletedIface = $scope.compose.obj.interfaces[3];
+            $scope.composeRemoveInterface(deletedIface);
+
+            expect($scope.compose.obj.interfaces.indexOf(
+                deletedIface)).toBe(-1);
+        });
+    });
+
+
 });

@@ -8,12 +8,15 @@ angular.module('MAAS').controller('PodDetailsController', [
     '$scope', '$rootScope', '$location', '$routeParams',
     'PodsManager', 'GeneralManager', 'UsersManager', 'DomainsManager',
     'ZonesManager', 'MachinesManager', 'ManagerHelperService', 'ErrorService',
-    'ResourcePoolsManager', 'ValidationService',
+    'ResourcePoolsManager', 'SubnetsManager', 'VLANsManager', 'FabricsManager',
+    'ValidationService',
+
     function(
         $scope, $rootScope, $location, $routeParams,
         PodsManager, GeneralManager, UsersManager, DomainsManager,
         ZonesManager, MachinesManager, ManagerHelperService, ErrorService,
-        ResourcePoolsManager, ValidationService) {
+        ResourcePoolsManager, SubnetsManager, VLANsManager, FabricsManager,
+        ValidationService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -42,6 +45,9 @@ angular.module('MAAS').controller('PodDetailsController', [
           inProgress: false,
           error: null
         };
+        $scope.defaultInterface = {
+          name: 'default'
+        };
         $scope.compose = {
           action: {
             name: 'compose',
@@ -55,9 +61,11 @@ angular.module('MAAS').controller('PodDetailsController', [
               tags: [],
               pool: {},
               boot: true
-            }]
+            }],
+            interfaces: [$scope.defaultInterface]
           }
         };
+        $scope.subnets = SubnetsManager.getItems();
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.domains = DomainsManager.getItems();
         $scope.zones = ZonesManager.getItems();
@@ -284,6 +292,18 @@ angular.module('MAAS').controller('PodDetailsController', [
               storage.push(constraint);
             });
             params.storage = storage.join(',');
+
+            // Create the interface constraint.
+            // <interface-name>:<key>=<value>[,<key>=<value>];...
+            var interfaces = [];
+            angular.forEach($scope.compose.obj.interfaces, function(iface) {
+              if (iface.subnet) {
+                var row = `${iface.name}:subnet=${iface.subnet.cidr}`
+                interfaces.push(row);
+              }
+            });
+            params.interfaces = interfaces.join(';');
+
             return params;
         };
 
@@ -307,7 +327,8 @@ angular.module('MAAS').controller('PodDetailsController', [
               tags: [],
               pool: {},
               boot: true
-            }]
+            }],
+            interfaces: [$scope.defaultInterface]
           };
           $scope.action.option = null;
         };
@@ -339,7 +360,6 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Get the default pod pool
         $scope.getDefaultStoragePool = function () {
             var defaultPool = {};
-            console.log($scope);
             if($scope.pod.storage_pools && $scope.pod.default_storage_pool) {
                 defaultPool = $scope.pod.storage_pools.filter(
                     pool => pool.id == $scope.pod.default_storage_pool
@@ -353,6 +373,53 @@ angular.module('MAAS').controller('PodDetailsController', [
           var idx = $scope.compose.obj.storage.indexOf(storage);
           if(idx >= 0) {
             $scope.compose.obj.storage.splice(idx, 1);
+          }
+        };
+
+        // Add interfaces.
+        $scope.composeAddInterface = function() {
+
+          // Set displayName for subnets
+          angular.forEach($scope.subnets, function(subnet, idx) {
+            if (subnet.name === subnet.cidr) {
+              $scope.subnets[idx].displayName = subnet.cidr;
+            } else {
+              let name = `${subnet.cidr} (${subnet.name})`;
+              $scope.subnets[idx].displayName = name;
+            }
+          });
+
+          // Remove default auto-assigned interface when
+          // adding custom interfaces
+          let defaultIdx = $scope.compose.obj.interfaces.indexOf(
+              $scope.defaultInterface);
+          if (defaultIdx >= 0) {
+            $scope.compose.obj.interfaces.splice(defaultIdx, 1);
+          }
+          var iface = {
+            name: `eth${$scope.compose.obj.interfaces.length}`
+          };
+          $scope.compose.obj.interfaces.push(iface);
+        };
+
+        $scope.setFabricAndVlan = function(iface) {
+          const idx = $scope.compose.obj.interfaces.indexOf(iface);
+          const vlan = VLANsManager.getItemFromList(iface.subnet.vlan);
+          $scope.compose.obj.interfaces[idx].vlan = vlan;
+          $scope.compose.obj.interfaces[idx].fabric =
+            FabricsManager.getItemFromList(vlan.fabric);
+        }
+
+        // Remove an interface from interfaces config.
+        $scope.composeRemoveInterface = function(iface) {
+          var idx = $scope.compose.obj.interfaces.indexOf(iface);
+          if(idx >= 0) {
+            $scope.compose.obj.interfaces.splice(idx, 1);
+          }
+
+          // Re-add default interface if all custom interfaces removed
+          if ($scope.compose.obj.interfaces.length == 0) {
+            $scope.compose.obj.interfaces.push($scope.defaultInterface);
           }
         };
 
@@ -396,7 +463,8 @@ angular.module('MAAS').controller('PodDetailsController', [
         ManagerHelperService.loadManagers($scope, [
             PodsManager, GeneralManager, UsersManager,
             DomainsManager, ZonesManager, MachinesManager,
-            ResourcePoolsManager]).then(function() {
+            ResourcePoolsManager, SubnetsManager, VLANsManager,
+            FabricsManager]).then(function() {
 
             // Possibly redirected from another controller that already had
             // this pod set to active. Only call setActiveItem if not already
