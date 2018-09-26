@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import re
 
 from django.db import migrations
+import petname
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 
@@ -17,8 +18,17 @@ def get_none_chassis_power_types():
     ]
 
 
+def generate_bmc_name(existing_names):
+    while True:
+        name = petname.Generate(2, "-")
+        if name not in existing_names:
+            existing_names.append(name)
+            return name
+
+
 def break_apart_linked_bmcs(apps, schema_editor):
     BMC = apps.get_model("maasserver", "BMC")
+    existing_names = list(BMC.objects.values_list('name', flat=True))
     power_types = get_none_chassis_power_types()
     for bmc in BMC.objects.filter(power_type__in=power_types).prefetch_related(
             'node_set'):
@@ -26,6 +36,7 @@ def break_apart_linked_bmcs(apps, schema_editor):
         for node in nodes[1:]:
             bmc.id = None
             bmc._state.adding = True
+            bmc.name = generate_bmc_name(existing_names)
             bmc.save()
             node.bmc = bmc
             node.save()
