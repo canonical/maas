@@ -8,10 +8,14 @@ __all__ = []
 from base64 import b64encode
 import http.client
 from random import choice
-from unittest.mock import ANY
+from unittest.mock import (
+    ANY,
+    call,
+)
 
 from django.conf import settings
 from django.db import transaction
+from django.utils.http import urlencode
 from maasserver import forms
 from maasserver.api import machines as machines_module
 from maasserver.enum import (
@@ -35,6 +39,7 @@ from maasserver.models import (
     node as node_module,
     StaticIPAddress,
 )
+from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.storage_layouts import (
@@ -44,6 +49,7 @@ from maasserver.storage_layouts import (
 from maasserver.testing.api import (
     APITestCase,
     APITransactionTestCase,
+    explain_unexpected_response,
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -63,6 +69,7 @@ from maastesting.matchers import (
     HasLength,
     MockCalledOnce,
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from metadataserver.enum import SCRIPT_TYPE
@@ -1640,6 +1647,39 @@ class TestMachineAPI(APITestCase.ForUser):
         response = self.client.delete(url)
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
+
+    def test_DELETE_delete_with_force(self):
+        self.become_admin()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            vlan=vlan, subnet=subnet)
+        ip = factory.make_StaticIPAddress(interface=machine.boot_interface)
+        factory.make_Pod(ip_address=ip)
+        mock_async_delete = self.patch(Pod, "async_delete")
+        response = self.client.delete(
+            self.get_machine_uri(machine), QUERY_STRING=urlencode({
+                'force': 'true'
+            }, doseq=True))
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code,
+            explain_unexpected_response(http.client.NO_CONTENT, response))
+        self.assertThat(mock_async_delete, MockCallsMatch(call()))
+
+    def test_pod_DELETE_delete_without_force(self):
+        self.become_admin()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            vlan=vlan, subnet=subnet)
+        ip = factory.make_StaticIPAddress(interface=machine.boot_interface)
+        factory.make_Pod(ip_address=ip)
+        mock_async_delete = self.patch(Pod, "async_delete")
+        response = self.client.delete(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            explain_unexpected_response(http.client.BAD_REQUEST, response))
+        self.assertThat(mock_async_delete, MockNotCalled())
 
 
 class TestMachineAPITransactional(APITransactionTestCase.ForUser):

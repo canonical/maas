@@ -16,14 +16,12 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.enum import NODE_CREATION_TYPE
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.pods import (
     ComposeMachineForm,
     PodForm,
 )
 from maasserver.models.bmc import Pod
-from maasserver.models.node import Machine
 from maasserver.utils.django_urls import reverse
 from piston3.utils import rc
 from provisioningserver.drivers.pod import Capabilities
@@ -178,13 +176,7 @@ class PodHandler(OperationsHandler):
         Returns 204 if the pod is successfully deleted.
         """
         pod = get_object_or_404(Pod, id=id)
-        # Calculate the wait time based on the number of none pre-existing
-        # machines. We allow maximum of 60 seconds per machine plus 60 seconds
-        # for the pod.
-        num_machines = Machine.objects.filter(bmc=pod)
-        num_machines = num_machines.exclude(
-            creation_type=NODE_CREATION_TYPE.PRE_EXISTING)
-        pod.async_delete().wait((num_machines.count() * 60) + 60)
+        pod.delete_and_wait()
         return rc.DELETED
 
     @admin_method

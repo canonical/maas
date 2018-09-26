@@ -6,7 +6,6 @@ __all__ = [
     'RackControllersHandler',
     ]
 
-
 from django.conf import settings
 from django.http import HttpResponse
 from formencode.validators import StringBool
@@ -93,6 +92,12 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         a `VLAN` and another rack controller cannot be used to provide DHCP for
         said VLAN. Use `force` to override this behavior.
 
+        Using `force` will also allow deleting a rack controller that is
+        hosting pod virtual machines. (The pod will also be deleted.)
+
+        Rack controllers that are also region controllers will be converted
+        to a region controller (and hosted pods will not be affected).
+
         :param force: Always delete the rack controller even if its the
             `primary_rack` on a `VLAN` and another rack controller cannot
             provide DHCP on said VLAN. This will disable DHCP on those VLANs.
@@ -100,11 +105,11 @@ class RackControllerHandler(NodeHandler, PowerMixin):
 
         Returns 404 if the node is not found.
         Returns 403 if the user does not have permission to delete the node.
+        Returns 400 if the node cannot be deleted.
         Returns 204 if the node is successfully deleted.
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
         node.as_self().delete(
             force=get_optional_param(request.GET, 'force', False, StringBool))
         return rc.DELETED

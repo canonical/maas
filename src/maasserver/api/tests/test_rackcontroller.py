@@ -4,11 +4,14 @@
 """Tests for the Rack Controller API."""
 
 import http.client
+from unittest.mock import call
 
 from django.utils.http import urlencode
 from maasserver.api import rackcontrollers
+from maasserver.models.bmc import Pod
 from maasserver.testing.api import (
     APITestCase,
+    APITransactionTestCase,
     explain_unexpected_response,
 )
 from maasserver.testing.factory import factory
@@ -18,11 +21,12 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 
 
-class TestRackControllerAPI(APITestCase.ForUser):
+class TestRackControllerAPI(APITransactionTestCase.ForUser):
     """Tests for /api/2.0/rackcontrollers/<rack>/."""
 
     def test_handler_path(self):
@@ -107,10 +111,14 @@ class TestRackControllerAPI(APITestCase.ForUser):
     def test_DELETE_delete_with_force(self):
         self.become_admin()
         vlan = factory.make_VLAN()
+        factory.make_Subnet(vlan=vlan)
         rack = factory.make_RackController(vlan=vlan)
+        ip = factory.make_StaticIPAddress(interface=rack.interface_set.first())
+        factory.make_Pod(ip_address=ip)
         vlan.dhcp_on = True
         vlan.primary_rack = rack
         vlan.save()
+        mock_async_delete = self.patch(Pod, "async_delete")
         response = self.client.delete(
             self.get_rack_uri(rack), QUERY_STRING=urlencode({
                 'force': 'true'
@@ -118,6 +126,42 @@ class TestRackControllerAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response))
+        self.assertThat(mock_async_delete, MockCallsMatch(call()))
+
+    def test_pod_DELETE_delete_without_force(self):
+        self.become_admin()
+        vlan = factory.make_VLAN()
+        factory.make_Subnet(vlan=vlan)
+        rack = factory.make_RackController(vlan=vlan)
+        ip = factory.make_StaticIPAddress(interface=rack.interface_set.first())
+        factory.make_Pod(ip_address=ip)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack
+        vlan.save()
+        mock_async_delete = self.patch(Pod, "async_delete")
+        response = self.client.delete(self.get_rack_uri(rack))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            explain_unexpected_response(http.client.BAD_REQUEST, response))
+        self.assertThat(mock_async_delete, MockNotCalled())
+
+    def test_DELETE_force_not_required_for_pod_region_rack(self):
+        self.become_admin()
+        vlan = factory.make_VLAN()
+        factory.make_Subnet(vlan=vlan)
+        rack = factory.make_RegionRackController(vlan=vlan)
+        ip = factory.make_StaticIPAddress(
+            interface=rack.interface_set.first())
+        factory.make_Pod(ip_address=ip)
+        mock_async_delete = self.patch(Pod, "async_delete")
+        response = self.client.delete(
+            self.get_rack_uri(rack), QUERY_STRING=urlencode({
+                'force': 'true'
+            }, doseq=True))
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code,
+            explain_unexpected_response(http.client.NO_CONTENT, response))
+        self.assertThat(mock_async_delete, MockNotCalled())
 
 
 class TestRackControllersAPI(APITestCase.ForUser):

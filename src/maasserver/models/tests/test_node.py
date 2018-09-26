@@ -34,6 +34,7 @@ from django.core.exceptions import (
 )
 from django.db import transaction
 from django.db.models.deletion import Collector
+from django.db.models.query import QuerySet
 from fixtures import LoggerFixture
 from maasserver import (
     bootresources,
@@ -10844,3 +10845,18 @@ class TestControllerGetDiscoveryState(MAASServerTestCase):
         self.assertThat(monitoring_state, Contains('eth2'))
         self.assertThat(
             monitoring_state['eth1'], Equals(eth1.get_discovery_state()))
+
+
+class TestNodeGetHostedPods(MAASServerTestCase):
+
+    def test__returns_queryset(self):
+        node = factory.make_Node()
+        pods = node.get_hosted_pods()
+        self.assertThat(pods, IsInstance(QuerySet))
+
+    def test__returns_related_pods(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        ip = factory.make_StaticIPAddress(interface=node.boot_interface)
+        pod = factory.make_Pod(ip_address=ip)
+        pods = node.get_hosted_pods()
+        self.assertThat(pods, Contains(pod))

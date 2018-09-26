@@ -107,6 +107,7 @@ from maasserver.utils.orm import (
     get_first,
     reload_object,
 )
+from piston3.utils import rc
 import yaml
 
 # Machine's fields exposed on the API.
@@ -319,6 +320,24 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
     model = Machine
     fields = DISPLAYED_MACHINE_FIELDS
+
+    def delete(self, request, system_id):
+        """Delete a specific machine.
+
+        A machine cannot be deleted if it hosts pod virtual machines.
+        Use `force` to override this behavior. Forcing deletion will also
+        remove hosted pods.
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to delete the node.
+        Returns 400 if the machine cannot be deleted.
+        Returns 204 if the node is successfully deleted.
+        """
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        node.as_self().delete(
+            force=get_optional_param(request.GET, 'force', False, StringBool))
+        return rc.DELETED
 
     @classmethod
     def boot_disk(handler, machine):

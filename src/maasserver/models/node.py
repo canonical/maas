@@ -235,12 +235,14 @@ from provisioningserver.utils.twisted import (
     synchronous,
     undefined,
 )
+from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
     succeed,
 )
 from twisted.internet.threads import deferToThread
+from twisted.python.threadable import isInIOThread
 
 
 log = LegacyLogger()
@@ -2362,7 +2364,7 @@ class Node(CleanSave, TimestampedModel):
                 callOut, maaslog.warning, "%s: Could not stop node to abort "
                 "deployment; it must be stopped manually", hostname)
 
-    def delete(self):
+    def delete(self, *args, **kwargs):
         """Delete this node."""
         bmc = self.bmc
         if (self.node_type == NODE_TYPE.MACHINE and
@@ -2414,7 +2416,7 @@ class Node(CleanSave, TimestampedModel):
                     "%s: Deleting my BMC '%s'", self.hostname, self.bmc)
                 self.bmc.delete()
 
-            super(Node, self).delete()
+            super(Node, self).delete(*args, **kwargs)
 
     def set_random_hostname(self):
         """Set a random `hostname`."""
@@ -2966,10 +2968,11 @@ class Node(CleanSave, TimestampedModel):
             OwnerData.objects.filter(node=self).delete()
 
     def release_or_erase(
-            self, user, comment=None,
-            erase=False, secure_erase=None, quick_erase=None):
+            self, user, comment=None, erase=False, secure_erase=None,
+            quick_erase=None, force=False):
         """Either release the node or erase the node then release it, depending
         on settings and parameters."""
+        self.maybe_delete_pods(not force)
         erase_on_release = Config.objects.get_config(
             'enable_disk_erasing_on_release')
         if erase or erase_on_release:
@@ -2978,6 +2981,27 @@ class Node(CleanSave, TimestampedModel):
                 secure_erase=secure_erase, quick_erase=quick_erase)
         else:
             self.release(user, comment)
+
+    def maybe_delete_pods(self, dry_run: bool):
+        """Check if any pods are associated with this Node.
+
+        All pods will be deleted if dry_run=False is passed in.
+
+        :param dry_run: If True, raises NodeActionError rather than deleting
+            pods.
+        """
+        hosted_pods = list(
+            self.get_hosted_pods().values_list('name', flat=True))
+        if len(hosted_pods) > 0:
+            if dry_run:
+                raise ValidationError(
+                    "The following pods must be removed first: %s" % (
+                        ", ".join(hosted_pods)))
+            for pod in self.get_hosted_pods():
+                if isInIOThread():
+                    pod.async_delete()
+                else:
+                    reactor.callFromThread(pod.async_delete)
 
     def set_netboot(self, on=True):
         """Set netboot on or off."""
@@ -4397,6 +4421,13 @@ class Node(CleanSave, TimestampedModel):
         else:
             return script_result.stdout.decode('utf-8').splitlines()
 
+    def get_hosted_pods(self) -> QuerySet:
+        # Circular imports
+        from maasserver.models import Pod
+        our_static_ips = StaticIPAddress.objects.filter(
+            interface__node=self).values_list('ip')
+        return Pod.objects.filter(ip_address__ip__in=our_static_ips)
+
 
 # Piston serializes objects based on the object class.
 # Here we define a proxy class so that we can specialize how devices are
@@ -4412,6 +4443,17 @@ class Machine(Node):
     def __init__(self, *args, **kwargs):
         super(Machine, self).__init__(
             node_type=NODE_TYPE.MACHINE, *args, **kwargs)
+
+    def delete(self, force=False):
+        """Deletes this Machine.
+
+        Before deletion, checks if any hosted pods exist.
+
+        Raises ValidationError if the machine is a host for one or more pods,
+        and `force=True` was not specified.
+        """
+        self.maybe_delete_pods(not force)
+        return super().delete()
 
 
 class Controller(Node):
@@ -5352,6 +5394,11 @@ class RackController(Controller):
 
     def delete(self, force=False):
         """Delete this rack controller."""
+        # Don't bother with the pod check if this is a region+rack, because
+        # deleting a region+rack results in a region-only controller.
+        if self.node_type != NODE_TYPE.REGION_AND_RACK_CONTROLLER:
+            self.maybe_delete_pods(not force)
+
         # Avoid circular imports
         from maasserver.models import RegionRackRPCConnection
 
@@ -5518,8 +5565,9 @@ class RegionController(Controller):
         super(RegionController, self).__init__(
             node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs)
 
-    def delete(self):
+    def delete(self, force=False):
         """Delete this region controller."""
+        self.maybe_delete_pods(not force)
         # Avoid circular dependency.
         from maasserver.models import RegionControllerProcess
         connections = RegionControllerProcess.objects.filter(
