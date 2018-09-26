@@ -64,9 +64,8 @@ class SwitchHandler(NodeHandler):
     def action(self, params):
         """Perform the action on the object."""
         obj = self.get_object(params)
-        request = params.get("request")
         action_name = params.get("action")
-        actions = compile_node_actions(obj, self.user, request=request)
+        actions = compile_node_actions(obj, self.user)
         action = actions.get(action_name)
         if action is None:
             raise NodeActionError(

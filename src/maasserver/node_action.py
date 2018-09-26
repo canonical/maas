@@ -27,16 +27,13 @@ from crochet import TimeoutError
 from django.core.exceptions import ValidationError
 from django.http.request import HttpRequest
 from maasserver import locks
-from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
-    ENDPOINT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
-    NODE_TYPE_CHOICES_DICT,
     POWER_STATE,
 )
 from maasserver.exceptions import (
@@ -58,7 +55,6 @@ from maasserver.utils.osystems import (
     validate_osystem_and_distro_series,
 )
 from metadataserver.enum import SCRIPT_STATUS
-from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
@@ -119,7 +115,7 @@ class NodeAction(metaclass=ABCMeta):
     # Whether the action is allowed when the node is locked
     allowed_when_locked = False
 
-    def __init__(self, node, user, request=None, endpoint=ENDPOINT.UI):
+    def __init__(self, node, user, request=None):
         """Initialize a node action.
 
         All node actions' initializers must accept these same arguments,
@@ -128,7 +124,6 @@ class NodeAction(metaclass=ABCMeta):
         self.node = node
         self.user = user
         self.request = request
-        self.endpoint = endpoint
 
     def is_actionable(self):
         """Can this action be performed?
@@ -166,26 +161,13 @@ class NodeAction(metaclass=ABCMeta):
         return None
 
     @abstractmethod
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-
-    def execute(self, *args, **kwargs):
+    def execute(self):
         """Perform this action.
 
         Even though this is not the API, the action may raise
         :class:`MAASAPIException` exceptions.  When this happens, the view
         will return to the client an http response reflecting the exception.
         """
-        self._execute(*args, **kwargs)
-        description = self.get_node_action_audit_description(self)
-        # Log audit event for the action.
-        create_audit_event(
-            EVENT_TYPES.NODE, self.endpoint, self.request,
-            self.node.system_id, description=description)
-
-    @abstractmethod
-    def _execute(self):
-        """Perform this action."""
 
     def get_permission(self):
         """Return the permission value depending on if the node_type."""
@@ -218,32 +200,8 @@ class Delete(NodeAction):
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
-    audit_description = "Deleted the '%s' '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % (
-            NODE_TYPE_CHOICES_DICT[action.node.node_type].lower(),
-            action.node.hostname)
-
-    def execute(self, *args, **kwargs):
-        """Perform this action.
-
-        This is being overriden here because we need to log
-        the event before the node is deleted.
-
-        Even though this is not the API, the action may raise
-        :class:`MAASAPIException` exceptions.  When this happens, the view
-        will return to the client an http response reflecting the exception.
-        """
-        description = self.get_node_action_audit_description(self)
-        # Log audit event for the action.
-        create_audit_event(
-            EVENT_TYPES.NODE, self.endpoint, self.request,
-            self.node.system_id, description=description)
-        self._execute(*args, **kwargs)
-
-    def _execute(self):
+    def execute(self):
         """Redirect to the delete view's confirmation page.
 
         The rest of deletion is handled by a specialized deletion view.
@@ -262,14 +220,8 @@ class SetZone(NodeAction):
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
-    audit_description = "Set the zone to '%s' on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % (
-            action.node.zone.name, action.node.hostname)
-
-    def _execute(self, zone_id=None):
+    def execute(self, zone_id=None):
         """See `NodeAction.execute`."""
         zone = Zone.objects.get(id=zone_id)
         self.node.set_zone(zone)
@@ -284,14 +236,8 @@ class SetPool(NodeAction):
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Set the resource pool to '%s' on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % (
-            action.node.pool.name, action.node.hostname)
-
-    def _execute(self, pool_id=None):
+    def execute(self, pool_id=None):
         """See `NodeAction.execute`."""
         pool = ResourcePool.objects.get(id=pool_id)
         self.node.pool = pool
@@ -311,13 +257,8 @@ class Commission(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Started commissioning on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(
+    def execute(
             self, enable_ssh=False, skip_bmc_config=False,
             skip_networking=False, skip_storage=False,
             commissioning_scripts=[], testing_scripts=[]):
@@ -360,13 +301,8 @@ class Test(NodeAction):
     )
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
-    audit_description = "Started testing on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self, enable_ssh=False, testing_scripts=[]):
+    def execute(self, enable_ssh=False, testing_scripts=[]):
         try:
             self.node.start_testing(
                 self.user, enable_ssh=enable_ssh,
@@ -388,15 +324,8 @@ class Abort(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Aborted '%s' on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % (
-            NODE_STATUS_CHOICES_DICT[action.node.status].lower(),
-            action.node.hostname)
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.abort_operation(self.user)
@@ -412,13 +341,8 @@ class Acquire(NodeAction):
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Acquired '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         with locks.node_acquire:
             try:
@@ -435,13 +359,8 @@ class Deploy(NodeAction):
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Started deploying '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self, osystem=None, distro_series=None, hwe_kernel=None):
+    def execute(self, osystem=None, distro_series=None, hwe_kernel=None):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
             with locks.node_acquire:
@@ -504,13 +423,8 @@ class PowerOn(NodeAction):
     )
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
-    audit_description = "Powered on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.start(self.user)
@@ -537,13 +451,8 @@ class PowerOff(NodeAction):
     actionable_statuses = NON_MONITORED_STATUSES
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
-    audit_description = "Powered off '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.stop(self.user)
@@ -571,13 +480,8 @@ class Release(NodeAction):
     )
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Started releasing '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self, erase=False, secure_erase=False, quick_erase=False):
+    def execute(self, erase=False, secure_erase=False, quick_erase=False):
         """See `NodeAction.execute`."""
         try:
             self.node.release_or_erase(
@@ -605,13 +509,8 @@ class MarkBroken(NodeAction):
     ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Marked '%s' broken."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         self.node.mark_broken(self.user, "via web interface")
 
@@ -624,13 +523,8 @@ class MarkFixed(NodeAction):
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Marked '%s' fixed."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         if self.node.power_state == POWER_STATE.ON:
             raise NodeActionError(
@@ -662,13 +556,8 @@ class Lock(NodeAction):
     actionable_statuses = (NODE_STATUS.DEPLOYED,)
     permission = NODE_PERMISSION.LOCK
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Locked '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         self.node.lock(self.user, "via web interface")
 
 
@@ -682,11 +571,6 @@ class Unlock(NodeAction):
     permission = NODE_PERMISSION.LOCK
     for_type = {NODE_TYPE.MACHINE}
     allowed_when_locked = True
-    audit_description = "Unlocked '%s'."
-
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
 
     def is_actionable(self):
         if not super().is_actionable():
@@ -694,7 +578,7 @@ class Unlock(NodeAction):
         # don't show action if not locked
         return self.node.locked
 
-    def _execute(self):
+    def execute(self):
         self.node.unlock(self.user, "via web interface")
 
 
@@ -706,13 +590,8 @@ class OverrideFailedTesting(NodeAction):
     actionable_statuses = (NODE_STATUS.FAILED_TESTING, )
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
-    audit_description = "Overrode failed testing on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         self.node.override_failed_testing(self.user, "via web interface")
 
@@ -727,13 +606,8 @@ class ImportImages(NodeAction):
         NODE_TYPE.RACK_CONTROLLER,
         NODE_TYPE.REGION_AND_RACK_CONTROLLER
     }
-    audit_description = "Started importing images on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             post_commit_do(
@@ -766,13 +640,8 @@ class RescueMode(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Started rescue mode on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.start_rescue_mode(self.user)
@@ -793,13 +662,8 @@ class ExitRescueMode(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
-    audit_description = "Exited rescue mode on '%s'."
 
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.stop_rescue_mode(self.user)

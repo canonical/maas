@@ -2743,22 +2743,14 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_action_performs_action(self):
         admin = factory.make_admin()
-        request = factory.make_fake_request('/')
-        request.user = admin
         factory.make_SSHKey(admin)
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
         handler = MachineHandler(admin, {})
-        handler.action({
-            "request": request,
-            "system_id": node.system_id,
-            "action": "delete"
-        })
+        handler.action({"system_id": node.system_id, "action": "delete"})
         self.assertIsNone(reload_object(node))
 
     def test_action_performs_action_passing_extra(self):
         user = factory.make_User()
-        request = factory.make_fake_request('/')
-        request.user = user
         factory.make_SSHKey(user)
         self.patch(Machine, 'on_network').return_value = True
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
@@ -2767,7 +2759,6 @@ class TestMachineHandler(MAASServerTestCase):
         osystem = make_usable_osystem(self)
         handler = MachineHandler(user, {})
         handler.action({
-            "request": request,
             "system_id": node.system_id,
             "action": "deploy",
             "extra": {
