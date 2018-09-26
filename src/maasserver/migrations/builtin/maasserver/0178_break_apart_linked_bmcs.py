@@ -34,7 +34,7 @@ def break_apart_linked_bmcs(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0176_rename_user_id_migrate_to_user_id_for_events'),
+        ('maasserver', '0177_remove_unique_together_on_bmc'),
     ]
 
     operations = [

@@ -32,7 +32,7 @@ class WedgeState:
 class WedgePowerDriver(PowerDriver):
 
     name = 'wedge'
-    chassis = True
+    chassis = False
     description = "Facebook's Wedge"
     settings = [
         make_setting_field('power_address', "IP address", required=True),
