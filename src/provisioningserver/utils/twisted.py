@@ -68,6 +68,7 @@ from twisted.internet.defer import (
 from twisted.internet.error import ProcessDone
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
+from twisted.internet.utils import _EverythingGetter
 from twisted.logger import Logger
 from twisted.python import (
     context,
@@ -1147,3 +1148,35 @@ class SiteNoLog(Site):
     def log(self, request):
         # Do nothing.
         pass
+
+
+def getProcessOutputAndValue(
+        executable, args=(), env={}, path=None, reactor=None):
+    """Utility to create a process in the reactor and get all the output and
+    return code of that process.
+
+    This is very similar to the
+    `twisted.internet.utils.getProcessOutputAndValue` except this ensures that
+    the process is reaped at the end. Without this defunct processes will hang
+    around until this process dies.
+    """
+    if reactor is None:
+        from twisted.internet import reactor
+
+    d = Deferred()
+    proc = reactor.spawnProcess(
+        _EverythingGetter(d),
+        executable, (executable,) + tuple(args), env, None)
+
+    def _cleanup(result):
+        # Always reap the process
+        try:
+            proc.reapProcess()
+        except:
+            # Allow the error to occur, in the case the process has
+            # already been reaped.
+            pass
+        return result
+
+    d.addBoth(_cleanup)
+    return d

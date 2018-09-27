@@ -38,6 +38,7 @@ from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferWithTimeout,
+    getProcessOutputAndValue,
 )
 from twisted.internet.defer import (
     CancelledError,
@@ -47,7 +48,6 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
 )
-from twisted.internet.utils import getProcessOutputAndValue
 
 
 log = LegacyLogger()
@@ -411,6 +411,7 @@ class ServiceMonitor:
         yield self._performServiceAction(service, "reload")
 
     def _execCmd(self, cmd, env, timeout=10):
+        """Execute the `cmd` with the `env`."""
 
         def decode(result):
             out, err, code = result
