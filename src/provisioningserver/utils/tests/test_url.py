@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test utilities for URL handling."""
@@ -11,6 +11,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.url import (
     compose_URL,
+    get_domain,
     splithost,
 )
 
@@ -128,3 +129,20 @@ class TestSplithost(MAASTestCase):
 
     def test__result(self):
         self.assertEqual(self.result, splithost(self.host))
+
+
+class TestGetDomain(MAASTestCase):
+
+    def test_get_domain(self):
+        domain = factory.make_hostname()
+        url = '%s://%s:%d/%s/%s/%s' % (
+            factory.make_name('proto'), domain, randint(1, 65535),
+            factory.make_name(), factory.make_name(), factory.make_name())
+        self.assertEquals(domain, get_domain(url))
+
+    def test_get_domain_fqdn(self):
+        domain = factory.make_hostname()
+        url = '%s://%s.example.com:%d/%s/%s/%s' % (
+            factory.make_name('proto'), domain, randint(1, 65535),
+            factory.make_name(), factory.make_name(), factory.make_name())
+        self.assertEquals('%s.example.com' % domain, get_domain(url))

@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for URL handling."""
@@ -61,3 +61,10 @@ def splithost(host):
         # IPv6 hostname, place back into brackets.
         hostname = '[%s]' % hostname
     return hostname, parsed.port
+
+
+def get_domain(url):
+    """Get just the domain name from a URL."""
+    parsed_uri = urlparse(url)
+    domain, _ = splithost(parsed_uri.netloc)
+    return domain

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the cluster's RPC implementation."""
@@ -591,7 +591,7 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertThat(mock_agent.request, MockCalledOnceWith(
             b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-            Headers({'User-Agent': [ANY]})))
+            Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})))
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
 
@@ -622,10 +622,10 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(mock_agent.request, MockCallsMatch(
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]}))))
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']}))))
         dump = logger.dump()
         self.assertIn(
             "Failed to contact region. (While requesting RPC info at "
@@ -664,16 +664,16 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(mock_agent.request, MockCallsMatch(
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://127.0.0.1/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://127.0.0.1/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             ))
         dump = logger.dump()
         self.assertIn(
@@ -719,16 +719,16 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(mock_agent.request, MockCallsMatch(
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]})),
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})),
             call(
                 b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-                Headers({'User-Agent': [ANY]}))))
+                Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']}))))
         dump = logger.dump()
         self.assertIn(
             "Failed to contact region. (While requesting RPC info at "
@@ -772,12 +772,37 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertThat(mock_agent.request, MockCalledOnceWith(
             b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
-            Headers({'User-Agent': [ANY]})))
+            Headers({'User-Agent': [ANY], 'Host': ['127.0.0.1']})))
         dump = logger.dump()
         self.assertIn(
             "Region not available: Connection was refused by other side.",
             dump)
         self.assertIn("While requesting RPC info at", dump)
+
+    def test_update_connect_includes_host(self):
+        # Regression test for LP:1792462
+        mock_agent = MagicMock()
+        mock_agent.request.side_effect = error.ConnectionRefusedError()
+        self.patch(clusterservice, "Agent").return_value = mock_agent
+
+        service = ClusterClientService(Clock())
+        fqdn = '%s.example.com' % factory.make_hostname()
+        _get_config_rpc_info_urls = self.patch(
+            service, "_get_config_rpc_info_urls")
+        _get_config_rpc_info_urls.return_value = [
+            'http://%s/MAAS' % fqdn,
+        ]
+        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
+        _build_rpc_info_urls.return_value = succeed([
+            ([b'http://[::ffff:127.0.0.1]/MAAS'], 'http://%s/MAAS' % fqdn)
+        ])
+
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
+        self.assertThat(mock_agent.request, MockCalledOnceWith(
+            b'GET', ascii_url('http://[::ffff:127.0.0.1]/MAAS'),
+            Headers({'User-Agent': [ANY], 'Host': [fqdn]})))
 
     # The following represents an example response from the RPC info
     # view in maasserver. Event-loops listen on ephemeral ports, and

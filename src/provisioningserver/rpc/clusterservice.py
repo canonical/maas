@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for clusters."""
@@ -117,6 +117,7 @@ from provisioningserver.utils.twisted import (
     makeDeferredWithProcessProtocol,
     suppress,
 )
+from provisioningserver.utils.url import get_domain
 from provisioningserver.utils.version import get_maas_version
 from twisted import web
 from twisted.application.internet import TimerService
@@ -1224,7 +1225,10 @@ class ClusterClientService(TimerService, object):
         agent = Agent(reactor)
         d = agent.request(
             b'GET', url,
-            Headers({b'User-Agent': [fullyQualifiedName(type(self))]}))
+            Headers({
+                b'User-Agent': [fullyQualifiedName(type(self))],
+                b'Host': [get_domain(orig_url)],
+            }))
         d.addCallback(read_body)
         d.addErrback(catch_503_error)
 
