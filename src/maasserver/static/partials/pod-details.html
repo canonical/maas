@@ -242,7 +242,7 @@
                                                         tabindex="0"
                                                         ng-repeat="storage_pool in pod.storage_pools" ng-click="selectStoragePool(storage_pool, storage)" ng-keyup="$event.keyCode == 13 ? selectStoragePool(storage_pool, storage) : null" ng-class="{'is-selected': storage.pool === storage_pool}">
                                                         <div class="p-option-selector__option-cell">
-                                                            <div><strong>{$ storage_pool.name $}</strong></div>
+                                                            <div><strong>{$ storage_pool.name $} <span data-ng-if="pod.default_storage_pool == storage_pool.id">(default)</span></strong></div>
                                                             <div class="u-text--light">{$ storage_pool.path $}</div>
                                                         </div>
                                                         <div class="p-option-selector__option-cell u-align--right">
@@ -432,8 +432,8 @@
                                         </span>
                                         </p>
                                         <div class="p-storage__info">
-                                            <p class="p-storage__type">{$ storage.type $}<br>
-                                                <span class="p-storage__size">{$ storage.total $}</span>
+                                            <p class="p-storage__type">{$ storage.type | formatStorageType $}<br>
+                                                <span class="p-storage__size">{$ storage.total | formatBytes $}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -447,10 +447,10 @@
                                         </div>
                                         <div class="p-legend--numbers u-clearfix">
                                             <span class="p-legend__text default-text u-float--left">
-                                                {$ storage.available $}
+                                                {$ storage.available | formatBytes $}
                                             </span>
                                             <span class="p-legend__text default-text u-float--right">
-                                                {$ storage.used $}
+                                                {$ storage.used | formatBytes $}
                                             </span>
                                         </div>
                                     </div>
