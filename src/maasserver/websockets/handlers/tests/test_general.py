@@ -41,6 +41,7 @@ class TestGeneralHandler(MAASServerTestCase):
                 "name": name,
                 "title": action.display,
                 "sentence": action.display_sentence,
+                "type": action.action_type,
             }
             for name, action in actions.items()
             if node_type is None or node_type in action.for_type

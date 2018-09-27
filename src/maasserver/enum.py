@@ -207,6 +207,15 @@ class NODE_PERMISSION:
     ADMIN = 'admin_node'
 
 
+class NODE_ACTION_TYPE:
+    """Types of action a node can have done."""
+    LIFECYCLE = "lifecycle"
+    POWER = "power"
+    TESTING = "testing"
+    LOCK = "lock"
+    MISC = "misc"
+
+
 class DEVICE_IP_ASSIGNMENT_TYPE:
     """The vocabulary of a `Device`'s possible IP assignment type. This value
     is calculated by looking at the overall model for a `Device`. This is not

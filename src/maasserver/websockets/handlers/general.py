@@ -117,6 +117,7 @@ class GeneralHandler(Handler):
                 "name": name,
                 "title": action.display,
                 "sentence": action.display_sentence,
+                "type": action.action_type,
             }
             for name, action in actions.items()
             ]

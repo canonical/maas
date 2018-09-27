@@ -15,6 +15,7 @@ from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_ACTION_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -97,6 +98,7 @@ class FakeNodeAction(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.VIEW
     for_type = [NODE_TYPE.MACHINE]
+    action_type = NODE_ACTION_TYPE.MISC
 
     # For testing: an inhibition for inhibit() to return.
     fake_inhibition = None

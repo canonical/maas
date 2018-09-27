@@ -29,6 +29,7 @@ from django.http.request import HttpRequest
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
+    NODE_ACTION_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -94,6 +95,12 @@ class NodeAction(metaclass=ABCMeta):
         Can only be performed when the node type is in the for_type set.
 
         A list of NODE_TYPEs which are applicable for this action.
+        """)
+
+    action_type = abstractproperty("""
+        The type of action being performed.
+
+        Used to divide action menu into relevant groups.
         """)
 
     # Optional node states for which this action makes sense.
@@ -194,12 +201,13 @@ class NodeAction(metaclass=ABCMeta):
 class Delete(NodeAction):
     """Delete a node."""
     name = "delete"
-    display = "Delete"
+    display = "Delete..."
     display_sentence = "deleted"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
+    action_type = NODE_ACTION_TYPE.MISC
 
     def execute(self):
         """Redirect to the delete view's confirmation page.
@@ -214,12 +222,13 @@ class Delete(NodeAction):
 class SetZone(NodeAction):
     """Set the zone of a node."""
     name = "set-zone"
-    display = "Set zone"
+    display = "Set zone..."
     display_sentence = "Zone set"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
+    action_type = NODE_ACTION_TYPE.MISC
 
     def execute(self, zone_id=None):
         """See `NodeAction.execute`."""
@@ -230,12 +239,13 @@ class SetZone(NodeAction):
 class SetPool(NodeAction):
     """Set the resource pool of a node."""
     name = "set-pool"
-    display = "Set resource pool"
+    display = "Set resource pool..."
     display_sentence = "Pool set"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.MISC
 
     def execute(self, pool_id=None):
         """See `NodeAction.execute`."""
@@ -247,7 +257,7 @@ class SetPool(NodeAction):
 class Commission(NodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
     name = "commission"
-    display = "Commission"
+    display = "Commission..."
     display_sentence = "commissioned"
     actionable_statuses = (
         NODE_STATUS.NEW,
@@ -257,6 +267,7 @@ class Commission(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.LIFECYCLE
 
     def execute(
             self, enable_ssh=False, skip_bmc_config=False,
@@ -279,7 +290,7 @@ class Commission(NodeAction):
 class Test(NodeAction):
     """Start testing a node."""
     name = "test"
-    display = "Test hardware"
+    display = "Test hardware..."
     display_sentence = "tested"
     actionable_statuses = (
         NODE_STATUS.FAILED_COMMISSIONING,
@@ -301,6 +312,7 @@ class Test(NodeAction):
     )
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+    action_type = NODE_ACTION_TYPE.TESTING
 
     def execute(self, enable_ssh=False, testing_scripts=[]):
         try:
@@ -314,7 +326,7 @@ class Test(NodeAction):
 class Abort(NodeAction):
     """Abort the current operation."""
     name = "abort"
-    display = "Abort"
+    display = "Abort..."
     display_sentence = "aborted"
     actionable_statuses = (
         NODE_STATUS.COMMISSIONING,
@@ -324,6 +336,7 @@ class Abort(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.LIFECYCLE
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -336,11 +349,12 @@ class Abort(NodeAction):
 class Acquire(NodeAction):
     """Acquire a node."""
     name = "acquire"
-    display = "Acquire"
+    display = "Acquire..."
     display_sentence = "acquired"
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.LIFECYCLE
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -354,11 +368,12 @@ class Acquire(NodeAction):
 class Deploy(NodeAction):
     """Deploy a node."""
     name = "deploy"
-    display = "Deploy"
+    display = "Deploy..."
     display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.LIFECYCLE
 
     def execute(self, osystem=None, distro_series=None, hwe_kernel=None):
         """See `NodeAction.execute`."""
@@ -414,7 +429,7 @@ class Deploy(NodeAction):
 class PowerOn(NodeAction):
     """Power on a node."""
     name = "on"
-    display = "Power on"
+    display = "Power on..."
     display_sentence = "powered on"
     actionable_statuses = (
         NODE_STATUS.DEPLOYING,
@@ -423,6 +438,7 @@ class PowerOn(NodeAction):
     )
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+    action_type = NODE_ACTION_TYPE.POWER
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -445,12 +461,13 @@ FAILED_STATUSES = [
 class PowerOff(NodeAction):
     """Power off a node."""
     name = "off"
-    display = "Power off"
+    display = "Power off..."
     display_sentence = "powered off"
     # Let a user power off a node in any non-active status.
     actionable_statuses = NON_MONITORED_STATUSES
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+    action_type = NODE_ACTION_TYPE.POWER
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -468,7 +485,7 @@ class PowerOff(NodeAction):
 class Release(NodeAction):
     """Release a node."""
     name = "release"
-    display = "Release"
+    display = "Release..."
     display_sentence = "released"
     actionable_statuses = (
         NODE_STATUS.ALLOCATED,
@@ -480,6 +497,7 @@ class Release(NodeAction):
     )
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.LIFECYCLE
 
     def execute(self, erase=False, secure_erase=False, quick_erase=False):
         """See `NodeAction.execute`."""
@@ -509,6 +527,7 @@ class MarkBroken(NodeAction):
     ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.TESTING
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -523,6 +542,7 @@ class MarkFixed(NodeAction):
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.TESTING
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -556,6 +576,7 @@ class Lock(NodeAction):
     actionable_statuses = (NODE_STATUS.DEPLOYED,)
     permission = NODE_PERMISSION.LOCK
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.LOCK
 
     def execute(self):
         self.node.lock(self.user, "via web interface")
@@ -571,6 +592,7 @@ class Unlock(NodeAction):
     permission = NODE_PERMISSION.LOCK
     for_type = {NODE_TYPE.MACHINE}
     allowed_when_locked = True
+    action_type = NODE_ACTION_TYPE.LOCK
 
     def is_actionable(self):
         if not super().is_actionable():
@@ -585,11 +607,12 @@ class Unlock(NodeAction):
 class OverrideFailedTesting(NodeAction):
     """Override failed tests and reset node into a usable state."""
     name = "override-failed-testing"
-    display = "Override failed testing"
+    display = "Override failed testing..."
     display_sentence = "Override failed testing"
     actionable_statuses = (NODE_STATUS.FAILED_TESTING, )
     permission = NODE_PERMISSION.VIEW
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+    action_type = NODE_ACTION_TYPE.TESTING
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -606,6 +629,7 @@ class ImportImages(NodeAction):
         NODE_TYPE.RACK_CONTROLLER,
         NODE_TYPE.REGION_AND_RACK_CONTROLLER
     }
+    action_type = NODE_ACTION_TYPE.MISC
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -619,7 +643,7 @@ class ImportImages(NodeAction):
 class RescueMode(NodeAction):
     """Start the rescue mode process."""
     name = "rescue-mode"
-    display = "Rescue mode"
+    display = "Rescue mode..."
     display_sentence = "rescue mode"
     actionable_statuses = (
         NODE_STATUS.NEW,
@@ -640,6 +664,7 @@ class RescueMode(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.TESTING
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -652,7 +677,7 @@ class RescueMode(NodeAction):
 class ExitRescueMode(NodeAction):
     """Exit the rescue mode process."""
     name = "exit-rescue-mode"
-    display = "Exit rescue mode"
+    display = "Exit rescue mode..."
     display_sentence = "exit rescue mode"
     actionable_statuses = (
         NODE_STATUS.RESCUE_MODE,
@@ -662,6 +687,7 @@ class ExitRescueMode(NodeAction):
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.TESTING
 
     def execute(self):
         """See `NodeAction.execute`."""

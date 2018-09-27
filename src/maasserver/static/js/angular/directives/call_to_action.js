@@ -7,34 +7,33 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the cta.html into the template cache.
     $templateCache.put('directive/templates/cta.html', [
-      '<div class="p-contextual-menu">',
-        '<button ',
-          'class="p-button p-contextual-menu__toggle',
-          ' p-button--min-margin-bottom" ',
-          'aria-controls="#cta-menu" ',
-          'aria-expanded="false" ',
-          'aria-haspopup="true" ',
-          'data-ng-click="shown=!shown"',
-        '>',
-          '{$ getTitle() $}',
-          '<i class="p-icon--chevron on-right"></i>',
-        '</button>',
-        '<div class="p-contextual-menu__dropdown" ',
-          'id="cta-menu" ',
-          'aria-hidden="false" ',
-          'aria-label="submenu"',
-          'data-ng-show="shown"',
-        '>',
-          '<button ',
-            'class="',
-              'p-button u-no-margin--left p-contextual-menu__link',
-            '" ',
-            'data-ng-repeat="select in maasCta" ',
-            'data-ng-click="selectItem(select)">',
-              '{$ getOptionTitle(select) $}',
-          '</button>',
+       '<div class="p-cta">',
+            '<button class="p-cta__toggle" ',
+                'aria-controls="#cta-menu" ',
+                'aria-expanded="false" aria-haspopup="true" ',
+                'data-ng-click="shown=!shown" ',
+                'data-ng-class="{',
+                '\'p-button--positive\': getTitle() === \'Take action\', ',
+                '\'is-selected\': shown}"',
+            '>',
+                '{$ getTitle() $}',
+            '</button>',
+            '<div class="p-cta__dropdown" id="cta-menu" ',
+                'aria-hidden="false" aria-label="submenu" ',
+                'data-ng-show="shown"',
+            '>',
+                '<span class="p-cta__group"',
+                    'data-ng-repeat="type in getActionTypes()">',
+                    '<button class="p-cta__link" ',
+                        'data-ng-repeat="select in maasCta | ',
+                        'filter:{ type: type }" ',
+                        'data-ng-click="selectItem(select)"',
+                    '>',
+                        '{$ getOptionTitle(select) $}',
+                    '</button>',
+                '</span>',
+            '</div>',
         '</div>',
-      '</div>'
     ].join(''));
 }]);
 
@@ -94,6 +93,18 @@ angular.module('MAAS').directive('maasCta', function() {
                         return option.title;
                     }
                 }
+            };
+
+            scope.getActionTypes = function() {
+                var actions = scope.maasCta || [];
+                var types = [];
+                actions.forEach(function(action) {
+                    if (types.indexOf(action.type) === -1) {
+                        types.push(action.type);
+                    }
+                });
+
+                return types;
             };
 
             // When the model changes in the above selectItem function this

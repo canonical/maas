@@ -14,6 +14,7 @@
 @import 'base_forms';
 @import 'base_links';
 @import 'patterns_button';
+@import 'patterns_cta';
 @import 'patterns_icons';
 @import 'patterns_navigation';
 @import 'patterns_page-header';
@@ -56,6 +57,7 @@
 @include maas-p-strip;
 @include maas-tag-input;
 @include maas-p-buttons;
+@include maas-p-cta;
 @include maas-p-forms;
 @include maas-p-hr;
 @include maas-p-notifications;
