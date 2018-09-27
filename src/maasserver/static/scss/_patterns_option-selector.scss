@@ -5,6 +5,7 @@
 
   .p-option-selector__input {
     @extend select;
+    color: #111 !important;
   }
 
   .p-option-selector__options {

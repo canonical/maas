@@ -65,7 +65,6 @@ angular.module('MAAS').controller('PodDetailsController', [
             interfaces: [$scope.defaultInterface]
           }
         };
-        $scope.subnets = SubnetsManager.getItems();
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.domains = DomainsManager.getItems();
         $scope.zones = ZonesManager.getItems();
@@ -220,6 +219,13 @@ angular.module('MAAS').controller('PodDetailsController', [
               });
         };
 
+        $scope.openSubnetOptions = function(iface) {
+            angular.forEach($scope.compose.obj.interfaces, function(i) {
+                i.showOptions = false;
+            });
+            iface.showOptions = true;
+        }
+
         $scope.openOptions = function(storage) {
             angular.forEach($scope.compose.obj.storage, function(disk) {
                 disk.showOptions = false;
@@ -227,8 +233,8 @@ angular.module('MAAS').controller('PodDetailsController', [
             storage.showOptions = true;
         }
 
-        $scope.closeOptions = function(storage) {
-            storage.showOptions = false;
+        $scope.closeOptions = function(item) {
+            item.showOptions = false;
         }
 
         $scope.selectStoragePool = function(storagePool, storage) {
@@ -376,19 +382,30 @@ angular.module('MAAS').controller('PodDetailsController', [
           }
         };
 
+        $scope.selectSubnet = function(subnet, iface) {
+            const idx = $scope.compose.obj.interfaces.indexOf(iface);
+            $scope.compose.obj.interfaces[idx].subnet = subnet;
+            $scope.compose.obj.interfaces[idx].vlan = subnet.vlan;
+            $scope.compose.obj.interfaces[idx].fabric = subnet.fabric;
+            $scope.closeOptions(iface);
+        }
+
+        const _getSubnetDetails = function(subnet) {
+            if (subnet.name === subnet.cidr) {
+                subnet.displayName = subnet.cidr;
+            } else {
+                subnet.displayName = `${subnet.cidr} (${subnet.name})`;
+            }
+            subnet.vlan = VLANsManager.getItemFromList(subnet.vlan);
+            if (subnet.vlan) {
+                subnet.fabric =
+                    FabricsManager.getItemFromList(subnet.vlan.fabric);
+            }
+            return subnet;
+        }
+
         // Add interfaces.
         $scope.composeAddInterface = function() {
-
-          // Set displayName for subnets
-          angular.forEach($scope.subnets, function(subnet, idx) {
-            if (subnet.name === subnet.cidr) {
-              $scope.subnets[idx].displayName = subnet.cidr;
-            } else {
-              let name = `${subnet.cidr} (${subnet.name})`;
-              $scope.subnets[idx].displayName = name;
-            }
-          });
-
           // Remove default auto-assigned interface when
           // adding custom interfaces
           let defaultIdx = $scope.compose.obj.interfaces.indexOf(
@@ -401,14 +418,6 @@ angular.module('MAAS').controller('PodDetailsController', [
           };
           $scope.compose.obj.interfaces.push(iface);
         };
-
-        $scope.setFabricAndVlan = function(iface) {
-          const idx = $scope.compose.obj.interfaces.indexOf(iface);
-          const vlan = VLANsManager.getItemFromList(iface.subnet.vlan);
-          $scope.compose.obj.interfaces[idx].vlan = vlan;
-          $scope.compose.obj.interfaces[idx].fabric =
-            FabricsManager.getItemFromList(vlan.fabric);
-        }
 
         // Remove an interface from interfaces config.
         $scope.composeRemoveInterface = function(iface) {
@@ -425,6 +434,11 @@ angular.module('MAAS').controller('PodDetailsController', [
 
         // Start watching key fields.
         $scope.startWatching = function() {
+            $scope.$watch("subnets", function() {
+                 angular.forEach($scope.subnets, function(subnet, idx) {
+                    $scope.subnets[idx] =_getSubnetDetails(subnet);
+                 });
+            });
             $scope.$watch("pod.name", function() {
                 $rootScope.title = 'Pod ' + $scope.pod.name;
                 updateName();
@@ -465,6 +479,8 @@ angular.module('MAAS').controller('PodDetailsController', [
             DomainsManager, ZonesManager, MachinesManager,
             ResourcePoolsManager, SubnetsManager, VLANsManager,
             FabricsManager]).then(function() {
+
+            $scope.subnets = SubnetsManager.getItems();
 
             // Possibly redirected from another controller that already had
             // this pod set to active. Only call setActiveItem if not already

@@ -100,23 +100,57 @@
                                     <td>
                                         <div ng-switch on="iface.name">
                                             <div ng-switch-when="default">
-                                                <span>Created by hypervisor at compose time.</span>
+                                                <span><small>Created by hypervisor at compose time.</small></span>
                                             </div>
                                             <div ng-switch-default>
                                                 <div class="form__group-input">
-                                                    <span>auto-assigned</span>
+                                                    <span><small>auto-assigned</small></span>
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td style="overflow: visible">
                                         <div data-ng-if="iface.name !== 'default'" class="form__group-input">
-                                            <select
-                                                data-ng-model="iface.subnet"
-                                                data-ng-options="subnet as subnet.displayName for subnet in subnets track by subnet.id"
-                                                data-ng-change="setFabricAndVlan(iface)">
-                                                <option value="" disabled selected>Select a subnet</option>
-                                            </select>
+                                            <div class="form__group-input">
+                                                <div class="p-option-selector u-no-padding--top" tabindex="0"
+                                                    ng-keyup="$event.keyCode === 27 && closeOptions(iface)">
+                                                    <input class="p-option-selector__input u-no-margin--bottom" type="text"
+                                                        data-ng-model="iface.subnet.displayName"
+                                                        ng-focus="openSubnetOptions(iface)"
+                                                        readonly="readonly"
+                                                        placeholder="Select a subnet">
+                                                    </input>
+                                                    <div class="p-option-selector__options u-no-padding--top" ng-if="iface.showOptions">
+                                                        <button class="p-button--base" ng-click="closeOptions(iface)">
+                                                            <i class="p-icon--close">Close</i>
+                                                        </button>
+                                                        <hr class="u-no-margin--bottom">
+                                                        <div class="p-option-selector__option u-no-padding"
+                                                            tabindex="0"
+                                                            ng-click="selectSubnet(subnet, iface)"
+                                                            ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
+                                                            data-ng-repeat="subnet in subnets">
+                                                            <div class="p-option-selector__option-cell">
+                                                                <div>
+                                                                    <strong>{$ subnet.displayName $}</strong>
+                                                                </div>
+                                                            </div>
+                                                            <div class="p-option-selector__option-cell">
+                                                                <div><strong>{$ subnet.fabric.name $}</strong></div>
+                                                            </div>
+                                                            <div class="p-option-selector__option-cell">
+                                                                <div ng-switch on="subnet.vlan.vid">
+                                                                    <div ng-switch-when="0" class="u-align--right">untagged</div>
+                                                                    <div ng-switch-default class="u-align--right">
+                                                                        <span>{$ subnet.vlan.vid $}</span>
+                                                                        <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td>

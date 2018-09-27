@@ -175,7 +175,6 @@ describe("PodDetailsController", function() {
         expect($scope.power_types).toBe(GeneralManager.getData('power_types'));
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
-        expect($scope.subnets).toBe(SubnetsManager.getItems());
         expect($scope.pools).toBe(ResourcePoolsManager.getItems());
         expect($scope.editing).toBe(false);
     });
