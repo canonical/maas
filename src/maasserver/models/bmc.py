@@ -142,9 +142,6 @@ class BMC(CleanSave, TimestampedModel):
     :ivar objects: The :class:`BMCManager`.
     """
 
-    class Meta(DefaultMeta):
-        unique_together = ("power_type", "power_parameters", "ip_address")
-
     objects = Manager()
 
     bmcs = BMCManager()
@@ -526,12 +523,6 @@ class Pod(BMC):
             if interface is not None:
                 return interface.node
         return None
-
-    def unique_error_message(self, model_class, unique_check):
-        if unique_check == ('power_type', 'power_parameters', 'ip_address'):
-            raise ValidationError(
-                'Pod with type and parameters already exists.')
-        return super(Pod, self).unique_error_message(model_class, unique_check)
 
     def sync_hints(self, discovered_hints):
         """Sync the hints with `discovered_hints`."""
