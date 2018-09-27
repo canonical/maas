@@ -5,6 +5,11 @@ maas (2.5.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
     in 8 seconds, if not kill it with 'mixed' mode.
   * debian/control: Drop python3-jinja2 as it is no longer needed to
     generate documentation.
+  * debian/maas-common.postrm: Run debhelper handling before manual removal
+    actions.
+  * debian/maas-rack-controller.prerm: Add & handle stop of
+    maas-rackd.service.
+  * debian/maas-common.prerm: Add & handle stop of maas-syslog.service.
 
  -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 19 Sep 2018 03:10:49 -0400
 

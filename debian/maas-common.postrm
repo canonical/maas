@@ -2,6 +2,8 @@
 
 set -e
 
+#DEBHELPER#
+
 case "$1" in
     purge)
         # Deleting user/group
@@ -17,5 +19,3 @@ case "$1" in
 esac
 
 rm -f /etc/rsyslog.d/99-maas.conf
-
-#DEBHELPER#

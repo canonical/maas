@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+if [ -d /run/systemd/system ]; then
+	deb-systemd-invoke stop 'maas-syslog.service' >/dev/null || true
+fi
