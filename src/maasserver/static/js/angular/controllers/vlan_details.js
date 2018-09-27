@@ -548,9 +548,17 @@ angular.module('MAAS').controller('VLANDetailsController', [
         // Called when the vlan has been loaded.
         function vlanLoaded(vlan) {
             vm.vlan = vlan;
+            updateVLAN();
+            vm.loaded = true;
+        }
+
+        function updateVLAN() {
+            if(!vm.loaded) {
+                return;
+            }
+            var vlan = vm.vlan;
             vm.fabric = FabricsManager.getItemFromList(vlan.fabric);
             vm.isFabricDefault = vm.fabric.default_vlan_id === vm.vlan.id;
-            vm.loaded = true;
 
             updateTitle();
             updateManagementRacks();
@@ -585,6 +593,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
 
             $scope.$watch("vlanDetails.vlan.name", updateTitle);
             $scope.$watch("vlanDetails.vlan.vid", updateTitle);
+            $scope.$watch("vlanDetails.vlan.fabric", updateVLAN);
             $scope.$watch("vlanDetails.vlan.dhcp_on", updatePossibleActions);
             $scope.$watch(
                 "vlanDetails.vlan.relay_vlan", updatePossibleActions);

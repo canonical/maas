@@ -29,10 +29,14 @@ describe("VLANDetailsController", function() {
     }
 
     // Make a fake fabric
-    function makeFabric() {
+    function makeFabric(id) {
+        if(id === undefined) {
+            id = 1;
+        }
         var fabric = {
-            id: 1,
-            name: 'fabric-0'
+            id: id,
+            name: 'fabric-' + id,
+            default_vlan_id: 5000
         };
         FabricsManager._items.push(fabric);
         return fabric;
@@ -113,15 +117,16 @@ describe("VLANDetailsController", function() {
         ErrorService = $injector.get("ErrorService");
     }));
 
-    var vlan, fabric, primaryController, secondaryController, $routeParams;
-    var space, subnet;
+    var vlan, fabric, fabric2, primaryController, secondaryController;
+    var space, subnet, $routeParams;
     beforeEach(function() {
         primaryController = makeRackController(1, "primary", "p1");
         secondaryController = makeRackController(2, "secondary", "p2");
         vlan = makeVLAN();
         VLANsManager.addRackController(vlan, primaryController);
         VLANsManager.addRackController(vlan, secondaryController);
-        fabric = makeFabric();
+        fabric = makeFabric(1);
+        fabric2 = makeFabric(2);
         space = makeSpace();
         subnet = makeSubnet();
         $routeParams = {
@@ -273,6 +278,16 @@ describe("VLANDetailsController", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect(controller.title).toBe("Super Awesome VLAN in " + fabric.name);
         fabric.name = "space";
+        $scope.$digest();
+        expect(controller.title).toBe("Super Awesome VLAN in space");
+    });
+
+    it("updates VLAN when fabric changes", function() {
+        vlan.name = "Super Awesome VLAN";
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.title).toBe("Super Awesome VLAN in " + fabric.name);
+        fabric2.name = "space";
+        vlan.fabric = fabric2.id;
         $scope.$digest();
         expect(controller.title).toBe("Super Awesome VLAN in space");
     });
