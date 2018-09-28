@@ -776,16 +776,16 @@ def configure_dhcp(rack_controller):
         ipv4_status = SERVICE_STATUS.DEAD
         log.err(
             None,
-            "Error configuring DHCPv4 on rack controller '%s': %s" % (
-                rack_controller.system_id, exc))
+            "Error configuring DHCPv4 on rack controller '%s (%s)': %s" % (
+                rack_controller.hostname, rack_controller.system_id, exc))
     else:
         if len(config.shared_networks_v4) > 0:
             ipv4_status = SERVICE_STATUS.RUNNING
         else:
             ipv4_status = SERVICE_STATUS.OFF
         log.msg(
-            "Successfully configured DHCPv4 on rack controller '%s'." % (
-                rack_controller.system_id))
+            "Successfully configured DHCPv4 on rack controller '%s (%s)'." % (
+                rack_controller.hostname, rack_controller.system_id))
 
     try:
         yield _perform_dhcp_config(
@@ -799,16 +799,16 @@ def configure_dhcp(rack_controller):
         ipv6_status = SERVICE_STATUS.DEAD
         log.err(
             None,
-            "Error configuring DHCPv6 on rack controller '%s': %s" % (
-                rack_controller.system_id, exc))
+            "Error configuring DHCPv6 on rack controller '%s (%s)': %s" % (
+                rack_controller.hostname, rack_controller.system_id, exc))
     else:
         if len(config.shared_networks_v6) > 0:
             ipv6_status = SERVICE_STATUS.RUNNING
         else:
             ipv6_status = SERVICE_STATUS.OFF
         log.msg(
-            "Successfully configured DHCPv6 on rack controller '%s'." % (
-                rack_controller.system_id))
+            "Successfully configured DHCPv6 on rack controller '%s (%s)'." % (
+                rack_controller.hostname, rack_controller.system_id))
 
     # Update the status for both services so the user is always seeing the
     # most up to date status.
