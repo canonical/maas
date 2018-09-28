@@ -1,8 +1,16 @@
-maas (2.3.5-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.3.6-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 07 Aug 2018 19:50:03 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 28 Sep 2018 09:32:43 -0400
+
+maas (2.3.5-6511-gf466fdb-0ubuntu1) xenial-proposed; urgency=medium
+
+  * Stable Release Update. New upstream release, MAAS 2.3.5 (LP: #1772010):
+    - MAAS 2.3.5 is a new upstream release that fixes a regressions that
+      affects some users using the MAAS built-in proxy in 2.3.4.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 23 Aug 2018 12:30:04 -0400
 
 maas (2.3.4-6508-g4f77e30-0ubuntu1) xenial-proposed; urgency=medium
 
