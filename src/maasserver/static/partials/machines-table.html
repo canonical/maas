@@ -2,7 +2,7 @@
 <table class="p-table--sortable p-table--machines" role="grid">
     <thead>
         <tr class="p-table__row">
-            <th class="u-align--left p-double-row">
+            <th class="p-table__col--name p-double-row u-align--left">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
                     <label for="check-all"></label>
@@ -18,10 +18,10 @@
                     </div>
                 </div>
             </th>
-            <th role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">
-                <i class="p-icon--placeholder u-hide--small u-hide--medium"></i>Power
+            <th class="p-table__col--power" role="columnheader" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Power">
+                <span class="u-hide--br3"><i class="p-icon--placeholder"></i>Power</span>
             </th>
-            <th class="p-double-row" title="Status">
+            <th class="p-table__col--status p-double-row" title="Status">
                 <div class="p-double-row__icon-container">
                     <i class="p-icon--placeholder"></i>
                 </div>
@@ -29,24 +29,29 @@
                     <span role="columnheader" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Status">Status</span>
                 </div>
             </th>
-            <th class="p-double-row" title="Owner, Tags">
+            <th class="p-table__col--owner p-double-row" title="Owner, Tags">
                 <span role="columnheader" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner,</span>
                 <div>Tags</div>
             </th>
-            <th class="p-double-row u-hide--small" title="Zone">
+            <th class="p-table__col--pool" title="Pool" role="columnheader" data-ng-click="sortTable('pool.name')" data-ng-class="{'is-sorted': table.predicate === 'pool.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Pool</th>
+            <th class="p-table__col--zone p-double-row" title="Zone">
                 <span role="columnheader" data-ng-click="sortTable('zone.name')" data-ng-class="{'is-sorted': table.predicate === 'zone.name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Zone</span>
             </th>
-            <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Cores">Cores</th>
-            <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="RAM">
+            <th class="p-table__col--fabric p-double-row" title="Fabric, VLAN">
+                <span role="columnheader" data-ng-click="sortTable('vlan.fabric_name')" data-ng-class="{'is-sorted': table.predicate === 'vlan.fabric_name', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Fabric,</span>
+                <div>VLAN</div>
+            </th>
+            <th class="p-table__col--cores u-align--right" role="columnheader" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Cores">Cores</th>
+            <th class="p-table__col--ram u-align--right" role="columnheader" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="RAM">
                 <span>RAM</span>
             </th>
-            <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('physical_disk_count')" data-ng-class="{'is-sorted': table.predicate === 'physical_disk_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Disks">Disks</th>
-            <th class="u-hide--small u-align--right" role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Storage">Storage</th>
+            <th class="p-table__col--disks u-align--right" role="columnheader" data-ng-click="sortTable('physical_disk_count')" data-ng-class="{'is-sorted': table.predicate === 'physical_disk_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Disks">Disks</th>
+            <th class="p-table__col--storage u-align--right" role="columnheader" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}" title="Storage">Storage</th>
         </tr>
     </thead>
     <tbody vs-repeat vs-scroll-parent="window">
         <tr class="p-table__row" data-ng-repeat="node in table.filteredMachines = (table.machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id" data-ng-class="{ 'table--error': machineHasError({ $machine: node }), 'is-active': node.$selected }">
-            <td class="p-double-row u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
+            <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label for="{$ node.fqdn $}"></label>
@@ -60,12 +65,13 @@
                             <span class="p-domain-name__host">{$ node.hostname $}</span><span class="p-domain-name__tld">.{$ node.domain.name $}</span>
                         </a>
                     </div>
-                    <div data-ng-if="node.ip_address" class="p-double-row__muted-row">
-                        <span>{$ node.ip_address $}</span>
+                    <div class="p-double-row__muted-row">
+                        <span data-ng-if="node.ip_address" title="{$ node.ip_address $}">{$ node.ip_address $}</span>
+                        <span data-ng-if="!node.ip_address">&nbsp;</span>
                     </div>
                 </div>
             </td>
-            <td class="u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'">
+            <td class="p-table__col--name" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'">
                 <div class="u-float--left" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
                     <label class="checkbox-label" for="{$ node.fqdn $}"></label>
@@ -73,20 +79,20 @@
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
-            <td class="p-double-row" aria-label="Power state">
+            <td class="p-table__col--power p-double-row" aria-label="Power state">
                 <div class="p-double-row__icon-container">
-                    <i class="p-icon--power-{$ node.power_state $}"></i>
+                    <i class="p-icon--power-{$ node.power_state $}" title="{$ node.power_state $}"></i>
                 </div>
-                <div class="p-double-row__rows-container--icon u-hide--small u-hide--medium">
+                <div class="p-double-row__rows-container--icon u-hide--br3">
                     <div class="p-double-row__main-row u-upper-case--first">
-                        <span>{$ node.power_state $}</span>
+                        <span title="{$ node.power_state $}">{$ node.power_state $}</span>
                     </div>
                     <div class="p-double-row__muted-row u-upper-case--first">
-                        <span>{$ node.power_type $}</span>
+                        <span title="{$ node.power_type $}">{$ node.power_type $}</span>
                     </div>
                 </div>
             </td>
-            <td class="p-double-row" aria-label="Status, Events" title="{$ getStatusText(node) $}">
+            <td class="p-table__col--status p-double-row" aria-label="Status, Events" title="{$ getStatusText(node) $}">
                 <span class="p-tooltip p-tooltip--top-left" aria-describedby="latest-event-{$ node.fqdn $}">
                     <div class="p-double-row__icon-container">
                         <i data-ng-if="showSpinner(node)" class="p-icon--spinner u-animation--spin"></i>
@@ -109,7 +115,7 @@
                     </span>
                 </span>
             </td>
-            <td class="p-double-row" aria-label="Owner, Tags" title="{$ node.owner $}">
+            <td class="p-table__col--owner p-double-row" aria-label="Owner, Tags" title="{$ node.owner $}">
                 <div class="p-double-row__rows-container">
                     <div class="p-double-row__main-row" aria-label="Owner">
                         <span data-ng-if="node.owner">{$ node.owner $}</span>
@@ -120,22 +126,37 @@
                     </div>
                 </div>
             </td>
-            <td class="p-double-row u-hide--small" aria-label="Zone" title="{$ node.zone.name $}">
+            <td class="p-table__col--pool" aria-label="{$ node.pool.name $}">
+                <span data-ng-if="node.pool.name"><a class="p-link--soft" href="#/pools" title="{$ node.pool.name $}"> {$ node.pool.name $}</a></span>
+                <span data-ng-if="!node.pool.name">-</span>
+            </td>
+            <td class="p-table__col--zone p-double-row" aria-label="Zone" title="{$ node.zone.name $}">
                 <div class="p-double-row__rows-container">
                     <div class="p-double-row__main-row" aria-label="Zone">
-                        <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}">{$ node.zone.name $}</a></span>
+                        <span data-ng-if="node.zone.name"><a class="p-link--soft" href="#/zone/{$ node.zone.id $}" title="{$ node.zone.name $}">{$ node.zone.name $}</a></span>
                         <span data-ng-if="!node.zone.name">-</span>
                     </div>
                 </div>
             </td>
-            <td class="u-align--right u-hide--small p-table--action-cell" aria-label="CPU">
+            <td class="p-table__col--fabric p-double-row" aria-label="Fabric, VLAN" title="{$ node.fabric.name $}">
+                <div class="p-double-row__rows-container">
+                    <div class="p-double-row__main-row" aria-label="Fabric">
+                        <span data-ng-if="node.vlan.fabric_name"><a class="p-link--soft" href="#/fabric/{$ node.vlan.fabric_id $}" title="{$ node.vlan.fabric_name $}">{$ node.vlan.fabric_name $}</a></span>
+                        <span data-ng-if="!node.vlan.fabric_name">-</span>
+                    </div>
+                    <div data-ng-if="node.vlan.name" class="p-double-row__muted-row" aria-label="VLAN">
+                        <span data-ng-if="node.vlan.name"><a class="p-muted-text p-link--muted" href="#/vlan/{$ node.vlan.id $}" title="{$ node.vlan.name $}">{$ node.vlan.name $}</a></span>
+                    </div>
+                </div>
+            </td>
+            <td class="p-table__col--cores p-table--action-cell u-align--right" aria-label="CPU">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.cpu_test_status" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2" aria-describedby="node-cpu-tooltip-{$ node.fqdn $}"></span>
                     {$ node.cpu_count $}
                     <span class="p-tooltip__message" role="tooltip" id="node-cpu-tooltip-{$ node.fqdn $}" data-ng-if="node.cpu_test_status !== -1 && node.cpu_test_status !== 2">{$ node.cpu_test_status_tooltip $}</span>
                 </span>
             </td>
-            <td class="u-align--right u-hide--small p-table--action-cell" aria-label="Memory">
+            <td class="p-table__col--ram p-table--action-cell u-align--right" aria-label="Memory">
                 <span class="p-tooltip p-tooltip--left">
                     <span data-maas-script-status="script-status" data-script-status="node.memory_test_status" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2" aria-describedby="node-memory-tooltip-{$ node.fqdn $}"></span>
                     <span>{$ formatMemoryUnit(node.memory).value $}</span>
@@ -143,15 +164,15 @@
                     <span class="p-tooltip__message" role="tooltip" id="node-memory-tooltip-{$ node.fqdn $}" data-ng-if="node.memory_test_status !== -1 && node.memory_test_status !== 2">{$ node.memory_test_status_tooltip $}</span>
                 </span>
             </td>
-            <td class="u-align--right u-hide--small p-table--action-cell" aria-label="Disks">
+            <td class="p-table__col--disks p-table--action-cell u-align--right" aria-label="Disks">
                 <span class="p-tooltip p-tooltip--left">
-                    <span class="" data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
+                    <span data-maas-script-status="script-status" data-script-status="node.storage_test_status" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2" aria-describedby="disk-count-tooltip-{$ node.fqdn $}">
                     </span>
                     {$ node.physical_disk_count $}
                     <span class="p-tooltip__message" role="tooltip" id="disk-count-tooltip-{$ node.fqdn $}" data-ng-if="node.storage_test_status !== -1 && node.storage_test_status !== 2">{$ node.storage_test_status_tooltip $}</span>
                 </span>
             </td>
-            <td class="u-align--right u-hide--small" aria-label="Storage">
+            <td class="p-table__col--storage u-align--right" aria-label="Storage">
                 <span>{$ formatStorageUnit(node.storage).value $}</span>
                 <span class="p-muted-text">{$ formatStorageUnit(node.storage).unit $}</span>
             </td>

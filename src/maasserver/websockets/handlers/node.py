@@ -618,6 +618,19 @@ class NodeHandler(TimestampedModelHandler):
 
         return data
 
+    def dehydrate_vlan(self, obj, interface):
+        """Return the fabric and VLAN for the interface."""
+        if interface is None:
+            return None
+
+        if interface.vlan is not None:
+            return {
+                "id": interface.vlan_id,
+                "name": "%s" % interface.vlan.name,
+                "fabric_id": interface.vlan.fabric.id,
+                "fabric_name": "%s" % interface.vlan.fabric.name,
+            }
+
     def dehydrate_ip_address(self, obj, interface):
         """Return the IP address for the device."""
         if interface is None:

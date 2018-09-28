@@ -1,22 +1,53 @@
 @mixin maas-table-widths {
-  @mixin table-sortable-adjust($breakpoint) {
-    // At a set breakpoint position the sorting chevron above the table header
-    @media (max-width: $breakpoint) {
-      &,
-      .is-sorted {
-        position: relative;
+  $breakpoint-first: 600px;
+  $breakpoint-second: 900px;
+  $breakpoint-third: 1030px;
+  $breakpoint-fourth: 1360px;
 
-        &::after {
-          position: absolute;
-          top: 0;
-          left: calc(50% - 8px);
-        }
+  @mixin breakpoint-widths(
+    $width-one,
+    $width-two: $width-one,
+    $width-three: $width-two,
+    $width-four: $width-three,
+    $width-five: $width-four
+) {
+    @media (max-width: $breakpoint-first - 1px) {
+      @if $width-one == 0 {
+        display: none !important;
+      } @else {
+        width: $width-one;
       }
+    }
 
-      // When the sortable element is within the table header adjust the top
-      //position to provide space
-      .is-sorted::after {
-        top: -.75rem;
+    @media (min-width: $breakpoint-first) and (max-width: $breakpoint-second - 1px) {
+      @if $width-two == 0 {
+        display: none !important;
+      } @else {
+        width: $width-two;
+      }
+    }
+
+    @media (min-width: $breakpoint-second) and (max-width: $breakpoint-third - 1px) {
+      @if $width-three == 0 {
+        display: none !important;
+      } @else {
+        width: $width-three;
+      }
+    }
+
+    @media (min-width: $breakpoint-third) and (max-width: $breakpoint-fourth - 1px) {
+      @if $width-four == 0 {
+        display: none !important;
+      } @else {
+        width: $width-four;
+      }
+    }
+
+    @media (min-width: $breakpoint-fourth) {
+      @if $width-five == 0 {
+        display: none !important;
+      } @else {
+        width: $width-five;
       }
     }
   }
@@ -270,41 +301,48 @@
         vertical-align: top;
       }
 
-      th {
-        &:nth-child(1) {
-          @include table-sortable-adjust(990px);
-          width: 18%;
-        }
-        &:nth-child(2) {
-          @include table-sortable-adjust(1150px);
-          width: 10%;
-        }
-        &:nth-child(3) {
-          width: 22%;
-        }
-        &:nth-child(4) {
-          width: 10%;
-        }
-        &:nth-child(5) {
-          @include table-sortable-adjust(1100px);
-          width: 10%;
-        }
-        &:nth-child(6) {
-          @include table-sortable-adjust(1390px);
-          width: 6%;
-        }
-        &:nth-child(7) {
-          @include table-sortable-adjust(1600px);
-          width: 8%;
-        }
-        &:nth-child(8) {
-          @include table-sortable-adjust(1600px);
-          width: 6%;
-        }
-        &:nth-child(9) {
-          @include table-sortable-adjust(1600px);
-          width: 8%;
-        }
+      .p-table__col--name {
+        @include breakpoint-widths(46%, 30%, 22%, 20%, 17%);
+      }
+
+      .p-table__col--power {
+        @include breakpoint-widths(8%, 8%, 4%, 10%, 8%);
+      }
+
+      .p-table__col--status {
+        @include breakpoint-widths(46%, 44%, 22%, 22%, 19%);
+      }
+
+      .p-table__col--owner {
+        @include breakpoint-widths(0, 18%, 8%, 10%, 9%);
+      }
+
+      .p-table__col--pool {
+        @include breakpoint-widths(0, 0, 0, 0, 7%);
+      }
+
+      .p-table__col--zone {
+        @include breakpoint-widths(0, 0, 0, 10%, 9%);
+      }
+
+      .p-table__col--fabric {
+        @include breakpoint-widths(0, 0, 0, 0, 8%);
+      }
+
+      .p-table__col--cores {
+        @include breakpoint-widths(0, 0, 10%, 6%, 5%);
+      }
+
+      .p-table__col--ram {
+        @include breakpoint-widths(0, 0, 12%, 8%, 7%);
+      }
+
+      .p-table__col--disks {
+        @include breakpoint-widths(0, 0, 10%, 6%, 5%);
+      }
+
+      .p-table__col--storage {
+        @include breakpoint-widths(0, 0, 10%, 8%, 6%);
       }
     }
 
@@ -577,5 +615,39 @@
     color: $color-mid-dark;
     margin: 0;
     padding: 0;
+  }
+
+  .p-link--muted {
+    &:visited {
+      color: $color-mid-dark;
+    }
+
+    &:hover {
+      color: $color-link;
+    }
+  }
+
+  .u-hide--br1 {
+    @media (max-width: $breakpoint-first - 1px) {
+      display: none !important;
+    }
+  }
+
+  .u-hide--br2 {
+    @media (max-width: $breakpoint-second - 1px) {
+      display: none !important;
+    }
+  }
+
+  .u-hide--br3 {
+    @media (max-width: $breakpoint-third - 1px) {
+      display: none !important;
+    }
+  }
+
+  .u-hide--br4 {
+    @media (max-width: $breakpoint-fourth - 1px) {
+      display: none !important;
+    }
   }
 }

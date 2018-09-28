@@ -301,6 +301,7 @@ class TestMachineHandler(MAASServerTestCase):
         if boot_interface:
             data["ip_address"] = handler.dehydrate_ip_address(
                 node, boot_interface)
+            data["vlan"] = handler.dehydrate_vlan(node, boot_interface)
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data['pod'] = {'id': bmc.id, 'name': bmc.name}
@@ -336,6 +337,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "testing_script_count",
                 "testing_status",
                 "testing_status_tooltip",
+                "vlan",
             ]
             for key in list(data):
                 if key not in allowed_fields:
@@ -1746,6 +1748,31 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         self.assertNotIn(
             'ip_address',
+            self.dehydrate_node(node, handler, for_list=True))
+
+    def test_list_includes_vlan_with_boot_interface(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        fabric = factory.make_Fabric(name=factory.make_name("fabric"))
+        vlan = factory.make_VLAN(fabric=fabric)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
+        handler = MachineHandler(user, {})
+        self.assertDictEqual(
+            {
+                "id": interface.vlan_id,
+                "name": "%s" % interface.vlan.name,
+                "fabric_id": interface.vlan.fabric.id,
+                "fabric_name": "%s" % interface.vlan.fabric.name,
+            },
+            self.dehydrate_node(node, handler, for_list=True)['vlan'])
+
+    def test_list_excludes_vlan_without_boot_interface(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {})
+        self.assertNotIn(
+            'vlan',
             self.dehydrate_node(node, handler, for_list=True))
 
     def test_get_object_returns_node_if_super_user(self):
