@@ -532,7 +532,9 @@ class ComposeMachineForm(forms.Form):
                 requested_cores=self.get_value_for('cores'),
                 requested_memory=self.get_value_for('memory'))
             if over_commit_message:
-                raise PodProblem(over_commit_message)
+                raise PodProblem(
+                    "Unable to compose KVM instance in '%s'. %s" % (
+                        self.pod.name, over_commit_message))
 
             # Update the default storage pool.
             if self.pod.default_storage_pool is not None:

@@ -1604,9 +1604,11 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
+            "Unable to compose KVM instance in '%s'. "
             "CPU over commit ratio is %s and there are %s "
-            "available resources. " %
-            (pod.cpu_over_commit_ratio, pod.cores), str(error))
+            "available resources; %s requested." % (
+                pod.name, pod.cpu_over_commit_ratio, pod.cores, 1),
+            str(error))
 
     def test__compose_check_over_commit_ratios_raises_error_for_memory(self):
         request = MagicMock()
@@ -1623,9 +1625,11 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
+            "Unable to compose KVM instance in '%s'. "
             "Memory over commit ratio is %s and there are %s "
-            "available resources." %
-            (pod.memory_over_commit_ratio, pod.memory), str(error))
+            "available resources; %s requested." % (
+                pod.name, pod.memory_over_commit_ratio, pod.memory, 1024),
+            str(error))
 
     def test__compose_handles_timeout_error(self):
         request = MagicMock()

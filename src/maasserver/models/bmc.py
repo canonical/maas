@@ -563,14 +563,15 @@ class Pod(BMC):
         if (over_commit_cores - potential_cores) < 0:
             message = (
                 "CPU over commit ratio is %s and there are %s "
-                "available resources. " % (
-                    self.cpu_over_commit_ratio, (self.cores - used_cores)))
+                "available resources; %s requested." % (
+                    self.cpu_over_commit_ratio, (self.cores - used_cores),
+                    requested_cores))
         if (over_commit_memory - potential_memory) < 0:
             message += (
                 "Memory over commit ratio is %s and there are %s "
-                "available resources." % (
+                "available resources; %s requested." % (
                     self.memory_over_commit_ratio,
-                    (self.memory - used_memory)))
+                    (self.memory - used_memory), requested_memory))
         return message
 
     def _find_existing_machine(self, discovered_machine, mac_machine_map):
