@@ -216,10 +216,12 @@ class TestWebApplicationService(MAASTestCase):
         # Both privileged and and normal start must be called, as twisted
         # multi-service will do the same.
         service.privilegedStartService()
+        self.assertTrue(service.starting)
         service.startService()
         self.assertTrue(service.running)
         service.stopService()
         self.assertFalse(service.running)
+        self.assertFalse(service.starting)
 
     def test__successful_start_installs_wsgi_resource(self):
         service = self.make_webapp()

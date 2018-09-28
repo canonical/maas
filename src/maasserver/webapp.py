@@ -162,6 +162,7 @@ class WebApplicationService(StreamServerEndpointService):
 
     def __init__(self, port, listener, status_worker):
         self.port = port
+        self.starting = False
         # Start with an empty `Resource`, `installApplication` will configure
         # the root resource. This must be seperated because Django must be
         # start from inside a thread with database access.
@@ -256,6 +257,15 @@ class WebApplicationService(StreamServerEndpointService):
     @asynchronous(timeout=30)
     @inlineCallbacks
     def privilegedStartService(self):
+        # Twisted will call `privilegedStartService` followed by `startService`
+        # that also calls `privilegedStartService`. Since this method now
+        # performs start-up work its possible that it will be called twice.
+        # Then endpoint can only be created once or a bad file descriptor
+        # error will occur.
+        if self.starting:
+            return
+        self.starting = True
+
         # Start the application first before starting the service. This ensures
         # that the application is running correctly before any requests
         # can be handled.
@@ -269,6 +279,11 @@ class WebApplicationService(StreamServerEndpointService):
 
     @asynchronous(timeout=30)
     def stopService(self):
+
+        def _cleanup(_):
+            self.starting = False
+
         d = super(WebApplicationService, self).stopService()
         d.addCallback(lambda _: self.websocket.stopFactory())
+        d.addCallback(_cleanup)
         return d
