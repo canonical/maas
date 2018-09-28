@@ -24,8 +24,17 @@ import base64
 from collections import Counter
 import json
 
-from maasserver.enum import NODE_TYPE
-from maasserver.models import Node
+from maasserver.enum import (
+    NODE_TYPE,
+    NODE_STATUS,
+)
+from maasserver.models import (
+    Node,
+    Fabric,
+    VLAN,
+    Space,
+    Subnet,
+)
 from maasserver.utils import get_maas_user_agent
 import requests
 
@@ -39,11 +48,48 @@ def get_machine_stats():
         total_storage=Sum('blockdevice__size'))
 
 
+def get_machine_state_stats():
+    node_status = Node.objects.values_list('status', flat=True)
+    node_status = Counter(node_status)
+
+    return {
+        "ready": node_status.get(NODE_STATUS.READY, 0),
+        "allocated": node_status.get(NODE_STATUS.ALLOCATED, 0),
+        "deploying": node_status.get(NODE_STATUS.DEPLOYING, 0),
+        "deployed": node_status.get(NODE_STATUS.DEPLOYED, 0),
+        "failed_deployment": node_status.get(
+            NODE_STATUS.FAILED_DEPLOYMENT, 0),
+        "failed_commissioning": node_status.get(
+            NODE_STATUS.FAILED_COMMISSIONING, 0),
+        }
+
+
+def get_subnets_stats():
+    subnets = Subnet.objects.all()
+    v4 = [net for net in subnets if net.get_ip_version() == 4]
+    v6 = [net for net in subnets if net.get_ip_version() == 6]
+    return {
+        "spaces": Space.objects.count(),
+        "fabrics": Fabric.objects.count(),
+        "vlans": VLAN.objects.count(),
+        "subnets_v4": len(v4),
+        "subnets_v6": len(v6),
+        }
+
+
 def get_maas_stats():
+    # TODO
+    # - architectures
+    # - resource pools
+    # - pods
     # Get all node types to get count values
     node_types = Node.objects.values_list('node_type', flat=True)
     node_types = Counter(node_types)
+    # get summary of machine resources, and its statuses.
     stats = get_machine_stats()
+    machine_status = get_machine_state_stats()
+    # get summary of network objects
+    netstats = get_subnets_stats()
 
     return json.dumps({
         "controllers": {
@@ -57,6 +103,8 @@ def get_maas_stats():
             "devices": node_types.get(NODE_TYPE.DEVICE, 0),
         },
         "machine_stats": stats,
+        "machine_status": machine_status,
+        "network_stats": netstats,
     })
 
 

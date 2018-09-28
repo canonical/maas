@@ -10,7 +10,13 @@ import json
 
 from django.db import transaction
 from maasserver import stats
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    Fabric,
+    Space,
+    Subnet,
+    VLAN,
+)
 from maasserver.stats import (
     get_maas_stats,
     get_machine_stats,
@@ -41,9 +47,13 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_RegionRackController()
         factory.make_RegionController()
         factory.make_RackController()
-        factory.make_Machine(cpu_count=2, memory=200)
-        factory.make_Machine(cpu_count=3, memory=100)
+        factory.make_Machine(cpu_count=2, memory=200, status=4)
+        factory.make_Machine(cpu_count=3, memory=100, status=11)
         factory.make_Device()
+
+        subnets = Subnet.objects.all()
+        v4 = [net for net in subnets if net.get_ip_version() == 4]
+        v6 = [net for net in subnets if net.get_ip_version() == 6]
 
         stats = get_maas_stats()
         machine_stats = get_machine_stats()
@@ -67,6 +77,21 @@ class TestMAASStats(MAASServerTestCase):
                 "total_cpu": 5,
                 "total_mem": 300,
                 "total_storage": total_storage,
+            },
+            "machine_status": {
+                "ready": 1,
+                "allocated": 0,
+                "deploying": 0,
+                "deployed": 0,
+                "failed_deployment": 1,
+                "failed_commissioning": 0,
+            },
+            "network_stats": {
+                "spaces": Space.objects.count(),
+                "fabrics": Fabric.objects.count(),
+                "vlans": VLAN.objects.count(),
+                "subnets_v4": len(v4),
+                "subnets_v6": len(v6),
             },
         }
         self.assertEquals(stats, json.dumps(compare))
