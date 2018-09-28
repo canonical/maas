@@ -322,6 +322,9 @@ LOGGING = {
         'django.request': {
             'level': 'CRITICAL',
         },
+        'django.template': {
+            'level': 'INFO',
+        },
     },
 }
 
