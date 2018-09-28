@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import socket
 from unittest.mock import (
     call,
     Mock,
@@ -52,12 +51,8 @@ from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import (
     Equals,
     IsInstance,
-    MatchesStructure,
 )
-from twisted.internet import (
-    defer,
-    reactor,
-)
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
 
@@ -412,15 +407,9 @@ class TestFactories(MAASTestCase):
         service = eventloop.make_WebApplicationService(
             FakePostgresListenerService(), sentinel.status_worker)
         self.assertThat(service, IsInstance(webapp.WebApplicationService))
-        # The endpoint is set to port 5243 on localhost.
-        self.assertThat(service.endpoint, MatchesStructure.byEquality(
-            reactor=reactor, addressFamily=socket.AF_INET6))
+        # The port is set to port 5243 on localhost.
         self.assertThat(
-            service.endpoint.port, Equals(DEFAULT_PORT))
-        # IPv6 address is: (host, port, flowinfo, scopeid)
-        self.assertThat(
-            service.endpoint.socket.getsockname(),
-            Equals(("::", DEFAULT_PORT, 0, 0)))
+            service.port, Equals(DEFAULT_PORT))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_WebApplicationService,

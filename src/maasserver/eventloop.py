@@ -43,7 +43,6 @@ __all__ = [
 
 from logging import getLogger
 import os
-import socket
 from socket import gethostname
 
 from maasserver.utils.orm import disable_all_database_connections
@@ -58,7 +57,6 @@ from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
 )
-from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 
 # Default port for regiond.
 DEFAULT_PORT = 5240
@@ -170,23 +168,8 @@ def make_SyslogService():
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
-    # Make a socket with SO_REUSEPORT set so that we can run multiple web
-    # applications. This is easier to do from outside of Twisted as there's
-    # not yet official support for setting socket options.
-    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    # N.B, using the IPv6 INADDR_ANY means that getpeername() returns something
-    # like: ('::ffff:192.168.133.32', 40588, 0, 0)
-    s.bind(('::', site_port))
-    # Use a backlog of 50, which seems to be fairly common.
-    s.listen(50)
-    # Adopt this socket into Twisted's reactor.
-    site_endpoint = AdoptedStreamServerEndpoint(reactor, s.fileno(), s.family)
-    site_endpoint.port = site_port  # Make it easy to get the port number.
-    site_endpoint.socket = s  # Prevent garbage collection.
     site_service = WebApplicationService(
-        site_endpoint, postgresListener, statusWorker)
+        site_port, postgresListener, statusWorker)
     return site_service
 
 

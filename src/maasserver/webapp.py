@@ -9,11 +9,10 @@ __all__ = [
 
 import copy
 from functools import partial
-from http.client import SERVICE_UNAVAILABLE
 import re
+import socket
 
 from django.conf import settings
-from lxml import html
 from maasserver import concurrency
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.views import WebApplicationHandler
@@ -32,10 +31,9 @@ from provisioningserver.utils.twisted import (
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import failure
+from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import (
-    ErrorPage,
     NoResource,
     Resource,
 )
@@ -49,27 +47,6 @@ from twisted.web.wsgi import WSGIResource
 
 
 log = LegacyLogger()
-
-
-class StartPage(ErrorPage, object):
-    def __init__(self):
-        super(StartPage, self).__init__(
-            status=int(SERVICE_UNAVAILABLE), brief="MAAS is starting",
-            detail="Please try again in a few seconds.")
-
-    def render(self, request):
-        request.setHeader(b"Retry-After", b"5")
-        return super(StartPage, self).render(request)
-
-
-class StartFailedPage(ErrorPage, object):
-
-    def __init__(self, failure):
-        traceback = html.Element("pre")
-        traceback.text = failure.getTraceback()
-        super(StartFailedPage, self).__init__(
-            status=int(SERVICE_UNAVAILABLE), brief="MAAS failed to start",
-            detail=html.tostring(traceback, encoding=str))
 
 
 class CleanPathRequest(Request, object):
@@ -183,11 +160,17 @@ class WebApplicationService(StreamServerEndpointService):
         the web application.
     """
 
-    def __init__(self, endpoint, listener, status_worker):
+    def __init__(self, port, listener, status_worker):
+        self.port = port
+        # Start with an empty `Resource`, `installApplication` will configure
+        # the root resource. This must be seperated because Django must be
+        # start from inside a thread with database access.
         self.site = OverlaySite(
-            StartPage(), logFormatter=reducedWebLogFormatter, timeout=None)
+            Resource(), logFormatter=reducedWebLogFormatter, timeout=None)
         self.site.requestFactory = CleanPathRequest
-        super(WebApplicationService, self).__init__(endpoint, self.site)
+        # `endpoint` is set in `privilegedStartService`, at this point the
+        # `endpoint` is None.
+        super(WebApplicationService, self).__init__(None, self.site)
         self.websocket = WebSocketFactory(listener)
         self.threadpool = ThreadPoolLimiter(
             reactor.threadpoolForDatabase, concurrency.webapp)
@@ -242,25 +225,47 @@ class WebApplicationService(StreamServerEndpointService):
         self.site.resource = root
         self.site.underlay = underlay_site
 
-    def installFailed(self, failure):
-        """Display a page explaining why the web app could not start."""
-        self.site.resource = StartFailedPage(failure)
-        log.err(failure, "MAAS web application failed to start")
-
     @inlineCallbacks
     def startApplication(self):
         """Start the Django application, and install it."""
-        try:
-            application = yield deferToDatabase(self.prepareApplication)
-            self.startWebsocket()
-            self.installApplication(application)
-        except:
-            self.installFailed(failure.Failure())
+        application = yield deferToDatabase(self.prepareApplication)
+        self.startWebsocket()
+        self.installApplication(application)
+
+    def _makeEndpoint(self):
+        """Make the endpoint for the webapp."""
+        # Make a socket with SO_REUSEPORT set so that we can run multiple web
+        # applications. This is easier to do from outside of Twisted as there's
+        # not yet official support for setting socket options.
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        # N.B, using the IPv6 INADDR_ANY means that getpeername() returns
+        # something like: ('::ffff:192.168.133.32', 40588, 0, 0)
+        s.bind(('::', self.port))
+        # Use a backlog of 50, which seems to be fairly common.
+        s.listen(50)
+
+        # Adopt this socket into Twisted's reactor setting the endpoint.
+        endpoint = AdoptedStreamServerEndpoint(
+            reactor, s.fileno(), s.family)
+        endpoint.port = self.port  # Make it easy to get the port number.
+        endpoint.socket = s  # Prevent garbage collection.
+        return endpoint
 
     @asynchronous(timeout=30)
-    def startService(self):
-        super(WebApplicationService, self).startService()
-        return self.startApplication()
+    @inlineCallbacks
+    def privilegedStartService(self):
+        # Start the application first before starting the service. This ensures
+        # that the application is running correctly before any requests
+        # can be handled.
+        yield self.startApplication()
+
+        # Create the endpoint now that the application is started.
+        self.endpoint = self._makeEndpoint()
+
+        # Start the service now that the endpoint has been created.
+        super(WebApplicationService, self).privilegedStartService()
 
     @asynchronous(timeout=30)
     def stopService(self):
