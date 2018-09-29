@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to DHCP."""
@@ -497,7 +497,11 @@ def validate(
         tmp_dhcpd.file.write(dhcpd_config.encode('utf-8'))
         tmp_dhcpd.file.flush()
         try:
-            call_and_check(['dhcpd', '-t', '-cf', tmp_dhcpd.name])
+            call_and_check([
+                'dhcpd', '-t', '-cf',
+                '-6' if server.ipv6 else '-4',
+                tmp_dhcpd.name,
+            ])
         except ExternalProcessError as e:
             return _parse_dhcpd_errors(e.output_as_unicode)
     return None

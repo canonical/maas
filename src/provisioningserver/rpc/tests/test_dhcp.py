@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module:`~provisioningserver.rpc.dhcp`."""
@@ -1026,14 +1026,22 @@ class TestValidateDHCP(MAASTestCase):
         # Temporarily prevent hostname resolution when generating DHCP
         # configuration. This is tested elsewhere.
         self.useFixture(DHCPConfigNameResolutionDisabled())
+        self.mock_call_and_check = self.patch(dhcp, 'call_and_check')
 
     def validate(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, dhcp_snippets):
         server = self.server(omapi_key)
-        return dhcp.validate(
+        ret = dhcp.validate(
             server, failover_peers, shared_networks, hosts, interfaces,
             dhcp_snippets)
+        # Regression test for LP:1585814
+        self.assertThat(
+            self.mock_call_and_check, MockCalledOnceWith([
+                'dhcpd', '-t', '-cf',
+                '-6' if self.server.ipv6 else '-4',
+                ANY]))
+        return ret
 
     def test__good_config(self):
         omapi_key = factory.make_name('omapi_key')
@@ -1044,7 +1052,6 @@ class TestValidateDHCP(MAASTestCase):
         host = make_host()
         interface = make_interface()
         global_dhcp_snippets = make_global_dhcp_snippets()
-        self.patch(dhcp, 'call_and_check')
 
         self.assertEqual(
             None,
@@ -1081,7 +1088,7 @@ class TestValidateDHCP(MAASTestCase):
             '\n'
             'exiting.'
         )
-        self.patch(dhcp, 'call_and_check').side_effect = ExternalProcessError(
+        self.mock_call_and_check.side_effect = ExternalProcessError(
             returncode=1, cmd=("dhcpd",), output=dhcpd_error)
 
         self.assertEqual([{
