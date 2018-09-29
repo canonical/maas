@@ -231,15 +231,22 @@ angular.module('MAAS').controller('PodDetailsController', [
                 disk.showOptions = false;
             });
             storage.showOptions = true;
-        }
+        };
 
-        $scope.closeOptions = function(item) {
-            item.showOptions = false;
-        }
+        $scope.closeOptions = function(storage) {
+            storage.showOptions = false;
+        };
+
+        $scope.closeStorageOptions = function() {
+            angular.forEach($scope.compose.obj.storage, function(disk) {
+                disk.showOptions = false;
+            });
+        };
+
 
         $scope.selectStoragePool = function(storagePool, storage) {
             storage.pool = storagePool;
-        }
+        };
 
         // Return the title of the pod type.
         $scope.getPodTypeTitle = function() {
@@ -348,6 +355,10 @@ angular.module('MAAS').controller('PodDetailsController', [
                 pool: $scope.getDefaultStoragePool(),
                 boot: false
             };
+
+            // Close all open option menus in the storage table when creating
+            // a new storage.
+            $scope.closeStorageOptions();
 
             if($scope.pod.capabilities.indexOf('iscsi_storage') >= 0) {
                 storage.type = 'iscsi';
