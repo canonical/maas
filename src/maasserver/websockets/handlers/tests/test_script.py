@@ -41,7 +41,7 @@ class TestScriptHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = ScriptHandler(user, {})
+        handler = ScriptHandler(user, {}, None)
         expected_scripts = sorted([
             self.dehydrate_script(factory.make_Script())
             for _ in range(3)

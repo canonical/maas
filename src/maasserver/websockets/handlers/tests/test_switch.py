@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from django.http import HttpRequest
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import NodeActionError
 from maasserver.testing.factory import factory
@@ -24,7 +25,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_get_no_switch(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         device = factory.make_Device(owner=owner)
         self.assertRaises(
             HandlerDoesNotExistError,
@@ -33,7 +34,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_get_device_switch(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         device = factory.make_Device(owner=owner)
         factory.make_Switch(node=device)
         result = handler.get({"system_id": device.system_id})
@@ -43,7 +44,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_get_machine_switch(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         machine = factory.make_Machine(owner=owner)
         factory.make_Switch(node=machine)
         handler._script_results = {}
@@ -54,7 +55,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_switches(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         device = factory.make_Device(owner=owner)
         machine = factory.make_Machine(owner=owner)
         factory.make_Switch(node=device)
@@ -66,7 +67,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_ignores_nodes_that_arent_switches(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         factory.make_Device(owner=owner)
         factory.make_Machine(owner=owner)
         self.assertItemsEqual([], handler.list({}))
@@ -74,7 +75,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_ignores_switches_with_parents(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         node = factory.make_Node(owner=owner)
         device_with_parent = factory.make_Device(owner=owner)
         device_with_parent.parent = node
@@ -85,7 +86,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_num_queries_is_independent_of_num_devices(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         for _ in range(10):
             device = factory.make_Device(owner=owner)
             factory.make_Switch(node=device)
@@ -113,7 +114,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         device2 = factory.make_Device(owner=user2)
         factory.make_Switch(node=device2)
         # Create another device not ownered by user.
-        handler = SwitchHandler(user1, {})
+        handler = SwitchHandler(user1, {}, None)
         self.assertItemsEqual(
             [device1.system_id],
             [result['system_id'] for result in handler.list({})])
@@ -121,7 +122,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_switches_includes_link_type_device(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         device = factory.make_Device(owner=owner)
         factory.make_Switch(node=device)
         self.assertItemsEqual(
@@ -131,7 +132,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_switches_includes_link_type_machine(self):
         owner = factory.make_User()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         machine = factory.make_Machine(owner=owner)
         factory.make_Switch(node=machine)
         self.assertItemsEqual(
@@ -141,7 +142,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_list_switches_includes_link_type_controller(self):
         owner = factory.make_admin()
-        handler = SwitchHandler(owner, {})
+        handler = SwitchHandler(owner, {}, None)
         controller1 = factory.make_RackController(owner=owner)
         controller2 = factory.make_RegionController(owner=owner)
         controller3 = factory.make_RegionRackController(owner=owner)
@@ -158,7 +159,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         device = factory.make_Device(owner=user)
         factory.make_Switch(node=device)
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         self.assertEqual(
             [device.system_id],
             [result['system_id'] for result in handler.list({})])
@@ -168,7 +169,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         device = factory.make_Device(owner=user)
         factory.make_Switch(node=device)
-        handler = SwitchHandler(user, {})
+        handler = SwitchHandler(user, {}, None)
         self.assertEqual(
             device.system_id,
             handler.get_object({"system_id": device.system_id}).system_id)
@@ -178,7 +179,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         user2 = factory.make_User()
         device = factory.make_Device(owner=user1)
         factory.make_Switch(node=device)
-        handler = SwitchHandler(user2, {})
+        handler = SwitchHandler(user2, {}, None)
         with ExpectedException(HandlerDoesNotExistError):
             handler.get_object({"system_id": device.system_id})
 
@@ -187,7 +188,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         device = factory.make_Device(owner=user)
         factory.make_Switch(node=device)
-        handler = SwitchHandler(user, {})
+        handler = SwitchHandler(user, {}, None)
         with ExpectedException(NodeActionError):
             handler.action({"system_id": device.system_id})
 
@@ -196,7 +197,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         user = factory.make_User()
         device = factory.make_Device(owner=user)
         factory.make_Switch(node=device)
-        handler = SwitchHandler(user, {})
+        handler = SwitchHandler(user, {}, None)
         self.assertRaises(
             NodeActionError,
             handler.action,
@@ -205,20 +206,29 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_action_performs_action(self):
         admin = factory.make_admin()
+        request = HttpRequest()
+        request.user = admin
         device = factory.make_Device(owner=admin)
         factory.make_Switch(node=device)
-        handler = SwitchHandler(admin, {})
-        handler.action({"system_id": device.system_id, "action": "delete"})
+        handler = SwitchHandler(admin, {}, request)
+        handler.action({
+            "request": request,
+            "system_id": device.system_id,
+            "action": "delete"
+        })
         self.assertIsNone(reload_object(device))
 
     @transactional
     def test_action_performs_action_passing_extra(self):
         admin = factory.make_admin()
+        request = HttpRequest()
+        request.user = admin
         device = factory.make_Device(owner=admin)
         factory.make_Switch(node=device)
         zone = factory.make_Zone()
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, request)
         handler.action({
+            "request": request,
             "system_id": device.system_id,
             "action": "set-zone",
             "extra": {
@@ -232,7 +242,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
         admin = factory.make_admin()
         node = factory.make_Node(owner=admin)
         factory.make_Switch(node=node)
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         handler.list({})  # Populate the cache with the switch in it.
         obj_type, action, obj = handler.on_listen(
             'switch', 'update', node.system_id)
@@ -243,7 +253,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_on_listen_switch_create(self):
         admin = factory.make_admin()
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         handler.list({})  # Populate the cache with no switches.
         node = factory.make_Node(owner=admin)
         factory.make_Switch(node=node)
@@ -256,7 +266,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_on_listen_non_switch_create(self):
         admin = factory.make_admin()
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         node = factory.make_Node(owner=admin)
         handler.list({})  # Populate the cache with no switches.
         for obj_type in ['device', 'controller', 'machine']:
@@ -267,7 +277,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_on_listen_non_switch_delete(self):
         admin = factory.make_admin()
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         node = factory.make_Node(owner=admin)
         factory.make_Switch(node=node)
         handler.list({})  # Populate the cache with the switch in it.
@@ -279,7 +289,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_on_listen_non_switch_update(self):
         admin = factory.make_admin()
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         node = factory.make_Node(owner=admin)
         handler.list({})  # Populate the cache with no switches.
         for obj_type in ['device', 'controller', 'machine']:
@@ -290,7 +300,7 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
     @transactional
     def test_on_listen_non_switch_event_update(self):
         admin = factory.make_admin()
-        handler = SwitchHandler(admin, {})
+        handler = SwitchHandler(admin, {}, None)
         node = factory.make_Node(owner=admin)
         factory.make_Switch(node=node)
         handler.list({})  # Populate the cache with the switch in it.

@@ -174,6 +174,8 @@ NODE_TYPE_CHOICES = (
     (NODE_TYPE.REGION_AND_RACK_CONTROLLER, "Region and rack controller"),
 )
 
+NODE_TYPE_CHOICES_DICT = OrderedDict(NODE_TYPE_CHOICES)
+
 
 class BMC_TYPE:
     """ Valid BMC types."""

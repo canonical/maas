@@ -94,8 +94,8 @@ class NodeHandler(TimestampedModelHandler):
         pk = 'system_id'
         pk_type = str
 
-    def __init__(self, user, cache):
-        super().__init__(user, cache)
+    def __init__(self, user, cache, request):
+        super().__init__(user, cache, request)
         self._script_results = {}
 
     def dehydrate_owner(self, user):

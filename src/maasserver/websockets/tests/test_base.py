@@ -13,6 +13,7 @@ from unittest.mock import (
 )
 
 from django.db.models.query import QuerySet
+from django.http import HttpRequest
 from maasserver.forms import (
     AdminMachineForm,
     AdminMachineWithMACAddressesForm,
@@ -57,7 +58,7 @@ def make_handler(name, **kwargs):
 class TestHandlerMeta(MAASTestCase):
 
     def test_creates_handler_with_default_meta(self):
-        handler = Handler(None, {})
+        handler = Handler(None, {}, None)
         self.assertThat(handler._meta, MatchesStructure(
             abstract=Is(False),
             allowed_methods=Equals(
@@ -130,8 +131,11 @@ class TestHandler(MAASServerTestCase):
             "pk_type": str,
         }
         meta_args.update(kwargs)
+        user = factory.make_User()
+        request = HttpRequest()
+        request.user = user
         handler = make_handler("TestNodesHandler", **meta_args)
-        handler.__init__(factory.make_User(), {})
+        handler.__init__(user, {}, request)
         return handler
 
     def make_mock_node_with_fields(self, **kwargs):

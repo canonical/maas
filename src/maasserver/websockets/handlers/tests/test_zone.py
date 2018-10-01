@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.zone`"""
@@ -45,7 +45,7 @@ class TestZoneHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = ZoneHandler(user, {})
+        handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
         for _ in range(3):
             factory.make_Node(zone=zone)
@@ -64,7 +64,7 @@ class TestZoneHandler(MAASServerTestCase):
 
     def test_get_query_count(self):
         user = factory.make_User()
-        handler = ZoneHandler(user, {})
+        handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
         for _ in range(3):
             factory.make_Node(zone=zone)
@@ -79,7 +79,7 @@ class TestZoneHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = ZoneHandler(user, {})
+        handler = ZoneHandler(user, {}, None)
         factory.make_Zone()
         expected_zones = [
             self.dehydrate_zone(zone)
@@ -94,7 +94,7 @@ class TestZoneHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_admin_success(self):
         user = factory.make_admin()
-        handler = ZoneHandler(user, {})
+        handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
         handler.delete({
             "id": zone.id,
@@ -104,7 +104,7 @@ class TestZoneHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_non_admin_asserts(self):
         user = factory.make_User()
-        handler = ZoneHandler(user, {})
+        handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({
@@ -114,7 +114,7 @@ class TestZoneHandlerDelete(MAASServerTestCase):
     def test__delete_default_zone_fails(self):
         zone = Zone.objects.get_default_zone()
         user = factory.make_admin()
-        handler = ZoneHandler(user, {})
+        handler = ZoneHandler(user, {}, None)
         with ExpectedException(ValidationError):
             handler.delete({
                 "id": zone.id,

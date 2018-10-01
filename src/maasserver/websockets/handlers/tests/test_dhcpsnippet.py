@@ -61,7 +61,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_get_global(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         self.assertEqual(
             self.dehydrate_dhcp_snippet(dhcp_snippet),
@@ -69,7 +69,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_get_with_subnet(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         subnet = factory.make_Subnet()
         dhcp_snippet = factory.make_DHCPSnippet(subnet=subnet)
         self.assertEqual(
@@ -78,7 +78,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_get_with_node(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         node = factory.make_Node()
         dhcp_snippet = factory.make_DHCPSnippet(node=node)
         self.assertEqual(
@@ -87,7 +87,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         expected_dhcp_snippets = [
             self.dehydrate_dhcp_snippet(factory.make_DHCPSnippet())
             for _ in range(3)
@@ -96,14 +96,14 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_create_is_admin_only(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.create, {})
 
     def test_create(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet_name = factory.make_name('dhcp_snippet_name')
         handler.create({
             'name': dhcp_snippet_name,
@@ -118,14 +118,14 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_update_is_admin_only(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.update, {})
 
     def test_update(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         node = factory.make_Node()
         handler.update({
@@ -142,14 +142,14 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_delete_is_admin_only(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.delete, {})
 
     def test_delete(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         handler.delete({'id': dhcp_snippet.id})
         self.assertRaises(
@@ -158,14 +158,14 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_revert_is_admin_only(self):
         user = factory.make_User()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.delete, {})
 
     def test_revert(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         textfile_ids = [dhcp_snippet.value.id]
         for _ in range(10):
@@ -191,7 +191,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_revert_requires_to(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         self.assertRaises(
             HandlerValidationError,
@@ -199,7 +199,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_revert_requires_to_to_be_an_int(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         self.assertRaises(
             HandlerValidationError,
@@ -208,7 +208,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
 
     def test_revert_errors_on_invalid_id(self):
         user = factory.make_admin()
-        handler = DHCPSnippetHandler(user, {})
+        handler = DHCPSnippetHandler(user, {}, None)
         dhcp_snippet = factory.make_DHCPSnippet()
         textfile = VersionedTextFile.objects.create(data=factory.make_string())
         self.assertRaises(

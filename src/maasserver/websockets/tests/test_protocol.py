@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.protocol`"""
@@ -15,6 +15,7 @@ from unittest.mock import (
 from apiclient.utils import ascii_url
 from crochet import wait_for
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.listener import FakePostgresListenerService
@@ -72,6 +73,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol.transport = MagicMock()
         protocol.transport.cookies = b""
         protocol.transport.uri = transport_uri
+        protocol.request = HttpRequest()
         if patch_authenticate:
             self.patch(protocol, "authenticate")
         return protocol, factory
@@ -93,6 +95,21 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def get_written_transport_message(self, protocol):
         call = protocol.transport.write.call_args_list.pop()
         return json.loads(call[0][0].decode("ascii"))
+
+    def test_connectionMade_sets_the_request(self):
+        protocol, factory = self.make_protocol(patch_authenticate=False)
+        self.patch_autospec(protocol, "authenticate")
+        self.patch_autospec(protocol, "processMessages")
+        protocol.authenticate.return_value = defer.succeed(sentinel.user)
+        protocol.connectionMade()
+        self.addCleanup(protocol.connectionLost, "")
+        self.assertEquals(protocol.user, protocol.request.user)
+        self.assertEquals(
+            protocol.request.META['HTTP_USER_AGENT'],
+            protocol.transport.user_agent)
+        self.assertEquals(
+            protocol.request.META['REMOTE_ADDR'],
+            protocol.transport.ip_address)
 
     def test_connectionMade_sets_user_and_processes_messages(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)
@@ -529,7 +546,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         self.assertThat(d, IsFiredDeferred())
         self.assertThat(handler_class, MockCalledOnceWith(
-            protocol.user, protocol.cache[handler_name]))
+            protocol.user, protocol.cache[handler_name], protocol.request))
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
         self.assertIs(
@@ -853,12 +870,13 @@ class TestWebSocketFactoryTransactional(
             handler_class, sentinel.channel, sentinel.action, sentinel.obj_id)
         self.assertThat(
             handler_class, MockCalledOnceWith(
-                user, protocol.cache[handler_class._meta.handler_name]))
+                user, protocol.cache[handler_class._meta.handler_name],
+                protocol.request))
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
         self.assertIs(
             protocol.cache[handler_class._meta.handler_name],
-            handler_class.call_args[0][1])
+            handler_class.call_args[0][1], handler_class.call_args[0][2])
 
     @wait_for_reactor
     @inlineCallbacks

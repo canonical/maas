@@ -33,14 +33,14 @@ class TestUserHandler(MAASServerTestCase):
     def test_get_for_admin(self):
         user = factory.make_User()
         admin = factory.make_admin()
-        handler = UserHandler(admin, {})
+        handler = UserHandler(admin, {}, None)
         self.assertEqual(
             self.dehydrate_user(user),
             handler.get({"id": user.id}))
 
     def test_get_for_user_getting_self(self):
         user = factory.make_User()
-        handler = UserHandler(user, {})
+        handler = UserHandler(user, {}, None)
         self.assertEqual(
             self.dehydrate_user(user),
             handler.get({"id": user.id}))
@@ -48,13 +48,13 @@ class TestUserHandler(MAASServerTestCase):
     def test_get_for_user_not_getting_self(self):
         user = factory.make_User()
         other_user = factory.make_User()
-        handler = UserHandler(user, {})
+        handler = UserHandler(user, {}, None)
         self.assertRaises(
             HandlerDoesNotExistError, handler.get, {"id": other_user.id})
 
     def test_list_for_admin(self):
         admin = factory.make_admin()
-        handler = UserHandler(admin, {})
+        handler = UserHandler(admin, {}, None)
         factory.make_User()
         expected_users = [
             self.dehydrate_user(user)
@@ -66,7 +66,7 @@ class TestUserHandler(MAASServerTestCase):
 
     def test_list_for_standard_user(self):
         user = factory.make_User()
-        handler = UserHandler(user, {})
+        handler = UserHandler(user, {}, None)
         # Other users
         for _ in range(3):
             factory.make_User()
@@ -76,14 +76,14 @@ class TestUserHandler(MAASServerTestCase):
 
     def test_auth_user(self):
         user = factory.make_User()
-        handler = UserHandler(user, {})
+        handler = UserHandler(user, {}, None)
         self.assertEqual(
             self.dehydrate_user(user),
             handler.auth_user({}))
 
     def test_create_authorisation_token(self):
         user = factory.make_User()
-        handler = UserHandler(user, {})
+        handler = UserHandler(user, {}, None)
         observed = handler.create_authorisation_token({})
         self.assertItemsEqual(['key', 'secret', 'consumer'], observed.keys())
         self.assertItemsEqual(['key', 'name'], observed['consumer'].keys())
@@ -93,7 +93,7 @@ class TestUserHandler(MAASServerTestCase):
 
     def test_delete_authorisation_token(self):
         user = factory.make_User()
-        handler = UserHandler(user, {})
+        handler = UserHandler(user, {}, None)
         observed = handler.create_authorisation_token({})
         handler.delete_authorisation_token({'key': observed['key']})
         self.assertIsNone(Token.objects.filter(key=observed['key']).first())

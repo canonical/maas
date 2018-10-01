@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.discovery`"""
@@ -51,7 +51,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = DiscoveryHandler(user, {})
+        handler = DiscoveryHandler(user, {}, None)
         discovery = factory.make_Discovery()
         self.assertEqual(
             self.dehydrate_discovery(discovery),
@@ -59,7 +59,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = DiscoveryHandler(user, {})
+        handler = DiscoveryHandler(user, {}, None)
         factory.make_Discovery()
         factory.make_Discovery()
         expected_discoveries = [
@@ -72,7 +72,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
 
     def test_list_orders_by_creation_date(self):
         user = factory.make_User()
-        handler = DiscoveryHandler(user, {})
+        handler = DiscoveryHandler(user, {}, None)
         now = datetime.now()
         d0 = factory.make_Discovery(created=now)
         d4 = factory.make_Discovery(created=(now + timedelta(days=4)))
@@ -91,7 +91,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
 
     def test_list_starts_after_first_seen(self):
         user = factory.make_User()
-        handler = DiscoveryHandler(user, {})
+        handler = DiscoveryHandler(user, {}, None)
         now = datetime.now()
         factory.make_Discovery(created=now)
         d4 = factory.make_Discovery(created=(now + timedelta(days=4)))

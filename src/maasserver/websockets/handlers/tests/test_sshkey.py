@@ -49,7 +49,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         sshkey = factory.make_SSHKey(user)
         self.assertEqual(
             self.dehydrate_sshkey(sshkey),
@@ -57,14 +57,14 @@ class TestSSHKeyHandler(MAASServerTestCase):
 
     def test_get_doesnt_work_if_not_owned(self):
         user = factory.make_User()
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         not_owned_sshkey = factory.make_SSHKey(factory.make_User())
         self.assertRaises(
             HandlerDoesNotExistError, handler.get, {"id": not_owned_sshkey.id})
 
     def test_list(self):
         user = factory.make_User()
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         factory.make_SSHKey(user)
         expected_sshkeys = [
             self.dehydrate_sshkey(sshkey)
@@ -76,7 +76,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
 
     def test_create(self):
         user = factory.make_User()
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         key_string = get_data('data/test_rsa0.pub')
         new_sshkey = handler.create({
             'key': key_string,
@@ -89,14 +89,14 @@ class TestSSHKeyHandler(MAASServerTestCase):
     def test_delete(self):
         user = factory.make_User()
         sshkey = factory.make_SSHKey(user=user)
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         handler.delete({"id": sshkey.id})
         self.assertIsNone(
             get_one(SSHKey.objects.filter(id=sshkey.id)))
 
     def test_import_keys_calls_save_keys_for_user_and_create_audit_event(self):
         user = factory.make_User()
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         protocol = factory.make_name("protocol")
         auth_id = factory.make_name("auth")
         mock_save_keys = self.patch(KeySource.objects, "save_keys_for_user")
@@ -113,7 +113,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
 
     def test_import_keys_raises_HandlerError(self):
         user = factory.make_User()
-        handler = SSHKeyHandler(user, {})
+        handler = SSHKeyHandler(user, {}, None)
         protocol = factory.make_name("protocol")
         auth_id = factory.make_name("auth")
         mock_save_keys = self.patch(KeySource.objects, "save_keys_for_user")

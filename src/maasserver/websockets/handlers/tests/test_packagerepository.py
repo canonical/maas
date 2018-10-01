@@ -51,7 +51,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
     def test_list(self):
         PackageRepository.objects.all().delete()
         user = factory.make_User()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         expected_package_repositories = [
             self.dehydrate(factory.make_PackageRepository())
             for _ in range(3)
@@ -60,14 +60,14 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
 
     def test_create_is_admin_only(self):
         user = factory.make_User()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.create, {})
 
     def test_create(self):
         user = factory.make_admin()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         package_repository_name = factory.make_name('package_repository_name')
         handler.create({
             'name': package_repository_name,
@@ -83,14 +83,14 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
 
     def test_update_is_admin_only(self):
         user = factory.make_User()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.update, {})
 
     def test_update(self):
         user = factory.make_admin()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         package_repository = factory.make_PackageRepository()
         url = factory.make_url(scheme='http')
         handler.update({
@@ -107,14 +107,14 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
 
     def test_delete_is_admin_only(self):
         user = factory.make_User()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError,
             handler.delete, {})
 
     def test_delete(self):
         user = factory.make_admin()
-        handler = PackageRepositoryHandler(user, {})
+        handler = PackageRepositoryHandler(user, {}, None)
         package_repository = factory.make_PackageRepository()
         handler.delete({'id': package_repository.id})
         self.assertRaises(

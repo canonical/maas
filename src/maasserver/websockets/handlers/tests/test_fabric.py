@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.fabric`"""
@@ -32,7 +32,7 @@ class TestFabricHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = FabricHandler(user, {})
+        handler = FabricHandler(user, {}, None)
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         for _ in range(3):
@@ -46,7 +46,7 @@ class TestFabricHandler(MAASServerTestCase):
 
     def test_get_default_vlan_is_first(self):
         user = factory.make_User()
-        handler = FabricHandler(user, {})
+        handler = FabricHandler(user, {}, None)
         fabric = factory.make_Fabric()
         default_vlan = fabric.get_default_vlan()
         tagged_vlan_ids = [
@@ -60,7 +60,7 @@ class TestFabricHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = FabricHandler(user, {})
+        handler = FabricHandler(user, {}, None)
         factory.make_Fabric()
         expected_fabrics = [
             self.dehydrate_fabric(fabric)

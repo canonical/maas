@@ -342,7 +342,7 @@ class DeviceHandler(NodeHandler):
             raise ValidationError(form.errors)
 
     def delete_interface(self, params):
-        """Delete the interface."""
+        """Delete t he interface."""
         node = self.get_object(params)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.delete()
@@ -392,7 +392,7 @@ class DeviceHandler(NodeHandler):
         """Perform the action on the object."""
         obj = self.get_object(params)
         action_name = params.get("action")
-        actions = compile_node_actions(obj, self.user)
+        actions = compile_node_actions(obj, self.user, request=self.request)
         action = actions.get(action_name)
         if action is None:
             raise NodeActionError(

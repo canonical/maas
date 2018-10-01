@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.space`"""
@@ -33,7 +33,7 @@ class TestSpaceHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = SpaceHandler(user, {})
+        handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
         for _ in range(3):
             node = factory.make_Node(interface=True)
@@ -46,7 +46,7 @@ class TestSpaceHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = SpaceHandler(user, {})
+        handler = SpaceHandler(user, {}, None)
         factory.make_Space()
         expected_spaces = [
             self.dehydrate_space(space)
@@ -61,7 +61,7 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_admin_success(self):
         user = factory.make_admin()
-        handler = SpaceHandler(user, {})
+        handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
         handler.delete({
             "id": space.id,
@@ -71,7 +71,7 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_non_admin_asserts(self):
         user = factory.make_User()
-        handler = SpaceHandler(user, {})
+        handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({
@@ -80,7 +80,7 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
 
     def test__reloads_user(self):
         user = factory.make_admin()
-        handler = SpaceHandler(user, {})
+        handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
         user.is_superuser = False
         user.save()

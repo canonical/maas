@@ -30,6 +30,7 @@ from maasserver.websockets.websockets import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from testtools.matchers import StartsWith
+from twisted.internet.address import IPv6Address
 from twisted.internet.protocol import (
     Factory,
     Protocol,
@@ -595,7 +596,7 @@ class WebSocketsResourceTest(MAASTestCase):
         protocol provided by the user factory.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers()
+        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
@@ -636,7 +637,8 @@ class WebSocketsResourceTest(MAASTestCase):
 
         request = DummyRequest(b"/")
         request.requestHeaders = Headers(
-            {b"sec-websocket-protocol": [b"foo", b"bar"]})
+            {b"sec-websocket-protocol": [b"foo", b"bar"],
+             b"user-agent": [b"user-agent"]})
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
@@ -759,7 +761,7 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request with a C{502} code.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers()
+        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
         request.transport = StringTransportWithDisconnection()
         self.echoProtocol = None
         self.update_headers(request, headers={
@@ -781,7 +783,7 @@ class WebSocketsResourceTest(MAASTestCase):
         the protocol of the C{TLSMemoryBIOProtocol} instance.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers()
+        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
         transport = StringTransportWithDisconnection()
         secureProtocol = TLSMemoryBIOProtocol(Factory(), Protocol())
         transport.protocol = secureProtocol
@@ -821,11 +823,14 @@ class WebSocketsResourceTest(MAASTestCase):
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
-            b"sec-websocket-version": b"13"}
+            b"sec-websocket-version": b"13",
+            b"user-agent": b"user-agent",
+            b"client": b"client"}
         for key, value in headers.items():
             request.requestHeaders.setRawHeaders(key, [value])
         request.method = b"GET"
         request.clientproto = b"HTTP/1.1"
+        request.client = IPv6Address('TCP', 'fe80::1', '80')
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
@@ -853,7 +858,7 @@ class WebSocketsResourceTest(MAASTestCase):
         self.resource = WebSocketsResource(lookupProtocol)
 
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers()
+        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport

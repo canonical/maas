@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The MAAS WebSockets protocol."""
@@ -25,6 +25,7 @@ from django.contrib.auth import (
 )
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 from maasserver.eventloop import services
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -99,6 +100,7 @@ class WebSocketProtocol(Protocol):
         # the client. If this fails or if the CSRF token can't be found, it
         # will call loseConnection. A websocket connection is only allowed
         # from an authenticated user.
+
         cookies = self.transport.cookies.decode("ascii")
         d = self.authenticate(
             get_cookie(cookies, 'sessionid'),
@@ -118,6 +120,13 @@ class WebSocketProtocol(Protocol):
                 self.user = user
                 self.processMessages()
                 self.factory.clients.append(self)
+
+                # Create the request for the handlers for this connection.
+                self.request = HttpRequest()
+                self.request.user = self.user
+                self.request.META['HTTP_USER_AGENT'] = (
+                    self.transport.user_agent)
+                self.request.META['REMOTE_ADDR'] = self.transport.ip_address
 
         d.addCallback(authenticated)
 
@@ -352,7 +361,8 @@ class WebSocketProtocol(Protocol):
         """Return an initialised instance of `handler_class`."""
         handler_name = handler_class._meta.handler_name
         handler_cache = self.cache.setdefault(handler_name, {})
-        return handler_class(self.user, handler_cache)
+        return handler_class(
+            self.user, handler_cache, self.request)
 
 
 class WebSocketFactory(Factory):

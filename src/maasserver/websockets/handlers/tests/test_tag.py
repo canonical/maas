@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.tag`"""
@@ -28,7 +28,7 @@ class TestTagHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = TagHandler(user, {})
+        handler = TagHandler(user, {}, None)
         tag = factory.make_Tag()
         self.assertEqual(
             self.dehydrate_tag(tag),
@@ -36,7 +36,7 @@ class TestTagHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = TagHandler(user, {})
+        handler = TagHandler(user, {}, None)
         factory.make_Tag()
         expected_tags = [
             self.dehydrate_tag(tag)

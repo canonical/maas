@@ -18,7 +18,7 @@ class TestResourcePoolHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = ResourcePoolHandler(user, {})
+        handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
         result = handler.get({"id": pool.id})
         self.assertEqual(
@@ -34,7 +34,7 @@ class TestResourcePoolHandler(MAASServerTestCase):
 
     def test_get_machine_count(self):
         user = factory.make_User()
-        handler = ResourcePoolHandler(user, {})
+        handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
         factory.make_Machine(pool=pool)
         result = handler.get({"id": pool.id})
@@ -42,7 +42,7 @@ class TestResourcePoolHandler(MAASServerTestCase):
 
     def test_get_machine_ready_count(self):
         user = factory.make_User()
-        handler = ResourcePoolHandler(user, {})
+        handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
         factory.make_Machine(pool=pool, status=NODE_STATUS.NEW)
         factory.make_Machine(pool=pool, status=NODE_STATUS.READY)
@@ -52,20 +52,20 @@ class TestResourcePoolHandler(MAASServerTestCase):
 
     def test_get_is_default(self):
         pool = ResourcePool.objects.get_default_resource_pool()
-        handler = ResourcePoolHandler(factory.make_User(), {})
+        handler = ResourcePoolHandler(factory.make_User(), {}, None)
         result = handler.get({"id": pool.id})
         self.assertTrue(result['is_default'])
 
     def test_list(self):
         user = factory.make_User()
-        handler = ResourcePoolHandler(user, {})
+        handler = ResourcePoolHandler(user, {}, None)
         pool = factory.make_ResourcePool()
         returned_pool_names = [
             data['name'] for data in handler.list({})]
         self.assertEqual(['default', pool.name], returned_pool_names)
 
     def test_create_annotations(self):
-        handler = ResourcePoolHandler(factory.make_admin(), {})
+        handler = ResourcePoolHandler(factory.make_admin(), {}, None)
         result = handler.create(
             {'name': factory.make_name('pool'),
              'description': factory.make_name('description')})
@@ -73,17 +73,17 @@ class TestResourcePoolHandler(MAASServerTestCase):
         self.assertEqual(0, result['machine_ready_count'])
 
     def test_delete(self):
-        handler = ResourcePoolHandler(factory.make_admin(), {})
+        handler = ResourcePoolHandler(factory.make_admin(), {}, None)
         pool = factory.make_ResourcePool()
         handler.delete({"id": pool.id})
         self.assertIsNone(reload_object(pool))
 
     def test_delete_not_admin(self):
-        handler = ResourcePoolHandler(factory.make_User(), {})
+        handler = ResourcePoolHandler(factory.make_User(), {}, None)
         pool = factory.make_ResourcePool()
         self.assertRaises(AssertionError, handler.delete, {"id": pool.id})
 
     def test_delete_default_fails(self):
         pool = ResourcePool.objects.get_default_resource_pool()
-        handler = ResourcePoolHandler(factory.make_admin(), {})
+        handler = ResourcePoolHandler(factory.make_admin(), {}, None)
         self.assertRaises(ValidationError, handler.delete, {"id": pool.id})

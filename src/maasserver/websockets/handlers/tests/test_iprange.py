@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.iprange`"""
@@ -33,7 +33,7 @@ class TestIPRangeHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = IPRangeHandler(user, {})
+        handler = IPRangeHandler(user, {}, None)
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         iprange = subnet.iprange_set.first()
         self.assertEqual(
@@ -42,7 +42,7 @@ class TestIPRangeHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = IPRangeHandler(user, {})
+        handler = IPRangeHandler(user, {}, None)
         factory.make_ipv4_Subnet_with_IPRanges()
         expected_ipranges = [
             self.dehydrate_iprange(iprange, for_list=True)
@@ -55,7 +55,7 @@ class TestIPRangeHandler(MAASServerTestCase):
     def test_create(self):
         user = factory.make_User()
         factory.make_Subnet(cidr="192.168.0.0/24")
-        handler = IPRangeHandler(user, {})
+        handler = IPRangeHandler(user, {}, None)
         ip_range = handler.create({
             "type": "reserved",
             "start_ip": "192.168.0.10",
@@ -70,7 +70,7 @@ class TestIPRangeHandler(MAASServerTestCase):
     def test_update(self):
         user = factory.make_User()
         factory.make_Subnet(cidr="192.168.0.0/24")
-        handler = IPRangeHandler(user, {})
+        handler = IPRangeHandler(user, {}, None)
         ip_range = handler.create({
             "type": "reserved",
             "start_ip": "192.168.0.10",
@@ -87,7 +87,7 @@ class TestIPRangeHandler(MAASServerTestCase):
     def test_delete(self):
         user = factory.make_User()
         factory.make_Subnet(cidr="192.168.0.0/24")
-        handler = IPRangeHandler(user, {})
+        handler = IPRangeHandler(user, {}, None)
         ip_range = handler.create({
             "type": "reserved",
             "start_ip": "192.168.0.10",

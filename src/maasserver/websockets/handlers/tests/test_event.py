@@ -69,12 +69,12 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_raises_error_if_missing_node_id(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         self.assertRaises(HandlerPKError, handler.list, {})
 
     def test_list_raises_error_if_node_doesnt_exist(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         node.delete()
         self.assertRaises(
@@ -83,14 +83,14 @@ class TestEventHandler(MAASServerTestCase):
     def test_list_places_node_id_in_cache(self):
         user = factory.make_User()
         cache = {}
-        handler = EventHandler(user, cache)
+        handler = EventHandler(user, cache, None)
         node = factory.make_Node()
         handler.list({"node_id": node.id})
         self.assertEqual([node.id], cache["node_ids"])
 
     def test_list_only_returns_events_for_node(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         events = [
             factory.make_Event(user=user, node=node)
@@ -105,7 +105,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_returns_newest_event_first(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         events = [
             factory.make_Event(user=user, node=node)
@@ -120,7 +120,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_default_max_days_of_30(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         events = [
             factory.make_Event(node=node)
@@ -134,7 +134,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_uses_max_days(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         maxdays = random.randint(3, 50)
         events = [
@@ -149,7 +149,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_start(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         events = list(reversed([
             factory.make_Event(user=user, node=node)
@@ -162,7 +162,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_limit(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         events = list(reversed([
             factory.make_Event(user=user, node=node)
@@ -175,7 +175,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_list_start_and_limit(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         events = list(reversed([
             factory.make_Event(user=user, node=node)
@@ -189,12 +189,12 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_clear_raises_error_if_missing_node_id(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         self.assertRaises(HandlerPKError, handler.clear, {})
 
     def test_clear_raises_error_if_node_id_doesnt_exist(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         node.delete()
         self.assertRaises(
@@ -202,7 +202,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_clear_removes_node_id_from_cache(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         handler.cache["node_ids"].append(node.id)
         self.expectThat(handler.clear({"node_id": node.id}), Is(None))
@@ -210,7 +210,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_on_listen_calls_listen_for_create(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
         pk = random.randint(1, 1000)
@@ -222,7 +222,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_on_listen_doesnt_call_listen_for_non_create(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
         pk = random.randint(1, 1000)
@@ -233,7 +233,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_on_listen_returns_None_if_obj_no_longer_exists(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = HandlerDoesNotExistError()
         self.assertIsNone(
@@ -242,7 +242,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_on_listen_returns_None_if_listen_returns_None(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
         self.assertIsNone(
@@ -251,7 +251,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_on_listen_returns_None_if_event_node_id_not_in_cache(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         event = factory.make_Event(node=node)
         self.assertIsNone(
@@ -260,7 +260,7 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_on_listen_returns_handler_name_action_and_event(self):
         user = factory.make_User()
-        handler = EventHandler(user, {})
+        handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         event = factory.make_Event(user=user, node=node)
         handler.cache["node_ids"].append(node.id)

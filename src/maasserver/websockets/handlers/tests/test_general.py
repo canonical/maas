@@ -96,43 +96,43 @@ class TestGeneralHandler(MAASServerTestCase):
             ]
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual(sorted(arches), handler.architectures({}))
 
     def test_known_architectures(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual(
             PackageRepository.objects.get_known_architectures(),
             handler.known_architectures({}))
 
     def test_pockets_to_disable(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual(
             PackageRepository.objects.get_pockets_to_disable(),
             handler.pockets_to_disable({}))
 
     def test_components_to_disable(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual(
             PackageRepository.objects.get_components_to_disable(),
             handler.components_to_disable({}))
 
     def test_hwe_kernels(self):
         expected_output = self.make_boot_sources()
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertItemsEqual(
             sorted(expected_output, key=lambda choice: choice[0]),
             sorted(handler.hwe_kernels({}), key=lambda choice: choice[0]))
 
     def test_hwe_min_kernels(self):
         expected_output = self.make_boot_sources()
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertItemsEqual(
             sorted(expected_output, key=lambda choice: choice[0]),
             sorted(handler.min_hwe_kernels({}), key=lambda choice: choice[0]))
 
     def test_osinfo(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         osystem = make_osystem_with_releases(self)
         releases = [
             ("%s/%s" % (osystem["name"], release["name"]), release["title"])
@@ -156,13 +156,13 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertEqual(expected_osinfo, handler.osinfo({}))
 
     def test_machine_actions_for_admin(self):
-        handler = GeneralHandler(factory.make_admin(), {})
+        handler = GeneralHandler(factory.make_admin(), {}, None)
         actions_expected = self.dehydrate_actions(
             ACTIONS_DICT, NODE_TYPE.MACHINE)
         self.assertItemsEqual(actions_expected, handler.machine_actions({}))
 
     def test_machine_actions_for_non_admin(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertItemsEqual(
             ['release', 'mark-broken', 'on', 'deploy', 'mark-fixed',
              'commission', 'abort', 'acquire', 'off', 'rescue-mode',
@@ -171,48 +171,48 @@ class TestGeneralHandler(MAASServerTestCase):
             [action['name'] for action in handler.machine_actions({})])
 
     def test_device_actions_for_admin(self):
-        handler = GeneralHandler(factory.make_admin(), {})
+        handler = GeneralHandler(factory.make_admin(), {}, None)
         self.assertItemsEqual(
             ['set-zone', 'delete'],
             [action['name'] for action in handler.device_actions({})])
 
     def test_device_actions_for_non_admin(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertItemsEqual(
             ['set-zone', 'delete'],
             [action['name'] for action in handler.device_actions({})])
 
     def test_region_controller_actions_for_admin(self):
-        handler = GeneralHandler(factory.make_admin(), {})
+        handler = GeneralHandler(factory.make_admin(), {}, None)
         self.assertItemsEqual(
             ['set-zone', 'delete'],
             [action['name']
              for action in handler.region_controller_actions({})])
 
     def test_region_controller_actions_for_non_admin(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual([], handler.region_controller_actions({}))
 
     def test_rack_controller_actions_for_admin(self):
-        handler = GeneralHandler(factory.make_admin(), {})
+        handler = GeneralHandler(factory.make_admin(), {}, None)
         self.assertItemsEqual(
             ['delete', 'import-images', 'off', 'on', 'set-zone', 'test',
              'override-failed-testing'],
             [action['name'] for action in handler.rack_controller_actions({})])
 
     def test_rack_controller_actions_for_non_admin(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual([], handler.rack_controller_actions({}))
 
     def test_region_and_rack_controller_actions_for_admin(self):
-        handler = GeneralHandler(factory.make_admin(), {})
+        handler = GeneralHandler(factory.make_admin(), {}, None)
         self.assertItemsEqual(
             ['set-zone', 'delete', 'import-images'],
             [action['name']
              for action in handler.region_and_rack_controller_actions({})])
 
     def test_region_and_rack_controller_actions_for_non_admin(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual([], handler.region_and_rack_controller_actions({}))
 
     def test_random_hostname_checks_hostname_existence(self):
@@ -220,11 +220,11 @@ class TestGeneralHandler(MAASServerTestCase):
         hostnames = [existing_node.hostname, "new-hostname"]
         self.patch(
             petname, "Generate").side_effect = hostnames
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual("new-hostname", handler.random_hostname({}))
 
     def test_bond_options(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual({
             "modes": BOND_MODE_CHOICES,
             "lacp_rates": BOND_LACP_RATE_CHOICES,
@@ -232,20 +232,20 @@ class TestGeneralHandler(MAASServerTestCase):
             }, handler.bond_options({}))
 
     def test_version(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.patch_autospec(
             general, "get_maas_version_ui").return_value = sentinel.version
         self.assertEqual(sentinel.version, handler.version({}))
 
     def test_power_types(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         self.patch_autospec(
             general,
             "get_all_power_types").return_value = sentinel.types
         self.assertEqual(sentinel.types, handler.power_types({}))
 
     def test_release_options(self):
-        handler = GeneralHandler(factory.make_User(), {})
+        handler = GeneralHandler(factory.make_User(), {}, None)
         erase = factory.pick_bool()
         secure_erase = factory.pick_bool()
         quick_erase = factory.pick_bool()

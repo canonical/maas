@@ -69,7 +69,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_node(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         self.assertEquals(
             node, handler.get_node({"system_id": node.system_id}))
@@ -78,7 +78,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_node_from_cache(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         fake_system_id = factory.make_name("system_id")
         fake_node = factory.make_name("node")
         handler.cache["system_ids"][fake_system_id] = fake_node
@@ -87,12 +87,12 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_node_errors_no_system_id(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         self.assertRaises(HandlerPKError, handler.get_node, {})
 
     def test_get_node_errors_invalid_system_id(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         self.assertRaises(
             HandlerDoesNotExistError,
             handler.get_node,
@@ -100,7 +100,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_raises_error_if_node_doesnt_exist(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         node.delete()
         self.assertRaises(
@@ -109,7 +109,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_only_returns_script_results_for_node(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_results = [
             factory.make_ScriptResult(
@@ -125,7 +125,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_result_type(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED,
@@ -150,7 +150,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_hardware_type(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED,
@@ -176,7 +176,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_physical_blockdevice_id(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         physical_blockdevice = factory.make_PhysicalBlockDevice(node=node)
         script_result = factory.make_ScriptResult(
@@ -199,7 +199,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_has_surfaced(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED,
@@ -218,7 +218,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_start(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_set = factory.make_ScriptSet(node=node)
         for _ in range(6):
@@ -230,7 +230,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_limit(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_set = factory.make_ScriptSet(node=node)
         for _ in range(6):
@@ -242,7 +242,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_list_adds_to_loaded_pks(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         script_set = factory.make_ScriptSet(node=node)
         pks = [
@@ -254,7 +254,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_result_data_gets_output(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         combined = factory.make_string().encode('utf-8')
         script_result = factory.make_ScriptResult(
@@ -266,7 +266,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_result_data_gets_stdout(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         stdout = factory.make_string().encode('utf-8')
         script_result = factory.make_ScriptResult(
@@ -278,7 +278,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_result_data_gets_stderr(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         stderr = factory.make_string().encode('utf-8')
         script_result = factory.make_ScriptResult(
@@ -290,7 +290,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_result_data_gets_result(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         result = factory.make_string().encode('utf-8')
         script_result = factory.make_ScriptResult(
@@ -302,7 +302,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_result_data_unknown_id(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         id = random.randint(0, 100)
         self.assertEquals(
             "Unknown ScriptResult id %s" % id,
@@ -310,7 +310,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_result_data_gets_unknown_data_type(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         combined = factory.make_string().encode('utf-8')
         script_result = factory.make_ScriptResult(
@@ -326,7 +326,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_get_history(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node(owner=user)
         script = factory.make_Script()
         script_results = []
@@ -356,7 +356,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_clear_removes_system_id_from_cache(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
         handler.list({'system_id': node.system_id})
         handler.clear({'system_id': node.system_id})
@@ -364,7 +364,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_on_listen_returns_None_if_obj_no_longer_exists(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         mock_listen = self.patch(handler, "listen")
         mock_listen.side_effect = HandlerDoesNotExistError()
         self.assertIsNone(
@@ -373,7 +373,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_on_listen_returns_None_if_listen_returns_None(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
         self.assertIsNone(
@@ -382,7 +382,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_on_listen_returns_None_if_system_id_not_in_cache(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         script_result = factory.make_ScriptResult()
         self.assertIsNone(
             handler.on_listen(
@@ -390,7 +390,7 @@ class TestNodeResultHandler(MAASServerTestCase):
 
     def test_on_listen_returns_handler_name_action_and_event(self):
         user = factory.make_User()
-        handler = NodeResultHandler(user, {})
+        handler = NodeResultHandler(user, {}, None)
         script_result = factory.make_ScriptResult()
         node = script_result.script_set.node
         handler.cache["system_ids"][node.system_id] = node

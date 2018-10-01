@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.notification`."""
@@ -66,7 +66,7 @@ class TestNotificationHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
         self.assertThat(
             handler.get({"id": notification.id}),
@@ -75,7 +75,7 @@ class TestNotificationHandler(MAASServerTestCase):
     def test_list(self):
         user = factory.make_User()
         user2 = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notifications = [
             factory.make_Notification(user=user),  # Will match.
             factory.make_Notification(user=user2),
@@ -94,7 +94,7 @@ class TestNotificationHandler(MAASServerTestCase):
     def test_list_for_admin(self):
         admin = factory.make_admin()
         admin2 = factory.make_admin()
-        handler = NotificationHandler(admin, {})
+        handler = NotificationHandler(admin, {}, None)
         notifications = [
             factory.make_Notification(user=admin),  # Will match.
             factory.make_Notification(user=admin2),
@@ -112,7 +112,7 @@ class TestNotificationHandler(MAASServerTestCase):
 
     def test_dismiss(self):
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
         self.assertThat(notification, Not(HasBeenDismissedBy(user)))
         handler.dismiss({"id": str(notification.id)})
@@ -120,7 +120,7 @@ class TestNotificationHandler(MAASServerTestCase):
 
     def test_dismiss_multiple(self):
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notifications = [
             factory.make_Notification(user=user),
             factory.make_Notification(users=True),
@@ -138,7 +138,7 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         super_on_listen.return_value = sentinel.on_listen
 
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
 
         self.assertThat(
             handler.on_listen("notification", sentinel.action, sentinel.pk),
@@ -152,7 +152,7 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         super_on_listen.return_value = sentinel.on_listen
 
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
 
         # A dismissal notification from the database.
@@ -171,7 +171,7 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         super_on_listen.return_value = sentinel.on_listen
 
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
 
         # A dismissal notification from the database FOR ANOTHER USER.
@@ -186,7 +186,7 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         super_on_listen.return_value = sentinel.on_listen
 
         user = factory.make_User()
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
         notification.dismiss(user)
 
@@ -196,7 +196,7 @@ class TestNotificationHandlerListening(MAASServerTestCase):
 
     def test_listen_reloads_user(self):
         admin = factory.make_admin()
-        handler = NotificationHandler(admin, {})
+        handler = NotificationHandler(admin, {}, None)
         notification = factory.make_Notification(admins=True)
 
         # The notification is currently relevant to `admin`.
@@ -260,6 +260,6 @@ class TestNotificationHandlerListeningScenarios(MAASServerTestCase):
         else:
             expected = Is(None)
 
-        handler = NotificationHandler(user, {})
+        handler = NotificationHandler(user, {}, None)
         self.assertThat(handler.on_listen(
             "notification", "create", notification.id), expected)

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.vlan`"""
@@ -65,7 +65,7 @@ class TestVLANHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN(space=factory.make_Space())
         for _ in range(3):
             factory.make_Subnet(vlan=vlan)
@@ -80,7 +80,7 @@ class TestVLANHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         factory.make_VLAN()
         expected_vlans = [
             self.dehydrate_vlan(vlan, for_list=True)
@@ -92,7 +92,7 @@ class TestVLANHandler(MAASServerTestCase):
 
     def test_create(self):
         admin = factory.make_admin()
-        handler = VLANHandler(admin, {})
+        handler = VLANHandler(admin, {}, None)
         fabric = factory.make_Fabric()
         vid = random.randint(1, 4094)
         name = factory.make_name("vlan")
@@ -112,7 +112,7 @@ class TestVLANHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_admin_success(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         handler.delete({
             "id": vlan.id,
@@ -122,7 +122,7 @@ class TestVLANHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_non_admin_asserts(self):
         user = factory.make_User()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({
@@ -131,7 +131,7 @@ class TestVLANHandlerDelete(MAASServerTestCase):
 
     def test__reloads_user(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         user.is_superuser = False
         user.save()
@@ -145,7 +145,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_with_one_parameter(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -160,7 +160,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_with_two_parameters(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -178,7 +178,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_with_duplicate_raises(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -191,7 +191,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_with_no_parameters_disables_dhcp(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         rack = factory.make_RackController()
         vlan = factory.make_VLAN()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -210,7 +210,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_with_relay_vlan(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         relay_vlan = factory.make_VLAN()
         handler.configure_dhcp({
@@ -224,7 +224,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__non_superuser_asserts(self):
         user = factory.make_User()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         rack = factory.make_RackController()
         vlan = factory.make_VLAN()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -240,7 +240,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__non_superuser_reloads_user(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         user.is_superuser = False
         user.save()
         rack = factory.make_RackController()
@@ -258,7 +258,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_optionally_creates_iprange(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -288,7 +288,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_optionally_defines_gateway(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -313,7 +313,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_optionally_defines_gateway_and_range(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -346,7 +346,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_ignores_empty_gateway(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -379,7 +379,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_gateway_outside_subnet_raises(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -400,7 +400,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_gateway_fe80_allowed(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -422,7 +422,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_gateway_inside_range_raises(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -444,7 +444,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_gateway_raises_if_dynamic_range_required(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
@@ -465,7 +465,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
 
     def test__configure_dhcp_ignores_undefined_subnet(self):
         user = factory.make_admin()
-        handler = VLANHandler(user, {})
+        handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)

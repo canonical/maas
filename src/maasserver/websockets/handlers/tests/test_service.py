@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.service`"""
@@ -32,7 +32,7 @@ class TestServiceHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = ServiceHandler(user, {})
+        handler = ServiceHandler(user, {}, None)
         node = factory.make_RackController()
         service = factory.make_Service(node)
         self.assertEqual(
@@ -41,7 +41,7 @@ class TestServiceHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = ServiceHandler(user, {})
+        handler = ServiceHandler(user, {}, None)
         node = factory.make_RackController()
         factory.make_Service(node)
         expected_services = [

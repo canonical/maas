@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 #
 # Copyright (c) Twisted Matrix Laboratories.
@@ -710,6 +710,15 @@ class WebSocketsResource(object):
         # Set the uri on the transport. This allows the protocol to view the
         # uri.
         transport.uri = request.uri
+
+        # Set the user-agent on the transport.  This allows the protocol to
+        # view the user-agent.
+        transport.user_agent = request.requestHeaders.getRawHeaders(
+            'user-agent')[0]
+
+        # Set the peer IP on the transport.  This allows the protocol to view
+        # the IP address of the client.
+        transport.ip_address = request.getClientIP()
 
         if not isinstance(protocol, WebSocketsProtocol):
             protocol = WebSocketsProtocolWrapper(protocol)

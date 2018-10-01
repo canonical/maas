@@ -33,7 +33,7 @@ class TestControllerHandler(MAASServerTestCase):
 
     def test_last_image_sync(self):
         owner = factory.make_admin()
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         node = factory.make_RackController(owner=owner)
         result = handler.list({})
         self.assertEqual(1, len(result))
@@ -46,7 +46,7 @@ class TestControllerHandler(MAASServerTestCase):
 
     def test_last_image_sync_returns_none_for_none(self):
         owner = factory.make_admin()
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         node = factory.make_RackController(owner=owner, last_image_sync=None)
         result = handler.list({})
         self.assertEqual(1, len(result))
@@ -57,7 +57,7 @@ class TestControllerHandler(MAASServerTestCase):
 
     def test_list_ignores_devices_and_nodes(self):
         owner = factory.make_admin()
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         # Create a device.
         factory.make_Node(owner=owner, node_type=NODE_TYPE.DEVICE)
         # Create a device with Node parent.
@@ -89,7 +89,7 @@ class TestControllerHandler(MAASServerTestCase):
                     status=SCRIPT_STATUS.PASSED,
                     script_set=testing_script_set)
 
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         queries_one, _ = count_queries(handler.list, {'limit': 1})
         queries_total, _ = count_queries(handler.list, {})
         # This check is to notify the developer that a change was made that
@@ -122,7 +122,7 @@ class TestControllerHandler(MAASServerTestCase):
                 status=SCRIPT_STATUS.PASSED,
                 script_set=testing_script_set)
 
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         queries, _ = count_queries(handler.get, {'system_id': node.system_id})
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node get.
@@ -135,21 +135,21 @@ class TestControllerHandler(MAASServerTestCase):
 
     def test_get_form_class_for_create(self):
         user = factory.make_admin()
-        handler = ControllerHandler(user, {})
+        handler = ControllerHandler(user, {}, None)
         self.assertEqual(
             ControllerForm,
             handler.get_form_class("create"))
 
     def test_get_form_class_for_update(self):
         user = factory.make_admin()
-        handler = ControllerHandler(user, {})
+        handler = ControllerHandler(user, {}, None)
         self.assertEqual(
             ControllerForm,
             handler.get_form_class("update"))
 
     def test_check_images(self):
         owner = factory.make_admin()
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         node1 = factory.make_RackController(owner=owner)
         node2 = factory.make_RackController(owner=owner)
         data = handler.check_images([
@@ -162,12 +162,12 @@ class TestControllerHandler(MAASServerTestCase):
     def test_dehydrate_show_os_info_returns_true(self):
         owner = factory.make_admin()
         rack = factory.make_RackController()
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         self.assertTrue(handler.dehydrate_show_os_info(rack))
 
     def test_dehydrate_includes_version(self):
         owner = factory.make_admin()
-        handler = ControllerHandler(owner, {})
+        handler = ControllerHandler(owner, {}, None)
         rack = factory.make_RackController()
         version = "2.3.0~alpha1-6000-gabc123-snap"
         ControllerInfo.objects.set_version(rack, version)
@@ -201,7 +201,7 @@ class TestControllerHandlerScenarios(MAASServerTestCase):
     def test_fully_dehydrated_controller_contains_essential_fields(self):
         user = factory.make_User()
         controller = self.make_controller()
-        handler = ControllerHandler(user, {})
+        handler = ControllerHandler(user, {}, None)
         data = handler.full_dehydrate(controller, for_list=False)
         self.assertThat(data, ContainsDict({
             handler._meta.pk: Equals(

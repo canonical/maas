@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.domain`"""
@@ -98,7 +98,7 @@ class TestDomainHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         factory.make_DNSData(domain=domain)
         factory.make_DNSResource(domain=domain)
@@ -110,7 +110,7 @@ class TestDomainHandler(MAASServerTestCase):
     def test_get_normal_user_only_owned_entries(self):
         user = factory.make_User()
         other_user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         hostname1 = factory.make_name("node")
         factory.make_Node_with_Interface_on_Subnet(
@@ -128,7 +128,7 @@ class TestDomainHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         Domain.objects.get_default_domain()
         factory.make_Domain()
         expected_domains = [
@@ -141,7 +141,7 @@ class TestDomainHandler(MAASServerTestCase):
 
     def test_prevents_unauthorized_creation(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         params = {"name": ""}
         self.assertRaises(HandlerPermissionError, handler.create, params)
 
@@ -149,7 +149,7 @@ class TestDomainHandler(MAASServerTestCase):
         user = factory.make_User()
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         with ExpectedException(HandlerPermissionError):
             handler.update({"id": domain.id, "name": new_name})
 
@@ -157,7 +157,7 @@ class TestDomainHandler(MAASServerTestCase):
         user = factory.make_admin()
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         returned_domain = handler.update({"id": domain.id, "name": new_name})
         domain = reload_object(domain)
         self.assertThat(
@@ -167,7 +167,7 @@ class TestDomainHandler(MAASServerTestCase):
         user = factory.make_admin()
         domain = Domain.objects.get_default_domain()
         new_name = factory.make_hostname()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         handler.update({"id": domain.id, "name": new_name})
         domain = reload_object(domain)
         self.assertThat(domain.name, Equals(new_name))
@@ -175,7 +175,7 @@ class TestDomainHandler(MAASServerTestCase):
     def test_update_allows_default_ttl_change(self):
         user = factory.make_admin()
         domain = Domain.objects.get_default_domain()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         new_ttl = randint(1, 3600)
         handler.update({"id": domain.id, "ttl": new_ttl})
         domain = reload_object(domain)
@@ -184,7 +184,7 @@ class TestDomainHandler(MAASServerTestCase):
     def test_update_allows_authoritative_change(self):
         user = factory.make_admin()
         domain = factory.make_Domain(authoritative=choice([True, False]))
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         new_authoritative = not domain.authoritative
         handler.update({
             "id": domain.id,
@@ -196,7 +196,7 @@ class TestDomainHandler(MAASServerTestCase):
     def test_update_raises_validaitonerror_for_empty_name(self):
         user = factory.make_admin()
         domain = factory.make_Domain(authoritative=choice([True, False]))
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         with ExpectedException(HandlerValidationError):
             handler.update({
                 "id": domain.id,
@@ -205,7 +205,7 @@ class TestDomainHandler(MAASServerTestCase):
 
     def test_create_raises_validation_error_for_missing_name(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         params = {
             "name": ""
             }
@@ -219,7 +219,7 @@ class TestDomainHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_admin_success(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         handler.delete({
             "id": domain.id,
@@ -229,7 +229,7 @@ class TestDomainHandlerDelete(MAASServerTestCase):
 
     def test__delete_as_non_admin_asserts(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         with ExpectedException(HandlerPermissionError):
             handler.delete({
@@ -239,7 +239,7 @@ class TestDomainHandlerDelete(MAASServerTestCase):
     def test__delete_default_domain_fails(self):
         domain = Domain.objects.get_default_domain()
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         with ExpectedException(ValidationError):
             handler.delete({
                 "id": domain.id,
@@ -250,7 +250,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
 
     def test__add_resource(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -268,7 +268,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
 
     def test__update_resource(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         new_name = factory.make_hostname()
@@ -288,7 +288,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
 
     def test__delete_resource(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         handler.delete_dnsresource({
@@ -299,7 +299,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
 
     def test__add_resource_as_non_admin_fails(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -313,7 +313,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
 
     def test__update_resource_as_non_admin_fails(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         new_name = factory.make_hostname()
@@ -329,7 +329,7 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
 
     def test__delete_resource_as_non_admin_fails(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         with ExpectedException(HandlerPermissionError):
@@ -343,7 +343,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__add_data_for_new_resource_name(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -364,7 +364,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__add_data_for_new_resource_name_fails_for_non_admin(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -381,7 +381,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__add_data_for_existing_resource_name(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         dnsresource = factory.make_DNSResource(domain=domain, name=name)
@@ -402,7 +402,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__add_data_for_existing_resource_name_fails_for_non_admin(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         dnsresource = factory.make_DNSResource(domain=domain, name=name)
@@ -419,7 +419,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__update_dnsdata(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(
@@ -435,7 +435,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__update_dnsdata_fails_for_non_admin(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(
@@ -452,7 +452,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__delete_dnsdata(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(dnsresource)
@@ -465,7 +465,7 @@ class TestDomainHandlerDNSData(MAASServerTestCase):
 
     def test__delete_dnsdata_fails_for_non_admin(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         dnsresource = factory.make_DNSResource(domain=domain)
         dnsdata = factory.make_DNSData(dnsresource)
@@ -482,7 +482,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__add_address_record(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -500,7 +500,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__add_two_addresses_in_succession(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -524,7 +524,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__update_address__updates_single_address(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         resource = factory.make_DNSResource(
@@ -543,7 +543,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__update_address__creates_second_dnsrecord_if_name_changed(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(
             domain=domain, name="foo", ip_addresses=["127.0.0.1", "127.0.0.2"])
@@ -564,7 +564,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__delete_address_deletes_single_address(self):
         user = factory.make_admin()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         resource = factory.make_DNSResource(
@@ -579,7 +579,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__add_address_as_non_admin_fails(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         name = factory.make_hostname()
         ttl = randint(1, 3600)
@@ -593,7 +593,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__update_address_as_non_admin_fails(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         new_name = factory.make_hostname()
@@ -609,7 +609,7 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
 
     def test__delete_resource_as_non_admin_fails(self):
         user = factory.make_User()
-        handler = DomainHandler(user, {})
+        handler = DomainHandler(user, {}, None)
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         with ExpectedException(HandlerPermissionError):

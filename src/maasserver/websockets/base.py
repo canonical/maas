@@ -15,7 +15,6 @@ from operator import attrgetter
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import Model
-from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
 from maasserver.enum import NODE_PERMISSION
@@ -157,9 +156,10 @@ class Handler(metaclass=HandlerMetaclass):
 
     """
 
-    def __init__(self, user, cache):
+    def __init__(self, user, cache, request):
         self.user = user
         self.cache = cache
+        self.request = request
         # Holds a set of all pks that the client has loaded and has on their
         # end of the connection. This is used to inform the client of the
         # correct notifications based on what items the client has.
@@ -385,9 +385,7 @@ class Handler(metaclass=HandlerMetaclass):
         if form_class is not None:
             data = self.preprocess_form("create", params)
             if self._meta.form_requires_request:
-                request = HttpRequest()
-                request.user = self.user
-                form = form_class(request=request, data=data)
+                form = form_class(request=self.request, data=data)
             else:
                 form = form_class(data=data)
             if form.is_valid():

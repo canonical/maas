@@ -113,7 +113,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
 
     def test_get(self):
         admin = factory.make_admin()
-        handler = PodHandler(admin, {})
+        handler = PodHandler(admin, {}, None)
         pod = self.make_pod_with_hints()
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
@@ -124,7 +124,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
 
     def test_get_as_standard_user(self):
         user = factory.make_User()
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         pod = self.make_pod_with_hints()
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
@@ -132,7 +132,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
 
     def test_list(self):
         admin = factory.make_admin()
-        handler = PodHandler(admin, {})
+        handler = PodHandler(admin, {}, None)
         pod = self.make_pod_with_hints()
         expected_data = [handler.full_dehydrate(pod, for_list=True)]
         result = handler.list({"id": pod.id})
@@ -142,7 +142,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_refresh(self):
         user = yield deferToDatabase(factory.make_admin)
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         pod = yield deferToDatabase(self.make_pod_with_hints)
         mock_discover_and_sync_pod = self.patch(
             PodForm, 'discover_and_sync_pod')
@@ -161,7 +161,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_delete(self):
         user = yield deferToDatabase(factory.make_admin)
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         pod = yield deferToDatabase(self.make_pod_with_hints)
         yield handler.delete({"id": pod.id})
         expected_pod = yield deferToDatabase(reload_object, pod)
@@ -171,7 +171,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_create(self):
         user = yield deferToDatabase(factory.make_admin)
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
         pod_info['zone'] = zone.id
@@ -183,7 +183,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_create_with_pool(self):
         user = yield deferToDatabase(factory.make_admin)
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         pool = yield deferToDatabase(factory.make_ResourcePool)
         pod_info = self.make_pod_info()
         pod_info['pool'] = pool.id
@@ -195,7 +195,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_update(self):
         user = yield deferToDatabase(factory.make_admin)
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         zone = yield deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
         pod_info['zone'] = zone.id
@@ -211,7 +211,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__compose(self):
         user = yield deferToDatabase(factory.make_admin)
-        handler = PodHandler(user, {})
+        handler = PodHandler(user, {}, None)
         pod = yield deferToDatabase(self.make_pod_with_hints)
 
         # Mock the RPC client.
