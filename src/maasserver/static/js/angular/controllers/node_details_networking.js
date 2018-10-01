@@ -659,7 +659,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
 
             if(vlan.vid === 0) {
-                return "Default VLAN";
+                return "untagged";
             } else if(angular.isString(vlan.name) && vlan.name.length > 0) {
                 return vlan.vid + " (" + vlan.name + ")";
             } else {
