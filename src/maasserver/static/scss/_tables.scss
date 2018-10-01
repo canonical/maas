@@ -394,28 +394,25 @@
     .p-table--is-not-device {
       th, td {
         &:nth-child(1) {
-          width: 16%;
+          width: 20%;
         }
         &:nth-child(2) {
-          width: 7%;
+          width: 6%;
         }
         &:nth-child(3) {
-          width: 9%;
+          width: 10%;
         }
         &:nth-child(4) {
-          width: 13%;
+          width: 14%;
         }
         &:nth-child(5) {
-          width: 13%;
+          width: 16%;
         }
         &:nth-child(6) {
-          width: 13%;
+          width: 28%;
         }
         &:nth-child(7) {
-          width: 19%;
-        }
-        &:nth-child(8) {
-          width: 10%;
+          width: 6%;
         }
       }
     }
