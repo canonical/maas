@@ -226,6 +226,33 @@ angular.module('MAAS').controller('PodDetailsController', [
             iface.showOptions = true;
         }
 
+        $scope.validateMachineCompose = function() {
+            var pools = $scope.compose.obj.storage;
+            var valid = true;
+            pools.forEach(function(pool) {
+                var requested = pool.size * 1000000000;
+                if (requested > pool.pool.available || pool.size === '') {
+                    valid = false;
+                }
+            });
+            return valid;
+        };
+
+        $scope.totalStoragePercentage = function(storage_pool, storage) {
+            var used = storage_pool.used / storage_pool.total * 100;
+            var requested = storage / storage_pool.total * 100;
+            var percent = used + requested;
+            return percent;
+        };
+
+        // Prevents key input if input is not a number key code.
+        $scope.numberOnly = function(evt) {
+            var charCode = (evt.which) ? evt.which : event.keyCode;
+            if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+                evt.preventDefault();
+            }
+        };
+
         $scope.openOptions = function(storage) {
             angular.forEach($scope.compose.obj.storage, function(disk) {
                 disk.showOptions = false;
@@ -244,8 +271,10 @@ angular.module('MAAS').controller('PodDetailsController', [
         };
 
 
-        $scope.selectStoragePool = function(storagePool, storage) {
-            storage.pool = storagePool;
+        $scope.selectStoragePool = function(storagePool, storage, isDisabled) {
+            if (!isDisabled) {
+                storage.pool = storagePool;
+            }
         };
 
         // Return the title of the pod type.

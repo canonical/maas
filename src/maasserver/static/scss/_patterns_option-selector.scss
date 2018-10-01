@@ -5,7 +5,16 @@
 
   .p-option-selector__input {
     @extend select;
-    color: #111 !important;
+    cursor: pointer;
+
+    &.in-warning {
+      border-color: $color-caution !important;
+    }
+  }
+
+  [readonly][type="text"].p-option-selector__input {
+    color: $color-dark;
+    border-color: $color-mid-light;
   }
 
   .p-option-selector__options {
@@ -47,6 +56,10 @@
 
     &:hover {
       background-color: $color-light;
+    }
+
+    &.is-over {
+      opacity: .5;
     }
 
     &.is-selected {

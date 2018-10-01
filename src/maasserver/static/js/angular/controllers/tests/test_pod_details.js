@@ -566,6 +566,30 @@ describe("PodDetailsController", function() {
         });
     });
 
+    describe("totalStoragePercentage", function() {
+        it("returns the correct percentage", function() {
+            var controller = makeController();
+            var storage_pool = {
+                'used': 40,
+                'total': 100
+            }
+            var storage = 10;
+            expect($scope.totalStoragePercentage(
+                storage_pool, storage)).toBe(50);
+        });
+
+        it("returns the over committed percentage", function() {
+            var controller = makeController();
+            var storage_pool = {
+                'used': 90,
+                'total': 100
+            }
+            var storage = 60;
+            expect($scope.totalStoragePercentage(
+                storage_pool, storage)).toBe(150);
+        });
+    });
+
     describe("canCompose", function() {
 
         it("returns false when no pod", function() {

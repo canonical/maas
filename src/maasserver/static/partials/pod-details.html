@@ -209,7 +209,9 @@
                                     </td>
                                     <td>
                                         <div class="form__group-input">
-                                            <input type="text" class="u-no-margin--bottom" placeholder="Enter capacity" data-ng-model="storage.size">
+                                            <input type="text" class="u-no-margin--bottom" placeholder="Enter capacity" ng-keypress="numberOnly($event)"
+                                                data-ng-model="storage.size"
+                                                ng-class="{'in-warning': storage.size == ''}">
                                         </div>
                                     </td>
                                     <td style="overflow: visible">
@@ -221,7 +223,12 @@
                                         </select>
                                         <div class="form__group-input" ng-if="pod.type === 'virsh'">
                                             <div class="p-option-selector" tabindex="0">
-                                                <input class="p-option-selector__input u-no-margin--bottom" type="text" data-ng-model="storage.pool.name" ng-focus="openOptions(storage)">
+                                                <input class="p-option-selector__input u-no-margin--bottom" readonly type="text" data-ng-model="storage.pool.name" ng-focus="openOptions(storage)"
+                                                    ng-class="{'in-warning': (storage.size | convertGigabyteToBytes) > storage.pool.available}">
+
+                                                <p class="u-no-margin--bottom" ng-if="(storage.size | convertGigabyteToBytes) > storage.pool.available">
+                                                    <small class-"u-no-margin--bottom"><strong>Warning</strong>: Not enough space in {$ storage.pool.name $}, only {$ storage.pool.available | formatBytes $} free.</small>
+                                                </p>
                                                 <div class="p-option-selector__options" ng-if="storage.showOptions" ng-keyup="$event.keyCode == 27 ? closeOptions(storage) : null">
                                                     <button class="p-button--base u-float--left" ng-click="closeOptions(storage)">
                                                         <i class="p-icon--close">Close</i>
@@ -240,7 +247,10 @@
                                                     <hr class="u-no-margin--bottom">
                                                     <div class="p-option-selector__option"
                                                         tabindex="0"
-                                                        ng-repeat="storage_pool in pod.storage_pools" ng-click="selectStoragePool(storage_pool, storage)" ng-keyup="$event.keyCode == 13 ? selectStoragePool(storage_pool, storage) : null" ng-class="{'is-selected': storage.pool === storage_pool}">
+                                                        ng-repeat="storage_pool in pod.storage_pools"
+                                                        ng-click="selectStoragePool(storage_pool, storage, totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) >= 100)"
+                                                        ng-keyup="$event.keyCode == 13 ? selectStoragePool(storage_pool, storage) : null"
+                                                        ng-class="{'is-selected': storage.pool === storage_pool, 'is-over': totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) >= 100}">
                                                         <div class="p-option-selector__option-cell">
                                                             <div><strong>{$ storage_pool.name $} <span data-ng-if="pod.default_storage_pool == storage_pool.id">(default)</span></strong></div>
                                                             <div class="u-text--light">{$ storage_pool.path $}</div>
@@ -251,12 +261,12 @@
                                                         </div>
                                                         <div class="p-option-selector__option-cell">
                                                             <div class="p-chart">
-                                                                <div class="p-chart__bar--requests" style="width: {$ (storage_pool.used / storage_pool.total * 100) + ((storage.size | convertGigabyteToBytes) / storage_pool.total * 100) $}%"
-                                                                ng-class="{'is-over': (storage_pool.used / storage_pool.total * 100) + ((storage.size | convertGigabyteToBytes) / storage_pool.total * 100) >= 100}"></div>
+                                                                <div class="p-chart__bar--requests" style="width: {$ totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) $}%"></div>
                                                                 <div class="p-chart__bar--used" style="width: {$ storage_pool.used / storage_pool.total * 100 $}%"></div>
                                                             </div>
 
-                                                            <ul class="p-inline-list u-no-margin--bottom p-space-between">
+                                                            <ul class="p-inline-list u-no-margin--bottom p-space-between"
+                                                                ng-if="totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) < 100">
                                                                 <li class="p-inline-list__item">
                                                                     <span class="p-key-icon--used"></span>
                                                                     {$ storage_pool.used | formatBytes $}
@@ -270,6 +280,10 @@
                                                                     {$ storage_pool.available | formatBytes $}
                                                                 </li>
                                                             </ul>
+
+                                                            <small class="u-no-margin--bottom" ng-if="totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) >= 100">
+                                                                <i class="p-icon--warning">Warning</i> Not enough space. {$ storage_pool.available | formatBytes $} free.
+                                                            </small>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -309,7 +323,7 @@
                         <p maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
                         <div class="u-align--right u-no-margin--top" maas-obj-hide-saving>
                             <button class="p-button--base" type="button" data-ng-click="cancelCompose()">Cancel</button>
-                            <button class="p-button--positive u-no-margin--top" maas-obj-save>Compose machine</button>
+                            <button class="p-button--positive u-no-margin--top" maas-obj-save ng-disabled="!validateMachineCompose()">Compose machine</button>
                         </div>
                     </div>
                 </div>

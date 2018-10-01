@@ -32,9 +32,9 @@
   .p-chart__bar--requests {
     @extend .p-chart__bar;
     background-color: #3a77af;
+  }
 
-    &.is-over {
-      background-color: #ff8936;
-    }
+  .is-over .p-chart__bar--requests {
+    background-color: #ff8936;
   }
 }

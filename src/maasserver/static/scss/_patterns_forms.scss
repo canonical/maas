@@ -7,6 +7,12 @@
   .p-form__group {
     @extend %vf-clearfix;
   }
+
+  .form__group-input {
+    input.in-warning {
+      border-color: $color-caution !important;
+    }
+  }
 }
 
 @mixin maas-p-form-stacked {
