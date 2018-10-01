@@ -27,9 +27,16 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                     '<button class="p-cta__link" ',
                         'data-ng-repeat="select in maasCta | ',
                         'filter:{ type: type }" ',
-                        'data-ng-click="selectItem(select)"',
+                        'data-ng-if="showAction(select)" ',
+                        'data-ng-click="selectItem(select)" ',
+                        'data-ng-class="{\'is-unavailable\': ',
+                        'selectedItems && select.available == 0}"',
                     '>',
                         '{$ getOptionTitle(select) $}',
+                        '<div class="p-cta__count" ',
+                        'data-ng-if="showCount(select)">',
+                            '<span>{$ select.available $}</span>',
+                        '</div>',
                     '</button>',
                 '</span>',
             '</div>',
@@ -44,7 +51,8 @@ angular.module('MAAS').directive('maasCta', function() {
         require: "ngModel",
         scope: {
             maasCta: '=',
-            ngModel: '='
+            ngModel: '=',
+            selectedItems: '=',
         },
         templateUrl: 'directive/templates/cta.html',
         link : function(scope, element, attrs, ngModelCtrl) {
@@ -59,9 +67,9 @@ angular.module('MAAS').directive('maasCta', function() {
 
             // When an item is selected in the list set the title, hide the
             // dropdown, and set the value to the given model.
-            scope.selectItem = function(select) {
+            scope.selectItem = function(action) {
                 scope.shown = false;
-                ngModelCtrl.$setViewValue(select);
+                ngModelCtrl.$setViewValue(action);
             };
 
             // Return the title of the dropdown button.
@@ -105,6 +113,17 @@ angular.module('MAAS').directive('maasCta', function() {
                 });
 
                 return types;
+            };
+
+            scope.showAction = function(action) {
+                return !(scope.selectedItems
+                    && action.available === 0
+                    && action.type !== 'lifecycle');
+            };
+
+            scope.showCount = function(action) {
+                return (scope.selectedItems > 1
+                    && action.available > 0);
             };
 
             // When the model changes in the above selectItem function this

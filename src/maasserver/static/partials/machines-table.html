@@ -5,7 +5,7 @@
             <th class="p-table__col--name p-double-row u-align--left">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
-                    <label for="check-all"></label>
+                    <label class="p-checkbox--action" for="check-all" ng-class="getAllCheckboxClass(table.filteredMachines)"></label>
                 </div>
                 <div class="p-double-row__rows-container--checkbox">
                     <div>
@@ -54,7 +54,7 @@
             <td class="p-table__col--name p-double-row" aria-label="FQDN" data-ng-if="table.column === 'fqdn' || table.column === 'ip_address'">
                 <div class="p-double-row__checkbox" data-ng-if="!hideCheckboxes">
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
-                    <label for="{$ node.fqdn $}"></label>
+                    <label class="p-checkbox--action" for="{$ node.fqdn $}" ng-class="getCheckboxClass(node)"></label>
                 </div>
                 <div class="p-double-row__rows-container--checkbox">
                     <div class="p-double-row__main-row">
@@ -74,7 +74,7 @@
             <td class="p-table__col--name" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'">
                 <div class="u-float--left" data-ng-if="!hideCheckboxes">
                     <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
-                    <label class="checkbox-label" for="{$ node.fqdn $}"></label>
+                    <label class="p-checkbox--action checkbox-label" for="{$ node.fqdn $}" ng-class="getCheckboxClass(node)"></label>
                 </div>
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                 <a href="#/{$ node.link_type $}/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>

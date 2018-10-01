@@ -12,7 +12,10 @@
                 <ul class="p-inline-list u-no-margin--top" data-ng-if="isSuperUser() && selectedItems.length">
                     <li class="p-inline-list__item">{$ selectedItems.length $} Selected</li>
                     <li class="p-inline-list__item">
-                        <div data-maas-cta="action.options" data-ng-model="action.option">
+                        <div
+                            data-selected-items="selectedItems.length"
+                            data-maas-cta="action.options"
+                            data-ng-model="action.option">
                         </div>
                     </li>
                 </div>

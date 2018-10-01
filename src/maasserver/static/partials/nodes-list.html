@@ -1,6 +1,6 @@
 <header class="p-strip--light is-shallow u-no-padding--bottom page-header" data-ng-class="{'u-no-padding--bottom': currentpage === 'machines' || currentpage === 'pools'}" media-query="min-width: 769px">
-    <div class="row">
-        <div class="tablet-col-4 col-8">
+    <div class="row flex-row">
+        <div class="flex-item">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <h1 class="page-header__title">{$ title $}</h1>
             <p class="page-header__status u-no-margin--top" data-ng-show="loading">
@@ -12,27 +12,36 @@
                 <ng-pluralize data-ng-if="currentpage === 'controllers'" count="controllers.length" when="{'one': '{$ controllers.length $} controller available', 'other': '{$ controllers.length $} controllers available'}"></ng-pluralize>
             </p>
         </div>
-        <div class="tablet-col-2 col-4 ng-hide" data-ng-show="currentpage === 'machines'">
+        <div class="u-align--right" data-ng-show="currentpage === 'machines'">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <div class="page-header__controls u-float--right">
-                <div data-ng-hide="tabs.machines.selectedItems.length || !isSuperUser()">
-                    <div data-maas-cta="addHardwareOptions"
-                        data-ng-model="addHardwareOption"
-                        data-ng-change="addHardwareOptionChanged()" data-default-title="Add hardware">
-                    </div>
-                </div>
-                <ul class="p-inline-list u-no-margin--bottom ng-hide" data-ng-show="tabs.machines.selectedItems.length">
-                    <li class="p-inline-list__item">
+            <div>
+                <ul class="p-inline-list u-no-margin--bottom">
+                    <li class="p-inline-list__item" data-ng-show="tabs.machines.selectedItems.length">
                         <a data-ng-click="showSelected('machines')">{$ tabs.machines.selectedItems.length $} selected</a>
                     </li>
-                    <li class="p-inline-list__item">
-                        <span data-maas-cta="tabs.machines.takeActionOptions" data-ng-model="tabs.machines.actionOption" data-ng-change="actionOptionSelected('machines')"></span>
+                    <li class="p-inline-list__item"
+                        data-ng-class="{'u-no-margin--right': !tabs.machines.selectedItems.length}"
+                        data-ng-hide="!isSuperUser()">
+                        <div
+                            data-maas-cta="addHardwareOptions"
+                            data-ng-model="addHardwareOption"
+                            data-ng-change="addHardwareOptionChanged()"
+                            data-default-title="Add hardware">
+                        </div>
+                    </li>
+                    <li class="p-inline-list__item" data-ng-show="tabs.machines.selectedItems.length">
+                        <span
+                            data-selected-items="tabs.machines.selectedItems.length"
+                            data-maas-cta="tabs.machines.takeActionOptions"
+                            data-ng-model="tabs.machines.actionOption"
+                            data-ng-change="actionOptionSelected('machines')">
+                        </span>
                     </li>
                 </ul>
             </div>
         </div>
 
-        <div class="page-header__controls" data-ng-show="currentpage === 'pools'">
+        <div data-ng-show="currentpage === 'pools'">
             <div class="page-header__controls"
                  data-ng-show="isSuperUser()">
               <button class="p-button--neutral"
@@ -44,7 +53,7 @@
             </div>
         </div>
 
-        <div class="col-4" data-ng-show="currentpage === 'devices' || currentpage === 'controllers'">
+        <div data-ng-show="currentpage === 'devices' || currentpage === 'controllers'">
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <div class="page-header__controls" data-ng-show="currentpage === 'devices'">
                 <div data-ng-hide="tabs.devices.selectedItems.length">
@@ -60,7 +69,12 @@
                         <a data-ng-click="showSelected('devices')">{$ tabs.devices.selectedItems.length $} selected&nbsp;</a>
                     </li>
                     <li class="p-inline-list__item">
-                        <span data-maas-cta="tabs.devices.takeActionOptions" data-ng-model="tabs.devices.actionOption" data-ng-change="actionOptionSelected('devices')"></span>
+                        <span
+                            data-selected-items="tabs.devices.selectedItems.length"
+                            data-maas-cta="tabs.devices.takeActionOptions"
+                            data-ng-model="tabs.devices.actionOption"
+                            data-ng-change="actionOptionSelected('devices')">
+                        </span>
                     </li>
                 </ul>
             </div>
@@ -80,7 +94,12 @@
                         <a data-ng-click="showSelected('controllers')">{$ tabs.controllers.selectedItems.length $} selected&nbsp;</a>
                     </li>
                     <li class="p-inline-list__item">
-                        <span data-maas-cta="tabs.controllers.takeActionOptions" data-ng-model="tabs.controllers.actionOption" data-ng-change="actionOptionSelected('controllers')"></span>
+                        <span
+                            data-selected-items="tabs.controllers.selectedItems.length"
+                            data-maas-cta="tabs.controllers.takeActionOptions"
+                            data-ng-model="tabs.controllers.actionOption"
+                            data-ng-change="actionOptionSelected('controllers')">
+                        </span>
                     </li>
                 </ul>
             </div>
@@ -91,7 +110,12 @@
                         <a data-ng-click="showSelected('switches')">{$ tabs.switches.selectedItems.length $} selected&nbsp;</a>
                     </li>
                     <li class="p-inline-list__item">
-                        <span data-maas-cta="tabs.switches.takeActionOptions" data-ng-model="tabs.switches.actionOption" data-ng-change="actionOptionSelected('switches')"></span>
+                        <span
+                            data-selected-items="tabs.switches.selectedItems.length"
+                            data-maas-cta="tabs.switches.takeActionOptions"
+                            data-ng-model="tabs.switches.actionOption"
+                            data-ng-change="actionOptionSelected('switches')">
+                        </span>
                     </li>
                 </ul>
             </div>
@@ -307,16 +331,19 @@
                     <div class="row">
                         <p data-ng-hide="isDeployError(tab) || isSSHKeyError(tab)"
                             class="page-header__message page-header__message--error ng-hide">
+                            <i class="p-icon--warning">Warning</i>
                             {$ tabs[tab].actionErrorCount $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                             cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, update your selection.
                         </p>
                         <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError(tab)">
+                            <i class="p-icon--warning">Warning</i>
                             {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                             cannot be {$ tabs[tab].actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="#/images">images page</a>.
                         </p>
                         <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isSSHKeyError(tab)">
+                            <i class="p-icon--warning">Warning</i>
                             {$ tabs[tab].selectedItems.length $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                             cannot be {$ tabs[tab].actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
@@ -873,9 +900,10 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
 
                 </div>
                 <div>
-                    <maas-machines-table id="machines-listing" search="tabs.machines.search" ng-disabled="hasActionsInProgress('machines')"
-                    machine-has-error="!supportsAction($machine, 'machines')" on-listing-change="onNodeListingChanged($machines, 'machines')"
-                    on-check-all="toggleCheckAll('machines')" on-check="toggleChecked($machine, 'machines')"></maas-machines-table>
+                    <maas-machines-table id="machines-listing" search="tabs.machines.search" action-option="tabs.machines.actionOption"
+                    ng-disabled="hasActionsInProgress('machines')" machine-has-error="!supportsAction($machine, 'machines')"
+                    on-listing-change="onNodeListingChanged($machines, 'machines')" on-check-all="toggleCheckAll('machines')"
+                    on-check="toggleChecked($machine, 'machines')"></maas-machines-table>
                 </div>
             </form>
         </div>

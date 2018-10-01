@@ -483,8 +483,10 @@ angular.module('MAAS').controller('NodesListController', [
                 }
                 updateAllViewableChecked(tab);
             }
+
             updateActionErrorCount(tab);
             shouldClearAction(tab);
+            $scope.updateAvailableActions(tab);
         };
 
         // Select all viewable nodes or deselect all viewable nodes.
@@ -507,7 +509,23 @@ angular.module('MAAS').controller('NodesListController', [
             }
             updateActionErrorCount(tab);
             shouldClearAction(tab);
+            $scope.updateAvailableActions(tab);
         };
+
+        $scope.updateAvailableActions = function(tab) {
+            var selectedNodes = $scope.tabs[tab].selectedItems;
+            var actionOptions = $scope.tabs[tab].takeActionOptions;
+
+            actionOptions.forEach(function(action) {
+                var count = 0;
+                selectedNodes.forEach(function(node) {
+                    if (node.actions.indexOf(action.name) > -1) {
+                        count += 1;
+                    }
+                    action.available = count;
+                });
+            });
+        }
 
         $scope.onNodeListingChanged = function(nodes, tab) {
             if(nodes.length === 0 &&

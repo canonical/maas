@@ -10,7 +10,7 @@
     $width-three: $width-two,
     $width-four: $width-three,
     $width-five: $width-four
-) {
+  ) {
     @media (max-width: $breakpoint-first - 1px) {
       @if $width-one == 0 {
         display: none !important;
@@ -610,6 +610,21 @@
     }
   }
 
+  .p-checkbox--action {
+    &.actionable::before {
+      background-color: $color-positive;
+    }
+
+    &.not-actionable::before {
+      background-color: $color-caution;
+    }
+
+    &.actionable::after,
+    &.not-actionable::after {
+      color: $color-x-light;
+    }
+  }
+
   .p-muted-text {
     @extend %small-text;
     color: $color-mid-dark;
@@ -649,5 +664,10 @@
     @media (max-width: $breakpoint-fourth - 1px) {
       display: none !important;
     }
+  }
+
+  th input[type="checkbox"] + .p-checkbox--action::after, // Fix for checkbox near small table header text
+  th input[type="checkbox"] + .p-form__label::after {
+    top: -2px;
   }
 }

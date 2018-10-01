@@ -253,6 +253,17 @@
       margin-left: 0;
     }
   }
+
+  .flex-row {
+    display: flex;
+    justify-content: space-between;
+
+    @media (max-width: $breakpoint-medium) {
+      flex-direction: column;
+    }
+  }
+
+  .flex-item {
+    flex: 1;
+  }
 }
-
-

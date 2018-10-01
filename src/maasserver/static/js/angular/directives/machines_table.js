@@ -16,6 +16,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
       restrict: "E",
       scope: {
         search: "=",
+        actionOption: "=",
         ngDisabled: "&",
         machineHasError: "&",
         hideCheckboxes: "=?",
@@ -218,6 +219,29 @@ angular.module('MAAS').directive('maasMachinesTable', [
               unit: 'TB',
             };
           }
+        };
+
+        scope.getCheckboxClass = function(node) {
+          if (scope.actionOption) {
+            if (node.$selected
+              && node.actions.indexOf(scope.actionOption.name) > -1) {
+              return 'actionable';
+            }
+            return 'not-actionable';
+          }
+          return '';
+        };
+
+        scope.getAllCheckboxClass = function(nodes) {
+          if (nodes && scope.actionOption) {
+            for (var i=0; i < nodes.length; i++) {
+              if (nodes[i].actions.indexOf(scope.actionOption.name) === -1) {
+                return 'not-actionable';
+              }
+            }
+            return 'actionable';
+          }
+          return '';
         };
       }
     };
