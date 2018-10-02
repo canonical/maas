@@ -596,7 +596,10 @@ class WebSocketsResourceTest(MAASTestCase):
         protocol provided by the user factory.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
+        request.requestHeaders = Headers({
+            b"user-agent": [b"user-agent"],
+            b"host": [b"host"],
+        })
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
@@ -636,9 +639,11 @@ class WebSocketsResourceTest(MAASTestCase):
         self.resource = WebSocketsResource(lookupProtocol)
 
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers(
-            {b"sec-websocket-protocol": [b"foo", b"bar"],
-             b"user-agent": [b"user-agent"]})
+        request.requestHeaders = Headers({
+            b"sec-websocket-protocol": [b"foo", b"bar"],
+            b"user-agent": [b"user-agent"],
+            b"host": [b"host"],
+        })
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
@@ -761,7 +766,10 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request with a C{502} code.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
+        request.requestHeaders = Headers({
+            b"user-agent": [b"user-agent"],
+            b"host": [b"host"],
+        })
         request.transport = StringTransportWithDisconnection()
         self.echoProtocol = None
         self.update_headers(request, headers={
@@ -783,7 +791,10 @@ class WebSocketsResourceTest(MAASTestCase):
         the protocol of the C{TLSMemoryBIOProtocol} instance.
         """
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
+        request.requestHeaders = Headers({
+            b"user-agent": [b"user-agent"],
+            b"host": [b"host"],
+        })
         transport = StringTransportWithDisconnection()
         secureProtocol = TLSMemoryBIOProtocol(Factory(), Protocol())
         transport.protocol = secureProtocol
@@ -825,7 +836,8 @@ class WebSocketsResourceTest(MAASTestCase):
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"13",
             b"user-agent": b"user-agent",
-            b"client": b"client"}
+            b"client": b"client",
+            b"host": b"host"}
         for key, value in headers.items():
             request.requestHeaders.setRawHeaders(key, [value])
         request.method = b"GET"
@@ -858,7 +870,10 @@ class WebSocketsResourceTest(MAASTestCase):
         self.resource = WebSocketsResource(lookupProtocol)
 
         request = DummyRequest(b"/")
-        request.requestHeaders = Headers({b"user-agent": [b"user-agent"]})
+        request.requestHeaders = Headers({
+            b"user-agent": [b"user-agent"],
+            b"host": [b"host"],
+        })
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport

@@ -484,10 +484,13 @@ class Deploy(NodeAction):
 
         request = self.request
         if request is None:
-            # Being called from the websocket, just to ensure that the curtin
-            # configuration is valid. The request object does not need to be
-            # an actual request. 'SERVER_NAME' and 'SERVER_PORT' are required
-            # so `build_absolure_uri` can create an actual absolute URI.
+            # `compile_node_actions` is the path by which the node
+            # actions are instantiated.  There are other places within the
+            # code that call compile_node_actions without a request object.
+            # In this event, and for future uses of these node actions without
+            # a request being passed in, we need to create one here.
+            # 'SERVER_NAME' and 'SERVER_PORT' are required so
+            # `build_absolure_uri` can create an actual absolute URI.
             request = HttpRequest()
             request.META['SERVER_NAME'] = 'localhost'
             request.META['SERVER_PORT'] = 5248

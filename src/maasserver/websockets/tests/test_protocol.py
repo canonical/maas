@@ -110,6 +110,12 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEquals(
             protocol.request.META['REMOTE_ADDR'],
             protocol.transport.ip_address)
+        self.assertEquals(
+            protocol.request.META['SERVER_NAME'],
+            protocol.transport.host.split(':')[0])
+        self.assertEquals(
+            protocol.request.META['SERVER_PORT'],
+            protocol.transport.host.split(':')[1])
 
     def test_connectionMade_sets_user_and_processes_messages(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)

@@ -720,6 +720,10 @@ class WebSocketsResource(object):
         # the IP address of the client.
         transport.ip_address = request.getClientIP()
 
+        # Set the host.
+        transport.host = request.requestHeaders.getRawHeaders(
+            'host')[0]
+
         if not isinstance(protocol, WebSocketsProtocol):
             protocol = WebSocketsProtocolWrapper(protocol)
 

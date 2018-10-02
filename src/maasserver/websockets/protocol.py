@@ -127,6 +127,10 @@ class WebSocketProtocol(Protocol):
                 self.request.META['HTTP_USER_AGENT'] = (
                     self.transport.user_agent)
                 self.request.META['REMOTE_ADDR'] = self.transport.ip_address
+                self.request.META['SERVER_NAME'] = (
+                    self.transport.host.split(':')[0])
+                self.request.META['SERVER_PORT'] = (
+                    self.transport.host.split(':')[1])
 
         d.addCallback(authenticated)
 
