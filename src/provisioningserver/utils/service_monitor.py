@@ -413,35 +413,46 @@ class ServiceMonitor:
             raise ServiceActionError(error_msg)
         yield self._performServiceAction(service, "reload")
 
-    def _execCmd(self, cmd, env, timeout=10):
+    @inlineCallbacks
+    def _execCmd(self, cmd, env, timeout=8, retries=3):
         """Execute the `cmd` with the `env`."""
 
         def decode(result):
             out, err, code = result
             return code, out.decode("utf-8"), err.decode("utf-8")
 
-        def log_code(result, cmd):
+        def log_code(result, cmd, try_num):
             _, _, code = result
             log.debug(
-                "Service monitor got exit code '{code}' from cmd: {cmd()}",
-                code=code, cmd=lambda: ' '.join(cmd))
+                "[try:{try_num}] Service monitor got exit "
+                "code '{code}' from cmd: {cmd()}",
+                try_num=try_num, code=code, cmd=lambda: ' '.join(cmd))
             return result
 
-        def handle_timeout(failure, timeout, cmd):
-            failure.trap(CancelledError)
-            raise ServiceActionError(
-                "Service monitor timed out after '%d' "
-                "seconds running cmd: %s" % (timeout, ' '.join(cmd)))
+        def call_proc(cmd, env, try_num, timeout):
+            log.debug(
+                "[try:{try_num}] Service monitor executing cmd: {cmd()}",
+                try_num=try_num, cmd=lambda: ' '.join(cmd))
 
-        log.debug(
-            "Service monitor executing cmd: {cmd()}",
-            cmd=lambda: ' '.join(cmd))
+            d = deferWithTimeout(
+                timeout, getProcessOutputAndValue, cmd[0], cmd[1:], env=env)
+            d.addCallback(log_code, cmd, try_num)
+            return d.addCallback(decode)
 
-        d = deferWithTimeout(
-            timeout, getProcessOutputAndValue, cmd[0], cmd[1:], env=env)
-        d.addErrback(handle_timeout, timeout, cmd)
-        d.addCallback(log_code, cmd)
-        return d.addCallback(decode)
+        for try_num in range(retries):
+            try:
+                result = yield call_proc(cmd, env, try_num + 1, timeout)
+            except CancelledError:
+                if try_num == retries - 1:
+                    # Failed on final retry.
+                    raise ServiceActionError(
+                        "Service monitor timed out after '%d' "
+                        "seconds and '%s' retries running cmd: %s" % (
+                            timeout, retries, ' '.join(cmd)))
+                else:
+                    # Try again.
+                    continue
+            return result
 
     @asynchronous
     def _execSystemDServiceAction(self, service_name, action, extra_opts=None):

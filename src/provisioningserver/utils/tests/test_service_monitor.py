@@ -22,6 +22,7 @@ from maastesting.matchers import (
 )
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import always_fail_with
 from provisioningserver.utils import (
     service_monitor as service_monitor_module,
     snappy,
@@ -47,6 +48,7 @@ from testtools.matchers import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    CancelledError,
     DeferredLock,
     inlineCallbacks,
     succeed,
@@ -453,9 +455,21 @@ class TestServiceMonitor(MAASTestCase):
     def test___execCmd_times_out(self):
         monitor = ServiceMonitor(make_fake_service())
         with ExpectedException(ServiceActionError):
-            yield monitor._execCmd(["sleep", "0.3"], {}, timeout=0.1)
+            yield monitor._execCmd(
+                ["sleep", "0.3"], {}, timeout=0.1, retries=1)
         # Pause long enough for the reactor to cleanup the process.
         yield pause(0.5)
+
+    @inlineCallbacks
+    def test___execCmd_retries(self):
+        monitor = ServiceMonitor(make_fake_service())
+        mock_deferWithTimeout = self.patch(
+            service_monitor_module, "deferWithTimeout")
+        mock_deferWithTimeout.side_effect = always_fail_with(CancelledError())
+        with ExpectedException(ServiceActionError):
+            yield monitor._execCmd(
+                ["echo", "Hello"], {}, retries=3)
+        self.assertEqual(3, mock_deferWithTimeout.call_count)
 
     @inlineCallbacks
     def test___execSystemDServiceAction_calls_systemctl(self):
