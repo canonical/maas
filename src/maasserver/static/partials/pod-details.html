@@ -400,29 +400,35 @@
                     <div class="p-pod-summary__aside">
                         <div class="p-pod-summary__cpu">
                             <div class="row">
-                                <h4>CPU cores: {$ pod.total.cores $}</h4>
+                                <h4>
+                                    CPU cores: {$ pod.total.cores $}
+                                    <span data-ng-if="pod.cpu_over_commit_ratio > 1">x {$ pod.cpu_over_commit_ratio $}</span>
+                                </h4>
                             </div>
                             <div class="p-meter--cpu-cores">
                                 <div class="p-meter--cpu-cores__container">
                                     <span class="p-meter--cpu-cores__core--used" ng-repeat="i in pod.used.cores | range"></span>
-                                    <span class="p-meter--cpu-cores__core--available" ng-repeat="i in pod.available.cores | range"></span>
+                                    <span class="p-meter--cpu-cores__core--available" ng-repeat="i in availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio) | range"></span>
                                 </div>
                             </div>
                             <p class="u-no-max-width">
                                 <span>{$ pod.used.cores $} used</span>
-                                <span class="u-float--right">{$ pod.available.cores $} available</span>
+                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio) $} available</span>
                             </p>
                         </div>
                         <div class="p-pod-summary__ram">
                             <div class="row">
-                                <h4>RAM: {$ pod.total.memory_gb $} (GiB)</h4>
+                                <h4>
+                                    RAM: {$ pod.total.memory_gb $} (GiB)
+                                    <span data-ng-if="pod.memory_over_commit_ratio > 1">x {$ pod.memory_over_commit_ratio $}</span>
+                                </h4>
                             </div>
                             <div class="p-meter__container">
                                 <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
                             </div>
                             <p class="u-no-max-width">
                                 <span>{$ pod.used.memory_gb $} GiB used</span>
-                                <span class="u-float--right">{$ pod.available.memory_gb $} GiB available</span>
+                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio) $} GiB available</span>
                             </p>
                         </div>
                     </div>
