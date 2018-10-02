@@ -359,12 +359,17 @@ urlpatterns += [
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
         '(?P<device_id>[^/]+)/partitions/$',
         partitions_handler, name='partitions_handler'),
+    # LP:1715230 - When the partition and volume-group endpoints were added
+    # they did not include a trailing 's' when accessing an individual resource
+    # while reading all resources did include the 's'. Both endpoints work with
+    # and without the trailing 's' to be more REST-like while not breaking API
+    # compatibility.
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
-        '(?P<device_id>[^/]+)/partition/(?P<id>[^/]+)$',
+        '(?P<device_id>[^/]+)/partition[s]?/(?P<id>[^/]+)$',
         partition_handler, name='partition_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/volume-groups/$',
         volume_groups_handler, name='volume_groups_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/volume-group/'
+    url(r'^nodes/(?P<system_id>[^/]+)/volume-group[s]?/'
         '(?P<id>[^/]+)/$',
         volume_group_handler, name='volume_group_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/raids/$',

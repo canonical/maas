@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for blockdevice API."""
@@ -44,9 +44,14 @@ def get_partition_uri(partition, by_name=False):
     partition_id = partition.id
     if by_name:
         partition_id = partition.name
-    return reverse(
+    ret = reverse(
         'partition_handler',
         args=[node.system_id, block_device.id, partition_id])
+    # Regression test for LP:1715230 - Both partitions and partition
+    # API endpoints should work
+    if random.choice([True, False]):
+        ret = ret.replace('partitions', 'partition')
+    return ret
 
 
 class TestPartitions(APITestCase.ForUser):

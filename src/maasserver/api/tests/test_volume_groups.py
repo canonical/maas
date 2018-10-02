@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for volume-group API."""
@@ -42,12 +42,17 @@ def get_volume_groups_uri(node):
         'volume_groups_handler', args=[node.system_id])
 
 
-def get_volume_group_uri(volume_group, node=None):
+def get_volume_group_uri(volume_group, node=None, test_plural=True):
     """Return a volume group URI on the API."""
     if node is None:
         node = volume_group.get_node()
-    return reverse(
+    ret = reverse(
         'volume_group_handler', args=[node.system_id, volume_group.id])
+    # Regression test for LP:1715230 - Both volume-group and volume-groups
+    # API endpoints should work
+    if test_plural and random.choice([True, False]):
+        ret = ret.replace('volume-group', 'volume-groups')
+    return ret
 
 
 class TestVolumeGroups(APITestCase.ForUser):
@@ -177,10 +182,10 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         node = factory.make_Node()
         volume_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
-        self.assertEqual(
+        self.assertEquals(
             '/MAAS/api/2.0/nodes/%s/volume-group/%s/' % (
                 node.system_id, volume_group.id),
-            get_volume_group_uri(volume_group, node=node))
+            get_volume_group_uri(volume_group, node, False))
 
     def test_read(self):
         node = factory.make_Node()
@@ -248,7 +253,8 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
             "used_size": Equals(volume_group.get_lvm_allocated_size()),
             "human_used_size": Equals(
                 human_readable_bytes(volume_group.get_lvm_allocated_size())),
-            "resource_uri": Equals(get_volume_group_uri(volume_group)),
+            "resource_uri": Equals(
+                get_volume_group_uri(volume_group, test_plural=False)),
             "system_id": Equals(node.system_id),
             }))
         self.assertItemsEqual(
