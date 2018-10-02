@@ -249,7 +249,7 @@
                                         </select>
                                         <div class="form__group-input" ng-if="pod.type === 'virsh'">
                                             <div class="p-option-selector" tabindex="0">
-                                                <input class="p-option-selector__input u-no-margin--bottom" readonly type="text" data-ng-model="storage.pool.name" ng-focus="openOptions(storage)"
+                                                <input class="p-option-selector__input u-no-margin--bottom" readonly type="text" ng-keyup="$event.keyCode == 27 ? closeOptions(storage) : null" data-ng-model="storage.pool.name" ng-focus="openOptions(storage)"
                                                     ng-class="{'in-warning': (storage.size | convertGigabyteToBytes) > storage.pool.available}">
 
                                                 <p class="u-no-margin--bottom" ng-if="(storage.size | convertGigabyteToBytes) > storage.pool.available">
