@@ -348,7 +348,6 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertThat(
             preseed['rsyslog']['remotes'],
             KeysEqual('maas'))
-        self.assertSystemInfo(preseed)
         self.assertAptConfig(preseed, apt_proxy)
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
@@ -623,7 +622,6 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(
             request.build_absolute_uri(reverse('curtin-metadata')),
             preseed['datasource']['MAAS']['metadata_url'])
-        self.assertSystemInfo(preseed)
         self.assertAptConfig(preseed, expected_apt_proxy)
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
@@ -647,7 +645,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertNotIn('proxy', preseed['apt'])
 
     # LP: #1743966 - Test for archive key work around
-    def test_compose_preseed_for_curtin_and_trusty_aptsources(self):
+    def test_compose_preseed_for_curtin_and_trusty_precise_aptsources(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -655,7 +653,7 @@ class TestComposePreseed(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.READY, osystem='ubuntu',
-            distro_series='trusty')
+            distro_series=random.choice(['precise', 'trusty']))
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
@@ -668,6 +666,7 @@ class TestComposePreseed(MAASServerTestCase):
 
         self.assertIn('apt_sources', preseed)
         self.assertEqual(apt_proxy, preseed['apt_proxy'])
+        self.assertSystemInfo(preseed)
 
     # LP: #1743966 - Test for archive key work around
     def test_compose_preseed_for_curtin_xenial_not_aptsources(self):
@@ -798,7 +797,6 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertItemsEqual([
             'python3-yaml', 'python3-oauthlib', 'freeipmi-tools', 'ipmitool',
             'sshpass', 'archdetect-deb', 'jq'], preseed['packages'])
-        self.assertSystemInfo(preseed)
         default = PackageRepository.get_main_archive().url
         ports = PackageRepository.get_ports_archive().url
         self.assertThat(preseed, ContainsDict({
@@ -837,3 +835,36 @@ class TestComposePreseed(MAASServerTestCase):
             'syslog_host_port': url,
             })
         self.assertThat(preseed, StartsWith("#cloud-config\n"))
+
+    def test_compose_enlistment_preseed_disables_suites(self):
+        default = PackageRepository.get_main_archive()
+        default.disabled_pockets = ['security', 'updates', 'backports']
+        default.save()
+        rack_controller = factory.make_RackController()
+        url = factory.make_simple_http_url()
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_enlistment_preseed(request, rack_controller, {
+                'metadata_enlist_url': url,
+                'syslog_host_port': url,
+                }))
+        self.assertItemsEqual(
+            set([
+                'deb', 'deb-src', '$PRIMARY', '$RELEASE', 'multiverse',
+                'restricted', 'universe', 'main'
+            ]), set(preseed['apt']['sources_list'].split()))
+
+    def test_compose_enlistment_preseed_disables_components(self):
+        default = PackageRepository.get_main_archive()
+        default.disabled_components = ['restricted', 'multiverse']
+        default.save()
+        rack_controller = factory.make_RackController()
+        url = factory.make_simple_http_url()
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_enlistment_preseed(request, rack_controller, {
+                'metadata_enlist_url': url,
+                'syslog_host_port': url,
+                }))
+        self.assertNotIn('restricted', preseed['apt']['sources_list'])
+        self.assertNotIn('multiverse', preseed['apt']['sources_list'])
