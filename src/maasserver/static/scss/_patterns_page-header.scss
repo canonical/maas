@@ -34,5 +34,9 @@
         float: none;
       }
     }
+
+    &.is-not-sticky {
+      position: absolute;
+    }
   }
 }

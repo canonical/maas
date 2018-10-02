@@ -5,8 +5,8 @@
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded" data-window-width>
-    <header class="p-strip--light is-shallow page-header u-no-padding--bottom" media-query="min-width: 769px">
+<div class="ng-hide" data-ng-show="loaded" style="position: relative;" data-window-width>
+    <header class="p-strip--light is-shallow page-header u-no-padding--bottom" data-ng-class="{'is-not-sticky': action.option.name === 'compose'}" media-query="min-width: 769px">
         <div class="row">
             <div class="tablet-col-4 col-8">
                 <h1 class="page-header__title">
