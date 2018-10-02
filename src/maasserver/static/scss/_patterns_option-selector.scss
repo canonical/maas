@@ -12,7 +12,7 @@
     }
   }
 
-  [readonly][type="text"].p-option-selector__input {
+  [readonly][type="text"].p-option-selector__input, .p-option-selector__input::placeholder {
     color: $color-dark;
     border-color: $color-mid-light;
   }

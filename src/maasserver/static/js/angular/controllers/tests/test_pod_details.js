@@ -691,7 +691,7 @@ describe("PodDetailsController", function() {
             });
         });
 
-        it("sets interface based on compose.obj.iterfaces", function() {
+        it("sets the interface constraint for subnets", function() {
             var controller = makeControllerResolveSetActiveItem();
             $scope.compose.obj.interfaces = [
               {
@@ -703,11 +703,44 @@ describe("PodDetailsController", function() {
                 subnet: {cidr: '192.168.1.0/24'}
               }
             ];
+            var expectedInterfaces = [
+                'eth0:subnet_cidr=172.16.4.0/24',
+                'eth1:subnet_cidr=192.168.1.0/24'
+            ].join(';')
             expect($scope.composePreProcess({})).toEqual({
               id: $scope.pod.id,
               storage: '0:8()',
-              interfaces:
-                'eth0:subnet_cidr=172.16.4.0/24;eth1:subnet_cidr=192.168.1.0/24'
+              interfaces: expectedInterfaces
+            });
+        });
+
+        it("sets the interface constraint favouring ip addresses", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.compose.obj.interfaces = [
+              {
+                name: 'eth0',
+                ipaddress: '172.16.4.2',
+                subnet: {cidr: '172.16.4.0/24'}
+              },
+              {
+                name: 'eth1',
+                ipaddress: '192.168.1.5',
+                subnet: {cidr: '192.168.1.0/24'}
+              },
+              {
+                name: 'eth2',
+                subnet: {cidr: '192.168.2.0/24'}
+              }
+            ];
+            var expectedInterfaces = [
+                'eth0:ip=172.16.4.2',
+                'eth1:ip=192.168.1.5',
+                'eth2:subnet_cidr=192.168.2.0/24'
+            ].join(';')
+            expect($scope.composePreProcess({})).toEqual({
+              id: $scope.pod.id,
+              storage: '0:8()',
+              interfaces: expectedInterfaces
             });
         });
 

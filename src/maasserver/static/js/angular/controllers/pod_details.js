@@ -143,7 +143,6 @@ angular.module('MAAS').controller('PodDetailsController', [
             return !ValidationService.validateHostname(value);
         };
 
-
         // Called to cancel editing of the pod name.
         $scope.cancelEditName = function() {
             $scope.name.editing = false;
@@ -345,8 +344,13 @@ angular.module('MAAS').controller('PodDetailsController', [
             // <interface-name>:<key>=<value>[,<key>=<value>];...
             var interfaces = [];
             angular.forEach($scope.compose.obj.interfaces, function(iface) {
-              if (iface.subnet) {
-                var row = `${iface.name}:subnet_cidr=${iface.subnet.cidr}`
+              let row = '';
+              if (iface.ipaddress) {
+                row = `${iface.name}:ip=${iface.ipaddress}`
+              } else if (iface.subnet) {
+                row = `${iface.name}:subnet_cidr=${iface.subnet.cidr}`
+              }
+              if (row) {
                 interfaces.push(row);
               }
             });
@@ -450,9 +454,21 @@ angular.module('MAAS').controller('PodDetailsController', [
         $scope.resetSubnets = function(iface) {
             // Select first available subnet or clear list.
             if ($scope.subnets.length > 0) {
-                iface.subnet = $scope.selectSubnet($scope.subnets[0], iface)
+                iface.subnet = $scope.selectSubnet($scope.subnets[0], iface);
             } else {
                 iface.subnet = undefined;
+            }
+        }
+
+        $scope.selectSubnetByIP = function(iface) {
+            if (iface.ipaddress) {
+                angular.forEach($scope.subnets, function(subnet, idx) {
+                    let inNetwork = ValidationService.validateIPInNetwork(
+                        iface.ipaddress, subnet.cidr)
+                    if (inNetwork) {
+                        iface.subnet = $scope.selectSubnet(subnet, iface);
+                    }
+                });
             }
         }
 
