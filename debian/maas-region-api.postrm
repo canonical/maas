@@ -37,6 +37,9 @@ case "$1" in
         if [ -d /etc/bind/maas ]; then
             rm -rf /etc/bind/maas
         fi
+
+        # Remove sock file
+        rm -f /var/lib/maas/maas-regiond.sock
         ;;
 esac
 

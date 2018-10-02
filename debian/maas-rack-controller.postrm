@@ -42,6 +42,12 @@ case "$1" in
             rm -rf /etc/maas/templates/dhcp.maas-old
         fi
 
+        # Remove http directory
+        rm -rf /var/lib/maas/http
+
+        # Remove rpc.state file
+        rm -f /var/lib/maas/rpc.state
+
 esac
 
 # Delete symlink for iSCSI config, it is no longer used.
