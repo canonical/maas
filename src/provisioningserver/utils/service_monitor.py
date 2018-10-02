@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Services monitor ensures services are in their expected state."""
@@ -234,8 +234,11 @@ class ServiceMonitor:
     # Used to convert the systemd state to the `SERVICE_STATE` enum.
     SYSTEMD_TO_STATE = {
         "active": SERVICE_STATE.ON,
+        "reloading": SERVICE_STATE.DEAD,
         "inactive": SERVICE_STATE.OFF,
         "failed": SERVICE_STATE.DEAD,
+        "activating": SERVICE_STATE.DEAD,
+        "deactivating": SERVICE_STATE.OFF,
     }
 
     # Used to convert the supervisor state to the `SERVICE_STATE` enum.

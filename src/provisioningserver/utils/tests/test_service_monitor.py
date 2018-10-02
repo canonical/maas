@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.service_monitor`."""
@@ -681,9 +681,11 @@ class TestServiceMonitor(MAASTestCase):
         systemd_status_output = dedent("""\
             %s.service - LSB: iscsi target daemon
                 Loaded: loaded (/lib/systemd/system/%s.service)
-                Active: inactive (dead)
+                Active: %s (dead)
                 Docs: man:systemd-sysv-generator(8)
-            """) % (service.service_name, service.service_name)
+            """) % (
+            service.service_name, service.service_name,
+            random.choice(['inactive', 'deactivating']))
 
         mock_execSystemDServiceAction = self.patch(
             service_monitor, "_execSystemDServiceAction")
@@ -701,9 +703,11 @@ class TestServiceMonitor(MAASTestCase):
         systemd_status_output = dedent("""\
             %s.service - Fake service
                 Loaded: loaded (/lib/systemd/system/%s.service; ...
-                Active: failed (Result: exit-code) since Wed 2016-01-20...
+                Active: %s (Result: exit-code) since Wed 2016-01-20...
                 Docs: man:dhcpd(8)
-            """) % (service.service_name, service.service_name)
+            """) % (
+            service.service_name, service.service_name,
+            random.choice(['reloading', 'failed', 'activating']))
 
         mock_execSystemDServiceAction = self.patch(
             service_monitor, "_execSystemDServiceAction")
