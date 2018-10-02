@@ -36,7 +36,7 @@ describe("PodDetailsController", function() {
     // Load the required managers.
     var PodsManager, UsersManager, GeneralManager, DomainsManager;
     var ZonesManager, ManagerHelperService, ErrorService;
-    var SubnetsManager, VLANsManager, FabricsManager;
+    var SubnetsManager, VLANsManager, FabricsManager, SpacesManager;
     var ResourcePoolsManager;
     beforeEach(inject(function($injector) {
         PodsManager = $injector.get("PodsManager");
@@ -50,6 +50,7 @@ describe("PodDetailsController", function() {
         SubnetsManager = $injector.get("SubnetsManager");
         VLANsManager = $injector.get("VLANsManager");
         FabricsManager = $injector.get("FabricsManager");
+        SpacesManager = $injector.get("SpacesManager");
         ResourcePoolsManager = $injector.get("ResourcePoolsManager");
     }));
 
@@ -117,6 +118,7 @@ describe("PodDetailsController", function() {
             SubnetsManager: SubnetsManager,
             VLANsManager: VLANsManager,
             FabricsManager: FabricsManager,
+            SpacesManager: SpacesManager,
             ResourcePoolsManager: ResourcePoolsManager
         });
 
@@ -181,7 +183,7 @@ describe("PodDetailsController", function() {
 
     it("calls loadManagers with PodsManager, UsersManager, GeneralManager, \
         DomainsManager, ZonesManager, SubnetsManager, VLANsManager, \
-        FabricsManager, MachinesManager", function() {
+        FabricsManager, SpacesManager, MachinesManager", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope,
@@ -195,7 +197,8 @@ describe("PodDetailsController", function() {
                     ResourcePoolsManager,
                     SubnetsManager,
                     VLANsManager,
-                    FabricsManager
+                    FabricsManager,
+                    SpacesManager
                 ]);
         });
 
@@ -703,7 +706,8 @@ describe("PodDetailsController", function() {
             expect($scope.composePreProcess({})).toEqual({
               id: $scope.pod.id,
               storage: '0:8()',
-              interfaces: 'eth0:subnet=172.16.4.0/24;eth1:subnet=192.168.1.0/24'
+              interfaces:
+                'eth0:subnet_cidr=172.16.4.0/24;eth1:subnet_cidr=192.168.1.0/24'
             });
         });
 

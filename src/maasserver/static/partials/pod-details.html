@@ -61,89 +61,115 @@
                         <maas-obj-field type="text" key="memory" label="Minimum RAM (MiB)" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ pod.hints.memory $}MiB available" label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <h3 class="p-heading--four">Interfaces</h3>
-                        <table class="p-table-expanding p-table--pod-networking-config">
-                            <thead>
-                                <tr class="p-table__row">
-                                    <th></th>
-                                    <th>Name</th>
-                                    <th>IP Address</th>
-                                    <th>Subnet</th>
-                                    <th>Fabric</th>
-                                    <th>VLAN</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="p-table__row" data-ng-repeat="iface in compose.obj.interfaces">
-                                    <td>
-                                        <div data-ng-if="iface.name !== 'default'">
-                                            <button class="p-button--base" data-ng-click="composeRemoveInterface(iface)">
-                                                <i class="p-icon--close"></i>
-                                                <span class="u-off-screen">Remove</span>
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div ng-switch on="iface.name">
-                                            <div ng-switch-when="default">
-                                                default
+                <div class="p-strip">
+                    <div class="row">
+                        <div class="col-12">
+                            <h3 class="p-heading--four">Interfaces</h3>
+                            <div class="p-table--pod-networking-config--message" data-ng-if="spaces.length == 0"">
+                                            <small>
+                                                You have not defined any networking spaces.
+                                                <a href="/MAAS/#/networks?by=space"
+                                title="Spaces">More about spaces</a>
+                                </small>
+                            </div>
+                            <table class="p-table-expanding p-table--pod-networking-config">
+                                <thead>
+                                    <tr class="p-table__row">
+                                        <th></th>
+                                        <th>Name</th>
+                                        <th>IP Address</th>
+                                        <th>Space</th>
+                                        <th>Subnet</th>
+                                        <th>Fabric</th>
+                                        <th>VLAN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="p-table__row" data-ng-repeat="iface in compose.obj.interfaces">
+                                        <td>
+                                            <div data-ng-if="iface.name !== 'default'">
+                                                <button class="p-button--base" data-ng-click="composeRemoveInterface(iface)">
+                                                    <i class="p-icon--close"></i>
+                                                    <span class="u-off-screen">Remove</span>
+                                                </button>
                                             </div>
-                                            <div ng-switch-default>
-                                                <div class="form__group-input">
-                                                    <input type="text" placeholder="Enter name" data-ng-model="iface.name">
+                                        </td>
+                                        <td>
+                                            <div ng-switch on="iface.name">
+                                                <div ng-switch-when="default">
+                                                    <i>default</i>
+                                                </div>
+                                                <div ng-switch-default>
+                                                    <div class="form__group-input">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Enter name"
+                                                            data-ng-model="iface.name"
+                                                            ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div ng-switch on="iface.name">
-                                            <div ng-switch-when="default">
-                                                <span><small>Created by hypervisor at compose time.</small></span>
-                                            </div>
-                                            <div ng-switch-default>
-                                                <div class="form__group-input">
-                                                    <span><small>auto-assigned</small></span>
+                                        </td>
+                                        <td class="p-table--action-cell u-vertically-center">
+                                            <div ng-switch on="iface.name">
+                                                <div ng-switch-when="default">
+                                                    <span>(Created by hypervisor at compose time)</span>
+                                                </div>
+                                                <div ng-switch-default>
+                                                    <div class="form__group-input">
+                                                        <span>auto-assigned</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td style="overflow: visible">
-                                        <div data-ng-if="iface.name !== 'default'" class="form__group-input">
-                                            <div class="form__group-input">
-                                                <div class="p-option-selector u-no-padding--top" tabindex="0"
-                                                    ng-keyup="$event.keyCode === 27 && closeOptions(iface)">
-                                                    <input class="p-option-selector__input u-no-margin--bottom" type="text"
-                                                        data-ng-model="iface.subnet.displayName"
-                                                        ng-focus="openSubnetOptions(iface)"
-                                                        readonly="readonly"
-                                                        placeholder="Select a subnet">
-                                                    </input>
-                                                    <div class="p-option-selector__options u-no-padding--top" ng-if="iface.showOptions">
-                                                        <button class="p-button--base" ng-click="closeOptions(iface)">
-                                                            <i class="p-icon--close">Close</i>
-                                                        </button>
-                                                        <hr class="u-no-margin--bottom">
-                                                        <div class="p-option-selector__option u-no-padding"
-                                                            tabindex="0"
-                                                            ng-click="selectSubnet(subnet, iface)"
-                                                            ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
-                                                            data-ng-repeat="subnet in subnets">
-                                                            <div class="p-option-selector__option-cell">
-                                                                <div>
-                                                                    <strong>{$ subnet.displayName $}</strong>
+                                        </td>
+                                        <td>
+                                            <div data-ng-if="iface.name !== 'default'">
+                                                <div data-ng-if="spaces.length == 0">
+                                                    (undefined)
+                                                </div>
+                                                <select data-ng-model="iface.space" data-ng-options="space as space.name for space in spaces"
+                                                    ng-keypress="$event.keyCode === 13 && $event.preventDefault()"
+                                                    data-ng-change="resetSubnets(iface)" data-ng-if="spaces.length > 0">
+                                                    <option value="" disabled="disabled">Select a space (optional)</option>
+                                                </select>
+                                            </div>
+                                        </td>
+                                        <td style="overflow: visible">
+                                            <div data-ng-if="iface.name !== 'default'" class="form__group-input">
+                                                <div class="form__group-input">
+                                                    <div class="p-option-selector u-no-padding--top" tabindex="0" ng-keyup="$event.keyCode === 27 && closeOptions(iface)">
+                                                        <input class="p-option-selector__input u-no-margin--bottom" type="text"
+                                                            data-ng-model="iface.subnet.displayName" ng-focus="openSubnetOptions(iface)"
+                                                            readonly="readonly" placeholder="Select a subnet">
+                                                        </input>
+                                                        <div class="p-option-selector__options p-option-selector-subnets__options u-no-padding--top"
+                                                            ng-if="iface.showOptions">
+                                                            <button class="p-button--base" ng-click="closeOptions(iface)">
+                                                                <i class="p-icon--close">Close</i>
+                                                            </button>
+                                                            <hr class="u-no-margin--bottom">
+                                                            <div class="p-option-selector__option u-no-padding" tabindex="0" ng-click="selectSubnet(subnet, iface)"
+                                                                ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
+                                                                data-ng-repeat="subnet in subnets | filter:bySpace(iface.space) ">
+                                                                <div data-ng-show="!subnets.length">
+                                                                    <p>No available subnets.</p>
                                                                 </div>
-                                                            </div>
-                                                            <div class="p-option-selector__option-cell">
-                                                                <div><strong>{$ subnet.fabric.name $}</strong></div>
-                                                            </div>
-                                                            <div class="p-option-selector__option-cell">
-                                                                <div ng-switch on="subnet.vlan.vid">
-                                                                    <div ng-switch-when="0" class="u-align--right">untagged</div>
-                                                                    <div ng-switch-default class="u-align--right">
-                                                                        <span>{$ subnet.vlan.vid $}</span>
-                                                                        <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                                <div class="p-option-selector-subnets__option-cell">
+                                                                    <div>
+                                                                        <strong>{$ subnet.displayName $}</strong>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="p-option-selector-subnets__option-cell">
+                                                                    <div>{$ subnet.fabric.name $}</div>
+                                                                </div>
+                                                                <div class="p-option-selector-subnets__option-cell">
+                                                                    <div ng-switch on="subnet.vlan.vid">
+                                                                        <div ng-switch-when="0" class="u-align--right">untagged</div>
+                                                                        <div ng-switch-default class="u-align--right">
+                                                                            <span>{$ subnet.vlan.vid $}</span>
+                                                                            <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name
+                                                                                $})</span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -151,35 +177,35 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div data-ng-if="iface.name !== 'default'">
-                                            {$ iface.fabric.name $}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div data-ng-if="iface.name !== 'default'">
-                                            <div ng-switch on="iface.vlan.vid">
-                                                <div ng-switch-when="0">untagged</div>
-                                                <div ng-switch-default>
-                                                    <span>{$ iface.vlan.vid $}</span>
-                                                    <span data-ng-if="iface.vlan.name">({$ iface.vlan.name $})</span>
+                                        </td>
+                                        <td class="u-vertically-center">
+                                            <div data-ng-if="iface.name !== 'default'">
+                                                {$ iface.fabric.name $}
+                                            </div>
+                                        </td>
+                                        <td class="u-vertically-center">
+                                            <div data-ng-if="iface.name !== 'default'">
+                                                <div ng-switch on="iface.vlan.vid">
+                                                    <div ng-switch-when="0">untagged</div>
+                                                    <div ng-switch-default>
+                                                        <span>{$ iface.vlan.vid $}</span>
+                                                        <span data-ng-if="iface.vlan.name">({$ iface.vlan.name $})</span>
+                                                    </div>
                                                 </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <button class="p-button--base" data-ng-click="composeAddInterface()">
-                                            <i class="p-icon--plus"></i>
-                                            <span class="u-off-screen">Add another interface</span>
-                                        </button>
-                                        <span ng-if="compose.obj.interfaces[0].name == 'default'">Define (optional)</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <button class="p-button--base" data-ng-click="composeAddInterface()">
+                                                <i class="p-icon--plus"></i>
+                                                <span class="u-off-screen">Add another interface</span>
+                                            </button>
+                                            <span ng-if="compose.obj.interfaces[0].name == 'default'">Define (optional)</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <div class="row">

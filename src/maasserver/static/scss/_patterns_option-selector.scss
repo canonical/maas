@@ -37,6 +37,16 @@
     }
   }
 
+  .p-option-selector-subnets__options {
+    @media (min-width: $breakpoint-medium) {
+      width: 70vw;
+    }
+
+    @media (min-width: $breakpoint-large) {
+      width: 650px;
+    }
+  }
+
   .p-option-selector__options-key {
     padding: 0 $sph-intra;
   }
@@ -110,6 +120,48 @@
 
       @media (min-width: $breakpoint-medium) {
         width: 45%;
+      }
+    }
+  }
+
+  .p-option-selector-subnets__option-cell {
+    padding: $sp-small $sp-medium;
+
+    &:first-child {
+      width: 70%;
+
+      @media (min-width: $breakpoint-medium) {
+        width: 35%;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        width: 40%;
+      }
+    }
+
+    > * {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &:nth-child(2) {
+      width: 55%;
+
+      @media (min-width: $breakpoint-medium) {
+        width: 50%;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        width: 45%;
+      }
+    }
+
+    &:nth-child(3) {
+      width: 100%;
+
+      @media (min-width: $breakpoint-medium) {
+        width: 35%;
       }
     }
   }
