@@ -1105,11 +1105,11 @@ class TestNode(MAASServerTestCase):
 
     def test_display_memory_returns_decimal_less_than_1024(self):
         node = factory.make_Node(memory=512)
-        self.assertEqual('0.5', node.display_memory())
+        self.assertEqual(0.5, node.display_memory())
 
     def test_display_memory_returns_value_divided_by_1024(self):
         node = factory.make_Node(memory=2560)
-        self.assertEqual('2.5', node.display_memory())
+        self.assertEqual(2.5, node.display_memory())
 
     def test_iscsiblockdevice_set_returns_iscsiblockdevices(self):
         node = factory.make_Node(with_boot_disk=False)

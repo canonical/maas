@@ -198,11 +198,10 @@ class NodeHandler(TimestampedModelHandler):
                 if isinstance(blockdevice, PhysicalBlockDevice)
                 ]
             data["physical_disk_count"] = len(physical_blockdevices)
-            data["storage"] = "%3.1f" % (
-                sum(
-                    blockdevice.size
-                    for blockdevice in physical_blockdevices
-                    ) / (1000 ** 3))
+            data["storage"] = round(sum(
+                blockdevice.size
+                for blockdevice in physical_blockdevices
+                ) / (1000 ** 3), 1)
             data["storage_tags"] = self.get_all_storage_tags(blockdevices)
             commissioning_script_results = []
             testing_script_results = []

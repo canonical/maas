@@ -1658,8 +1658,6 @@ class Node(CleanSave, TimestampedModel):
 
     def display_memory(self):
         """Return memory in GiB."""
-        if self.memory < 1024:
-            return '%.1f' % (self.memory / 1024.0)
         # Commissioning gets all available memory to the system. However some
         # memory can be reserved by the motherboard(e.g for video memory) or
         # the kernel itself. Commissioning can't detect reserved RAM so show
@@ -1667,7 +1665,7 @@ class Node(CleanSave, TimestampedModel):
         # which results in the correct value. For example a KVM virt is
         # configured with 2048 MiB of RAM but only 2047MiB is detectable.
         # 2047 / 1024 = 1.9990 which rounds to 2.0.
-        return '%.1f' % (self.memory / 1024.0)
+        return round(self.memory / 1024.0, 1)
 
     @property
     def iscsiblockdevice_set(self):
