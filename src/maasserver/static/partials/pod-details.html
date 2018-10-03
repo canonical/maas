@@ -84,7 +84,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr class="p-table__row" data-ng-repeat="iface in compose.obj.interfaces">
+                                    <tr class="p-table__row" data-ng-repeat="iface in compose.obj.interfaces track by $index">
                                         <td>
                                             <div data-ng-if="iface.name !== 'default'">
                                                 <button class="p-button--base" data-ng-click="composeRemoveInterface(iface)">
@@ -100,8 +100,12 @@
                                                 </div>
                                                 <div ng-switch-default>
                                                     <div class="form__group-input">
-                                                        <input type="text" placeholder="Enter name" data-ng-model="iface.name"
-                                                            ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Enter name"
+                                                            data-ng-model="iface.name"
+                                                            data-ng-model-options="{updateOn: 'blur'}"
+                                                            data-ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
                                                     </div>
                                                 </div>
                                             </div>
@@ -123,7 +127,7 @@
                                                             data-ng-if="!iface.space && !iface.subnet || iface.ipaddress"
                                                             data-ng-model="iface.ipaddress"
                                                             data-ng-blur="selectSubnetByIP(iface)"
-                                                            ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
+                                                            data-ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
                                                     </div>
                                                 </div>
                                             </div>
@@ -139,7 +143,7 @@
                                                     data-ng-change="resetSubnets(iface)"
                                                     data-ng-if="spaces.length > 0"
                                                     data-ng-disabled="iface.ipaddress.length > 0"
-                                                    ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
+                                                    data-ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
                                                     <option value="">Select a space (optional)</option>
                                                 </select>
                                             </div>
