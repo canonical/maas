@@ -125,6 +125,10 @@ def get_default_config():
         # MAAS Architecture.
         'use_rack_proxy': True,
         'node_timeout': 30,
+        # prometheus.
+        'prometheus_enabled': False,
+        'prometheus_push_gateway': None,
+        'prometheus_push_interval': 60,
     }
 
 

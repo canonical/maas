@@ -104,6 +104,11 @@ def make_StatsService():
     return stats.StatsService()
 
 
+def make_PrometheusService():
+    from maasserver import prometheus
+    return prometheus.PrometheusService()
+
+
 def make_ImportResourcesService():
     from maasserver import bootresources
     return bootresources.ImportResourcesService()
@@ -257,6 +262,11 @@ class RegionEventLoop:
         "stats": {
             "only_on_master": True,
             "factory": make_StatsService,
+            "requires": [],
+        },
+        "prometheus": {
+            "only_on_master": True,
+            "factory": make_PrometheusService,
             "requires": [],
         },
         "import-resources": {

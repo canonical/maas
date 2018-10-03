@@ -729,6 +729,43 @@ CONFIG_ITEMS = {
             'min_value': 1,
         },
     },
+    'prometheus_enabled': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': (
+                "Enable sending stats to a prometheus gateway."),
+            'required': False,
+            'help_text': (
+                "Allows MAAS to send statistics to Prometheus. This requires "
+                "the 'prometheus_push_gateway' to be set.")
+        }
+    },
+    'prometheus_push_gateway': {
+        'default': None,
+        'form': forms.CharField,
+        'form_kwargs': {
+            'label': (
+                "Address or hostname of the Prometheus push gateway."),
+            'required': False,
+            'help_text': (
+                "Defines the address or hostname of the Prometheus push "
+                "gateway where MAAS will send data to.")
+        }
+    },
+    'prometheus_push_interval': {
+        'default': 60,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'label': (
+                "Interval of how often to send data to Prometheus "
+                "(default: to 60 minutes)."),
+            'required': False,
+            'help_text': (
+                "The internal of how often MAAS will send stats to Prometheus "
+                "in minutes.")
+        }
+    },
 }
 
 

@@ -18,6 +18,7 @@ from maasserver import (
     eventloop,
     ipc,
     nonces_cleanup,
+    prometheus,
     rack_controller,
     region_controller,
     stats,
@@ -375,6 +376,17 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["stats"]["factory"])
         self.assertTrue(
             eventloop.loop.factories["stats"]["only_on_master"])
+
+    def test_make_PrometheusService(self):
+        service = eventloop.make_PrometheusService()
+        self.assertThat(service, IsInstance(
+            prometheus.PrometheusService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_PrometheusService,
+            eventloop.loop.factories["prometheus"]["factory"])
+        self.assertTrue(
+            eventloop.loop.factories["prometheus"]["only_on_master"])
 
     def test_make_ImportResourcesService(self):
         service = eventloop.make_ImportResourcesService()
