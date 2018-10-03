@@ -99,7 +99,25 @@ class PodHandler(TimestampedModelHandler):
         data["composed_machines_count"] = obj.node_set.filter(
             node_type=NODE_TYPE.MACHINE).count()
         data["hints"] = self.dehydrate_hints(obj.hints)
+        if obj.host is not None:
+            data["host"] = obj.host.system_id
+        else:
+            data["host"] = None
         if not for_list:
+            if obj.host is not None:
+                data["attached_vlans"] = list(
+                    obj.host.interface_set.all().values_list(
+                        'vlan_id', flat=True))
+                boot_vlans = []
+                query = obj.host.interface_set.all().prefetch_related(
+                    'vlan__relay_vlan')
+                for interface in query:
+                    if interface.has_bootable_vlan():
+                        boot_vlans.append(interface.vlan_id)
+                data["boot_vlans"] = boot_vlans
+            else:
+                data["attached_vlans"] = []
+                data["boot_vlans"] = []
             storage_pools = obj.storage_pools.all()
             if len(storage_pools) > 0:
                 pools_data = []

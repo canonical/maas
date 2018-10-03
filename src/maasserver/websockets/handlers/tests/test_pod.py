@@ -81,7 +81,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             failed_rack.system_id: factory.make_exception(),
         }))
 
-    def make_pod_with_hints(self):
+    def make_pod_with_hints(self, ip_address=None):
         architectures = [
             "amd64/generic", "i386/generic", "arm64/generic",
             "armhf/generic"
@@ -89,7 +89,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod = factory.make_Pod(
             architectures=architectures, capabilities=[
                 Capabilities.FIXED_LOCAL_STORAGE, Capabilities.ISCSI_STORAGE,
-                Capabilities.COMPOSABLE, Capabilities.STORAGE_POOLS])
+                Capabilities.COMPOSABLE, Capabilities.STORAGE_POOLS],
+            ip_address=ip_address
+        )
         pod.hints.cores = random.randint(8, 16)
         pod.hints.memory = random.randint(4096, 8192)
         pod.hints.cpu_speed = random.randint(2000, 3000)
@@ -121,6 +123,46 @@ class TestPodHandler(MAASTransactionServerTestCase):
         for key in expected_data:
             self.assertEqual(expected_data[key], result[key], key)
         self.assertThat(result, Equals(expected_data))
+        self.assertThat(result['host'], Equals(None))
+        self.assertThat(result['attached_vlans'], Equals([]))
+        self.assertThat(result['boot_vlans'], Equals([]))
+
+    def test_get_with_pod_host(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(vlan=vlan)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        ip = factory.make_StaticIPAddress(
+            interface=node.boot_interface, subnet=subnet)
+        pod = self.make_pod_with_hints(ip_address=ip)
+        expected_data = handler.full_dehydrate(pod)
+        result = handler.get({"id": pod.id})
+        self.assertItemsEqual(expected_data.keys(), result.keys())
+        for key in expected_data:
+            self.assertEqual(expected_data[key], result[key], key)
+        self.assertThat(result, Equals(expected_data))
+        self.assertThat(result['host'], Equals(node.system_id))
+        self.assertThat(result['attached_vlans'], Equals([subnet.vlan_id]))
+        self.assertThat(result['boot_vlans'], Equals([subnet.vlan_id]))
+
+    def test_get_with_pod_host_determines_vlan_boot_status(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        vlan = factory.make_VLAN(dhcp_on=False)
+        subnet = factory.make_Subnet(vlan=vlan)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        ip = factory.make_StaticIPAddress(
+            interface=node.boot_interface, subnet=subnet)
+        pod = self.make_pod_with_hints(ip_address=ip)
+        expected_data = handler.full_dehydrate(pod)
+        result = handler.get({"id": pod.id})
+        self.assertItemsEqual(expected_data.keys(), result.keys())
+        for key in expected_data:
+            self.assertEqual(expected_data[key], result[key], key)
+        self.assertThat(result, Equals(expected_data))
+        self.assertThat(result['attached_vlans'], Equals([subnet.vlan_id]))
+        self.assertThat(result['boot_vlans'], Equals([]))
 
     def test_get_as_standard_user(self):
         user = factory.make_User()
