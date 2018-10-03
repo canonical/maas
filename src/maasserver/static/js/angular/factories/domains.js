@@ -78,13 +78,25 @@ angular.module('MAAS').factory(
             }
         };
 
+        // Set the specified domain as the default.
+        DomainsManager.prototype.setDefault = function(domain) {
+            var promise = RegionConnection.callMethod(
+                "domain.set_default", {'domain': domain.id});
+            promise.then(function() {
+                // Reload the domains, so that the new default will be
+                // reflected everywhere, and record counts will be properly
+                // updated.
+                self.reloadItems();
+            });
+        };
+
         DomainsManager.prototype.getDefaultDomain = function() {
             if(this._items.length === 0) {
                 return null;
             } else {
                 var i;
                 for(i=0;i<this._items.length;i++) {
-                    if(this._items[i].id === 0) {
+                    if(this._items[i].is_default === true) {
                         return this._items[i];
                     }
                 }
@@ -104,5 +116,6 @@ angular.module('MAAS').factory(
             return null;
         };
 
-        return new DomainsManager();
+        var self = new DomainsManager();
+        return self;
     }]);

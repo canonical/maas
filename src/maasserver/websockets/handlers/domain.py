@@ -15,6 +15,7 @@ from maasserver.forms.domain import DomainForm
 from maasserver.models import (
     DNSData,
     DNSResource,
+    GlobalDefault,
 )
 from maasserver.models.domain import Domain
 from maasserver.websockets.base import (
@@ -41,6 +42,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
             'update',
             'delete',
             'set_active',
+            'set_default',
             'create_dnsresource',
             'update_dnsresource',
             'delete_dnsresource',
@@ -65,8 +67,10 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         data["resource_count"] = len(rrsets)
         if domain.is_default():
             data["displayname"] = "%s (default)" % data["name"]
+            data["is_default"] = True
         else:
             data["displayname"] = data["name"]
+            data["is_default"] = False
         return data
 
     def _get_domain_or_permission_error(self, params):
@@ -199,3 +203,10 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         self._get_domain_or_permission_error(params)
         dnsdata = DNSData.objects.get(id=params['dnsdata_id'])
         dnsdata.delete()
+
+    def set_default(self, params):
+        domain = self._get_domain_or_permission_error(params)
+        global_defaults = GlobalDefault.objects.instance()
+        global_defaults.domain = domain
+        global_defaults.save()
+        return self.full_dehydrate(domain)

@@ -51,6 +51,7 @@ class TestDomainHandler(MAASServerTestCase):
             "ttl": domain.ttl,
             "updated": dehydrate_datetime(domain.updated),
             "created": dehydrate_datetime(domain.created),
+            "is_default": domain.is_default(),
             }
         ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
             domain, raw_ttl=True)
@@ -616,4 +617,25 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
             handler.delete_address_record({
                 'domain': domain.id,
                 'dnsresource': resource.id,
+            })
+
+    def test__set_default_sets_default(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {}, None)
+        factory.make_Domain()
+        domain2 = factory.make_Domain()
+        self.assertThat(domain2.is_default(), Equals(False))
+        handler.set_default({
+            'domain': domain2.id,
+        })
+        domain2 = reload_object(domain2)
+        self.assertThat(domain2.is_default(), Equals(True))
+
+    def test__set_default_as_non_admin_fails(self):
+        user = factory.make_User()
+        handler = DomainHandler(user, {}, None)
+        domain = factory.make_Domain()
+        with ExpectedException(HandlerPermissionError):
+            handler.set_default({
+                'domain': domain.id,
             })

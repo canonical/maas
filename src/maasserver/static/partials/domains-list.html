@@ -63,21 +63,51 @@
 </div>
 <div class="p-strip" data-ng-show="!loading">
     <section class="row">
-        <table class="p-table--mobile-card">
+        <table class="p-table-expanding" role="grid">
             <thead>
-                <tr>
-                    <th class="table-col--25" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Domain">Domain</th>
-                    <th class="table-col--25" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Authoritative">Authoritative</th>
-                    <th class="table-col--25 u-align--right" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Hosts">Hosts</th>
-                    <th class="table-col--25 u-align--right" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Total Records">Total Records</th>
+                <tr role="row">
+                    <th class="col-3" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Domain">Domain</th>
+                    <th class="col-2 u-align--right" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Authoritative">Authoritative</th>
+                    <th class="col-2 u-align--right" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Hosts">Hosts</th>
+                    <th class="col-2 u-align--right" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{'is-sorted': predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}" title="Total Records">Total Records</th>
+                    <th class="col-3 u-align--right" title="Actions" data-ng-if="isSuperUser()"><span class="u-float--right">Actions</span></th>
                 </tr>
             </thead>
             <tbody>
-                <tr data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
-                    <td class="table-col--25" aria-label="Domain"><a href="#/domain/{$ row.id $}" title="{$ row.displayname $}">{$ row.displayname $}</a></td>
-                    <td class="table-col--25" aria-label="Authorative" title="{$ row.authoritative ? 'Yes' : 'No' $}">{$ row.authoritative ? "Yes" : "No" $}</td>
-                    <td class="table-col--25 u-align--right" aria-label="Hosts" title="{$ row.hosts $}">{$ row.hosts $}</td>
-                    <td class="table-col--25 u-align--right" aria-label="Total records" title="{$ row.resource_count $}">{$ row.resource_count $}</td>
+                <tr role="row" data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id"
+                    data-ng-class="{ 'is-active': confirmSetDefaultRow === row }">
+                    <td class="col-3" aria-label="Domain"><a href="#/domain/{$ row.id $}" title="{$ row.displayname $}">{$ row.displayname $}</a></td>
+                    <td class="col-2 u-align--right" aria-label="Authoritative" title="{$ row.authoritative ? 'Yes' : 'No' $}">{$ row.authoritative ? "Yes" : "No" $}</td>
+                    <td class="col-2 u-align--right" aria-label="Hosts" title="{$ row.hosts $}">{$ row.hosts $}</td>
+                    <td class="col-2 u-align--right" aria-label="Total records" title="{$ row.resource_count $}">{$ row.resource_count $}</td>
+                    <td class="col-3 u-align--right p-table--action-cell" style="min-height: 43px;" aria-label="Actions" data-ng-if="isSuperUser()">
+                        <div class="p-contextual-menu" data-ng-class="{ 'u-hide': row.is_default === true || confirmSetDefaultRow === row }" toggle-ctrl>
+                            <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
+                                <i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                            <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                <button class="p-contextual-menu__link"
+                                        aria-label="Set default"
+                                        data-ng-click="toggleMenu(); confirmSetDefault(row)">Set default...</button>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="is-active p-table-expanding__panel p-table--action-cell col-12 u-align--right" data-ng-if="confirmSetDefaultRow === row">
+                        <div class="row u-no-margin--top">
+                            <hr />
+                        </div>
+                        <div class="row u-no-margin--top">
+                            <div class="col-6">
+                                Setting this domain as the default will update all existing machines
+                                (in Ready state) with the new default domain. Are you sure?
+                            </div>
+                            <div class="col-6">
+                                <span class="u-float--right">
+                                    <button class="p-button--base" type="button" data-ng-click="cancelSetDefault()">Cancel</button>
+                                    <button class="p-button--positive u-no-margin--top" data-ng-click="setDefault(row)">Save</button>
+                                </span>
+                            </div>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </div>

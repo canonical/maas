@@ -101,6 +101,47 @@ describe("DomainsListController", function() {
         });
     });
 
+    describe("confirmSetDefault", function() {
+
+        it("sets confirmSetDefaultRow to the specified row", function() {
+            var controller = makeController();
+            var obj = {
+                id: makeInteger(0, 100)
+            };
+            $scope.confirmSetDefault(obj);
+            expect($scope.confirmSetDefaultRow).toBe(obj);
+        });
+    });
+
+    describe("cancelSetDefault", function() {
+
+        it("sets confirmSetDefaultRow to the specified row", function() {
+            var controller = makeController();
+            var obj = {
+                id: makeInteger(0, 100)
+            };
+            $scope.confirmSetDefaultRow = obj;
+            $scope.cancelSetDefault();
+            expect($scope.confirmSetDefaultRow).toBe(null);
+        });
+    });
+
+    describe("setDefault", function() {
+
+        it("calls DomainsManager.setDefault and clears selection", function() {
+            var controller = makeController();
+            spyOn(DomainsManager, "setDefault");
+            var obj = {
+                id: makeInteger(0, 100)
+            };
+            $scope.confirmSetDefaultRow = obj;
+            $scope.setDefault(obj);
+            expect(DomainsManager.setDefault).toHaveBeenCalledWith(obj);
+            expect($scope.confirmSetDefaultRow).toBe(null);
+
+        });
+    });
+
     setupController = function(domains) {
         var defer = $q.defer();
         var controller = makeController(defer);

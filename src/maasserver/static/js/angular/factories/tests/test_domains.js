@@ -12,9 +12,12 @@ describe("DomainsManager", function() {
 
     // Load the DomainsManager.
     var DomainsManager;
+    var $q, $rootScope;
     beforeEach(inject(function($injector) {
         DomainsManager = $injector.get("DomainsManager");
         RegionConnection = $injector.get("RegionConnection");
+        $q = $injector.get("$q");
+        $rootScope = $injector.get("$rootScope");
     }));
 
     // Make a random domain.
@@ -31,6 +34,11 @@ describe("DomainsManager", function() {
         if(angular.isDefined(selected)) {
             domain.$selected = selected;
         }
+        if(domain.id === 0) {
+            domain.is_default = true;
+        } else {
+            domain.is_default = false;
+        }
         return domain;
     }
 
@@ -44,7 +52,7 @@ describe("DomainsManager", function() {
             expect(DomainsManager.getDefaultDomain()).toBe(null);
         });
 
-        it("getDefaultDomain returns domain with id = 0", function() {
+        it("getDefaultDomain returns domain with is_default", function() {
             var zero = makeDomain(0);
             DomainsManager._items.push(makeDomain());
             DomainsManager._items.push(zero);
@@ -58,6 +66,26 @@ describe("DomainsManager", function() {
             }
             expect(DomainsManager.getDefaultDomain()).toBe(
                 DomainsManager._items[0]);
+        });
+    });
+
+    describe("setDefault", function() {
+        it("calls set_default for domain", function () {
+            var scope = $rootScope.$new();
+            var defer = $q.defer();
+            var promise = defer.promise;
+            spyOn(RegionConnection, "callMethod").and.returnValue(promise);
+            spyOn(DomainsManager, "reloadItems");
+            var domain_id = makeInteger(0, 100);
+            var record = {
+                id: domain_id
+            };
+            DomainsManager.setDefault(record);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "domain.set_default", {'domain': domain_id});
+            defer.resolve(record);
+            scope.$digest();
+            expect(DomainsManager.reloadItems).toHaveBeenCalled();
         });
     });
 

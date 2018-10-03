@@ -22,6 +22,7 @@ angular.module('MAAS').controller('DomainsListController', [
         $scope.predicate = "name";
         $scope.reverse = false;
         $scope.loading = true;
+        $scope.confirmSetDefaultRow = null;
 
         // This will hold the AddDomainController once it's initialized.  The
         // controller will set this variable as it's always a child of this
@@ -41,6 +42,19 @@ angular.module('MAAS').controller('DomainsListController', [
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
             return UsersManager.isSuperUser();
+        };
+
+        $scope.confirmSetDefault = function(domain) {
+            $scope.confirmSetDefaultRow = domain;
+        };
+
+        $scope.cancelSetDefault = function() {
+            $scope.confirmSetDefaultRow = null;
+        };
+
+        $scope.setDefault = function(domain) {
+            DomainsManager.setDefault(domain);
+            $scope.confirmSetDefaultRow = null;
         };
 
         ManagerHelperService.loadManagers(
