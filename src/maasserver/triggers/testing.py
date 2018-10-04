@@ -41,6 +41,7 @@ from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.rbacsync import RBACSync
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
@@ -847,3 +848,47 @@ class DNSHelpersMixin:
             self.assertThat(
                 new.serial, GreaterThan(old.serial),
                 "DNS has not been published again.")
+
+
+class RBACHelpersMixin:
+    """Helper to get the latest rbac sync."""
+
+    @transactional
+    def getSynced(self):
+        try:
+            return RBACSync.objects.order_by('-id').first()
+        except RBACSync.DoesNotExist:
+            return None
+
+    @inlineCallbacks
+    def captureSynced(self):
+        """Capture the most recent `RBACSync` record."""
+        self.__synced = yield deferToDatabase(self.getSynced)
+        returnValue(self.__synced)
+
+    def getCapturedSynced(self):
+        """Return the captured sync record."""
+        try:
+            return self.__synced
+        except AttributeError:
+            self.fail(
+                "No reference modification has been captured; "
+                "use `captureSynced` before calling "
+                "`getCapturedSynced`.")
+
+    @inlineCallbacks
+    def assertSynced(self):
+        """Assert there's a newer `RBACSync` record.
+
+        Call `captureSynced` first to obtain a reference record.
+        """
+        old = self.getCapturedSynced()
+        new = yield self.captureSynced()
+        if old is None:
+            self.assertThat(
+                new, Not(Is(None)),
+                "RBAC sync tracking has not been modified at all.")
+        else:
+            self.assertThat(
+                new.id, GreaterThan(old.id),
+                "RBAC sync tracking has not been modified again.")

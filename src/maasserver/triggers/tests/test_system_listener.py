@@ -36,6 +36,7 @@ from maasserver.testing.testcase import (
 from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.testing import (
     DNSHelpersMixin,
+    RBACHelpersMixin,
     TransactionalHelpersMixin,
 )
 from maasserver.utils.orm import transactional
@@ -4688,3 +4689,183 @@ class TestProxyListener(
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
+
+
+class TestRBACResourcePoolListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        RBACHelpersMixin):
+    """End-to-end test for the resource pool RBAC triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_resource_pool_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        yield self.captureSynced()
+        name = factory.make_name('pool')
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_rbac", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            pool = yield deferToDatabase(
+                self.create_resource_pool, {'name': name})
+            yield dv.get(timeout=2)
+            yield self.assertSynced()
+        finally:
+            yield listener.stopService()
+        change = self.getCapturedSynced()
+        self.assertThat(
+            change.source,
+            Equals("added resource pool %s" % name))
+        self.assertThat(
+            change.action, Equals("add"))
+        self.assertThat(
+            change.resource_type, Equals("resource-pool"))
+        self.assertThat(
+            change.resource_id, Equals(pool.id))
+        self.assertThat(
+            change.resource_name, Equals(name))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_resource_pool_update(self):
+        yield deferToDatabase(register_system_triggers)
+        pool = yield deferToDatabase(
+            self.create_resource_pool, {})
+        pool_name = factory.make_name('pool')
+        yield self.captureSynced()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_rbac", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_resource_pool, pool.id, {
+                "name": pool_name,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertSynced()
+        finally:
+            yield listener.stopService()
+        change = self.getCapturedSynced()
+        self.assertThat(
+            change.source,
+            Equals("renamed resource pool %s to %s" % (pool.name, pool_name)))
+        self.assertThat(
+            change.action, Equals("update"))
+        self.assertThat(
+            change.resource_type, Equals("resource-pool"))
+        self.assertThat(
+            change.resource_id, Equals(pool.id))
+        self.assertThat(
+            change.resource_name, Equals(pool_name))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_resource_pool_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        pool = yield deferToDatabase(self.create_resource_pool)
+        yield self.captureSynced()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_rbac", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_resource_pool, pool.id)
+            yield dv.get(timeout=2)
+            yield self.assertSynced()
+        finally:
+            yield listener.stopService()
+        change = self.getCapturedSynced()
+        self.assertThat(
+            change.source,
+            Equals("removed resource pool %s" % pool.name))
+        self.assertThat(
+            change.action, Equals("remove"))
+        self.assertThat(
+            change.resource_type, Equals("resource-pool"))
+        self.assertThat(
+            change.resource_id, Equals(pool.id))
+        self.assertThat(
+            change.resource_name, Equals(pool.name))
+
+
+class TestRBACConfigListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        RBACHelpersMixin):
+    """End-to-end test for the config RBAC triggers code."""
+
+    scenarios = (
+        ('external_auth_url', {
+            'config': 'external_auth_url',
+        }),
+        ('external_auth_user', {
+            'config': 'external_auth_user',
+        }),
+        ('external_auth_key', {
+            'config': 'external_auth_key',
+        }),
+        ('rbac_url', {
+            'config': 'rbac_url',
+        }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_insert(self):
+        new_value = factory.make_name("value")
+        yield deferToDatabase(register_system_triggers)
+        yield self.captureSynced()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_rbac", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                self.config, new_value)
+            yield dv.get(timeout=2)
+            yield self.assertSynced()
+        finally:
+            yield listener.stopService()
+        change = self.getCapturedSynced()
+        self.assertThat(
+            change.source, Equals(
+                "configuration %s set to %s"
+                % (self.config, json.dumps(new_value))))
+        self.assertThat(
+            change.action, Equals("full"))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_update(self):
+        old_value = factory.make_name("old")
+        new_value = factory.make_name("new")
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            self.config, old_value)
+        yield self.captureSynced()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_rbac", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                self.config, new_value)
+            yield dv.get(timeout=2)
+            yield self.assertSynced()
+        finally:
+            yield listener.stopService()
+        change = self.getCapturedSynced()
+        self.assertThat(
+            change.source, Equals(
+                "configuration %s changed to %s"
+                % (self.config, json.dumps(new_value))))
+        self.assertThat(
+            change.action, Equals("full"))

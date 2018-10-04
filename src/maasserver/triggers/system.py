@@ -1654,6 +1654,130 @@ PEER_PROXY_CONFIG_UPDATE = dedent("""\
     """)
 
 
+# Triggered when RBAC need to be synced. In essense this means on
+# insert into maasserver_rbacsync.
+RBAC_SYNC = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_sync()
+    RETURNS trigger AS $$
+    BEGIN
+      PERFORM pg_notify('sys_rbac', '');
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure to mark RBAC as needing a sync.
+RBAC_SYNC_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_sync_update(
+      reason text,
+      action text DEFAULT 'full',
+      resource_type text DEFAULT '',
+      resource_id int DEFAULT NULL,
+      resource_name text DEFAULT '')
+    RETURNS void as $$
+    BEGIN
+      INSERT INTO maasserver_rbacsync
+        (created, source, action, resource_type, resource_id, resource_name)
+      VALUES (
+        now(), substring(reason FOR 255),
+        action, resource_type, resource_id, resource_name);
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a new resource pool is added. Notifies that RBAC needs
+# to be synced.
+RBAC_RPOOL_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_rpool_insert()
+    RETURNS trigger as $$
+    BEGIN
+      PERFORM sys_rbac_sync_update(
+        'added resource pool ' || NEW.name,
+        'add', 'resource-pool', NEW.id, NEW.name);
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a resource pool is updated. Notifies that RBAC needs
+# to be synced. Only watches name.
+RBAC_RPOOL_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_rpool_update()
+    RETURNS trigger as $$
+    DECLARE
+      changes text[];
+    BEGIN
+      IF OLD.name != NEW.name THEN
+        PERFORM sys_rbac_sync_update(
+          'renamed resource pool ' || OLD.name || ' to ' || NEW.name,
+          'update', 'resource-pool', OLD.id, NEW.name);
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a resource pool is deleted. Notifies that RBAC needs
+# to be synced.
+RBAC_RPOOL_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_rpool_delete()
+    RETURNS trigger as $$
+    BEGIN
+      PERFORM sys_rbac_sync_update(
+        'removed resource pool ' || OLD.name,
+        'remove', 'resource-pool', OLD.id, OLD.name);
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when the Candid/RBAC settings are inserted. Notifies that RBAC
+# needs to be synced.
+RBAC_CONFIG_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_config_insert()
+    RETURNS trigger as $$
+    BEGIN
+      IF (NEW.name = 'external_auth_url' OR
+          NEW.name = 'external_auth_user' OR
+          NEW.name = 'external_auth_key' OR
+          NEW.name = 'rbac_url') THEN
+        PERFORM sys_rbac_sync_update(
+          'configuration ' || NEW.name || ' set to ' ||
+          COALESCE(NEW.value, 'NULL'));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when the Candid/RBAC settings are updated. Notifies that RBAC
+# needs to be synced. The external_auth_* keys are included that way if
+# the agent account that MAAS uses to update RBAC is updated in MAAS, MAAS will
+# ensure that a full sync of data is performed.
+RBAC_CONFIG_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_rbac_config_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF (OLD.value != NEW.value AND (
+          NEW.name = 'external_auth_url' OR
+          NEW.name = 'external_auth_user' OR
+          NEW.name = 'external_auth_key' OR
+          NEW.name = 'rbac_url')) THEN
+        PERFORM sys_rbac_sync_update(
+          'configuration ' || NEW.name || ' changed to ' || NEW.value);
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_sys_proxy_procedure(proc_name, on_delete=False):
     """Render a database procedure with name `proc_name` that notifies that a
     proxy update is needed.
@@ -1913,4 +2037,32 @@ def register_system_triggers():
     register_procedure(PEER_PROXY_CONFIG_UPDATE)
     register_trigger(
         "maasserver_config", "sys_proxy_config_use_peer_proxy_update",
+        "update")
+
+    # - RBACSync
+    register_procedure(RBAC_SYNC)
+    register_trigger(
+        "maasserver_rbacsync",
+        "sys_rbac_sync", "insert")
+    register_procedure(RBAC_SYNC_UPDATE)
+
+    # - ResourcePool
+    register_procedure(RBAC_RPOOL_INSERT)
+    register_trigger(
+        "maasserver_resourcepool", "sys_rbac_rpool_insert", "insert")
+    register_procedure(RBAC_RPOOL_UPDATE)
+    register_trigger(
+        "maasserver_resourcepool", "sys_rbac_rpool_update", "update")
+    register_procedure(RBAC_RPOOL_DELETE)
+    register_trigger(
+        "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete")
+
+    # - Config (Candid/RBAC)
+    register_procedure(RBAC_CONFIG_INSERT)
+    register_trigger(
+        "maasserver_config", "sys_rbac_config_insert",
+        "insert")
+    register_procedure(RBAC_CONFIG_UPDATE)
+    register_trigger(
+        "maasserver_config", "sys_rbac_config_update",
         "update")

@@ -105,6 +105,12 @@ class TestTriggersUsed(MAASServerTestCase):
         "subnet_sys_proxy_subnet_insert",
         "subnet_sys_proxy_subnet_update",
         "vlan_sys_dhcp_vlan_update",
+        "rbacsync_sys_rbac_sync",
+        "resourcepool_sys_rbac_rpool_insert",
+        "resourcepool_sys_rbac_rpool_update",
+        "resourcepool_sys_rbac_rpool_delete",
+        "config_sys_rbac_config_insert",
+        "config_sys_rbac_config_update",
     }
 
     triggers_websocket = {
