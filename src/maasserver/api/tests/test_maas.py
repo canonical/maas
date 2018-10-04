@@ -43,7 +43,7 @@ FORBIDDEN_NAMES = {
     "rpc_shared_secret", "commissioning_osystem",
     "active_discovery_last_scan", "uuid", "external_auth_url",
     'external_auth_domain', "external_auth_user", "external_auth_key",
-    'external_auth_admin_group', "macaroon_private_key",
+    'external_auth_admin_group', "macaroon_private_key", "rbac_url",
 }
 
 

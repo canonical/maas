@@ -15,8 +15,13 @@ from datetime import (
     timedelta,
 )
 import os
+from typing import (
+    Sequence,
+    Union,
+)
 from urllib.parse import quote
 
+import attr
 from django.contrib.auth import (
     authenticate,
     login,
@@ -235,54 +240,148 @@ class KeyStore:
         return key
 
 
+def get_auth_info():
+    """Return the `AuthInfo` to authentication with Candid."""
+    configs = Config.objects.get_configs(
+        ['external_auth_key', 'external_auth_user', 'external_auth_url'])
+    key = bakery.PrivateKey.deserialize(configs['external_auth_key'])
+    agent = Agent(
+        url=configs['external_auth_url'],
+        username=configs['external_auth_user'])
+    return AuthInfo(key=key, agents=[agent])
+
+
 class APIError(Exception):
-    """IDMClient API error."""
+    """A `MacaroonClient` API error."""
 
     def __init__(self, status_code, message):
         super().__init__(message)
         self.status_code = status_code
 
 
-class IDMClient:
-    """A client for IDM agent API."""
+class MacaroonClient:
+    """A base client for talking JSON with a macaroon based client."""
 
-    _url = None
-
-    def __init__(self):
-        auth_info = self._get_auth_info()
+    def __init__(self, url, auth_info):
+        self._url = url
+        self._auth_info = auth_info
         self._client = httpbakery.Client(
-            interaction_methods=[AgentInteractor(auth_info)])
+            interaction_methods=[AgentInteractor(self._auth_info)])
 
-    def get_groups(self, username):
-        """Return a list of names fro groups a user belongs to."""
-        url = self._get_url() + quote('/v1/u/{}/groups'.format(username))
-        return self._request('GET', url)
-
-    def _request(self, method, url):
+    def _request(self, method, url, json=None, status_code=200):
         cookiejar = self._client.cookies
         resp = requests.request(
-            method, url, cookies=cookiejar, auth=self._client.auth())
+            method, url,
+            cookies=cookiejar, auth=self._client.auth(), json=json)
         # update cookies from the response
         for cookie in resp.cookies:
             cookiejar.set_cookie(cookie)
 
         content = resp.json()
-        if resp.status_code != 200:
+        if resp.status_code != status_code:
             raise APIError(resp.status_code, content.get('message'))
         return content
 
-    def _get_auth_info(self):
-        key = bakery.PrivateKey.deserialize(
-            Config.objects.get_config('external_auth_key'))
-        agent = Agent(
-            url=self._get_url(),
-            username=Config.objects.get_config('external_auth_user'))
-        return AuthInfo(key=key, agents=[agent])
 
-    def _get_url(self):
-        if not self._url:
-            self._url = Config.objects.get_config('external_auth_url')
-        return self._url
+class CandidClient(MacaroonClient):
+    """A client for IDM agent API."""
+
+    def __init__(self, auth_info=None):
+        if auth_info is None:
+            auth_info = get_auth_info()
+        url = auth_info.agents[0].url
+        super(CandidClient, self).__init__(url, auth_info)
+
+    def get_groups(self, username):
+        """Return a list of names fro groups a user belongs to."""
+        url = self._url + quote('/v1/u/{}/groups'.format(username))
+        return self._request('GET', url)
+
+
+@attr.s
+class Resource:
+    """Represents a resource in RBAC."""
+
+    # Identifier of the resource.
+    identifier = attr.ib(converter=int)
+
+    # Name of the resource
+    name = attr.ib(converter=str)
+
+
+class AllResourcesType:
+    """Class that represents all resources."""
+
+# Represents access to all resources of the requested resource type.
+ALL_RESOURCES = AllResourcesType()
+
+
+class RBACClient(MacaroonClient):
+    """A client for RBAC API."""
+
+    def __init__(self, url: str, auth_info: AuthInfo):
+        super(RBACClient, self).__init__(auth_info=auth_info, url=url)
+
+    def _get_resource_type_url(self, resource_type: str):
+        """Return the URL for `resource_type`."""
+        return self._url + quote(
+            '/api/service/1.0/resources/{}'.format(resource_type))
+
+    def get_resources(self, resource_type: str) -> Sequence[Resource]:
+        """Return list of resources with `resource_type`."""
+        result = self._request(
+            'GET', self._get_resource_type_url(resource_type))
+        return [
+            Resource(identifier=res['identifier'], name=res['name'])
+            for res in result
+        ]
+
+    def put_resources(
+            self, resource_type: str, resources: Sequence[Resource]=None):
+        """Put all the resources for `resource_type`.
+
+        This replaces all the resources for `resource_type`.
+        """
+        if resources is None:
+            resources = []
+        resources = [
+            {
+                'identifier': str(res.identifier),
+                'name': res.name,
+            }
+            for res in resources
+        ]
+        self._request(
+            'PUT', self._get_resource_type_url(resource_type),
+            json=resources)
+
+    def allowed_for_user(
+            self,
+            resource_type: str,
+            user: str,
+            permission: str) -> Union[AllResourcesType, Sequence[int]]:
+        """Return the list of resource identifiers that `user` can access with
+        `permission`.
+
+        A list with a single item of empty string means the user has access to
+        all resources of the `resource_type`.
+
+        >>> client.allowed_for_user('maas', 'username', 'admin')
+        [""]  # User is an administrator
+        >>> client.allowed_for_user('maas', 'username', 'admin')
+        []  # User is not an administrator
+        """
+        url = (
+            self._get_resource_type_url(resource_type) +
+            '/allowed-for-user?user={}&permission={}'.format(
+                quote(user), quote(permission)))
+        result = self._request('GET', url)
+        if result == ['']:
+            return ALL_RESOURCES
+        return [
+            int(res)
+            for res in result
+        ]
 
 
 def validate_user_external_auth(user, admin_group=None, now=datetime.utcnow,
@@ -307,7 +406,7 @@ def validate_user_external_auth(user, admin_group=None, now=datetime.utcnow,
         return True
 
     if client is None:
-        client = IDMClient()
+        client = CandidClient()
 
     profile.auth_last_check = now
     profile.save()

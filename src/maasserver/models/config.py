@@ -122,6 +122,7 @@ def get_default_config():
         'external_auth_domain': '',
         'external_auth_admin_group': '',
         'macaroon_private_key': None,
+        'rbac_url': '',
         # MAAS Architecture.
         'use_rack_proxy': True,
         'node_timeout': 30,
