@@ -65,10 +65,11 @@
                     <div class="row">
                         <div class="col-12">
                             <h3 class="p-heading--four">Interfaces</h3>
-                            <div class="p-table--pod-networking-config--message" data-ng-if="spaces.length == 0"">
+                            <div class="p-table--pod-networking-config--message" data-ng-if="spaces.length == 0">
                                 <small>
-                                  You have not defined any networking spaces.
-                                  <a href="/MAAS/#/networks?by=space" title="Spaces">More about spaces</a>
+                                    You have not defined any networking spaces.
+                                    <a href="/MAAS/#/networks?by=space"
+                                        title="Spaces">More about spaces</a>
                                 </small>
                             </div>
                             <table class="p-table-expanding p-table--pod-networking-config">
@@ -256,14 +257,22 @@
                                             </button>
                                         </div>
                                     </td>
-                                    <td>
-                                        <div class="form__group-input">
+                                    <td class="p-table--action-cell">
+                                        <div class="form__group-input" style="position: relative">
                                             <input type="text" class="u-no-margin--bottom" placeholder="Enter capacity" ng-keypress="numberOnly($event)"
                                                 data-ng-model="storage.size"
-                                                ng-class="{'in-warning': storage.size == ''}">
+                                                ng-class="{'in-warning': storage.size == '' || storage.size < 8}">
+                                            <span class="p-tooltip p-tooltip--top-left u-float--right"
+                                                style="position: absolute; top: 8px; right: 8px;"
+                                                aria-describedby="storage-size-warning"
+                                                data-ng-if="storage.size < 8 && storage.size != ''">
+                                                <i class="p-icon--warning">Warning</i>
+                                                <span class="p-tooltip__message" role="tooltip" id="storage-size-warning">Ubuntu typically requires 8GB minimum.
+Lower allocations may fail.</span>
+                                                </span>
                                         </div>
                                     </td>
-                                    <td style="overflow: visible">
+                                    <td class="p-table--action-cell">
                                         <select data-ng-model="storage.type" ng-if="pod.type === 'rsd'">
                                             <option value="local">Local</option>
                                             <option value="iscsi"
