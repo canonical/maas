@@ -52,6 +52,7 @@
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <div class="u-align--right" data-ng-show="!header.editing && action.availableOptions.length">
                     <div data-maas-cta="action.availableOptions"
+                        data-ng-click="updateAvailableActions('machines')"
                         data-ng-model="action.option"
                         data-ng-change="actionOptionChanged()">
                     </div>

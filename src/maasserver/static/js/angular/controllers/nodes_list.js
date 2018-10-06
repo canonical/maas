@@ -486,7 +486,6 @@ angular.module('MAAS').controller('NodesListController', [
 
             updateActionErrorCount(tab);
             shouldClearAction(tab);
-            $scope.updateAvailableActions(tab);
         };
 
         // Select all viewable nodes or deselect all viewable nodes.
@@ -509,7 +508,6 @@ angular.module('MAAS').controller('NodesListController', [
             }
             updateActionErrorCount(tab);
             shouldClearAction(tab);
-            $scope.updateAvailableActions(tab);
         };
 
         $scope.updateAvailableActions = function(tab) {

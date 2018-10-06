@@ -28,6 +28,7 @@
             <div class="tablet-col-2 col-4">
                 <div class="page-header__controls" data-ng-if="isSuperUser()">
                     <div data-maas-cta="action.options"
+                        data-ng-click="updateAvailableActions('pods')"
                         data-ng-model="action.option"
                         data-ng-change="actionOptionChanged()">
                     </div>

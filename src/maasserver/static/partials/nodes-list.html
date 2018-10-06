@@ -33,6 +33,7 @@
                         <span
                             data-selected-items="tabs.machines.selectedItems.length"
                             data-maas-cta="tabs.machines.takeActionOptions"
+                            data-ng-click="updateAvailableActions('machines')"
                             data-ng-model="tabs.machines.actionOption"
                             data-ng-change="actionOptionSelected('machines')">
                         </span>
@@ -72,6 +73,7 @@
                         <span
                             data-selected-items="tabs.devices.selectedItems.length"
                             data-maas-cta="tabs.devices.takeActionOptions"
+                            data-ng-click="updateAvailableActions('devices')"
                             data-ng-model="tabs.devices.actionOption"
                             data-ng-change="actionOptionSelected('devices')">
                         </span>
@@ -97,6 +99,7 @@
                         <span
                             data-selected-items="tabs.controllers.selectedItems.length"
                             data-maas-cta="tabs.controllers.takeActionOptions"
+                            data-ng-click="updateAvailableActions('controllers')"
                             data-ng-model="tabs.controllers.actionOption"
                             data-ng-change="actionOptionSelected('controllers')">
                         </span>
@@ -113,6 +116,7 @@
                         <span
                             data-selected-items="tabs.switches.selectedItems.length"
                             data-maas-cta="tabs.switches.takeActionOptions"
+                            data-ng-click="updateAvailableActions('switches')"
                             data-ng-model="tabs.switches.actionOption"
                             data-ng-change="actionOptionSelected('switches')">
                         </span>
