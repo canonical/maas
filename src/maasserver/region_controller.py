@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Region controller service.
@@ -17,16 +17,35 @@ Proxy:
     'sys_proxy'. Any time a message is recieved on that channel the maas-proxy
     is marked as requiring an update. Once marked for update the proxy
     configuration is updated and maas-proxy is told to reload.
+
+RBAC:
+    The regiond process listens for messages from Postgres on channel
+    'sys_rbac'. Any time a message is recieved on that channel the RBAC
+    micro-service is marked as required a sync. Once marked for sync the
+    RBAC micro-service will be pushed the changed information.
 """
 
 __all__ = [
     "RegionControllerService",
 ]
 
+from maasserver import locks
 from maasserver.dns.config import dns_update_all_zones
+from maasserver.macaroon_auth import (
+    get_auth_info,
+    RBACClient,
+    Resource,
+)
+from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
+from maasserver.models.rbacsync import RBACSync
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.proxyconfig import proxy_update_config
-from maasserver.utils.orm import transactional
+from maasserver.utils import synchronised
+from maasserver.utils.orm import (
+    transactional,
+    with_connection,
+)
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
@@ -60,7 +79,7 @@ class RegionControllerService(Service):
     See module documentation for more details.
     """
 
-    def __init__(self, postgresListener, clock=reactor):
+    def __init__(self, postgresListener, clock=reactor, retryOnFailure=True):
         """Initialise a new `RegionControllerService`.
 
         :param postgresListener: The `PostgresListenerService` that is running
@@ -68,16 +87,20 @@ class RegionControllerService(Service):
         """
         super(RegionControllerService, self).__init__()
         self.clock = clock
+        self.retryOnFailure = retryOnFailure
         self.processing = LoopingCall(self.process)
         self.processing.clock = self.clock
         self.processingDefer = None
         self.needsDNSUpdate = False
         self.needsProxyUpdate = False
+        self.needsRBACUpdate = False
         self.postgresListener = postgresListener
         self.dnsResolver = Resolver(
             resolv=None, servers=[('127.0.0.1', 53)],
             timeout=(1,), reactor=clock)
         self.previousSerial = None
+        self.rbacClient = None
+        self.rbacInit = False
 
     @asynchronous(timeout=FOREVER)
     def startService(self):
@@ -85,10 +108,12 @@ class RegionControllerService(Service):
         super(RegionControllerService, self).startService()
         self.postgresListener.register("sys_dns", self.markDNSForUpdate)
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
+        self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
 
         # Update DNS and proxy on first start.
         self.markDNSForUpdate(None, None)
         self.markProxyForUpdate(None, None)
+        self.markRBACForUpdate(None, None)
 
     @asynchronous(timeout=FOREVER)
     def stopService(self):
@@ -96,6 +121,7 @@ class RegionControllerService(Service):
         super(RegionControllerService, self).stopService()
         self.postgresListener.unregister("sys_dns", self.markDNSForUpdate)
         self.postgresListener.unregister("sys_proxy", self.markProxyForUpdate)
+        self.postgresListener.unregister("sys_rbac", self.markRBACForUpdate)
         if self.processingDefer is not None:
             self.processingDefer, d = None, self.processingDefer
             self.processing.stop()
@@ -111,6 +137,11 @@ class RegionControllerService(Service):
         self.needsProxyUpdate = True
         self.startProcessing()
 
+    def markRBACForUpdate(self, channel, message):
+        """Called when the `sys_rbac` message is received."""
+        self.needsRBACUpdate = True
+        self.startProcessing()
+
     def startProcessing(self):
         """Start the process looping call."""
         if not self.processing.running:
@@ -118,12 +149,30 @@ class RegionControllerService(Service):
 
     def process(self):
         """Process the DNS and/or proxy update."""
+
+        def _onFailureRetry(failure, attr):
+            """Retry update on failure.
+
+            Doesn't mask the failure, the failure is still raised.
+            """
+            if self.retryOnFailure:
+                setattr(self, attr, True)
+            return failure
+
+        def _rbacInit(result):
+            """Mark initialization took place."""
+            if result is not None:
+                # A sync occurred.
+                self.rbacInit = True
+            return result
+
         defers = []
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
             d = deferToDatabase(transactional(dns_update_all_zones))
             d.addCallback(self._checkSerial)
             d.addCallback(self._logDNSReload)
+            d.addErrback(_onFailureRetry, 'needsDNSUpdate')
             d.addErrback(
                 log.err,
                 "Failed configuring DNS.")
@@ -134,9 +183,20 @@ class RegionControllerService(Service):
             d.addCallback(
                 lambda _: log.msg(
                     "Successfully configured proxy."))
+            d.addErrback(_onFailureRetry, 'needsProxyUpdate')
             d.addErrback(
                 log.err,
                 "Failed configuring proxy.")
+            defers.append(d)
+        if self.needsRBACUpdate:
+            self.needsRBACUpdate = False
+            d = deferToDatabase(self._rbacSync)
+            d.addCallback(_rbacInit)
+            d.addCallback(self._logRBACSync)
+            d.addErrback(_onFailureRetry, 'needsRBACUpdate')
+            d.addErrback(
+                log.err,
+                "Failed syncing resources to RBAC.")
             defers.append(d)
         if len(defers) == 0:
             # Nothing more to do.
@@ -215,3 +275,85 @@ class RegionControllerService(Service):
                 serial__gt=previousSerial,
                 serial__lte=currentSerial).order_by('-id')
         ]
+
+    def _getRBACClient(self):
+        """Return the `RBACClient`.
+
+        This tries to use an already held client when initialized because the
+        cookiejar will be updated with the already authenticated macaroon.
+        """
+        url = Config.objects.get_config('rbac_url')
+        if not url:
+            # RBAC is not enabled (or no longer enabled).
+            self.rbacClient = None
+            return None
+
+        auth_info = get_auth_info()
+        if (self.rbacClient is None or
+                self.rbacClient._url != url or
+                self.rbacClient._auth_info != auth_info):
+            self.rbacClient = RBACClient(url, auth_info)
+
+        return self.rbacClient
+
+    @with_connection  # Needed by the following lock.
+    @synchronised(locks.rbac_sync)
+    @transactional
+    def _rbacSync(self):
+        """Sync the RBAC information."""
+        changes = RBACSync.objects.changes()
+        if not changes and self.rbacInit:
+            # Nothing has changed, meaning another region already took care
+            # of performing the update.
+            return None
+
+        client = self._getRBACClient()
+        if client is None:
+            # RBAC is disabled, do nothing.
+            RBACSync.objects.clear()  # Changes not needed, RBAC disabled.
+            return None
+
+        # XXX blake_r 2018-10-04 - This can be smarter by looking at the
+        # action and resource_type information in the changes. At the moment
+        # the RBAC service doesn't have a robust changes API, so it just
+        # pushes all the information.
+        resources = [
+            Resource(identifier=rpool.id, name=rpool.name)
+            for rpool in ResourcePool.objects.all()
+        ]
+        client.put_resources('resource-pool', resources)
+
+        if not self.rbacInit:
+            # This was initial sync on start-up.
+            RBACSync.objects.clear()
+            return []
+
+        # Return the changes and clear the table, so new changes will be
+        # tracked. Being inside a transaction allows us not to worry about
+        # a new change already existing with the clear.
+        changes = [
+            change.source
+            for change in changes
+        ]
+        RBACSync.objects.clear()
+        return changes
+
+    def _logRBACSync(self, changes):
+        """Log the reason RBAC was synced."""
+        if changes is None:
+            return None
+        if len(changes) == 0:
+            # This was the first load for starting the service.
+            log.msg(
+                "Synced RBAC service; regiond started.")
+        else:
+            # This is a sync since the region has been running. Get the
+            # reason for the reload.
+            if len(changes) == 1:
+                msg = "Synced RBAC service; %s" % changes[0]
+            else:
+                msg = 'Synced RBAC service: \n' + '\n'.join(
+                    ' * %s' % reason
+                    for reason in changes
+                )
+            log.msg(msg)
