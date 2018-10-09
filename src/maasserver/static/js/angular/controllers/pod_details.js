@@ -447,6 +447,8 @@ angular.module('MAAS').controller('PodDetailsController', [
             $scope.compose.obj.interfaces[idx].subnet = subnet;
             $scope.compose.obj.interfaces[idx].vlan = subnet.vlan;
             $scope.compose.obj.interfaces[idx].fabric = subnet.fabric;
+            $scope.compose.obj.interfaces[idx].pxe =
+                $scope.pod.boot_vlans.includes(subnet.vlan.id);
             $scope.closeOptions(iface);
             return subnet
         }
@@ -517,9 +519,12 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Start watching key fields.
         $scope.startWatching = function() {
             $scope.$watch("subnets", function() {
-                 angular.forEach($scope.subnets, function(subnet, idx) {
-                    $scope.subnets[idx] =_getSubnetDetails(subnet);
-                 });
+                angular.forEach($scope.subnets, function(subnet, idx) {
+                    // filter subnets from vlans not attached to host
+                    if ($scope.pod.attached_vlans.includes(subnet.vlan)) {
+                        $scope.availableSubnets.push(_getSubnetDetails(subnet));
+                    }
+                });
             });
             $scope.$watch("pod.name", function() {
                 $rootScope.title = 'Pod ' + $scope.pod.name;
@@ -564,6 +569,8 @@ angular.module('MAAS').controller('PodDetailsController', [
 
             $scope.spaces = SpacesManager.getItems();
             $scope.subnets = SubnetsManager.getItems();
+            $scope.availableSubnets = [];
+
             // Possibly redirected from another controller that already had
             // this pod set to active. Only call setActiveItem if not already
             // the activeItem.

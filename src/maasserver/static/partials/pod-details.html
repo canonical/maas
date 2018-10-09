@@ -83,6 +83,7 @@
                                         <th>Subnet</th>
                                         <th>Fabric</th>
                                         <th>VLAN</th>
+                                        <th>PXE</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -175,10 +176,7 @@
                                                                 tabindex="0"
                                                                 data-ng-click="selectSubnet(subnet, iface)"
                                                                 data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
-                                                                data-ng-repeat="subnet in subnets | filter:bySpace(iface.space)">
-                                                                <div data-ng-show="!subnets.length">
-                                                                    <p>No available subnets.</p>
-                                                                </div>
+                                                                data-ng-repeat="subnet in availableSubnets | filter:bySpace(iface.space)">
                                                                 <div class="p-option-selector-subnets__option-cell">
                                                                     <div>
                                                                         <strong>{$ subnet.displayName $}</strong>
@@ -218,8 +216,20 @@
                                                 </div>
                                             </div>
                                         </td>
+                                        <td class="u-vertically-center">
+                                            <div data-ng-if="iface.name !== 'default'">
+                                                <div ng-switch on="iface.pxe">
+                                                    <div ng-switch-when="true">
+                                                        <i class="p-icon--success"></i>
+                                                    </div>
+                                                    <div ng-switch-when="false">
+                                                        <i class="p-icon--error"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
                                     </tr>
-                                    <tr>
+                                    <tr data-ng-show="availableSubnets.length > 0">
                                         <td>
                                             <button class="p-button--base" data-ng-click="composeAddInterface()">
                                                 <i class="p-icon--plus"></i>
