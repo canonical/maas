@@ -31,16 +31,16 @@ __all__ = [
 
 from maasserver import locks
 from maasserver.dns.config import dns_update_all_zones
-from maasserver.macaroon_auth import (
-    get_auth_info,
-    RBACClient,
-    Resource,
-)
+from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBACSync
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.proxyconfig import proxy_update_config
+from maasserver.rbac import (
+    RBACClient,
+    Resource,
+)
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     transactional,

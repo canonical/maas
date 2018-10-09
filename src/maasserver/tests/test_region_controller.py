@@ -15,11 +15,11 @@ from unittest.mock import (
 
 from crochet import wait_for
 from maasserver import region_controller
-from maasserver.macaroon_auth import Resource
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBACSync
 from maasserver.models.resourcepool import ResourcePool
+from maasserver.rbac import Resource
 from maasserver.region_controller import (
     DNSReloadError,
     RegionControllerService,
