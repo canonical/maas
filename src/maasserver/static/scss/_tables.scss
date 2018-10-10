@@ -675,9 +675,4 @@
       display: none !important;
     }
   }
-
-  th input[type="checkbox"] + .p-checkbox--action::after, // Fix for checkbox near small table header text
-  th input[type="checkbox"] + .p-form__label::after {
-    top: -2px;
-  }
 }

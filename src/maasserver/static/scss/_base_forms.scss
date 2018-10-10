@@ -39,55 +39,30 @@
 
   // fix checkbox so it doesn't get misaligned when next to a label with a different padding-top than the default label
   input[type="checkbox"] {
-    $box-size: $sp-unit * 2;
-    $box-offset-top: .1rem; //hardcoded value as it needs to sit very slightly under baseline to look balanced
-    $box-margin-right: $sp-unit * 2;
-    $tick-offset-top: $box-offset-top + 3 * $px;
-    $tick-height: 7px;
-
     & + label {
-      margin-top: 0;
-
-      table & {
-        // in maas tables, we don't need the margin bottom;
-        margin-bottom: 0;
-        // text in most tables is not wrapped in a block-level tag, and effectively behaves as an inline element. This makes it unstylable. To compensate, vanilla applies padding to the tr.
-        // Elements like checkboxes have the same padding-top as paragraphs, to make them stay on the baseline grid. This needs to be zeroed out as the values have already been applied to trs
-        padding-top: 0;
+      &::after {
+        top: 13px;
       }
+    }
 
-      // box
+    th & + label {
       &::before {
-        margin-left: - ($box-size + $box-margin-right) !important;
-        margin-right: $box-margin-right !important;
-        position: relative !important;
-        top: $box-offset-top !important;
+        top: .65em;
       }
 
       &::after {
-        // tick
-        $tick-thickness: 2;
-        $tick-side-a: 7;
-        $tick-side-b: 11;
-        $tick-diagonal: 13.0384048104; // sqrt($tick-side-a ^ 2 + $tick-side-b ^ 2)
-        $angle-alpha: 1.00406711; // in radians: arcsin($tick-side-b / $tick-diagonal)
-        $angle-gamma: 1.13345843359;// Math.PI - 2 * arcsin($angle-alpha) (angles in triangle add up to PI)
-        $tick-offset-top: $box-offset-top + ( ($tick-diagonal / 2) * $angle-gamma - $tick-thickness) * $px; // $tick-offset-top == sin($angle-gamma * $tick-diagonal/2)  - half the thckness of the tick in rems
+        top: 11px;
+      }
+    }
 
-        float: left;
-        margin-top: $tick-offset-top;
-        top: 7px;
+    .p-inline-list__item & + label {
+      &::before {
+        top: .5rem;
+      }
 
-        table & {
-          margin-left: -2rem;
-          position: relative;
-          top: 0;
-        }
+      &::after {
+        top: 11px;
       }
     }
   }
-
-
 }
-
-
