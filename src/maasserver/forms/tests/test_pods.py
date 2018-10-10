@@ -32,6 +32,7 @@ from maasserver.forms import pods as pods_module
 from maasserver.forms.pods import (
     ComposeMachineForm,
     ComposeMachineForPodsForm,
+    get_known_host_interfaces,
     PodForm,
 )
 from maasserver.models import StaticIPAddress
@@ -72,6 +73,7 @@ from provisioningserver.enum import (
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    HasLength,
     Is,
     IsInstance,
     MatchesAll,
@@ -1811,3 +1813,108 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
         data = self.make_data(pods)
         form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
         self.assertFalse(form.is_valid())
+
+
+class TestGetKnownHostInterfaces(MAASServerTestCase):
+
+    def test__returns_empty_list_if_no_interfaces(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        node.interface_set.all().delete()
+        interfaces = get_known_host_interfaces(node)
+        self.assertThat(interfaces, HasLength(0))
+
+    def test__returns_appropriate_attach_type(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(dhcp_on=False)
+        node.interface_set.all().delete()
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan)
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        interfaces = get_known_host_interfaces(node)
+        self.assertItemsEqual(
+            interfaces, [
+                KnownHostInterface(
+                    ifname=bridge.name,
+                    attach_type=InterfaceAttachType.BRIDGE,
+                    dhcp_enabled=False
+                ),
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    dhcp_enabled=False
+                )
+            ]
+        )
+
+    def test__behaves_correctly_when_vlan_is_none(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        node.interface_set.all().delete()
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, disconnected=True)
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node=node, disconnected=True)
+        interfaces = get_known_host_interfaces(node)
+        self.assertItemsEqual(
+            interfaces, [
+                KnownHostInterface(
+                    ifname=bridge.name,
+                    attach_type=InterfaceAttachType.BRIDGE,
+                    dhcp_enabled=False
+                ),
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    dhcp_enabled=False
+                )
+            ]
+        )
+
+    def test__gets_dhcp_status_for_directly_enabled_vlan(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(dhcp_on=True)
+        node.interface_set.all().delete()
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan)
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        interfaces = get_known_host_interfaces(node)
+        self.assertItemsEqual(
+            interfaces, [
+                KnownHostInterface(
+                    ifname=bridge.name,
+                    attach_type=InterfaceAttachType.BRIDGE,
+                    dhcp_enabled=True
+                ),
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    dhcp_enabled=True
+                )
+            ]
+        )
+
+    def test__gets_dhcp_status_for_indirectly_enabled_vlan(self):
+        node = factory.make_Machine_with_Interface_on_Subnet()
+        relay_vlan = factory.make_VLAN(dhcp_on=True)
+        vlan = factory.make_VLAN(dhcp_on=False, relay_vlan=relay_vlan)
+        node.interface_set.all().delete()
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan)
+        physical = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        interfaces = get_known_host_interfaces(node)
+        self.assertItemsEqual(
+            interfaces, [
+                KnownHostInterface(
+                    ifname=bridge.name,
+                    attach_type=InterfaceAttachType.BRIDGE,
+                    dhcp_enabled=True
+                ),
+                KnownHostInterface(
+                    ifname=physical.name,
+                    attach_type=InterfaceAttachType.MACVLAN,
+                    dhcp_enabled=True
+                )
+            ]
+        )

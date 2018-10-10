@@ -353,6 +353,34 @@ class PodForm(MAASModelForm):
             return update_db((discovered_pod, discovered))
 
 
+def get_known_host_interfaces(host: Node) -> list:
+    """Given the specified host node, calculates each KnownHostInterface.
+
+    :return: a list of KnownHostInterface objects for the specified Node.
+    """
+    interfaces = host.interface_set.all()
+    result = []
+    for interface in interfaces:
+        ifname = interface.name
+        if interface.type == INTERFACE_TYPE.BRIDGE:
+            attach_type = InterfaceAttachType.BRIDGE
+        else:
+            attach_type = InterfaceAttachType.MACVLAN
+        dhcp_enabled = False
+        vlan = interface.vlan
+        if vlan is not None:
+            if vlan.dhcp_on:
+                dhcp_enabled = True
+            elif vlan.relay_vlan is not None:
+                if vlan.relay_vlan.dhcp_on:
+                    dhcp_enabled = True
+        result.append(
+            KnownHostInterface(
+                ifname=ifname, attach_type=attach_type,
+                dhcp_enabled=dhcp_enabled))
+    return result
+
+
 class ComposeMachineForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
@@ -543,26 +571,11 @@ class ComposeMachineForm(forms.Form):
 
             # Find the pod's known host interfaces.
             if self.pod.host is not None:
-                result = [
-                    KnownHostInterface(
-                        ifname=interface.name,
-                        attach_type=(
-                            InterfaceAttachType.BRIDGE
-                            if interface.type == INTERFACE_TYPE.BRIDGE
-                            else InterfaceAttachType.MACVLAN),
-                        dhcp_enabled=(
-                            True
-                            if (interface.vlan is not None and
-                                interface.vlan.dhcp_on) or (
-                                    interface.vlan.relay_vlan is not None and
-                                    interface.vlan.relay_vlan.dhcp_on)
-                            else False))
-                    for interface in self.pod.host.interface_set.all()
-                ]
+                interfaces = get_known_host_interfaces(self.pod.host)
             else:
-                result = []
+                interfaces = []
 
-            return (client, result)
+            return client, interfaces
 
         def create_and_sync(result):
             requested_machine, result = result
