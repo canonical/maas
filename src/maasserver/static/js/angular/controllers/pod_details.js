@@ -377,7 +377,7 @@ angular.module('MAAS').controller('PodDetailsController', [
               type: 'local',
               size: 8,
               tags: [],
-              pool: {},
+              pool: $scope.getDefaultStoragePool(),
               boot: true
             }],
             interfaces: [$scope.defaultInterface]
