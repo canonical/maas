@@ -1,6 +1,12 @@
-maas (2.5.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.0~beta3-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Thu, 11 Oct 2018 10:39:51 -0400
+
+maas (2.5.0~beta2-7291-gd0345ced5-0ubuntu1) cosmic; urgency=medium
+
+  * New upstream release. (LP: #1796937)
   * debian/maas-dhcp.maas-{dhcpd,dhcpd6}.service: Require dhcpd stop
     in 8 seconds, if not kill it with 'mixed' mode.
   * debian/control: Drop python3-jinja2 as it is no longer needed to
@@ -14,7 +20,7 @@ maas (2.5.0~beta2-0ubuntu1) UNRELEASED; urgency=medium
   * debian/maas-rack-controller.postrm: Purge http and rpc.state files.
   * debian/maas-region-api.postrm: Purge maas-regiond socket file.
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 19 Sep 2018 03:10:49 -0400
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Tue, 02 Oct 2018 22:55:12 -0400
 
 maas (2.5.0~beta1-7225-g817fb216d-0ubuntu1) cosmic; urgency=medium
 
