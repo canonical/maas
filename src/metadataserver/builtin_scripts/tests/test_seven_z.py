@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test builtin_script 7z."""
@@ -42,6 +42,10 @@ SEVEN_Z_OUTPUT = dedent("""
 
 
 class TestSevenZTest(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.patch(seven_z, 'print')
 
     def test_run_7z_executes_cmd_and_writes_results_file(self):
         self.patch(os, 'environ', {
