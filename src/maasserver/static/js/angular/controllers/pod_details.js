@@ -306,7 +306,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Calculate the available cores with overcommit applied
         $scope.availableWithOvercommit = function(
             total, used, overcommitRatio) {
-            return (total * overcommitRatio) - used;
+            return ((total * overcommitRatio) - used).toPrecision(2);
         };
 
         // Called before the compose params is sent over the websocket.

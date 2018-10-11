@@ -625,14 +625,17 @@ Lower allocations may fail.</span>
                 <div class="col-6">
                     <maas-pod-parameters hide-type="true"></maas-pod-parameters>
                 </div>
-                <div class="row">
-                  <div class="col-12 u-align--right" data-ng-if="editing">
-                    <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
-                    <p maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
-                   <button class="p-button--base"
-                           data-ng-click="exitEditPodConfiguration()">Cancel</button>
-                   <button class="p-button--positive" maas-obj-save>Save changes</button>
-                  </div>
+                <div class="p-strip">
+                    <div class="row">
+                        <div class="col-8" data-ng-if="editing">
+                            <p maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
+                            <p maas-obj-show-saving><maas-obj-saving><i class="p-icon--spinner u-animation--spin">Loading:</i> Trying to connect and discover pod</maas-obj-saving></p>
+                        </div>
+                        <div class="col-4 u-align--right" data-ng-if="editing">
+                            <button class="p-button--base" data-ng-click="exitEditPodConfiguration()">Cancel</button>
+                            <button class="p-button--positive" maas-obj-save>Save changes</button>
+                        </div>
+                    </div>
                 </div>
             </maas-obj-form>
         </div>
