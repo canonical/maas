@@ -856,7 +856,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <div class="p-accordion__panel">
                                 <ul class="p-list">
                                     <li class="p-list__item"  data-ng-repeat="owner in tabs.devices.metadata.owner | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('owner', owner.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'devices') }">
+                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('owner', owner.name, 'devices')" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'devices') }">
                                             {$ owner.name $} ({$ owner.count $})
                                         </a>
                                     </li>
@@ -868,7 +868,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <div class="p-accordion__panel">
                                 <ul class="p-list">
                                     <li class="p-list__item"  data-ng-repeat="tag in tabs.devices.metadata.tags | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('tags', tag.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'devices') }">
+                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('tags', tag.name, 'devices')" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'devices') }">
                                             {$ tag.name $} ({$ tag.count $})
                                         </a>
                                     </li>
@@ -880,7 +880,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <div class="p-accordion__panel">
                                 <ul class="p-list">
                                     <li class="p-list__item"  data-ng-repeat="zone in tabs.devices.metadata.zone | orderBy:['name', '-count']">
-                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('zone', zone.name, 'machines')" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'devices') }">
+                                        <a class="p-button--base" href="javascript:;" data-ng-click="toggleFilter('zone', zone.name, 'devices')" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'devices') }">
                                             {$ zone.name $} ({$ zone.count $})
                                         </a>
                                     </li>
