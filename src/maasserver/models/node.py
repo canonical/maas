@@ -241,6 +241,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.error import ConnectionDone
 from twisted.internet.threads import deferToThread
 from twisted.python.threadable import isInIOThread
 
@@ -5425,11 +5426,13 @@ class RackController(Controller):
             client = getClientFor(self.system_id, timeout=1)
             call = client(DisableAndShutoffRackd)
             call.wait(10)
-        except (NoConnectionsAvailable, TimeoutError):
+        except (NoConnectionsAvailable, TimeoutError, ConnectionDone):
             # NoConnectionsAvailable is always thrown. Either because the rack
             # is currently disconnected or rackd was killed.
             # TimeoutError may occur if the rack was just powered down and the
             # region thinks it still has a connection.
+            # ConnectionDone occurs when the RPC call successfully stops and
+            # disables the rack service.
             pass
 
         RegionRackRPCConnection.objects.filter(rack_controller=self).delete()

@@ -231,6 +231,7 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet import defer
+from twisted.internet.error import ConnectionDone
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -10333,6 +10334,22 @@ class TestRackController(MAASTransactionServerTestCase):
         self.patch(
             crochet._eventloop.EventualResult,
             'wait').side_effect = TimeoutError()
+
+        rackcontroller.delete()
+        self.assertIsNone(reload_object(rackcontroller))
+
+    def test_disables_and_disconn_ignores_connectiondone(self):
+        # Regression test for LP:1729649
+        rackcontroller = factory.make_RackController()
+        factory.make_VLAN(secondary_rack=rackcontroller)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        fixture.makeCluster(rackcontroller, DisableAndShutoffRackd)
+        self.patch(
+            crochet._eventloop.EventualResult,
+            'wait').side_effect = ConnectionDone()
 
         rackcontroller.delete()
         self.assertIsNone(reload_object(rackcontroller))
