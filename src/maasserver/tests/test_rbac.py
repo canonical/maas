@@ -56,29 +56,70 @@ class TestRBACClient(MAASTestCase):
                 'service/1.0/resources/resource-pool',
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
-    def test_put_resources(self):
-        resources = [
+    def test_update_resources(self):
+        updates = [
             Resource(identifier='1', name='pool-1'),
             Resource(identifier='2', name='pool-2'),
         ]
-        json = [
-            {
-                'identifier': '1',
-                'name': 'pool-1',
-            },
-            {
-                'identifier': '2',
-                'name': 'pool-2',
-            },
-        ]
+        removals = [11, 22, 33]
+        json = {
+            'last-sync-id': 'a-b-c',
+            'updates': [
+                {
+                    'identifier': '1',
+                    'name': 'pool-1',
+                },
+                {
+                    'identifier': '2',
+                    'name': 'pool-2',
+                },
+            ],
+            'removals': ['11', '22', '33']
+        }
         response = mock.MagicMock(status_code=200)
         response.json.return_value = {}
         self.mock_request.return_value = response
-        self.client.put_resources('resource-pool', resources)
+        self.client.update_resources(
+            'resource-pool', updates=updates, removals=removals,
+            last_sync_id='a-b-c')
         self.assertThat(
             self.mock_request,
             MockCalledOnceWith(
-                'PUT',
+                'POST',
+                'https://rbac.example.com/api/'
+                'service/1.0/resources/resource-pool',
+                auth=mock.ANY, cookies=mock.ANY, json=json))
+
+    def test_update_resources_no_sync_id(self):
+        updates = [
+            Resource(identifier='1', name='pool-1'),
+            Resource(identifier='2', name='pool-2'),
+        ]
+        removals = [11, 22, 33]
+        # removals are ignored
+        json = {
+            'last-sync-id': None,
+            'updates': [
+                {
+                    'identifier': '1',
+                    'name': 'pool-1',
+                },
+                {
+                    'identifier': '2',
+                    'name': 'pool-2',
+                },
+            ],
+            'removals': []
+        }
+        response = mock.MagicMock(status_code=200)
+        response.json.return_value = {}
+        self.mock_request.return_value = response
+        self.client.update_resources(
+            'resource-pool', updates=updates, removals=removals)
+        self.assertThat(
+            self.mock_request,
+            MockCalledOnceWith(
+                'POST',
                 'https://rbac.example.com/api/'
                 'service/1.0/resources/resource-pool',
                 auth=mock.ANY, cookies=mock.ANY, json=json))

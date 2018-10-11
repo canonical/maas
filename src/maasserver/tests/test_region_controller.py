@@ -601,8 +601,8 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         self.assertEquals([], service._rbacSync())
         self.assertThat(
-            rbac_client.put_resources,
-            MockCalledOnceWith('resource-pool', resources))
+            rbac_client.update_resources,
+            MockCalledOnceWith('resource-pool', updates=resources))
         self.assertFalse(RBACSync.objects.exists())
 
     def test__rbacSync_syncs_on_changes(self):
@@ -620,6 +620,6 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         self.assertEquals(reasons, service._rbacSync())
         self.assertThat(
-            rbac_client.put_resources,
-            MockCalledOnceWith('resource-pool', resources))
+            rbac_client.update_resources,
+            MockCalledOnceWith('resource-pool', updates=resources))
         self.assertFalse(RBACSync.objects.exists())

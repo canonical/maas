@@ -49,24 +49,34 @@ class RBACClient(MacaroonClient):
             for res in result
         ]
 
-    def put_resources(
-            self, resource_type: str, resources: Sequence[Resource]=None):
+    def update_resources(
+            self, resource_type: str,
+            updates: Sequence[Resource]=None,
+            removals: Sequence[int]=None,
+            last_sync_id: int=None):
         """Put all the resources for `resource_type`.
 
         This replaces all the resources for `resource_type`.
         """
-        if resources is None:
-            resources = []
-        resources = [
-            {
-                'identifier': str(res.identifier),
-                'name': res.name,
-            }
-            for res in resources
-        ]
+        resources_updates = []
+        resources_removals = []
+        if updates:
+            resources_updates = [
+                {
+                    'identifier': str(res.identifier),
+                    'name': res.name,
+                }
+                for res in updates
+            ]
+        if removals and last_sync_id:
+            resources_removals = [str(id) for id in removals]
+        data = {
+            'last-sync-id': last_sync_id,
+            'updates': resources_updates,
+            'removals': resources_removals}
         self._request(
-            'PUT', self._get_resource_type_url(resource_type),
-            json=resources)
+            'POST', self._get_resource_type_url(resource_type),
+            json=data)
 
     def allowed_for_user(
             self,

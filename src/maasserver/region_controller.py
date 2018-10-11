@@ -321,7 +321,7 @@ class RegionControllerService(Service):
             Resource(identifier=rpool.id, name=rpool.name)
             for rpool in ResourcePool.objects.all()
         ]
-        client.put_resources('resource-pool', resources)
+        client.update_resources('resource-pool', updates=resources)
 
         if not self.rbacInit:
             # This was initial sync on start-up.
