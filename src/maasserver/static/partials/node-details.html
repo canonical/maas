@@ -86,6 +86,10 @@
                                         <input id="skipStorage" type="checkbox" data-ng-model="commissionOptions.skipStorage">
                                         <label for="skipStorage">Retain storage configuration</label>
                                     </li>
+				    <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
+                                        <input id="skipBMCConfig" type="checkbox" data-ng-model="commissionOptions.skipBMCConfig">
+                                        <label for="skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
+                                    </li>
                                     <li class="p-inline-list__item ng-hide" data-ng-show="action.option.name === 'commission'">
                                         <input id="updateFirmware" type="checkbox" data-ng-model="commissionOptions.updateFirmware">
                                         <label for="updateFirmware">Update firmware</label>

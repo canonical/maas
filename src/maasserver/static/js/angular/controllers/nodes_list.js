@@ -87,6 +87,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.machines.newPool = {};
         $scope.tabs.machines.commissionOptions = {
             enableSSH: false,
+            skipBMCConfig: false,
             skipNetworking: false,
             skipStorage: false,
             updateFirmware: false,
@@ -259,6 +260,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.switches.commissioningSelection = [];
         $scope.tabs.switches.commissionOptions = {
             enableSSH: false,
+            skipBMCConfig: false,
             skipNetworking: false,
             skipStorage: false,
             updateFirmware: false,
@@ -352,6 +354,7 @@ angular.module('MAAS').controller('NodesListController', [
                     $scope.tabs[tab].osSelection.$reset();
                 }
                 $scope.tabs[tab].commissionOptions.enableSSH = false;
+                $scope.tabs[tab].commissionOptions.skipBMCConfig = false;
                 $scope.tabs[tab].commissionOptions.skipNetworking = false;
                 $scope.tabs[tab].commissionOptions.skipStorage = false;
                 $scope.tabs[tab].commissionOptions.updateFirmware = false;
@@ -721,6 +724,7 @@ angular.module('MAAS').controller('NodesListController', [
             } else if(tab.actionOption.name === "commission") {
                 // Set the commission options.
                 extra.enable_ssh = tab.commissionOptions.enableSSH;
+                extra.skip_bmc_config = tab.commissionOptions.skipBMCConfig;
                 extra.skip_networking = tab.commissionOptions.skipNetworking;
                 extra.skip_storage = tab.commissionOptions.skipStorage;
                 extra.commissioning_scripts = [];

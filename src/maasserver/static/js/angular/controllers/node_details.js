@@ -50,6 +50,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
         $scope.commissionOptions = {
             enableSSH: false,
+            skipBMCConfig: false,
             skipNetworking: false,
             skipStorage: false,
             updateFirmware: false,
@@ -594,6 +595,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
             } else if($scope.action.option.name === "commission") {
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
+                extra.skip_bmc_config = $scope.commissionOptions.skipBMCConfig;
                 extra.skip_networking = (
                     $scope.commissionOptions.skipNetworking);
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
@@ -655,6 +657,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.action.showing_confirmation = false;
                     $scope.osSelection.$reset();
                     $scope.commissionOptions.enableSSH = false;
+                    $scope.commissionOptions.skipBMCConfig = false;
                     $scope.commissionOptions.skipNetworking = false;
                     $scope.commissionOptions.skipStorage = false;
                     $scope.commissionOptions.updateFirmware = false;

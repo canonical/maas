@@ -221,6 +221,7 @@ describe("NodeDetailsController", function() {
         expect($scope.osSelection.release).toBeNull();
         expect($scope.commissionOptions).toEqual({
             enableSSH: false,
+            skipBMCConfig: false,
             skipNetworking: false,
             skipStorage: false,
             updateFirmware: false,
@@ -1113,6 +1114,7 @@ describe("NodeDetailsController", function() {
             var testing_script_ids = [
                 makeInteger(0, 100), makeInteger(0, 100)];
             $scope.commissionOptions.enableSSH = true;
+            $scope.commissionOptions.skipBMCConfig = false;
             $scope.commissionOptions.skipNetworking = false;
             $scope.commissionOptions.skipStorage = false;
             $scope.commissionOptions.updateFirmware = true;
@@ -1135,6 +1137,7 @@ describe("NodeDetailsController", function() {
             expect(MachinesManager.performAction).toHaveBeenCalledWith(
                 node, "commission", {
                     enable_ssh: true,
+                    skip_bmc_config: false,
                     skip_networking: false,
                     skip_storage: false,
                     commissioning_scripts:
@@ -1248,6 +1251,7 @@ describe("NodeDetailsController", function() {
                 name: "commission"
             };
             $scope.commissionOptions.enableSSH = true;
+            $scope.commissionOptions.skipBMCConfig = true;
             $scope.commissionOptions.skipNetworking = true;
             $scope.commissionOptions.skipStorage = true;
             $scope.commissionOptions.updateFirmware = true;
@@ -1265,6 +1269,7 @@ describe("NodeDetailsController", function() {
             $rootScope.$digest();
             expect($scope.commissionOptions).toEqual({
                 enableSSH: false,
+                skipBMCConfig: false,
                 skipNetworking: false,
                 skipStorage: false,
                 updateFirmware: false,

@@ -393,6 +393,7 @@ describe("NodesListController", function() {
                     expect(tabScope.osSelection.release).toBeNull();
                     expect(tabScope.commissionOptions).toEqual({
                         enableSSH: false,
+                        skipBMCConfig: false,
                         skipNetworking: false,
                         skipStorage: false,
                         updateFirmware: false,
@@ -1619,6 +1620,8 @@ describe("NodesListController", function() {
                     $scope.tabs.machines.actionOption = { name: "commission" };
                     $scope.tabs.machines.selectedItems = [object];
                     $scope.tabs.machines.commissionOptions.enableSSH = true;
+                    $scope.tabs.machines.commissionOptions.skipBMCConfig =
+                        false;
                     $scope.tabs.machines.commissionOptions.skipNetworking =
                         false;
                     $scope.tabs.machines.commissionOptions.skipStorage = false;
@@ -1645,6 +1648,7 @@ describe("NodesListController", function() {
                     expect(spy).toHaveBeenCalledWith(
                         object, "commission", {
                             enable_ssh: true,
+                            skip_bmc_config: false,
                             skip_networking: false,
                             skip_storage: false,
                             commissioning_scripts:
@@ -1764,6 +1768,7 @@ describe("NodesListController", function() {
                 $scope.$digest();
                 expect($scope.tabs.machines.commissionOptions).toEqual({
                     enableSSH: false,
+                    skipBMCConfig: false,
                     skipNetworking: false,
                     skipStorage: false,
                     updateFirmware: false,

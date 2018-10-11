@@ -184,6 +184,10 @@
                                     <label for="{$ tab $}-skipStorage">Retain storage configuration</label>
                                 </li>
                                 <li class="p-inline-list__item">
+                                        <input id="{$ tab $}-skipBMCConfig" type="checkbox" data-ng-model="tabs[tab].commissionOptions.skipBMCConfig">
+                                        <label for="{$ tab $}-skipBMCConfig">Skip configuring supported BMC controllers with a MAAS generated username and password.</label>
+                                </li>
+                                <li class="p-inline-list__item">
                                     <input id="{$ tab $}-updateFirmware" type="checkbox" data-ng-model="tabs[tab].commissionOptions.updateFirmware">
                                     <label for="{$ tab $}-updateFirmware">Update firmware</label>
                                 </li>
