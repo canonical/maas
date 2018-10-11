@@ -154,9 +154,9 @@
                                         <td style="overflow: visible">
                                             <div data-ng-if="iface.name !== 'default'" class="form__group-input">
                                                 <div class="form__group-input">
-                                                    <div class="p-option-selector u-no-padding--top" tabindex="0" ng-keyup="$event.keyCode === 27 && closeOptions(iface)">
-                                                        <input
-                                                            type="text"
+                                                    <div class="p-option-selector" tabindex="0"
+                                                        ng-keyup="$event.keyCode === 27 && closeOptions(iface)">
+                                                        <input type="text"
                                                             class="p-option-selector__input u-no-margin--bottom"
                                                             readonly="readonly"
                                                             placeholder="Select a subnet"
@@ -164,15 +164,15 @@
                                                             data-ng-focus="openSubnetOptions(iface)"
                                                             data-ng-disabled="iface.ipaddress.length > 0"
                                                             data-ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
-                                                        </input>
                                                         <div class="p-option-selector__options p-option-selector-subnets__options u-no-padding--top"
                                                             ng-if="iface.showOptions">
-                                                            <button class="p-button--base" ng-click="closeOptions(iface)">
-                                                                <i class="p-icon--close">Close</i>
-                                                            </button>
-                                                            <hr class="u-no-margin--bottom">
-                                                            <div
-                                                                class="p-option-selector__option u-no-padding"
+                                                            <div class="p-option-selector__header">
+                                                                <button class="p-button--close" ng-click="closeOptions(iface)">
+                                                                    <i class="p-icon--close">Close</i>
+                                                                </button>
+                                                                <hr class="u-no-margin--bottom">
+                                                            </div>
+                                                            <div class="p-option-selector__option u-no-padding"
                                                                 tabindex="0"
                                                                 data-ng-click="selectSubnet(subnet, iface)"
                                                                 data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
@@ -295,25 +295,33 @@ Lower allocations may fail.</span>
                                                 <input class="p-option-selector__input u-no-margin--bottom" readonly type="text" ng-keyup="$event.keyCode == 27 ? closeOptions(storage) : null" data-ng-model="storage.pool.name" ng-focus="openOptions(storage)"
                                                     ng-class="{'in-warning': (storage.size | convertGigabyteToBytes) > storage.pool.available}">
 
-                                                <p class="u-no-margin--bottom" ng-if="(storage.size | convertGigabyteToBytes) > storage.pool.available">
-                                                    <small class-"u-no-margin--bottom"><strong>Warning</strong>: Not enough space in {$ storage.pool.name $}, only {$ storage.pool.available | formatBytes $} free.</small>
-                                                </p>
+                                                <small class="p-p-small--align-with-p" ng-if="(storage.size | convertGigabyteToBytes) > storage.pool.available">
+                                                    <strong>Warning</strong>: Not enough space in {$ storage.pool.name $}, only {$ storage.pool.available | formatBytes $} free.
+                                                </small>
                                                 <div class="p-option-selector__options" ng-if="storage.showOptions" ng-keyup="$event.keyCode == 27 ? closeOptions(storage) : null">
-                                                    <button class="p-button--base u-float--left" ng-click="closeOptions(storage)">
-                                                        <i class="p-icon--close">Close</i>
-                                                    </button>
-                                                    <ul class="p-inline-list u-align--right p-option-selector__options-key">
-                                                        <li class="p-inline-list__item">
-                                                            <span class="p-key-icon--used"></span> Used
-                                                        </li>
-                                                        <li class="p-inline-list__item">
-                                                            <span class="p-key-icon--requests"></span> Requests
-                                                        </li>
-                                                        <li class="p-inline-list__item">
-                                                            <span class="p-key-icon--free"></span> Free
-                                                        </li>
-                                                    </ul>
-                                                    <hr class="u-no-margin--bottom">
+                                                    <div class="p-option-selector__header">
+                                                        <button class="p-button--close u-float--left" ng-click="closeOptions(storage)">
+                                                            <i class="p-icon--close">Close</i>
+                                                        </button>
+                                                        <ul class="p-key-list u-no-margin--bottom u-float--right">
+                                                            <li class="p-key-list__item--used">
+                                                                <p class="p-p-compact">
+                                                                    Used
+                                                                </p>
+                                                            </li>
+                                                            <li class="p-key-list__item--requests">
+                                                                <p class="p-p-compact">
+                                                                    Requests
+                                                                </p>
+                                                            </li>
+                                                            <li class="p-key-list__item--free">
+                                                                <p class="p-p-compact">
+                                                                    Free
+                                                                </p>
+                                                            </li>
+                                                        </ul>
+                                                        <hr class="u-float--left u-no-margin--bottom">
+                                                    </div>
                                                     <div class="p-option-selector__option"
                                                         tabindex="0"
                                                         ng-repeat="storage_pool in pod.storage_pools"
@@ -321,36 +329,45 @@ Lower allocations may fail.</span>
                                                         ng-keyup="$event.keyCode == 13 ? selectStoragePool(storage_pool, storage) : null"
                                                         ng-class="{'is-selected': storage.pool === storage_pool, 'is-over': totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) >= 100}">
                                                         <div class="p-option-selector__option-cell">
-                                                            <div><strong>{$ storage_pool.name $} <span data-ng-if="pod.default_storage_pool == storage_pool.id">(default)</span></strong></div>
-                                                            <div class="u-text--light">{$ storage_pool.path $}</div>
-                                                        </div>
-                                                        <div class="p-option-selector__option-cell u-align--right">
-                                                            <div>{$ storage_pool.type | formatStorageType $}</div>
-                                                            <div>{$ storage_pool.total | formatBytes $}</div>
+                                                            <p class="p-p-compact">
+                                                                <strong>{$ storage_pool.name $} <span data-ng-if="pod.default_storage_pool == storage_pool.id">(default)</span></strong>
+                                                                <br>
+                                                                <span class="u-text--light">{$ storage_pool.path $}</span>
+                                                            </p>
                                                         </div>
                                                         <div class="p-option-selector__option-cell">
-                                                            <div class="p-chart">
-                                                                <div class="p-chart__bar--requests" style="width: {$ totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) $}%"></div>
-                                                                <div class="p-chart__bar--used" style="width: {$ storage_pool.used / storage_pool.total * 100 $}%"></div>
+                                                            <p class="p-p-compact u-align--right">
+                                                                <span>{$ storage_pool.type | formatStorageType $}</span>
+                                                                <br>
+                                                                <span>{$ storage_pool.total | formatBytes $}</span>
+                                                            </p>
+                                                        </div>
+                                                        <div class="p-option-selector__option-cell">
+                                                            <div class="p-chart__container">
+                                                                <div class="p-chart">
+                                                                    <div class="p-chart__bar--requests" style="width: {$ totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) $}%"></div>
+                                                                    <div class="p-chart__bar--used" style="width: {$ storage_pool.used / storage_pool.total * 100 $}%"></div>
+                                                                </div>
                                                             </div>
-
                                                             <ul class="p-inline-list u-no-margin--bottom p-space-between"
                                                                 ng-if="totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) < 100">
-                                                                <li class="p-inline-list__item">
-                                                                    <span class="p-key-icon--used"></span>
-                                                                    {$ storage_pool.used | formatBytes $}
+                                                                <li class="p-inline-list__item p-key-icon--used">
+                                                                    <p class="p-p-compact">
+                                                                        {$ storage_pool.used | formatBytes $}
+                                                                    </p>
                                                                 </li>
-                                                                <li class="p-inline-list__item">
-                                                                    <span class="p-key-icon--requests"></span>
-                                                                    {$ storage.size $} GB
+                                                                <li class="p-inline-list__item p-key-icon--requests">
+                                                                    <p class="p-p-compact">
+                                                                        {$ storage.size $} GB
+                                                                    </p>
                                                                 </li>
-                                                                <li class="p-inline-list__item">
-                                                                    <span class="p-key-icon--free"></span>
-                                                                    {$ storage_pool.available | formatBytes $}
+                                                                <li class="p-inline-list__item p-key-icon--free">
+                                                                    <p class="p-p-compact">
+                                                                        {$ storage_pool.available | formatBytes $}
+                                                                    </p>
                                                                 </li>
                                                             </ul>
-
-                                                            <small class="u-no-margin--bottom" ng-if="totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) >= 100">
+                                                            <small class="p-p-small--align-with-p" ng-if="totalStoragePercentage(storage_pool, storage.size | convertGigabyteToBytes) >= 100">
                                                                 <i class="p-icon--warning">Warning</i> Not enough space. {$ storage_pool.available | formatBytes $} free.
                                                             </small>
                                                         </div>
@@ -399,6 +416,7 @@ Lower allocations may fail.</span>
                 </div>
             </maas-obj-form>
         </div>
+
         <div class="page-header__dropdown u-hide" data-ng-class="{ 'u-show': action.option && action.option.name !== 'compose' }">
             <div class="row" data-ng-if="action.inProgress">
                 <div class="col-12">
@@ -476,7 +494,8 @@ Lower allocations may fail.</span>
                                 </h4>
                             </div>
                             <div class="p-meter--cpu-cores">
-                                <div class="p-meter--cpu-cores__container">
+                                <div class="p-meter--cpu-cores__container"
+                                    ng-class="{'is-over': pod.available.cores < 0}">
                                     <span class="p-meter--cpu-cores__core--used" ng-repeat="i in pod.used.cores | range"></span>
                                     <span class="p-meter--cpu-cores__core--available" ng-repeat="i in availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio) | range"></span>
                                 </div>
@@ -494,7 +513,8 @@ Lower allocations may fail.</span>
                                 </h4>
                             </div>
                             <div class="p-meter__container">
-                                <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
+                                <meter class="p-meter" max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"
+                                    ng-class="{'is-over': pod.used.memory > pod.total.memory}"></meter>
                             </div>
                             <p class="u-no-max-width">
                                 <span>{$ pod.used.memory_gb $} GiB used</span>
@@ -529,20 +549,21 @@ Lower allocations may fail.</span>
                                     </div>
                                     <div class="p-storage__meter tablet-col-3 col-4">
                                         <div class="p-meter__container">
-                                            <meter class="p-meter p-meter--kvm" max="{$ storage.total $}" value="{$ storage.used $}">
+                                            <meter class="p-meter p-meter--kvm" max="{$ storage.total $}" value="{$ storage.used $}"
+                                                ng-class="{'is-over': storage.used > storage.total}">
                                             <div class="p-meter__graph">
                                                 <span class="p-meter__graph-content" style="width: calc(65600%/1024);">Disk Usage - {$ storage.used $} out of {$ storage.total $}</span>
                                             </div>
                                             </meter>
                                         </div>
-                                        <div class="p-legend--numbers u-clearfix">
-                                            <span class="p-legend__text default-text u-float--left">
+                                        <p class="p-p-compact u-clearfix">
+                                            <span class="u-float--left">
                                                 {$ storage.available | formatBytes $}
                                             </span>
-                                            <span class="p-legend__text default-text u-float--right">
+                                            <span class="u-float--right">
                                                 {$ storage.used | formatBytes $}
                                             </span>
-                                        </div>
+                                        </p>
                                     </div>
                                 </div>
                             </li>

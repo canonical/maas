@@ -9,6 +9,7 @@
 // Import local patterns
 @import 'maas';
 @import 'patterns_inline-list';
+@import 'patterns_divided-list';
 @import 'base_typography';
 @import 'base_tables';
 @import 'base_forms';
@@ -42,6 +43,7 @@
 // Include local patterns
 @include maas;
 @include maas-inline-lists;
+@include maas-divided-lists;
 @include maas-tables;
 
 @include maas-b-forms;

@@ -531,6 +531,9 @@
   }
 
   .p-table--pod-storage-config {
+
+    position: relative;
+
     @media (min-width: $breakpoint-small) {
       margin-bottom: 0;
 

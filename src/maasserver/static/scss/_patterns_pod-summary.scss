@@ -107,8 +107,6 @@
     }
 
     &__meter {
-      @extend .col-3;
-
       @media (max-width: $breakpoint-large) {
         float: left;
       }
@@ -142,13 +140,6 @@
 
     &__type {
       @extend %default-text;
-    }
-  }
-
-  .p-list--divided .p-list__item {
-    &::after {
-      border-bottom-style: solid;
-      border-bottom-color: $color-light-new;
     }
   }
 

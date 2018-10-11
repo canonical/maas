@@ -25,6 +25,27 @@ h4,
   display: block;
 }
 
+%small-text--block {
+  @extend %small-text;
+  display: block;
+}
+
+.p-p-small {
+  @extend %small-text--block;
+
+  &--align-with-p {
+    @extend %small-text--block;
+    padding-top: map-get($nudges, nudge--small) + $sp-unit;
+  }
+}
+
+.p-p-compact {
+  @extend %default-text;
+  display: block;
+  margin-bottom: $sp-unit * 2 - map-get($nudges, nudge--p);
+}
+
 .u-no-max-width {
   max-width: unset;
 }
+
