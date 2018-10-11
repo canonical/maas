@@ -359,20 +359,6 @@
       }
     }
 
-    .p-domain-name {
-      display: inline-block;
-
-      .p-domain-name__host {
-        color: $color-dark;
-      }
-
-      .p-domain-name__tld {
-        @extend %small-text;
-        color: $color-mid-dark;
-        margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
-      }
-    }
-
     .p-icon--placeholder {
       @extend %icon;
       height: map-get($icon-sizes, default);
@@ -649,6 +635,19 @@
 
     &:hover {
       color: $color-link;
+    }
+  }
+
+  .p-domain-name {
+    display: inline-block;
+
+    .p-domain-name__host {
+      font-weight: 400;
+    }
+
+    .p-domain-name__tld {
+      @extend %small-text;
+      margin-bottom: map-get($line-heights, default-text) - map-get($line-heights, small) - map-get($nudges, nudge--small);
     }
   }
 

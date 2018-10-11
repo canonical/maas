@@ -77,6 +77,7 @@ class ControllerHandler(MachineHandler):
             "id",
             "system_id",
             "hostname",
+            "domain",
             "node_type",
             "status",
             "last_image_sync",

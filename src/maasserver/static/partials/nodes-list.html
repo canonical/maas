@@ -962,7 +962,9 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
                                 <label for="{$ device.fqdn $}" class="p-form__label"></label>
                             </span>
-                            <a href="#/device/{$ device.system_id $}" title="{$ device.fqdn $}">{$ device.fqdn $}</a>
+                            <a class="p-domain-name" href="#/{$ device.link_type $}/{$ device.system_id $}" title="{$ device.fqdn $}">
+                                <span class="p-domain-name__host">{$ device.hostname $}</span><span class="p-domain-name__tld">.{$ device.domain.name $}</span>
+                            </a>
                         </td>
                         <td class="p-table__cell" aria-label="MAC" title="{$ device.primary_mac $}">
                             {$ device.primary_mac $}
@@ -1121,7 +1123,9 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                                 <input type="checkbox" class="u-float--none" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-checked="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
                                 <label for="{$ controller.fqdn $}" class="p-form__label"></label>
                             </span>
-                            <a href="#/controller/{$ controller.system_id $}" title="{$ controller.fqdn $}">{$ controller.fqdn $}</a>
+                            <a class="p-domain-name" href="#/{$ controller.link_type $}/{$ controller.system_id $}" title="{$ controller.fqdn $}">
+                                <span class="p-domain-name__host">{$ controller.hostname $}</span><span class="p-domain-name__tld">.{$ controller.domain.name $}</span>
+                            </a>
                         </td>
                         <td class="p-table__cell u-align--center" data-maas-controller-status="controller" data-maas-services="services" aria-label="Status"></td>
                         <td class="p-table__cell" aria-label="Type" title="{$ controller.node_type_display $}">{$ controller.node_type_display $}</td>
