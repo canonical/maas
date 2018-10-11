@@ -242,6 +242,15 @@ angular.module('MAAS').directive('maasMachinesTable', [
           }
           return '';
         };
+
+        scope.getBootIp = function(ipArray) {
+          for (var i = 0; i < ipArray.length; i++) {
+            if (ipArray[i].is_boot) {
+              return ipArray[i].ip;
+            }
+          }
+          return false;
+        }
       }
     };
 }]);

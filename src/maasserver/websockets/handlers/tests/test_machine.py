@@ -300,9 +300,9 @@ class TestMachineHandler(MAASServerTestCase):
             "default_user": node.default_user,
         }
         if boot_interface:
-            data["ip_address"] = handler.dehydrate_ip_address(
-                node, boot_interface)
             data["vlan"] = handler.dehydrate_vlan(node, boot_interface)
+            if for_list:
+                data["ip_addresses"] = handler.dehydrate_all_ip_addresses(node)
         bmc = node.bmc
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data['pod'] = {'id': bmc.id, 'name': bmc.name}
@@ -319,7 +319,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "fabrics",
                 "fqdn",
                 "has_logs",
-                "ip_address",
+                "ip_addresses",
                 "link_type",
                 "metadata",
                 "node_type_display",
@@ -1729,27 +1729,39 @@ class TestMachineHandler(MAASServerTestCase):
             [self.dehydrate_node(node, handler, for_list=True)],
             handler.list({}))
 
-    def test_list_includes_ip_with_boot_interface(self):
+    def test_list_includes_static_ip_addresses(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        [interface1, interface2] = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(2)
+        ]
+        ip_address1 = factory.make_StaticIPAddress(interface=interface1)
+        ip_address2 = factory.make_StaticIPAddress(interface=interface2)
+        handler = MachineHandler(user, {}, None)
+        self.assertItemsEqual(
+            [{
+                "ip": ip_address1.ip,
+                "is_boot": True,
+            }, {
+                "ip": ip_address2.ip,
+                "is_boot": False,
+            }],
+            self.dehydrate_node(node, handler, for_list=True)['ip_addresses'])
+
+    def test_list_includes_dynamic_ip_if_no_static(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        subnet = factory.make_Subnet()
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
-            interface=interface, subnet=subnet)
+        ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
         handler = MachineHandler(user, {}, None)
-        self.assertEqual(
-            ip,
-            self.dehydrate_node(node, handler, for_list=True)['ip_address'])
-
-    def test_list_excludes_ip_without_boot_interface(self):
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        handler = MachineHandler(user, {}, None)
-        self.assertNotIn(
-            'ip_address',
-            self.dehydrate_node(node, handler, for_list=True))
+        self.assertItemsEqual(
+            [{
+                "ip": ip_address.ip,
+                "is_boot": True,
+            }],
+            self.dehydrate_node(node, handler, for_list=True)['ip_addresses'])
 
     def test_list_includes_vlan_with_boot_interface(self):
         user = factory.make_User()

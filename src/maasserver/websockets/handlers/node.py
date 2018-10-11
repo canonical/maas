@@ -630,8 +630,46 @@ class NodeHandler(TimestampedModelHandler):
                 "fabric_name": "%s" % interface.vlan.fabric.name,
             }
 
+    def dehydrate_all_ip_addresses(self, obj):
+        """Return all IP addresses for a machine"""
+        # If the node has static IP addresses assigned they will be returned
+        # before the dynamic IP addresses are returned. The dynamic IP
+        # addresses will only be returned if the node has no static IP
+        # addresses.
+
+        boot_interface = obj.get_boot_interface()
+
+        ip_addresses = [
+            {
+                "ip": ip_address.get_ip(),
+                "is_boot": interface == boot_interface,
+            }
+            for interface in obj.interface_set.all().order_by('name')
+            for ip_address in interface.ip_addresses.all()
+            if ip_address.ip and ip_address.alloc_type in [
+                IPADDRESS_TYPE.DHCP,
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED,
+            ]
+        ]
+
+        if len(ip_addresses) == 0:
+            ip_addresses = [
+                {
+                    "ip": ip_address.ip,
+                    "is_boot": interface == boot_interface,
+                }
+                for interface in obj.interface_set.all().order_by('name')
+                for ip_address in interface.ip_addresses.all()
+                if (ip_address.ip and
+                    ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED)
+            ]
+
+        return ip_addresses
+
     def dehydrate_ip_address(self, obj, interface):
-        """Return the IP address for the device."""
+        """Return the IP address for the interface of a device."""
         if interface is None:
             return None
 

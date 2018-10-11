@@ -519,4 +519,23 @@ describe("maasMachinesTable", function() {
             expect(actual).toEqual(expected);
         });
     });
+
+    describe("getBootIp", function() {
+
+        it("returns the machine's boot IP address if it exists", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var ipAddresses = [{
+                "ip": '172.168.1.1',
+                "is_boot": false,
+            }, {
+                "ip": '172.168.1.2',
+                "is_boot": true,
+            }];
+
+            var actual = scope.getBootIp(ipAddresses);
+            var expected = '172.168.1.2';
+            expect(actual).toEqual(expected);
+        });
+    });
 });
