@@ -15,7 +15,7 @@ cp -f $SNAP/usr/share/maas/bind/named.conf $SNAP_DATA/bind/
 mkdir -p $SNAP_DATA/bind/cache
 
 # MAAS finalize bind configuration.
-MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" $SNAP/usr/lib/maas/maas-common setup-dns
+MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" $SNAP/bin/maas-rack setup-dns
 
 # Run named.
 exec $SNAP/usr/sbin/named -c "$SNAP_DATA/bind/named.conf" -g
