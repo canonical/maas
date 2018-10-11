@@ -342,7 +342,7 @@
                             <i class="p-icon--warning">Warning</i>
                             {$ tabs[tab].actionErrorCount $}
                             <span data-ng-pluralize count="tabs[tab].selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                            cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, update your selection.
+                            cannot be {$ tabs[tab].actionOption.sentence $}. To proceed, <a data-ng-click="unselectImpossibleNodes(tab)">update your selection</a>.
                         </p>
                         <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError(tab)">
                             <i class="p-icon--warning">Warning</i>

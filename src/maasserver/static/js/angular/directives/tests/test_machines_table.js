@@ -175,15 +175,6 @@ describe("maasMachinesTable", function() {
             expect(machine.$selected).toBe(false);
             expect(scope.table.allViewableChecked).toBe(false);
         });
-
-        it("calls onCheck", function() {
-            $scope.onCheck = jasmine.createSpy("onCheck");
-            var directive = compileDirective();
-            var scope = directive.isolateScope();
-            var machine = makeMachine();
-            scope.toggleChecked(machine);
-            expect($scope.onCheck).toHaveBeenCalledWith(machine);
-        });
     });
 
     describe("sortTable", function() {

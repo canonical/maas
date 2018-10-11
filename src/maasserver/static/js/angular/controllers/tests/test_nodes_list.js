@@ -1973,4 +1973,25 @@ describe("NodesListController", function() {
             expect($location.path()).toEqual('/machines');
         });
     });
+
+    describe("unselectImpossibleNodes", function() {
+        it("unselects machines for which an action cannot be done", function() {
+            makeController();
+            var machinePossible = makeObject('machines');
+            var machineImpossible = makeObject('machines');
+            var tab = $scope.tabs.machines;
+
+            tab.actionOption = { name: 'commission' };
+            machinePossible.actions = ['commission'];
+            machineImpossible.actions = ['deploy'];
+            MachinesManager._items.push(machinePossible, machineImpossible);
+            MachinesManager._selectedItems.push(
+                machinePossible, machineImpossible
+            );
+
+            $scope.unselectImpossibleNodes('machines');
+
+            expect(tab.selectedItems).toEqual([machinePossible]);
+        });
+    });
 });

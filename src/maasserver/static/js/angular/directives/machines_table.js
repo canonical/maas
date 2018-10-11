@@ -22,7 +22,7 @@ angular.module('MAAS').directive('maasMachinesTable', [
         hideCheckboxes: "=?",
         onListingChange: "&",
         onCheckAll: "&",
-        onCheck: "&"
+        onCheck: "="
       },
       templateUrl: (
         'static/partials/machines-table.html?v=' + (
@@ -94,7 +94,6 @@ angular.module('MAAS').directive('maasMachinesTable', [
             MachinesManager.selectItem(machine.system_id);
           }
           scope.updateAllChecked();
-          scope.onCheck({$machine: machine});
         };
 
         // Sorts the table by predicate.

@@ -528,6 +528,23 @@ angular.module('MAAS').controller('NodesListController', [
             });
         }
 
+        $scope.unselectImpossibleNodes = function(tab) {
+            var selectedNodes = $scope.tabs[tab].selectedItems;
+            var actionOption = $scope.tabs[tab].actionOption;
+            var nodesToUnselect = [];
+
+            selectedNodes.forEach(function(node) {
+                if (node.actions.indexOf(actionOption.name) === -1) {
+                    nodesToUnselect.push(node.system_id);
+                }
+            });
+
+            // Extra forEach loop to prevent iterating over a mutating array
+            nodesToUnselect.forEach(function(nodeId) {
+                $scope.tabs[tab].manager.unselectItem(nodeId);
+            })
+        }
+
         $scope.onNodeListingChanged = function(nodes, tab) {
             if(nodes.length === 0 &&
                 $scope.tabs[tab].search !== "" &&
