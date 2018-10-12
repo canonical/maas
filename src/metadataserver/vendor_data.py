@@ -149,5 +149,11 @@ def generate_kvm_pod_configuration(node):
                 'shell': '/bin/rbash',
             }
         ]
-        # XXX: Use correct packages based on architecture.
-        yield "packages", ["qemu-kvm", "libvirt-bin"]
+        packages = ["qemu-kvm", "libvirt-bin"]
+        if node.architecture is not None:
+            architecture = node.architecture
+            if '/' in architecture:
+                architecture = architecture.split('/')[0]
+            if architecture == 'amd64':
+                packages.append('qemu-efi')
+        yield "packages", packages

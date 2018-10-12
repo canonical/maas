@@ -242,3 +242,11 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         virsh_password_meta = NodeMetadata.objects.filter(
             node=node, key="virsh_password").first()
         self.assertThat(virsh_password_meta.value, HasLength(32))
+
+    def test_includes_qemu_efi_for_install_kvm_on_amd64(self):
+        node = factory.make_Node(
+            osystem='ubuntu', netboot=False, architecture='amd64/generic')
+        node.install_kvm = True
+        configuration = get_vendor_data(node)
+        config = dict(configuration)
+        self.assertThat(config['packages'], Contains("qemu-efi"))
