@@ -209,6 +209,14 @@
                             <div class="p-form__group ng-hide" data-ng-show="tabs[tab].actionOption.name === 'deploy'">
                                 <div class="p-form__control u-clearfix">
                                     <div data-maas-os-select="osinfo" data-ng-model="tabs[tab].osSelection"></div>
+                                    <div class="row" data-ng-if="isSuperUser()">
+                                    <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
+                                        <li class="p-inline-list__item">
+                                            <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM"></input>
+                                            <label for="{$ tab $}-installKVM">Install MAAS-managed KVM Pod</label>
+                                        </li>
+                                    </ul>
+                                    </div>
                                 </div>
                                 <div data-ng-if="tabs[tab].actionOption.name === 'release'">
                                     <div data-maas-release-options="tabs[tab].releaseOptions"></div>

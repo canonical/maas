@@ -1057,7 +1057,29 @@ describe("NodeDetailsController", function() {
             expect(MachinesManager.performAction).toHaveBeenCalledWith(
                 node, "deploy", {
                     osystem: "ubuntu",
-                    distro_series: "trusty"
+                    distro_series: "trusty",
+                    install_kvm: false
+                });
+        });
+
+        it("calls performAction with install_kvm", function() {
+            var controller = makeController();
+            spyOn(MachinesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.action.option = {
+                name: "deploy"
+            };
+            $scope.osSelection.osystem = "debian";
+            $scope.osSelection.release = "etch";
+            $scope.deployOptions.installKVM = true;
+            $scope.actionGo();
+            // When deploying KVM, coerce the distro to ubuntu/bionic.
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
+                node, "deploy", {
+                    osystem: "ubuntu",
+                    distro_series: "bionic",
+                    install_kvm: true
                 });
         });
 
@@ -1077,7 +1099,8 @@ describe("NodeDetailsController", function() {
                 node, "deploy", {
                     osystem: "ubuntu",
                     distro_series: "xenial",
-                    hwe_kernel: "hwe-16.04-edge"
+                    hwe_kernel: "hwe-16.04-edge",
+                    install_kvm: false
                 });
         });
 
@@ -1097,7 +1120,8 @@ describe("NodeDetailsController", function() {
                 node, "deploy", {
                     osystem: "ubuntu",
                     distro_series: "xenial",
-                    hwe_kernel: "ga-16.04"
+                    hwe_kernel: "ga-16.04",
+                    install_kvm: false
                 });
         });
 

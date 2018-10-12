@@ -56,6 +56,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updateFirmware: false,
             configureHBA: false
         };
+        $scope.deployOptions = {
+            installKVM: false,
+        };
         $scope.commissioningSelection = [];
         $scope.testSelection = [];
         $scope.releaseOptions = {};
@@ -140,9 +143,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // id matching the node id. Otherwise we end up setting our
             // selected field to an option not from DomainsManager which
             // doesn't work.
-            var i;
-            for(i=0;i<$scope.header.domain.options.length;i++) {
-                var option = $scope.header.domain.options[i];
+            for(let i = 0 ; i < $scope.header.domain.options.length ; i++) {
+                let option = $scope.header.domain.options[i];
                 if(option.id === $scope.node.domain.id) {
                     $scope.header.domain.selected = option;
                     break;
@@ -155,7 +157,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(!angular.isObject($scope.node)) {
                 return;
             }
-            var actionTypeForNodeType = {
+            const actionTypeForNodeType = {
                 0: "machine_actions",
                 1: "device_actions",
                 2: "rack_controller_actions",
@@ -183,7 +185,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 // isn't called until after load as its triggered on the loaded
                 // node's actions. If the node's action list isn't loaded load
                 // it then update the available options.
-                var self = updateAvailableActionOptions;
                 GeneralManager.loadItems(
                     [actionTypeForNodeType[$scope.node.node_type]]).then(
                     updateAvailableActionOptions);
@@ -198,9 +199,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
 
-            var i;
             $scope.power.type = null;
-            for(i = 0; i < $scope.power_types.length; i++) {
+            for(let i = 0; i < $scope.power_types.length; i++) {
                 if($scope.node.power_type === $scope.power_types[i].name) {
                     $scope.power.type = $scope.power_types[i];
                     break;
@@ -572,8 +572,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Perform the action.
         $scope.actionGo = function() {
-            var extra = {};
-            var i;
+            let extra = {};
             // Set deploy parameters if a deploy.
             if($scope.action.option.name === "deploy" &&
                 angular.isString($scope.osSelection.osystem) &&
@@ -593,6 +592,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.osSelection.hwe_kernel.indexOf('ga-') >= 0)) {
                     extra.hwe_kernel = $scope.osSelection.hwe_kernel;
                 }
+                let installKVM = $scope.deployOptions.installKVM;
+                // KVM pod deployment required bionic.
+                if(installKVM) {
+                    extra.osystem = "ubuntu";
+                    extra.distro_series = "bionic";
+                }
+                extra.install_kvm = installKVM;
             } else if($scope.action.option.name === "commission") {
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
                 extra.skip_bmc_config = $scope.commissionOptions.skipBMCConfig;
@@ -600,7 +606,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.commissionOptions.skipNetworking);
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
                 extra.commissioning_scripts = [];
-                for(i=0;i<$scope.commissioningSelection.length;i++) {
+                for(let i = 0 ; i < $scope.commissioningSelection.length ; i++){
                     extra.commissioning_scripts.push(
                         $scope.commissioningSelection[i].id);
                 }
@@ -616,7 +622,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     extra.commissioning_scripts.push('none');
                 }
                 extra.testing_scripts = [];
-                for(i=0;i<$scope.testSelection.length;i++) {
+                for(let i=0 ; i < $scope.testSelection.length ; i++) {
                     extra.testing_scripts.push($scope.testSelection[i].id);
                 }
                 if(extra.testing_scripts.length === 0) {
@@ -632,7 +638,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 // Set the test options.
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
                 extra.testing_scripts = [];
-                for(i=0;i<$scope.testSelection.length;i++) {
+                for(let i = 0 ; i < $scope.testSelection.length ; i++) {
                     extra.testing_scripts.push($scope.testSelection[i].id);
                 }
                 if(extra.testing_scripts.length === 0) {
@@ -1097,7 +1103,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             } else {
                 return label + " @ " + ($scope.node.cpu_speed / 1000) + " Ghz";
             }
-        }
+        };
 
         // Reload osinfo when the page reloads
         $scope.$on("$routeUpdate", function () {

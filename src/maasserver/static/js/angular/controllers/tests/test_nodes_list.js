@@ -1576,7 +1576,32 @@ describe("NodesListController", function() {
                     expect(spy).toHaveBeenCalledWith(
                         object, "deploy", {
                             osystem: "ubuntu",
-                            distro_series: "trusty"
+                            distro_series: "trusty",
+                            install_kvm: false
+                        });
+            });
+
+            it("calls performAction with install_kvm",
+                function() {
+                    var controller = makeController();
+                    var object = makeObject("machines");
+                    var spy = spyOn(
+                        $scope.tabs.machines.manager,
+                        "performAction").and.returnValue(
+                        $q.defer().promise);
+                    $scope.tabs.machines.actionOption = {name: "deploy"};
+                    $scope.tabs.machines.selectedItems = [object];
+                    $scope.tabs.machines.osSelection.osystem = "debian";
+                    $scope.tabs.machines.osSelection.release = "etch";
+                    $scope.tabs.machines.deployOptions.installKVM = true;
+                    $scope.actionGo("machines");
+                    $scope.$digest();
+                    // When deploying KVM, coerce the distro to ubuntu/bionic.
+                    expect(spy).toHaveBeenCalledWith(
+                        object, "deploy", {
+                            osystem: "ubuntu",
+                            distro_series: "bionic",
+                            install_kvm: true
                         });
             });
 

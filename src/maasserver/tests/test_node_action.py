@@ -694,6 +694,62 @@ class TestDeployAction(MAASServerTestCase):
         self.expectThat(
             node.distro_series, Equals(release_name))
 
+    def test_Deploy_sets_install_kvm_and_osystem_series_if_specified(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = user
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.ALLOCATED,
+            power_type='manual', owner=user)
+        mock_get_curtin_config = self.patch(
+            node_action_module, 'get_curtin_config')
+        mock_node_start = self.patch(node, 'start')
+        mock_validate_os = self.patch(
+            node_action_module, 'validate_osystem_and_distro_series')
+        mock_validate_os.side_effect = lambda os, release: (os, release)
+        mock_validate_hwe = self.patch(
+            node_action_module, 'validate_hwe_kernel')
+        mock_validate_hwe.side_effect = lambda *args, **kwargs: args[0]
+        extra = {
+            "install_kvm": True
+        }
+        Deploy(node, user, request).execute(**extra)
+        self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
+        self.expectThat(mock_node_start, MockCalledOnceWith(user))
+        # Make sure ubuntu/bionic is selected if KVM pod deployment has been
+        # selected.
+        self.expectThat(node.osystem, Equals("ubuntu"))
+        self.expectThat(node.distro_series, Equals("bionic"))
+        self.expectThat(node.install_kvm, Equals(True))
+
+    def test_Deploy_raises_NodeActionError_on_install_kvm_if_os_missing(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request('/')
+        request.user = user
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.ALLOCATED,
+            power_type='manual', owner=user)
+        self.patch(node, 'start')
+        extra = {
+            "install_kvm": True
+        }
+        self.assertRaises(
+            NodeActionError, Deploy(node, user, request).execute, **extra)
+
+    def test_Deploy_raises_NodeActionError_if_non_admin_install_kvm(self):
+        user = factory.make_User()
+        request = factory.make_fake_request('/')
+        request.user = user
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.ALLOCATED,
+            power_type='manual', owner=user)
+        self.patch(node, 'start')
+        extra = {
+            "install_kvm": True
+        }
+        self.assertRaises(
+            NodeActionError, Deploy(node, user, request).execute, **extra)
+
     def test_Deploy_sets_osystem_and_series_strips_license_key_token(self):
         user = factory.make_User()
         request = factory.make_fake_request('/')

@@ -456,23 +456,43 @@ class Deploy(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % action.node.hostname
 
-    def _execute(self, osystem=None, distro_series=None, hwe_kernel=None):
+    def _execute(
+            self, osystem=None, distro_series=None, hwe_kernel=None,
+            install_kvm=False):
         """See `NodeAction.execute`."""
+        if install_kvm:
+            if not self.user.is_superuser:
+                raise NodeActionError(
+                    "You must be a MAAS administrator to deploy a machine "
+                    "as a MAAS-managed KVM Pod.")
         if self.node.owner is None:
             with locks.node_acquire:
                 try:
                     self.node.acquire(self.user, token=None)
                 except ValidationError as e:
                     raise NodeActionError(e)
-
-        if osystem and distro_series:
+        if install_kvm:
+            try:
+                # KVM Pod installation should default to ubuntu/bionic, since
+                # that was the release it was tested on.
+                if osystem is None:
+                    osystem = 'ubuntu'
+                if distro_series is None:
+                    distro_series = 'bionic'
+                self.node.osystem, self.node.distro_series = (
+                    validate_osystem_and_distro_series(osystem, distro_series)
+                )
+                self.node.install_kvm = True
+                self.node.save()
+            except ValidationError as e:
+                raise NodeActionError(e)
+        elif osystem and distro_series:
             try:
                 self.node.osystem, self.node.distro_series = (
                     validate_osystem_and_distro_series(osystem, distro_series))
                 self.node.save()
             except ValidationError as e:
                 raise NodeActionError(e)
-
         try:
             self.node.hwe_kernel = validate_hwe_kernel(
                 hwe_kernel, self.node.min_hwe_kernel,

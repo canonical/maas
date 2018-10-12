@@ -93,6 +93,9 @@ angular.module('MAAS').controller('NodesListController', [
             updateFirmware: false,
             configureHBA: false
         };
+        $scope.tabs.machines.deployOptions = {
+            installKVM: false
+        };
         $scope.tabs.machines.releaseOptions = {};
         $scope.tabs.machines.commissioningSelection = [];
         $scope.tabs.machines.testSelection = [];
@@ -153,7 +156,7 @@ angular.module('MAAS').controller('NodesListController', [
             $scope.toggleTab('machines');
             // update the location URL otherwise to match the tab
             $location.path('/machines');
-        }
+        };
         $scope.tabs.pools.isDefaultPool = function(pool) {
             return pool.id === 0;
         };
@@ -266,6 +269,9 @@ angular.module('MAAS').controller('NodesListController', [
             updateFirmware: false,
             configureHBA: false
         };
+        $scope.tabs.switches.deployOptions = {
+            installKVM: false
+        };
         $scope.tabs.switches.releaseOptions = {};
 
 
@@ -359,6 +365,7 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].commissionOptions.skipStorage = false;
                 $scope.tabs[tab].commissionOptions.updateFirmware = false;
                 $scope.tabs[tab].commissionOptions.configureHBA = false;
+                $scope.tabs[tab].deployOptions.installKVM = false;
             }
             $scope.tabs[tab].commissioningSelection = [];
             $scope.tabs[tab].testSelection = [];
@@ -721,6 +728,13 @@ angular.module('MAAS').controller('NodesListController', [
                     tab.osSelection.hwe_kernel.indexOf('ga-') >= 0)) {
                     extra.hwe_kernel = tab.osSelection.hwe_kernel;
                 }
+                let installKVM = tab.deployOptions.installKVM;
+                // KVM pod deployment requires bionic.
+                if(installKVM) {
+                    extra.osystem = "ubuntu";
+                    extra.distro_series = "bionic";
+                }
+                extra.install_kvm = installKVM;
             } else if(tab.actionOption.name === "set-zone" &&
                 angular.isNumber(tab.zoneSelection.id)) {
                 // Set the zone parameter.
