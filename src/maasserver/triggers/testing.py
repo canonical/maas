@@ -262,6 +262,17 @@ class TransactionalHelpersMixin:
         return factory.make_Pod(**params)
 
     @transactional
+    def create_pod_with_host(self, params=None):
+        if params is None:
+            params = {}
+        subnet = factory.make_Subnet()
+        machine = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
+        ip = factory.make_StaticIPAddress(
+            subnet=subnet, interface=machine.boot_interface)
+        pod = factory.make_Pod(ip_address=ip, **params)
+        return pod, machine
+
+    @transactional
     def update_pod(self, id, params, **kwargs):
         return apply_update_to_model(Pod, id, params, **kwargs)
 

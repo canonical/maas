@@ -161,6 +161,7 @@ class TestTriggersUsed(MAASServerTestCase):
         "filesystemgroup_nd_filesystemgroup_link_notify",
         "filesystemgroup_nd_filesystemgroup_unlink_notify",
         "filesystemgroup_nd_filesystemgroup_update_notify",
+        "interface_interface_pod_notify",
         "interface_ip_addresses_nd_sipaddress_dns_link_notify",
         "interface_ip_addresses_nd_sipaddress_dns_unlink_notify",
         "interface_ip_addresses_nd_sipaddress_link_notify",

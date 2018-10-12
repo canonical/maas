@@ -3949,6 +3949,94 @@ class TestPodListener(
         finally:
             yield listener.stopService()
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_related_interface(self):
+        pod, host = yield deferToDatabase(
+            self.create_pod_with_host, {"name": factory.make_name('pod')})
+        yield deferToDatabase(register_websocket_triggers)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(lambda: factory.make_Interface(node=host))
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_related_interface(self):
+        pod, host = yield deferToDatabase(
+            self.create_pod_with_host, {"name": factory.make_name('pod')})
+        yield deferToDatabase(register_websocket_triggers)
+        interface = yield deferToDatabase(
+            lambda: factory.make_Interface(node=host))
+
+        def _change_vlan(interface):
+            vlan2 = factory.make_VLAN()
+            interface.vlan = vlan2
+            interface.save()
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(_change_vlan, interface)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_interface_move(self):
+        pod, host = yield deferToDatabase(
+            self.create_pod_with_host, {"name": factory.make_name('pod')})
+        yield deferToDatabase(register_websocket_triggers)
+        interface = yield deferToDatabase(
+            lambda: factory.make_Interface(node=host))
+
+        def _change_interface_node(interface):
+            node2 = factory.make_Node()
+            interface.node = node2
+            interface.save()
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(_change_interface_node, interface)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_interface_delete(self):
+        pod, host = yield deferToDatabase(
+            self.create_pod_with_host, {"name": factory.make_name('pod')})
+        yield deferToDatabase(register_websocket_triggers)
+        interface = yield deferToDatabase(
+            lambda: factory.make_Interface(node=host))
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(interface.delete)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
 
 class TestNodePodListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):

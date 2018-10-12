@@ -143,22 +143,20 @@ def register_trigger(
     is_update = (event == "update")
     when_clause = _make_when_clause(is_update, params, fields)
     trigger_sql = dedent("""\
-        DROP TRIGGER IF EXISTS %s ON %s;
-        CREATE TRIGGER %s
-        %s %s ON %s
+        DROP TRIGGER IF EXISTS {trigger_name} ON {table};
+        CREATE TRIGGER {trigger_name}
+        {when} {event} ON {table}
         FOR EACH ROW
-        %s
-        EXECUTE PROCEDURE %s();
-        """) % (
-        trigger_name,
-        table,
-        trigger_name,
-        when.upper(),
-        event.upper(),
-        table,
-        when_clause,
-        procedure,
-        )
+        {when_clause}
+        EXECUTE PROCEDURE {procedure}();
+        """)
+    trigger_sql = trigger_sql.format(
+        trigger_name=trigger_name,
+        table=table,
+        when=when.upper(),
+        event=event.upper(),
+        when_clause=when_clause,
+        procedure=procedure)
     with closing(connection.cursor()) as cursor:
         cursor.execute(trigger_sql)
 

@@ -217,6 +217,46 @@ NODE_POD_DELETE_NOTIFY = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
+INTERFACE_POD_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS TRIGGER AS $$
+    DECLARE
+        _pod_id integer;
+    BEGIN
+        IF TG_OP = 'INSERT' then
+            SELECT INTO _pod_id pod_id FROM maasserver_podhost
+                WHERE NEW.node_id = node_id;
+            IF _pod_id IS NOT NULL then
+                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+             END IF;
+        ELSIF TG_OP = 'UPDATE' then
+            IF OLD.vlan_id IS NOT DISTINCT FROM NEW.vlan_id
+                AND OLD.node_id IS NOT DISTINCT FROM NEW.node_id then
+                -- Nothing relevant changed during interface update.
+                RETURN NULL;
+            END IF;
+            SELECT INTO _pod_id pod_id FROM maasserver_podhost
+                WHERE NEW.node_id = node_id;
+            IF _pod_id IS NOT NULL then
+                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+             END IF;
+            IF OLD.node_id != NEW.node_id then
+                SELECT INTO _pod_id pod_id FROM maasserver_podhost
+                    WHERE OLD.node_id = node_id;
+                IF _pod_id IS NOT NULL then
+                    PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+                END IF;
+            END IF;
+        ELSE
+            SELECT INTO _pod_id pod_id FROM maasserver_podhost
+                WHERE OLD.node_id = node_id;
+            IF _pod_id IS NOT NULL then
+                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+             END IF;
+        END IF;
+        RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
 
 # Procedure that is called when a static ip address is linked or unlinked to
 # an Interface. Sends a notify message for domain_update
@@ -1530,6 +1570,11 @@ def register_websocket_triggers():
         NODE_POD_DELETE_NOTIFY % ('node_pod_delete_notify', BMC_TYPE.POD))
     register_triggers(
         "maasserver_node", "node_pod", events=EVENTS_IUD, fields=node_fields)
+    register_procedure(
+        INTERFACE_POD_NOTIFY % 'interface_pod_notify')
+    register_trigger(
+        "maasserver_interface", "interface_pod_notify",
+        "INSERT OR UPDATE OR DELETE")
 
     # DNSData table
     register_procedure(

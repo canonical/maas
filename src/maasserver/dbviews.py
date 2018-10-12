@@ -154,6 +154,29 @@ maasserver_routable_pairs = dedent("""\
        AND family(sip_left.ip) = family(sip_right.ip)
     """)
 
+# Relationship between nodes and pods they host.
+maasserver_podhost = dedent("""\
+    SELECT
+            pod.id::bigint << 32 | node.id AS id,
+            node.id AS node_id,
+            node.system_id as system_id,
+            node.hostname as hostname,
+            pod.id AS pod_id,
+            pod.name AS pod_name,
+            pod.power_type,
+            if.id AS interface_id,
+            if.name AS interface_name,
+            ip.id AS staticipaddress_id,
+            ip.ip
+        FROM maasserver_bmc pod
+        LEFT OUTER JOIN maasserver_staticipaddress ip
+            ON pod.ip_address_id = ip.id AND pod.bmc_type = 1
+        LEFT OUTER JOIN maasserver_interface_ip_addresses ifip
+             ON ifip.staticipaddress_id = ip.id
+        LEFT OUTER JOIN maasserver_interface if ON if.id = ifip.interface_id
+        LEFT OUTER JOIN maasserver_node node ON node.id = if.node_id
+""")
+
 # Views that are helpful for supporting MAAS.
 # These can be batch-run using the maas-region-support-dump script.
 maas_support__node_overview = dedent("""\
@@ -319,6 +342,7 @@ maas_support__ssh_keys__by_user = dedent("""\
 _ALL_VIEWS = {
     "maasserver_discovery": maasserver_discovery,
     "maasserver_routable_pairs": maasserver_routable_pairs,
+    "maasserver_podhost": maasserver_podhost,
     "maas_support__node_overview": maas_support__node_overview,
     "maas_support__device_overview": maas_support__device_overview,
     "maas_support__node_networking": maas_support__node_networking,
