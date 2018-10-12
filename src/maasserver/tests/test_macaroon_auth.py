@@ -20,13 +20,16 @@ from maasserver.macaroon_auth import (
     _IDClient,
     APIError,
     CandidClient,
-    IDM_USER_CHECK_INTERVAL,
+    EXTERNAL_USER_CHECK_INTERVAL,
     KeyStore,
     MacaroonAPIAuthentication,
     MacaroonAuthorizationBackend,
     validate_user_external_auth,
 )
-from maasserver.middleware import ExternalAuthInfoMiddleware
+from maasserver.middleware import (
+    ExternalAuthInfo,
+    ExternalAuthInfoMiddleware,
+)
 from maasserver.models import (
     Config,
     RootKey,
@@ -104,7 +107,7 @@ class TestCandidClient(MAASServerTestCase):
         self.assertRaises(APIError, client.get_groups, 'foo')
 
 
-class TestValidateUserExternalAuth(MAASServerTestCase):
+class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
@@ -113,16 +116,20 @@ class TestValidateUserExternalAuth(MAASServerTestCase):
         self.now = datetime.utcnow()
         # by default, the user has to be checked again
         self.default_last_check = (
-            self.now - IDM_USER_CHECK_INTERVAL - timedelta(minutes=10))
+            self.now - EXTERNAL_USER_CHECK_INTERVAL - timedelta(minutes=10))
         self.user.userprofile.auth_last_check = self.default_last_check
         self.user.userprofile.save()
+        self.auth_info = ExternalAuthInfo(
+            type='candid', url='http://example.com', domain='example.com',
+            admin_group='admins')
 
     def test_interval_not_expired(self):
         last_check = self.now - timedelta(minutes=10)
         self.user.userprofile.auth_last_check = last_check
         self.user.userprofile.save()
         valid = validate_user_external_auth(
-            self.user, now=lambda: self.now, client=self.client)
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
         self.assertTrue(valid)
         # user is not checked again, last check time is not updated
         self.client.get_groups.assert_not_called()
@@ -132,7 +139,22 @@ class TestValidateUserExternalAuth(MAASServerTestCase):
         # user exists, so group info is returned
         self.client.get_groups.return_value = ['group1', 'group2']
         valid = validate_user_external_auth(
-            self.user, now=lambda: self.now, client=self.client)
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
+        self.assertTrue(valid)
+        # user is checked again, last check time is updated
+        self.client.get_groups.assert_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
+        # user is still enabled
+        self.assertTrue(self.user.is_active)
+        self.assertFalse(self.user.is_superuser)
+
+    def test_valid_user_check_admin(self):
+        # user exists, so group info is returned
+        self.client.get_groups.return_value = ['group1', 'group2', 'admins']
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
         self.assertTrue(valid)
         # user is checked again, last check time is updated
         self.client.get_groups.assert_called()
@@ -144,45 +166,152 @@ class TestValidateUserExternalAuth(MAASServerTestCase):
     def test_system_user_valid_no_check(self):
         client = mock.MagicMock()
         self.assertTrue(
-            validate_user_external_auth(get_worker_user(), client=client))
+            validate_user_external_auth(
+                get_worker_user(), self.auth_info, candid_client=client))
         self.assertTrue(
-            validate_user_external_auth(get_node_init_user(), client=client))
+            validate_user_external_auth(
+                get_node_init_user(), self.auth_info, candid_client=client))
         client.get_groups.assert_not_called()
 
     def test_valid_inactive_user_is_active(self):
         self.user.is_active = False
         self.client.get_groups.return_value = ['group1', 'group2']
         valid = validate_user_external_auth(
-            self.user, now=lambda: self.now, client=self.client)
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
         self.assertTrue(valid)
         self.assertTrue(self.user.is_active)
 
     def test_invalid_user_check(self):
         self.client.get_groups.side_effect = APIError(404, 'user not found')
         valid = validate_user_external_auth(
-            self.user, now=lambda: self.now, client=self.client)
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
         self.assertFalse(valid)
         # user is checked again, last check time is updated
         self.client.get_groups.assert_called()
         self.assertEqual(self.user.userprofile.auth_last_check, self.now)
-        # user is disabled
-        self.assertFalse(self.user.is_active)
+        # user is still enabled
+        self.assertTrue(self.user.is_active)
 
     def test_user_in_admin_group(self):
-        self.client.get_groups.return_value = ['group1', 'group2']
+        self.client.get_groups.return_value = ['group1', 'group2', 'admins']
         valid = validate_user_external_auth(
-            self.user, admin_group='group2', now=lambda: self.now,
-            client=self.client)
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
         self.assertTrue(valid)
         self.assertTrue(self.user.is_superuser)
 
     def test_user_not_in_admin_group(self):
         self.client.get_groups.return_value = ['group1', 'group2']
         valid = validate_user_external_auth(
-            self.user, admin_group='admins', now=lambda: self.now,
-            client=self.client)
+            self.user, self.auth_info, now=lambda: self.now,
+            candid_client=self.client)
         self.assertTrue(valid)
         self.assertFalse(self.user.is_superuser)
+
+
+class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.client = mock.Mock()
+        self.user = factory.make_User()
+        self.now = datetime.utcnow()
+        # by default, the user has to be checked again
+        self.default_last_check = (
+            self.now - EXTERNAL_USER_CHECK_INTERVAL - timedelta(minutes=10))
+        self.user.userprofile.auth_last_check = self.default_last_check
+        self.user.userprofile.save()
+        self.auth_info = ExternalAuthInfo(
+            type='rbac', url='http://example.com')
+
+    def test_interval_not_expired(self):
+        last_check = self.now - timedelta(minutes=10)
+        self.user.userprofile.auth_last_check = last_check
+        self.user.userprofile.save()
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertTrue(valid)
+        # user is not checked again, last check time is not updated
+        self.client.get_resources.assert_not_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, last_check)
+
+    def test_valid_user_check_has_pools_access(self):
+        # not an admin, but has permission on pools
+        self.client.allowed_for_user.side_effect = [[], ['pool1', 'pool2']]
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertTrue(valid)
+        self.assertTrue(self.user.is_active)
+        self.assertFalse(self.user.is_superuser)
+
+    def test_valid_user_check_has_admin_access(self):
+        # not an admin, but has permission on pools
+        self.client.allowed_for_user.side_effect = [[''], []]
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertTrue(valid)
+        self.assertTrue(self.user.is_active)
+        self.assertTrue(self.user.is_superuser)
+
+    def test_valid_user_no_permission(self):
+        # user has no permission on resources
+        self.client.allowed_for_user.return_value = []
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertFalse(valid)
+        self.client.allowed_for_user.assert_called()
+        # user is disabled
+        self.assertFalse(self.user.is_active)
+        self.assertFalse(self.user.is_superuser)
+
+    def test_system_user_valid_no_check(self):
+        self.assertTrue(
+            validate_user_external_auth(
+                get_worker_user(), self.auth_info, rbac_client=self.client))
+        self.assertTrue(
+            validate_user_external_auth(
+                get_node_init_user(), self.auth_info, rbac_client=self.client))
+        self.client.allowed_for_user.assert_not_called()
+
+    def test_valid_inactive_user_is_active(self):
+        self.user.is_active = False
+        self.client.allowed_for_user.side_effect = [[], ['pool1', 'pool2']]
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertTrue(valid)
+        self.assertTrue(self.user.is_active)
+
+    def test_failed_admin_permission_check(self):
+        self.client.allowed_for_user.side_effect = [
+            APIError(500, 'fail!'), ['pool1']]
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertFalse(valid)
+        # user is checked again, last check time is updated
+        self.client.allowed_for_user.assert_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
+        # user is still enabled
+        self.assertTrue(self.user.is_active)
+
+    def test_failed_pools_permission_check(self):
+        self.client.allowed_for_user.side_effect = [[], APIError(500, 'fail!')]
+        valid = validate_user_external_auth(
+            self.user, self.auth_info, now=lambda: self.now,
+            rbac_client=self.client)
+        self.assertFalse(valid)
+        # user is checked again, last check time is updated
+        self.client.allowed_for_user.assert_called()
+        self.assertEqual(self.user.userprofile.auth_last_check, self.now)
+        # user is still enabled
+        self.assertTrue(self.user.is_active)
 
 
 class MacaroonBakeryMockMixin:
@@ -267,7 +396,11 @@ class TestMacaroonAPIAuthentication(MAASServerTestCase,
         self.assertIsNotNone(user.id)
         self.assertFalse(user.is_superuser)
         self.assertFalse(user.userprofile.is_local)
-        self.mock_validate.assert_called_with(user, admin_group='admins')
+        self.mock_validate.assert_called_with(
+            user,
+            ExternalAuthInfo(
+                type='candid', url='https://auth.example.com',
+                domain='', admin_group='admins'))
 
     def test_is_authenticated_user_exists_but_local(self):
         user = factory.make_User()
@@ -340,7 +473,11 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         self.assertEqual(user.username, username)
         self.assertFalse(user.is_superuser)
         self.assertFalse(user.userprofile.is_local)
-        self.mock_validate.assert_called_with(user, admin_group='admins')
+        self.mock_validate.assert_called_with(
+            user,
+            ExternalAuthInfo(
+                type='candid', url='https://auth.example.com',
+                domain='', admin_group='admins'))
 
     def test_authenticate_deactived_user_activate(self):
         user = factory.make_User()
@@ -374,7 +511,11 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         identity = SimpleIdentity(user=user.username)
         self.assertIsNone(
             self.backend.authenticate(self.get_request(), identity=identity))
-        self.mock_validate.assert_called_with(user, admin_group='admins')
+        self.mock_validate.assert_called_with(
+            user,
+            ExternalAuthInfo(
+                type='candid', url='https://auth.example.com',
+                domain='', admin_group='admins'))
 
 
 class TestMacaroonOvenKey(MAASServerTestCase):
@@ -542,6 +683,13 @@ class TestMacaroonDischargeRequest(MAASServerTestCase,
             response.json(), {
                 'id': user.id, 'username': user.username,
                 'is_superuser': user.is_superuser})
+
+    def test_user_not_allowed(self):
+        self.mock_validate.return_value = False
+        self.mock_auth_info(username='user')
+        response = self.client.get('/accounts/discharge-request/')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.content, b'User login not allowed')
 
 
 class TestGetAuthenticationCaveat(TestCase):

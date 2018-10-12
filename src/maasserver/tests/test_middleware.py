@@ -645,20 +645,46 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         self.process_request(request)
         self.assertIsNone(request.external_auth_info)
 
-    def test_with_external_auth(self):
+    def test_with_external_auth_candid(self):
         Config.objects.set_config('external_auth_url', 'https://example.com')
         Config.objects.set_config('external_auth_domain', 'ldap')
+        Config.objects.set_config('external_auth_admin_group', 'admins')
         request = factory.make_fake_request('/')
         self.process_request(request)
-        self.assertEqual(request.external_auth_info.type, 'macaroon')
+        self.assertEqual(request.external_auth_info.type, 'candid')
         self.assertEqual(
             request.external_auth_info.url, 'https://example.com')
         self.assertEqual(request.external_auth_info.domain, 'ldap')
+        self.assertEqual(request.external_auth_info.admin_group, 'admins')
+
+    def test_with_external_auth_rbac(self):
+        Config.objects.set_config('rbac_url', 'https://rbac.example.com')
+        request = factory.make_fake_request('/')
+        self.process_request(request)
+        self.assertEqual(request.external_auth_info.type, 'rbac')
+        self.assertEqual(
+            request.external_auth_info.url, 'https://rbac.example.com/auth')
+        self.assertEqual(request.external_auth_info.domain, '')
+        self.assertEqual(request.external_auth_info.admin_group, '')
+
+    def test_with_external_auth_rbac_ignore_candid_settings(self):
+        Config.objects.set_config('rbac_url', 'https://rbac.example.com')
+        Config.objects.set_config(
+            'external_auth_url', 'https://candid.example.com')
+        Config.objects.set_config('external_auth_domain', 'example.com')
+        Config.objects.set_config('external_auth_admin_group', 'admins')
+        request = factory.make_fake_request('/')
+        self.process_request(request)
+        self.assertEqual(request.external_auth_info.type, 'rbac')
+        self.assertEqual(
+            request.external_auth_info.url, 'https://rbac.example.com/auth')
+        self.assertEqual(request.external_auth_info.domain, '')
+        self.assertEqual(request.external_auth_info.admin_group, '')
 
     def test_with_external_auth_strip_trailing_slash(self):
         Config.objects.set_config('external_auth_url', 'https://example.com/')
         request = factory.make_fake_request('/')
         self.process_request(request)
-        self.assertEqual(request.external_auth_info.type, 'macaroon')
+        self.assertEqual(request.external_auth_info.type, 'candid')
         self.assertEqual(
             request.external_auth_info.url, 'https://example.com')

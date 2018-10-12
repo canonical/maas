@@ -1,12 +1,13 @@
 from unittest import mock
 
+from maasserver.models import Config
 from maasserver.rbac import (
     ALL_RESOURCES,
     RBACClient,
     Resource,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from macaroonbakery.bakery import PrivateKey
 from macaroonbakery.httpbakery.agent import (
@@ -16,7 +17,7 @@ from macaroonbakery.httpbakery.agent import (
 import requests
 
 
-class TestRBACClient(MAASTestCase):
+class TestRBACClient(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
@@ -29,6 +30,24 @@ class TestRBACClient(MAASTestCase):
 
         self.mock_request = self.patch(requests, 'request')
         self.client = RBACClient(url=url, auth_info=auth_info)
+
+    def test_default_config_from_settings(self):
+        Config.objects.set_config('rbac_url', 'https://rbac.example.com')
+        Config.objects.set_config(
+            'external_auth_url', 'https://auth.example.com')
+        Config.objects.set_config('external_auth_user', 'user@candid')
+        Config.objects.set_config(
+            'external_auth_key',
+            'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
+        client = RBACClient()
+        self.assertEqual(client._url, 'https://rbac.example.com')
+        self.assertEqual(
+            client._auth_info.key,
+            PrivateKey.deserialize(
+                'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY='))
+        [agent] = client._auth_info.agents
+        self.assertEqual(agent.url, 'https://auth.example.com')
+        self.assertEqual(agent.username, 'user@candid')
 
     def test_get_resources(self):
         resources = [

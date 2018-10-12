@@ -1,2 +1,6 @@
 pyvmomi==6.0.0.2016.6
 git+https://github.com/Supervisor/supervisor@master#egg=supervisor
+# XXX this is currently needed for RBAC, should be dropped (and
+# python3-macaroonbakery added back to snapcraft.yaml) once it's updated in
+# bionic
+macaroonbakery==1.2.0

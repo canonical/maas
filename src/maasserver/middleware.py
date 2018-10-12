@@ -8,7 +8,6 @@ __all__ = [
     "ExceptionMiddleware",
     ]
 
-from collections import namedtuple
 import http.client
 import json
 import logging
@@ -16,6 +15,7 @@ from pprint import pformat
 import sys
 import traceback
 
+import attr
 from crochet import TimeoutError
 from django.conf import settings
 from django.contrib import messages
@@ -442,9 +442,14 @@ class CSRFHelperMiddleware:
         return self.get_response(request)
 
 
-# Hold information about external authentication type and configuration
-ExternalAuthInfo = namedtuple(
-    'ExternalAuthInfo', ('type', 'url', 'domain', 'admin_group'))
+@attr.s
+class ExternalAuthInfo:
+    """Hold information about external authentication."""
+
+    type = attr.ib()
+    url = attr.ib()
+    domain = attr.ib(default='')
+    admin_group = attr.ib(default='')
 
 
 class ExternalAuthInfoMiddleware:
@@ -462,16 +467,25 @@ class ExternalAuthInfoMiddleware:
     def __call__(self, request):
         configs = Config.objects.get_configs(
             ['external_auth_url', 'external_auth_domain',
-             'external_auth_admin_group'])
-        auth_endpoint = configs.get('external_auth_url')
-        auth_domain = configs.get('external_auth_domain')
-        auth_admin_group = configs.get('external_auth_admin_group')
+             'external_auth_admin_group', 'rbac_url'])
+        rbac_endpoint = configs.get('rbac_url')
+        candid_endpoint = configs.get('external_auth_url')
+        auth_endpoint, auth_domain, auth_admin_group = '', '', ''
+        if rbac_endpoint:
+            auth_type = 'rbac'
+            auth_endpoint = rbac_endpoint + '/auth'
+        elif candid_endpoint:
+            auth_type = 'candid'
+            auth_endpoint = candid_endpoint
+            auth_domain = configs.get('external_auth_domain')
+            auth_admin_group = configs.get('external_auth_admin_group')
+
         auth_info = None
         if auth_endpoint:
             # strip trailing slashes as js-bakery ends up using double slashes
             # in the URL otherwise
             auth_info = ExternalAuthInfo(
-                type='macaroon', url=auth_endpoint.rstrip('/'),
+                type=auth_type, url=auth_endpoint.rstrip('/'),
                 domain=auth_domain, admin_group=auth_admin_group)
         request.external_auth_info = auth_info
         return self.get_response(request)

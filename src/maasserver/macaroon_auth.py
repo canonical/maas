@@ -51,7 +51,7 @@ import requests
 
 MACAROON_LIFESPAN = timedelta(days=1)
 
-IDM_USER_CHECK_INTERVAL = timedelta(hours=1)
+EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
 
 
 class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
@@ -77,8 +77,7 @@ class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
             user.is_active = True
             user.save()
 
-        if not validate_user_external_auth(
-                user, admin_group=external_auth_info.admin_group):
+        if not validate_user_external_auth(user, external_auth_info):
             return
 
         return user
@@ -113,8 +112,7 @@ class MacaroonAPIAuthentication:
             user = User(username=username)
             user.save()
 
-        if not validate_user_external_auth(
-                user, admin_group=request.external_auth_info.admin_group):
+        if not validate_user_external_auth(user, request.external_auth_info):
             return False
 
         request.user = user
@@ -157,9 +155,12 @@ class MacaroonDischargeRequest:
         except bakery.PermissionDenied:
             return HttpResponseForbidden()
 
-        # a user is always returned since the authentication middleware creates
-        # one if not found
         user = authenticate(request, identity=auth_info.identity)
+        if user is None:
+            # macaroon authentication can return None if the user exists but
+            # doesn't have permission to log in
+            return HttpResponseForbidden('User login not allowed')
+
         login(
             request, user,
             backend='maasserver.macaroon_auth.MacaroonAuthorizationBackend')
@@ -279,7 +280,7 @@ class MacaroonClient:
 
 
 class CandidClient(MacaroonClient):
-    """A client for IDM agent API."""
+    """A client for Candid agent API."""
 
     def __init__(self, auth_info=None):
         if auth_info is None:
@@ -293,13 +294,17 @@ class CandidClient(MacaroonClient):
         return self._request('GET', url)
 
 
-def validate_user_external_auth(user, admin_group=None, now=datetime.utcnow,
-                                client=None):
-    """Check if a user is authenticated on IDM.
+class UserValidationFailed(Exception):
+    """External user validation failed."""
 
-    If the IDM_USER_CHECK_INTERVAL has passed since the last check, the user is
-    checked again.
-    Its is_active status is changed based on the result of the check.
+
+def validate_user_external_auth(user, auth_info, now=datetime.utcnow,
+                                candid_client=None, rbac_client=None):
+    """Check if a user is authenticated with external auth.
+
+    If the EXTERNAL_USER_CHECK_INTERVAL has passed since the last check, the
+    user is checked again.  Its is_active status is changed based on the result
+    of the check.
 
     """
     if user.username in SYSTEM_USERS:
@@ -310,33 +315,68 @@ def validate_user_external_auth(user, admin_group=None, now=datetime.utcnow,
     profile = user.userprofile
     no_check = (
         profile.auth_last_check and
-        profile.auth_last_check + IDM_USER_CHECK_INTERVAL > now)
+        profile.auth_last_check + EXTERNAL_USER_CHECK_INTERVAL > now)
     if no_check:
         return True
-
-    if client is None:
-        client = CandidClient()
 
     profile.auth_last_check = now
     profile.save()
 
-    active = True
+    active, superuser = False, False
     try:
-        groups = client.get_groups(user.username)
-    except APIError as error:
-        active = False
-        groups = ()
+        if auth_info.type == 'candid':
+            active, superuser = _validate_user_candid(
+                auth_info, user.username, client=candid_client)
+        elif auth_info.type == 'rbac':
+            active, superuser = _validate_user_rbac(
+                auth_info, user.username, client=rbac_client)
+    except UserValidationFailed:
+        return False
 
     if active ^ user.is_active:
         user.is_active = active
-    if admin_group:
-        user.is_superuser = admin_group in groups
-    else:
-        # if no admin group is specified, all users are admins
-        user.is_superuser = True
-
+    user.is_superuser = superuser
     user.save()
     return active
+
+
+def _validate_user_candid(auth_info, username, client=None):
+    """Check if a user is active and/or superuser via Candid."""
+    if client is None:
+        client = CandidClient()
+
+    try:
+        groups = client.get_groups(username)
+    except APIError:
+        raise UserValidationFailed()
+
+    if auth_info.admin_group:
+        superuser = auth_info.admin_group in groups
+    else:
+        # if no admin group is specified, all users are admins
+        superuser = True
+    return True, superuser
+
+
+def _validate_user_rbac(auth_info, username, client=None):
+    """Check if a user is active and/or superuser via RBAC."""
+    if client is None:
+        from maasserver.rbac import RBACClient
+        client = RBACClient()
+
+    try:
+        admin_resource = client.allowed_for_user(
+            'maas', username, 'admin')
+        pool_resources = client.allowed_for_user(
+            'maas', username, 'resource-pool')
+    except APIError:
+        raise UserValidationFailed()
+
+    # and is active if it has access to any resource
+    active = any([admin_resource, pool_resources])
+    # and is superuser if the admin resource is returned
+    superuser = bool(admin_resource)
+    return active, superuser
 
 
 class _IDClient(bakery.IdentityClient):

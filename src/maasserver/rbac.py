@@ -7,8 +7,10 @@ from urllib.parse import quote
 import attr
 from maasserver.macaroon_auth import (
     AuthInfo,
+    get_auth_info,
     MacaroonClient,
 )
+from maasserver.models import Config
 
 
 @attr.s
@@ -32,13 +34,19 @@ ALL_RESOURCES = AllResourcesType()
 class RBACClient(MacaroonClient):
     """A client for RBAC API."""
 
-    def __init__(self, url: str, auth_info: AuthInfo):
+    API_BASE_URL = '/api/service/1.0/resources'
+
+    def __init__(self, url: str=None, auth_info: AuthInfo=None):
+        if url is None:
+            url = Config.objects.get_config('rbac_url')
+        if auth_info is None:
+            auth_info = get_auth_info()
         super(RBACClient, self).__init__(auth_info=auth_info, url=url)
 
     def _get_resource_type_url(self, resource_type: str):
         """Return the URL for `resource_type`."""
         return self._url + quote(
-            '/api/service/1.0/resources/{}'.format(resource_type))
+            '{}/{}'.format(self.API_BASE_URL, resource_type))
 
     def get_resources(self, resource_type: str) -> Sequence[Resource]:
         """Return list of resources with `resource_type`."""

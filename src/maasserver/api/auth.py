@@ -76,8 +76,7 @@ class MAASAPIAuthentication(OAuthAuthentication):
                         if is_local_user:
                             return False
                         if not validate_user_external_auth(
-                                user,
-                                admin_group=external_auth_info.admin_group):
+                                user, external_auth_info):
                             return False
                     elif not is_local_user:
                         return False
