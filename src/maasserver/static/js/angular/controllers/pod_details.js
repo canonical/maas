@@ -5,14 +5,14 @@
  */
 
 angular.module('MAAS').controller('PodDetailsController', [
-    '$scope', '$rootScope', '$location', '$routeParams',
+    '$scope', '$rootScope', '$location', '$routeParams', '$filter',
     'PodsManager', 'GeneralManager', 'UsersManager', 'DomainsManager',
     'ZonesManager', 'MachinesManager', 'ManagerHelperService', 'ErrorService',
     'ResourcePoolsManager', 'SubnetsManager', 'VLANsManager', 'FabricsManager',
     'SpacesManager', 'ValidationService',
 
     function(
-        $scope, $rootScope, $location, $routeParams,
+        $scope, $rootScope, $location, $routeParams, $filter,
         PodsManager, GeneralManager, UsersManager, DomainsManager,
         ZonesManager, MachinesManager, ManagerHelperService, ErrorService,
         ResourcePoolsManager, SubnetsManager, VLANsManager, FabricsManager,
@@ -62,6 +62,7 @@ angular.module('MAAS').controller('PodDetailsController', [
               pool: {},
               boot: true
             }],
+            requests: [],
             interfaces: [$scope.defaultInterface]
           }
         };
@@ -226,23 +227,91 @@ angular.module('MAAS').controller('PodDetailsController', [
         }
 
         $scope.validateMachineCompose = function() {
-            var pools = $scope.compose.obj.storage;
+            if ($scope.compose.obj.requests.length < 1) {
+                $scope.updateRequests();
+            }
+
+            var requests = $scope.compose.obj.requests;
             var valid = true;
-            pools.forEach(function(pool) {
-                var requested = pool.size * 1000000000;
-                if (requested > pool.pool.available || pool.size === '') {
+
+            requests.forEach(function(request) {
+                if (request.size > request.available || request.size === '') {
                     valid = false;
                 }
             });
+
             return valid;
         };
 
-        $scope.totalStoragePercentage = function(storage_pool, storage) {
+        $scope.totalStoragePercentage = function(storage_pool, storage, other) {
             var used = storage_pool.used / storage_pool.total * 100;
             var requested = storage / storage_pool.total * 100;
+            var otherRequested = other / storage_pool.total * 100;
             var percent = used + requested;
+
+            if (other) {
+                percent = used + requested + otherRequested;
+            }
             return percent;
         };
+
+        $scope.updateRequests = function() {
+            var storages = $scope.compose.obj.storage;
+            var requests = [];
+            storages.forEach(function(storage) {
+                var requestWithPool = requests.find(function(request) {
+                    return request.poolId === storage.pool.id;
+                });
+                if (requestWithPool) {
+                    requestWithPool.size += parseInt(storage.size, 10);
+                } else {
+                    requests.push({
+                        poolId: storage.pool.id,
+                        size: storage.size,
+                        available: Math.round(
+                            storage.pool.available / 1000 / 1000 / 1000)
+                    });
+                }
+            });
+            $scope.compose.obj.requests = requests;
+        }
+
+        $scope.getOtherRequests = function(storagePool, storage) {
+            var requests = $scope.compose.obj.requests;
+            var request = 0;
+
+            for (var i = 0; i < requests.length; i++) {
+                if (storagePool.id === requests[i].poolId) {
+                    request = requests[i].size;
+                }
+            }
+
+            if (storagePool.id === storage.pool.id) {
+                request -= storage.size;
+            }
+
+            return request;
+        }
+
+        $scope.poolOverCapacity = function(storage) {
+            var storagePool = $scope.pod.storage_pools.find(function(pool) {
+                return pool.id === storage.pool.id;
+            });
+            var requests = $scope.compose.obj.requests;
+            var request = 0;
+
+            for (var i = 0; i < requests.length; i++) {
+                if (storagePool.id === requests[i].poolId) {
+                    request = requests[i].size;
+                }
+            }
+
+            if ($filter('convertGigabyteToBytes')(request)
+                > storagePool.available) {
+                return true;
+            }
+            return false;
+        }
 
         // Prevents key input if input is not a number key code.
         $scope.numberOnly = function(evt) {
@@ -257,6 +326,7 @@ angular.module('MAAS').controller('PodDetailsController', [
                 disk.showOptions = false;
             });
             storage.showOptions = true;
+            $scope.updateRequests();
         };
 
         $scope.closeOptions = function(storage) {
@@ -269,10 +339,10 @@ angular.module('MAAS').controller('PodDetailsController', [
             });
         };
 
-
         $scope.selectStoragePool = function(storagePool, storage, isDisabled) {
             if (!isDisabled) {
                 storage.pool = storagePool;
+                $scope.updateRequests();
             }
         };
 
@@ -301,6 +371,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Opens the compose action menu.
         $scope.composeMachine = function() {
             $scope.action.option = $scope.compose.action;
+            $scope.updateRequests();
         };
 
         // Calculate the available cores with overcommit applied
@@ -380,10 +451,19 @@ angular.module('MAAS').controller('PodDetailsController', [
               pool: $scope.getDefaultStoragePool(),
               boot: true
             }],
+            requests: [],
             interfaces: [$scope.defaultInterface]
           };
           $scope.action.option = null;
         };
+
+        $scope.hasMultipleRequests = function(storage) {
+            if (storage.otherRequests > 0) {
+                return true;
+            }
+
+            return false;
+        }
 
         // Add another storage device.
         $scope.composeAddStorage = function() {
@@ -402,7 +482,9 @@ angular.module('MAAS').controller('PodDetailsController', [
             if($scope.pod.capabilities.indexOf('iscsi_storage') >= 0) {
                 storage.type = 'iscsi';
             }
+
             $scope.compose.obj.storage.push(storage);
+            $scope.updateRequests();
         };
 
         // Change which disk is the boot disk.
@@ -421,6 +503,11 @@ angular.module('MAAS').controller('PodDetailsController', [
                     pool => pool.id == $scope.pod.default_storage_pool
                 )[0];
             }
+
+            if (!$scope.selectedPoolId) {
+                $scope.selectedPoolId = defaultPool.id;
+            }
+
             return defaultPool;
         };
 
@@ -430,6 +517,7 @@ angular.module('MAAS').controller('PodDetailsController', [
           if(idx >= 0) {
             $scope.compose.obj.storage.splice(idx, 1);
           }
+          $scope.updateRequests();
         };
 
         $scope.bySpace = function(space) {

@@ -171,7 +171,8 @@ describe("PodDetailsController", function() {
             }],
             interfaces: [{
               name: 'default'
-            }]
+            }],
+            requests: []
           }
         });
         expect($scope.power_types).toBe(GeneralManager.getData('power_types'));
@@ -860,7 +861,8 @@ describe("PodDetailsController", function() {
               }],
               interfaces: [{
                 name: 'default'
-              }]
+              }],
+              requests: []
             });
             expect($scope.action.option).toBeNull();
         });

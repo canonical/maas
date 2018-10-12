@@ -11,6 +11,7 @@
   .form__group-input {
     input.in-warning {
       border-color: $color-caution !important;
+      padding-right: $sp-x-large;
     }
   }
 }

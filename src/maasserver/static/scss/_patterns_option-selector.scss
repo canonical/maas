@@ -61,6 +61,7 @@
       &.is-over {
         opacity: .5;
         pointer-events: none;
+        cursor: not-allowed;
       }
 
       &.is-selected {
@@ -274,4 +275,38 @@
       }
     }
   }
+}
+
+// Key inside option selector
+.p-key-icon {
+  display: inline-block;
+  width: .75rem;
+  height: .75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 50%;
+}
+
+.p-key-icon--free {
+  @extend .p-key-icon;
+  background-color: transparentize($color-link, .8);
+  border-color: transparentize($color-link, .8);
+}
+
+.p-key-icon--used {
+  @extend .p-key-icon;
+  background-color: $color-link;
+  border-color: $color-link;
+}
+
+.p-key-icon--requests {
+  @extend .p-key-icon;
+  background-color: $color-positive;
+  border-color: $color-positive;
+}
+
+.p-key-icon--other {
+  @extend .p-key-icon;
+  background-color: #1baf66;
+  border-color: #1baf66;
 }
