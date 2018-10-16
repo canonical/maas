@@ -123,6 +123,7 @@ parts:
       - $remove
     override-build: |
       snapcraftctl build
+      cp -a ../../snap/src/bin ../../snap/src/sbin $SNAPCRAFT_PART_INSTALL
       ln -s ../usr/lib/postgresql/10/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
       ln -s ../usr/lib/postgresql/10/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
       ln -s ../usr/lib/postgresql/10/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
@@ -138,16 +139,8 @@ parts:
       '*': usr/share/maas/web/static/
   snap:
     plugin: dump
-    source: snap
+    source: snap/local
     organize:
       bind: usr/share/maas/bind
       conf/chrony.conf: usr/share/maas/chrony.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
-    stage:
-      - -conf
-      - -plugins
-      - -snapcraft.yaml
-    prime:
-      - -conf
-      - -plugins
-      - -snapcraft.yaml

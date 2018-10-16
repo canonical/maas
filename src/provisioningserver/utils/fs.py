@@ -71,9 +71,12 @@ def get_maas_common_command():
     from provisioningserver.config import is_dev_environment
     if is_dev_environment():
         from maastesting import root
-        return os.path.join(root, "bin", "maas-common")
+        return os.path.join(root, 'bin/maas-common')
+    elif snappy.running_in_snap():
+        # there's no maas-common in the snap as maas-rack is always present
+        return os.path.join(snappy.get_snap_path(), 'bin/maas-rack')
     else:
-        return os.path.join(get_path("/usr/lib/maas"), "maas-common")
+        return get_path('usr/lib/maas/maas-common')
 
 
 def get_library_script_path(name):
