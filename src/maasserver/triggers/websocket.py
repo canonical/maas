@@ -751,11 +751,15 @@ STATIC_IP_ADDRESS_SUBNET_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     BEGIN
       IF TG_OP = 'INSERT' THEN
-        PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+        IF NEW.subnet_id IS NOT NULL THEN
+          PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+        END IF;
         RETURN NEW;
       END IF;
       IF TG_OP = 'DELETE' THEN
-        PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+        IF OLD.subnet_id IS NOT NULL THEN
+          PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+        END IF;
         RETURN OLD;
       END IF;
       IF OLD.subnet_id != NEW.subnet_id THEN
@@ -990,9 +994,11 @@ DOMAIN_NODE_NOTIFY = dedent("""\
 
 
 POOL_NODE_INSERT_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION {}() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger AS $$
     BEGIN
-      PERFORM pg_notify('resourcepool_update',CAST({} AS text));
+      IF {pool_id} IS NOT NULL THEN
+        PERFORM pg_notify('resourcepool_update',CAST({pool_id} AS TEXT));
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -1003,8 +1009,12 @@ POOL_NODE_UPDATE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION {}() RETURNS trigger AS $$
     BEGIN
       IF OLD.pool_id != NEW.pool_id THEN
-        PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
-        PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+        IF OLD.pool_id IS NOT NULL THEN
+          PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
+        END IF;
+        IF NEW.pool_id IS NOT NULL THEN
+          PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+        END IF;
       ELSIF OLD.node_type != NEW.node_type THEN
         -- NODE_TYPE.MACHINE = 0
         IF OLD.node_type = 0 OR NEW.node_type = 0 THEN
@@ -1333,9 +1343,11 @@ def register_websocket_triggers():
     )
 
     register_procedure(POOL_NODE_INSERT_NOTIFY.format(
-        'resourcepool_link_notify', 'NEW.pool_id'))
+        func_name='resourcepool_link_notify',
+        pool_id='NEW.pool_id'))
     register_procedure(POOL_NODE_INSERT_NOTIFY.format(
-        'resourcepool_unlink_notify', 'OLD.pool_id'))
+        func_name='resourcepool_unlink_notify',
+        pool_id='OLD.pool_id'))
     register_procedure(POOL_NODE_UPDATE_NOTIFY.format(
         'node_resourcepool_update_notify'))
     register_triggers(
