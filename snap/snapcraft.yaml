@@ -159,17 +159,9 @@ parts:
       maasregiond.py: usr/lib/python3/dist-packages/twisted/plugins/maasregiond.py
   snap:
     plugin: dump
-    source: snap
+    source: snap/local
     organize:
       bind: usr/share/maas/bind
       conf/empty.tgt: usr/share/maas/empty.tgt
       conf/ntp.conf: usr/share/maas/ntp.conf
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
-    stage:
-      - -conf
-      - -plugins
-      - -snapcraft.yaml
-    prime:
-      - -conf
-      - -plugins
-      - -snapcraft.yaml

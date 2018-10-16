@@ -377,6 +377,13 @@ class TestGetMAASProvisionCommand(MAASTestCase):
         self.assertEqual(
             "/usr/lib/maas/maas-common", get_maas_common_command())
 
+    def test__returns_maas_rack_for_snap(self):
+        self.patch(provisioningserver.config, "is_dev_environment")
+        provisioningserver.config.is_dev_environment.return_value = False
+        self.patch(os, 'environ', {'SNAP': '/snap/maas/10'})
+        self.assertEqual(
+            get_maas_common_command(), '/snap/maas/10/bin/maas-rack')
+
     def test__returns_full_path_for_development(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = True
