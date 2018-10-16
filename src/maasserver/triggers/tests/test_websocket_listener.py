@@ -530,6 +530,22 @@ class TestResourcePoolListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test__no_calls_handler_on_create_device(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_node, {'node_type': NODE_TYPE.DEVICE})
+            with ExpectedException(CancelledError):
+                yield dv.get(timeout=0.2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__calls_handler_on_delete_machine(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -544,6 +560,23 @@ class TestResourcePoolListener(
             yield deferToDatabase(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % pool.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__no_calls_handler_on_delete_device(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("resourcepool", lambda *args: dv.set(args))
+        machine = yield deferToDatabase(
+            self.create_node, {'node_type': NODE_TYPE.DEVICE})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_node, machine.system_id)
+            with ExpectedException(CancelledError):
+                yield dv.get(timeout=0.2)
         finally:
             yield listener.stopService()
 
