@@ -13,6 +13,7 @@ from maasserver.enum import NODE_CREATION_TYPE
 from maasserver.forms import pods
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
+from maasserver.models.tag import Tag
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -276,7 +277,11 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.become_admin()
         pod = factory.make_Pod(pod_type='virsh')
         new_name = factory.make_name('pod')
-        new_tags = [factory.make_name('tag'), factory.make_name('tag')]
+        new_tags = [
+            factory.make_name('tag'),
+            factory.make_name('tag'),
+            'pod-console-logging',
+        ]
         new_pool = factory.make_ResourcePool()
         new_zone = factory.make_Zone()
         new_power_parameters = {
@@ -291,10 +296,12 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             'power_pass': new_power_parameters['power_pass'],
             'zone': new_zone.name,
             'pool': new_pool.name,
+            'console_logging': 'True',
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         pod.refresh_from_db()
+        self.assertIsNotNone(Tag.objects.get(name="pod-console-logging"))
         self.assertEqual(new_name, pod.name)
         self.assertEqual(new_pool, pod.pool)
         self.assertItemsEqual(new_tags, pod.tags)
@@ -313,10 +320,13 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             'power_address': pod_info['power_address'],
             'power_pass': pod_info['power_pass'],
             'zone': pod_info['zone'],
+            'console_logging': 'False',
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_output = json_load_bytes(response.content)
+        self.assertRaises(
+            Tag.DoesNotExist, Tag.objects.get, name="pod-console-logging")
         self.assertEqual(new_name, parsed_output['name'])
         self.assertEqual(discovered_pod.cores, parsed_output['total']['cores'])
 
@@ -337,6 +347,8 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         pod.refresh_from_db()
+        self.assertRaises(
+            Tag.DoesNotExist, Tag.objects.get, name="pod-console-logging")
         self.assertEqual(new_name, pod.name)
         self.assertEqual(power_parameters, pod.power_parameters)
 
@@ -353,6 +365,100 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             http.client.OK, response.status_code, response.content)
         pod.refresh_from_db()
         self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
+
+    def test_PUT_update_deletes_pod_console_logging_tag_if_not_in_use(self):
+        self.become_admin()
+        factory.make_Tag(name='pod-console-logging')
+        pod1_info = self.make_pod_info()
+        factory.make_Pod(pod_type=pod1_info['type'])
+        pod2_info = self.make_pod_info()
+        pod2 = factory.make_Pod(
+            pod_type=pod2_info['type'],
+            tags=['pod-console-logging'])
+        self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod2), {
+            'console_logging': 'False',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertRaises(
+            Tag.DoesNotExist, Tag.objects.get, name='pod-console-logging')
+
+    def test_PUT_update_wont_delete_pod_console_logging_tag_if_in_use(self):
+        self.become_admin()
+        factory.make_Tag(name='pod-console-logging')
+        pod1_info = self.make_pod_info()
+        factory.make_Pod(
+            pod_type=pod1_info['type'],
+            tags=['pod-console-logging'])
+        pod2_info = self.make_pod_info()
+        pod2 = factory.make_Pod(
+            pod_type=pod2_info['type'],
+            tags=['pod-console-logging'])
+        self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod2), {
+            'console_logging': 'False',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertIsNotNone(Tag.objects.get(name='pod-console-logging'))
+
+    def test_PUT_update_creates_pod_console_logging_tag(self):
+        self.become_admin()
+        self.assertRaises(
+            Tag.DoesNotExist, Tag.objects.get, name='pod-console-logging')
+        pod_info = self.make_pod_info()
+        pod = factory.make_Pod(pod_type=pod_info['type'])
+        self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod), {
+            'console_logging': 'True',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertIsNotNone(Tag.objects.get(name='pod-console-logging'))
+        response = self.client.put(get_pod_uri(pod), {
+            'console_logging': 'True',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertIsNotNone(Tag.objects.get(name='pod-console-logging'))
+        response = self.client.put(get_pod_uri(pod), {
+            'name': factory.make_name('name'),
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        pod.refresh_from_db()
+        self.assertIn('pod-console-logging', pod.tags)
+        self.assertIsNotNone(Tag.objects.get(name='pod-console-logging'))
+
+    def test_PUT_update_deletes_pod_console_logging_tag(self):
+        self.become_admin()
+        factory.make_Tag(name='pod-console-logging')
+        pod_info = self.make_pod_info()
+        pod = factory.make_Pod(
+            pod_type=pod_info['type'], tags=['pod-console-logging'])
+        self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod), {
+            'console_logging': 'False',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertRaises(
+            Tag.DoesNotExist, Tag.objects.get, name='pod-console-logging')
+        response = self.client.put(get_pod_uri(pod), {
+            'console_logging': 'False',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response = self.client.put(get_pod_uri(pod), {
+            'name': factory.make_name('name'),
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        pod.refresh_from_db()
+        self.assertNotIn('pod-console-logging', pod.tags)
+        self.assertRaises(
+            Tag.DoesNotExist, Tag.objects.get, name='pod-console-logging')
 
     def test_refresh_requires_admin(self):
         pod = factory.make_Pod()

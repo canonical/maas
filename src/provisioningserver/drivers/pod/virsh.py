@@ -118,6 +118,7 @@ DOM_TEMPLATE_AMD64 = dedent("""\
             bus='0x00' slot='0x05' function='0x0'/>
         </controller>
         <serial type='pty'>
+          <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
           <target port='0'/>
         </serial>
         <console type='pty'>
@@ -162,6 +163,7 @@ DOM_TEMPLATE_ARM64 = dedent("""\
         <emulator>{emulator}</emulator>
         <controller type='pci' index='0' model='pcie-root'/>
         <serial type='pty'>
+          <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
           <target port='0'/>
         </serial>
         <console type='pty'>
@@ -192,6 +194,7 @@ DOM_TEMPLATE_PPC64 = dedent("""\
         <emulator>{emulator}</emulator>
         <controller type='pci' index='0' model='pci-root'/>
         <serial type='pty'>
+          <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
           <target port='0'/>
         </serial>
         <console type='pty'>
@@ -218,8 +221,11 @@ DOM_TEMPLATE_S390X = dedent("""
         <pae/>
       </features>
       <devices>
-        <console type='pty' tty='/dev/pts/3'>
-          <source path='/dev/pts/3'/>
+        <serial type='pty'>
+          <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
+          <target port='0'/>
+        </serial>
+        <console type='pty'>
           <target type='sclp' port='0'/>
           <alias name='console0'/>
         </console>
