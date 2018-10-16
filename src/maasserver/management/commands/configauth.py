@@ -16,7 +16,10 @@ from django.core.management.base import (
 )
 from django.core.validators import URLValidator
 from django.db import DEFAULT_DB_ALIAS
-from maascli.init import add_idm_options
+from maascli.init import (
+    add_idm_options,
+    add_rbac_options,
+)
 from maasserver.management.commands.createadmin import read_input
 from maasserver.models import Config
 
@@ -29,6 +32,7 @@ class AuthDetails:
     user = attr.ib(default='')
     key = attr.ib(default='')
     admin_group = attr.ib(default='')
+    rbac_url = attr.ib(default='')
 
 
 class InvalidURLError(CommandError):
@@ -62,7 +66,7 @@ def update_auth_details_from_agent_file(agent_file, auth_details):
 valid_url = URLValidator(schemes=('http', 'https'))
 
 
-def is_valid_auth_url(auth_url):
+def is_valid_url(auth_url):
     try:
         valid_url(auth_url)
     except ValidationError:
@@ -73,7 +77,7 @@ def is_valid_auth_url(auth_url):
 def get_auth_config(config_manager):
     config_keys = [
         'external_auth_url', 'external_auth_domain', 'external_auth_user',
-        'external_auth_key', 'external_auth_admin_group']
+        'external_auth_key', 'external_auth_admin_group', 'rbac_url']
     return {key: config_manager.get_config(key) for key in config_keys}
 
 
@@ -84,6 +88,7 @@ def set_auth_config(config_manager, auth_details):
     config_manager.set_config('external_auth_key', auth_details.key)
     config_manager.set_config(
         'external_auth_admin_group', auth_details.admin_group)
+    config_manager.set_config('rbac_url', auth_details.rbac_url)
 
 
 def clear_user_sessions():
@@ -95,6 +100,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         add_idm_options(parser)
+        add_rbac_options(parser)
         parser.add_argument(
             '--json', action='store_true', default=False,
             help="Return the current authentication configuration as JSON")
@@ -108,43 +114,59 @@ class Command(BaseCommand):
 
         auth_details = AuthDetails()
 
+        auth_details.rbac_url = _get_or_prompt(
+            options, 'rbac_url',
+            "URL for the Canonical RBAC service "
+            "(leave blank if not using the service): ", replace_none=True)
+        if (
+                auth_details.rbac_url and
+                not is_valid_url(auth_details.rbac_url)):
+            raise InvalidURLError(
+                "Please enter a valid http or https URL.")
+
         agent_file = options.get('idm_agent_file')
         if agent_file:
             update_auth_details_from_agent_file(agent_file, auth_details)
-            auth_details.domain = _get_or_prompt(
-                options, 'idm_domain',
-                "Users domain for external authentication backend "
-                "(leave blank for empty): ", replace_none=True)
-            auth_details.admin_group = _get_or_prompt(
-                options, 'idm_admin_group',
-                "Group of users whose members are made admins in MAAS "
-                "(leave blank for empty): ")
-            set_auth_config(config_manager, auth_details)
-            clear_user_sessions()
-            return
-
-        auth_details.url = options.get('idm_url')
-        if auth_details.url is None:
-            existing_url = config_manager.get_config('external_auth_url')
-            auth_details.url = prompt_for_external_auth_url(existing_url)
-        if auth_details.url == 'none':
-            auth_details.url = ''
-        if auth_details.url:
-            if not is_valid_auth_url(auth_details.url):
-                raise InvalidURLError(
-                    "Please enter a valid http or https URL.")
-            auth_details.domain = _get_or_prompt(
-                options, 'idm_domain',
-                "Users domain for external authentication backend "
-                "(leave blank for empty): ", replace_none=True)
-            auth_details.user = _get_or_prompt(
-                options, 'idm_user', "Username for IDM API access: ")
-            auth_details.key = _get_or_prompt(
-                options, 'idm_key', "Private key for IDM API access: ")
-            auth_details.admin_group = _get_or_prompt(
-                options, 'idm_admin_group',
-                "Group of users whose members are made admins in MAAS "
-                "(leave blank for empty): ")
+            if not auth_details.rbac_url:
+                auth_details.domain = _get_or_prompt(
+                    options, 'idm_domain',
+                    "Users domain for external authentication backend "
+                    "(leave blank for empty): ", replace_none=True)
+                auth_details.admin_group = _get_or_prompt(
+                    options, 'idm_admin_group',
+                    "Group of users whose members are made admins in MAAS "
+                    "(leave blank for empty): ")
+        else:
+            # XXX we should deprecate passing URL and username, and only accept
+            # the agent file, which makes configuration simpler. In the case
+            # where RBAC is used, we'll eventually generate the key and get the
+            # Candid URL and username from the registration call with RBAC
+            # itself.
+            auth_details.url = options.get('idm_url')
+            if auth_details.url is None:
+                existing_url = config_manager.get_config('external_auth_url')
+                auth_details.url = prompt_for_external_auth_url(existing_url)
+            if auth_details.url == 'none':
+                auth_details.url = ''
+            if auth_details.rbac_url and not auth_details.url:
+                raise CommandError('IDM URL must be specified when using RBAC')
+            if auth_details.url:
+                if not is_valid_url(auth_details.url):
+                    raise InvalidURLError(
+                        "Please enter a valid http or https URL.")
+                auth_details.user = _get_or_prompt(
+                    options, 'idm_user', "Username for IDM API access: ")
+                auth_details.key = _get_or_prompt(
+                    options, 'idm_key', "Private key for IDM API access: ")
+                if not auth_details.rbac_url:
+                    auth_details.domain = _get_or_prompt(
+                        options, 'idm_domain',
+                        "Users domain for external authentication backend "
+                        "(leave blank for empty): ", replace_none=True)
+                    auth_details.admin_group = _get_or_prompt(
+                        options, 'idm_admin_group',
+                        "Group of users whose members are made admins in MAAS "
+                        "(leave blank for empty): ")
 
         set_auth_config(config_manager, auth_details)
         clear_user_sessions()
@@ -153,7 +175,7 @@ class Command(BaseCommand):
 def _get_or_prompt(options, option, message, replace_none=False):
     """Return a config option either from command line or interactive input."""
     config = options.get(option)
-    if not config:
+    if config is None:
         config = read_input(message)
     if replace_none and config == 'none':
         config = ''

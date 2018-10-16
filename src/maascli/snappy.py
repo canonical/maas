@@ -31,6 +31,7 @@ from maascli.configfile import MAASConfiguration
 from maascli.init import (
     add_create_admin_options,
     add_idm_options,
+    add_rbac_options,
     init_maas,
     print_msg,
 )
@@ -582,6 +583,7 @@ class cmd_init(SnappyCommand):
                   "If this isn't enabled, all --idm-* arguments "
                   "will be ignored."))
         add_idm_options(parser)
+        add_rbac_options(parser)
         parser.add_argument(
             '--skip-admin', action='store_true',
             help=(

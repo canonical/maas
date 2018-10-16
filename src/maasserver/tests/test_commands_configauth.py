@@ -13,12 +13,13 @@ import unittest
 
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from maasserver.management.commands import configauth
 from maasserver.models import Config
 from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestChangeAuthCommand(MAASServerTestCase):
+class TestConfigAuthCommand(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
@@ -29,7 +30,6 @@ class TestChangeAuthCommand(MAASServerTestCase):
         Config.objects.set_config(
             'external_auth_url', 'http://example.com/idm')
         call_command('configauth', idm_url='')
-
         self.assertEqual(
             '', Config.objects.get_config('external_auth_url'))
 
@@ -37,40 +37,69 @@ class TestChangeAuthCommand(MAASServerTestCase):
         Config.objects.set_config(
             'external_auth_url', 'http://example.com/idm')
         call_command('configauth', idm_url='none')
-
         self.assertEqual(
             '', Config.objects.get_config('external_auth_url'))
 
     def test_configauth_changes_external_auth_url_url(self):
         call_command('configauth', idm_url='http://example.com/idm')
-
         self.assertEqual(
             'http://example.com/idm',
             Config.objects.get_config('external_auth_url'))
 
-    def test_configauth_changes_auth_prompts(self):
+    def test_configauth_changes_auth_prompts_no_rbac(self):
         self.read_input.side_effect = [
-            'http://idm.example.com/', 'mydomain', 'user@admin', 'private-key',
-            'admins']
+            '', 'http://candid.example.com/', 'user@admin', 'private-key',
+            'mydomain', 'admins']
         call_command('configauth')
-
+        self.assertEqual('', Config.objects.get_config('rbac_url'))
         self.assertEqual(
-            'http://idm.example.com/',
+            'http://candid.example.com/',
             Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'user@admin',
+            Config.objects.get_config('external_auth_user'))
+        self.assertEqual(
+            'private-key',
+            Config.objects.get_config('external_auth_key'))
+        self.assertEqual(
+            'mydomain',
+            Config.objects.get_config('external_auth_domain'))
+        self.assertEqual(
+            'admins',
+            Config.objects.get_config('external_auth_admin_group'))
+
+    def test_configauth_changes_auth_prompts_rbac(self):
+        self.read_input.side_effect = [
+            'http://rbac.example.com', 'http://candid.example.com/',
+            'user@admin', 'private-key']
+        call_command('configauth')
+        self.assertEqual(
+            'http://rbac.example.com', Config.objects.get_config('rbac_url'))
+        self.assertEqual(
+            'http://candid.example.com/',
+            Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'user@admin',
+            Config.objects.get_config('external_auth_user'))
+        self.assertEqual(
+            'private-key',
+            Config.objects.get_config('external_auth_key'))
+        self.assertEqual(
+            '', Config.objects.get_config('external_auth_domain'))
+        self.assertEqual(
+            '', Config.objects.get_config('external_auth_admin_group'))
 
     def test_configauth_changes_auth_prompt_default(self):
         self.read_input.return_value = ''
         call_command('configauth')
-
-        self.assertEqual(
-            '', Config.objects.get_config('external_auth_url'))
+        self.assertEqual('', Config.objects.get_config('rbac_url'))
+        self.assertEqual('', Config.objects.get_config('external_auth_url'))
 
     def test_configauth_changes_auth_prompt_default_existing(self):
         Config.objects.set_config(
             'external_auth_url', 'http://example.com/idm')
         self.read_input.return_value = ''
         call_command('configauth')
-
         self.assertEqual(
             'http://example.com/idm',
             Config.objects.get_config('external_auth_url'))
@@ -79,6 +108,11 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.assertRaises(
             configauth.InvalidURLError,
             call_command, 'configauth', idm_url='example.com')
+
+    def test_configauth_changes_auth_invalid_rbac_url(self):
+        self.assertRaises(
+            configauth.InvalidURLError,
+            call_command, 'configauth', rbac_url='example.com')
 
     def test_configauth_delete_sessions(self):
         session = Session(
@@ -106,11 +140,12 @@ class TestChangeAuthCommand(MAASServerTestCase):
 
     def test_configauth_interactive(self):
         self.read_input.side_effect = [
-            'http://example.com:1234', 'mydomain', 'user@admin', 'private-key',
-            'admins']
+            '', 'http://candid.example.com', 'user@admin', 'private-key',
+            'mydomain', 'admins']
         call_command('configauth')
+        self.assertEqual('', Config.objects.get_config('rbac_url'))
         self.assertEqual(
-            'http://example.com:1234',
+            'http://candid.example.com',
             Config.objects.get_config('external_auth_url'))
         self.assertEqual(
             'mydomain', Config.objects.get_config('external_auth_domain'))
@@ -124,7 +159,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_interactive_domain(self):
         self.read_input.return_value = 'mydomain'
         call_command(
-            'configauth', idm_url='http://example.com:1234',
+            'configauth', rbac_url='', idm_url='http://example.com:1234',
             idm_user='user@admin', idm_key='private-key')
         self.assertEqual(
             'http://example.com:1234',
@@ -136,10 +171,10 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.assertEqual(
             'private-key', Config.objects.get_config('external_auth_key'))
 
-    def test_configauth_interactive_empty(self):
+    def test_configauth_interactive_domain_empty(self):
         self.read_input.return_value = ''
         call_command(
-            'configauth', idm_url='http://example.com:1234',
+            'configauth', rbac_url='', idm_url='http://example.com:1234',
             idm_user='user@admin', idm_key='private-key')
         self.assertEqual(
             'http://example.com:1234',
@@ -154,7 +189,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_interactive_user(self):
         self.read_input.return_value = 'user@admin'
         call_command(
-            'configauth', idm_url='http://example.com:1234',
+            'configauth', rbac_url='', idm_url='http://example.com:1234',
             idm_domain='mydomain', idm_key='private-key')
         self.assertEqual(
             'http://example.com:1234',
@@ -169,7 +204,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
     def test_configauth_interactive_key(self):
         self.read_input.return_value = 'private-key'
         call_command(
-            'configauth', idm_url='http://example.com:1234',
+            'configauth', rbac_url='', idm_url='http://example.com:1234',
             idm_domain='mydomain', idm_user='user@admin')
         self.assertEqual(
             'http://example.com:1234',
@@ -191,8 +226,8 @@ class TestChangeAuthCommand(MAASServerTestCase):
             agent_file.flush()
             agent_file.seek(0)
             call_command(
-                'configauth', idm_agent_file=agent_file, idm_domain='mydomain',
-                idm_admin_group='admins')
+                'configauth', rbac_url='', idm_agent_file=agent_file,
+                idm_domain='mydomain', idm_admin_group='admins')
         self.assertEqual(
             'http://example.com:1234',
             Config.objects.get_config('external_auth_url'))
@@ -208,7 +243,7 @@ class TestChangeAuthCommand(MAASServerTestCase):
 
     def test_configauth_domain_none(self):
         call_command(
-            'configauth', idm_url='http://example.com:1234',
+            'configauth', rbac_url='', idm_url='http://example.com:1234',
             idm_domain='none', idm_user='user@admin', idm_key='private-key')
         self.assertEqual('', Config.objects.get_config('external_auth_domain'))
 
@@ -222,16 +257,18 @@ class TestChangeAuthCommand(MAASServerTestCase):
         self.assertEqual(
             {'external_auth_url': '', 'external_auth_domain': '',
              'external_auth_user': '', 'external_auth_key': '',
-             'external_auth_admin_group': ''},
+             'external_auth_admin_group': '', 'rbac_url': ''},
             json.loads(output))
 
     def test_configauth_json_full(self):
         Config.objects.set_config(
-            'external_auth_url', 'http://idm.example.com/')
+            'external_auth_url', 'http://candid.example.com/')
         Config.objects.set_config('external_auth_domain', 'mydomain')
         Config.objects.set_config('external_auth_user', 'maas')
         Config.objects.set_config('external_auth_key', 'secret maas key')
         Config.objects.set_config('external_auth_admin_group', 'admins')
+        Config.objects.set_config(
+            'rbac_url', 'http://rbac.example.com/')
         mock_print = self.patch(configauth, 'print')
         call_command('configauth', json=True)
         self.read_input.assert_not_called()
@@ -239,22 +276,47 @@ class TestChangeAuthCommand(MAASServerTestCase):
         _, [output], kwargs = print_call
         self.assertEqual({}, kwargs)
         self.assertEqual(
-            {'external_auth_url': 'http://idm.example.com/',
+            {'external_auth_url': 'http://candid.example.com/',
              'external_auth_domain': 'mydomain',
              'external_auth_user': 'maas',
              'external_auth_key': 'secret maas key',
-             'external_auth_admin_group': 'admins'},
+             'external_auth_admin_group': 'admins',
+             'rbac_url': 'http://rbac.example.com/'},
             json.loads(output))
 
+    def test_configauth_rbac_url(self):
+        call_command(
+            'configauth', idm_url='http://example.com:1234',
+            idm_user='user@admin', idm_key='private-key',
+            rbac_url='http://rbac.example.com')
+        self.read_input.assert_not_called()
+        self.assertEqual(
+            'http://rbac.example.com',
+            Config.objects.get_config('rbac_url'))
 
-class TestIsValidAuthSource(unittest.TestCase):
+    def test_configauth_rbac_url_none(self):
+        call_command(
+            'configauth', rbac_url='none',
+            idm_url='http://example.com:1234',
+            idm_user='user@admin', idm_key='private-key',
+            idm_domain='domain', idm_admin_group='admins')
+        self.read_input.assert_not_called()
+        self.assertEqual('', Config.objects.get_config('rbac_url'))
+
+    def test_configauth_no_candid_url_with_rbac(self):
+        self.assertRaises(
+            CommandError, call_command, 'configauth',
+            rbac_url='http://rbac.example.com', idm_url='')
+
+
+class TestIsValidUrl(unittest.TestCase):
 
     def test_valid_schemes(self):
         for scheme in ['http', 'https']:
             url = '{}://example.com/idm'.format(scheme)
-            self.assertTrue(configauth.is_valid_auth_url(url))
+            self.assertTrue(configauth.is_valid_url(url))
 
     def test_invalid_schemes(self):
         for scheme in ['ftp', 'git+ssh']:
             url = '{}://example.com/idm'.format(scheme)
-            self.assertFalse(configauth.is_valid_auth_url(url))
+            self.assertFalse(configauth.is_valid_url(url))

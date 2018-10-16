@@ -36,6 +36,12 @@ def add_idm_options(parser):
         help="Group of users whose members are made admins in MAAS")
 
 
+def add_rbac_options(parser):
+    parser.add_argument(
+        '--rbac-url', default=None, metavar='RBAC_URL',
+        help="The URL for the Canonical RBAC service to use.")
+
+
 def add_create_admin_options(parser):
     parser.add_argument(
         '--admin-username', default=None, metavar='USERNAME',

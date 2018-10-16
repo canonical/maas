@@ -65,6 +65,23 @@ class TestAddIdmOptions(MAASTestCase):
         self.assertEqual('admins', options.idm_admin_group)
 
 
+class TestAddRBACOptions(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        init.add_rbac_options(self.parser)
+
+    def test_empty(self):
+        options = self.parser.parse_args([])
+        self.assertIsNone(options.rbac_url)
+
+    def test_rbac_url(self):
+        options = self.parser.parse_args(
+            ['--rbac-url', 'http://rbac.example.com/'])
+        self.assertEqual('http://rbac.example.com/', options.rbac_url)
+
+
 class TestCreateAdminOptions(MAASTestCase):
 
     def setUp(self):

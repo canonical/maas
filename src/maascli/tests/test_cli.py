@@ -196,6 +196,7 @@ class TestCmdInit(MAASTestCase):
         self.assertIsNone(options.idm_user)
         self.assertIsNone(options.idm_key)
         self.assertIsNone(options.idm_agent_file)
+        self.assertIsNone(options.rbac_url)
 
     def test_init_maas_no_idm(self):
         options = self.parser.parse_args([])

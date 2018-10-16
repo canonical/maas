@@ -25,6 +25,7 @@ from maascli.config import ProfileConfig
 from maascli.init import (
     add_create_admin_options,
     add_idm_options,
+    add_rbac_options,
     init_maas,
 )
 from maascli.utils import (
@@ -180,6 +181,7 @@ class cmd_init(Command):
                   "If this isn't enabled, all --idm-* arguments "
                   "will be ignored."))
         add_idm_options(parser)
+        add_rbac_options(parser)
 
     def __call__(self, options):
         init_maas(options)
