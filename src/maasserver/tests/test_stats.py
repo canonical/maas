@@ -6,13 +6,16 @@
 __all__ = []
 
 import base64
+from collections import Counter
 import json
 
 from django.db import transaction
 from maasserver import stats
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Config,
     Fabric,
+    Node,
     Space,
     Subnet,
     VLAN,
@@ -63,6 +66,9 @@ class TestMAASStats(MAASServerTestCase):
         # calculates, so just get it directly from the database for the test.
         total_storage = machine_stats['total_storage']
 
+        node_status = Node.objects.values_list('status', flat=True)
+        node_status = Counter(node_status)
+
         compare = {
             "controllers": {
                 "regionracks": 1,
@@ -79,12 +85,23 @@ class TestMAASStats(MAASServerTestCase):
                 "total_storage": total_storage,
             },
             "machine_status": {
-                "ready": 1,
-                "allocated": 0,
-                "deploying": 0,
-                "deployed": 0,
-                "failed_deployment": 1,
-                "failed_commissioning": 0,
+                "new": node_status.get(NODE_STATUS.NEW, 0),
+                "ready": node_status.get(NODE_STATUS.READY, 0),
+                "allocated": node_status.get(NODE_STATUS.ALLOCATED, 0),
+                "deployed": node_status.get(NODE_STATUS.DEPLOYED, 0),
+                "commissioning": node_status.get(
+                    NODE_STATUS.COMMISSIONING, 0),
+                "testing": node_status.get(
+                    NODE_STATUS.TESTING, 0),
+                "deploying": node_status.get(
+                    NODE_STATUS.DEPLOYING, 0),
+                "failed_deployment": node_status.get(
+                    NODE_STATUS.FAILED_DEPLOYMENT, 0),
+                "failed_commissioning": node_status.get(
+                    NODE_STATUS.COMMISSIONING, 0),
+                "failed_testing": node_status.get(
+                    NODE_STATUS.FAILED_TESTING, 0),
+                "broken": node_status.get(NODE_STATUS.BROKEN, 0),
             },
             "network_stats": {
                 "spaces": Space.objects.count(),

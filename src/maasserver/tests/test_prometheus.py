@@ -5,10 +5,15 @@
 
 __all__ = []
 
+import json
+
 from django.db import transaction
 from maasserver import prometheus
 from maasserver.models import Config
-from maasserver.prometheus import push_stats_to_prometheus
+from maasserver.prometheus import (
+    get_stats_for_prometheus,
+    push_stats_to_prometheus,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -27,6 +32,20 @@ from twisted.internet.defer import fail
 
 
 class TestPrometheus(MAASServerTestCase):
+
+    def test_get_stats_for_prometheus(self):
+        self.patch(prometheus, "CollectorRegistry")
+        self.patch(prometheus, "Gauge")
+        values = {
+            "machine_status": {
+                "random_status": 0,
+            },
+        }
+        mock = self.patch(prometheus, "get_maas_stats")
+        mock.return_value = json.dumps(values)
+        get_stats_for_prometheus()
+        self.assertThat(
+            mock, MockCalledOnce())
 
     def test_push_stats_to_prometheus(self):
         factory.make_RegionRackController()

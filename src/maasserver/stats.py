@@ -53,14 +53,23 @@ def get_machine_state_stats():
     node_status = Counter(node_status)
 
     return {
+        # base status
+        "new": node_status.get(NODE_STATUS.NEW, 0),
         "ready": node_status.get(NODE_STATUS.READY, 0),
         "allocated": node_status.get(NODE_STATUS.ALLOCATED, 0),
-        "deploying": node_status.get(NODE_STATUS.DEPLOYING, 0),
         "deployed": node_status.get(NODE_STATUS.DEPLOYED, 0),
+        # in progress status
+        "commissioning": node_status.get(NODE_STATUS.COMMISSIONING, 0),
+        "testing": node_status.get(NODE_STATUS.TESTING, 0),
+        "deploying": node_status.get(NODE_STATUS.DEPLOYING, 0),
+        # failure status
         "failed_deployment": node_status.get(
             NODE_STATUS.FAILED_DEPLOYMENT, 0),
         "failed_commissioning": node_status.get(
             NODE_STATUS.FAILED_COMMISSIONING, 0),
+        "failed_testing": node_status.get(
+            NODE_STATUS.FAILED_TESTING, 0),
+        "broken": node_status.get(NODE_STATUS.BROKEN, 0),
         }
 
 
@@ -102,9 +111,9 @@ def get_maas_stats():
             "machines": node_types.get(NODE_TYPE.MACHINE, 0),
             "devices": node_types.get(NODE_TYPE.DEVICE, 0),
         },
-        "machine_stats": stats,
-        "machine_status": machine_status,
-        "network_stats": netstats,
+        "machine_stats": stats,  # count of cpus, mem, storage
+        "machine_status": machine_status,  # machines by status
+        "network_stats": netstats,  # network status
     })
 
 

@@ -32,7 +32,7 @@ except:
 log = LegacyLogger()
 
 
-def push_stats_to_prometheus(maas_name, push_gateway):
+def get_stats_for_prometheus():
     registry = CollectorRegistry()
     stats = json.loads(get_maas_stats())
 
@@ -43,6 +43,11 @@ def push_stats_to_prometheus(maas_name, push_gateway):
     for status, machines in stats['machine_status'].items():
         counter.labels(status).set(machines)
 
+    return registry
+
+
+def push_stats_to_prometheus(maas_name, push_gateway):
+    registry = get_stats_for_prometheus()
     push_to_gateway(
         push_gateway, job='stats_for_%s' % maas_name, registry=registry)
 
