@@ -500,7 +500,7 @@
                             </div>
                             <p class="u-no-max-width">
                                 <span>{$ pod.used.cores $} used</span>
-                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio) $} available</span>
+                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.cores, pod.used.cores, pod.cpu_over_commit_ratio, 2) $} available</span>
                             </p>
                         </div>
                         <div class="p-pod-summary__ram">
