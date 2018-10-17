@@ -141,13 +141,13 @@
                                                     (undefined)
                                                 </div>
                                                 <select
-                                                    data-ng-model="iface.space"
-                                                    data-ng-options="space as space.name for space in spaces"
-                                                    data-ng-change="resetSubnets(iface)"
+                                                    data-ng-model="iface.selectedSpace"
+                                                    data-ng-change="resetSubnetList(iface)"
                                                     data-ng-if="spaces.length > 0"
                                                     data-ng-disabled="iface.ipaddress.length > 0"
                                                     data-ng-keypress="$event.keyCode === 13 && $event.preventDefault()">
                                                     <option value="">Select a space (optional)</option>
+                                                    <option data-ng-repeat="space in spaces">{$ space.name $}</option>
                                                 </select>
                                             </div>
                                         </td>
@@ -172,25 +172,60 @@
                                                                 </button>
                                                                 <hr class="u-no-margin--bottom">
                                                             </div>
-                                                            <div class="p-option-selector__option u-no-padding"
-                                                                tabindex="0"
-                                                                data-ng-click="selectSubnet(subnet, iface)"
-                                                                data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
-                                                                data-ng-repeat="subnet in availableSubnets | filter:bySpace(iface.space)">
-                                                                <div class="p-option-selector-subnets__option-cell">
-                                                                    <div>
-                                                                        <strong>{$ subnet.displayName $}</strong>
+                                                            <div data-ng-repeat="space in spaces | filter:{ name: iface.selectedSpace }">
+                                                                <div
+                                                                    class="p-option-selector__title p-muted-text"
+                                                                    data-ng-if="!iface.selectedSpace">
+                                                                    Space: {$ space.name $}
+                                                                </div>
+                                                                <div
+                                                                    class="p-option-selector__option u-no-padding"
+                                                                    tabindex="0"
+                                                                    data-ng-click="selectSubnet(subnet, iface)"
+                                                                    data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
+                                                                    data-ng-repeat="subnet in availableSubnets | filter:bySpace(space.name) | orderBy:['version', 'cidr']">
+                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                        <div>
+                                                                            <strong>{$ subnet.displayName $}</strong>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                        <div>{$ subnet.fabric.name $}</div>
+                                                                    </div>
+                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                        <div ng-switch on="subnet.vlan.vid">
+                                                                            <div ng-switch-when="0">untagged</div>
+                                                                            <div ng-switch-default>
+                                                                                <span>{$ subnet.vlan.vid $}</span>
+                                                                                <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                                <div class="p-option-selector-subnets__option-cell">
-                                                                    <div>{$ subnet.fabric.name $}</div>
-                                                                </div>
-                                                                <div class="p-option-selector-subnets__option-cell">
-                                                                    <div ng-switch on="subnet.vlan.vid">
-                                                                        <div ng-switch-when="0" class="u-align--right">untagged</div>
-                                                                        <div ng-switch-default class="u-align--right">
-                                                                            <span>{$ subnet.vlan.vid $}</span>
-                                                                            <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                            </div>
+                                                            <div data-ng-if="!iface.selectedSpace && hasSpacelessSubnets()">
+                                                                <div class="p-option-selector__title p-muted-text">Space: (unassigned)</div>
+                                                                <div
+                                                                    class="p-option-selector__option u-no-padding"
+                                                                    tabindex="0"
+                                                                    data-ng-click="selectSubnet(subnet, iface)"
+                                                                    data-ng-keyup="$event.keyCode == 13 && selectSubnet(subnet, iface)"
+                                                                    data-ng-repeat="subnet in availableSubnets | filter:bySpace() | orderBy:['version', 'cidr']">
+                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                        <div>
+                                                                            <strong>{$ subnet.displayName $}</strong>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                        <div>{$ subnet.fabric.name $}</div>
+                                                                    </div>
+                                                                    <div class="p-option-selector-subnets__option-cell">
+                                                                        <div ng-switch on="subnet.vlan.vid">
+                                                                            <div ng-switch-when="0">untagged</div>
+                                                                            <div ng-switch-default>
+                                                                                <span>{$ subnet.vlan.vid $}</span>
+                                                                                <span data-ng-if="subnet.vlan.name">({$ subnet.vlan.name $})</span>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>

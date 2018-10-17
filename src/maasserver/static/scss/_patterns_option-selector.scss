@@ -18,6 +18,10 @@
       }
     }
 
+    &__title {
+      padding: $spv-intra--expanded $sph-intra 0;
+    }
+
     &__input {
       @extend select;
       color: $color-dark !important;
@@ -110,7 +114,9 @@
         }
 
         @media (min-width: $breakpoint-large) {
-          width: 750px;
+          left: 0;
+          right: -126%;
+          width: auto;
         }
       }
 
@@ -173,7 +179,7 @@
       }
 
       @media (min-width: $breakpoint-large) {
-        width: 40%;
+        width: 44%;
       }
     }
 
@@ -191,7 +197,7 @@
       }
 
       @media (min-width: $breakpoint-large) {
-        width: 45%;
+        width: 25%;
       }
     }
 
@@ -200,6 +206,10 @@
 
       @media (min-width: $breakpoint-medium) {
         width: 35%;
+      }
+
+      @media (min-width: $breakpoint-large) {
+        width: 31%;
       }
     }
   }

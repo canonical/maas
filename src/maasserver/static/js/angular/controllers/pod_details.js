@@ -526,31 +526,46 @@ angular.module('MAAS').controller('PodDetailsController', [
           $scope.updateRequests();
         };
 
-        $scope.bySpace = function(space) {
+        $scope.bySpace = function(spaceName) {
             return function(subnet) {
-                if (space && subnet.space !== null) {
-                    return subnet.space.id == space.id;
-                } else {
-                    return true
+                if (spaceName && subnet.space !== null) {
+                    return subnet.space.name == spaceName;
+                } else if (!spaceName) {
+                    return !subnet.space;
                 }
             }
         }
 
-        $scope.selectSubnet = function(subnet, iface) {
-            const idx = $scope.compose.obj.interfaces.indexOf(iface);
-            $scope.compose.obj.interfaces[idx].subnet = subnet;
-            $scope.compose.obj.interfaces[idx].vlan = subnet.vlan;
-            $scope.compose.obj.interfaces[idx].fabric = subnet.fabric;
-            $scope.compose.obj.interfaces[idx].pxe =
-                $scope.pod.boot_vlans.includes(subnet.vlan.id);
-            $scope.closeOptions(iface);
-            return subnet
+        $scope.hasSpacelessSubnets = function() {
+            return $scope.availableSubnets.some(subnet => !subnet.space);
         }
 
-        $scope.resetSubnets = function(iface) {
+        $scope.selectSubnet = function(subnet, iface) {
+            const idx = $scope.compose.obj.interfaces.indexOf(iface);
+            const thisInterface = $scope.compose.obj.interfaces[idx];
+            thisInterface.subnet = subnet;
+            thisInterface.space = subnet.space;
+            thisInterface.vlan = subnet.vlan;
+            thisInterface.fabric = subnet.fabric;
+            thisInterface.pxe = $scope.pod.boot_vlans.includes(subnet.vlan.id);
+            $scope.closeOptions(iface);
+            return subnet;
+        }
+
+        $scope.resetSubnetList = function(iface) {
             // Select first available subnet or clear list.
-            if ($scope.subnets.length > 0) {
-                iface.subnet = $scope.selectSubnet($scope.subnets[0], iface);
+            let subnets = $scope.availableSubnets;
+
+            if (iface.selectedSpace) {
+                subnets = subnets.filter(subnet => {
+                    if (subnet.space) {
+                        return subnet.space.name === iface.selectedSpace;
+                    }
+                });
+            }
+
+            if (subnets.length > 0) {
+                iface.subnet = $scope.selectSubnet(subnets[0], iface);
             } else {
                 iface.subnet = undefined;
             }
@@ -568,7 +583,9 @@ angular.module('MAAS').controller('PodDetailsController', [
             }
         }
 
-        const _getSubnetDetails = function(subnet) {
+        const _getSubnetDetails = function(originalSubnet) {
+            const subnet = Object.assign({}, originalSubnet);
+
             if (subnet.name === subnet.cidr) {
                 subnet.displayName = subnet.cidr;
             } else {
@@ -579,6 +596,7 @@ angular.module('MAAS').controller('PodDetailsController', [
                 subnet.fabric =
                     FabricsManager.getItemFromList(subnet.vlan.fabric);
             }
+            subnet.space = SpacesManager.getItemFromList(subnet.space);
             return subnet;
         }
 
