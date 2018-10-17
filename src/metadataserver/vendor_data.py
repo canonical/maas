@@ -103,7 +103,12 @@ def generate_rack_controller_configuration(node):
 def generate_kvm_pod_configuration(node):
     """Generate cloud-init configuration to install the node as a KVM pod."""
     if node.netboot is False and node.install_kvm is True:
-        yield "runcmd", [
+        architecture = None
+        if node.architecture is not None:
+            architecture = node.architecture
+            if '/' in architecture:
+                architecture = architecture.split('/')[0]
+        runcmd = [
             # Restrict the $PATH so that rbash can be used to limit what the
             # virsh user can do if they manage to get a shell.
             ['mkdir', '-p', '/home/virsh/bin'],
@@ -127,6 +132,21 @@ def generate_kvm_pod_configuration(node):
             # Ensure services are ready before cloud-init finishes.
             ['/bin/sleep', '10'],
         ]
+        if architecture == 'ppc64el':
+            # XXX mpontillo 2018-10-12 - we should investigate if it might be
+            # better to add a tag to the node that includes a kernel parameter
+            # such as nosmt=force. (The only problem being that we should
+            # probably also remove it after the machine is released.)
+            runcmd.append([
+                'sh', '-c', 'printf "'
+                '#!/bin/sh\\n'
+                'ppc64_cpu --smt=off\\n'
+                'exit 0\\n'
+                '"  >> /etc/rc.local'
+            ])
+            runcmd.append(['chmod', '+x', '/etc/rc.local'])
+            runcmd.append(['/etc/rc.local'])
+        yield "runcmd", runcmd
         # Generate a 32-character password by encoding 24 bytes as base64.
         virsh_password = b64encode(
             urandom(24), altchars=b'.!').decode('ascii')
@@ -150,10 +170,6 @@ def generate_kvm_pod_configuration(node):
             }
         ]
         packages = ["qemu-kvm", "libvirt-bin"]
-        if node.architecture is not None:
-            architecture = node.architecture
-            if '/' in architecture:
-                architecture = architecture.split('/')[0]
-            if architecture == 'amd64':
-                packages.append('qemu-efi')
+        if architecture == 'amd64':
+            packages.append('qemu-efi')
         yield "packages", packages

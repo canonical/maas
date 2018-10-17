@@ -468,7 +468,9 @@ class Deploy(NodeAction):
         if self.node.owner is None:
             with locks.node_acquire:
                 try:
-                    self.node.acquire(self.user, token=None)
+                    bridge_all = True if install_kvm else False
+                    self.node.acquire(
+                        self.user, token=None, bridge_all=bridge_all)
                 except ValidationError as e:
                     raise NodeActionError(e)
         if install_kvm:

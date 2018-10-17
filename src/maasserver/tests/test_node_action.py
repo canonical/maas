@@ -699,11 +699,12 @@ class TestDeployAction(MAASServerTestCase):
         request = factory.make_fake_request('/')
         request.user = user
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='manual', owner=user)
+            interface=True, status=NODE_STATUS.READY,
+            power_type='manual', owner=None)
         mock_get_curtin_config = self.patch(
             node_action_module, 'get_curtin_config')
         mock_node_start = self.patch(node, 'start')
+        mock_node_acquire = self.patch(node, 'acquire')
         mock_validate_os = self.patch(
             node_action_module, 'validate_osystem_and_distro_series')
         mock_validate_os.side_effect = lambda os, release: (os, release)
@@ -715,6 +716,9 @@ class TestDeployAction(MAASServerTestCase):
         }
         Deploy(node, user, request).execute(**extra)
         self.expectThat(mock_get_curtin_config, MockCalledOnceWith(ANY, node))
+        # Make sure we set bridge_all when we acquire the Node.
+        self.expectThat(mock_node_acquire, MockCalledOnceWith(
+            user, token=None, bridge_all=True))
         self.expectThat(mock_node_start, MockCalledOnceWith(user))
         # Make sure ubuntu/bionic is selected if KVM pod deployment has been
         # selected.

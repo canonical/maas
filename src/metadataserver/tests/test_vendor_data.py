@@ -250,3 +250,21 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         configuration = get_vendor_data(node)
         config = dict(configuration)
         self.assertThat(config['packages'], Contains("qemu-efi"))
+
+    def test_includes_smt_off_for_install_kvm_on_ppc64(self):
+        node = factory.make_Node(
+            osystem='ubuntu', netboot=False, architecture='ppc64el/generic')
+        node.install_kvm = True
+        configuration = get_vendor_data(node)
+        config = dict(configuration)
+        self.assertThat(
+            config['runcmd'], Contains([
+                'sh', '-c', 'printf "'
+                '#!/bin/sh\\n'
+                'ppc64_cpu --smt=off\\n'
+                'exit 0\\n'
+                '"  >> /etc/rc.local'
+            ]))
+        self.assertThat(
+            config['runcmd'], Contains(['chmod', '+x', '/etc/rc.local']))
+        self.assertThat(config['runcmd'], Contains(['/etc/rc.local']))
