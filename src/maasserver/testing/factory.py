@@ -993,6 +993,17 @@ class Factory(maastesting.factory.Factory):
                     but_not=self._get_exclude_list(subnet))
         elif ip is None or ip == '':
             ip = ''
+        elif ip:
+            # If we're creating a DHCP IP address, that means it's actually
+            # a DISCOVERED address, plus an empty DHCP address. DISCOVERED
+            # addresses also aren't allocated to a particular user.
+            if alloc_type == IPADDRESS_TYPE.DHCP:
+                ipaddress = StaticIPAddress(
+                    ip=ip, alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
+                    **kwargs)
+                ipaddress.save()
+                ip = None
+                alloc_type = IPADDRESS_TYPE.DHCP
 
         ipaddress = StaticIPAddress(
             ip=ip, alloc_type=alloc_type, user=user, subnet=subnet, **kwargs)

@@ -17,7 +17,10 @@ from maasserver.dns.zonegenerator import (
     InternalDomainResourseRecord,
     ZoneGenerator,
 )
-from maasserver.enum import RDNS_MODE
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    RDNS_MODE,
+)
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
@@ -148,6 +151,45 @@ def get_resource_name_for_subnet(subnet):
     return subnet.cidr.replace('/', '--').replace(':', '-').replace('.', '-')
 
 
+def _get_controller_ips_by_resource_name(controller):
+    ips_by_resource = defaultdict(set)
+    for interface in controller.interface_set.all():
+        found_static = False
+        # Order by alloc_type here because DHCP and DISCOVERED IP addresses
+        # are last in the numeric ordering.
+        for ip_address in interface.ip_addresses.all().order_by('alloc_type'):
+            is_dhcp = False
+            if ip_address.alloc_type in (
+                    IPADDRESS_TYPE.AUTO,
+                    IPADDRESS_TYPE.STICKY,
+                    IPADDRESS_TYPE.USER_RESERVED):
+                # If we find a static IP address, take note of that fact,
+                # because that means we'll want to skip adding a DHCP IP
+                # address here if we find one on the same interface. DHCP
+                # IPs should only be used as a last resort, because errant
+                # leases (for example, from a temporarily duplicated MAC)
+                # can leak into DNS otherwise.
+                found_static = True
+            else:
+                is_dhcp = True
+            if ip_address.ip:
+                if not is_dhcp or (not found_static and is_dhcp):
+                    resource_name = get_resource_name_for_subnet(
+                        ip_address.subnet)
+                    ips_by_resource[resource_name].add(ip_address.ip)
+    return ips_by_resource
+
+
+def _get_ips_by_resource_name(controllers):
+    # Group the IP addresses on controllers by the connected subnets.
+    ips_by_resource = defaultdict(set)
+    for controller in controllers:
+        controller_ips = _get_controller_ips_by_resource_name(controller)
+        for resource, ips in controller_ips.items():
+            ips_by_resource[resource].update(ips)
+    return ips_by_resource
+
+
 def get_internal_domain():
     """Calculate the zone description for the internal domain.
 
@@ -165,15 +207,7 @@ def get_internal_domain():
     controllers = controllers.prefetch_related(
         'interface_set__ip_addresses__subnet')
 
-    # Group the IP addresses on controllers by the connected subnets.
-    ips_by_resource = defaultdict(set)
-    for controller in controllers:
-        for interface in controller.interface_set.all():
-            for ip_address in interface.ip_addresses.all():
-                if ip_address.ip:
-                    resource_name = (
-                        get_resource_name_for_subnet(ip_address.subnet))
-                    ips_by_resource[resource_name].add(ip_address.ip)
+    ips_by_resource = _get_ips_by_resource_name(controllers)
 
     # Map the subnet IP address to the model required for zone generation.
     resources = []

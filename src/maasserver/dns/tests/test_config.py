@@ -61,6 +61,7 @@ from testtools.matchers import (
     Contains,
     Equals,
     FileContains,
+    HasLength,
     MatchesSetwise,
     MatchesStructure,
 )
@@ -618,6 +619,28 @@ class TestGetInternalDomain(MAASServerTestCase):
                 rrtype='AAAA', rrdata=static_ip1.ip)),
             Equals(InternalDomainResourseRecord(
                 rrtype='AAAA', rrdata=static_ip2.ip))))
+
+    def test__prefers_static_ip_over_dhcp(self):
+        rack = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack)
+        nic = rack.get_boot_interface()
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        domain = get_internal_domain()
+        self.assertThat(domain.resources, HasLength(1))
+        self.assertEqual(
+            get_resource_name_for_subnet(subnet), domain.resources[0].name)
+        self.assertEqual(
+            InternalDomainResourseRecord(rrtype='A', rrdata=static_ip.ip),
+            domain.resources[0].records[0])
 
 
 class TestGetResourceNameForSubnet(MAASServerTestCase):
