@@ -21,8 +21,10 @@ from maasserver.models import (
     VLAN,
 )
 from maasserver.stats import (
+    get_kvm_pods_stats,
     get_maas_stats,
     get_machine_stats,
+    get_machines_by_architecture,
     get_request_params,
     make_maas_user_agent_request,
 )
@@ -44,6 +46,72 @@ from twisted.internet.defer import fail
 
 
 class TestMAASStats(MAASServerTestCase):
+
+    def make_pod(self, cpu=0, mem=0, cpu_over_commit=1, mem_over_commit=1):
+        # Make one pod
+        zone = factory.make_Zone()
+        pool = factory.make_ResourcePool()
+        ip = factory.make_ipv4_address()
+        power_parameters = {
+            'power_address': 'qemu+ssh://%s/system' % ip,
+            'power_pass': 'pass',
+        }
+        return factory.make_Pod(
+            pod_type='virsh', zone=zone, pool=pool,
+            cores=cpu, memory=mem,
+            cpu_over_commit_ratio=cpu_over_commit,
+            memory_over_commit_ratio=mem_over_commit,
+            parameters=power_parameters)
+
+    def test_get_machines_by_architecture(self):
+        arches = [
+            'amd64/generic', 's390x/generic', 'ppc64el/generic',
+            'arm64/generic', 'i386/generic']
+        for arch in arches:
+            factory.make_Machine(architecture=arch)
+        stats = get_machines_by_architecture()
+        compare = {
+            "amd64": 1,
+            "i386": 1,
+            "arm64": 1,
+            "ppc64el": 1,
+            "s390x": 1,
+        }
+        self.assertEquals(stats, compare)
+
+    def test_get_kvm_pods_stats(self):
+        pod1 = self.make_pod(
+            cpu=10, mem=100, cpu_over_commit=2, mem_over_commit=3)
+        pod2 = self.make_pod(
+            cpu=20, mem=200, cpu_over_commit=3, mem_over_commit=2)
+
+        total_cores = pod1.cores + pod2.cores
+        total_memory = pod1.memory + pod2.memory
+        over_cores = (
+            pod1.cores * pod1.cpu_over_commit_ratio +
+            pod2.cores * pod2.cpu_over_commit_ratio)
+        over_memory = (
+            pod1.memory * pod1.memory_over_commit_ratio +
+            pod2.memory * pod2.memory_over_commit_ratio)
+
+        stats = get_kvm_pods_stats()
+        compare = {
+            "kvm_pods": 2,
+            "kvm_machines": 0,
+            "kvm_available_resources": {
+                "cores": total_cores,
+                "memory": total_memory,
+                "over_cores": over_cores,
+                "over_memory": over_memory,
+                "storage": 0,
+            },
+            "kvm_utilized_resources": {
+                'cores': 0,
+                'memory': 0,
+                'storage': 0
+            },
+        }
+        self.assertEquals(compare, stats)
 
     def test_get_maas_stats(self):
         # Make one component of everything

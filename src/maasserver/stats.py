@@ -21,12 +21,16 @@ from twisted.application.internet import TimerService
 log = LegacyLogger()
 
 import base64
-from collections import Counter
+from collections import (
+    Counter,
+    defaultdict,
+)
 import json
 
 from maasserver.enum import (
     NODE_TYPE,
     NODE_STATUS,
+    BMC_TYPE,
 )
 from maasserver.models import (
     Node,
@@ -34,6 +38,8 @@ from maasserver.models import (
     VLAN,
     Space,
     Subnet,
+    BMC,
+    Pod,
 )
 from maasserver.utils import get_maas_user_agent
 import requests
@@ -71,6 +77,58 @@ def get_machine_state_stats():
             NODE_STATUS.FAILED_TESTING, 0),
         "broken": node_status.get(NODE_STATUS.BROKEN, 0),
         }
+
+
+def get_machines_by_architecture():
+    node_arches = Node.objects.filter(
+        node_type=NODE_TYPE.MACHINE).extra(
+            dict(
+                short_arch="SUBSTRING(architecture FROM '(.*)/')")
+            ).values_list('short_arch', flat=True)
+
+    count_by_arch = defaultdict(int)
+    for arch in node_arches:
+        count_by_arch[arch] += 1
+
+    return count_by_arch
+
+
+def get_kvm_pods_stats():
+    pods = BMC.objects.filter(bmc_type=BMC_TYPE.POD, power_type='virsh')
+    # Calculate available physical resources
+    # total_mem is in MB
+    # local_storage is in bytes
+    available_resources = pods.aggregate(
+        cores=Sum('cores'), memory=Sum('memory'),
+        storage=Sum('local_storage'))
+
+    # available resources with overcommit
+    over_cores = over_memory = 0
+    for pod in pods:
+        over_cores += pod.cores * pod.cpu_over_commit_ratio
+        over_memory += pod.memory * pod.memory_over_commit_ratio
+    available_resources['over_cores'] = over_cores
+    available_resources['over_memory'] = over_memory
+
+    # Calculate utilization
+    pod_machines = Pod.objects.all()
+    machines = cores = memory = storage = 0
+    for pod in pod_machines:
+        machines += Node.objects.filter(bmc__id=pod.id).count()
+        cores += pod.get_used_cores()
+        memory += pod.get_used_memory()
+        storage += pod.get_used_local_storage()
+
+    return {
+        "kvm_pods": len(pods),
+        "kvm_machines": machines,
+        "kvm_available_resources": available_resources,
+        "kvm_utilized_resources": {
+            'cores': cores,
+            'memory': memory,
+            'storage': storage,
+        }
+    }
 
 
 def get_subnets_stats():
