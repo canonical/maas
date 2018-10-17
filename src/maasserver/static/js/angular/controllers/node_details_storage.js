@@ -1240,7 +1240,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             let size = disk.$options.size;
             // blr 2018-07-23: special cased as isAddLogicalVolumeSizeInvalid
             // calls this but has not yet migrated to maas-obj-form.
-            if($scope.newPartition.$maasForm) {
+            if($scope.newPartition.$maasForm &&
+                    $scope.newPartition.$maasForm.getValue('size')) {
                 size = $scope.newPartition.$maasForm.getValue('size');
             }
             if(size === "" || !isNumber(size)) {
