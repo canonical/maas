@@ -550,16 +550,16 @@
                                             <meter class="p-meter p-meter--kvm" max="{$ storage.total $}" value="{$ storage.used $}"
                                                 ng-class="{'is-over': storage.used > storage.total}">
                                             <div class="p-meter__graph">
-                                                <span class="p-meter__graph-content" style="width: calc(65600%/1024);">Disk Usage - {$ storage.used $} out of {$ storage.total $}</span>
+                                                <span class="p-meter__graph-content" style="width: {$ storage.used / storage.total * 100 $}%">Disk Usage - {$ storage.used $} out of {$ storage.total $}</span>
                                             </div>
                                             </meter>
                                         </div>
                                         <p class="p-p-compact u-clearfix">
                                             <span class="u-float--left">
-                                                {$ storage.available | formatBytes $}
+                                                {$ storage.used | formatBytes $}
                                             </span>
                                             <span class="u-float--right">
-                                                {$ storage.used | formatBytes $}
+                                                {$ storage.available | formatBytes $}
                                             </span>
                                         </p>
                                     </div>

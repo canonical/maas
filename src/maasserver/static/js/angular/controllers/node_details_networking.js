@@ -733,6 +733,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
+
         // Return unique key for the interface.
         $scope.getUniqueKey = function(nic) {
             return nic.id + "/" + nic.link_id;
