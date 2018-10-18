@@ -3282,7 +3282,11 @@ class Node(CleanSave, TimestampedModel):
                 for sip in interface.ip_addresses.all():
                     sip.interface_set.remove(interface)
                     sip.interface_set.add(parent)
-                # Delete the acquired bridge interface.
+                # Delete the acquired bridge interface, and set a property
+                # to prevent a race condition that would otherwise cause
+                # the IP addresses moved to the physical interface to be
+                # deleted.
+                setattr(interface, '_skip_ip_address_removal', True)
                 interface.delete()
 
     def _clear_networking_configuration(self):
