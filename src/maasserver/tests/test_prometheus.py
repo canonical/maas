@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import http.client
 import json
 
 from django.db import transaction
@@ -19,6 +20,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils.django_urls import reverse
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
@@ -29,6 +31,36 @@ from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
+
+
+class TestPrometheusHandler(MAASServerTestCase):
+
+    def test_prometheus_handler_returns_http_not_found(self):
+        Config.objects.set_config('prometheus_enabled', False)
+        response = self.client.get(reverse('metrics'))
+        self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
+        self.assertEquals(response.status_code, http.client.NOT_FOUND)
+
+    def test_prometheus_handler_returns_success(self):
+        Config.objects.set_config('prometheus_enabled', True)
+        self.patch(prometheus, "CollectorRegistry")
+        self.patch(prometheus, "Gauge")
+        self.patch(prometheus, "generate_latest").return_value = {}
+        response = self.client.get(reverse('metrics'))
+        self.assertEqual("text/plain", response["Content-Type"])
+        self.assertEquals(response.status_code, http.client.OK)
+
+    def test_prometheus_handler_returns_metrics(self):
+        Config.objects.set_config('prometheus_enabled', True)
+        metrics = (
+            '# HELP machine_status Number per machines per stats'
+            '# TYPE machine_status counter'
+            'machine_status={status="deployed"} 100')
+        self.patch(prometheus, "CollectorRegistry")
+        self.patch(prometheus, "Gauge")
+        self.patch(prometheus, "generate_latest").return_value = metrics
+        response = self.client.get(reverse('metrics'))
+        self.assertEqual(metrics, response.content.decode("unicode_escape"))
 
 
 class TestPrometheus(MAASServerTestCase):

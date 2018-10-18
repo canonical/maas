@@ -11,6 +11,10 @@ __all__ = [
 from datetime import timedelta
 import json
 
+from django.http import (
+    HttpResponse,
+    HttpResponseNotFound,
+)
 from maasserver.models import Config
 from maasserver.stats import get_maas_stats
 from maasserver.utils.orm import transactional
@@ -24,6 +28,7 @@ try:
         CollectorRegistry,
         Gauge,
         push_to_gateway,
+        generate_latest,
     )
     PROMETHEUS = True
 except:
@@ -32,13 +37,22 @@ except:
 log = LegacyLogger()
 
 
+def prometheus_handler(request):
+    if not Config.objects.get_config('prometheus_enabled'):
+        return HttpResponseNotFound()
+
+    return HttpResponse(
+        content=generate_latest(get_stats_for_prometheus()),
+        content_type="text/plain")
+
+
 def get_stats_for_prometheus():
     registry = CollectorRegistry()
     stats = json.loads(get_maas_stats())
 
     # Gather counter for machines per status
     counter = Gauge(
-        "machine_status", "Number per machines per stats",
+        "machine_status", "Number of machines per status",
         ["status"], registry=registry)
     for status, machines in stats['machine_status'].items():
         counter.labels(status).set(machines)
