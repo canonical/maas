@@ -106,10 +106,9 @@ class TestAuth(MAASTestCase):
         # If no credentials are passed, the client will use httpbakery
         # to get a macroon and create a new api key.
 
-        # The .request method will send the user to IDM and get the
-        # macaroon that way. Ideally we should test this better by
-        # faking the http responses that httpbakery expects, but it's
-        # not trivial to do so.
+        # The .request method will send the user to Candid and get the macaroon
+        # that way. Ideally we should test this better by faking the http
+        # responses that httpbakery expects, but it's not trivial to do so.
         token = {
             'token_key': 'token-key', 'token_secret': 'token-secret',
             'consumer_key': 'consumer-key', 'name': 'MAAS consumer'}

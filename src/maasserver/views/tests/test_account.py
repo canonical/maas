@@ -138,7 +138,7 @@ class TestLogin(MAASServerTestCase):
     def test_login_external_auth(self):
         self.patch(settings, 'DEBUG', False)
         Config.objects.set_config(
-            'external_auth_url', 'http://idm.example.com')
+            'external_auth_url', 'http://candid.example.com')
         factory.make_User()
         response = self.client.get(reverse("login"))
         doc = fromstring(response.content)

@@ -35,12 +35,13 @@ def try_getpass(prompt):
 def get_apikey_via_macaroon(url):
     """Try to get an API key using a macaroon.
 
-    httpbakery is used to create a new API token. If the MAAS server
-    supports macaroons, it will reply that a macaroon discharge is
-    required, and bakery will send the user to IDM for authentication,
-    and then call the API again with the acquired macaroon.
+    httpbakery is used to create a new API token. If the MAAS server supports
+    macaroons, it will reply that a macaroon discharge is required, and bakery
+    will send the user to Candid for authentication, and then call the API
+    again with the acquired macaroon.
 
     If the MAAS server doesn't support macaroons, None is returned.
+
     """
     url = url.strip('/')
     client = httpbakery.Client()

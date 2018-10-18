@@ -24,7 +24,7 @@ class TestRBACClient(MAASServerTestCase):
         key = PrivateKey.deserialize(
             'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
         agent = Agent(
-            url='https://auth.example.com', username='user@idm')
+            url='https://auth.example.com', username='user@candid')
         auth_info = AuthInfo(key=key, agents=[agent])
         url = 'https://rbac.example.com'
 

@@ -182,7 +182,8 @@ class TestCmdInit(MAASTestCase):
         self.check_output_mock.return_value = json.dumps(
             {'external_auth_url': ''})
         # avoid printouts
-        self.patch(sys, "stdout", StringIO())
+        self.mock_stdout = self.patch(init.sys, "stdout", StringIO())
+        self.mock_stderr = self.patch(init.sys, "stderr", StringIO())
 
     def test_defaults(self):
         options = self.parser.parse_args([])
@@ -191,14 +192,14 @@ class TestCmdInit(MAASTestCase):
         self.assertIsNone(options.admin_password)
         self.assertIsNone(options.admin_email)
         self.assertIsNone(options.admin_ssh_import)
-        self.assertFalse(options.enable_idm)
-        self.assertIsNone(options.idm_url)
-        self.assertIsNone(options.idm_user)
-        self.assertIsNone(options.idm_key)
-        self.assertIsNone(options.idm_agent_file)
+        self.assertFalse(options.enable_candid)
+        self.assertIsNone(options.candid_url)
+        self.assertIsNone(options.candid_user)
+        self.assertIsNone(options.candid_key)
+        self.assertIsNone(options.candid_agent_file)
         self.assertIsNone(options.rbac_url)
 
-    def test_init_maas_no_idm(self):
+    def test_init_maas_no_candid(self):
         options = self.parser.parse_args([])
         self.cmd(options)
         [createadmin_call] = self.call_mock.mock_calls
@@ -206,7 +207,18 @@ class TestCmdInit(MAASTestCase):
         self.assertEqual(([self.maas_region_path, 'createadmin'],), args)
         self.assertEqual({}, kwargs)
 
-    def test_init_maas_with_idm(self):
+    def test_init_maas_with_candid(self):
+        options = self.parser.parse_args(['--enable-candid'])
+        self.cmd(options)
+        configauth_call, createadmin_call = self.call_mock.mock_calls
+        _, args1, kwargs1 = configauth_call
+        _, args2, kwargs2 = createadmin_call
+        self.assertEqual(([self.maas_region_path, 'configauth'],), args1)
+        self.assertEqual({}, kwargs1)
+        self.assertEqual(([self.maas_region_path, 'createadmin'],), args2)
+        self.assertEqual({}, kwargs2)
+
+    def test_init_maas_with_legacy_idm_option(self):
         options = self.parser.parse_args(['--enable-idm'])
         self.cmd(options)
         configauth_call, createadmin_call = self.call_mock.mock_calls
@@ -216,3 +228,7 @@ class TestCmdInit(MAASTestCase):
         self.assertEqual({}, kwargs1)
         self.assertEqual(([self.maas_region_path, 'createadmin'],), args2)
         self.assertEqual({}, kwargs2)
+        self.assertIn(
+            'Note: "--enable-idm" is deprecated and will be removed, '
+            'please use "--enable-candid" instead',
+            self.mock_stderr.getvalue())

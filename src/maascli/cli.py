@@ -23,9 +23,10 @@ from maascli.auth import (
 from maascli.command import Command
 from maascli.config import ProfileConfig
 from maascli.init import (
+    add_candid_options,
     add_create_admin_options,
-    add_idm_options,
     add_rbac_options,
+    deprecated_for,
     init_maas,
 )
 from maascli.utils import (
@@ -175,12 +176,15 @@ class cmd_init(Command):
             help="Skip the admin creation.")
         add_create_admin_options(parser)
         parser.add_argument(
-            '--enable-idm', default=False, action="store_true",
-            help=("Enable configuring the use of an external IDM server. "
+            '--enable-candid', default=False, action="store_true",
+            help=("Enable configuring the use of an external Candid server. "
                   "This feature is currently experimental. "
-                  "If this isn't enabled, all --idm-* arguments "
+                  "If this isn't enabled, all --candid-* arguments "
                   "will be ignored."))
-        add_idm_options(parser)
+        parser.add_argument(
+            '--enable-idm', nargs=0,
+            action=deprecated_for('--enable-candid'))
+        add_candid_options(parser)
         add_rbac_options(parser)
 
     def __call__(self, options):

@@ -7,33 +7,75 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 from textwrap import dedent
 
 from maascli.configfile import MAASConfiguration
 from macaroonbakery import httpbakery
 
 
-def add_idm_options(parser):
+def deprecated_for(new_option):
+    """Return an arparse.Action for deprecating another option.
+
+    It prints out a deprecation message and calls the new option.
+
+    """
+
+    class DeprecatedAction(argparse.Action):
+
+        _new_option = new_option
+        _deprecation_message = (
+            'Note: "{option_string}" is deprecated and will be removed, '
+            'please use "{new_option}" instead.')
+
+        def __init__(self, *args, **kwargs):
+            kwargs.setdefault('help', argparse.SUPPRESS)
+            kwargs['default'] = argparse.SUPPRESS
+            super().__init__(*args, **kwargs)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            action = parser._option_string_actions.get(self._new_option)
+            assert action, 'unknown option "{}"'.format(self._new_option)
+            assert option_string, \
+                '"deprecate_for" must be used with optional arguments'
+            print(
+                self._deprecation_message.format(
+                    option_string=option_string, new_option=self._new_option),
+                file=sys.stderr)
+            option_string = self._new_option
+            return action(
+                parser, namespace, values, option_string=option_string)
+
+    return DeprecatedAction
+
+
+def add_candid_options(parser):
     parser.add_argument(
-        '--idm-url', default=None, metavar='IDM_URL',
-        help=("The URL to the external IDM server to use for "
-              "authentication."))
+        '--candid-agent-file',
+        help="Agent file containing Candid authentication information")
     parser.add_argument(
-        '--idm-domain', default=None, metavar='IDM_DOMAIN',
+        '--candid-domain', default=None,
         help=("The authentication domain to look up users in for the external "
-              "IDM server."))
+              "Candid server."))
     parser.add_argument(
-        '--idm-user', default=None,
-        help="The username to access the IDM server API.")
-    parser.add_argument(
-        '--idm-key', default=None,
-        help="The private key to access the IDM server API.")
-    parser.add_argument(
-        '--idm-agent-file', type=argparse.FileType('r'),
-        help="Agent file containing IDM authentication information")
-    parser.add_argument(
-        '--idm-admin-group', default=None, metavar='IDM_ADMIN_GROUP',
+        '--candid-admin-group', default=None,
         help="Group of users whose members are made admins in MAAS")
+    parser.add_argument(
+        '--idm-url', default=None, dest='candid_url',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--idm-user', default=None, dest='candid_user',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--idm-key', default=None, dest='candid_key',
+        help=argparse.SUPPRESS)
+    # deprecated aliases
+    parser.add_argument(
+        '--idm-agent-file', action=deprecated_for('--candid-agent-file'))
+    parser.add_argument(
+        '--idm-domain', action=deprecated_for('--candid-domain'))
+    parser.add_argument(
+        '--idm-admin-group', action=deprecated_for('--candid-admin-group'))
 
 
 def add_rbac_options(parser):
@@ -121,18 +163,18 @@ def create_account_external_auth(auth_config, maas_config,
 
 def configure_authentication(options):
     cmd = [get_maas_region_bin_path(), 'configauth']
-    if options.idm_url is not None:
-        cmd.extend(['--idm-url', options.idm_url])
-    if options.idm_domain is not None:
-        cmd.extend(['--idm-domain', options.idm_domain])
-    if options.idm_user is not None:
-        cmd.extend(['--idm-user', options.idm_user])
-    if options.idm_key is not None:
-        cmd.extend(['--idm-key', options.idm_key])
-    if options.idm_agent_file is not None:
-        cmd.extend(['--idm-agent-file', options.idm_agent_file.name])
-    if options.idm_admin_group is not None:
-        cmd.extend(['--idm-admin-group', options.idm_admin_group])
+    if options.candid_url is not None:
+        cmd.extend(['--idm-url', options.candid_url])
+    if options.candid_user is not None:
+        cmd.extend(['--idm-user', options.candid_user])
+    if options.candid_key is not None:
+        cmd.extend(['--idm-key', options.candid_key])
+    if options.candid_domain is not None:
+        cmd.extend(['--candid-domain', options.candid_domain])
+    if options.candid_agent_file is not None:
+        cmd.extend(['--candid-agent-file', options.candid_agent_file])
+    if options.candid_admin_group is not None:
+        cmd.extend(['--candid-admin-group', options.candid_admin_group])
     subprocess.call(cmd)
 
 
@@ -161,7 +203,7 @@ def print_msg(msg='', newline=True):
 
 
 def init_maas(options):
-    if options.enable_idm:
+    if options.enable_candid:
         print_msg('Configuring authentication')
         configure_authentication(options)
     if not options.skip_admin:

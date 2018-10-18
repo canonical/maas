@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from io import StringIO
 import os
 import tempfile
 from unittest.mock import (
@@ -17,52 +18,56 @@ from maascli.parser import ArgumentParser
 from maastesting.testcase import MAASTestCase
 
 
-class TestAddIdmOptions(MAASTestCase):
+class TestAddCandidOptions(MAASTestCase):
 
     def setUp(self):
         super().setUp()
         self.parser = ArgumentParser()
-        init.add_idm_options(self.parser)
+        init.add_candid_options(self.parser)
+        self.mock_stderr = self.patch(init.sys, "stderr", StringIO())
 
-    def test_add_idm_options_empty(self):
+    def test_add_candid_options_empty(self):
         options = self.parser.parse_args([])
-        self.assertIsNone(options.idm_url)
-        self.assertIsNone(options.idm_user)
-        self.assertIsNone(options.idm_key)
-        self.assertIsNone(options.idm_agent_file)
+        self.assertIsNone(options.candid_url)
+        self.assertIsNone(options.candid_user)
+        self.assertIsNone(options.candid_key)
+        self.assertIsNone(options.candid_agent_file)
 
-    def test_add_idm_options_idm_url(self):
+    def test_add_candid_options_candid_url(self):
         options = self.parser.parse_args(
-            ['--idm-url', 'http://idm.example.com/'])
-        self.assertEqual('http://idm.example.com/', options.idm_url)
-
-    def test_add_idm_options_idm_domain(self):
-        options = self.parser.parse_args(
-            ['--idm-domain', 'mydomain'])
-        self.assertEqual('mydomain', options.idm_domain)
-
-    def test_add_idm_options_idm_user(self):
-        options = self.parser.parse_args(['--idm-user', 'my-user'])
-        self.assertEqual('my-user', options.idm_user)
-
-    def test_add_idm_options_idm_key(self):
-        options = self.parser.parse_args(['--idm-key', 'my-key'])
-        self.assertEqual('my-key', options.idm_key)
-
-    def test_add_idm_options_idm_agent_file(self):
-        fd, agent_file_name = tempfile.mkstemp()
-        self.addCleanup(os.remove, agent_file_name)
-
-        os.write(fd, b'my-agent-file-content')
-        os.close(fd)
-        options = self.parser.parse_args(['--idm-agent-file', agent_file_name])
+            ['--idm-url', 'http://candid.example.com/'])
         self.assertEqual(
-            'my-agent-file-content', options.idm_agent_file.read())
+            'http://candid.example.com/', options.candid_url)
 
-    def test_add_idm_options_idm_admin_group(self):
+    def test_add_candid_options_candid_domain(self):
         options = self.parser.parse_args(
-            ['--idm-admin-group', 'admins'])
-        self.assertEqual('admins', options.idm_admin_group)
+            ['--candid-domain', 'mydomain'])
+        self.assertEqual('mydomain', options.candid_domain)
+
+    def test_add_candid_options_candid_user(self):
+        options = self.parser.parse_args(['--idm-user', 'my-user'])
+        self.assertEqual('my-user', options.candid_user)
+
+    def test_add_candid_options_candid_key(self):
+        options = self.parser.parse_args(['--idm-key', 'my-key'])
+        self.assertEqual('my-key', options.candid_key)
+
+    def test_add_candid_options_candid_agent_file(self):
+        options = self.parser.parse_args(['--candid-agent-file', 'agent.file'])
+        self.assertEqual(options.candid_agent_file, 'agent.file')
+
+    def test_add_candid_options_deprecated_idm_agent_file(self):
+        options = self.parser.parse_args(['--idm-agent-file', 'agent.file'])
+        self.assertEqual(options.candid_agent_file, 'agent.file')
+        self.assertIn(
+            'Note: "--idm-agent-file" is deprecated and will be removed, '
+            'please use "--candid-agent-file" instead',
+            self.mock_stderr.getvalue())
+
+    def test_add_candid_options_candid_admin_group(self):
+        options = self.parser.parse_args(
+            ['--candid-admin-group', 'admins'])
+        self.assertEqual('admins', options.candid_admin_group)
 
 
 class TestAddRBACOptions(MAASTestCase):
@@ -178,7 +183,7 @@ class TestConfigureAuthentication(MAASTestCase):
             init.os.environ, {'SNAP': 'snap-path'}, clear=True)
         self.mock_environ.start()
         self.parser = ArgumentParser()
-        init.add_idm_options(self.parser)
+        init.add_candid_options(self.parser)
 
     def tearDown(self):
         self.mock_subprocess.stop()
@@ -195,7 +200,7 @@ class TestConfigureAuthentication(MAASTestCase):
         self.assertEqual({}, kwargs)
 
     def test_idm_url(self):
-        config_auth_args = ['--idm-url', 'http://idm.example.com/']
+        config_auth_args = ['--idm-url', 'http://candid.example.com/']
         options = self.parser.parse_args(config_auth_args)
         init.configure_authentication(options)
         [config_call] = self.mock_subprocess.mock_calls
@@ -227,10 +232,10 @@ class TestConfigureAuthentication(MAASTestCase):
             ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
         self.assertEqual({}, kwargs)
 
-    def test_idm_agent_file(self):
+    def test_candid_agent_file(self):
         _, agent_file_path = tempfile.mkstemp()
         self.addCleanup(os.remove, agent_file_path)
-        config_auth_args = ['--idm-agent-file', agent_file_path]
+        config_auth_args = ['--candid-agent-file', agent_file_path]
         options = self.parser.parse_args(config_auth_args)
         init.configure_authentication(options)
         [config_call] = self.mock_subprocess.mock_calls
@@ -244,10 +249,10 @@ class TestConfigureAuthentication(MAASTestCase):
         _, agent_file = tempfile.mkstemp()
         self.addCleanup(os.remove, agent_file)
         config_auth_args = [
-            '--idm-url', 'http://idm.example.com/',
-            '--idm-user', 'idm-user',
-            '--idm-key', 'idm-key',
-            '--idm-agent-file', agent_file]
+            '--idm-url', 'http://candid.example.com/',
+            '--idm-user', 'candid-user',
+            '--idm-key', 'candid-key',
+            '--candid-agent-file', agent_file]
         options = self.parser.parse_args(config_auth_args)
         init.configure_authentication(options)
         [config_call] = self.mock_subprocess.mock_calls

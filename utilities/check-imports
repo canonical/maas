@@ -262,7 +262,7 @@ RegionControllerRule = Rule(
     Allow("formencode|formencode.**"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
-    Allow("maascli.init.add_idm_options"),
+    Allow("maascli.init.add_candid_options"),
     Allow("maascli.init.add_rbac_options"),
     Allow("maascli.utils.parse_docstring"),
     Allow("maasserver|maasserver.**"),

@@ -79,7 +79,7 @@ class TestCandidClient(MAASServerTestCase):
         super().setUp()
         Config.objects.set_config(
             'external_auth_url', 'https://auth.example.com')
-        Config.objects.set_config('external_auth_user', 'user@idm')
+        Config.objects.set_config('external_auth_user', 'user@candid')
         Config.objects.set_config(
             'external_auth_key',
             'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
