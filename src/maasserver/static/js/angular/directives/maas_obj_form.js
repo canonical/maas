@@ -948,13 +948,14 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         '<div class="p-slider__wrapper">',
                         '<input class="p-slider" type="range"',
                         'min="' + attrs.min + '" max="' + attrs.max + '" ',
-                        'value="1" step="1" id="' + attrs.key + '" ',
+                        'value="1" step="' + attrs.step + '" ',
+                        'id="' + attrs.key + '" ',
                         'data-ng-model="_slider" data-ng-disabled="',
                         '_ngDisabled()">',
                         '<input class="p-slider__input" type="text" ',
                         'maxlength="3" id="' + attrs.key + '-input" ',
-                        'data-ng-model="_slider" data-ng-disabled="',
-                        '_ngDisabled()"></div>'
+                        'data-ng-model="_slider" disabled="disabled" ',
+                        '></div>'
                     ].join(''));
                     inputElement = $compile(inputElement)(sliderScope);
 

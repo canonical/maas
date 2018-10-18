@@ -73,16 +73,16 @@ angular.module('MAAS').directive(
                   if(type.name === 'virsh' && attrs.hideSlider !== "true") {
                       html += (
                           '<maas-obj-field type="slider" key="' +
-                          'cpu_over_commit_ratio" label="CPU over commit" ' +
-                          'min="0" max="10" label-width="2" '
+                          'cpu_over_commit_ratio" label="CPU overcommit" ' +
+                          'min="1" max="10" label-width="2" step=".1" '
                           + 'label-width-tablet="2" input-width="4" '
                           + 'input-width-tablet="3">' +
                           '</maas-obj-field>');
                       html += (
                           '<maas-obj-field type="slider" key="' +
                           'memory_over_commit_ratio" label="' +
-                          'Memory over commit" min="0" max="10" ' +
-                          'label-width="2" label-width-tablet="2" ' +
+                          'Memory overcommit" min="1" max="10" ' +
+                          'label-width="2" label-width-tablet="2" step=".1" ' +
                           'input-width="4" input-width-tablet="3">' +
                           '</maas-obj-field>');
                   }

@@ -124,11 +124,11 @@ class PodForm(MAASModelForm):
         queryset=ResourcePool.objects.all(), to_field_name='name')
 
     cpu_over_commit_ratio = forms.FloatField(
-        label="CPU over commit ratio", initial=1, required=False,
+        label="CPU overcommit ratio", initial=1, required=False,
         min_value=0, max_value=10)
 
     memory_over_commit_ratio = forms.FloatField(
-        label="Memory over commit ratio", initial=1, required=False,
+        label="Memory overcommit ratio", initial=1, required=False,
         min_value=0, max_value=10)
 
     default_storage_pool = forms.ModelChoiceField(
@@ -598,7 +598,7 @@ class ComposeMachineForm(forms.Form):
             skip_commissioning = self.get_value_for('skip_commissioning')
 
         def db_work(client):
-            # Check over commit ratios.
+            # Check overcommit ratios.
             over_commit_message = self.pod.check_over_commit_ratios(
                 requested_cores=self.get_value_for('cores'),
                 requested_memory=self.get_value_for('memory'))

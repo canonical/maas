@@ -153,7 +153,7 @@ class Capabilities:
     # exact size with this pod connected storage systems.
     ISCSI_STORAGE = 'iscsi_storage'
 
-    # Ability to over commit the cores and memory of the pod. Mainly used
+    # Ability to overcommit the cores and memory of the pod. Mainly used
     # for virtual pod.
     OVER_COMMIT = 'over_commit'
 

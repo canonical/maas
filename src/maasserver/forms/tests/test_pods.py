@@ -1607,7 +1607,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
             "Unable to compose KVM instance in '%s'. "
-            "CPU over commit ratio is %s and there are %s "
+            "CPU overcommit ratio is %s and there are %s "
             "available resources; %s requested." % (
                 pod.name, pod.cpu_over_commit_ratio, pod.cores, 1),
             str(error))
@@ -1628,7 +1628,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
             "Unable to compose KVM instance in '%s'. "
-            "Memory over commit ratio is %s and there are %s "
+            "Memory overcommit ratio is %s and there are %s "
             "available resources; %s requested." % (
                 pod.name, pod.memory_over_commit_ratio, pod.memory, 1024),
             str(error))
@@ -1759,7 +1759,7 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
     def test_compose_uses_non_commit_forms_first(self):
         request = MagicMock()
         pods = self.make_pods()
-        # Make it skip the first over commitable pod
+        # Make it skip the first overcommitable pod
         pods[1].capabilities = [Capabilities.OVER_COMMIT]
         pods[1].save()
         data = self.make_data(pods)

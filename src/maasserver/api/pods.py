@@ -135,9 +135,9 @@ class PodHandler(OperationsHandler):
         :param pool: Name of resource pool this pod belongs and that
             composed machines get assigned to by default.
         :type pool: unicode
-        :param cpu_over_commit_ratio: CPU over commit ratio
+        :param cpu_over_commit_ratio: CPU overcommit ratio
         :type cpu_over_commit_ratio: unicode
-        :param memory_over_commit_ratio: Memory over commit ratio
+        :param memory_over_commit_ratio: Memory overcommit ratio
         :type memory_over_commit_ratio: unicode
         :param default_storage_pool: Default storage pool (used when pod has
             storage pools).

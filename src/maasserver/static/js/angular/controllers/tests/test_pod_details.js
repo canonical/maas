@@ -582,7 +582,7 @@ describe("PodDetailsController", function() {
                 storage_pool, storage)).toBe(50);
         });
 
-        it("returns the over committed percentage", function() {
+        it("returns the overcommitted percentage", function() {
             var controller = makeController();
             var storage_pool = {
                 'used': 90,
