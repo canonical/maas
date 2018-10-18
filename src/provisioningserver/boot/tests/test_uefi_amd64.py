@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.boot.uefi_amd64`."""
@@ -132,7 +132,10 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
                 purpose="local", arch="amd64"),
             }
         output = method.get_reader(**options).read(10000).decode("utf-8")
-        self.assertIn("chainloader /efi/ubuntu/grubx64.efi", output)
+        self.assertIn("chainloader /efi/", output)
+        self.assertIn("bootx64.efi", output)
+        self.assertIn("shimx64.efi", output)
+        self.assertIn("grubx64.efi", output)
 
     def test_get_reader_with_enlist_purpose(self):
         # If purpose is "enlist", the config.enlist.template should be
