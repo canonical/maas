@@ -11,6 +11,7 @@ __all__ = [
 import http.client
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.http import (
     HttpResponse,
     HttpResponseForbidden,
@@ -20,6 +21,7 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_optional_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import (
     ENDPOINT,
@@ -35,6 +37,7 @@ from maasserver.models import (
     SSHKey,
 )
 from maasserver.utils.keys import ImportSSHKeysError
+from maasserver.utils.orm import get_one
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
@@ -56,12 +59,28 @@ class SSHKeysHandler(OperationsHandler):
         return SSHKey.objects.filter(user=request.user)
 
     def create(self, request):
-        """Add a new SSH key to the requesting user's account.
+        """Add a new SSH key to the requesting or supplied user's account.
 
         The request payload should contain the public SSH key data in form
         data whose name is "key".
         """
-        form = SSHKeyForm(user=request.user, data=request.data)
+        user = request.user
+        username = get_optional_param(request.POST, 'user')
+        if username is not None and request.user.is_superuser:
+            supplied_user = get_one(User.objects.filter(username=username))
+            if supplied_user is not None:
+                user = supplied_user
+            else:
+                # Raise an error so that the user can know that their
+                # attempt at specifying a user did not work.
+                raise MAASAPIValidationError(
+                    "Supplied username does not match any current users.")
+        elif username is not None and not request.user.is_superuser:
+            raise MAASAPIValidationError(
+                "Only administrators can specify a user"
+                " when creating an SSH key.")
+
+        form = SSHKeyForm(user=user, data=request.data)
         if form.is_valid():
             sshkey = form.save(ENDPOINT.API, request)
             emitter = JSONEmitter(

@@ -23,9 +23,11 @@ from maasserver.models import (
     StaticIPAddress,
 )
 from maasserver.models.event import Event
+from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.django_urls import reverse
+from maasserver.utils.orm import get_one
 from provisioningserver.events import AUDIT
 from testtools.matchers import (
     ContainsAll,
@@ -118,6 +120,34 @@ class TestUsers(APITestCase.ForUser):
         self.assertEqual(
             (email, True),
             (created_user.email, created_user.is_superuser))
+
+    def test_POST_creates_admin_with_ssh_key(self):
+        self.become_admin()
+        username = factory.make_name('user')
+        email = factory.make_email_address()
+        password = factory.make_string()
+        key_string = get_data('data/test_rsa0.pub')
+        response = self.client.post(
+            reverse('users_handler'),
+            {
+                'username': username,
+                'email': email,
+                'password': password,
+                'is_superuser': '1',
+                'key': key_string,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+
+        self.assertEqual(
+            username, json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['username'])
+        created_user = User.objects.get(username=username)
+        self.assertEqual(
+            (email, True),
+            (created_user.email, created_user.is_superuser))
+        added_key = get_one(SSHKey.objects.filter(user=created_user))
+        self.assertEqual(key_string, added_key.key)
 
     def test_POST_requires_admin(self):
         response = self.client.post(

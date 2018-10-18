@@ -11,6 +11,7 @@ __all__ = [
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from maasserver.api.ssh_keys import SSHKeysHandler
 from maasserver.api.support import (
     admin_method,
     operation,
@@ -90,8 +91,13 @@ class UsersHandler(OperationsHandler):
             description=("Created %s '%s'." % (
                 'admin' if is_superuser else 'user', username)))
         if is_superuser:
-            return User.objects.create_superuser(
+            user = User.objects.create_superuser(
                 username=username, password=password, email=email)
+            if request.data.get('key') is not None:
+                request.user = user
+                sshkeys_handler = SSHKeysHandler()
+                sshkeys_handler.create(request)
+            return user
         else:
             return User.objects.create_user(
                 username=username, password=password, email=email)

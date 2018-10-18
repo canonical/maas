@@ -529,6 +529,42 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         added_key = get_one(SSHKey.objects.filter(user=self.user))
         self.assertEqual(key_string, added_key.key)
 
+    def test_adding_works_with_user(self):
+        self.become_admin()
+        username = factory.make_name('user')
+        user = factory.make_User(username=username)
+        key_string = get_data('data/test_rsa0.pub')
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                key=key_string, user=username))
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_response = json_load_bytes(response.content)
+        self.assertEqual(key_string, parsed_response["key"])
+        added_key = get_one(SSHKey.objects.filter(user=user))
+        self.assertEqual(key_string, added_key.key)
+
+    def test_adding_does_not_work_with_unknown_user(self):
+        self.become_admin()
+        username = factory.make_name('user')
+        key_string = get_data('data/test_rsa0.pub')
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                key=key_string, user=username))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response)
+        self.assertIn(b"Supplied username", response.content)
+
+    def test_adding_does_not_work_with_user_for_non_admin(self):
+        username = factory.make_name('user')
+        factory.make_User(username=username)
+        key_string = get_data('data/test_rsa0.pub')
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                key=key_string, user=username))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response)
+        self.assertIn(b"Only administrators", response.content)
+
     def test_adding_catches_key_validation_errors(self):
         key_string = factory.make_string()
         response = self.client.post(

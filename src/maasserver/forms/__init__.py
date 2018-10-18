@@ -1125,9 +1125,13 @@ class SSHKeyForm(MAASModelForm):
 
     def save(self, endpoint, request):
         sshkey = super(SSHKeyForm, self).save()
+        if self.instance.user is request.user:
+            description = "Created SSH key."
+        else:
+            description = "Created SSH key for %s." % self.instance.user
         create_audit_event(
             EVENT_TYPES.AUTHORISATION, endpoint, request,
-            None, description="Created SSH key.")
+            None, description=description)
         return sshkey
 
 
