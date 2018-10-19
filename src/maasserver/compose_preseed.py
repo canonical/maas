@@ -385,12 +385,15 @@ def get_base_preseed(node=None):
     return cloud_config
 
 
-def compose_cloud_init_preseed(request, node, token):
+def compose_debconf_cloud_init_preseed(request, node, token):
     """Compose the preseed value for a node in any state but Commissioning.
 
     Returns cloud-config that's preseeded to cloud-init via debconf (It only
     configures cloud-init in Ubuntu Classic systems. Ubuntu Core does not
-    have debconf as it is not Debian based.
+    have debconf as it is not Debian based.)
+
+    Note that this was originally for systems that installed via
+    debian-installer, but it is used to ensure full backwards compatibility.
     """
     credentials = urlencode({
         'oauth_consumer_key': token.consumer.key,
@@ -400,7 +403,6 @@ def compose_cloud_init_preseed(request, node, token):
 
     config = get_base_preseed(node)
     config.update({
-        "apt_preserve_sources_list": True,
         # Prevent the node from requesting cloud-init data on every reboot.
         # This is done so a machine does not need to contact MAAS every time
         # it reboots.
@@ -410,10 +412,6 @@ def compose_cloud_init_preseed(request, node, token):
     # This will allow cloud-init to be configured with reporting for
     # a node that has already been installed.
     config.update(get_cloud_init_reporting(request, node, token))
-    # Add APT configuration for new cloud-init (>= 0.7.7-17)
-    config.update(
-        get_archive_config(
-            request, node, preserve_sources=False))
 
     local_config_yaml = yaml.safe_dump(config)
     # this is debconf escaping
@@ -478,12 +476,11 @@ def _compose_cloud_init_preseed(
     })
     # This configures reporting for the ephemeral environment
     cloud_config.update(get_cloud_init_reporting(request, node, token))
-    # Add the system configuration information.
-    # LP: #1743966 - When deploying precise or trusty, if a custom archive
-    # with a custom key is used, create a work around to inject the key.
-    if node.distro_series in ['precise', 'trusty']:
-        cloud_config.update(
-            get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node))
+    # Add legacy APT configuration for cloud-init in case the ephemeral
+    # is an older version of maas. Since precise is now deployed using
+    # the commissioning enviroment (which will either be Xenial or Bionic)
+    # then we only need the legacy config for trusty.
+    if node.distro_series == 'trusty':
         cloud_config.update(get_old_archive_config())
         # apt_proxy is deprecated in the cloud-init source code in favor of
         # what get_archive_config does.
@@ -491,6 +488,10 @@ def _compose_cloud_init_preseed(
             request, node.get_boot_rack_controller())
         if apt_proxy:
             cloud_config['apt_proxy'] = apt_proxy
+        # LP: #1743966 - If a custom archive is being used with a custom key,
+        # create a work around to inject it in legacy format.
+        cloud_config.update(
+            get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node))
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
     cloud_config.update(get_archive_config(
         request, node, preserve_sources=False))
@@ -578,7 +579,7 @@ def compose_preseed(request, preseed_type, node):
         if preseed_type == PRESEED_TYPE.CURTIN:
             return compose_curtin_preseed(request, node, token)
         else:
-            return compose_cloud_init_preseed(request, node, token)
+            return compose_debconf_cloud_init_preseed(request, node, token)
 
 
 def compose_enlistment_preseed(

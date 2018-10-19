@@ -33,7 +33,7 @@ from django.urls import reverse
 from maasserver import logger
 from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
-    compose_cloud_init_preseed,
+    compose_debconf_cloud_init_preseed,
     compose_enlistment_preseed,
     compose_preseed,
     get_archive_config,
@@ -509,7 +509,7 @@ def get_curtin_context(request, node):
     """
     token = NodeKey.objects.get_token_for_node(node)
     return {
-        'curtin_preseed': compose_cloud_init_preseed(
+        'curtin_preseed': compose_debconf_cloud_init_preseed(
             request, node, token)
     }
 

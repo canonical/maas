@@ -645,7 +645,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertNotIn('proxy', preseed['apt'])
 
     # LP: #1743966 - Test for archive key work around
-    def test_compose_preseed_for_curtin_and_trusty_precise_aptsources(self):
+    def test_compose_preseed_for_curtin_and_trusty_aptsources(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -653,7 +653,7 @@ class TestComposePreseed(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.READY, osystem='ubuntu',
-            distro_series=random.choice(['precise', 'trusty']))
+            distro_series='trusty')
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
@@ -668,8 +668,10 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(apt_proxy, preseed['apt_proxy'])
         self.assertSystemInfo(preseed)
 
-    # LP: #1743966 - Test for archive key work around
-    def test_compose_preseed_for_curtin_xenial_not_aptsources(self):
+    # LP: #1743966 - Precise is now deployed on a commissioning environment
+    # (e.g. Xenial/Bionic), so it no longer needs the workaround that
+    # the bug report addresses.
+    def test_compose_preseed_for_curtin_precise_not_aptsources(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -677,7 +679,7 @@ class TestComposePreseed(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.READY, osystem='ubuntu',
-            distro_series='xenial')
+            distro_series='precise')
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
