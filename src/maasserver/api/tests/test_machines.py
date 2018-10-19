@@ -371,7 +371,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status`, 'special_filesystems' and
         # 'resource_pool' the number of queries is not the same but it is
         # proportional to the number of machines.
-        DEFAULT_NUM = 61
+        DEFAULT_NUM = 62
         self.assertEqual(DEFAULT_NUM + (10 * 6), num_queries1)
         self.assertEqual(DEFAULT_NUM + (20 * 6), num_queries2)
 

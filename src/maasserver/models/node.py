@@ -455,6 +455,8 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         :return: A version of `node` that is filtered to include only those
             nodes that `user` is allowed to access.
         """
+        # Local import to avoid circular imports.
+        from maasserver.rbac import RBAC
         # If the data is corrupt, this can get called with None for
         # user where a Node should have an owner but doesn't.
         # Nonetheless, the code should not crash with corrupt data.
@@ -471,15 +473,27 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ]))
         if perm == NODE_PERMISSION.VIEW:
-            return nodes.filter(Q(owner__isnull=True) | Q(owner=user))
+            condition = Q(owner__isnull=True) | Q(owner=user)
         elif perm == NODE_PERMISSION.EDIT:
-            return nodes.filter(owner=user)
+            condition = Q(owner=user)
         elif perm == NODE_PERMISSION.ADMIN:
-            return nodes.none()
+            # There is no built-in Q object that represents False, but
+            # this one does.
+            condition = Q(id__in=[])
         else:
             raise NotImplementedError(
                 "Invalid permission check (invalid permission name: %s)." %
                 perm)
+        rbac = RBAC()
+        if rbac.is_enabled():
+            visible_pools = rbac.get_resource_pools(
+                user.username, NODE_PERMISSION.VIEW)
+            admin_pools = rbac.get_resource_pools(
+                user.username, NODE_PERMISSION.ADMIN)
+            condition |= Q(pool__in=admin_pools)
+            nodes = nodes.filter(pool__in=visible_pools)
+
+        return nodes.filter(condition)
 
     def get_nodes(self, user, perm, ids=None, from_nodes=None):
         """Fetch Nodes on which the User_ has the given permission.

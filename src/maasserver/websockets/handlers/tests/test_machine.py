@@ -510,10 +510,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 11,
+            queries_one, 12,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 11,
+            queries_total, 12,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
@@ -542,7 +542,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 49,
+            queries, 50,
             "Number of queries has changed; make sure this is expected.")
 
     def test_trigger_update_updates_script_result_cache(self):

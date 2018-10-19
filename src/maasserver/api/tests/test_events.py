@@ -664,8 +664,9 @@ class TestEventsAPI(APITestCase.ForUser):
             make_events(number_events, node=node)
 
     def test_query_num_queries_is_independent_of_num_nodes_and_events(self):
-        # 1 query for all the select_related's.
-        expected_queries = 1
+        # 1 query for all the select_related's, and 1 query for
+        # checking if RBAC is used.
+        expected_queries = 2
         events_per_node = 5
         num_nodes_per_group = 5
         events_per_group = num_nodes_per_group * events_per_node
@@ -696,7 +697,7 @@ class TestEventsAPI(APITestCase.ForUser):
 
         self.assertEqual(events_per_group * 2, int(query_2_result['count']))
         self.assertEqual(
-            expected_queries, query_2_count,
+            query_1_count, query_2_count,
             "Number of queries is not independent of the number of nodes.")
 
 

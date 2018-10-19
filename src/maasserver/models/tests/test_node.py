@@ -39,6 +39,7 @@ from fixtures import LoggerFixture
 from maasserver import (
     bootresources,
     preseed as preseed_module,
+    rbac,
     server_address,
 )
 from maasserver.clusterrpc import boot_images
@@ -5296,6 +5297,233 @@ class NodeManagerTest(MAASServerTestCase):
         node = factory.make_Node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
+
+
+class NodeManagerGetNodesRBACTest(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        self.client = rbac.FakeRBACClient()
+        self.store = self.client.store
+        self.mocked_rbacclient = self.patch(rbac, 'RBACClient')
+        self.mocked_rbacclient.return_value = self.client
+
+    def make_ResourcePool(self, *args, **kwargs):
+        """Create a resource pool and register it with RBAC."""
+        pool = factory.make_ResourcePool(*args, **kwargs)
+        self.store.add_pool(pool)
+        return pool
+
+    def test_get_nodes_no_permissions(self):
+        pool1 = self.make_ResourcePool()
+        factory.make_Node(pool=pool1)
+        user = factory.make_User()
+        self.assertCountEqual(
+            [], Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_view_view_permissions_unowned(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_view_view_permissions_owned_self(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_view_view_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        owned_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [owned_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_view_admin_permissions_unowned(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_view_admin_permissions_owned_self(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_view_admin_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        owned_node = factory.make_Node(pool=pool1, owner=user)
+        other_node = factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [owned_node, other_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
+
+    def test_get_nodes_edit_view_permissions_unowned(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [], Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
+    def test_get_nodes_edit_view_permissions_owned_self(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
+    def test_get_nodes_edit_view_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        owned_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [owned_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
+    def test_get_nodes_edit_admin_permissions_unowned(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
+    def test_get_nodes_edit_admin_permissions_owned_self(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
+    def test_get_nodes_edit_admin_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        owned_node = factory.make_Node(pool=pool1, owner=user)
+        other_node = factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [owned_node, other_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
+
+    def test_get_nodes_admin_view_permissions_unowned(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [], Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
+
+    def test_get_nodes_admin_view_permissions_owned_self(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [], Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
+
+    def test_get_nodes_admin_view_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view')
+        self.assertCountEqual(
+            [], Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
+
+    def test_get_nodes_admin_admin_permissions_unowned(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
+
+    def test_get_nodes_admin_admin_permissions_owned_self(self):
+        user = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        pool2 = self.make_ResourcePool()
+        visible_node = factory.make_Node(pool=pool1, owner=user)
+        factory.make_Node(pool=pool2)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
+
+    def test_get_nodes_admin_admin_permissions_owned_other(self):
+        user = factory.make_User()
+        other = factory.make_User()
+        pool1 = self.make_ResourcePool()
+        owned_node = factory.make_Node(pool=pool1, owner=user)
+        other_node = factory.make_Node(pool=pool1, owner=other)
+        self.store.allow(user.username, pool1, 'view')
+        self.store.allow(user.username, pool1, 'admin-machines')
+        self.assertCountEqual(
+            [owned_node, other_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
 
 
 class TestNodeErase(MAASServerTestCase):
