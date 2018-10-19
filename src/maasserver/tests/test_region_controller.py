@@ -17,7 +17,10 @@ from crochet import wait_for
 from maasserver import region_controller
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
-from maasserver.models.rbacsync import RBACSync
+from maasserver.models.rbacsync import (
+    RBACLastSync,
+    RBACSync,
+)
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.rbac import Resource
 from maasserver.region_controller import (
@@ -596,6 +599,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         _, resources = self.make_resource_pools()
 
         rbac_client = MagicMock()
+        rbac_client.update_resources.return_value = 'x-y-z'
         service = RegionControllerService(sentinel.listener)
         self.patch(service, '_getRBACClient').return_value = rbac_client
 
@@ -604,6 +608,9 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             rbac_client.update_resources,
             MockCalledOnceWith('resource-pool', updates=resources))
         self.assertFalse(RBACSync.objects.exists())
+        last_sync = RBACLastSync.objects.get()
+        self.assertEqual(last_sync.resource_type, 'resource-pool')
+        self.assertEqual(last_sync.sync_id, 'x-y-z')
 
     def test__rbacSync_syncs_on_changes(self):
         RBACSync.objects.clear()
@@ -614,6 +621,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         ]
 
         rbac_client = MagicMock()
+        rbac_client.update_resources.return_value = 'x-y-z'
         service = RegionControllerService(sentinel.listener)
         self.patch(service, '_getRBACClient').return_value = rbac_client
         service.rbacInit = True
@@ -623,3 +631,24 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             rbac_client.update_resources,
             MockCalledOnceWith('resource-pool', updates=resources))
         self.assertFalse(RBACSync.objects.exists())
+        last_sync = RBACLastSync.objects.get()
+        self.assertEqual(last_sync.resource_type, 'resource-pool')
+        self.assertEqual(last_sync.sync_id, 'x-y-z')
+
+    def test__rbacSync_udpate_sync_id(self):
+        rbac_sync = RBACLastSync.objects.create(
+            resource_type='resource-pool', sync_id='a-b-c')
+        RBACSync.objects.clear()
+        _, resources = self.make_resource_pools()
+
+        rbac_client = MagicMock()
+        rbac_client.update_resources.return_value = 'x-y-z'
+        service = RegionControllerService(sentinel.listener)
+        self.patch(service, '_getRBACClient').return_value = rbac_client
+        service.rbacInit = True
+
+        service._rbacSync()
+        last_sync = RBACLastSync.objects.get()
+        self.assertEqual(rbac_sync.id, last_sync.id)
+        self.assertEqual(last_sync.resource_type, 'resource-pool')
+        self.assertEqual(last_sync.sync_id, 'x-y-z')

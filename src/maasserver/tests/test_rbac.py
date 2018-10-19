@@ -96,11 +96,12 @@ class TestRBACClient(MAASServerTestCase):
             'removals': ['11', '22', '33']
         }
         response = mock.MagicMock(status_code=200)
-        response.json.return_value = {}
+        response.json.return_value = {'sync-id': 'x-y-z'}
         self.mock_request.return_value = response
-        self.client.update_resources(
+        sync_id = self.client.update_resources(
             'resource-pool', updates=updates, removals=removals,
             last_sync_id='a-b-c')
+        self.assertEqual(sync_id, 'x-y-z')
         self.assertThat(
             self.mock_request,
             MockCalledOnceWith(
@@ -131,10 +132,11 @@ class TestRBACClient(MAASServerTestCase):
             'removals': []
         }
         response = mock.MagicMock(status_code=200)
-        response.json.return_value = {}
+        response.json.return_value = {'sync-id': 'x-y-z'}
         self.mock_request.return_value = response
-        self.client.update_resources(
+        sync_id = self.client.update_resources(
             'resource-pool', updates=updates, removals=removals)
+        self.assertEqual(sync_id, 'x-y-z')
         self.assertThat(
             self.mock_request,
             MockCalledOnceWith(

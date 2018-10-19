@@ -82,9 +82,10 @@ class RBACClient(MacaroonClient):
             'last-sync-id': last_sync_id,
             'updates': resources_updates,
             'removals': resources_removals}
-        self._request(
+        result = self._request(
             'POST', self._get_resource_type_url(resource_type),
             json=data)
+        return result['sync-id']
 
     def allowed_for_user(
             self,

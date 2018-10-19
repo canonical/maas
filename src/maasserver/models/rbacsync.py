@@ -4,6 +4,7 @@
 """RBACSync objects."""
 
 __all__ = [
+    "RBACLastSync",
     "RBACSync",
 ]
 
@@ -93,3 +94,17 @@ class RBACSync(Model):
     source = CharField(
         editable=False, max_length=255, null=False, blank=True,
         help_text="A brief explanation what changed.")
+
+
+class RBACLastSync(Model):
+    """ID returned after the last synchronization for each resource type."""
+
+    class Meta(DefaultMeta):
+        """Default meta."""
+
+    resource_type = CharField(
+        editable=False, max_length=255, null=False, blank=False, unique=True,
+        help_text="Resource type that as been sync'd.")
+    sync_id = CharField(
+        editable=False, max_length=255, null=False, blank=False,
+        help_text="ID returned by the RBAC service after the last sync.")

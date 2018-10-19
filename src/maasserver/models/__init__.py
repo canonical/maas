@@ -60,6 +60,7 @@ __all__ = [
     'PodStoragePool',
     'RackController',
     'RAID',
+    "RBACLastSync",
     'RBACSync',
     'RDNS',
     'RegionController',
@@ -168,7 +169,10 @@ from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
 from maasserver.models.podstoragepool import PodStoragePool
-from maasserver.models.rbacsync import RBACSync
+from maasserver.models.rbacsync import (
+    RBACLastSync,
+    RBACSync,
+)
 from maasserver.models.rdns import RDNS
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (

@@ -34,7 +34,10 @@ from maasserver.dns.config import dns_update_all_zones
 from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
-from maasserver.models.rbacsync import RBACSync
+from maasserver.models.rbacsync import (
+    RBACLastSync,
+    RBACSync,
+)
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.proxyconfig import proxy_update_config
 from maasserver.rbac import (
@@ -313,15 +316,17 @@ class RegionControllerService(Service):
             RBACSync.objects.clear()  # Changes not needed, RBAC disabled.
             return None
 
-        # XXX blake_r 2018-10-04 - This can be smarter by looking at the
-        # action and resource_type information in the changes. At the moment
-        # the RBAC service doesn't have a robust changes API, so it just
-        # pushes all the information.
+        # XXX blake_r 2018-10-04 - This can be smarter by looking at the action
+        # and resource_type information in the changes and include the
+        # last_sync_id in the request, to only update what changed.
         resources = [
             Resource(identifier=rpool.id, name=rpool.name)
             for rpool in ResourcePool.objects.all()
         ]
-        client.update_resources('resource-pool', updates=resources)
+        new_sync_id = client.update_resources(
+            'resource-pool', updates=resources)
+        RBACLastSync.objects.update_or_create(
+            resource_type='resource-pool', defaults={'sync_id': new_sync_id})
 
         if not self.rbacInit:
             # This was initial sync on start-up.
