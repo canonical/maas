@@ -68,16 +68,47 @@ class TestPrometheus(MAASServerTestCase):
     def test_get_stats_for_prometheus(self):
         self.patch(prometheus, "CollectorRegistry")
         self.patch(prometheus, "Gauge")
+        # general values
         values = {
             "machine_status": {
                 "random_status": 0,
             },
+            "controllers": {
+                "regions": 0,
+            },
+            "nodes": {
+                "machines": 0,
+            },
+            "network_stats": {
+                "spaces": 0,
+            },
+            "machine_stats": {
+                "total_cpus": 0,
+            },
         }
         mock = self.patch(prometheus, "get_maas_stats")
         mock.return_value = json.dumps(values)
+        # architecture
+        arches = {
+            "amd64": 0,
+            "i386": 0,
+        }
+        mock_arches = self.patch(prometheus, "get_machines_by_architecture")
+        mock_arches.return_value = arches
+        # pods
+        pods = {
+            "kvm_pods": 0,
+            "kvm_machines": 0,
+        }
+        mock_pods = self.patch(prometheus, "get_kvm_pods_stats")
+        mock_pods.return_value = pods
         get_stats_for_prometheus()
         self.assertThat(
             mock, MockCalledOnce())
+        self.assertThat(
+            mock_arches, MockCalledOnce())
+        self.assertThat(
+            mock_pods, MockCalledOnce())
 
     def test_push_stats_to_prometheus(self):
         factory.make_RegionRackController()
