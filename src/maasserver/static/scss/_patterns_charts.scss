@@ -1,14 +1,12 @@
 @mixin patterns_charts {
   .p-chart {
+    background-color: $color--free;
     position: relative;
     overflow: hidden;
     width: 100%;
     height: 1rem;
     border-radius: 1rem;
     background-color: transparentize($color-link, .8);
-    border: 1px solid transparentize($color-link, .8);
-    margin-top: .25rem;
-    margin-bottom: .25rem;
 
     &__container {
       $nudge-value: map-get($nudges, nudge--p) * 1.5;
@@ -40,7 +38,7 @@
 
   .p-chart__bar--requests {
     @extend .p-chart__bar;
-    background-color: $color-positive;
+    background-color: $color--request;
     opacity: .15;
 
     &.is-selected {
