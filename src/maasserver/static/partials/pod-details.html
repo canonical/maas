@@ -560,7 +560,7 @@
                             </div>
                             <p class="u-no-max-width">
                                 <span>{$ pod.used.memory_gb $} GiB used</span>
-                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio) $} GiB available</span>
+                                <span class="u-float--right">{$ availableWithOvercommit(pod.total.memory_gb, pod.used.memory_gb, pod.memory_over_commit_ratio, 2) $} GiB available</span>
                             </p>
                         </div>
                     </div>
