@@ -3018,7 +3018,7 @@ class Node(CleanSave, TimestampedModel):
 
     def set_netboot(self, on=True):
         """Set netboot on or off."""
-        log.debug(
+        log.info(
             "{hostname}: Turning on netboot for node", hostname=self.hostname)
         self.netboot = on
         self.save()
