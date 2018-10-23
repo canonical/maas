@@ -35,6 +35,7 @@ from maasserver.websockets.protocol import (
     WebSocketProtocol,
 )
 from maasserver.websockets.websockets import STATUSES
+from maastesting.factory import factory as maastesting_factory
 from maastesting.matchers import (
     IsFiredDeferred,
     MockCalledOnceWith,
@@ -44,6 +45,7 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.url import splithost
 from testtools.matchers import (
     Equals,
     Is,
@@ -73,6 +75,11 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol.transport = MagicMock()
         protocol.transport.cookies = b""
         protocol.transport.uri = transport_uri
+        protocol.transport.host = random.choice([
+            maastesting_factory.make_ipv4_address() + ':%d' %
+            maastesting_factory.pick_port(),
+            '[' + maastesting_factory.make_ipv6_address() + ']:%d' %
+            maastesting_factory.pick_port()])
         protocol.request = HttpRequest()
         if patch_authenticate:
             self.patch(protocol, "authenticate")
@@ -112,10 +119,24 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             protocol.transport.ip_address)
         self.assertEquals(
             protocol.request.META['SERVER_NAME'],
-            protocol.transport.host.split(':')[0])
+            splithost(protocol.transport.host)[0])
         self.assertEquals(
             protocol.request.META['SERVER_PORT'],
-            protocol.transport.host.split(':')[1])
+            splithost(protocol.transport.host)[1])
+
+    def test_connectionMade_sets_the_request_default_server_name_port(self):
+        protocol, factory = self.make_protocol(patch_authenticate=False)
+        self.patch_autospec(protocol, "authenticate")
+        self.patch_autospec(protocol, "processMessages")
+        mock_splithost = self.patch_autospec(protocol_module, "splithost")
+        mock_splithost.return_value = (None, None)
+        protocol.authenticate.return_value = defer.succeed(sentinel.user)
+        protocol.connectionMade()
+        self.addCleanup(protocol.connectionLost, "")
+        self.assertEquals(
+            protocol.request.META['SERVER_NAME'], 'localhost')
+        self.assertEquals(
+            protocol.request.META['SERVER_PORT'], 5248)
 
     def test_connectionMade_sets_user_and_processes_messages(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)

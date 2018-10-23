@@ -37,6 +37,7 @@ from provisioningserver.utils.twisted import (
     deferred,
     synchronous,
 )
+from provisioningserver.utils.url import splithost
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
@@ -127,10 +128,25 @@ class WebSocketProtocol(Protocol):
                 self.request.META['HTTP_USER_AGENT'] = (
                     self.transport.user_agent)
                 self.request.META['REMOTE_ADDR'] = self.transport.ip_address
-                self.request.META['SERVER_NAME'] = (
-                    self.transport.host.split(':')[0])
-                self.request.META['SERVER_PORT'] = (
-                    self.transport.host.split(':')[1])
+
+                # XXX newell 2018-10-17 bug=1798479:
+                # Check that 'SERVER_NAME' and 'SERVER_PORT' are set.
+                # 'SERVER_NAME' and 'SERVER_PORT' are required so
+                # `build_absolure_uri` can create an actual absolute URI so
+                # that the curtin configuration is valid.  See the bug and
+                # maasserver.node_actions for more details.
+                #
+                # `splithost` will split the host and port from either an
+                # ipv4 or an ipv6 address.
+                host, port = splithost(str(self.transport.host))
+                if host:
+                    self.request.META['SERVER_NAME'] = host
+                else:
+                    self.request.META['SERVER_NAME'] = 'localhost'
+                if port:
+                    self.request.META['SERVER_PORT'] = port
+                else:
+                    self.request.META['SERVER_PORT'] = 5248
 
         d.addCallback(authenticated)
 

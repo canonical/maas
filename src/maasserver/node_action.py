@@ -512,7 +512,8 @@ class Deploy(NodeAction):
             # In this event, and for future uses of these node actions without
             # a request being passed in, we need to create one here.
             # 'SERVER_NAME' and 'SERVER_PORT' are required so
-            # `build_absolure_uri` can create an actual absolute URI.
+            # `build_absolure_uri` can create an actual absolute URI so that
+            # the curtin configuration is valid.
             request = HttpRequest()
             request.META['SERVER_NAME'] = 'localhost'
             request.META['SERVER_PORT'] = 5248
