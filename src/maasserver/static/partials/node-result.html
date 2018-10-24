@@ -81,19 +81,15 @@
                 </div1>
             </div>
         </div>
-        <div class="row" data-ng-if="result.results.length !== 0">
-            <div class="col-6">
-                <h2 class="p-heading--four">Metrics</h2>
-                <dl data-ng-repeat="item in result.results">
-                    <dt class="p-tooltip p-tooltip--top-center">
-                        {$ item.title $}
-                        <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
-                    </dt>
-                    <span class="four-col last-col">{$ item.value $}</span>
-                </div>
+        <p class="col-12" data-ng-if="result.results.length !== 0">
+            <h2 class="p-heading--four">Metrics</h2>
+            <div class="col-6 row u-equal-height u-margin--none p-tooltip p-tooltip--top-center" data-ng-repeat="item in result.results">
+                <strong class="col-3 tooltip">{$ item.title $}</strong>
+                <span class="col-3 last-col">{$ item.value $}</span>
+                <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
             </div>
-        </div>
-        <div class="row">
+        </p>
+        <p class="row">
             <div class="col-12">
                 <h2 class="ng-binding p-heading--four">Output</h2>
                 <nav class="p-tabs u-hr--fixed-width">
@@ -123,7 +119,7 @@
                     </div>
                 </nav>
             </div>
-        </div>
+        </p>
         <div class="row">
             <div class="col-12">
                 <pre class="p-code-numbered" data-maas-code-lines="data"></pre>

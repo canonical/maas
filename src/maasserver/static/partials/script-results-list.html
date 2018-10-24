@@ -52,17 +52,19 @@
                                     </div>
                                 </td>
                                 <td class="p-table-expanding__panel col-12" aria-label="results" data-ng-if="result.showing_results && !result.showing_history">
-                                    <div class="row">
-                                        <div class="col-12" data-ng-if="result.results.length === 0">No metrics provided</div>
-                                    </div>
-                                    <div class="row" data-ng-if="result.results">
-                                        <dl data-ng-repeat="item in result.results">
-                                            <dt class="p-tooltip p-tooltip--top-center">
-                                                {$ item.title $}
-                                                <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
-                                            </dt>
-                                            <dd>{$ item.value $}</dd>
-                                        </dl>
+                                    <div class="col-12">
+                                        <div data-ng-if="result.results.length === 0">No metrics provided</div>
+                                        <table data-ng-if="result.results.length !== 0">
+                                            <tbody>
+                                                <tr class="u-equal-height u-margin--none">
+                                                    <td class="col-6 p-tooltip p-tooltip--top-center" style="padding-left:0;box-sizing:content-box" data-ng-repeat="item in result.results">
+                                                        <strong class="col-3 tooltip">{$ item.title $}</strong>
+                                                        <span class="col-3 last-col">{$ item.value $}</span>
+                                                        <span class="p-tooltip__message" role="tooltip">{$ item.description $}</span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </td>
                                 <td class="p-table-expanding__panel col-12" aria-label="loading history" data-ng-if="result.loading_history">
