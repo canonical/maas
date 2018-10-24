@@ -573,7 +573,7 @@ angular.module('MAAS').controller('PodDetailsController', [
 
         $scope.selectSubnetByIP = function(iface) {
             if (iface.ipaddress) {
-                angular.forEach($scope.subnets, function(subnet, idx) {
+                angular.forEach($scope.availableSubnets, function(subnet, idx) {
                     let inNetwork = ValidationService.validateIPInNetwork(
                         iface.ipaddress, subnet.cidr)
                     if (inNetwork) {
