@@ -1,5 +1,6 @@
 from collections import defaultdict
 from functools import partial
+import threading
 from typing import (
     Sequence,
     Union,
@@ -71,7 +72,7 @@ class RBACClient(MacaroonClient):
             self, resource_type: str,
             updates: Sequence[Resource]=None,
             removals: Sequence[int]=None,
-            last_sync_id: int=None):
+            last_sync_id: str=None):
         """Put all the resources for `resource_type`.
 
         This replaces all the resources for `resource_type`.
@@ -157,8 +158,11 @@ class FakeRBACClient(RBACClient):
     server.
     """
 
-    def __init__(self):
-        self._url = Config.objects.get_config('rbac_url')
+    def __init__(self, url: str=None, auth_info: AuthInfo=None):
+        if url is None:
+            url = Config.objects.get_config('rbac_url')
+        self._url = url
+        self._auth_info = auth_info
         self.store = FakeResourceStore()
 
     def _request(self, method, url):
@@ -182,14 +186,51 @@ NODE_PERMISSION_TO_RBAC = {
 }
 
 
-class RBAC:
+class RBACWrapper:
     """Object for querying RBAC information."""
 
-    def __init__(self, client=None):
-        url = Config.objects.get_config('rbac_url')
-        if client is None and url:
-            client = RBACClient(url)
-        self.client = client
+    def __init__(self, client_class=None):
+        # A client is created per thread.
+        self._store = threading.local()
+        self._client_class = client_class
+        if self._client_class is None:
+            self._client_class = RBACClient
+
+    @property
+    def client(self):
+        """Get thread-local client."""
+        # Get the current cleared status and reset it to False for the
+        # next request on this thread.
+        cleared = getattr(self._store, 'cleared', False)
+        self._store.cleared = False
+
+        client = getattr(self._store, 'client', None)
+        if client is None:
+            url = Config.objects.get_config('rbac_url')
+            if url:
+                client = self._client_class(url)
+                self._store.client = client
+        elif cleared:
+            # Check that the `rbac_url` and the credentials match.
+            url = Config.objects.get_config('rbac_url')
+            if not url:
+                # RBAC is now disabled.
+                delattr(self._store, 'client')
+                return None
+            auth_info = get_auth_info()
+            if (client._url != url or client._auth_info != auth_info):
+                # URL or creds differ, re-create the client.
+                client = self._client_class(url, auth_info)
+                self._store.client = client
+        return client
+
+    def clear(self):
+        """Clear the current client.
+
+        This marks a client as cleared that way only a new client is created
+        if the `rbac_url` is changed.
+        """
+        self._store.cleared = True
 
     def is_enabled(self):
         """Return whether MAAS has been configured to use RBAC."""
@@ -209,3 +250,6 @@ class RBAC:
             pool_ids = [int(identifier) for identifier in pool_identifiers]
             pools = pools.filter(id__in=pool_ids)
         return pools
+
+
+rbac = RBACWrapper()

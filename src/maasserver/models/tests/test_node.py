@@ -39,7 +39,6 @@ from fixtures import LoggerFixture
 from maasserver import (
     bootresources,
     preseed as preseed_module,
-    rbac,
     server_address,
 )
 from maasserver.clusterrpc import boot_images
@@ -125,6 +124,10 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.preseed import CURTIN_INSTALL_LOG
+from maasserver.rbac import (
+    FakeRBACClient,
+    rbac,
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 import maasserver.server_address as server_address_module
 from maasserver.storage_layouts import (
@@ -5304,10 +5307,10 @@ class NodeManagerGetNodesRBACTest(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         Config.objects.set_config('rbac_url', 'http://rbac.example.com')
-        self.client = rbac.FakeRBACClient()
+        self.client = FakeRBACClient()
+        rbac._store.client = self.client
+        rbac._store.cleared = False  # Prevent re-creation of the client.
         self.store = self.client.store
-        self.mocked_rbacclient = self.patch(rbac, 'RBACClient')
-        self.mocked_rbacclient.return_value = self.client
 
     def make_ResourcePool(self, *args, **kwargs):
         """Create a resource pool and register it with RBAC."""

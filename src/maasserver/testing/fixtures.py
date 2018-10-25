@@ -13,6 +13,7 @@ import logging
 
 import fixtures
 from maasserver.models.config import Config
+from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 
 
@@ -77,3 +78,10 @@ class LogSQL(fixtures.Fixture):
         if self.include_stacktrace:
             log.removeFilter(self._addedFilter)
         self.removeHandler(self._setHandler)
+
+
+class RBACClearFixture(fixtures.Fixture):
+    """Fixture that clears the RBAC thread-local cache between tests."""
+
+    def _setUp(self):
+        self.addCleanup(rbac.clear)

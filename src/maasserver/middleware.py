@@ -48,6 +48,7 @@ from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException
 from maasserver.models.config import Config
 from maasserver.models.node import RackController
+from maasserver.rbac import rbac
 from maasserver.rpc import getAllClients
 from maasserver.utils.django_urls import reverse
 from maasserver.utils.orm import is_retryable_failure
@@ -491,3 +492,23 @@ class ExternalAuthInfoMiddleware:
                 domain=auth_domain, admin_group=auth_admin_group)
         request.external_auth_info = auth_info
         return self.get_response(request)
+
+
+class RBACMiddleware:
+    """Middleware that cleans the RBAC thread-local cache.
+
+
+    At the end of each request the RBAC client that is held in the thread-local
+    needs to be cleaned up. That way the next request on the same thread will
+    use a new RBAC client.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        result = self.get_response(request)
+        # Now that the response has been handled, clear the thread-local
+        # state of the RBAC connection.
+        rbac.clear()
+        return result

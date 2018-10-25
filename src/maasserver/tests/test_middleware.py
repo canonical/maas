@@ -41,9 +41,11 @@ from maasserver.middleware import (
     ExternalAuthInfoMiddleware,
     ExternalComponentsMiddleware,
     is_public_path,
+    RBACMiddleware,
     RPCErrorsMiddleware,
 )
 from maasserver.models.config import Config
+from maasserver.rbac import rbac
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -688,3 +690,21 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         self.assertEqual(request.external_auth_info.type, 'candid')
         self.assertEqual(
             request.external_auth_info.url, 'https://example.com')
+
+
+class RBACMiddlewareTest(MAASServerTestCase):
+    """Tests for the RBACMiddleware."""
+
+    def process_request(self, request):
+
+        def get_response(request):
+            return None
+
+        middleware = RBACMiddleware(get_response)
+        return middleware(request)
+
+    def test_calls_rbac_clear(self):
+        mock_clear = self.patch(rbac, 'clear')
+        request = factory.make_fake_request(factory.make_string(), 'GET')
+        self.process_request(request)
+        self.assertThat(mock_clear, MockCalledOnceWith())

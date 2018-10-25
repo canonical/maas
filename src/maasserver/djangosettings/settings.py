@@ -237,6 +237,9 @@ MIDDLEWARE = (
     # Used for rendering and logging exceptions.
     'maasserver.middleware.ExceptionMiddleware',
 
+    # Used to clear the RBAC thread-local cache.
+    'maasserver.middleware.RBACMiddleware',
+
     # Handle errors that should really be handled in application code:
     # NoConnectionsAvailable, PowerActionAlreadyInProgress, TimeoutError.
     # FIXME.

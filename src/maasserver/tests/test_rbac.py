@@ -1,5 +1,8 @@
+from queue import Queue
+from threading import Thread
 from unittest import mock
 
+from django.db import transaction
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import (
     Config,
@@ -8,12 +11,16 @@ from maasserver.models import (
 from maasserver.rbac import (
     ALL_RESOURCES,
     FakeRBACClient,
-    RBAC,
+    rbac,
     RBACClient,
+    RBACWrapper,
     Resource,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maastesting.matchers import MockCalledOnceWith
 from macaroonbakery.bakery import PrivateKey
 from macaroonbakery.httpbakery.agent import (
@@ -186,7 +193,7 @@ class TestRBACClient(MAASServerTestCase):
                 auth=mock.ANY, cookies=mock.ANY, json=None))
 
 
-class TestRBACIsEnabled(MAASServerTestCase):
+class TestRBACWrapperIsEnabled(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
@@ -198,31 +205,31 @@ class TestRBACIsEnabled(MAASServerTestCase):
     def test_local_disabled(self):
         Config.objects.set_config('external_auth_url', '')
         Config.objects.set_config('rbac_url', '')
-        rbac = RBAC()
+        rbac = RBACWrapper()
         self.assertFalse(rbac.is_enabled())
 
     def test_candid_disabled(self):
         Config.objects.set_config(
             'external_auth_url', 'http://candid.example.com')
         Config.objects.set_config('rbac_url', '')
-        rbac = RBAC()
+        rbac = RBACWrapper()
         self.assertFalse(rbac.is_enabled())
 
     def test_rbac_enabled(self):
         Config.objects.set_config('external_auth_url', '')
         Config.objects.set_config('rbac_url', 'http://rbac.example.com')
-        rbac = RBAC()
+        rbac = RBACWrapper()
         self.assertTrue(rbac.is_enabled())
 
 
-class TestRBACGetResourcePools(MAASServerTestCase):
+class TestRBACWrapperGetResourcePools(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
         Config.objects.set_config('rbac_url', 'http://rbac.example.com')
-        self.client = FakeRBACClient()
+        self.rbac = RBACWrapper(client_class=FakeRBACClient)
+        self.client = self.rbac.client
         self.store = self.client.store
-        self.rbac = RBAC(client=self.client)
         self.default_pool = (
             ResourcePool.objects.get_default_resource_pool())
         self.store.add_pool(self.default_pool)
@@ -267,3 +274,76 @@ class TestRBACGetResourcePools(MAASServerTestCase):
         self.assertEqual(
             sorted([pool1]),
             sorted(self.rbac.get_resource_pools('user', NODE_PERMISSION.VIEW)))
+
+
+class TestRBACWrapperClient(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        Config.objects.set_config(
+            'external_auth_url', 'http://candid.example.com')
+        Config.objects.set_config('external_auth_user', 'user@candid')
+        Config.objects.set_config(
+            'external_auth_key',
+            'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
+
+    def test_same_client(self):
+        self.assertIs(rbac.client, rbac.client)
+
+    def test_clear_same_url_same_client(self):
+        rbac1 = rbac.client
+        rbac.clear()
+        self.assertIs(rbac1, rbac.client)
+
+    def test_clear_new_url_creates_new_client(self):
+        rbac1 = rbac.client
+        rbac.clear()
+        Config.objects.set_config('rbac_url', 'http://rbac-other.example.com')
+        self.assertIsNot(rbac1, rbac.client)
+
+    def test_clear_new_auth_url_creates_new_client(self):
+        rbac1 = rbac.client
+        rbac.clear()
+        Config.objects.set_config(
+            'external_auth_url', 'http://candid-other.example.com')
+        self.assertIsNot(rbac1, rbac.client)
+
+
+class TestRBACWrapperClientThreads(MAASTransactionServerTestCase):
+
+    def test_different_clients_per_threads(self):
+
+        # Commit the settings to the database so the created threads have
+        # access to the same data. Each thread will start its own transaction
+        # so the settings must be committed.
+        #
+        # Since actually data is committed into the database the
+        # `MAASTransactionServerTestCase` is used to reset the database to
+        # a clean state after this test.
+        with transaction.atomic():
+            Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+            Config.objects.set_config(
+                'external_auth_url', 'http://candid.example.com')
+            Config.objects.set_config('external_auth_user', 'user@candid')
+            Config.objects.set_config(
+                'external_auth_key',
+                'x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=')
+
+        queue = Queue()
+
+        def target():
+            queue.put(rbac.client)
+
+        thread1 = Thread(target=target)
+        thread1.start()
+        thread2 = Thread(target=target)
+        thread2.start()
+
+        rbac1 = queue.get()
+        queue.task_done()
+        rbac2 = queue.get()
+        queue.task_done()
+        thread1.join()
+        thread2.join()
+        self.assertIsNot(rbac1, rbac2)
