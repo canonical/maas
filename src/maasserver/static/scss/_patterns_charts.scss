@@ -25,9 +25,7 @@
   .p-chart__bar--used {
     @extend .p-chart__bar;
     background-color: $color--used;
-    &:not(:last-child) {
-      border-right: 1px solid $color-x-light;
-    }
+    border-right: 1px solid $color-x-light;
   }
 
   .p-chart__bar--other {
@@ -65,6 +63,7 @@
   // Key inside option selector
   %p-key-list-item--common-properties {
     display: flex;
+    flex: 1;
     padding-right: $sph-intra;
 
     &::before {
@@ -77,12 +76,25 @@
       padding-top: map-get($nudges, nudge--p);
       width: $sp-unit;
     }
+
+    &:last-of-type {
+      text-align: right;
+      justify-content: flex-end;
+    }
   }
 
   .p-key-list__item--requests {
     @extend %p-key-list-item--common-properties;
     &::before {
       color: $color--request;
+    }
+  }
+
+  .p-key-list__item--other-requests {
+    @extend %p-key-list-item--common-properties;
+    padding-right: 0.25rem;
+    &::before {
+      color: #1aaf65;
     }
   }
 
