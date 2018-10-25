@@ -183,6 +183,7 @@ class TestConfigureAuthentication(MAASTestCase):
             init.os.environ, {'SNAP': 'snap-path'}, clear=True)
         self.mock_environ.start()
         self.parser = ArgumentParser()
+        init.add_rbac_options(self.parser)
         init.add_candid_options(self.parser)
 
     def tearDown(self):
@@ -197,6 +198,17 @@ class TestConfigureAuthentication(MAASTestCase):
         method, args, kwargs = config_call
         self.assertEqual('call', method)
         self.assertEqual(([self.maas_bin_path, 'configauth'],), args)
+        self.assertEqual({}, kwargs)
+
+    def test_rbac_url(self):
+        config_auth_args = ['--rbac-url', 'http://rrbac.example.com/']
+        options = self.parser.parse_args(config_auth_args)
+        init.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
         self.assertEqual({}, kwargs)
 
     def test_idm_url(self):

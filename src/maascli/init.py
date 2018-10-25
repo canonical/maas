@@ -163,6 +163,8 @@ def create_account_external_auth(auth_config, maas_config,
 
 def configure_authentication(options):
     cmd = [get_maas_region_bin_path(), 'configauth']
+    if options.rbac_url is not None:
+        cmd.extend(['--rbac-url', options.rbac_url])
     if options.candid_url is not None:
         cmd.extend(['--idm-url', options.candid_url])
     if options.candid_user is not None:
