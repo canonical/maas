@@ -1,6 +1,10 @@
 @mixin maas-p-sticky-footer {
   .p-footer {
     margin-top: auto;
+
+    &__logo {
+      margin: 0.5rem 1rem;
+    }
   }
 
   html,
