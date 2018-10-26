@@ -21,7 +21,7 @@ override_dh_systemd_enable:
 
 override_dh_systemd_start:
 	dh_systemd_start -p maas-common --no-start maas-syslog.service
-	dh_systemd_start -p maas-region-api --no-start maas-regiond.service
+	dh_systemd_start -p maas-region-api --no-start --restart-after-upgrade maas-regiond.service
 	dh_systemd_start -p maas-rack-controller --no-start maas-rackd.service
 	dh_systemd_start -p maas-rack-controller maas-http.service
 	dh_systemd_start -p maas-proxy maas-proxy.service
