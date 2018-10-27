@@ -14,6 +14,7 @@ import os
 import random
 import stat
 from subprocess import (
+    CalledProcessError,
     DEVNULL,
     PIPE,
     TimeoutExpired,
@@ -591,6 +592,27 @@ class TestParseParameters(MAASTestCase):
         self.assertItemsEqual(block_devices, get_block_devices())
         self.assertThat(mock_check_output, MockNotCalled())
 
+    def test_get_block_devices_cached_error(self):
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        maas_run_remote_scripts._block_devices = KeyError()
+
+        self.assertRaises(KeyError, get_block_devices)
+        self.assertThat(mock_check_output, MockNotCalled())
+
+    def test_get_block_devices_raises_timeout_keyerror(self):
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        mock_check_output.side_effect = TimeoutExpired(
+            [factory.make_name('arg') for _ in range(3)], 60)
+
+        self.assertRaises(KeyError, get_block_devices)
+
+    def test_get_block_devices_raises_calledprocess_keyerror(self):
+        mock_check_output = self.patch(maas_run_remote_scripts, 'check_output')
+        mock_check_output.side_effect = CalledProcessError(
+            -1, [factory.make_name('arg') for _ in range(3)])
+
+        self.assertRaises(KeyError, get_block_devices)
+
     def test_parse_parameters(self):
         scripts_dir = factory.make_name('scripts_dir')
         script = {
@@ -680,6 +702,20 @@ class TestParseParameters(MAASTestCase):
                 '/dev/%s' % script['parameters']['storage']['value']['name'],
                 '/dev/%s' % script['parameters']['storage']['value']['name'],
             ], parse_parameters(script, scripts_dir))
+
+    def test_parse_parameters_storage_value_all_raises_keyerror(self):
+        scripts_dir = factory.make_name('scripts_dir')
+        script = {
+            'path': os.path.join('path_to', factory.make_name('script_name')),
+            'parameters': {
+                'storage': {
+                    'type': 'storage',
+                    'value': 'all',
+                },
+            },
+        }
+
+        self.assertRaises(KeyError, parse_parameters, script, scripts_dir)
 
 
 class TestRunScript(MAASTestCase):

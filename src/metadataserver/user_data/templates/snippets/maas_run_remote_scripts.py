@@ -30,6 +30,7 @@ import os
 import re
 import shlex
 from subprocess import (
+    CalledProcessError,
     check_output,
     DEVNULL,
     PIPE,
@@ -279,24 +280,40 @@ def get_block_devices():
     if _block_devices is None:
         _block_devices_lock.acquire()
     if _block_devices is None:
-        block_devices = []
-        block_list = check_output([
-            'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
-            'NAME,MODEL,SERIAL']).decode('utf-8')
-        for blockdev in block_list.splitlines():
-            tokens = shlex.split(blockdev)
-            current_block = {}
-            for token in tokens:
-                k, v = token.split("=", 1)
-                current_block[k] = v.strip()
-            block_devices.append(current_block)
-        # LP: #1732539 - Don't fill cache until all results are proceeded.
-        _block_devices = block_devices
+        try:
+            cmd = [
+                'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
+                'NAME,MODEL,SERIAL',
+            ]
+            block_list = check_output(cmd, timeout=60).decode('utf-8')
+        except TimeoutExpired:
+            _block_devices = KeyError(
+                "%s timed out after 60 seconds" % ' '.join(cmd))
+        except CalledProcessError as e:
+            _block_devices = KeyError(
+                "%s failed with return code %s\n\n"
+                "STDOUT:\n%s\n\n"
+                "STDERR:\n%s\n" % (
+                    ' '.join(cmd), e.returncode, e.stdout, e.stderr))
+        else:
+            block_devices = []
+            for blockdev in block_list.splitlines():
+                tokens = shlex.split(blockdev)
+                current_block = {}
+                for token in tokens:
+                    k, v = token.split("=", 1)
+                    current_block[k] = v.strip()
+                block_devices.append(current_block)
+            # LP:1732539 - Don't fill cache until all results are proceeded.
+            _block_devices = block_devices
 
     if _block_devices_lock.locked():
         _block_devices_lock.release()
 
-    return _block_devices
+    if isinstance(_block_devices, KeyError):
+        raise _block_devices
+    else:
+        return _block_devices
 
 
 def parse_parameters(script, scripts_dir):
@@ -309,6 +326,10 @@ def parse_parameters(script, scripts_dir):
             ret += argument_format.format(input=param['value']).split()
         elif param_type == 'storage':
             value = param['value']
+            if value == 'all':
+                raise KeyError(
+                    "MAAS did not detect any storage devices during "
+                    "commissioning!")
             model = value.get('model')
             serial = value.get('serial')
             if not (model and serial):
@@ -365,15 +386,16 @@ def run_script(script, scripts_dir, send_result=True):
     except KeyError as e:
         # 2 is the return code bash gives when it can't execute.
         script['exit_status'] = args['exit_status'] = 2
-        output = (
-            "Unable to run '%s': %s\n\n"
-            'Given parameters:\n%s\n\n'
-            'Discovered storage devices:\n%s\n' % (
-                script['name'], str(e).replace('"', '').replace('\\n', '\n'),
-                str(script.get('parameters', {})),
-                str(get_block_devices()),
-            )
-        )
+        output = "Unable to run '%s': %s\n\n" % (
+            script['name'], str(e).replace('"', '').replace('\\n', '\n'))
+        output += 'Given parameters:\n%s\n\n' % str(
+            script.get('parameters', {}))
+        try:
+            output += 'Discovered storage devices:\n%s\n' % str(
+                get_block_devices())
+        except KeyError:
+            pass
+
         output = output.encode()
         args['files'] = {
             script['combined_name']: output,
