@@ -186,6 +186,10 @@ NODE_PERMISSION_TO_RBAC = {
 }
 
 
+# Set when their is no client for the current request.
+NO_CLIENT = object()
+
+
 class RBACWrapper:
     """Object for querying RBAC information."""
 
@@ -195,6 +199,10 @@ class RBACWrapper:
         self._client_class = client_class
         if self._client_class is None:
             self._client_class = RBACClient
+
+    def _get_rbac_url(self):
+        """Return the configured RBAC url."""
+        return Config.objects.get_config('rbac_url')
 
     @property
     def client(self):
@@ -206,22 +214,37 @@ class RBACWrapper:
 
         client = getattr(self._store, 'client', None)
         if client is None:
-            url = Config.objects.get_config('rbac_url')
+            url = self._get_rbac_url()
             if url:
                 client = self._client_class(url)
                 self._store.client = client
-        elif cleared:
+            else:
+                self._store.client = NO_CLIENT
+            return client
+
+        # Check if this is a new request, a new check of the client needs
+        # to be performed.
+        if cleared:
             # Check that the `rbac_url` and the credentials match.
-            url = Config.objects.get_config('rbac_url')
-            if not url:
+            url = self._get_rbac_url()
+            if url:
+                auth_info = get_auth_info()
+                if client is NO_CLIENT:
+                    # Previously no client was created, create a new client
+                    # now that RBAC is enabled.
+                    client = self._client_class(url, auth_info)
+                    self._store.client = client
+                elif client._url != url or client._auth_info != auth_info:
+                    # URL or creds differ, re-create the client.
+                    client = self._client_class(url, auth_info)
+                    self._store.client = client
+            else:
                 # RBAC is now disabled.
-                delattr(self._store, 'client')
-                return None
-            auth_info = get_auth_info()
-            if (client._url != url or client._auth_info != auth_info):
-                # URL or creds differ, re-create the client.
-                client = self._client_class(url, auth_info)
-                self._store.client = client
+                client = None
+                self._store.client = NO_CLIENT
+
+        if client is NO_CLIENT:
+            return None
         return client
 
     def clear(self):

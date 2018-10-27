@@ -21,6 +21,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from macaroonbakery.bakery import PrivateKey
 from macaroonbakery.httpbakery.agent import (
@@ -308,6 +309,16 @@ class TestRBACWrapperClient(MAASServerTestCase):
         Config.objects.set_config(
             'external_auth_url', 'http://candid-other.example.com')
         self.assertIsNot(rbac1, rbac.client)
+
+
+class TestRBACWrapperNoClient(MAASServerTestCase):
+
+    def test_client_twice_no_query(self):
+        first, client1 = count_queries(lambda: rbac.client)
+        second, client2 = count_queries(lambda: rbac.client)
+        self.assertIsNone(client1)
+        self.assertIsNone(client2)
+        self.assertEqual((1, 0), (first, second))
 
 
 class TestRBACWrapperClientThreads(MAASTransactionServerTestCase):

@@ -85,3 +85,20 @@ class RBACClearFixture(fixtures.Fixture):
 
     def _setUp(self):
         self.addCleanup(rbac.clear)
+
+
+class RBACForceOffFixture(fixtures.Fixture):
+    """Fixture that ensures RBAC is off and no query is performed.
+
+    This is great for tests that count queries and ensure that one is
+    not caused.
+    """
+
+    def _setUp(self):
+        orig_get_url = rbac._get_rbac_url
+        rbac._get_rbac_url = lambda: None
+
+        def cleanup():
+            rbac._get_rbac_url = orig_get_url
+
+        self.addCleanup(cleanup)

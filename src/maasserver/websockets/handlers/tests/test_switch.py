@@ -9,6 +9,7 @@ from django.http import HttpRequest
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import NodeActionError
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import (
     reload_object,
@@ -85,6 +86,9 @@ class TestSwitchHandler(MAASTransactionServerTestCase):
 
     @transactional
     def test_list_num_queries_is_independent_of_num_devices(self):
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+
         owner = factory.make_User()
         handler = SwitchHandler(owner, {}, None)
         for _ in range(10):

@@ -25,6 +25,7 @@ from maasserver.api.tests.test_nodes import RequestFixture
 from maasserver.enum import NODE_TYPE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.utils import ignore_unused
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.django_urls import reverse
@@ -664,9 +665,10 @@ class TestEventsAPI(APITestCase.ForUser):
             make_events(number_events, node=node)
 
     def test_query_num_queries_is_independent_of_num_nodes_and_events(self):
-        # 1 query for all the select_related's, and 1 query for
-        # checking if RBAC is used.
-        expected_queries = 2
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+
+        expected_queries = 1
         events_per_node = 5
         num_nodes_per_group = 5
         events_per_group = num_nodes_per_group * events_per_node

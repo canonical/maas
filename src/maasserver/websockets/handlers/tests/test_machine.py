@@ -63,6 +63,7 @@ from maasserver.node_action import compile_node_actions
 import maasserver.node_action as node_action_module
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -483,6 +484,9 @@ class TestMachineHandler(MAASServerTestCase):
             script_result.script.hardware_type])
 
     def test_list_num_queries_is_the_expected_number(self):
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+
         owner = factory.make_User()
         for _ in range(10):
             node = factory.make_Node(owner=owner)
@@ -510,10 +514,10 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries_one, 12,
+            queries_one, 11,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
-            queries_total, 12,
+            queries_total, 11,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_num_queries_is_the_expected_number(self):
