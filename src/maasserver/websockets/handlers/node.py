@@ -39,7 +39,6 @@ from maasserver.utils.converters import (
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.websockets.base import (
     dehydrate_datetime,
-    HandlerDoesNotExistError,
     HandlerError,
 )
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
@@ -771,17 +770,6 @@ class NodeHandler(TimestampedModelHandler):
             blockdevice.actual_instance
             for blockdevice in obj.blockdevice_set.all()
         ]
-
-    def get_object(self, params):
-        """Get object by using the `pk` in `params`."""
-        obj = super(NodeHandler, self).get_object(params)
-
-        can_access_node = (
-            self.user.is_superuser or obj.owner == self.user or
-            obj.owner is None)
-        if can_access_node:
-            return obj.as_self()
-        raise HandlerDoesNotExistError(params[self._meta.pk])
 
     def get_mac_addresses(self, data):
         """Convert the given `data` into a list of mac addresses.

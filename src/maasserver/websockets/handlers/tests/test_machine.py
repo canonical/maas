@@ -61,6 +61,10 @@ from maasserver.models.partition import (
 )
 from maasserver.node_action import compile_node_actions
 import maasserver.node_action as node_action_module
+from maasserver.rbac import (
+    FakeRBACClient,
+    rbac,
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
@@ -1816,6 +1820,17 @@ class TestMachineHandler(MAASServerTestCase):
     def test_get_object_raises_error_if_owner_by_another_user(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
+        handler = MachineHandler(user, {}, None)
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get_object, {"system_id": node.system_id})
+
+    def test_get_object_returns_error_if_not_allowed(self):
+        Config.objects.set_config('rbac_url', 'http://rbac.example.com')
+        rbac._store.client = FakeRBACClient()
+        rbac._store.cleared = False  # Prevent re-creation of the client.
+        user = factory.make_User()
+        node = factory.make_Node()
         handler = MachineHandler(user, {}, None)
         self.assertRaises(
             HandlerDoesNotExistError,

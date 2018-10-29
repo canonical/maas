@@ -3,7 +3,6 @@ from threading import Thread
 from unittest import mock
 
 from django.db import transaction
-from maasserver.enum import NODE_PERMISSION
 from maasserver.models import (
     Config,
     ResourcePool,
@@ -240,7 +239,7 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.assertNotIn('user', self.store.allowed)
         self.assertEqual(
             [],
-            list(self.rbac.get_resource_pools('user', NODE_PERMISSION.VIEW)))
+            list(self.rbac.get_resource_pools('user', 'view')))
 
     def test_get_resource_pools_user_allowed_all(self):
         pool1 = factory.make_ResourcePool()
@@ -250,7 +249,7 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.store.allow('user', ALL_RESOURCES, 'view')
         self.assertCountEqual(
             [self.default_pool, pool1, pool2],
-            self.rbac.get_resource_pools('user', NODE_PERMISSION.VIEW))
+            self.rbac.get_resource_pools('user', 'view'))
 
     def test_get_resource_pools_user_allowed_other_permission(self):
         pool1 = factory.make_ResourcePool()
@@ -261,10 +260,10 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.store.allow('user', pool2, 'edit')
         self.assertCountEqual(
             [pool1],
-            self.rbac.get_resource_pools('user', NODE_PERMISSION.VIEW))
+            self.rbac.get_resource_pools('user', 'view'))
         self.assertCountEqual(
             [],
-            self.rbac.get_resource_pools('user', NODE_PERMISSION.ADMIN))
+            self.rbac.get_resource_pools('user', 'admin-machines'))
 
     def test_get_resource_pools_user_allowed_some(self):
         pool1 = factory.make_ResourcePool()
@@ -274,7 +273,7 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.store.allow('user', pool1, 'view')
         self.assertEqual(
             sorted([pool1]),
-            sorted(self.rbac.get_resource_pools('user', NODE_PERMISSION.VIEW)))
+            sorted(self.rbac.get_resource_pools('user', 'view')))
 
 
 class TestRBACWrapperClient(MAASServerTestCase):

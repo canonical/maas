@@ -337,17 +337,33 @@ class MAASAuthorizationBackend(ModelBackend):
             # are prohibited from accessing maasserver services.
             return False
 
+        from maasserver.rbac import rbac
+        rbac_enabled = rbac.is_enabled()
+        visible_pools, admin_pools = [], []
+        if rbac_enabled:
+            visible_pools = rbac.get_resource_pools(
+                user.username, 'view').values_list(
+                    'id', flat=True)
+            admin_pools = rbac.get_resource_pools(
+                user.username, 'admin-machines').values_list(
+                    'id', flat=True)
+
         if isinstance(obj, Node):
             if perm == NODE_PERMISSION.VIEW:
-                # Any registered user can view a node regardless of its state.
-                return True
+                return self._can_view(
+                    rbac_enabled, obj, visible_pools, admin_pools)
             elif perm == NODE_PERMISSION.EDIT:
-                return obj.owner == user and not obj.locked
+                can_edit = self._can_edit(
+                    rbac_enabled, user, obj, visible_pools, admin_pools)
+                return not obj.locked and can_edit
             elif perm == NODE_PERMISSION.LOCK:
-                return obj.owner == user
+                # only machines can be locked
+                can_edit = self._can_edit(
+                    rbac_enabled, user, obj, visible_pools, admin_pools)
+                return obj.pool_id is not None and can_edit
             elif perm == NODE_PERMISSION.ADMIN:
-                # 'admin_node' permission is solely granted to superusers.
-                return False
+                return self._can_admin(
+                    rbac_enabled, user, obj, admin_pools)
             else:
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
@@ -366,10 +382,10 @@ class MAASAuthorizationBackend(ModelBackend):
             elif perm == NODE_PERMISSION.ADMIN:
                 # 'admin_node' permission is solely granted to superusers.
                 return False
-            else:
-                raise NotImplementedError(
-                    'Invalid permission check (invalid permission name: %s).' %
-                    perm)
+
+            raise NotImplementedError(
+                'Invalid permission check (invalid permission name: %s).' %
+                perm)
         elif isinstance(obj, Interface):
             if perm == NODE_PERMISSION.VIEW:
                 # Any registered user can view a interface regardless
@@ -380,8 +396,8 @@ class MAASAuthorizationBackend(ModelBackend):
                 node = obj.get_node()
                 if node is None or node.node_type == NODE_TYPE.MACHINE:
                     return user.is_superuser
-                else:
-                    return node.owner == user
+
+                return node.owner == user
             elif perm in NODE_PERMISSION.ADMIN:
                 # Admin permission is solely granted to superusers.
                 return user.is_superuser
@@ -413,6 +429,32 @@ class MAASAuthorizationBackend(ModelBackend):
         else:
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
+
+    def _can_view(self, rbac_enabled, machine, visible_pools, admin_pools):
+        return (
+            # only machines are filtered for view access
+            machine.pool_id is None or
+            (not rbac_enabled or
+             machine.pool_id in visible_pools or
+             machine.pool_id in admin_pools))
+
+    def _can_edit(self, rbac_enabled, user, machine, visible_pools,
+                  admin_pools):
+        is_owner = machine.owner_id == user.id
+        if rbac_enabled:
+            can_view = self._can_view(
+                rbac_enabled, machine, visible_pools, admin_pools)
+            can_admin = self._can_admin(
+                rbac_enabled, user, machine, admin_pools)
+            return (is_owner and can_view) or can_admin
+        return is_owner
+
+    def _can_admin(self, rbac_enabled, user, machine, admin_pools):
+        if user.is_superuser:
+            return True
+        if rbac_enabled:
+            return machine.pool_id in admin_pools
+        return False
 
 
 # Ensure that all signals modules are loaded.

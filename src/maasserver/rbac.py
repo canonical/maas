@@ -12,7 +12,6 @@ from urllib.parse import (
 )
 
 import attr
-from maasserver.enum import NODE_PERMISSION
 from maasserver.macaroon_auth import (
     AuthInfo,
     get_auth_info,
@@ -52,7 +51,7 @@ class RBACClient(MacaroonClient):
             url = Config.objects.get_config('rbac_url')
         if auth_info is None:
             auth_info = get_auth_info()
-        super(RBACClient, self).__init__(auth_info=auth_info, url=url)
+        super().__init__(auth_info=auth_info, url=url)
 
     def _get_resource_type_url(self, resource_type: str):
         """Return the URL for `resource_type`."""
@@ -142,10 +141,10 @@ class FakeResourceStore:
         self.resources['resource-pool'].append(
             Resource(identifier=str(pool.id), name=pool.name))
 
-    def allow(self, user, pool, permission):
+    def allow(self, username, pool, permission):
         """Add a policy for a user having a permission on a pool."""
         identifier = '' if pool is ALL_RESOURCES else str(pool.id)
-        user_permissions = self.allowed[user]
+        user_permissions = self.allowed[username]
         user_resources = user_permissions['resource-pool']
         user_resources[permission].append(identifier)
 
@@ -178,12 +177,6 @@ class FakeRBACClient(RBACClient):
             user_permissions = user_resources.get(resource_type, {})
             pool_identifiers = user_permissions.get(permission, [])
             return [''] if '' in pool_identifiers else pool_identifiers
-
-
-NODE_PERMISSION_TO_RBAC = {
-    NODE_PERMISSION.VIEW: 'view',
-    NODE_PERMISSION.ADMIN: 'admin-machines',
-}
 
 
 # Set when their is no client for the current request.
@@ -259,15 +252,15 @@ class RBACWrapper:
         """Return whether MAAS has been configured to use RBAC."""
         return self.client is not None
 
-    def get_resource_pools(self, user, node_permission):
+    def get_resource_pools(self, user, permission):
         """Get the resource pools that given user has the given permission on.
 
         @param user: The user name of the user.
-        @param node_permission: A NODE_PERMISSION that the user should
-            have on the machines in the resource pool.
+        @param permission: A permission that the user should
+            have on the resource pool.
         """
         pool_identifiers = self.client.allowed_for_user(
-            'resource-pool', user, NODE_PERMISSION_TO_RBAC[node_permission])
+            'resource-pool', user, permission)
         pools = ResourcePool.objects.all()
         if pool_identifiers is not ALL_RESOURCES:
             pool_ids = [int(identifier) for identifier in pool_identifiers]
