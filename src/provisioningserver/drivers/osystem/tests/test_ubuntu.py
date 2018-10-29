@@ -74,8 +74,7 @@ class TestUbuntuOS(MAASTestCase):
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
-        self.assertSequenceEqual(
-            ['trusty', 'vivid', 'wily', 'xenial'], releases)
+        self.assertSequenceEqual(['vivid', 'wily', 'xenial'], releases)
 
     def test_get_supported_commissioning_releases_excludes_non_lts(self):
         supported = [
@@ -91,7 +90,7 @@ class TestUbuntuOS(MAASTestCase):
         for release in non_lts_releases:
             self.assertNotIn(release, releases)
 
-    def test_get_supported_commissioning_releases_excludes_precise(self):
+    def test_get_supported_commissioning_releases_excludes_deprecated(self):
         """Make sure we remove 'precise' from the list."""
         self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
             'precise', 'trusty', 'vivid', 'wily', 'xenial'
@@ -100,6 +99,7 @@ class TestUbuntuOS(MAASTestCase):
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
         self.assertNotIn('precise', releases)
+        self.assertNotIn('trusty', releases)
 
     def test_get_supported_commissioning_releases_excludes_unsupported_lts(
             self):

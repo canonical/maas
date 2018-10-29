@@ -4,7 +4,7 @@
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017 Canonical
+# Copyright (C) 2017-2018 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -28,15 +28,6 @@
 # packages: {apt: stress-ng}
 # timeout: 12:00:00
 # --- End MAAS 1.0 script metadata ---
-
-source /etc/os-release
-if [ $VERSION_ID == '14.04' ]; then
-    # The version of stress-ng in 14.04 does not support required features
-    # for testing. Warn and attempt to run incase stress-ng is ever upgraded.
-    echo 'stress-ng-memory-long unsupported on 14.04, ' \
-	 'please use 16.04 or above.' 1>&2
-    exit 1
-fi
 
 # Reserve 64M so the test doesn't fail due to the OOM killer.
 total_memory=$(awk '/MemFree/ { print ($2 - 65536) }' /proc/meminfo)

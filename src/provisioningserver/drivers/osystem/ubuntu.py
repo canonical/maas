@@ -53,7 +53,7 @@ class UbuntuOS(OperatingSystem):
         only exists on Ubuntu, because that is the only operating
         system that supports commissioning.
         """
-        unsupported_releases = ['precise']
+        unsupported_releases = ['precise', 'trusty']
         return [name for name in self.ubuntu_distro_info.supported()
                 if name not in unsupported_releases
                 if self.ubuntu_distro_info.is_lts(name)]

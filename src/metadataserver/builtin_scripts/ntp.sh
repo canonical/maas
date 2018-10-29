@@ -3,8 +3,9 @@
 # ntp - Run ntp clock set to verify NTP connectivity.
 #
 # Author: Michael Iatrou <michael.iatrou (at) canonical.com>
+#         Lee Trager <lee.trager (at) canonical.com>
 #
-# Copyright (C) 2017 Canonical
+# Copyright (C) 2017-2018 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -33,24 +34,12 @@
 # timeout: 00:01:00
 # --- End MAAS 1.0 script metadata ---
 
-source /etc/os-release
-
 function has_bin() {
     which $1 >/dev/null
     echo $?
 }
 
-if [ $VERSION_ID == "14.04" ]; then
-    if [ $(has_bin ntpd) -ne 0 ]; then
-	echo -en 'Warning: NTP configuration is not supported in Trusty. ' 1>&2
-	echo -en 'Running with the default NTP configuration.\n\n' 1>&2
-	sudo -n apt-get install -q -y ntp
-    fi
-    ntpq -np
-    sudo -n service ntp stop
-    sudo -n timeout 10 ntpd -gq
-    sudo -n service ntp start
-elif [ $(has_bin ntpd) -eq 0 ]; then
+if [ $(has_bin ntpd) -eq 0 ]; then
     echo -en 'INFO: ntpd detected.\n\n' 1>&2
     ntpq -np
     sudo -n systemctl stop ntp.service

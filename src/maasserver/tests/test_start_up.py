@@ -1,10 +1,11 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the start up utility."""
 
 __all__ = []
 
+import random
 from unittest.mock import call
 
 from maasserver import (
@@ -12,8 +13,9 @@ from maasserver import (
     locks,
     start_up,
 )
-from maasserver.models import Config
+from maasserver.models.config import Config
 from maasserver.models.node import RegionController
+from maasserver.models.notification import Notification
 from maasserver.models.signals import bootsources
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
@@ -32,6 +34,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import (
@@ -126,6 +129,31 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertThat(start_up.load_builtin_scripts, MockNotCalled())
+
+    def test__resets_deprecated_commissioning_release_if_master(self):
+        Config.objects.set_config(
+            'commissioning_distro_series',
+            random.choice(['precise', 'trusty']))
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+        ubuntu = UbuntuOS()
+        self.assertEquals(
+            Config.objects.get_config('commissioning_distro_series'),
+            ubuntu.get_default_commissioning_release())
+        self.assertTrue(
+            Notification.objects.filter(
+                ident="commissioning_release_deprecated").exists())
+
+    def test__doesnt_reset_deprecated_commissioning_release_if_notmaster(self):
+        release = random.choice(['precise', 'trusty'])
+        Config.objects.set_config('commissioning_distro_series', release)
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertEquals(
+            Config.objects.get_config('commissioning_distro_series'), release)
+        self.assertFalse(
+            Notification.objects.filter(
+                ident="commissioning_release_deprecated").exists())
 
     def test__refreshes_if_master(self):
         with post_commit_hooks:

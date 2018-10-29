@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Start-up utilities for the MAAS server."""
@@ -16,8 +16,10 @@ from maasserver import (
     security,
 )
 from maasserver.fields import register_mac_type
+from maasserver.models.config import Config
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.models.node import RegionController
+from maasserver.models.notification import Notification
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
@@ -27,6 +29,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
@@ -119,8 +122,26 @@ def inner_start_up(master=False):
     if master:
         # Freshen the kms SRV records.
         dns_kms_setting_changed()
+
         # Add or update all builtin scripts
         load_builtin_scripts()
+
+        # Make sure the commissioning distro series is still a supported LTS.
+        commissioning_distro_series = Config.objects.get_config(
+            name="commissioning_distro_series")
+        ubuntu = UbuntuOS()
+        if commissioning_distro_series not in (
+                ubuntu.get_supported_commissioning_releases()):
+            Config.objects.set_config(
+                "commissioning_distro_series",
+                ubuntu.get_default_commissioning_release())
+            Notification.objects.create_info_for_admins(
+                "Ubuntu %s is no longer a supported commissioning "
+                "series. Ubuntu %s has been automatically selected." % (
+                    commissioning_distro_series,
+                    ubuntu.get_default_commissioning_release()),
+                ident="commissioning_release_deprecated")
+
         # Refresh soon after this transaction is in.
         post_commit_do(reactor.callLater, 0, refreshRegion, region)
 
