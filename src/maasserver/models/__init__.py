@@ -92,6 +92,7 @@ __all__ = [
 
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import (
+    _user_has_perm,
     User,
     UserManager,
 )
@@ -226,6 +227,14 @@ def normalize_email(cls, email):
 UserManager.normalize_email = classmethod(normalize_email)
 
 
+# Monkey patch django.contrib.auth.models.User to skip the `is_superuser`
+# bypass. We want the `MAASAuthorizationBackend` to always be called.
+def has_perm(self, perm, obj=None):
+    return _user_has_perm(self, perm, obj)
+
+User.has_perm = has_perm
+
+
 # Monkey patch piston's usage of Django's get_resolver to be compatible
 # with Django 1.4.
 # XXX: rvb 2012-09-21 bug=1054040
@@ -329,9 +338,6 @@ class MAASAuthorizationBackend(ModelBackend):
         return authenticated
 
     def has_perm(self, user, perm, obj=None):
-        # Note that a check for a superuser will never reach this code
-        # because Django will return True (as an optimization) for every
-        # permission check performed on a superuser.
         if not user.is_active:
             # Deactivated users, and in particular the node-init user,
             # are prohibited from accessing maasserver services.
@@ -351,7 +357,7 @@ class MAASAuthorizationBackend(ModelBackend):
         if isinstance(obj, Node):
             if perm == NODE_PERMISSION.VIEW:
                 return self._can_view(
-                    rbac_enabled, obj, visible_pools, admin_pools)
+                    rbac_enabled, user, obj, visible_pools, admin_pools)
             elif perm == NODE_PERMISSION.EDIT:
                 can_edit = self._can_edit(
                     rbac_enabled, user, obj, visible_pools, admin_pools)
@@ -376,12 +382,14 @@ class MAASAuthorizationBackend(ModelBackend):
             if perm == NODE_PERMISSION.VIEW:
                 # If the node is not ownered or the owner is the user then
                 # they can view the information.
-                return node.owner is None or node.owner == user
+                return (
+                    user.is_superuser or
+                    node.owner_id is None or node.owner_id == user.id)
             elif perm == NODE_PERMISSION.EDIT:
-                return node.owner == user
+                return user.is_superuser or node.owner_id == user.id
             elif perm == NODE_PERMISSION.ADMIN:
                 # 'admin_node' permission is solely granted to superusers.
-                return False
+                return user.is_superuser
 
             raise NotImplementedError(
                 'Invalid permission check (invalid permission name: %s).' %
@@ -397,7 +405,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 if node is None or node.node_type == NODE_TYPE.MACHINE:
                     return user.is_superuser
 
-                return node.owner == user
+                return user.is_superuser or node.owner_id == user.id
             elif perm in NODE_PERMISSION.ADMIN:
                 # Admin permission is solely granted to superusers.
                 return user.is_superuser
@@ -430,31 +438,36 @@ class MAASAuthorizationBackend(ModelBackend):
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
-    def _can_view(self, rbac_enabled, machine, visible_pools, admin_pools):
+    def _can_view(
+            self, rbac_enabled, user, machine, visible_pools, admin_pools):
+        if machine.pool_id is None:
+            # Only machines are filtered for view access.
+            return True
+        if rbac_enabled:
+            # Machine must be in a visible or admin pool.
+            return (
+                machine.pool_id in visible_pools or
+                machine.pool_id in admin_pools)
         return (
-            # only machines are filtered for view access
-            machine.pool_id is None or
-            (not rbac_enabled or
-             machine.pool_id in visible_pools or
-             machine.pool_id in admin_pools))
+            machine.owner_id is None or
+            machine.owner_id == user.id or
+            user.is_superuser)
 
-    def _can_edit(self, rbac_enabled, user, machine, visible_pools,
-                  admin_pools):
+    def _can_edit(
+            self, rbac_enabled, user, machine, visible_pools, admin_pools):
         is_owner = machine.owner_id == user.id
         if rbac_enabled:
             can_view = self._can_view(
-                rbac_enabled, machine, visible_pools, admin_pools)
+                rbac_enabled, user, machine, visible_pools, admin_pools)
             can_admin = self._can_admin(
                 rbac_enabled, user, machine, admin_pools)
             return (is_owner and can_view) or can_admin
-        return is_owner
+        return is_owner or user.is_superuser
 
     def _can_admin(self, rbac_enabled, user, machine, admin_pools):
-        if user.is_superuser:
-            return True
         if rbac_enabled:
             return machine.pool_id in admin_pools
-        return False
+        return user.is_superuser
 
 
 # Ensure that all signals modules are loaded.

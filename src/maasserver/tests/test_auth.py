@@ -200,9 +200,26 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(user, NODE_PERMISSION.EDIT, node))
 
-    def test_user_can_view_nodes_owned_by_others(self):
+    def test_admin_can_view_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(backend.has_perm(
+            factory.make_admin(), NODE_PERMISSION.VIEW, make_allocated_node()))
+
+    def test_admin_can_edit_nodes_owned_by_others(self):
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(backend.has_perm(
+            factory.make_admin(), NODE_PERMISSION.EDIT, make_allocated_node()))
+
+    def test_admin_can_admin_nodes(self):
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(backend.has_perm(
+            factory.make_admin(),
+            NODE_PERMISSION.ADMIN,
+            make_allocated_node()))
+
+    def test_user_cannot_view_nodes_owned_by_others(self):
+        backend = MAASAuthorizationBackend()
+        self.assertFalse(backend.has_perm(
             factory.make_User(), NODE_PERMISSION.VIEW, make_allocated_node()))
 
     def test_user_can_view_locked_node(self):
@@ -305,12 +322,12 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         self.rbac_store.allow(user.username, node.pool, 'admin-machines')
         self.assertTrue(backend.has_perm(user, NODE_PERMISSION.ADMIN, node))
 
-    def test_admin_has_admin_permission_on_node_with_rbac(self):
+    def test_admin_doesnt_have_admin_permission_on_node_with_rbac(self):
         self.enable_rbac()
         backend = MAASAuthorizationBackend()
         user = factory.make_admin()
         node = factory.make_Node()
-        self.assertTrue(backend.has_perm(user, NODE_PERMISSION.ADMIN, node))
+        self.assertFalse(backend.has_perm(user, NODE_PERMISSION.ADMIN, node))
 
     def test_user_cannot_view_BlockDevice_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
@@ -455,6 +472,42 @@ class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):
         self.assertFalse(
             backend.has_perm(
                 user, NODE_PERMISSION.EDIT, interface))
+
+    def test_admin_can_view_device_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        parent = factory.make_Node()
+        device = factory.make_Device(
+            owner=user, parent=parent)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        self.assertTrue(
+            backend.has_perm(
+                factory.make_admin(), NODE_PERMISSION.VIEW, interface))
+
+    def test_admin_can_edit_device_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        parent = factory.make_Node()
+        device = factory.make_Device(
+            owner=user, parent=parent)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        self.assertTrue(
+            backend.has_perm(
+                factory.make_admin(), NODE_PERMISSION.EDIT, interface))
+
+    def test_admin_can_admin_device_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        parent = factory.make_Node()
+        device = factory.make_Device(
+            owner=user, parent=parent)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        self.assertTrue(
+            backend.has_perm(
+                factory.make_admin(), NODE_PERMISSION.ADMIN, interface))
 
 
 class TestMAASAuthorizationBackendForUnrestrictedRead(MAASServerTestCase):

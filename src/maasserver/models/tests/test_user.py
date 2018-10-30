@@ -5,12 +5,15 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from apiclient.creds import (
     convert_string_to_tuple,
     convert_tuple_to_string,
 )
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from maasserver import models
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -18,6 +21,7 @@ from maasserver.models.user import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from piston3.models import (
     KEY_SIZE,
     SECRET_SIZE,
@@ -42,6 +46,14 @@ class UserTest(MAASServerTestCase):
         self.assertRaises(
             IntegrityError, User.objects.create_user,
             username=factory.make_string(), email=email)
+
+    def test_has_perm_is_patched(self):
+        mock_has_perm = self.patch(models, '_user_has_perm')
+        user = factory.make_User()
+        user.has_perm(sentinel.perm, sentinel.obj)
+        self.assertThat(
+            mock_has_perm,
+            MockCalledOnceWith(user, sentinel.perm, sentinel.obj))
 
 
 class AuthTokensTest(MAASServerTestCase):

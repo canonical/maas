@@ -265,13 +265,11 @@ class TestMachineAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(machine.owner.username, parsed_result["owner"])
 
-    def test_GET_returns_owner_name_when_allocated_to_other_user(self):
+    def test_GET_permission_denied_when_allocated_to_other_user(self):
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.get(self.get_machine_uri(machine))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(machine.owner.username, parsed_result["owner"])
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_GET_returns_empty_owner_when_not_allocated(self):
         machine = factory.make_Node(status=NODE_STATUS.READY)
@@ -679,7 +677,7 @@ class TestMachineAPI(APITestCase.ForUser):
             'distro_series': distro_series,
         }
         response = self.client.post(self.get_machine_uri(machine), request)
-        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_deploy_passes_agent_name(self):
         self.patch(node_module.Node, "_start")

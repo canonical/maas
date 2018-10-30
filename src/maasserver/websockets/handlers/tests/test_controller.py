@@ -9,6 +9,7 @@ from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
 from maasserver.models import ControllerInfo
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.controller import ControllerHandler
@@ -71,6 +72,8 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get('node_type'))
 
     def test_list_num_queries_is_the_expected_number(self):
+        self.useFixture(RBACForceOffFixture())
+
         owner = factory.make_admin()
         for _ in range(10):
             node = factory.make_RegionRackController(owner=owner)
@@ -130,7 +133,7 @@ class TestControllerHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            queries, 30,
+            queries, 31,
             "Number of queries has changed; make sure this is expected.")
 
     def test_get_form_class_for_create(self):
