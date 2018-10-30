@@ -818,7 +818,7 @@ class VirshSSH(pexpect.spawn):
         return True
 
     def get_usable_pool(self, disk, default_pool=None):
-        """Return the pool that has enough space for `disk.size`."""
+        """Return the pool and type that has enough space for `disk.size`."""
         pools = self.get_pod_storage_pools(with_available=True)
         filtered_pools = [
             pool
@@ -828,7 +828,7 @@ class VirshSSH(pexpect.spawn):
         if filtered_pools:
             for pool in filtered_pools:
                 if disk.size <= pool.available:
-                    return pool.name
+                    return pool.type, pool.name
             raise PodInvalidResources(
                 "Not enough storage space on storage pools: %s" % (
                     ', '.join([pool.name for pool in filtered_pools])))
@@ -847,7 +847,7 @@ class VirshSSH(pexpect.spawn):
             if filtered_pools:
                 default_pool = filtered_pools[0]
                 if disk.size <= default_pool.available:
-                    return default_pool.name
+                    return default_pool.type, default_pool.name
                 raise PodInvalidResources(
                     "Not enough space in default storage pool: %s" % (
                         default_pool.name))
@@ -855,20 +855,26 @@ class VirshSSH(pexpect.spawn):
                 "Default storage pool '%s' doesn't exist." % default_pool)
         for pool in pools:
             if disk.size <= pool.available:
-                return pool.name
+                return pool.type, pool.name
         raise PodInvalidResources(
             "Not enough storage space on any storage pools: %s" % (
                 ', '.join([pool.name for pool in pools])))
 
     def create_local_volume(self, disk, default_pool=None):
         """Create a local volume with `disk.size`."""
-        usable_pool = self.get_usable_pool(disk, default_pool)
+        usable_pool_type, usable_pool = self.get_usable_pool(
+            disk, default_pool)
         if usable_pool is None:
             return None
         volume = str(uuid4())
-        self.run([
-            'vol-create-as', usable_pool, volume, str(disk.size),
-            '--allocation', '0', '--format', 'raw'])
+        if usable_pool_type == 'logical':
+            self.run([
+                'vol-create-as', usable_pool, volume, str(disk.size),
+                '--format', 'raw'])
+        else:
+            self.run([
+                'vol-create-as', usable_pool, volume, str(disk.size),
+                '--allocation', '0', '--format', 'raw'])
         return usable_pool, volume
 
     def delete_local_volume(self, pool, volume):

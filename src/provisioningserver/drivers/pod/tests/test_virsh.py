@@ -1140,7 +1140,7 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
         self.assertEqual(
-            pools[1].name,
+            (pools[1].type, pools[1].name),
             conn.get_usable_pool(disk))
 
     def test_get_usable_pool_filters_on_disk_tags(self):
@@ -1160,7 +1160,7 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
         self.assertEqual(
-            selected_pool.name,
+            (selected_pool.type, selected_pool.name),
             conn.get_usable_pool(disk))
 
     def test_get_usable_pool_filters_on_disk_tags_raises_invalid(self):
@@ -1199,7 +1199,7 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
         self.assertEqual(
-            selected_pool.name,
+            (selected_pool.type, selected_pool.name),
             conn.get_usable_pool(disk, selected_pool.id))
 
     def test_get_usable_pool_filters_on_default_pool_id_raises_invalid(self):
@@ -1238,7 +1238,7 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_pod_storage_pools").return_value = pools
         self.assertEqual(
-            selected_pool.name,
+            (selected_pool.type, selected_pool.name),
             conn.get_usable_pool(disk, selected_pool.name))
 
     def test_get_usable_pool_filters_on_default_pool_name_raises_invalid(self):
@@ -1264,7 +1264,7 @@ class TestVirshSSH(MAASTestCase):
     def test_create_local_volume_returns_None(self):
         conn = self.configure_virshssh('')
         self.patch(
-            virsh.VirshSSH, "get_usable_pool").return_value = None
+            virsh.VirshSSH, "get_usable_pool").return_value = (None, None)
         self.assertIsNone(conn.create_local_volume(random.randint(1000, 2000)))
 
     def test_create_local_volume_returns_tagged_pool_and_volume(self):
@@ -1281,8 +1281,9 @@ class TestVirshSSH(MAASTestCase):
     def test_create_local_volume_makes_call_returns_pool_and_volume(self):
         conn = self.configure_virshssh('')
         pool = factory.make_name('pool')
+        pool_type = factory.make_name('pool_type')
         self.patch(
-            virsh.VirshSSH, "get_usable_pool").return_value = pool
+            virsh.VirshSSH, "get_usable_pool").return_value = (pool_type, pool)
         mock_run = self.patch(virsh.VirshSSH, "run")
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[])
@@ -1290,6 +1291,21 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(mock_run, MockCalledOnceWith([
             'vol-create-as', used_pool, volume_name, str(disk.size),
             '--allocation', '0', '--format', 'raw']))
+        self.assertEqual(pool, used_pool)
+        self.assertIsNotNone(volume_name)
+
+    def test_create_local_volume_makes_call_returns_pool_and_volume_lvm(self):
+        conn = self.configure_virshssh('')
+        pool = factory.make_name('pool')
+        self.patch(
+            virsh.VirshSSH, "get_usable_pool").return_value = ('logical', pool)
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        disk = RequestedMachineBlockDevice(
+            size=random.randint(1000, 2000), tags=[])
+        used_pool, volume_name = conn.create_local_volume(disk)
+        self.assertThat(mock_run, MockCalledOnceWith([
+            'vol-create-as', used_pool, volume_name, str(disk.size),
+            '--format', 'raw']))
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
 
