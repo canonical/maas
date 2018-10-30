@@ -6,6 +6,11 @@
   background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2215%22%20width%3D%2214%22%3E%3Cpath%20d%3D%22M11.04%202.323l-.324%202.268a5.017%205.017%200%200%201%201.352%203.426c0%202.787-2.274%205.056-5.068%205.056s-5.067-2.269-5.067-5.056a5.02%205.02%200%200%201%201.351-3.426L2.96%202.323A6.935%206.935%200%200%200%200%208.017C0%2011.868%203.14%2015%207%2015s7-3.132%207-6.983a6.933%206.933%200%200%200-2.96-5.694zM6%200h2v7H6V0z%22%20fill%3D%22" + encodecolor($color) + "%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E");
 }
 
+// Identical to Vanilla success icon, but possible to alter tick color
+@mixin maas-icon-success($bg-color, $tick-color: $color-x-light) {
+  background-image: url("data:image/svg+xml,%3Csvg width='17' height='17' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform='translate%281 1%29' fill='none' fill-rule='evenodd'%3E%3Ccircle stroke='#{vf-url-friendly-color($bg-color)}' stroke-width='1.5' fill='#{vf-url-friendly-color($bg-color)}' cx='7.25' cy='7.25' r='7.25'/%3E%3Cpath fill='#{vf-url-friendly-color($tick-color)}' d='M11.05 4.173l-.066.058L6.25 8.378l-2.776-2.38-.839.948L6.25 10.75l5.5-5.787-.7-.79z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 @mixin maas-icons {
   .p-icon {
     padding-right: $sp-small;

@@ -38,8 +38,8 @@ angular.module('MAAS').directive('maasBootImagesStatus', [
     }]);
 
 angular.module('MAAS').directive('maasBootImages', [
-    '$filter', 'BootResourcesManager', 'UsersManager', 'ManagerHelperService',
-    function($filter, BootResourcesManager,
+    '$timeout', 'BootResourcesManager', 'UsersManager', 'ManagerHelperService',
+    function($timeout, BootResourcesManager,
         UsersManager, ManagerHelperService) {
         return {
             restrict: "E",
@@ -52,6 +52,7 @@ angular.module('MAAS').directive('maasBootImages', [
             controller: function($scope, $rootScope, $element, $document) {
                 $scope.loading = true;
                 $scope.saving = false;
+                $scope.saved = false;
                 $scope.stopping = false;
                 $scope.design = $scope.design || 'page';
                 $scope.bootResources = BootResourcesManager.getData();
@@ -704,6 +705,8 @@ angular.module('MAAS').directive('maasBootImages', [
                 $scope.getSaveSelectionText = function() {
                     if($scope.saving) {
                         return "Saving...";
+                    } else if ($scope.saved) {
+                        return "Selection updated";
                     } else {
                         return "Update selection";
                     }
@@ -755,8 +758,14 @@ angular.module('MAAS').directive('maasBootImages', [
                         $scope.saving = false;
                         $scope.source.isNew = false;
                         $scope.source.selections.changed = false;
+                        $scope.savedTimeout();
                         $scope.updateSource();
                     });
+                };
+
+                $scope.savedTimeout = function() {
+                    $scope.saved = true;
+                    $timeout(() => $scope.saved = false, 3000);
                 };
 
                 // Re-create an array with the new objects using the old

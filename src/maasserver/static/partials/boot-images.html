@@ -163,8 +163,23 @@
         <div class="row" data-ng-if="!source.tooMany">
             <div class="col-12">
                 <div class="u-align--right">
-                    <button class="p-button--neutral" data-ng-if="showStopImportButton()" data-ng-disabled="!canStopImport()" data-ng-click="stopImport()">{$ getStopImportText() $}</button>
-                    <button type="submit" class="p-button--positive" data-ng-if="isSuperUser() && showSaveSelection()" data-ng-disabled="!canSaveSelection()" data-ng-click="saveSelection()">{$ getSaveSelectionText() $}</button>
+                    <maas-action-button
+                        class="p-button--neutral"
+                        indeterminate-state="stopping"
+                        data-ng-if="showStopImportButton()"
+                        data-ng-disabled="!canStopImport()"
+                        data-ng-click="stopImport()">
+                        {$ getStopImportText() $}
+                    </maas-action-button>
+                    <maas-action-button
+                        class="p-button--positive"
+                        indeterminate-state="saving"
+                        done-state="saved"
+                        data-ng-if="isSuperUser() && showSaveSelection()"
+                        data-ng-disabled="!canSaveSelection()"
+                        data-ng-click="saveSelection()">
+                        {$ getSaveSelectionText() $}
+                    </maas-action-button>
                 </div>
             </div>
         </div>
@@ -213,7 +228,15 @@
     <div class="row" data-ng-if="!source.tooMany">
         <div class="col-12">
             <div class="u-align--right">
-                <button class="p-button--positive" data-ng-if="isSuperUser()" data-ng-disabled="saving" data-ng-click="saveUbuntuCoreSelection()">{$ getSaveSelectionText() $}</button>
+                <maas-action-button
+                    class="p-button--positive"
+                    indeterminate-state="saving"
+                    done-state="saved"
+                    data-ng-if="isSuperUser()"
+                    data-ng-disabled="!canSaveSelection()"
+                    data-ng-click="saveUbuntuCoreSelection()">
+                    {$ getSaveSelectionText() $}
+                </maas-action-button>
             </div>
         </div>
     </div>
@@ -264,7 +287,15 @@
     <div class="row" data-ng-if="!source.tooMany">
         <div class="col-12">
             <div class="u-align--right">
-                <button class="p-button--positive" data-ng-if="isSuperUser()" data-ng-disabled="saving" data-ng-click="saveOtherSelection()">{$ getSaveSelectionText() $}</button>
+                <maas-action-button
+                    class="p-button--positive"
+                    indeterminate-state="saving"
+                    done-state="saved"
+                    data-ng-if="isSuperUser()"
+                    data-ng-disabled="saving"
+                    data-ng-click="saveOtherSelection()">
+                    {$ getSaveSelectionText() $}
+                </maas-action-button>
             </div>
         </div>
     </div>
