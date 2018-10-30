@@ -1,8 +1,14 @@
-maas (2.5.0~beta4-0ubuntu1) UNRELEASED; urgency=medium
+maas (2.5.0~beta5-0ubuntu1) UNRELEASED; urgency=medium
 
   * UNRELEASED
 
- -- Andres Rodriguez <andreserl@ubuntu.com>  Wed, 24 Oct 2018 08:47:14 -0600
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Mon, 29 Oct 2018 19:19:14 -0400
+
+maas (2.5.0~beta4-7361-g401d6c73d-0ubuntu1~18.10.1) cosmic; urgency=medium
+
+  * New upstream bugfix release.
+
+ -- Andres Rodriguez <andreserl@ubuntu.com>  Fri, 26 Oct 2018 14:22:03 -0600
 
 maas (2.5.0~beta3-7325-g1425f6d4c-0ubuntu1~18.10.1) cosmic; urgency=medium
 
