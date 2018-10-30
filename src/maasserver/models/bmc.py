@@ -304,7 +304,7 @@ class BMC(CleanSave, TimestampedModel):
         if new_ip and new_ip.startswith('[') and new_ip.endswith(']'):
             new_ip = new_ip[1:-1]
         if new_ip != current_ip:
-            if new_ip is None:
+            if not new_ip:
                 self.ip_address = None
             else:
                 # Update or create a StaticIPAddress for the new IP.
@@ -326,6 +326,7 @@ class BMC(CleanSave, TimestampedModel):
                     maaslog.info(
                         "BMC could not save extracted IP "
                         "address '%s': '%s'", new_ip, error)
+                    raise error
 
     @staticmethod
     def scope_power_parameters(power_type, power_params):

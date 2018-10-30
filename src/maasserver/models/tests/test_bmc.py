@@ -63,6 +63,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.rpc.cluster import DecomposeMachine
 from provisioningserver.utils.constraints import LabeledConstraintMap
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -199,6 +200,16 @@ class TestBMC(MAASServerTestCase):
         bmc.save()
         self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
         self.assertEqual(subnet, bmc.ip_address.subnet)
+
+    def test_bmc_changing_power_parameters_ipmi_errors_if_invalid(self):
+        ip = factory.make_ipv4_address()
+        power_parameters = {
+            'power_address':
+            "protocol://%s" % factory.ip_to_url_format(ip),
+        }
+        with ExpectedException(ValueError):
+            factory.make_BMC(
+                power_type="ipmi", power_parameters=power_parameters)
 
     def test_deleting_machine_ip_when_shared_with_bmc(self):
         machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()

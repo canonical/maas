@@ -1431,7 +1431,7 @@ class TestMachineAPI(APITestCase.ForUser):
     def test_PUT_updates_power_parameters_empty_string(self):
         self.become_admin()
         power_parameters = {
-            'power_address': factory.make_url(),
+            'power_address': factory.make_ip_address(),
             'power_id': factory.make_name('power_id'),
             'power_pass': factory.make_name('power_pass'),
         }
