@@ -261,8 +261,13 @@ class MacaroonClient:
     def __init__(self, url, auth_info):
         self._url = url
         self._auth_info = auth_info
+        interaction_methods = None
+        if auth_info is not None:
+            # if auth info is specified, use the default interaction (most
+            # likely the browser-based one)
+            interaction_methods = [AgentInteractor(self._auth_info)]
         self._client = httpbakery.Client(
-            interaction_methods=[AgentInteractor(self._auth_info)])
+            interaction_methods=interaction_methods)
 
     def _request(self, method, url, json=None, status_code=200):
         cookiejar = self._client.cookies

@@ -80,8 +80,14 @@ def add_candid_options(parser):
 
 def add_rbac_options(parser):
     parser.add_argument(
-        '--rbac-url', default=None, metavar='RBAC_URL',
+        '--rbac-url', default=None,
         help="The URL for the Canonical RBAC service to use.")
+    parser.add_argument(
+        '--rbac-service-name', default=None,
+        help=(
+            'Optionally, the name of the RBAC service to register this MAAS '
+            'as.  If not provided, a list with services that the user can '
+            'register will be displayed, to choose from.'))
 
 
 def add_create_admin_options(parser):
@@ -165,6 +171,8 @@ def configure_authentication(options):
     cmd = [get_maas_region_bin_path(), 'configauth']
     if options.rbac_url is not None:
         cmd.extend(['--rbac-url', options.rbac_url])
+    if options.rbac_service_name is not None:
+        cmd.extend(['--rbac-service-name', options.rbac_service_name])
     if options.candid_url is not None:
         cmd.extend(['--idm-url', options.candid_url])
     if options.candid_user is not None:

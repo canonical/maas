@@ -16,6 +16,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from maasserver.management.commands import configauth
 from maasserver.models import Config
+from maasserver.rbac import FakeRBACUserClient
 from maasserver.testing.testcase import MAASServerTestCase
 
 
@@ -26,11 +27,16 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.read_input = self.patch(configauth, 'read_input')
         self.read_input.return_value = ''
         self.mock_print = self.patch(configauth, 'print')
+        self.rbac_user_client = FakeRBACUserClient()
+        mock_client = self.patch(configauth, 'RBACUserClient')
+        mock_client.return_value = self.rbac_user_client
 
     def printout(self):
         prints = []
         for call in self.mock_print.mock_calls:
-            _, [output], _ = call
+            _, output, _ = call
+            # Empty tuple if print is called with no text
+            output = output[0] if output else ''
             prints.append(output)
         return '\n'.join(prints)
 
@@ -77,27 +83,6 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.assertEqual(
             'admins',
             Config.objects.get_config('external_auth_admin_group'))
-
-    def test_configauth_changes_auth_prompts_rbac(self):
-        self.read_input.side_effect = [
-            'http://rbac.example.com', 'user@admin', 'private-key']
-        # legacy options are only prompted if at least one is provided
-        call_command('configauth', candid_url='http://candid.example.com/')
-        self.assertEqual(
-            'http://rbac.example.com', Config.objects.get_config('rbac_url'))
-        self.assertEqual(
-            'http://candid.example.com/',
-            Config.objects.get_config('external_auth_url'))
-        self.assertEqual(
-            'user@admin',
-            Config.objects.get_config('external_auth_user'))
-        self.assertEqual(
-            'private-key',
-            Config.objects.get_config('external_auth_key'))
-        self.assertEqual(
-            '', Config.objects.get_config('external_auth_domain'))
-        self.assertEqual(
-            '', Config.objects.get_config('external_auth_admin_group'))
 
     def test_configauth_changes_auth_prompt_default(self):
         self.read_input.return_value = ''
@@ -313,15 +298,74 @@ class TestConfigAuthCommand(MAASServerTestCase):
              'rbac_url': 'http://rbac.example.com/'},
             json.loads(output))
 
-    def test_configauth_rbac_url(self):
+    def test_configauth_rbac_with_name(self):
+        self.rbac_user_client.services = [
+            {'name': 'mymaas',
+             '$uri': '/api/rbac/1.0/service/4',
+             'pending': True,
+             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
         call_command(
             'configauth', candid_url='http://example.com:1234',
             candid_user='user@admin', candid_key='private-key',
-            rbac_url='http://rbac.example.com')
+            rbac_url='http://rbac.example.com',
+            rbac_service_name='mymaas')
         self.read_input.assert_not_called()
         self.assertEqual(
             'http://rbac.example.com',
             Config.objects.get_config('rbac_url'))
+        self.assertEqual(
+            self.rbac_user_client.registered_services,
+            ['/api/rbac/1.0/service/4'])
+
+    def test_configauth_rbac_unknown_name(self):
+        self.rbac_user_client.services = [
+            {'name': 'mymaas',
+             '$uri': '/api/rbac/1.0/service/4',
+             'pending': True,
+             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
+        self.assertRaises(
+            CommandError, call_command,
+            'configauth', candid_url='http://example.com:1234',
+            candid_user='user@admin', candid_key='private-key',
+            rbac_url='http://rbac.example.com',
+            rbac_service_name='unknown')
+
+    def test_configauth_rbac_registration_list(self):
+        self.rbac_user_client.services = [
+            {'name': 'mymaas',
+             '$uri': '/api/rbac/1.0/service/4',
+             'pending': False,
+             'product': {'$ref' '/api/rbac/1.0/product/2'}},
+            {'name': 'mymaas2',
+             '$uri': '/api/rbac/1.0/service/12',
+             'pending': True,
+             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
+        # The index of the service to register is prompted
+        self.read_input.side_effect = ['2']
+        call_command('configauth', rbac_url='http://rbac.example.com')
+        self.assertEqual(
+            'http://rbac.example.com', Config.objects.get_config('rbac_url'))
+        self.assertEqual(
+            'http://auth.example.com',
+            Config.objects.get_config('external_auth_url'))
+        self.assertEqual(
+            'u-1', Config.objects.get_config('external_auth_user'))
+        self.assertNotEqual(
+            '', Config.objects.get_config('external_auth_key'))
+        self.assertEqual(
+            '', Config.objects.get_config('external_auth_domain'))
+        self.assertEqual(
+            '', Config.objects.get_config('external_auth_admin_group'))
+        prints = self.printout()
+        self.assertIn('1 - mymaas', prints)
+        self.assertIn('2 - mymaas2 (pending)', prints)
+        self.assertIn('Service "mymaas2" registered', prints)
+
+    def test_configauth_rbac_registration_invalid_index(self):
+        self.read_input.side_effect = ['2']
+        self.assertRaises(
+            CommandError,
+            call_command, 'configauth', rbac_url='http://rbac.example.com')
 
     def test_configauth_rbac_url_none(self):
         call_command(

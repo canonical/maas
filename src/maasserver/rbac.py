@@ -269,3 +269,56 @@ class RBACWrapper:
 
 
 rbac = RBACWrapper()
+
+
+class RBACUserClient(MacaroonClient):
+    """A client for the RBAC user API."""
+
+    API_BASE_URL = '/api/rbac/1.0'
+
+    def __init__(self, url):
+        # no auth info is passed as this is meant for interactive use
+        super().__init__(url, None)
+
+    def get_registerable_services(self):
+        """Return MAAS services that can be registered by the user."""
+        maas = self._get_maas_product()
+        services = self._request(
+            'GET', self._url + self.API_BASE_URL + '/service/registerable')
+        return [
+            service for service in services
+            if service['product']['$ref'] == maas['$uri']]
+
+    def register_service(self, service_uri, public_key):
+        """Register the specified service with the public key."""
+        return self._request(
+            'POST', self._url + service_uri + '/credentials',
+            json={'public-key': public_key})
+
+    def _get_maas_product(self):
+        """Return details for the maas product."""
+        products = self._request(
+            'GET', self._url + self.API_BASE_URL + '/product')
+        [maas] = [
+            product for product in products if product['label'] == 'maas']
+        return maas
+
+
+class FakeRBACUserClient(RBACUserClient):
+
+    def __init__(self):
+        self.services = []
+        self.products = []
+        self.registered_services = []
+
+    def get_products(self):
+        return self.products
+
+    def get_registerable_services(self):
+        return self.services
+
+    def register_service(self, service_uri, public_key):
+        self.registered_services.append(service_uri)
+        return {
+            'url': 'http://auth.example.com',
+            'username': 'u-{}'.format(len(self.registered_services))}

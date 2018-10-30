@@ -22,6 +22,8 @@ from maascli.init import (
 )
 from maasserver.management.commands.createadmin import read_input
 from maasserver.models import Config
+from maasserver.rbac import RBACUserClient
+from macaroonbakery.bakery import generate_key
 
 
 @attr.s
@@ -64,6 +66,50 @@ def update_auth_details_from_agent_file(agent_file_name, auth_details):
     auth_details.url = agent_details.get('url')
     auth_details.user = agent_details.get('username')
     auth_details.key = details.get('key', {}).get('private')
+
+
+def update_auth_details_from_rbac_registration(
+        auth_details, service_name):
+    client = RBACUserClient(auth_details.rbac_url)
+    services = {
+        service['name']: service
+        for service in client.get_registerable_services()}
+    if service_name is not None:
+        service = services.get(service_name)
+        if service is None:
+            raise CommandError(
+                'Service "{}" is not known, available choices: {}'.
+                format(service_name, ', '.join(sorted(services))))
+
+    else:
+        service = _pick_service(services)
+
+    _register_service(client, service, auth_details)
+    print('Service "{}" registered'.format(service['name']))
+
+
+def _register_service(client, service, auth_details):
+    key = generate_key()
+    response = client.register_service(service['$uri'], str(key.public_key))
+    auth_details.url = response['url']
+    auth_details.user = response['username']
+    auth_details.key = str(key)
+
+
+def _pick_service(services):
+    print('Please select which service to register this MAAS as:\n')
+    services_list = sorted(
+        (service['name'], service['pending']) for service in services.values())
+    for idx, (name, pending) in enumerate(services_list, 1):
+        print(' {:3} - {} {}'.format(
+            idx, name, '(pending)' if pending else ''))
+    print()
+    idx = read_input('Select service index: ')
+    try:
+        service_name = services_list[int(idx) - 1][0]
+    except (ValueError, IndexError):
+        raise CommandError('Invalid index')
+    return services[service_name]
 
 
 valid_url = URLValidator(schemes=('http', 'https'))
@@ -121,59 +167,28 @@ class Command(BaseCommand):
             options, 'rbac_url',
             "URL for the Canonical RBAC service "
             "(leave blank if not using the service): ", replace_none=True)
-        if (
-                auth_details.rbac_url and
-                not is_valid_url(auth_details.rbac_url)):
-            raise InvalidURLError(
-                "Please enter a valid http or https URL.")
-
-        have_legacy_options = any(
-            value is not None for key, value in options.items()
-            if key in ('candid_url', 'candid_user', 'candid_key'))
-        if have_legacy_options:
-            agent_file = options.get('candid_agent_file')
+        if auth_details.rbac_url:
+            if not is_valid_url(auth_details.rbac_url):
+                raise InvalidURLError(
+                    "Please enter a valid http or https URL.")
+            update_auth_details_from_rbac_registration(
+                auth_details, options.get('rbac_service_name'))
         else:
-            agent_file = _get_or_prompt(
-                options, 'candid_agent_file',
-                'Path of the Candid authentication agent file (leave blank '
-                'if not using the service): ', replace_none=True)
-            if auth_details.rbac_url and not agent_file:
-                raise CommandError(
-                    'Candid authentication must be set when using RBAC')
-        if agent_file:
-            update_auth_details_from_agent_file(agent_file, auth_details)
-            if not auth_details.rbac_url:
-                auth_details.domain = _get_or_prompt(
-                    options, 'candid_domain',
-                    "Users domain for external authentication backend "
-                    "(leave blank for empty): ", replace_none=True)
-                auth_details.admin_group = _get_or_prompt(
-                    options, 'candid_admin_group',
-                    "Group of users whose members are made admins in MAAS "
-                    "(leave blank for empty): ")
-        elif have_legacy_options:
-            print(
-                'Warning: "--idm-*" options are deprecated and will be '
-                'removed. Please use "--candid-agent-file" instead to pass '
-                'Candid authentication details instead.')
-            auth_details.url = options.get('candid_url')
-            if auth_details.url is None:
-                existing_url = config_manager.get_config('external_auth_url')
-                auth_details.url = prompt_for_external_auth_url(existing_url)
-            if auth_details.url == 'none':
-                auth_details.url = ''
-            if auth_details.rbac_url and not auth_details.url:
-                raise CommandError(
-                    'Candid URL must be specified when using RBAC')
-            if auth_details.url:
-                if not is_valid_url(auth_details.url):
-                    raise InvalidURLError(
-                        "Please enter a valid http or https URL.")
-                auth_details.user = _get_or_prompt(
-                    options, 'candid_user', "Username for Candid API access: ")
-                auth_details.key = _get_or_prompt(
-                    options, 'candid_key',
-                    "Private key for Candid API access: ")
+            have_legacy_options = any(
+                value is not None for key, value in options.items()
+                if key in ('candid_url', 'candid_user', 'candid_key'))
+            if have_legacy_options:
+                agent_file = options.get('candid_agent_file')
+            else:
+                agent_file = _get_or_prompt(
+                    options, 'candid_agent_file',
+                    'Path of the Candid authentication agent file (leave '
+                    'blank if not using the service): ', replace_none=True)
+                if auth_details.rbac_url and not agent_file:
+                    raise CommandError(
+                        'Candid authentication must be set when using RBAC')
+            if agent_file:
+                update_auth_details_from_agent_file(agent_file, auth_details)
                 if not auth_details.rbac_url:
                     auth_details.domain = _get_or_prompt(
                         options, 'candid_domain',
@@ -183,6 +198,41 @@ class Command(BaseCommand):
                         options, 'candid_admin_group',
                         "Group of users whose members are made admins in MAAS "
                         "(leave blank for empty): ")
+            elif have_legacy_options:
+                print(
+                    'Warning: "--idm-*" options are deprecated and will be '
+                    'removed. Please use "--candid-agent-file" instead to '
+                    'pass Candid authentication details instead.')
+                auth_details.url = options.get('candid_url')
+                if auth_details.url is None:
+                    existing_url = config_manager.get_config(
+                        'external_auth_url')
+                    auth_details.url = prompt_for_external_auth_url(
+                        existing_url)
+                if auth_details.url == 'none':
+                    auth_details.url = ''
+                if auth_details.rbac_url and not auth_details.url:
+                    raise CommandError(
+                        'Candid URL must be specified when using RBAC')
+                if auth_details.url:
+                    if not is_valid_url(auth_details.url):
+                        raise InvalidURLError(
+                            "Please enter a valid http or https URL.")
+                    auth_details.user = _get_or_prompt(
+                        options, 'candid_user',
+                        "Username for Candid API access: ")
+                    auth_details.key = _get_or_prompt(
+                        options, 'candid_key',
+                        "Private key for Candid API access: ")
+                    if not auth_details.rbac_url:
+                        auth_details.domain = _get_or_prompt(
+                            options, 'candid_domain',
+                            "Users domain for external authentication backend "
+                            "(leave blank for empty): ", replace_none=True)
+                        auth_details.admin_group = _get_or_prompt(
+                            options, 'candid_admin_group',
+                            "Group of users whose members are made admins in "
+                            "MAAS (leave blank for empty): ")
 
         set_auth_config(config_manager, auth_details)
         clear_user_sessions()

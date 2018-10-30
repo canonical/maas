@@ -12,6 +12,7 @@ from maasserver.rbac import (
     FakeRBACClient,
     rbac,
     RBACClient,
+    RBACUserClient,
     RBACWrapper,
     Resource,
 )
@@ -21,7 +22,10 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from macaroonbakery.bakery import PrivateKey
 from macaroonbakery.httpbakery.agent import (
     Agent,
@@ -357,3 +361,126 @@ class TestRBACWrapperClientThreads(MAASTransactionServerTestCase):
         thread1.join()
         thread2.join()
         self.assertIsNot(rbac1, rbac2)
+
+
+class TestRBACUserClient(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.url = 'https://rbac.example.com'
+        self.client = RBACUserClient(self.url)
+        self.mock_request = self.patch(requests, 'request')
+
+    def mock_responses(self, *responses):
+        response = mock.MagicMock(status_code=200)
+        response.json.side_effect = responses
+        self.mock_request.return_value = response
+
+    def test__get_maas_product(self):
+        maas = {
+            '$uri': '/api/rbac/1.0/product/2',
+            'label': 'maas',
+            'name': 'MAAS',
+        }
+        products = [
+            {
+                '$uri': '/api/rbac/1.0/product/1',
+                'label': 'product-1',
+                'name': 'Product 1',
+            },
+            maas,
+        ]
+        self.mock_responses(products)
+        self.assertEqual(self.client._get_maas_product(), maas)
+        self.assertThat(
+            self.mock_request,
+            MockCalledOnceWith(
+                'GET',
+                'https://rbac.example.com/api/'
+                'rbac/1.0/product',
+                auth=mock.ANY, cookies=mock.ANY, json=None))
+
+    def test_get_registerable_services(self):
+        products = [
+            {
+                '$uri': '/api/rbac/1.0/product/1',
+                'label': 'product-1',
+                'name': 'Product 1',
+            },
+            {
+                '$uri': '/api/rbac/1.0/product/2',
+                'label': 'maas',
+                'name': 'MAAS',
+            },
+        ]
+        maas1 = {
+            '$uri': '/api/rbac/1.0/service/3',
+            'name': 'maas-1',
+            'description': 'MAAS 1',
+            'pending': True,
+            'product': {
+                '$ref': '/api/rbac/1.0/product/2'
+            },
+        }
+        maas2 = {
+            '$uri': '/api/rbac/1.0/service/4',
+            'name': 'maas-2',
+            'description': 'MAAS 2',
+            'pending': True,
+            'product': {
+                '$ref': '/api/rbac/1.0/product/2'
+            },
+        }
+        services = [
+            {
+                '$uri': '/api/rbac/1.0/service/1',
+                'name': 'service-1',
+                'description': 'Service 1',
+                'pending': True,
+                'product': {
+                        '$ref': '/api/rbac/1.0/product/1'
+                },
+            },
+            {
+                '$uri': '/api/rbac/1.0/service/2',
+                'name': 'service-2',
+                'description': 'Service 2',
+                'pending': True,
+                'product': {
+                        '$ref': '/api/rbac/1.0/product/1'
+                },
+            },
+            maas1,
+            maas2,
+        ]
+        self.mock_responses(products, services)
+        self.assertEqual(
+            self.client.get_registerable_services(), [maas1, maas2])
+        self.assertThat(
+            self.mock_request,
+            MockCallsMatch(
+                mock.call(
+                    'GET',
+                    'https://rbac.example.com/api/rbac/1.0/product',
+                    auth=mock.ANY, cookies=mock.ANY, json=None),
+                mock.call(
+                    'GET',
+                    'https://rbac.example.com/api/'
+                    'rbac/1.0/service/registerable',
+                    auth=mock.ANY, cookies=mock.ANY, json=None)))
+
+    def test_register_service(self):
+        response = {'url': self.url, 'username': 'a-123'}
+        self.mock_responses(response)
+        self.assertEqual(
+            self.client.register_service(
+                '/api/rbac/1.0/service/3', 'dead-beef'),
+            response)
+        json = {'public-key': 'dead-beef'}
+        self.assertThat(
+            self.mock_request,
+            MockCalledOnceWith(
+                'POST',
+                'https://rbac.example.com/api/'
+                'rbac/1.0/service/3/credentials',
+                auth=mock.ANY, cookies=mock.ANY, json=json))

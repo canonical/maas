@@ -86,6 +86,11 @@ class TestAddRBACOptions(MAASTestCase):
             ['--rbac-url', 'http://rbac.example.com/'])
         self.assertEqual('http://rbac.example.com/', options.rbac_url)
 
+    def test_rbac_service_name(self):
+        options = self.parser.parse_args(
+            ['--rbac-service-name', 'mymaas'])
+        self.assertEqual(options.rbac_service_name, 'mymaas')
+
 
 class TestCreateAdminOptions(MAASTestCase):
 
@@ -202,6 +207,17 @@ class TestConfigureAuthentication(MAASTestCase):
 
     def test_rbac_url(self):
         config_auth_args = ['--rbac-url', 'http://rrbac.example.com/']
+        options = self.parser.parse_args(config_auth_args)
+        init.configure_authentication(options)
+        [config_call] = self.mock_subprocess.mock_calls
+        method, args, kwargs = config_call
+        self.assertEqual('call', method)
+        self.assertEqual(
+            ([self.maas_bin_path, 'configauth'] + config_auth_args,), args)
+        self.assertEqual({}, kwargs)
+
+    def test_rbac_service_name(self):
+        config_auth_args = ['--rbac-service-name', 'mymaas']
         options = self.parser.parse_args(config_auth_args)
         init.configure_authentication(options)
         [config_call] = self.mock_subprocess.mock_calls
