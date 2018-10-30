@@ -1,4 +1,4 @@
-/* Copyright 2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS object directive.
@@ -1109,7 +1109,8 @@ angular.module('MAAS').directive('maasObjSave', function() {
         };
     });
 
-angular.module('MAAS').directive('maasObjErrors', function() {
+angular.module('MAAS').directive('maasObjErrors', ['$compile',
+    function($compile) {
         return {
             restrict: "E",
             require: ["^^maasObjForm"],
@@ -1128,13 +1129,15 @@ angular.module('MAAS').directive('maasObjErrors', function() {
                 // Called by controller to set errors.
                 scope.setErrors = function(errors) {
                     if(errors.length > 0) {
-                        angular.forEach(errors, function(error) {
-                            ul.append(
-                              '<li class="p-list__item">' +
-                              '<i class="p-icon--error"></i> ' +
-                              error + '</li>'
+                        scope.errors = errors;
+                        for(var i=0; i < scope.errors.length; i++) {
+                            ul.append($compile(
+                                  '<li class="p-list__item">' +
+                                  '<i class="p-icon--error"></i> ' +
+                                  '<span ng-bind="errors[' + i + ']"></span>' +
+                                  '</li>')(scope)
                             );
-                        });
+                        }
                     }
                 };
 
@@ -1144,7 +1147,7 @@ angular.module('MAAS').directive('maasObjErrors', function() {
                 };
             }
         };
-    });
+    }]);
 
 
 angular.module('MAAS').directive('maasObjSaving', function() {
