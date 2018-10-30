@@ -1,4 +1,18 @@
+$vanilla-2-icon-button-side-padding: $sph-intra--condensed * 1.5;
 @mixin maas-p-buttons {
+
+// disable override in vanilla that make buttons vertically less padded; this causes issues with alignment with other elements
+  table button,
+  table [class^="p-button"] {
+    padding-bottom: $spv-nudge - $px;
+    padding-top: $spv-nudge - $px;
+  }
+
+  .p-button--narrow {
+    padding-left: $vanilla-2-icon-button-side-padding;
+    padding-right:  $vanilla-2-icon-button-side-padding;
+  }
+
   %p-button--min-margin-bottom {
     margin-bottom: $spv-nudge-compensation;
   }

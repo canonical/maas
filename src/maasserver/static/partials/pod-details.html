@@ -75,7 +75,7 @@
                                         title="Spaces">More about spaces</a>
                                 </small>
                             </div>
-                            <table class="p-table-expanding p-table--pod-networking-config">
+                            <table class="p-table--pod-networking-config">
                                 <thead>
                                     <tr class="p-table__row">
                                         <th></th>
@@ -90,13 +90,15 @@
                                 </thead>
                                 <tbody>
                                     <tr class="p-table__row" data-ng-repeat="iface in compose.obj.interfaces track by $index">
-                                        <td>
-                                            <div data-ng-if="iface.name !== 'default'">
-                                                <button class="p-button--base" data-ng-click="composeRemoveInterface(iface)">
-                                                    <i class="p-icon--close"></i>
-                                                    <span class="u-off-screen">Remove</span>
-                                                </button>
-                                            </div>
+                                        <td class="u-valign--middle">
+                                            <button
+                                                class="p-button--base u-td-outdent-focusable--left p-button--narrow"
+                                                data-ng-click="composeRemoveInterface(iface)"
+                                                data-ng-if="iface.name !== 'default'"
+                                            >
+                                                <i class="p-icon--close"></i>
+                                                <span class="u-off-screen">Remove</span>
+                                            </button>
                                         </td>
                                         <td>
                                             <div ng-switch on="iface.name">
@@ -237,12 +239,12 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="u-vertically-center">
+                                        <td>
                                             <div data-ng-if="iface.name !== 'default'">
                                                 {$ iface.fabric.name $}
                                             </div>
                                         </td>
-                                        <td class="u-vertically-center">
+                                        <td>
                                             <div data-ng-if="iface.name !== 'default'">
                                                 <div ng-switch on="iface.vlan.vid">
                                                     <div ng-switch-when="0">untagged</div>
@@ -267,8 +269,8 @@
                                         </td>
                                     </tr>
                                     <tr data-ng-show="availableSubnets.length > 0">
-                                        <td>
-                                            <button class="p-button--base" data-ng-click="composeAddInterface()">
+                                        <td colspan="7">
+                                            <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeAddInterface()">
                                                 <i class="p-icon--plus"></i>
                                                 <span class="u-off-screen">Add another interface</span>
                                             </button>
@@ -283,7 +285,7 @@
                 <div class="row">
                     <div class="col-12">
                         <h3 class="p-heading--four">Storage configuration</h3>
-                        <table class="p-table-expanding p-table--pod-storage-config">
+                        <table class="p-table--pod-storage-config">
                             <thead>
                                 <tr class="p-table__row">
                                     <th></th>
@@ -299,7 +301,7 @@
                                 <tr class="p-table__row" data-ng-repeat="storage in compose.obj.storage">
                                     <td>
                                         <div data-ng-if="!storage.boot">
-                                            <button class="p-button--base" data-ng-click="composeRemoveDisk(storage)">
+                                            <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeRemoveDisk(storage)">
                                                 <i class="p-icon--close"></i>
                                                 <span class="u-off-screen">Remove</span>
                                             </button>
@@ -439,8 +441,8 @@
                                     </td>
                                 </tr>
                                 <tr class="p-table__row">
-                                    <td>
-                                        <button class="p-button--base" data-ng-click="composeAddStorage()">
+                                    <td colspan="5">
+                                        <button class="p-button--base u-td-outdent-focusable--left p-button--narrow" data-ng-click="composeAddStorage()">
                                             <i class="p-icon--plus"></i>
                                             <span class="u-off-screen">Add another device</span>
                                         </button>

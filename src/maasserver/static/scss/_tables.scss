@@ -123,15 +123,23 @@
     }
   }
 
-.p-table--pod-networking-config {
+  .p-table--pod-networking-config,
+  .p-table--pod-storage-config {
     input {
         // overriding min-width to make inputs fit within container
         min-width: auto;
-        margin-bottom: 0;
+        @extend %u-input-min-margin--bottom;
     }
+  }
 
+  $border-thickness: $px;
+  $icon-margin-right: $sph-intra--condensed;
+  $icon-button-width: $icon-margin-right + 2 * ($border-thickness + $vanilla-2-icon-button-side-padding) + map-get($icon-sizes, default);
+
+
+  .p-table--pod-networking-config {
     select {
-        margin-bottom: 0;
+        @extend %u-input-min-margin--bottom;
     }
 
     @media (min-width: $breakpoint-small) {
@@ -140,15 +148,15 @@
         .p-table__row {
             th, td {
                 &:nth-child(1) {
-                    width: 5%;
+                  width: $icon-button-width;
                 }
 
                 &:nth-child(2) {
-                    width: 5%;
+                    width: 10%;
                 }
 
                 &:nth-child(3) {
-                    width: 17%;
+                    width: 25%;
                 }
 
                 &:nth-child(4) {
@@ -156,25 +164,51 @@
                 }
 
                 &:nth-child(5) {
-                    width: 20%;
+                    width: 23%;
                 }
 
                 &:nth-child(6) {
-                    width: 10%;
+                    width: 17%;
                 }
 
                 &:nth-child(7) {
-                    width: 5%;
+                    width: 10%;
                 }
-
-                &:nth-child(8) {
-                    width: 5%;
-                }
-
             }
         }
     }
   }
+
+  .p-table--pod-storage-config {
+    @media (min-width: $breakpoint-small) {
+      margin-bottom: 0;
+
+      .p-table__row {
+        th, td {
+          &:nth-child(1) {
+              width: $icon-button-width;
+          }
+
+          &:nth-child(2) {
+              width: 10%;
+          }
+
+          &:nth-child(3) {
+             width: 40%;
+          }
+
+          &:nth-child(4) {
+              width: 40%;
+          }
+
+          &:nth-child(5) {
+              width: 10%;
+          }
+        }
+      }
+    }
+  }
+
 
   .p-table--pod-networking-config--message {
     margin-left: 35%;
@@ -527,35 +561,6 @@
     }
     &__empty {
       width: 10%;
-    }
-  }
-
-  .p-table--pod-storage-config {
-
-    position: relative;
-
-    @media (min-width: $breakpoint-small) {
-      margin-bottom: 0;
-
-      .p-table__row {
-        th, td {
-          &:nth-child(1) {
-            width: 5%;
-          }
-          &:nth-child(2) {
-            width: 20%;
-          }
-          &:nth-child(3) {
-            width: 30%;
-          }
-          &:nth-child(4) {
-            width: 35%;
-          }
-          &:nth-child(5) {
-            width: 10%;
-          }
-        }
-      }
     }
   }
 

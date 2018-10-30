@@ -24,3 +24,31 @@
 .u-text--light {
   color: $color-mid-dark;
 }
+
+$table-h-indent: $sph-intra--condensed;
+
+.u-td-outdent {
+  // apply a negative margin equal to cell padding;
+  // usefeul for things like buttons, which have white space around them
+  // - $px * 3 is to allow for the accessibility outline, which otherwise gets clipped by overflow: hidden on any of the parents
+
+  &--left {
+    margin-left: - $table-h-indent;
+  }
+
+  &--right {
+    margin-right: - $table-h-indent;
+  }
+
+  &-focusable--left {
+    margin-left: - $table-h-indent + $px * 3;
+  }
+
+  &-focusable--right {
+    margin-right: - $table-h-indent + $px * 3;
+  }
+}
+
+.u-valign--middle {
+  vertical-align: middle;
+}

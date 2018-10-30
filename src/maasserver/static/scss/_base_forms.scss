@@ -3,6 +3,11 @@
     margin-bottom: 0 !important;
     padding: 0 !important;
   }
+
+  %u-input-min-margin--bottom {
+    margin-bottom: $spv-nudge-compensation * 2 !important;
+  }
+
   // XXX: Lyubo: override vertically-condensed an vertically narrow styling which is meant to happen only in narrow tds, not expanded ones.
   // Can be removed once this is merged: https://github.com/vanilla-framework/vanilla-framework/pull/1920/commits/c48e325a842f5f73fc70dd1b727f70a68836fd28
   [type='text'],
@@ -33,7 +38,7 @@
     }
 
     &.u-min-margin--bottom {
-      margin-bottom: $spv-nudge-compensation * 2;
+      @extend %u-input-min-margin--bottom;
     }
   }
 

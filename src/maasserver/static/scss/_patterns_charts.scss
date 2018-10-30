@@ -68,7 +68,6 @@
 
     &::before {
       content: "•";
-      display: inline-block;
       float: left;
       font-size: 2rem;
       line-height: map-get($line-heights, default-text);
