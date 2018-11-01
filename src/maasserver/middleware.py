@@ -476,7 +476,7 @@ class ExternalAuthInfoMiddleware:
         auth_endpoint, auth_domain, auth_admin_group = '', '', ''
         if rbac_endpoint:
             auth_type = 'rbac'
-            auth_endpoint = rbac_endpoint + '/auth'
+            auth_endpoint = rbac_endpoint.rstrip('/') + '/auth'
         elif candid_endpoint:
             auth_type = 'candid'
             auth_endpoint = candid_endpoint

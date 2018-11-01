@@ -259,7 +259,7 @@ class MacaroonClient:
     """A base client for talking JSON with a macaroon based client."""
 
     def __init__(self, url, auth_info):
-        self._url = url
+        self._url = url.rstrip('/')
         self._auth_info = auth_info
         interaction_methods = None
         if auth_info is not None:

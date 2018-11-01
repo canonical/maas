@@ -1,3 +1,4 @@
+import http.client
 from queue import Queue
 from threading import Thread
 from unittest import mock
@@ -15,6 +16,7 @@ from maasserver.rbac import (
     RBACUserClient,
     RBACWrapper,
     Resource,
+    SyncConflictError,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -43,7 +45,7 @@ class TestRBACClient(MAASServerTestCase):
         agent = Agent(
             url='https://auth.example.com', username='user@candid')
         auth_info = AuthInfo(key=key, agents=[agent])
-        url = 'https://rbac.example.com'
+        url = 'https://rbac.example.com/'
 
         self.mock_request = self.patch(requests, 'request')
         self.client = RBACClient(url=url, auth_info=auth_info)
@@ -161,6 +163,20 @@ class TestRBACClient(MAASServerTestCase):
                 'https://rbac.example.com/api/'
                 'service/1.0/resources/resource-pool',
                 auth=mock.ANY, cookies=mock.ANY, json=json))
+
+    def test_update_resources_sync_conflict(self):
+        updates = [
+            Resource(identifier='1', name='pool-1'),
+            Resource(identifier='2', name='pool-2'),
+        ]
+        removals = [11, 22, 33]
+        response = mock.MagicMock(status_code=int(http.client.CONFLICT))
+        response.json.return_value = {'sync-id': 'x-y-z'}
+        self.mock_request.return_value = response
+        self.assertRaises(
+            SyncConflictError, self.client.update_resources,
+            'resource-pool', updates=updates, removals=removals,
+            last_sync_id='a-b-c')
 
     def test_allowed_for_user_all_resources(self):
         response = mock.MagicMock(status_code=200)

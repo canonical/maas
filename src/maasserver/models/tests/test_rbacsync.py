@@ -22,21 +22,23 @@ class TestRBACSync(MAASServerTestCase):
         RBACSync.objects.all().delete()
 
     def test_changes(self):
+        resource_type = 'resource-pool'
         synced = [
-            RBACSync.objects.create()
+            RBACSync.objects.create(resource_type=resource_type)
             for _ in range(3)
         ]
         self.assertThat(
-            RBACSync.objects.changes(), Equals(synced))
+            RBACSync.objects.changes(resource_type), Equals(synced))
 
     def test_clear_does_nothing_when_nothing(self):
         self.assertThat(RBACSync.objects.all(), HasLength(0))
-        RBACSync.objects.clear()
+        RBACSync.objects.clear('resource-pool')
         self.assertThat(RBACSync.objects.all(), HasLength(0))
 
     def test_clear_removes_all(self):
+        resource_type = 'resource-pool'
         for _ in range(3):
-            RBACSync.objects.create()
+            RBACSync.objects.create(resource_type=resource_type)
         self.assertThat(RBACSync.objects.all(), HasLength(3))
-        RBACSync.objects.clear()
+        RBACSync.objects.clear(resource_type)
         self.assertThat(RBACSync.objects.all(), HasLength(0))

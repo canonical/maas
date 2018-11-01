@@ -42,13 +42,13 @@ RBAC_ACTION_CHOICES = [
 class RBACSyncManager(Manager):
     """Manager for `RBACSync` records."""
 
-    def changes(self):
-        """Returns the changes that have occurred."""
-        return list(self.order_by('id'))
+    def changes(self, resource_type):
+        """Returns the changes that have occurred for `resource_type`."""
+        return list(self.filter(resource_type=resource_type).order_by('id'))
 
-    def clear(self):
-        """Deletes all `RBACSync`."""
-        self.all().delete()
+    def clear(self, resource_type):
+        """Deletes all `RBACSync` for `resource_type`."""
+        self.filter(resource_type=resource_type).delete()
 
 
 class RBACSync(Model):

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from functools import partial
+import http.client
 import threading
 from typing import (
     Sequence,
@@ -13,6 +14,7 @@ from urllib.parse import (
 
 import attr
 from maasserver.macaroon_auth import (
+    APIError,
     AuthInfo,
     get_auth_info,
     MacaroonClient,
@@ -21,6 +23,10 @@ from maasserver.models import (
     Config,
     ResourcePool,
 )
+
+
+class SyncConflictError(Exception):
+    """Sync conflict error occurred."""
 
 
 @attr.s
@@ -92,9 +98,15 @@ class RBACClient(MacaroonClient):
             'last-sync-id': last_sync_id,
             'updates': resources_updates,
             'removals': resources_removals}
-        result = self._request(
-            'POST', self._get_resource_type_url(resource_type),
-            json=data)
+        try:
+            result = self._request(
+                'POST', self._get_resource_type_url(resource_type),
+                json=data)
+        except APIError as exc:
+            if exc.status_code == int(http.client.CONFLICT) and last_sync_id:
+                # Notify the caller of the conflict explicitly.
+                raise SyncConflictError()
+            raise
         return result['sync-id']
 
     def allowed_for_user(

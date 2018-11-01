@@ -29,12 +29,15 @@ __all__ = [
     "RegionControllerService",
 ]
 
+from operator import attrgetter
+
 from maasserver import locks
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import (
+    RBAC_ACTION,
     RBACLastSync,
     RBACSync,
 )
@@ -43,6 +46,7 @@ from maasserver.proxyconfig import proxy_update_config
 from maasserver.rbac import (
     RBACClient,
     Resource,
+    SyncConflictError,
 )
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -82,7 +86,9 @@ class RegionControllerService(Service):
     See module documentation for more details.
     """
 
-    def __init__(self, postgresListener, clock=reactor, retryOnFailure=True):
+    def __init__(
+            self, postgresListener, clock=reactor, retryOnFailure=True,
+            rbacRetryOnFailureDelay=10):
         """Initialise a new `RegionControllerService`.
 
         :param postgresListener: The `PostgresListenerService` that is running
@@ -91,6 +97,7 @@ class RegionControllerService(Service):
         super(RegionControllerService, self).__init__()
         self.clock = clock
         self.retryOnFailure = retryOnFailure
+        self.rbacRetryOnFailureDelay = rbacRetryOnFailureDelay
         self.processing = LoopingCall(self.process)
         self.processing.clock = self.clock
         self.processingDefer = None
@@ -169,6 +176,11 @@ class RegionControllerService(Service):
                 self.rbacInit = True
             return result
 
+        def _rbacFailure(failure, delay):
+            log.err(failure, "Failed syncing resources to RBAC.")
+            if delay:
+                return pause(delay)
+
         defers = []
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
@@ -198,8 +210,8 @@ class RegionControllerService(Service):
             d.addCallback(self._logRBACSync)
             d.addErrback(_onFailureRetry, 'needsRBACUpdate')
             d.addErrback(
-                log.err,
-                "Failed syncing resources to RBAC.")
+                _rbacFailure,
+                self.rbacRetryOnFailureDelay if self.retryOnFailure else None)
             defers.append(d)
         if len(defers) == 0:
             # Nothing more to do.
@@ -304,7 +316,10 @@ class RegionControllerService(Service):
     @transactional
     def _rbacSync(self):
         """Sync the RBAC information."""
-        changes = RBACSync.objects.changes()
+        # Currently this whole method is scoped to dealing with
+        # 'resource-pool'. As more items are synced to RBAC this
+        # will need to be adjusted to handle multiple.
+        changes = RBACSync.objects.changes('resource-pool')
         if not changes and self.rbacInit:
             # Nothing has changed, meaning another region already took care
             # of performing the update.
@@ -313,24 +328,47 @@ class RegionControllerService(Service):
         client = self._getRBACClient()
         if client is None:
             # RBAC is disabled, do nothing.
-            RBACSync.objects.clear()  # Changes not needed, RBAC disabled.
+            RBACSync.objects.clear('resource-pool')  # Changes not needed.
             return None
 
-        # XXX blake_r 2018-10-04 - This can be smarter by looking at the action
-        # and resource_type information in the changes and include the
-        # last_sync_id in the request, to only update what changed.
-        resources = [
-            Resource(identifier=rpool.id, name=rpool.name)
-            for rpool in ResourcePool.objects.all()
-        ]
-        new_sync_id = client.update_resources(
-            'resource-pool', updates=resources)
-        RBACLastSync.objects.update_or_create(
-            resource_type='resource-pool', defaults={'sync_id': new_sync_id})
+        # Push the resource information based on the last sync.
+        new_sync_id = None
+        try:
+            last_sync = RBACLastSync.objects.get(resource_type='resource-pool')
+        except RBACLastSync.DoesNotExist:
+            last_sync = None
+        if last_sync is None or self._rbacNeedsFull(changes):
+            # First sync or requires a full sync.
+            resources = [
+                Resource(identifier=rpool.id, name=rpool.name)
+                for rpool in ResourcePool.objects.order_by('id')
+            ]
+            new_sync_id = client.update_resources(
+                'resource-pool', updates=resources)
+        else:
+            # Send only the difference of what has been changed.
+            updates, removals = self._rbacDifference(changes)
+            if updates or removals:
+                try:
+                    new_sync_id = client.update_resources(
+                        'resource-pool', updates=updates, removals=removals,
+                        last_sync_id=last_sync.sync_id)
+                except SyncConflictError:
+                    # Issue occurred syncing, push all information.
+                    resources = [
+                        Resource(identifier=rpool.id, name=rpool.name)
+                        for rpool in ResourcePool.objects.order_by('id')
+                    ]
+                    new_sync_id = client.update_resources(
+                        'resource-pool', updates=resources)
+        if new_sync_id:
+            RBACLastSync.objects.update_or_create(
+                resource_type='resource-pool',
+                defaults={'sync_id': new_sync_id})
 
         if not self.rbacInit:
             # This was initial sync on start-up.
-            RBACSync.objects.clear()
+            RBACSync.objects.clear('resource-pool')
             return []
 
         # Return the changes and clear the table, so new changes will be
@@ -340,7 +378,7 @@ class RegionControllerService(Service):
             change.source
             for change in changes
         ]
-        RBACSync.objects.clear()
+        RBACSync.objects.clear('resource-pool')
         return changes
 
     def _logRBACSync(self, changes):
@@ -362,3 +400,37 @@ class RegionControllerService(Service):
                     for reason in changes
                 )
             log.msg(msg)
+
+    def _rbacNeedsFull(self, changes):
+        """Return True if any changes are marked requiring full sync."""
+        return any(
+            change.action == RBAC_ACTION.FULL
+            for change in changes
+        )
+
+    def _rbacDifference(self, changes):
+        """Return the only the changes that need to be pushed to RBAC."""
+        # Removals are calculated first. A removal is never followed by an
+        # update and `resource_id` is never re-used.
+        removals = set(
+            change.resource_id
+            for change in changes
+            if change.action == RBAC_ACTION.REMOVE
+        )
+        # Changes are ordered from oldest to lates. The latest change will
+        # be the last item of that `resource_id` in the dictionary.
+        updates = {
+            change.resource_id: change.resource_name
+            for change in changes
+            if (change.resource_id not in removals and
+                change.action != RBAC_ACTION.REMOVE)
+        }
+        # Any additions with also a removal is not sync to RBAC.
+        for change in changes:
+            if change.action == RBAC_ACTION.ADD:
+                if change.resource_id in removals:
+                    removals.remove(change.resource_id)
+        return sorted([
+            Resource(identifier=res_id, name=res_name)
+            for res_id, res_name in updates.items()
+        ], key=attrgetter('identifier')), removals
