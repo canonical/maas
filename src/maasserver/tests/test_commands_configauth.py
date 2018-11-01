@@ -251,9 +251,12 @@ class TestConfigAuthCommand(MAASServerTestCase):
             'Warning: "--idm-*" options are deprecated', self.printout())
 
     def test_configauth_agentfile_not_found(self):
-        self.assertRaises(
+        error = self.assertRaises(
             CommandError, call_command, 'configauth', rbac_url='',
             candid_agent_file='/not/here')
+        self.assertEqual(
+            str(error),
+            "[Errno 2] No such file or directory: '/not/here'")
 
     def test_configauth_domain_none(self):
         call_command(
@@ -319,16 +322,24 @@ class TestConfigAuthCommand(MAASServerTestCase):
 
     def test_configauth_rbac_unknown_name(self):
         self.rbac_user_client.services = [
-            {'name': 'mymaas',
+            {'name': 'mymaas1',
+             '$uri': '/api/rbac/1.0/service/4',
+             'pending': True,
+             'product': {'$ref' '/api/rbac/1.0/product/2'}},
+            {'name': 'mymaas2',
              '$uri': '/api/rbac/1.0/service/4',
              'pending': True,
              'product': {'$ref' '/api/rbac/1.0/product/2'}}]
-        self.assertRaises(
+        error = self.assertRaises(
             CommandError, call_command,
             'configauth', candid_url='http://example.com:1234',
             candid_user='user@admin', candid_key='private-key',
             rbac_url='http://rbac.example.com',
             rbac_service_name='unknown')
+        self.assertEqual(
+            str(error),
+            'Service "unknown" is not known, available choices: '
+            'mymaas1, mymaas2')
 
     def test_configauth_rbac_registration_list(self):
         self.rbac_user_client.services = [
@@ -362,10 +373,27 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.assertIn('Service "mymaas2" registered', prints)
 
     def test_configauth_rbac_registration_invalid_index(self):
+        self.rbac_user_client.services = [
+            {'name': 'mymaas',
+             '$uri': '/api/rbac/1.0/service/4',
+             'pending': True,
+             'product': {'$ref' '/api/rbac/1.0/product/2'}}]
         self.read_input.side_effect = ['2']
-        self.assertRaises(
+        error = self.assertRaises(
             CommandError,
             call_command, 'configauth', rbac_url='http://rbac.example.com')
+        self.assertEqual(str(error), "Invalid index")
+
+    def test_configauth_rbac_no_registerable(self):
+        error = self.assertRaises(
+            CommandError,
+            call_command,
+            'configauth', candid_url='http://example.com:1234',
+            candid_user='user@admin', candid_key='private-key',
+            rbac_url='http://rbac.example.com')
+        self.assertEqual(
+            str(error),
+            'No registerable MAAS service on the specified RBAC server')
 
     def test_configauth_rbac_url_none(self):
         call_command(
@@ -375,11 +403,6 @@ class TestConfigAuthCommand(MAASServerTestCase):
             candid_domain='domain', candid_admin_group='admins')
         self.read_input.assert_not_called()
         self.assertEqual('', Config.objects.get_config('rbac_url'))
-
-    def test_configauth_no_candid_url_with_rbac(self):
-        self.assertRaises(
-            CommandError, call_command, 'configauth',
-            rbac_url='http://rbac.example.com', candid_url='')
 
 
 class TestIsValidUrl(unittest.TestCase):

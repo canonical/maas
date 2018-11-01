@@ -74,6 +74,9 @@ def update_auth_details_from_rbac_registration(
     services = {
         service['name']: service
         for service in client.get_registerable_services()}
+    if not services:
+        raise CommandError(
+            'No registerable MAAS service on the specified RBAC server')
     if service_name is not None:
         service = services.get(service_name)
         if service is None:
