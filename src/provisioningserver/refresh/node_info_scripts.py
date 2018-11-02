@@ -373,22 +373,13 @@ def lldpd_install(config_file):
     node's temporary presence.
 
     """
-    import os
     from subprocess import check_call
     from codecs import open
     with open(config_file, "a", "ascii") as fd:
         fd.write('\n')  # Ensure there's a newline.
         fd.write('# Configured by MAAS:\n')
         fd.write('DAEMON_ARGS="-c -f -s -e -r"\n')
-    if os.path.isdir("/run/systemd/system"):
-        check_call(("systemctl", "restart", "lldpd"))
-    else:
-        # Reload initctl configuration in order to make sure that the
-        # lldpd init script is available before restart, otherwise
-        # it might cause gathering node info to fail. This is due bug
-        # (LP: #882147) in the kernel.
-        check_call(("initctl", "reload-configuration"))
-        check_call(("service", "lldpd", "restart"))
+    check_call(('systemctl', 'restart', 'lldpd'))
 
 
 # This function must be entirely self-contained. It must not use
@@ -406,7 +397,11 @@ def lldpd_capture(reference_file, time_delay):
     time_ref = getmtime(reference_file)
     time_remaining = time_ref + time_delay - time()
     if time_remaining > 0:
-        sleep(time_remaining)
+        # LP:1801152 - If the hardware clock is in the future when
+        # 00-maas-03-install-lldpd runs and NTP corrects the clock
+        # before this script runs time_remaining will be more then
+        # the time_delay which may cause this script to timeout.
+        sleep(min(time_remaining, time_delay))
     check_call(("lldpctl", "-f", "xml"))
 
 

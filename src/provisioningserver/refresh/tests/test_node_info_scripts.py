@@ -127,31 +127,6 @@ def isolate_function(function, namespace=None):
 
 class TestLLDPScripts(MAASTestCase):
 
-    def test_install_script_installs_configures_and_restarts_upstart(self):
-        config_file = self.make_file("config", "# ...")
-        check_call = self.patch(subprocess, "check_call")
-        self.patch(os.path, "isdir").return_value = False
-        lldpd_install = isolate_function(node_info_module.lldpd_install)
-        lldpd_install(config_file)
-        # lldpd is installed and restarted.
-        self.assertEqual(
-            check_call.call_args_list,
-            [
-                call(("initctl", "reload-configuration")),
-                call(("service", "lldpd", "restart"))
-            ])
-        # lldpd's config was updated to include an updated DAEMON_ARGS
-        # setting. Note that the new comment is on a new line, and
-        # does not interfere with existing config.
-        config_expected = dedent("""\
-            # ...
-            # Configured by MAAS:
-            DAEMON_ARGS="-c -f -s -e -r"
-            """).encode("ascii")
-        with open(config_file, "rb") as fd:
-            config_observed = fd.read()
-        self.assertEqual(config_expected, config_observed)
-
     def test_install_script_installs_configures_and_restarts_systemd(self):
         config_file = self.make_file("config", "# ...")
         check_call = self.patch(subprocess, "check_call")
@@ -199,6 +174,19 @@ class TestLLDPScripts(MAASTestCase):
         self.assertThat(time.sleep, MockCalledOnceWith(
             os.path.getmtime.return_value + time_delay -
             time.time.return_value))
+
+    def test_capture_lldpd_script_doesnt_waits_for_more_than_sixty_secs(self):
+        # Regression test for LP:1801152
+        reference_file = self.make_file("reference")
+        lldpd_capture = isolate_function(node_info_module.lldpd_capture)
+        self.patch(os.path, "getmtime").return_value = 1000.1
+        self.patch(time, "time").return_value = 10.25
+        self.patch(time, "sleep")
+        self.patch(subprocess, "check_call")
+
+        lldpd_capture(reference_file, 60)
+
+        self.assertThat(time.sleep, MockCalledOnceWith(60))
 
     def test_capture_lldpd_calls_lldpdctl(self):
         reference_file = self.make_file("reference")
