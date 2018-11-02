@@ -34,6 +34,13 @@ class TestAPIAnnotations(APITestCase.ForUser):
     @param (url-string) "param_name3" [required=false] param3 description
     @param-example "param_name3" param3-ex
 
+    @param (json) "param_name4" [required=false] param4 description
+    @param-example "param_name4"
+        {
+            "id": 1,
+            "foo": "bar"
+        }
+
     @success (content) "success_name" success description
     @success-example "success_name" success content
 
@@ -121,6 +128,15 @@ class TestAPIAnnotations(APITestCase.ForUser):
             " ".join(p['description'].split()), "param3 description")
         self.assertEqual(" ".join(p['example'].split()), "param3-ex")
 
+        p = params[3]
+        self.assertEqual(p['type'], "JSON")
+        self.assertEqual(p['name'], "param_name4")
+        self.assertEqual(
+            " ".join(p['description'].split()), "param4 description")
+        self.assertEqual(
+            " ".join(p['example'].split()),
+            "{ \"id\": 1, \"foo\": \"bar\" }")
+
         s = successes[0]
         self.assertEqual(s['type'], "Content")
         self.assertEqual(s['name'], "success_name")
@@ -182,8 +198,8 @@ class TestAPIAnnotations(APITestCase.ForUser):
         d = api_docstring_parser.get_dict()
         self.assert_has_api_warning(d)
 
-    def test_parse_annotations_indent(self):
-        """Indentation should be kept when present."""
+    def test_parse_annotations_indent_descriptions(self):
+        """Indentation should be kept when present in descriptions."""
         docstring = self.sample_api_annotated_docstring
         ref_string = (
             "Longer description with\n"
@@ -197,6 +213,25 @@ class TestAPIAnnotations(APITestCase.ForUser):
         # same code is used to gather all description areas of the
         # tags. E.g. @tag (type) "name" [options] description
         self.assertEqual(d['description'], ref_string)
+
+    def test_parse_annotations_indent_example(self):
+        """Indentation should be kept when present in examples."""
+        docstring = self.sample_api_annotated_docstring
+        ref_string = (
+            "{\n"
+            "            \"id\": 1,\n"
+            "            \"foo\": \"bar\"\n"
+            "        }\n\n    "
+        )
+        api_docstring_parser = APIDocstringParser()
+        api_docstring_parser.parse(docstring)
+        d = api_docstring_parser.get_dict()
+
+        # Note that we only test one example here because the
+        # same code is used to gather all description areas of the
+        # tags. E.g. @tag-example (type) "name" [options] description
+        params = d['params']
+        self.assertEqual(params[3]['example'], ref_string)
 
     def test_whether_name_in_single_quotes_works(self):
         """Single quotes should be allowed in annotations."""

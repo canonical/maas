@@ -31,6 +31,7 @@ embedded annoations of the form:
 
     string: a unicode string
     int: an integer
+    json: a json object
     url-string: a URL-encoded string
     http-status-code: an HTTP status code
     content: content served via a MAAS server
@@ -153,7 +154,8 @@ class APIDocstringParser:
         "url-string",
         "int",
         "content",
-        "http-status-code"
+        "http-status-code",
+        "json"
     ]
 
     @staticmethod
@@ -181,6 +183,8 @@ class APIDocstringParser:
             return "URL String"
         elif ttype == "http-status-code":
             return "HTTP Status Code"
+        elif ttype == "json":
+            return "JSON"
 
         return ttype.title().replace("-", " ")
 
