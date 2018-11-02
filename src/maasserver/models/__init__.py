@@ -354,7 +354,11 @@ class MAASAuthorizationBackend(ModelBackend):
                 user.username, 'admin-machines').values_list(
                     'id', flat=True)
 
-        if isinstance(obj, Node):
+        if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
+            if isinstance(obj, BlockDevice):
+                obj = obj.node
+            elif isinstance(obj, FilesystemGroup):
+                obj = obj.get_node()
             if perm == NODE_PERMISSION.VIEW:
                 return self._can_view(
                     rbac_enabled, user, obj, visible_pools, admin_pools)
@@ -374,41 +378,30 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, (BlockDevice, FilesystemGroup)):
-            if isinstance(obj, BlockDevice):
-                node = obj.node
-            else:
-                node = obj.get_node()
-            if perm == NODE_PERMISSION.VIEW:
-                # If the node is not ownered or the owner is the user then
-                # they can view the information.
-                return (
-                    user.is_superuser or
-                    node.owner_id is None or node.owner_id == user.id)
-            elif perm == NODE_PERMISSION.EDIT:
-                return user.is_superuser or node.owner_id == user.id
-            elif perm == NODE_PERMISSION.ADMIN:
-                # 'admin_node' permission is solely granted to superusers.
-                return user.is_superuser
-
-            raise NotImplementedError(
-                'Invalid permission check (invalid permission name: %s).' %
-                perm)
         elif isinstance(obj, Interface):
+            node = obj.get_node()
+            if node is None:
+                # Doesn't matter the permission level if the interface doesn't
+                # have a node, the user must be a global admin.
+                return user.is_superuser
             if perm == NODE_PERMISSION.VIEW:
-                # Any registered user can view a interface regardless
-                # of its state.
-                return True
+                return self._can_view(
+                    rbac_enabled, user, node, visible_pools, admin_pools)
             elif perm in NODE_PERMISSION.EDIT:
-                # A device can be editted by its owner a node must be admin.
-                node = obj.get_node()
-                if node is None or node.node_type == NODE_TYPE.MACHINE:
-                    return user.is_superuser
-
-                return user.is_superuser or node.owner_id == user.id
+                # Machine interface can only be modified by an administrator
+                # of the machine. Even the owner of the machine cannot modify
+                # the interfaces on that machine, unless they have
+                # administrator rights.
+                if node.node_type == NODE_TYPE.MACHINE:
+                    return self._can_admin(
+                        rbac_enabled, user, node, admin_pools)
+                # Other node types must be editable by the user.
+                return self._can_edit(
+                    rbac_enabled, user, node, visible_pools, admin_pools)
             elif perm in NODE_PERMISSION.ADMIN:
                 # Admin permission is solely granted to superusers.
-                return user.is_superuser
+                return self._can_admin(
+                    rbac_enabled, user, node, admin_pools)
             else:
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
@@ -444,7 +437,12 @@ class MAASAuthorizationBackend(ModelBackend):
             # Only machines are filtered for view access.
             return True
         if rbac_enabled:
-            # Machine must be in a visible or admin pool.
+            # Machine not owned by the user must be in the admin_pools for
+            # the user to be able to view the machine.
+            if machine.owner_id is not None and machine.owner_id != user.id:
+                return machine.pool_id in admin_pools
+            # Machine is not owned or owned by the user so must be in either
+            # pool for the user to view it.
             return (
                 machine.pool_id in visible_pools or
                 machine.pool_id in admin_pools)
@@ -465,6 +463,9 @@ class MAASAuthorizationBackend(ModelBackend):
         return is_owner or user.is_superuser
 
     def _can_admin(self, rbac_enabled, user, machine, admin_pools):
+        if machine.pool_id is None:
+            # Not a machine to be admin on this must have global admin.
+            return user.is_superuser
         if rbac_enabled:
             return machine.pool_id in admin_pools
         return user.is_superuser
