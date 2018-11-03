@@ -328,7 +328,7 @@
                     <td aria-label="Size" class="p-table__cell">{$ image.size $}</td>
                     <td aria-label="Status" class="p-table__cell">{$ image.status $}</td>
                     <td class="p-table__cell u-align--right">
-                        <button class="p-button--negative" aria-label="Remove" data-ng-click="quickRemove(image)">Remove image</button>
+                        <button class="p-button--negative" aria-label="Remove" data-ng-if="isSuperUser()" data-ng-click="quickRemove(image)">Remove image</button>
                     </td>
                     <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
                         <h2 data-ng-click="cancelRemove()" class="u-float--left p-heading--four">Remove image</h2>
@@ -371,7 +371,7 @@
                     <td aria-label="Size" class="p-table__cell">{$ image.size $}</td>
                     <td aria-label="Status" class="p-table__cell">{$ image.status $}</td>
                     <td class="p-table__cell u-align--right">
-                        <a aria-label="Remove" data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
+                        <a aria-label="Remove" data-ng-if="isSuperUser()" data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
                     </td>
                     <td class="p-table-expanding__panel col-12" data-ng-if="isShowingDeleteConfirm(image)">
                         <h2 class="p-heading--four" data-ng-click="cancelRemove()">Remove image</h2>
