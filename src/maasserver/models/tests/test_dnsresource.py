@@ -15,15 +15,13 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    NODE_PERMISSION,
-)
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
 from maasserver.models.dnsresource import (
     DNSResource,
     separate_fqdn,
 )
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -45,7 +43,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
         self.assertEqual(
             dnsresource,
             DNSResource.objects.get_dnsresource_or_404(
-                dnsresource.id, user, NODE_PERMISSION.VIEW))
+                dnsresource.id, user, NodePermission.view))
 
     def test__user_edit_raises_PermissionError(self):
         user = factory.make_User()
@@ -53,7 +51,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             DNSResource.objects.get_dnsresource_or_404,
-            dnsresource.id, user, NODE_PERMISSION.EDIT)
+            dnsresource.id, user, NodePermission.edit)
 
     def test__user_admin_raises_PermissionError(self):
         user = factory.make_User()
@@ -61,7 +59,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             DNSResource.objects.get_dnsresource_or_404,
-            dnsresource.id, user, NODE_PERMISSION.ADMIN)
+            dnsresource.id, user, NodePermission.admin)
 
     def test__admin_view_returns_dnsresource(self):
         admin = factory.make_admin()
@@ -69,7 +67,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
         self.assertEqual(
             dnsresource,
             DNSResource.objects.get_dnsresource_or_404(
-                dnsresource.id, admin, NODE_PERMISSION.VIEW))
+                dnsresource.id, admin, NodePermission.view))
 
     def test__admin_edit_returns_dnsresource(self):
         admin = factory.make_admin()
@@ -77,7 +75,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
         self.assertEqual(
             dnsresource,
             DNSResource.objects.get_dnsresource_or_404(
-                dnsresource.id, admin, NODE_PERMISSION.EDIT))
+                dnsresource.id, admin, NodePermission.edit))
 
     def test__admin_admin_returns_dnsresource(self):
         admin = factory.make_admin()
@@ -85,7 +83,7 @@ class TestDNSResourceManagerGetDNSResourceOr404(MAASServerTestCase):
         self.assertEqual(
             dnsresource,
             DNSResource.objects.get_dnsresource_or_404(
-                dnsresource.id, admin, NODE_PERMISSION.ADMIN))
+                dnsresource.id, admin, NodePermission.admin))
 
 
 class TestDNSResourceManager(MAASServerTestCase):

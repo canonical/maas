@@ -20,7 +20,6 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
-    NODE_PERMISSION,
     PARTITION_TABLE_TYPE,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -40,6 +39,7 @@ from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import MAASServerTestCase
@@ -89,7 +89,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
         self.assertRaises(
             Http404, self.model.objects.get_object_or_404,
             factory.make_name("system_id"), filesystem_group.id, user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
@@ -97,7 +97,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
         self.assertRaises(
             Http404, self.model.objects.get_object_or_404,
             node.system_id, random.randint(0, 100), user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__view_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
@@ -108,7 +108,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             PermissionDenied,
             self.model.objects.get_object_or_404,
             node.system_id, filesystem_group.id, user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__view_returns_device_by_name(self):
         user = factory.make_User()
@@ -119,7 +119,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             filesystem_group.id,
             self.model.objects.get_object_or_404(
                 node.system_id, filesystem_group.name, user,
-                NODE_PERMISSION.VIEW).id)
+                NodePermission.view).id)
 
     def test__view_returns_device_when_no_owner(self):
         user = factory.make_User()
@@ -130,7 +130,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             filesystem_group.id,
             self.model.objects.get_object_or_404(
                 node.system_id, filesystem_group.id, user,
-                NODE_PERMISSION.VIEW).id)
+                NodePermission.view).id)
 
     def test__view_returns_device_when_owner(self):
         user = factory.make_User()
@@ -141,7 +141,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             filesystem_group.id,
             self.model.objects.get_object_or_404(
                 node.system_id, filesystem_group.id, user,
-                NODE_PERMISSION.VIEW).id)
+                NodePermission.view).id)
 
     def test__edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
@@ -152,7 +152,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             PermissionDenied,
             self.model.objects.get_object_or_404,
             node.system_id, filesystem_group.id, user,
-            NODE_PERMISSION.EDIT)
+            NodePermission.edit)
 
     def test__edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
@@ -163,7 +163,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             filesystem_group.id,
             self.model.objects.get_object_or_404(
                 node.system_id, filesystem_group.id, user,
-                NODE_PERMISSION.EDIT).id)
+                NodePermission.edit).id)
 
     def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
@@ -174,7 +174,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             PermissionDenied,
             self.model.objects.get_object_or_404,
             node.system_id, filesystem_group.id, user,
-            NODE_PERMISSION.ADMIN)
+            NodePermission.admin)
 
     def test__admin_returns_device_when_admin(self):
         user = factory.make_admin()
@@ -185,7 +185,7 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             filesystem_group.id,
             self.model.objects.get_object_or_404(
                 node.system_id, filesystem_group.id, user,
-                NODE_PERMISSION.ADMIN).id)
+                NodePermission.admin).id)
 
 
 class TestManagersFilterByBlockDevice(MAASServerTestCase):

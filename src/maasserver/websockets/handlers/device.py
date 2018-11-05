@@ -14,7 +14,6 @@ from maasserver.enum import (
     DEVICE_IP_ASSIGNMENT_TYPE,
     INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
-    NODE_PERMISSION,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -30,6 +29,7 @@ from maasserver.models.node import Device
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -156,7 +156,7 @@ class DeviceHandler(NodeHandler):
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Device.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=super().get_queryset(
+            self.user, NodePermission.view, from_nodes=super().get_queryset(
                 for_list=for_list))
 
     def dehydrate_parent(self, parent):

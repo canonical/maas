@@ -9,8 +9,8 @@ import random
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
-from maasserver.enum import NODE_PERMISSION
 from maasserver.models import CacheSet
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -136,7 +136,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         self.assertRaises(
             Http404, CacheSet.objects.get_cache_set_or_404,
             factory.make_name("system_id"), cache_set.id, user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
@@ -144,7 +144,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         self.assertRaises(
             Http404, CacheSet.objects.get_cache_set_or_404,
             node.system_id, random.randint(0, 100), user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__return_cache_set_by_name(self):
         user = factory.make_User()
@@ -152,7 +152,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         cache_set = factory.make_CacheSet(node=node)
         self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
-                node.system_id, cache_set.name, user, NODE_PERMISSION.VIEW).id)
+                node.system_id, cache_set.name, user, NodePermission.view).id)
 
     def test__view_returns_cache_set_when_no_owner(self):
         user = factory.make_User()
@@ -160,7 +160,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         cache_set = factory.make_CacheSet(node=node)
         self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
-                node.system_id, cache_set.id, user, NODE_PERMISSION.VIEW).id)
+                node.system_id, cache_set.id, user, NodePermission.view).id)
 
     def test__view_returns_cache_set_when_owner(self):
         user = factory.make_User()
@@ -168,7 +168,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         cache_set = factory.make_CacheSet(node=node)
         self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
-                node.system_id, cache_set.id, user, NODE_PERMISSION.VIEW).id)
+                node.system_id, cache_set.id, user, NodePermission.view).id)
 
     def test__edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
@@ -177,7 +177,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied, CacheSet.objects.get_cache_set_or_404,
             node.system_id, cache_set.id, user,
-            NODE_PERMISSION.EDIT)
+            NodePermission.edit)
 
     def test__edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
@@ -185,7 +185,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         cache_set = factory.make_CacheSet(node=node)
         self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
-                node.system_id, cache_set.id, user, NODE_PERMISSION.EDIT).id)
+                node.system_id, cache_set.id, user, NodePermission.edit).id)
 
     def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
@@ -194,7 +194,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied, CacheSet.objects.get_cache_set_or_404,
             node.system_id, cache_set.id, user,
-            NODE_PERMISSION.ADMIN)
+            NodePermission.admin)
 
     def test__admin_returns_device_when_admin(self):
         user = factory.make_admin()
@@ -202,7 +202,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         cache_set = factory.make_CacheSet(node=node)
         self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
-                node.system_id, cache_set.id, user, NODE_PERMISSION.ADMIN).id)
+                node.system_id, cache_set.id, user, NodePermission.admin).id)
 
 
 class TestCacheSet(MAASServerTestCase):

@@ -6,7 +6,6 @@
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from maasserver.api.support import OperationsHandler
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.vlan import VLANForm
 from maasserver.models import (
@@ -14,6 +13,7 @@ from maasserver.models import (
     Space,
     VLAN,
 )
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -50,7 +50,7 @@ class VlansHandler(OperationsHandler):
         Returns 404 if the fabric is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NODE_PERMISSION.VIEW)
+            fabric_id, request.user, NodePermission.view)
         return fabric.vlan_set.all()
 
     def create(self, request, fabric_id):
@@ -71,7 +71,7 @@ class VlansHandler(OperationsHandler):
 
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NODE_PERMISSION.ADMIN)
+            fabric_id, request.user, NodePermission.admin)
         form = VLANForm(fabric=fabric, data=request.data)
         if form.is_valid():
             return form.save()
@@ -158,7 +158,7 @@ class VlanHandler(OperationsHandler):
 
         Returns 404 if the fabric or VLAN is not found.
         """
-        vlan = self._get_vlan(request.user, NODE_PERMISSION.VIEW, **kwargs)
+        vlan = self._get_vlan(request.user, NodePermission.view, **kwargs)
         return vlan
 
     def update(self, request, **kwargs):
@@ -191,7 +191,7 @@ class VlanHandler(OperationsHandler):
 
         Returns 404 if the fabric or VLAN is not found.
         """
-        vlan = self._get_vlan(request.user, NODE_PERMISSION.ADMIN, **kwargs)
+        vlan = self._get_vlan(request.user, NodePermission.admin, **kwargs)
         data = {}
         # If the user passed in a space, make the undefined space name a
         # synonym for the empty space. But the Django request data object is
@@ -211,6 +211,6 @@ class VlanHandler(OperationsHandler):
 
         Returns 404 if the fabric or VLAN is not found.
         """
-        vlan = self._get_vlan(request.user, NODE_PERMISSION.ADMIN, **kwargs)
+        vlan = self._get_vlan(request.user, NodePermission.admin, **kwargs)
         vlan.delete()
         return rc.DELETED

@@ -19,7 +19,6 @@ from django.http import Http404
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
-    NODE_PERMISSION,
 )
 from maasserver.models import (
     BlockDevice,
@@ -32,6 +31,7 @@ from maasserver.models import (
 )
 from maasserver.models.iscsiblockdevice import validate_iscsi_target
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -59,7 +59,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         self.assertRaises(
             Http404, BlockDevice.objects.get_block_device_or_404,
             factory.make_name("system_id"), block_device.id, user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
@@ -70,7 +70,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         self.assertRaises(
             Http404, BlockDevice.objects.get_block_device_or_404,
             node.system_id, random.randint(dev_id + 1, dev_id + 100), user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__return_block_device_by_name(self):
         user = factory.make_User()
@@ -78,7 +78,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(node=node)
         self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
-                node.system_id, device.name, user, NODE_PERMISSION.VIEW).id)
+                node.system_id, device.name, user, NodePermission.view).id)
 
     def test__view_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
@@ -87,7 +87,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied, BlockDevice.objects.get_block_device_or_404,
             node.system_id, device.id, user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__view_returns_device_when_no_owner(self):
         user = factory.make_User()
@@ -95,7 +95,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(node=node)
         self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
-                node.system_id, device.id, user, NODE_PERMISSION.VIEW).id)
+                node.system_id, device.id, user, NodePermission.view).id)
 
     def test__view_returns_device_when_owner(self):
         user = factory.make_User()
@@ -103,7 +103,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(node=node)
         self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
-                node.system_id, device.id, user, NODE_PERMISSION.VIEW).id)
+                node.system_id, device.id, user, NodePermission.view).id)
 
     def test__edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
@@ -112,7 +112,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied, BlockDevice.objects.get_block_device_or_404,
             node.system_id, device.id, user,
-            NODE_PERMISSION.EDIT)
+            NodePermission.edit)
 
     def test__edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
@@ -120,7 +120,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         device = factory.make_BlockDevice(node=node)
         self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
-                node.system_id, device.id, user, NODE_PERMISSION.EDIT).id)
+                node.system_id, device.id, user, NodePermission.edit).id)
 
     def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
@@ -129,7 +129,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied, BlockDevice.objects.get_block_device_or_404,
             node.system_id, device.id, user,
-            NODE_PERMISSION.ADMIN)
+            NodePermission.admin)
 
     def test__admin_returns_device_when_admin(self):
         user = factory.make_admin()
@@ -137,7 +137,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         device = factory.make_BlockDevice(node=node)
         self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
-                node.system_id, device.id, user, NODE_PERMISSION.ADMIN).id)
+                node.system_id, device.id, user, NodePermission.admin).id)
 
 
 class TestBlockDeviceManager(MAASServerTestCase):
@@ -149,7 +149,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         self.assertRaises(
             Http404, BlockDevice.objects.get_block_device_or_404,
             factory.make_name("system_id"), block_device.id, user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__raises_Http404_when_invalid_device(self):
         user = factory.make_admin()
@@ -160,7 +160,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         self.assertRaises(
             Http404, BlockDevice.objects.get_block_device_or_404,
             node.system_id, random.randint(dev_id + 1, dev_id + 100), user,
-            NODE_PERMISSION.VIEW)
+            NodePermission.view)
 
     def test__returns_device_when_admin(self):
         user = factory.make_admin()
@@ -168,7 +168,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         device = factory.make_BlockDevice(node=node)
         self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
-                node.system_id, device.id, user, NODE_PERMISSION.ADMIN).id)
+                node.system_id, device.id, user, NodePermission.admin).id)
 
     def test__raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
@@ -177,7 +177,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied, BlockDevice.objects.get_block_device_or_404,
             node.system_id, device.id, user,
-            NODE_PERMISSION.ADMIN)
+            NodePermission.admin)
 
     def test_filter_by_tags_returns_devices_with_one_tag(self):
         tags = [factory.make_name('tag') for _ in range(3)]

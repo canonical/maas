@@ -7,9 +7,9 @@ __all__ = [
     "SpaceHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
 from maasserver.forms.space import SpaceForm
 from maasserver.models.space import Space
+from maasserver.permissions import NodePermission
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -48,5 +48,5 @@ class SpaceHandler(TimestampedModelHandler):
         """Delete this Space."""
         space = self.get_object(parameters)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, space), "Permission denied."
+            NodePermission.admin, space), "Permission denied."
         space.delete()

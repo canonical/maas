@@ -14,13 +14,13 @@ from maasserver.api.nodes import (
     OwnerDataMixin,
 )
 from maasserver.api.support import operation
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
     DeviceForm,
     DeviceWithMACsForm,
 )
 from maasserver.models.node import Device
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from piston3.utils import rc
 
@@ -84,7 +84,7 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
         Returns 403 if the user does not have permission to update the device.
         """
         device = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            system_id=system_id, user=request.user, perm=NodePermission.edit)
         form = DeviceForm(data=request.data, instance=device)
 
         if form.is_valid():
@@ -101,7 +101,7 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
+            perm=NodePermission.edit)
         device.delete()
         return rc.DELETED
 
@@ -114,7 +114,7 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            perm=NodePermission.admin)
         device.set_initial_networking_configuration()
         return reload_object(device)
 
@@ -127,7 +127,7 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            perm=NodePermission.admin)
         device.set_initial_networking_configuration()
         return reload_object(device)
 

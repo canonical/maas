@@ -13,7 +13,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import (
     DNSData,
@@ -21,6 +20,7 @@ from maasserver.models.dnsdata import (
 )
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
@@ -48,7 +48,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         self.assertEqual(
             dnsdata,
             DNSData.objects.get_dnsdata_or_404(
-                dnsdata.id, user, NODE_PERMISSION.VIEW))
+                dnsdata.id, user, NodePermission.view))
 
     def test__user_edit_raises_PermissionError(self):
         user = factory.make_User()
@@ -56,7 +56,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             DNSData.objects.get_dnsdata_or_404,
-            dnsdata.id, user, NODE_PERMISSION.EDIT)
+            dnsdata.id, user, NodePermission.edit)
 
     def test__user_admin_raises_PermissionError(self):
         user = factory.make_User()
@@ -64,7 +64,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             DNSData.objects.get_dnsdata_or_404,
-            dnsdata.id, user, NODE_PERMISSION.ADMIN)
+            dnsdata.id, user, NodePermission.admin)
 
     def test__admin_view_returns_dnsdata(self):
         admin = factory.make_admin()
@@ -72,7 +72,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         self.assertEqual(
             dnsdata,
             DNSData.objects.get_dnsdata_or_404(
-                dnsdata.id, admin, NODE_PERMISSION.VIEW))
+                dnsdata.id, admin, NodePermission.view))
 
     def test__admin_edit_returns_dnsdata(self):
         admin = factory.make_admin()
@@ -80,7 +80,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         self.assertEqual(
             dnsdata,
             DNSData.objects.get_dnsdata_or_404(
-                dnsdata.id, admin, NODE_PERMISSION.EDIT))
+                dnsdata.id, admin, NodePermission.edit))
 
     def test__admin_admin_returns_dnsdata(self):
         admin = factory.make_admin()
@@ -88,7 +88,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         self.assertEqual(
             dnsdata,
             DNSData.objects.get_dnsdata_or_404(
-                dnsdata.id, admin, NODE_PERMISSION.ADMIN))
+                dnsdata.id, admin, NodePermission.admin))
 
 
 class DNSDataTest(MAASServerTestCase):

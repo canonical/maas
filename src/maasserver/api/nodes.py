@@ -29,7 +29,6 @@ from maasserver.api.utils import (
 )
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
@@ -55,6 +54,7 @@ from maasserver.models import (
     VirtualBlockDevice,
 )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -229,7 +229,7 @@ def filtered_nodes_list_from_request(request, model=None):
         model = Node
     # Fetch nodes and apply filters.
     nodes = model.objects.get_nodes(
-        request.user, NODE_PERMISSION.VIEW, ids=match_ids)
+        request.user, NodePermission.view, ids=match_ids)
     if match_macs is not None:
         nodes = nodes.filter(interface__mac_address__in=match_macs)
     match_hostnames = get_optional_list(request.GET, 'hostname')
@@ -425,7 +425,7 @@ class NodeHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
+            system_id=system_id, user=request.user, perm=NodePermission.view)
         if self.model != Node:
             return node
         else:
@@ -442,7 +442,7 @@ class NodeHandler(OperationsHandler):
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            perm=NodePermission.admin)
         node.as_self().delete()
         return rc.DELETED
 
@@ -716,7 +716,7 @@ class OwnerDataMixin:
         Returns 403 if the user does not have permission.
         """
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
+            user=request.user, system_id=system_id, perm=NodePermission.edit)
         owner_data = {
             key: None if value == "" else value
             for key, value in request.POST.items()
@@ -748,7 +748,7 @@ class PowerMixin:
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.VIEW)
+            perm=NodePermission.view)
         return {
             "state": node.power_query().wait(45),
         }
@@ -779,7 +779,7 @@ class PowerMixin:
 
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
+            perm=NodePermission.edit)
         if node.owner is None and node.node_type != NODE_TYPE.RACK_CONTROLLER:
             raise NodeStateViolation(
                 "Can't start node: it hasn't been allocated.")
@@ -817,7 +817,7 @@ class PowerMixin:
         comment = get_optional_param(request.POST, 'comment')
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
+            perm=NodePermission.edit)
         power_action_sent = node.stop(
             request.user, stop_mode=stop_mode, comment=comment)
         if power_action_sent:
@@ -846,7 +846,7 @@ class PowerMixin:
         Returns 404 if the node is not found.
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         form = TestForm(instance=node, user=request.user, data=request.data)
         if form.is_valid():
             try:
@@ -869,7 +869,7 @@ class PowerMixin:
         """
         comment = get_optional_param(request.POST, 'comment')
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
+            user=request.user, system_id=system_id, perm=NodePermission.admin)
         node.override_failed_testing(request.user, comment)
         return node
 
@@ -887,7 +887,7 @@ class PowerMixin:
         comment = get_optional_param(request.POST, 'comment')
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
+            perm=NodePermission.edit)
         node.abort_operation(request.user, comment)
         return node
 

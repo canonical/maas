@@ -8,7 +8,6 @@ from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -19,6 +18,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -139,7 +139,7 @@ class SpaceHandler(OperationsHandler):
         if id == "-1" or id == Space.UNDEFINED and _has_undefined_space():
             return UNDEFINED_SPACE
         return Space.objects.get_space_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """Update space.
@@ -153,7 +153,7 @@ class SpaceHandler(OperationsHandler):
             raise MAASAPIBadRequest(
                 "Space cannot be modified: %s" % Space.UNDEFINED)
         space = Space.objects.get_space_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         form = SpaceForm(instance=space, data=request.data)
         if form.is_valid():
             return form.save()
@@ -169,6 +169,6 @@ class SpaceHandler(OperationsHandler):
             raise MAASAPIBadRequest(
                 "Space cannot be deleted: %s" % Space.UNDEFINED)
         space = Space.objects.get_space_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         space.delete()
         return rc.DELETED

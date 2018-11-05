@@ -7,7 +7,6 @@ from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import (
     ENDPOINT,
-    NODE_PERMISSION,
     NODE_STATUS,
 )
 from maasserver.exceptions import (
@@ -22,6 +21,7 @@ from maasserver.models import (
     Bcache,
     Machine,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
@@ -58,7 +58,7 @@ class BcachesHandler(OperationsHandler):
         Returns 404 if the machine is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, request.user, NodePermission.view)
         return Bcache.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
@@ -78,7 +78,7 @@ class BcachesHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create Bcache because the machine is not Ready.")
@@ -140,7 +140,7 @@ class BcacheHandler(OperationsHandler):
         Returns 404 if the machine or bcache is not found.
         """
         return Bcache.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NodePermission.view)
 
     def delete(self, request, system_id, id):
         """Delete bcache on a machine.
@@ -149,7 +149,7 @@ class BcacheHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -177,7 +177,7 @@ class BcacheHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

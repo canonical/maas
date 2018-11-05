@@ -52,7 +52,6 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import (
     BMC_TYPE,
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
@@ -96,6 +95,7 @@ from maasserver.node_constraint_filter_forms import (
     nodes_by_storage,
 )
 from maasserver.node_status import NODE_TRANSITIONS
+from maasserver.permissions import NodePermission
 from maasserver.preseed import get_curtin_merged_config
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -334,7 +334,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 204 if the node is successfully deleted.
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         node.as_self().delete(
             force=get_optional_param(request.GET, 'force', False, StringBool))
         return rc.DELETED
@@ -549,7 +549,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 403 if the user does not have permission to update the machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            system_id=system_id, user=request.user, perm=NodePermission.edit)
 
         Form = get_machine_edit_form(request.user)
         form = Form(data=request.data, instance=machine)
@@ -625,7 +625,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         # Acquiring a node requires VIEW permissions.
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.VIEW)
+            perm=NodePermission.view)
         options = get_allocation_options(request)
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
@@ -645,15 +645,15 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 "Can't deploy a machine that is in the '{}' state".format(
                     NODE_STATUS_CHOICES_DICT[machine.status]))
         # Deploying a node requires re-checking for EDIT permissions.
-        if not request.user.has_perm(NODE_PERMISSION.EDIT, machine):
+        if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
         # Deploying with 'install_rackd' requires ADMIN permissions.
         if (options.install_rackd and not
-                request.user.has_perm(NODE_PERMISSION.ADMIN, machine)):
+                request.user.has_perm(NodePermission.admin, machine)):
             raise PermissionDenied()
         # Deploying with 'install_kvm' requires ADMIN permissions.
         if (options.install_kvm and not
-                request.user.has_perm(NODE_PERMISSION.ADMIN, machine)):
+                request.user.has_perm(NodePermission.admin, machine)):
             raise PermissionDenied()
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
@@ -724,7 +724,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         quick_erase = get_optional_param(
             request.POST, 'quick_erase', default=None, validator=StringBool)
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            system_id=system_id, user=request.user, perm=NodePermission.edit)
         if machine.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
             # Nothing to do if this machine is already releasing, otherwise
             # this may be a redundant retry, and the
@@ -778,7 +778,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 404 if the machine is not found.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         form = CommissionForm(
             instance=machine, user=request.user, data=request.data)
         if form.is_valid():
@@ -827,7 +827,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         layout.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot change the storage layout on a machine "
@@ -872,7 +872,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 403 when the user is not permitted to mount the partition.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            system_id=system_id, user=request.user, perm=NodePermission.edit)
         if machine.status not in {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}:
             raise NodeStateViolation(
                 "Cannot mount the filesystem because the machine is not "
@@ -895,7 +895,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 403 when the user is not permitted to unmount the partition.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            system_id=system_id, user=request.user, perm=NodePermission.edit)
         if machine.status not in {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}:
             raise NodeStateViolation(
                 "Cannot unmount the filesystem because the machine is not "
@@ -931,7 +931,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         gateways.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         machine.gateway_link_ipv4 = None
         machine.gateway_link_ipv6 = None
         machine.save()
@@ -946,7 +946,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         configuration.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
+            system_id=system_id, user=request.user, perm=NodePermission.view)
         if machine.status not in [
                 NODE_STATUS.DEPLOYING,
                 NODE_STATUS.DEPLOYED,
@@ -968,7 +968,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            perm=NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Machine must be in a ready state to restore networking "
@@ -986,7 +986,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            perm=NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Machine must be in a ready state to restore storage "
@@ -1003,7 +1003,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.ADMIN)
+            perm=NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Machine must be in a ready state to restore default "
@@ -1028,7 +1028,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         broken.
         """
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
+            user=request.user, system_id=system_id, perm=NodePermission.edit)
         comment = get_optional_param(request.POST, 'comment')
         if not comment:
             # read old error_description to for backward compatibility
@@ -1049,7 +1049,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         """
         comment = get_optional_param(request.POST, 'comment')
         node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
+            user=request.user, system_id=system_id, perm=NodePermission.admin)
         node.mark_fixed(request.user, comment)
         maaslog.info(
             "%s: User %s marked node as fixed", node.hostname,
@@ -1068,7 +1068,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         rescue mode process for this machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         machine.start_rescue_mode(request.user)
         maaslog.info(
             "%s: User %s started rescue mode.", machine.hostname,
@@ -1087,7 +1087,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         rescue mode process for this machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         machine.stop_rescue_mode(request.user)
         maaslog.info(
             "%s: User %s stopped rescue mode.", machine.hostname,
@@ -1107,7 +1107,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 403 if the user does not have permission lock the machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.LOCK)
+            system_id=system_id, user=request.user, perm=NodePermission.lock)
         if machine.locked:
             raise NodeStateViolation('Machine is already locked')
         comment = get_optional_param(request.POST, 'comment')
@@ -1125,7 +1125,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Returns 403 if the user does not have permission unlock the machine.
         """
         machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.LOCK)
+            system_id=system_id, user=request.user, perm=NodePermission.lock)
         if not machine.locked:
             raise NodeStateViolation('Machine is not locked')
         comment = get_optional_param(request.POST, 'comment')
@@ -1484,7 +1484,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         machines = self.base_model.objects.get_nodes(
-            request.user, perm=NODE_PERMISSION.ADMIN, ids=system_ids)
+            request.user, perm=NodePermission.admin, ids=system_ids)
         if len(machines) < len(system_ids):
             permitted_ids = set(machine.system_id for machine in machines)
             raise PermissionDenied(
@@ -1509,7 +1509,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
             excluded from the result.
         """
         machines = self.base_model.objects.get_nodes(
-            request.user, perm=NODE_PERMISSION.ADMIN)
+            request.user, perm=NodePermission.admin)
         machines = machines.filter(status=NODE_STATUS.NEW)
         machines = (machine.accept_enlistment(request.user)
                     for machine in machines)
@@ -1541,7 +1541,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         machines = self.base_model.objects.get_nodes(
-            request.user, perm=NODE_PERMISSION.EDIT, ids=system_ids)
+            request.user, perm=NodePermission.edit, ids=system_ids)
         if len(machines) < len(system_ids):
             permitted_ids = set(machine.system_id for machine in machines)
             raise PermissionDenied(

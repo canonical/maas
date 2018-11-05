@@ -11,11 +11,11 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.models.space import (
     DEFAULT_SPACE_NAME,
     Space,
 )
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -33,7 +33,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
         self.assertEqual(
             space,
             Space.objects.get_space_or_404(
-                space.id, user, NODE_PERMISSION.VIEW))
+                space.id, user, NodePermission.view))
 
     def test__user_edit_raises_PermissionError(self):
         user = factory.make_User()
@@ -41,7 +41,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             Space.objects.get_space_or_404,
-            space.id, user, NODE_PERMISSION.EDIT)
+            space.id, user, NodePermission.edit)
 
     def test__user_admin_raises_PermissionError(self):
         user = factory.make_User()
@@ -49,7 +49,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
         self.assertRaises(
             PermissionDenied,
             Space.objects.get_space_or_404,
-            space.id, user, NODE_PERMISSION.ADMIN)
+            space.id, user, NodePermission.admin)
 
     def test__admin_view_returns_space(self):
         admin = factory.make_admin()
@@ -57,7 +57,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
         self.assertEqual(
             space,
             Space.objects.get_space_or_404(
-                space.id, admin, NODE_PERMISSION.VIEW))
+                space.id, admin, NodePermission.view))
 
     def test__admin_edit_returns_space(self):
         admin = factory.make_admin()
@@ -65,7 +65,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
         self.assertEqual(
             space,
             Space.objects.get_space_or_404(
-                space.id, admin, NODE_PERMISSION.EDIT))
+                space.id, admin, NodePermission.edit))
 
     def test__admin_admin_returns_space(self):
         admin = factory.make_admin()
@@ -73,7 +73,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
         self.assertEqual(
             space,
             Space.objects.get_space_or_404(
-                space.id, admin, NODE_PERMISSION.ADMIN))
+                space.id, admin, NodePermission.admin))
 
 
 class TestSpaceManager(MAASServerTestCase):

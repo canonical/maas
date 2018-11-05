@@ -26,7 +26,6 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_PERMISSION,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -44,6 +43,7 @@ from maasserver.models import (
     StaticIPAddress,
     Subnet,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import transactional
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
@@ -103,7 +103,7 @@ class IPAddressesHandler(OperationsHandler):
         if hostname is not None and hostname.find('.') > 0:
             hostname, domain = hostname.split('.', 1)
             domain = Domain.objects.get_domain_or_404(
-                "name:%s" % domain, user, NODE_PERMISSION.VIEW)
+                "name:%s" % domain, user, NodePermission.view)
         else:
             domain = Domain.objects.get_default_domain()
         if mac is None:

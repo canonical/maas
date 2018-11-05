@@ -10,13 +10,13 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_optional_param
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models import (
     Space,
     Subnet,
 )
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 from provisioningserver.utils.network import IPRangeStatistics
 
@@ -164,7 +164,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         return Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """\
@@ -212,7 +212,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         form = SubnetForm(instance=subnet, data=request.data)
         if form.is_valid():
             return form.save()
@@ -226,7 +226,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         subnet.delete()
         return rc.DELETED
 
@@ -238,7 +238,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
         return subnet.get_ipranges_in_use().render_json()
 
     @operation(idempotent=True)
@@ -249,7 +249,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
         return subnet.get_ipranges_not_in_use().render_json(
             include_purpose=False)
 
@@ -280,7 +280,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
         include_ranges = get_optional_param(
             request.GET, 'include_ranges', default=False, validator=StringBool)
         include_suggestions = get_optional_param(
@@ -312,7 +312,7 @@ class SubnetHandler(OperationsHandler):
           Deprecated form of with_summary.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
         with_username = get_optional_param(
             request.GET, 'with_username', default=True, validator=StringBool)
         with_summary = get_optional_param(

@@ -7,9 +7,9 @@ __all__ = [
     "FabricHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
 from maasserver.forms.fabric import FabricForm
 from maasserver.models.fabric import Fabric
+from maasserver.permissions import NodePermission
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -53,5 +53,5 @@ class FabricHandler(TimestampedModelHandler):
         """Delete this Domain."""
         domain = self.get_object(parameters)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, domain), "Permission denied."
+            NodePermission.admin, domain), "Permission denied."
         domain.delete()

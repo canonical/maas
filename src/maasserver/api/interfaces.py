@@ -16,7 +16,6 @@ from maasserver.api.utils import (
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_TYPE,
 )
@@ -51,6 +50,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
 from piston3.utils import rc
 
@@ -143,7 +143,7 @@ class InterfacesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         node = Node.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, request.user, NodePermission.view)
         interfaces = prefetch_queryset(
             node.interface_set.all(), INTERFACES_PREFETCH)
         # Preload the node on the interface, no need for another query.
@@ -170,7 +170,7 @@ class InterfacesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         node = Node.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, request.user, NodePermission.edit)
         raise_error_if_controller(node, "create")
         # Machine type nodes require the node needs to be in the correct state.
         if node.node_type == NODE_TYPE.MACHINE:
@@ -263,7 +263,7 @@ class InterfacesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NodePermission.admin)
         raise_error_for_invalid_state_on_allocated_operations(
             machine, request.user, "create bond")
         form = BondInterfaceForm(node=machine, data=request.data)
@@ -289,7 +289,7 @@ class InterfacesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NodePermission.admin)
         raise_error_for_invalid_state_on_allocated_operations(
             machine, request.user, "create VLAN")
         # Cast parent to parents to make it easier on the user and to make it
@@ -332,7 +332,7 @@ class InterfacesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, request.user, NodePermission.edit)
         raise_error_for_invalid_state_on_allocated_operations(
             machine, request.user, "create bridge")
         # Cast parent to parents to make it easier on the user and to make it
@@ -417,7 +417,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         return Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NodePermission.view)
 
     def update(self, request, system_id, id):
         """Update interface on node.
@@ -520,7 +520,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = interface.get_node()
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
@@ -560,7 +560,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = interface.get_node()
         raise_error_if_controller(node, "delete interface")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -610,7 +610,7 @@ class InterfaceHandler(OperationsHandler):
         force = get_optional_param(
             request.POST, 'force', default=False, validator=StringBool)
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -645,7 +645,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = interface.get_node()
         raise_error_if_controller(node, "disconnect")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -667,7 +667,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -696,7 +696,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -721,7 +721,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 403 if the user is not allowed to update the interface.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         interface.add_tag(get_mandatory_param(request.POST, 'tag'))
         interface.save()
         return interface
@@ -736,7 +736,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 403 if the user is not allowed to update the interface.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         interface.remove_tag(get_mandatory_param(request.POST, 'tag'))
         interface.save()
         return interface

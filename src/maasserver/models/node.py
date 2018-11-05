@@ -82,7 +82,6 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
     NODE_CREATION_TYPE,
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
@@ -140,6 +139,7 @@ from maasserver.node_status import (
     MONITORED_STATUSES,
     NODE_TRANSITIONS,
 )
+from maasserver.permissions import NodePermission
 from maasserver.routablepairs import (
     get_routable_address_map,
     reduce_routable_address_map,
@@ -451,7 +451,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
             their privileges.
         :param perm: Type of access requested.  For example, a user may be
             allowed to view some nodes that they are not allowed to edit.
-        :type perm: `NODE_PERMISSION`
+        :type perm: `NodePermission`
         :return: A version of `node` that is filtered to include only those
             nodes that `user` is allowed to access.
         """
@@ -472,11 +472,11 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                 NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ]))
-        if perm == NODE_PERMISSION.VIEW:
+        if perm == NodePermission.view:
             condition = Q(owner__isnull=True) | Q(owner=user)
-        elif perm == NODE_PERMISSION.EDIT:
+        elif perm == NodePermission.edit:
             condition = Q(owner=user)
-        elif perm == NODE_PERMISSION.ADMIN:
+        elif perm == NodePermission.admin:
             # There is no built-in Q object that represents False, but
             # this one does.
             condition = Q(id__in=[])
@@ -503,7 +503,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         :param user: The user that should be used in the permission check.
         :type user: User_
         :param perm: The permission to check.
-        :type perm: a permission string from NODE_PERMISSION
+        :type perm: a permission string from `NodePermission`
         :param ids: If given, limit result to nodes with these system_ids.
         :type ids: Sequence.
         :param from_nodes: Optionally, restrict the answer to these nodes.
@@ -520,7 +520,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
             # Make sure even if given a query set of multiple node types
             # get_nodes only returns nodes applicable to this manager.
             from_nodes = from_nodes.filter(**self.extra_filters)
-        if perm == NODE_PERMISSION.EDIT:
+        if perm == NodePermission.edit:
             from_nodes = from_nodes.filter(locked=False)
         nodes = self._filter_visible_nodes(from_nodes, user, perm)
         return self.filter_by_ids(nodes, ids)
@@ -546,7 +546,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         kwargs.update(self.extra_filters)
         node = get_object_or_404(
             self.model, system_id=system_id, **kwargs)
-        if node.locked and perm == NODE_PERMISSION.EDIT:
+        if node.locked and perm == NodePermission.edit:
             raise PermissionDenied()
         elif user.has_perm(perm, node):
             return node.as_self()
@@ -592,7 +592,7 @@ class MachineManager(BaseNodeManager):
         :return: Those machines which can be acquired by the user.
         :rtype: `django.db.models.query.QuerySet`
         """
-        available_machines = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
+        available_machines = self.get_nodes(for_user, NodePermission.view)
         return available_machines.filter(status=NODE_STATUS.READY)
 
 
@@ -2007,7 +2007,7 @@ class Node(CleanSave, TimestampedModel):
             ScriptSet,
         )
 
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NodePermission.edit, self):
             # You can't enter test mode on a node you don't own,
             # unless you're an admin.
             raise PermissionDenied()
@@ -3766,7 +3766,7 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def start(self, user, user_data=None, comment=None):
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
         event = EVENT_TYPES.REQUEST_NODE_START
@@ -3910,7 +3910,7 @@ class Node(CleanSave, TimestampedModel):
             get_common_available_boot_images)
         from metadataserver.models import NodeUserData
 
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
 
@@ -4000,7 +4000,7 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def stop(self, user=None, stop_mode='hard', comment=None):
-        if user is not None and not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if user is not None and not user.has_perm(NodePermission.edit, self):
             # You can't stop a node you don't own unless you're an admin.
             raise PermissionDenied()
         self._register_request_event(
@@ -4027,7 +4027,7 @@ class Node(CleanSave, TimestampedModel):
             does not support it, `None` will be returned. The node must be
             powered off manually.
         """
-        if user is not None and not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if user is not None and not user.has_perm(NodePermission.edit, self):
             # You can't stop a node you don't own unless you're an admin.
             raise PermissionDenied()
 
@@ -4215,7 +4215,7 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
 
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NodePermission.edit, self):
             # You can't enter rescue mode on a node you don't own,
             # unless you're an admin.
             raise PermissionDenied()
@@ -4308,7 +4308,7 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def stop_rescue_mode(self, user):
         """Exit rescue mode."""
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NodePermission.edit, self):
             # You can't exit rescue mode on a node you don't own,
             # unless you're an admin.
             raise PermissionDenied()

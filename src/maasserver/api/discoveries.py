@@ -31,11 +31,11 @@ from maasserver.clusterrpc.utils import (
     call_racks_synchronously,
     RPCResults,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.models import (
     Discovery,
     RackController,
 )
+from maasserver.permissions import NodePermission
 from netaddr import IPNetwork
 from piston3.utils import rc
 from provisioningserver.rpc import cluster
@@ -159,7 +159,7 @@ class DiscoveriesHandler(OperationsHandler):
         neighbours = get_optional_param(
             request.POST, 'neighbours', default=False, validator=StringBool)
 
-        if not request.user.has_perm(NODE_PERMISSION.ADMIN, Discovery):
+        if not request.user.has_perm(NodePermission.admin, Discovery):
             response = HttpResponseForbidden(
                 content_type='text/plain',
                 content="Must be an administrator to clear discovery entries.")

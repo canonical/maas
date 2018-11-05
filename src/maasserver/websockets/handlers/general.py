@@ -14,7 +14,6 @@ from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
-    NODE_PERMISSION,
     NODE_TYPE,
 )
 from maasserver.models.bootresource import BootResource
@@ -22,6 +21,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
@@ -134,7 +134,7 @@ class GeneralHandler(Handler):
         for name, action in ACTIONS_DICT.items():
             admin_condition = (
                 node_type == NODE_TYPE.MACHINE and
-                action.node_permission == NODE_PERMISSION.ADMIN and
+                action.node_permission == NodePermission.admin and
                 not user.is_superuser)
             if admin_condition:
                 continue

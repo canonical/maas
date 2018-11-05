@@ -7,7 +7,6 @@ from maasserver.api.support import OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import (
     ENDPOINT,
-    NODE_PERMISSION,
     NODE_STATUS,
 )
 from maasserver.exceptions import (
@@ -23,6 +22,7 @@ from maasserver.models import (
     CacheSet,
     Machine,
 )
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 from provisioningserver.events import EVENT_TYPES
 
@@ -52,7 +52,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
         Returns 404 if the machine is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, request.user, NodePermission.view)
         return CacheSet.objects.get_cache_sets_for_node(machine)
 
     def create(self, request, system_id):
@@ -67,7 +67,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create cache set because the node is not Ready.")
@@ -116,7 +116,7 @@ class BcacheCacheSetHandler(OperationsHandler):
         Returns 404 if the machine or cache set is not found.
         """
         return CacheSet.objects.get_cache_set_or_404(
-            system_id, id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NodePermission.view)
 
     def delete(self, request, system_id, id):
         """Delete bcache cache set on a machine.
@@ -126,7 +126,7 @@ class BcacheCacheSetHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -153,7 +153,7 @@ class BcacheCacheSetHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

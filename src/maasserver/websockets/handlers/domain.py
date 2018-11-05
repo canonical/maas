@@ -8,7 +8,6 @@ __all__ = [
     ]
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import NODE_PERMISSION
 from maasserver.forms.dnsdata import DNSDataForm
 from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.forms.domain import DomainForm
@@ -18,6 +17,7 @@ from maasserver.models import (
     GlobalDefault,
 )
 from maasserver.models.domain import Domain
+from maasserver.permissions import NodePermission
 from maasserver.websockets.base import (
     AdminOnlyMixin,
     HandlerPermissionError,
@@ -80,7 +80,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
                 'domain': ['This field is required']
             })
         domain = self.get_object({'id': domain})
-        if not self.user.has_perm(NODE_PERMISSION.ADMIN, domain):
+        if not self.user.has_perm(NodePermission.admin, domain):
             raise HandlerPermissionError()
         return domain
 

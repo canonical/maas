@@ -7,10 +7,10 @@ from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fabric import FabricForm
 from maasserver.models import Fabric
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
 from piston3.utils import rc
 
@@ -101,7 +101,7 @@ class FabricHandler(OperationsHandler):
         Returns 404 if the fabric is not found.
         """
         return Fabric.objects.get_fabric_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """Update fabric.
@@ -113,7 +113,7 @@ class FabricHandler(OperationsHandler):
         Returns 404 if the fabric is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         form = FabricForm(instance=fabric, data=request.data)
         if form.is_valid():
             return form.save()
@@ -126,6 +126,6 @@ class FabricHandler(OperationsHandler):
         Returns 404 if the fabric is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         fabric.delete()
         return rc.DELETED

@@ -7,10 +7,7 @@ __all__ = [
     "VLANHandler",
     ]
 
-from maasserver.enum import (
-    IPRANGE_TYPE,
-    NODE_PERMISSION,
-)
+from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.forms.vlan import VLANForm
 from maasserver.models import (
@@ -19,6 +16,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerValidationError
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -101,7 +99,7 @@ class VLANHandler(TimestampedModelHandler):
         vlan = self.get_object(parameters)
         self.user = reload_object(self.user)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, vlan), "Permission denied."
+            NodePermission.admin, vlan), "Permission denied."
         vlan.delete()
 
     def update(self, parameters):
@@ -170,7 +168,7 @@ class VLANHandler(TimestampedModelHandler):
         vlan = self.get_object(parameters)
         self.user = reload_object(self.user)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, vlan), "Permission denied."
+            NodePermission.admin, vlan), "Permission denied."
         # Make sure the dictionary both exists, and has the expected number
         # of parameters, to prevent spurious log statements.
         if 'extra' in parameters:

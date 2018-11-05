@@ -10,10 +10,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.enum import (
-    NODE_PERMISSION,
-    NODE_STATUS,
-)
+from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -34,6 +31,7 @@ from maasserver.models import (
     PhysicalBlockDevice,
     VirtualBlockDevice,
 )
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -89,7 +87,7 @@ class BlockDevicesHandler(OperationsHandler):
         Returns 404 if the machine is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, request.user, NodePermission.view)
         return machine.blockdevice_set.all()
 
     @admin_method
@@ -108,7 +106,7 @@ class BlockDevicesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NodePermission.admin)
         form = CreatePhysicalBlockDeviceForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
@@ -219,7 +217,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 404 if the machine or block device is not found.
         """
         return BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NodePermission.view)
 
     def delete(self, request, system_id, id):
         """Delete block device on a machine.
@@ -229,7 +227,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -268,7 +266,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = device.get_node()
         if node.status not in [NODE_STATUS.READY, NODE_STATUS.DEPLOYED]:
             raise NodeStateViolation(
@@ -307,7 +305,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -327,7 +325,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -349,7 +347,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "format")
@@ -371,7 +369,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unformat")
@@ -405,7 +403,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         raise_error_for_invalid_state_on_allocated_operations(
             device.get_node(), request.user, "mount")
         filesystem = device.get_effective_filesystem()
@@ -428,7 +426,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NodePermission.edit)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unmount")
@@ -452,7 +450,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

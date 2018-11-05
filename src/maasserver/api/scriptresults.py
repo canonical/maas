@@ -30,9 +30,9 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_optional_param
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.models import Node
+from maasserver.permissions import NodePermission
 from metadataserver.models import ScriptSet
 from metadataserver.models.script import translate_hardware_type
 from metadataserver.models.scriptset import translate_result_type
@@ -104,7 +104,7 @@ class NodeScriptResultsHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.VIEW)
+            perm=NodePermission.view)
         result_type = get_optional_param(request.GET, 'type')
         include_output = get_optional_param(
             request.GET, 'include_output', False, Bool)
@@ -229,7 +229,7 @@ class NodeScriptResultHandler(OperationsHandler):
     def _get_script_set(self, request, system_id, id):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.VIEW)
+            perm=NodePermission.view)
         script_sets = {
             'current-commissioning': node.current_commissioning_script_set,
             'current-testing': node.current_testing_script_set,

@@ -16,7 +16,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_ACTION_TYPE,
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
@@ -63,6 +62,7 @@ from maasserver.node_status import (
     NODE_TESTING_RESET_READY_TRANSITIONS,
     NON_MONITORED_STATUSES,
 )
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
@@ -99,7 +99,7 @@ class FakeNodeAction(NodeAction):
     name = "fake"
     display = "Action label"
     actionable_statuses = ALL_STATUSES
-    permission = NODE_PERMISSION.VIEW
+    permission = NodePermission.view
     for_type = [NODE_TYPE.MACHINE]
     action_type = NODE_ACTION_TYPE.MISC
 
@@ -141,7 +141,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_compile_node_actions_checks_permission(self):
 
         class MyAction(FakeNodeAction):
-            permission = NODE_PERMISSION.EDIT
+            permission = NodePermission.edit
 
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         actions = compile_node_actions(
@@ -185,7 +185,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_is_permitted_allows_if_user_has_permission(self):
 
         class MyAction(FakeNodeAction):
-            permission = NODE_PERMISSION.EDIT
+            permission = NodePermission.edit
 
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
@@ -194,7 +194,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_is_permitted_disallows_if_user_lacks_permission(self):
 
         class MyAction(FakeNodeAction):
-            permission = NODE_PERMISSION.EDIT
+            permission = NodePermission.edit
 
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
@@ -203,8 +203,8 @@ class TestNodeAction(MAASServerTestCase):
     def test_is_permitted_uses_node_permission(self):
 
         class MyAction(FakeNodeAction):
-            permission = NODE_PERMISSION.VIEW
-            node_permission = NODE_PERMISSION.EDIT
+            permission = NodePermission.view
+            node_permission = NodePermission.edit
 
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
@@ -213,8 +213,8 @@ class TestNodeAction(MAASServerTestCase):
     def test_is_permitted_doest_use_node_permission_if_device(self):
 
         class MyAction(FakeNodeAction):
-            permission = NODE_PERMISSION.VIEW
-            node_permission = NODE_PERMISSION.EDIT
+            permission = NodePermission.view
+            node_permission = NodePermission.edit
 
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
@@ -279,7 +279,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_is_actionable_checks_permission(self):
 
         class MyAction(FakeNodeAction):
-            node_permission = NODE_PERMISSION.ADMIN
+            node_permission = NodePermission.admin
 
         node = factory.make_Node()
         self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
@@ -961,7 +961,7 @@ class TestPowerOnAction(MAASServerTestCase):
         request.user = user
         node = factory.make_Node()
         self.assertFalse(
-            user.has_perm(NODE_PERMISSION.EDIT, node))
+            user.has_perm(NodePermission.edit, node))
         self.assertFalse(PowerOn(node, user, request).is_permitted())
 
     def test_PowerOn_is_actionable_if_node_doesnt_have_an_owner(self):

@@ -7,12 +7,12 @@ __all__ = [
     "ControllerHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
 from maasserver.forms import ControllerForm
 from maasserver.models.node import (
     Controller,
     RackController,
 )
+from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
@@ -102,7 +102,7 @@ class ControllerHandler(MachineHandler):
         else:
             qs = self._meta.queryset
         return Controller.controllers.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=qs)
+            self.user, NodePermission.view, from_nodes=qs)
 
     def dehydrate(self, obj, data, for_list=False):
         obj = obj.as_self()

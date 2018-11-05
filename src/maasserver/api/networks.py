@@ -13,7 +13,6 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import NetworksListingForm
 from maasserver.models import (
@@ -21,6 +20,7 @@ from maasserver.models import (
     Node,
     Subnet,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.django_urls import reverse
 from piston3.utils import rc
 
@@ -124,7 +124,7 @@ class NetworkHandler(OperationsHandler):
         """
         subnet = Subnet.objects.get_object_by_specifiers_or_raise(name)
         visible_nodes = Node.objects.get_nodes(
-            request.user, NODE_PERMISSION.VIEW,
+            request.user, NodePermission.view,
             from_nodes=Node.objects.all())
         interfaces = Interface.objects.filter(
             node__in=visible_nodes, ip_addresses__subnet=subnet)

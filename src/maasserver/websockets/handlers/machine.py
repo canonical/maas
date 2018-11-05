@@ -15,7 +15,6 @@ from maasserver.enum import (
     BMC_TYPE,
     INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     POWER_STATE,
@@ -64,6 +63,7 @@ from maasserver.models.node import (
 from maasserver.models.partition import Partition
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import (
     reload_object,
     transactional,
@@ -201,7 +201,7 @@ class MachineHandler(NodeHandler):
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW,
+            self.user, NodePermission.view,
             from_nodes=super().get_queryset(for_list=for_list))
 
     def dehydrate(self, obj, data, for_list=False):

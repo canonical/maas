@@ -27,7 +27,6 @@ from maasserver.api.utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import (
     MAASAPIValidationError,
     Unauthorized,
@@ -42,6 +41,7 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.user import get_auth_tokens
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import (
     get_one,
     prefetch_queryset,
@@ -143,7 +143,7 @@ class TagHandler(OperationsHandler):
         self.fields = None
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         nodes = model.objects.get_nodes(
-            request.user, NODE_PERMISSION.VIEW,
+            request.user, NodePermission.view,
             from_nodes=tag.node_set.all())
         nodes = nodes.select_related(*NODES_SELECT_RELATED)
         nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by('id')

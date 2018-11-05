@@ -7,13 +7,13 @@ __all__ = [
     "SubnetHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models import (
     Discovery,
     RackController,
     Subnet,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -73,7 +73,7 @@ class SubnetHandler(TimestampedModelHandler):
     def update(self, parameters):
         subnet = self.get_object(parameters)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, subnet), "Permission denied."
+            NodePermission.admin, subnet), "Permission denied."
         # The JavaScript object will still contain the space for backward
         # compatibility, so we need to strip it out.
         if 'space' in parameters:
@@ -82,7 +82,7 @@ class SubnetHandler(TimestampedModelHandler):
 
     def create(self, parameters):
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, Subnet), "Permission denied."
+            NodePermission.admin, Subnet), "Permission denied."
         # The JavaScript object will still contain the space for backward
         # compatibility, so we need to strip it out.
         if 'space' in parameters:
@@ -93,7 +93,7 @@ class SubnetHandler(TimestampedModelHandler):
         """Delete this Subnet."""
         subnet = self.get_object(parameters)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, subnet), "Permission denied."
+            NodePermission.admin, subnet), "Permission denied."
         subnet.delete()
 
     def scan(self, parameters):
@@ -110,7 +110,7 @@ class SubnetHandler(TimestampedModelHandler):
         subnet = self.get_object(parameters)
         self.user = reload_object(self.user)
         assert self.user.has_perm(
-            NODE_PERMISSION.ADMIN, Discovery), "Permission denied."
+            NodePermission.admin, Discovery), "Permission denied."
         cidr = subnet.get_ipnetwork()
         if cidr.version != 4:
             raise ValueError(

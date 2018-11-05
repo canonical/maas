@@ -10,7 +10,6 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.dns.config import dns_force_reload
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.domain import DomainForm
 from maasserver.models import (
@@ -18,6 +17,7 @@ from maasserver.models import (
     GlobalDefault,
 )
 from maasserver.models.dnspublication import zone_serial
+from maasserver.permissions import NodePermission
 from maasserver.sequence import INT_MAX
 from piston3.utils import rc
 
@@ -126,7 +126,7 @@ class DomainHandler(OperationsHandler):
         Returns 404 if the domain is not found.
         """
         return Domain.objects.get_domain_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """Update domain.
@@ -140,7 +140,7 @@ class DomainHandler(OperationsHandler):
         Returns 404 if the domain is not found.
         """
         domain = Domain.objects.get_domain_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         form = DomainForm(instance=domain, data=request.data)
         if form.is_valid():
             return form.save()
@@ -159,7 +159,7 @@ class DomainHandler(OperationsHandler):
         Returns 404 if the domain is not found.
         """
         domain = Domain.objects.get_domain_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         global_defaults = GlobalDefault.objects.instance()
         global_defaults.domain = domain
         global_defaults.save()
@@ -173,6 +173,6 @@ class DomainHandler(OperationsHandler):
         Returns 404 if the domain is not found.
         """
         domain = Domain.objects.get_domain_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         domain.delete()
         return rc.DELETED

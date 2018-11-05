@@ -7,10 +7,10 @@ from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fannetwork import FanNetworkForm
 from maasserver.models import FanNetwork
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -81,7 +81,7 @@ class FanNetworkHandler(OperationsHandler):
         Returns 404 if the fannetwork is not found.
         """
         return FanNetwork.objects.get_fannetwork_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """Update fannetwork.
@@ -97,7 +97,7 @@ class FanNetworkHandler(OperationsHandler):
         Returns 404 if the fannetwork is not found.
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         form = FanNetworkForm(instance=fannetwork, data=request.data)
         if form.is_valid():
             return form.save()
@@ -110,6 +110,6 @@ class FanNetworkHandler(OperationsHandler):
         Returns 404 if the fannetwork is not found.
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         fannetwork.delete()
         return rc.DELETED

@@ -7,10 +7,10 @@ from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -75,7 +75,7 @@ class StaticRouteHandler(OperationsHandler):
         Returns 404 if the static route is not found.
         """
         return StaticRoute.objects.get_staticroute_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """Update static route.
@@ -88,7 +88,7 @@ class StaticRouteHandler(OperationsHandler):
         Returns 404 if the static route is not found.
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         form = StaticRouteForm(instance=staticroute, data=request.data)
         if form.is_valid():
             return form.save()
@@ -101,6 +101,6 @@ class StaticRouteHandler(OperationsHandler):
         Returns 404 if the static route is not found.
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         staticroute.delete()
         return rc.DELETED

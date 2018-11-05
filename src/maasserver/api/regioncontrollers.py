@@ -14,10 +14,10 @@ from maasserver.api.nodes import (
 )
 from maasserver.api.support import admin_method
 from maasserver.api.utils import get_optional_param
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
 from maasserver.models import RegionController
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 # Region controller's fields exposed on the API.
@@ -84,7 +84,7 @@ class RegionControllerHandler(NodeHandler):
         Returns 204 if the node is successfully deleted.
         """
         node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+            system_id=system_id, user=request.user, perm=NodePermission.admin)
         node.as_self().delete(
             force=get_optional_param(request.GET, 'force', False, StringBool))
         return rc.DELETED
@@ -125,7 +125,7 @@ class RegionControllerHandler(NodeHandler):
         controller.
         """
         region = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            system_id=system_id, user=request.user, perm=NodePermission.edit)
         form = ControllerForm(data=request.data, instance=region)
 
         if form.is_valid():

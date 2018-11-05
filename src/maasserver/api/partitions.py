@@ -11,10 +11,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.enum import (
-    NODE_PERMISSION,
-    NODE_STATUS,
-)
+from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -30,6 +27,7 @@ from maasserver.models import (
     Partition,
     PartitionTable,
 )
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -90,7 +88,7 @@ class PartitionsHandler(OperationsHandler):
         Returns 404 if the node or the block device are not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, device_id, request.user, NodePermission.view)
         partition_table = device.partitiontable_set.get()
         if partition_table is None:
             return []
@@ -109,7 +107,7 @@ class PartitionsHandler(OperationsHandler):
         Returns 404 if the node or the block device are not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, device_id, request.user, NodePermission.admin)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -174,7 +172,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition are not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, device_id, request.user, NodePermission.view)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         return get_partition_by_id_or_name__or_404(
@@ -186,7 +184,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition are not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, device_id, request.user, NodePermission.admin)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
@@ -211,7 +209,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NodePermission.edit)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
@@ -229,7 +227,7 @@ class PartitionHandler(OperationsHandler):
     def unformat(self, request, system_id, device_id, id):
         """Unformat a partition."""
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NodePermission.edit)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
@@ -265,7 +263,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NodePermission.edit)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
@@ -291,7 +289,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NodePermission.edit)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
@@ -319,7 +317,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, device_id, request.user, NodePermission.admin)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
@@ -338,7 +336,7 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, device_id, request.user, NodePermission.admin)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(

@@ -7,7 +7,6 @@ from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -20,6 +19,7 @@ from maasserver.models import (
     Domain,
 )
 from maasserver.models.dnsresource import separate_fqdn
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -63,11 +63,11 @@ class DNSResourceRecordsHandler(OperationsHandler):
         if domainname is not None:
             if domainname.isdigit():
                 domain = Domain.objects.get_domain_or_404(
-                    domainname, user=request.user, perm=NODE_PERMISSION.VIEW)
+                    domainname, user=request.user, perm=NodePermission.view)
             else:
                 domain = Domain.objects.get_domain_or_404(
                     "name:%s" % domainname, user=request.user,
-                    perm=NODE_PERMISSION.VIEW)
+                    perm=NodePermission.view)
             query = DNSData.objects.filter(
                 dnsresource__domain_id=domain.id).order_by(
                 'dnsresource__name')
@@ -120,11 +120,11 @@ class DNSResourceRecordsHandler(OperationsHandler):
         if domainname is not None:
             if domainname.isdigit():
                 domain = Domain.objects.get_domain_or_404(
-                    domainname, user=request.user, perm=NODE_PERMISSION.VIEW)
+                    domainname, user=request.user, perm=NodePermission.view)
             else:
                 domain = Domain.objects.get_domain_or_404(
                     "name:%s" % domainname, user=request.user,
-                    perm=NODE_PERMISSION.VIEW)
+                    perm=NodePermission.view)
             data['domain'] = domain.id
         if domain is None or name is None:
             raise MAASAPIValidationError(
@@ -172,7 +172,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         Returns 404 if the dnsresourcerecord is not found.
         """
         return DNSData.objects.get_dnsdata_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """Update dnsresourcerecord.
@@ -185,7 +185,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         Returns 404 if the dnsresourcerecord is not found.
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         data = request.data.copy()
         data['dnsresource'] = dnsdata.dnsresource.id
         form = DNSDataForm(instance=dnsdata, data=data)
@@ -202,7 +202,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         Returns 404 if the dnsresourcerecord is not found.
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.admin)
         dnsrr = dnsdata.dnsresource
         dnsdata.delete()
         if dnsrr.dnsdata_set.count() == 0 and dnsrr.ip_addresses.count() == 0:

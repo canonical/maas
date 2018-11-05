@@ -99,10 +99,7 @@ from django.contrib.auth.models import (
 from django.core.exceptions import ViewDoesNotExist
 from django.db.models.signals import post_save
 from maasserver import logger
-from maasserver.enum import (
-    NODE_PERMISSION,
-    NODE_TYPE,
-)
+from maasserver.enum import NODE_TYPE
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,
@@ -198,6 +195,7 @@ from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
+from maasserver.permissions import NodePermission
 from maasserver.utils.django_urls import (
     get_callable,
     get_resolver,
@@ -312,9 +310,9 @@ ADMIN_RESTRICTED_MODELS = (
 # These model objects are restricted to administrators only; permission checks
 # will return True for administrators given any of the following permissions:
 ADMIN_PERMISSIONS = (
-    NODE_PERMISSION.VIEW,
-    NODE_PERMISSION.EDIT,
-    NODE_PERMISSION.ADMIN,
+    NodePermission.view,
+    NodePermission.edit,
+    NodePermission.admin,
 )
 
 
@@ -359,19 +357,19 @@ class MAASAuthorizationBackend(ModelBackend):
                 obj = obj.node
             elif isinstance(obj, FilesystemGroup):
                 obj = obj.get_node()
-            if perm == NODE_PERMISSION.VIEW:
+            if perm == NodePermission.view:
                 return self._can_view(
                     rbac_enabled, user, obj, visible_pools, admin_pools)
-            elif perm == NODE_PERMISSION.EDIT:
+            elif perm == NodePermission.edit:
                 can_edit = self._can_edit(
                     rbac_enabled, user, obj, visible_pools, admin_pools)
                 return not obj.locked and can_edit
-            elif perm == NODE_PERMISSION.LOCK:
+            elif perm == NodePermission.lock:
                 # only machines can be locked
                 can_edit = self._can_edit(
                     rbac_enabled, user, obj, visible_pools, admin_pools)
                 return obj.pool_id is not None and can_edit
-            elif perm == NODE_PERMISSION.ADMIN:
+            elif perm == NodePermission.admin:
                 return self._can_admin(
                     rbac_enabled, user, obj, admin_pools)
             else:
@@ -384,10 +382,10 @@ class MAASAuthorizationBackend(ModelBackend):
                 # Doesn't matter the permission level if the interface doesn't
                 # have a node, the user must be a global admin.
                 return user.is_superuser
-            if perm == NODE_PERMISSION.VIEW:
+            if perm == NodePermission.view:
                 return self._can_view(
                     rbac_enabled, user, node, visible_pools, admin_pools)
-            elif perm in NODE_PERMISSION.EDIT:
+            elif perm == NodePermission.edit:
                 # Machine interface can only be modified by an administrator
                 # of the machine. Even the owner of the machine cannot modify
                 # the interfaces on that machine, unless they have
@@ -398,7 +396,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 # Other node types must be editable by the user.
                 return self._can_edit(
                     rbac_enabled, user, node, visible_pools, admin_pools)
-            elif perm in NODE_PERMISSION.ADMIN:
+            elif perm == NodePermission.admin:
                 # Admin permission is solely granted to superusers.
                 return self._can_admin(
                     rbac_enabled, user, node, admin_pools)
@@ -410,7 +408,7 @@ class MAASAuthorizationBackend(ModelBackend):
             # This model is classified under 'unrestricted read' for any
             # logged-in user; so everyone can view, but only an admin can
             # do anything else.
-            if perm == NODE_PERMISSION.VIEW:
+            if perm == NodePermission.view:
                 return True
             elif perm in ADMIN_PERMISSIONS:
                 # Admin permission is solely granted to superusers.

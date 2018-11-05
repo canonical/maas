@@ -15,8 +15,8 @@ from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
+from maasserver.permissions import NodePermission
 from maasserver.utils.django_urls import reverse
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import ScriptResult
@@ -52,7 +52,7 @@ class NodeResultsHandler(OperationsHandler):
         result_type = get_optional_param(
             request.GET, 'result_type', None, Int)
         nodes = Node.objects.get_nodes(
-            request.user, NODE_PERMISSION.VIEW, ids=system_ids)
+            request.user, NodePermission.view, ids=system_ids)
         script_sets = []
         for node in nodes:
             if node.current_commissioning_script_set is not None:

@@ -13,10 +13,10 @@ from maasserver.api.support import (
     ModelCollectionOperationsHandler,
     ModelOperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ResourcePoolForm
 from maasserver.models import ResourcePool
+from maasserver.permissions import NodePermission
 from piston3.utils import rc
 
 
@@ -65,7 +65,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             Not Found
         """
         return ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NodePermission.view)
 
     def update(self, request, id):
         """@description Updates a resource pool's name or description.
@@ -98,9 +98,8 @@ class ResourcePoolHandler(ModelOperationsHandler):
         @error-example "notfound"
             Not Found
         """
-
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.edit)
         form = ResourcePoolForm(instance=pool, data=request.data)
         if form.is_valid():
             return form.save()
@@ -125,7 +124,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             <no content>
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
-            id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NodePermission.edit)
         pool.delete()
         return rc.DELETED
 

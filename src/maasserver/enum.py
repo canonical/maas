@@ -16,7 +16,6 @@ __all__ = [
     'INTERFACE_TYPE_CHOICES',
     'INTERFACE_TYPE_CHOICES_DICT',
     'IPADDRESS_TYPE',
-    'NODE_PERMISSION',
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
     'NODE_STATUS_CHOICES_DICT',
@@ -199,14 +198,6 @@ class NODE_CREATION_TYPE:
     #: Dynamic, machine was composed during allocation and should be decomposed
     # upon release of the machine.
     DYNAMIC = 3
-
-
-class NODE_PERMISSION:
-    """Permissions relating to nodes."""
-    VIEW = 'view_node'
-    EDIT = 'edit_node'
-    LOCK = 'lock_node'
-    ADMIN = 'admin_node'
 
 
 class NODE_ACTION_TYPE:

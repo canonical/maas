@@ -7,10 +7,10 @@ __all__ = [
     "SwitchHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
 from maasserver.models.node import Node
 from maasserver.node_action import compile_node_actions
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.machine import MachineHandler
@@ -51,7 +51,7 @@ class SwitchHandler(NodeHandler):
         # should contain only the items needed to display a switch when listing
         # in the UI.
         return Node.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW,
+            self.user, NodePermission.view,
             from_nodes=self._meta.queryset)
 
     def get_object(self, params):

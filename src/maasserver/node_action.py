@@ -32,7 +32,6 @@ from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
     ENDPOINT,
     NODE_ACTION_TYPE,
-    NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
@@ -52,6 +51,7 @@ from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
 )
+from maasserver.permissions import NodePermission
 from maasserver.preseed import get_curtin_config
 from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
@@ -115,7 +115,7 @@ class NodeAction(metaclass=ABCMeta):
     permission = abstractproperty("""
         Required permission.
 
-        A NODE_PERMISSION value.  The action will be available only if the
+        A `NodePermission` value.  The action will be available only if the
         user has this given permission on the subject node.
         """)
 
@@ -149,7 +149,7 @@ class NodeAction(metaclass=ABCMeta):
             return False
         elif self.node.node_type == NODE_TYPE.MACHINE:
             admin_perm = (
-                self.node_permission == NODE_PERMISSION.ADMIN and
+                self.node_permission == NodePermission.admin and
                 not self.user.is_superuser)
             if admin_perm:
                 return False
@@ -222,8 +222,8 @@ class Delete(NodeAction):
     display = "Delete..."
     display_sentence = "deleted"
     actionable_statuses = ALL_STATUSES
-    permission = NODE_PERMISSION.EDIT
-    node_permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.edit
+    node_permission = NodePermission.admin
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Deleted the '%s' '%s'."
@@ -267,8 +267,8 @@ class SetZone(NodeAction):
     display = "Set zone..."
     display_sentence = "Zone set"
     actionable_statuses = ALL_STATUSES
-    permission = NODE_PERMISSION.EDIT
-    node_permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.edit
+    node_permission = NodePermission.admin
     for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Set the zone to '%s' on '%s'."
@@ -290,8 +290,8 @@ class SetPool(NodeAction):
     display = "Set resource pool..."
     display_sentence = "Pool set"
     actionable_statuses = ALL_STATUSES
-    permission = NODE_PERMISSION.EDIT
-    node_permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.edit
+    node_permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.MISC
     audit_description = "Set the resource pool to '%s' on '%s'."
@@ -319,7 +319,7 @@ class Commission(NodeAction):
         NODE_STATUS.READY,
         NODE_STATUS.BROKEN,
     )
-    permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Started commissioning on '%s'."
@@ -369,7 +369,7 @@ class Test(NodeAction):
         NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
         NODE_STATUS.FAILED_TESTING,
     )
-    permission = NODE_PERMISSION.VIEW
+    permission = NodePermission.view
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Started testing on '%s'."
@@ -398,7 +398,7 @@ class Abort(NodeAction):
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.TESTING,
     )
-    permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Aborted '%s' on '%s'."
@@ -423,7 +423,7 @@ class Acquire(NodeAction):
     display = "Acquire..."
     display_sentence = "acquired"
     actionable_statuses = (NODE_STATUS.READY, )
-    permission = NODE_PERMISSION.VIEW
+    permission = NodePermission.view
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Acquired '%s'."
@@ -447,7 +447,7 @@ class Deploy(NodeAction):
     display = "Deploy..."
     display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
-    permission = NODE_PERMISSION.VIEW
+    permission = NodePermission.view
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Started deploying '%s'."
@@ -543,7 +543,7 @@ class PowerOn(NodeAction):
         NODE_STATUS.DEPLOYED,
         NODE_STATUS.BROKEN,
     )
-    permission = NODE_PERMISSION.EDIT
+    permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.POWER
     audit_description = "Powered on '%s'."
@@ -577,7 +577,7 @@ class PowerOff(NodeAction):
     display_sentence = "powered off"
     # Let a user power off a node in any non-active status.
     actionable_statuses = NON_MONITORED_STATUSES
-    permission = NODE_PERMISSION.EDIT
+    permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.POWER
     audit_description = "Powered off '%s'."
@@ -612,7 +612,7 @@ class Release(NodeAction):
         NODE_STATUS.FAILED_RELEASING,
         NODE_STATUS.FAILED_DISK_ERASING,
     )
-    permission = NODE_PERMISSION.EDIT
+    permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Started releasing '%s'."
@@ -647,7 +647,7 @@ class MarkBroken(NodeAction):
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.TESTING,
     ] + FAILED_STATUSES
-    permission = NODE_PERMISSION.EDIT
+    permission = NodePermission.edit
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Marked '%s' broken."
@@ -667,7 +667,7 @@ class MarkFixed(NodeAction):
     display = "Mark fixed"
     display_sentence = "marked fixed"
     actionable_statuses = (NODE_STATUS.BROKEN, )
-    permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Marked '%s' fixed."
@@ -706,7 +706,7 @@ class Lock(NodeAction):
     display = "Lock"
     display_sentence = "Lock"
     actionable_statuses = (NODE_STATUS.DEPLOYED,)
-    permission = NODE_PERMISSION.LOCK
+    permission = NodePermission.lock
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LOCK
     audit_description = "Locked '%s'."
@@ -726,7 +726,7 @@ class Unlock(NodeAction):
     display = "Unlock"
     display_sentence = "Unlock"
     actionable_statuses = ALL_STATUSES
-    permission = NODE_PERMISSION.LOCK
+    permission = NodePermission.lock
     for_type = {NODE_TYPE.MACHINE}
     allowed_when_locked = True
     action_type = NODE_ACTION_TYPE.LOCK
@@ -752,7 +752,7 @@ class OverrideFailedTesting(NodeAction):
     display = "Override failed testing..."
     display_sentence = "Override failed testing"
     actionable_statuses = (NODE_STATUS.FAILED_TESTING, )
-    permission = NODE_PERMISSION.VIEW
+    permission = NodePermission.view
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Overrode failed testing on '%s'."
@@ -771,7 +771,7 @@ class ImportImages(NodeAction):
     name = "import-images"
     display = "Import Images"
     display_sentence = "importing images"
-    permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.admin
     for_type = {
         NODE_TYPE.RACK_CONTROLLER,
         NODE_TYPE.REGION_AND_RACK_CONTROLLER
@@ -814,7 +814,7 @@ class RescueMode(NodeAction):
         NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
         NODE_STATUS.FAILED_TESTING,
     )
-    permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Started rescue mode on '%s'."
@@ -842,7 +842,7 @@ class ExitRescueMode(NodeAction):
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
         NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
     )
-    permission = NODE_PERMISSION.ADMIN
+    permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Exited rescue mode on '%s'."

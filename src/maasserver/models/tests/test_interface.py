@@ -21,7 +21,6 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_PERMISSION,
 )
 from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
@@ -48,6 +47,7 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.models.vlan import DEFAULT_MTU
+from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
@@ -107,7 +107,7 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertEqual(
             interface,
             Interface.objects.get_interface_or_404(
-                node.system_id, interface.id, user, NODE_PERMISSION.VIEW))
+                node.system_id, interface.id, user, NodePermission.view))
 
     def test_get_interface_or_404_returns_interface_for_admin(self):
         node = factory.make_Node()
@@ -117,7 +117,7 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertEqual(
             interface,
             Interface.objects.get_interface_or_404(
-                node.system_id, interface.id, user, NODE_PERMISSION.ADMIN))
+                node.system_id, interface.id, user, NodePermission.admin))
 
     def test_get_interface_or_404_raises_Http404_when_invalid_id(self):
         node = factory.make_Node()
@@ -128,7 +128,7 @@ class TestInterfaceManager(MAASServerTestCase):
             Http404,
             Interface.objects.get_interface_or_404,
             node.system_id, random.randint(1000 * 1000, 1000 * 1000 * 100),
-            user, NODE_PERMISSION.VIEW)
+            user, NodePermission.view)
 
     def test_get_interface_or_404_raises_PermissionDenied_when_user(self):
         node = factory.make_Node()
@@ -139,7 +139,7 @@ class TestInterfaceManager(MAASServerTestCase):
             PermissionDenied,
             Interface.objects.get_interface_or_404,
             node.system_id, interface.id,
-            user, NODE_PERMISSION.ADMIN)
+            user, NodePermission.admin)
 
     def test_get_or_create_without_parents(self):
         node = factory.make_Node()

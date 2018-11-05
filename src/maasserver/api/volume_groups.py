@@ -8,10 +8,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.enum import (
-    NODE_PERMISSION,
-    NODE_STATUS,
-)
+from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
     MAASAPIValidationError,
     NodeStateViolation,
@@ -26,6 +23,7 @@ from maasserver.models import (
     VirtualBlockDevice,
     VolumeGroup,
 )
+from maasserver.permissions import NodePermission
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
 
@@ -63,7 +61,7 @@ class VolumeGroupsHandler(OperationsHandler):
         Returns 404 if the machine is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, request.user, NodePermission.view)
         return VolumeGroup.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
@@ -78,7 +76,7 @@ class VolumeGroupsHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NodePermission.admin)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create volume group because the machine is not Ready.")
@@ -157,7 +155,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 404 if the machine or volume group is not found.
         """
         return VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NodePermission.view)
 
     def update(self, request, system_id, id):
         """Read volume group on a machine.
@@ -174,7 +172,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -192,7 +190,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -212,7 +210,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -235,7 +233,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NodePermission.admin)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

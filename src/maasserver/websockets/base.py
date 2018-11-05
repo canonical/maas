@@ -17,7 +17,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Model
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
-from maasserver.enum import NODE_PERMISSION
+from maasserver.permissions import NodePermission
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -544,20 +544,20 @@ class AdminOnlyMixin(Handler):
     def create(self, parameters):
         """Only allow an administrator to create this object."""
         if not self.user.has_perm(
-                NODE_PERMISSION.ADMIN, self._meta.object_class):
+                NodePermission.admin, self._meta.object_class):
             raise HandlerPermissionError()
         return super().create(parameters)
 
     def update(self, parameters):
         """Only allow an administrator to update this object."""
         obj = self.get_object(parameters)
-        if not self.user.has_perm(NODE_PERMISSION.ADMIN, obj):
+        if not self.user.has_perm(NodePermission.admin, obj):
             raise HandlerPermissionError()
         return super().update(parameters)
 
     def delete(self, parameters):
         """Only allow an administrator to delete this object."""
         obj = self.get_object(parameters)
-        if not self.user.has_perm(NODE_PERMISSION.ADMIN, obj):
+        if not self.user.has_perm(NodePermission.admin, obj):
             raise HandlerPermissionError()
         return super().delete(parameters)
