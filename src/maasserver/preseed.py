@@ -36,6 +36,7 @@ from maasserver.compose_preseed import (
     compose_debconf_cloud_init_preseed,
     compose_enlistment_preseed,
     compose_preseed,
+    get_apt_proxy,
     get_archive_config,
     get_cloud_init_reporting,
     RSYSLOG_PORT,
@@ -456,7 +457,7 @@ def get_curtin_config(request, node):
     deprecated_context_variables = [
         'main_archive_hostname', 'main_archive_directory',
         'ports_archive_hostname', 'ports_archive_directory',
-        'enable_http_proxy', 'http_proxy']
+        'enable_http_proxy']
     deprecated_config_variables = []
     for var in deprecated_context_variables:
         if var not in context:
@@ -497,6 +498,16 @@ def get_curtin_config(request, node):
     if 's390x' in node.architecture:
         command = {'maas_00': 'chreipl node /dev/' + node.get_boot_disk().name}
         config['late_commands'].update(command)
+    if node.osystem in ['centos', 'rhel'] and context['http_proxy']:
+        # The echo command must be one argument so direction works.
+        config['late_commands'].update({
+            'yum_proxy': [
+                'curtin', 'in-target', '--', 'bash', '-c',
+                'echo -e "\\n# Proxy configured by MAAS\\n'
+                'proxy=%s\\n" >> /etc/yum.conf' % context['http_proxy'],
+            ]
+        })
+
     return yaml.safe_dump(config)
 
 
@@ -755,6 +766,7 @@ def get_preseed_context(
     metadata_enlist_url = request.build_absolute_uri(reverse('enlist'))
     configs = Config.objects.get_configs(['remote_syslog', 'maas_syslog_port'])
     syslog = configs['remote_syslog']
+    http_proxy = get_apt_proxy(request, rack_controller)
     if not syslog:
         syslog_port = configs['maas_syslog_port']
         if not syslog_port:
@@ -767,6 +779,7 @@ def get_preseed_context(
         'server_url': server_url,
         'syslog_host_port': syslog,
         'metadata_enlist_url': metadata_enlist_url,
+        'http_proxy': http_proxy,
         }
 
 
@@ -819,7 +832,6 @@ def get_node_deprecated_preseed_context():
         'ports_archive_hostname': ports_archive_hostname,
         'ports_archive_directory': ports_archive_directory,
         'enable_http_proxy': Config.objects.get_config('enable_http_proxy'),
-        'http_proxy': Config.objects.get_config('http_proxy'),
     }
 
 

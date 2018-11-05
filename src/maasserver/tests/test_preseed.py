@@ -461,7 +461,7 @@ class TestPreseedContext(MAASServerTestCase):
         context = get_preseed_context(make_HttpRequest())
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
-             'server_url', 'syslog_host_port'],
+             'server_url', 'syslog_host_port', 'http_proxy'],
             context.keys())
 
     def test_get_preseed_context_includes_remote_syslog(self):
@@ -490,7 +490,7 @@ class TestNodeDeprecatedPreseedContext(
         self.assertItemsEqual(
             ['main_archive_hostname', 'main_archive_directory',
              'ports_archive_hostname', 'ports_archive_directory',
-             'enable_http_proxy', 'http_proxy'
+             'enable_http_proxy',
              ],
             context.keys())
 
@@ -1067,7 +1067,8 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        config = get_curtin_config(make_HttpRequest(), node)
+        request = make_HttpRequest()
+        config = get_curtin_config(request, node)
         self.assertThat(
             config,
             Contains("debconf_selections:"))
@@ -1156,6 +1157,14 @@ class TestCurtinUtilities(
             config,
             Contains(
                 'maas_00: chreipl node /dev/' + node.get_boot_disk().name))
+
+    def test_get_curtin_config_has_yum_proxy_late_command(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            osystem=random.choice(['centos', 'rhel']))
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(make_HttpRequest(), node)
+        self.assertThat(config, Contains('proxy='))
 
     def make_fastpath_node(self, main_arch=None):
         """Return a `Node`, with FPI enabled, and the given main architecture.

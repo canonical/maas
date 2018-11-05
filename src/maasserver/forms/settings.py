@@ -282,12 +282,12 @@ CONFIG_ITEMS = {
         'default': True,
         'form': forms.BooleanField,
         'form_kwargs': {
-            'label': "Enable the use of an APT and HTTP/HTTPS proxy",
+            'label': "Enable the use of an APT or YUM and HTTP/HTTPS proxy",
             'required': False,
             'help_text': (
                 "Provision nodes to use the built-in HTTP proxy (or "
-                "user specified proxy) for APT. MAAS also uses the proxy for "
-                "downloading boot images.")
+                "user specified proxy) for APT or YUM. MAAS also uses the "
+                "proxy for downloading boot images.")
         }
     },
     'maas_proxy_port': {
@@ -329,11 +329,11 @@ CONFIG_ITEMS = {
         'default': None,
         'form': forms.URLField,
         'form_kwargs': {
-            'label': "Proxy for APT and HTTP/HTTPS",
+            'label': "Proxy for APT or YUM and HTTP/HTTPS",
             'required': False,
             'help_text': (
                 "This will be passed onto provisioned nodes to use as a "
-                "proxy for APT traffic. MAAS also uses the proxy for "
+                "proxy for APT or YUM traffic. MAAS also uses the proxy for "
                 "downloading boot images. If no URL is provided, the built-in "
                 "MAAS proxy will be used.")
         }
