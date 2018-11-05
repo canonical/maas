@@ -105,6 +105,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "is_boot": interface == obj.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()

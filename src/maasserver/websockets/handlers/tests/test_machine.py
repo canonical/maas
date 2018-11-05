@@ -1155,6 +1155,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": True,
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()
@@ -1175,6 +1176,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": False,
             "mac_address": "%s" % interface2.mac_address,
             "vlan_id": interface2.vlan_id,
+            "params": interface2.params,
             "parents": [
                 nic.id
                 for nic in interface2.parents.all()
@@ -1206,6 +1208,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()
@@ -1245,6 +1248,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()
@@ -1256,6 +1260,36 @@ class TestMachineHandler(MAASServerTestCase):
             "links": expected_links,
             "discovered": expected_discovered,
         }, handler.dehydrate_interface(interface, node))
+
+    def test_dehydrate_interface_includes_params(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.COMMISSIONING)
+        handler = MachineHandler(owner, {}, None)
+        eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bond_params = {
+            "bond_downdelay": 0,
+            "bond_lacp_rate": "slow",
+            "bond_miimon": 100,
+            "bond_mode": "balance-xor",
+            "bond_num_grat_arp": 1,
+            "bond_updelay": 0,
+            "bond_xmit_hash_policy": "layer3+4"
+        }
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[eth0, eth1],
+            params=bond_params)
+        bridge_params = {
+            "bridge_fd": 5,
+            "bridge_stp": True
+        }
+        br_bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, parents=[bond0],
+            params=bridge_params)
+        bond_json = handler.dehydrate_interface(bond0, node)
+        bridge_json = handler.dehydrate_interface(br_bond0, node)
+        self.assertThat(bond_json['params'], Equals(bond_params))
+        self.assertThat(bridge_json['params'], Equals(bridge_params))
 
     def test_dehydrate_interface_for_rescue_mode_node(self):
         owner = factory.make_User()
@@ -1289,6 +1323,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()
@@ -1329,6 +1364,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()
@@ -1371,6 +1407,7 @@ class TestMachineHandler(MAASServerTestCase):
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
+            "params": interface.params,
             "parents": [
                 nic.id
                 for nic in interface.parents.all()
