@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
     CharField,
@@ -153,3 +154,10 @@ class PackageRepository(CleanSave, TimestampedModel):
             arches__overlap=PackageRepository.PORTS_ARCHES,
             enabled=True,
             default=True).first()
+
+    def delete(self):
+        main_archive = self.get_main_archive()
+        ports_archive = self.get_ports_archive()
+        if self in (main_archive, ports_archive):
+            raise ValidationError("Cannot delete default Ubuntu archives.")
+        super().delete()

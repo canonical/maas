@@ -5,9 +5,11 @@
 
 __all__ = []
 
+from django.core.exceptions import ValidationError
 from maasserver.models import PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools import ExpectedException
 
 
 class TestPackageRepositoryManager(MAASServerTestCase):
@@ -31,6 +33,21 @@ class TestPackageRepositoryManager(MAASServerTestCase):
             archive,
             PackageRepository.objects.get_additional_repositories(
                 arch).first())
+
+    def test_additional_repositories_can_be_deleted(self):
+        main_url = 'http://additional.repository/ubuntu'
+        archive = factory.make_PackageRepository(
+            url=main_url, default=False, arches=['i386', 'amd64'])
+        archive.delete()
+        gone = PackageRepository.objects.get_additional_repositories(
+            'amd64').first()
+        self.assertIsNone(gone)
+
+    def test_default_repositories_cannot_be_deleted(self):
+        with ExpectedException(ValidationError):
+            PackageRepository.get_main_archive().delete()
+        with ExpectedException(ValidationError):
+            PackageRepository.get_ports_archive().delete()
 
     def test_get_multiple_with_a_ppa(self):
         ppa_arch = 'armhf'
