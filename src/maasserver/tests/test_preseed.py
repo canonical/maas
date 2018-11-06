@@ -11,7 +11,10 @@ import os
 from pipes import quote
 import random
 from textwrap import dedent
-from unittest.mock import sentinel
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -1063,6 +1066,42 @@ class TestCurtinUtilities(
         PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for the curtin-related utilities."""
 
+    def assertAptConfig(self, config, archive=None):
+        if archive is None:
+            archive = PackageRepository.objects.get_default_archive('amd64')
+        components = set(archive.KNOWN_COMPONENTS)
+
+        if archive.disabled_components:
+            for comp in archive.COMPONENTS_TO_DISABLE:
+                if comp in archive.disabled_components:
+                    components.remove(comp)
+
+        components = ' '.join(components)
+        sources_list = 'deb %s $RELEASE %s\n' % (archive.url, components)
+        if archive.disable_sources:
+            sources_list += '# '
+        sources_list += 'deb-src %s $RELEASE %s\n' % (archive.url, components)
+
+        for pocket in archive.POCKETS_TO_DISABLE:
+            if archive.disabled_pockets and pocket in archive.disabled_pockets:
+                continue
+            sources_list += (
+                'deb %s $RELEASE-%s %s\n' % (
+                    archive.url, pocket, components))
+            if archive.disable_sources:
+                sources_list += '# '
+            sources_list += (
+                'deb-src %s $RELEASE-%s %s\n' % (
+                    archive.url, pocket, components))
+
+        self.assertThat(config, ContainsDict({
+            'apt': ContainsDict({
+                'preserve_sources_list': Equals(False),
+                'proxy': Equals(ANY),
+                'sources_list': Equals(sources_list),
+            })
+        }))
+
     def test_get_curtin_config(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
@@ -1219,11 +1258,7 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
-        archive = PackageRepository.objects.get_default_archive(
-            node.split_arch()[0])
-        self.assertEqual(
-            archive.url,
-            self.extract_archive_setting(userdata[0]))
+        self.assertAptConfig(yaml.safe_load(userdata[0]))
 
     def test_compose_curtin_archive_config_uses_main_archive_for_amd64(self):
         PackageRepository.objects.all().delete()
@@ -1235,11 +1270,7 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
-        archive = PackageRepository.objects.get_default_archive(
-            node.split_arch()[0])
-        self.assertEqual(
-            archive.url,
-            self.extract_archive_setting(userdata[0]))
+        self.assertAptConfig(yaml.safe_load(userdata[0]))
 
     def test_compose_curtin_archive_config_uses_main_archive_key(self):
         PackageRepository.objects.all().delete()
@@ -1289,7 +1320,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         node = self.make_fastpath_node('amd64')
         node.osystem = 'ubuntu'
         main_url = 'http://us.archive.ubuntu.com/ubuntu'
-        factory.make_PackageRepository(
+        archive = factory.make_PackageRepository(
             url=main_url, default=True, arches=['i386', 'amd64'],
             disabled_pockets=['updates', 'backports'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
@@ -1298,9 +1329,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         preseed = yaml.safe_load(userdata[0])
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
-        self.assertEqual(
-            preseed['apt']['disable_suites'],
-            archive.disabled_pockets)
+        self.assertAptConfig(preseed, archive)
 
     def test_compose_curtin_archive_config_with_disabled_pockets(self):
         """Test that main archive has a configuration that includes
@@ -1312,7 +1341,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         node.osystem = 'ubuntu'
         node.distro_series = 'xenial'
         main_url = 'http://us.archive.ubuntu.com/ubuntu'
-        factory.make_PackageRepository(
+        archive = factory.make_PackageRepository(
             url=main_url, default=True, arches=['i386', 'amd64'],
             disabled_pockets=['updates', 'backports'],
             disabled_components=['universe', 'multiverse'])
@@ -1320,12 +1349,23 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         preseed = yaml.safe_load(userdata[0])
-        self.assertThat(
-            preseed['apt']['sources_list'],
-            Contains('$RELEASE main restricted'))
-        self.assertThat(
-            preseed['apt']['sources_list'],
-            Contains('$RELEASE-security main restricted'))
+        self.assertAptConfig(preseed, archive)
+
+    def test_compose_curtin_archive_config_with_deb_src(self):
+        PackageRepository.objects.all().delete()
+        node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        archive = factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'],
+            disable_sources=False)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(make_HttpRequest(), node)
+        preseed = yaml.safe_load(userdata[0])
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
+        self.assertAptConfig(preseed, archive)
 
     def test_compose_curtin_archive_config_has_ppa(self):
         node = self.make_fastpath_node('i386')
@@ -1488,24 +1528,15 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
-        self.assertEqual(
-            archive.url,
-            self.extract_archive_setting(userdata[0]))
+        self.assertAptConfig(yaml.safe_load(userdata[0]), archive)
 
     def test_compose_curtin_archive_config_main_archive_for_custom_os(self):
         node = self.make_fastpath_node('amd64')
         node.osystem = 'custom'
-        main_url = 'http://us.archive.ubuntu.com/ubuntu'
-        factory.make_PackageRepository(
-            url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
-        archive = PackageRepository.objects.get_default_archive(
-            node.split_arch()[0])
-        self.assertEqual(
-            archive.url,
-            self.extract_archive_setting(userdata[0]))
+        self.assertAptConfig(yaml.safe_load(userdata[0]))
 
     def test_get_curtin_context(self):
         node = factory.make_Node_with_Interface_on_Subnet(

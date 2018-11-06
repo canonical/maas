@@ -482,6 +482,16 @@
                                                 <maas-obj-field type="checkboxes" key="disabled_components" label="Disabled Components"
                                                     label-width="2" input-width="3" values="components_to_disable"></maas-obj-field>
                                             </div>
+                                            <div class="p-strip is-shallow u-no-padding--top">
+                                                <div class="col-2">Disable Sources</div>
+                                                <div class="col-3 onoffswitch">
+                                                    <input type="checkbox" name="disable_sources" class="onoffswitch-checkbox u-float-none col-3" id="disable_sources" data-ng-model="repository.disable_sources">
+                                                    <label class="onoffswitch-label u-no-margin--top" for="disable_sources">
+                                                        <span class="onoffswitch-inner"></span>
+                                                        <span class="onoffswitch-switch"></span>
+                                                    </label>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="is-active">
                                             <div class="u-float--left">

@@ -119,38 +119,37 @@ def get_archive_config(request, node, preserve_sources=False):
     archives = {}
     archives['apt'] = {}
     archives['apt']['preserve_sources_list'] = preserve_sources
-    # If disabled_components exist, build a custom list of repositories
-    if archive.disabled_components:
-        urls = ''
-        components = archive.KNOWN_COMPONENTS[:]
+    # Always generate a custom list of repositories. deb-src is enabled in the
+    # ephemeral environment due to the cloud-init template having it enabled.
+    # It is disabled in a deployed environment due to the Curtin template
+    # having it enabled.
+    urls = ''
+    components = set(archive.KNOWN_COMPONENTS)
 
+    if archive.disabled_components:
         for comp in archive.COMPONENTS_TO_DISABLE:
             if comp in archive.disabled_components:
                 components.remove(comp)
-        urls += 'deb %s $RELEASE %s\n' % (
-            archive.url, ' '.join(components))
 
-        for pocket in archive.POCKETS_TO_DISABLE:
-            if pocket not in archive.disabled_pockets:
-                urls += 'deb %s $RELEASE-%s %s\n' % (
-                    archive.url, pocket, ' '.join(components))
+    urls += 'deb %s $RELEASE %s\n' % (
+        archive.url, ' '.join(components))
+    if archive.disable_sources:
+        urls += '# '
+    urls += 'deb-src %s $RELEASE %s\n' % (
+        archive.url, ' '.join(components))
 
-        archives['apt']['sources_list'] = urls
-    else:
-        archives['apt']['primary'] = [
-            {
-                'arches': ['default'],
-                'uri': archive.url
-            }
-        ]
-        archives['apt']['security'] = [
-            {
-                'arches': ['default'],
-                'uri': archive.url
-            }
-        ]
-        if archive.disabled_pockets:
-            archives['apt']['disable_suites'] = archive.disabled_pockets
+    for pocket in archive.POCKETS_TO_DISABLE:
+        if (not archive.disabled_pockets or
+                pocket not in archive.disabled_pockets):
+            urls += 'deb %s $RELEASE-%s %s\n' % (
+                archive.url, pocket, ' '.join(components))
+            if archive.disable_sources:
+                urls += '# '
+            urls += 'deb-src %s $RELEASE-%s %s\n' % (
+                archive.url, pocket, ' '.join(components))
+
+    archives['apt']['sources_list'] = urls
+
     if apt_proxy:
         archives['apt']['proxy'] = apt_proxy
     if archive.key:
@@ -250,30 +249,34 @@ def get_enlist_archive_config(apt_proxy=None):
     # default or ports it will be disabled on both during enlistment.
     disabled_suites = set()
     disabled_components = set()
+    disable_sources = default.disable_sources or ports.disable_sources
     for repo in [default, ports]:
         disabled_suites = disabled_suites.union(repo.disabled_pockets)
         disabled_components = disabled_components.union(
             repo.disabled_components)
 
-    # If there are components or suites to disable send a sources.list template
-    # with only enabled components and suites.
-    if disabled_components or disabled_suites:
-        components = ' '.join(disabled_components.symmetric_difference(
-            default.KNOWN_COMPONENTS))
-        archives['apt']['sources_list'] = (
-            'deb $PRIMARY $RELEASE %s\n'
-            'deb-src $PRIMARY $RELEASE %s\n' % (components, components))
-        for suite in ['updates', 'backports']:
-            if suite not in disabled_suites:
-                archives['apt']['sources_list'] += (
-                    'deb $PRIMARY $RELEASE-%s %s\n'
-                    'deb-src $PRIMARY $RELEASE-%s %s\n' % (
-                        suite, components, suite, components))
-        if 'security' not in disabled_suites:
+    components = ' '.join(disabled_components.symmetric_difference(
+        default.KNOWN_COMPONENTS))
+    archives['apt']['sources_list'] = 'deb $PRIMARY $RELEASE %s\n' % components
+    if disable_sources:
+        archives['apt']['sources_list'] += '# '
+    archives['apt']['sources_list'] += (
+        'deb-src $PRIMARY $RELEASE %s\n' % components)
+    for suite in ['updates', 'backports']:
+        if suite not in disabled_suites:
             archives['apt']['sources_list'] += (
-                'deb $SECURITY $RELEASE-security %s\n'
-                'deb-src $SECURITY $RELEASE-security %s\n' % (
-                    components, components))
+                'deb $PRIMARY $RELEASE-%s %s\n' % (suite, components))
+            if disable_sources:
+                archives['apt']['sources_list'] += '# '
+            archives['apt']['sources_list'] += (
+                'deb-src $PRIMARY $RELEASE-%s %s\n' % (suite, components))
+    if 'security' not in disabled_suites:
+        archives['apt']['sources_list'] += (
+            'deb $SECURITY $RELEASE-security %s\n' % components)
+        if disable_sources:
+            archives['apt']['sources_list'] += '# '
+        archives['apt']['sources_list'] += (
+            'deb-src $SECURITY $RELEASE-security %s\n' % components)
 
     return archives
 

@@ -283,24 +283,37 @@ class TestComposePreseed(MAASServerTestCase):
             }))
 
     def assertAptConfig(self, config, apt_proxy):
+        archive = PackageRepository.objects.get_default_archive('amd64')
+        components = set(archive.KNOWN_COMPONENTS)
+
+        if archive.disabled_components:
+            for comp in archive.COMPONENTS_TO_DISABLE:
+                if comp in archive.disabled_components:
+                    components.remove(comp)
+
+        components = ' '.join(components)
+        sources_list = 'deb %s $RELEASE %s\n' % (archive.url, components)
+        if archive.disable_sources:
+            sources_list += '# '
+        sources_list += 'deb-src %s $RELEASE %s\n' % (archive.url, components)
+
+        for pocket in archive.POCKETS_TO_DISABLE:
+            if pocket in archive.disabled_pockets:
+                continue
+            sources_list += (
+                'deb %s $RELEASE-%s %s\n' % (
+                    archive.url, pocket, components))
+            if archive.disable_sources:
+                sources_list += '# '
+            sources_list += (
+                'deb-src %s $RELEASE-%s %s\n' % (
+                    archive.url, pocket, components))
+
         self.assertThat(config, ContainsDict({
             'apt': ContainsDict({
                 'preserve_sources_list': Equals(False),
-                'primary': MatchesListwise([
-                    MatchesDict({
-                        "arches": Equals(["default"]),
-                        "uri": Equals(
-                            PackageRepository.get_main_archive().url),
-                    }),
-                ]),
                 'proxy': Equals(apt_proxy),
-                'security': MatchesListwise([
-                    MatchesDict({
-                        "arches": Equals(["default"]),
-                        "uri": Equals(
-                            PackageRepository.get_main_archive().url),
-                    }),
-                ]),
+                'sources_list': Equals(sources_list),
             })
         }))
 
@@ -852,7 +865,7 @@ class TestComposePreseed(MAASServerTestCase):
                 }))
         self.assertItemsEqual(
             set([
-                'deb', 'deb-src', '$PRIMARY', '$RELEASE', 'multiverse',
+                '#', 'deb', 'deb-src', '$PRIMARY', '$RELEASE', 'multiverse',
                 'restricted', 'universe', 'main'
             ]), set(preseed['apt']['sources_list'].split()))
 

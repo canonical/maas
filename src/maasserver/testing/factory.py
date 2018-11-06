@@ -2279,7 +2279,7 @@ class Factory(maastesting.factory.Factory):
     def make_PackageRepository(
             self, name=None, url=None, arches=None, default=False, key=None,
             distributions=None, components=None, disabled_pockets=None,
-            disabled_components=None):
+            disabled_components=None, **kwargs):
         if name is None:
             name = self.make_name("name")
         if url is None:
@@ -2294,7 +2294,7 @@ class Factory(maastesting.factory.Factory):
             name=name, url=url,
             distributions=distributions, disabled_pockets=disabled_pockets,
             components=components, arches=arches, key=key, default=default,
-            disabled_components=disabled_components)
+            disabled_components=disabled_components, **kwargs)
 
     def make_Notification(
             self, message=None, *, ident=None, user=None, users=False,

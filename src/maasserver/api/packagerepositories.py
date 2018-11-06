@@ -26,6 +26,7 @@ DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
     'distributions',
     'disabled_pockets',
     'disabled_components',
+    'disable_sources',
     'components',
     'arches',
     'key',
@@ -76,6 +77,8 @@ class PackageRepositoryHandler(OperationsHandler):
 
         :param disabled_components: The list of components to disable. Only
             applicable to the default Ubuntu repositories.
+
+        :param disable_sources: Disable deb-src lines.
 
         :param components: The list of components to enable. Only applicable
             to custom repositories.

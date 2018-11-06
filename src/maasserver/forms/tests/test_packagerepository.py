@@ -37,6 +37,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         pock2 = 'backports'
         comp1 = 'universe'
         comp2 = 'multiverse'
+        disable_sources = factory.pick_bool()
         enabled = factory.pick_bool()
         params = {
             'name': name,
@@ -46,6 +47,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             'components': [comp1, comp2],
             'arches': [arch1, arch2],
             'enabled': enabled,
+            'disable_sources': disable_sources,
         }
         return params
 
@@ -299,3 +301,19 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             instance=package_repository, data={'components': ['val1']})
         repo = form.save(endpoint, request)
         self.assertItemsEqual(['val1'], repo.components)
+
+    def test__updates_disable_sources(self):
+        package_repository = factory.make_PackageRepository()
+        form = PackageRepositoryForm(
+            instance=package_repository, data={'disable_sources': True})
+        self.assertTrue(form.is_valid(), form.errors)
+        request = HttpRequest()
+        request.user = factory.make_User()
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        package_repository = form.save(endpoint, request)
+        self.assertTrue(package_repository.disable_sources)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Updated package repository '%s'." % (
+                package_repository.name))

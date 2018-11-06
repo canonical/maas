@@ -30,6 +30,7 @@ class PackageRepositoryForm(MAASModelForm):
             'distributions',
             'disabled_pockets',
             'disabled_components',
+            'disable_sources',
             'components',
             'arches',
             'key',
@@ -55,6 +56,10 @@ class PackageRepositoryForm(MAASModelForm):
 
     disabled_components = UnconstrainedMultipleChoiceField(
         label="Disabled Component list")
+
+    disable_sources = forms.BooleanField(
+        label="Disable Sources", required=False, help_text=(
+            "Whether or not deb-src lines are disabled."))
 
     components = UnconstrainedMultipleChoiceField(label="Component list")
 

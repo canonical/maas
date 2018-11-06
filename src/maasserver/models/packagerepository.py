@@ -120,6 +120,8 @@ class PackageRepository(CleanSave, TimestampedModel):
     disabled_components = ArrayField(
         TextField(), blank=True, null=True, default=list)
 
+    disable_sources = BooleanField(default=True)
+
     components = ArrayField(TextField(), blank=True, null=True, default=list)
 
     arches = ArrayField(TextField(), blank=True, null=True, default=list)
