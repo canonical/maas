@@ -98,13 +98,13 @@ client.
 Making multiple calls at the same time from outside the reactor
 ---------------------------------------------------------------
 
-A utility function -- :py:func:`~maasserver.utils.async.gather` -- helps
+A utility function -- :py:func:`~maasserver.utils.asynchronous.gather` -- helps
 here. An example::
 
   from functools import partial
 
   from maasserver.rpc import getAllClients
-  from maasserver.utils import async
+  from maasserver.utils import asynchronous
   from twisted.python.failure import Failure
 
   # Wrap those calls you want to make into no-argument callables, but
@@ -116,7 +116,7 @@ here. An example::
 
   # Use gather() to issue all the calls simultaneously and process the
   # results as they come in. Note that responses can be failures too.
-  for response in async.gather(calls, timeout=10):
+  for response in asynchronous.gather(calls, timeout=10):
       if isinstance(response, Failure):
           pass  # Do something sensible with this.
       else:
@@ -176,6 +176,6 @@ Helpers
 
 .. autofunction:: maasserver.rpc.getAllClients
 .. autofunction:: maasserver.rpc.getClientFor
-.. autofunction:: maasserver.utils.async.gather
+.. autofunction:: maasserver.utils.asynchronous.gather
 
 .. automethod:: provisioningserver.rpc.clusterservice.ClusterClientService.getClient

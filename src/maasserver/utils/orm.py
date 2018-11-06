@@ -74,7 +74,7 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIForbidden,
 )
-from maasserver.utils.async import DeferredHooks
+from maasserver.utils.asynchronous import DeferredHooks
 from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import (
     exponential_growth,

@@ -27,7 +27,7 @@ from maasserver.rpc import (
     getAllClients,
     getClientFor,
 )
-from maasserver.utils import async
+from maasserver.utils.asynchronous import gather
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
@@ -68,7 +68,7 @@ def suppress_failures(responses):
 @synchronous
 def is_import_boot_images_running():
     """Return True if any rack controller is currently import boot images."""
-    responses = async.gather(
+    responses = gather(
         partial(client, IsImportBootImagesRunning)
         for client in getAllClients())
 
@@ -107,7 +107,7 @@ def _get_available_boot_images():
     listimages_v1 = lambda client: partial(client, ListBootImages)
     listimages_v2 = lambda client: partial(client, ListBootImagesV2)
     clients_v2 = getAllClients()
-    responses_v2 = async.gather(map(listimages_v2, clients_v2))
+    responses_v2 = gather(map(listimages_v2, clients_v2))
     clients_v1 = []
     for i, response in enumerate(responses_v2):
         if (isinstance(response, Failure) and
@@ -119,7 +119,7 @@ def _get_available_boot_images():
                 frozenset(image.items())
                 for image in response["images"]
             )
-    responses_v1 = async.gather(map(listimages_v1, clients_v1))
+    responses_v1 = gather(map(listimages_v1, clients_v1))
     for response in suppress_failures(responses_v1):
         # Convert each image to a frozenset of its items.
         yield frozenset(

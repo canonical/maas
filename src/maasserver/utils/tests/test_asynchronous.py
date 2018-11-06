@@ -18,8 +18,8 @@ from unittest.mock import (
 from crochet import wait_for
 from maasserver.exceptions import IteratorReusedError
 from maasserver.testing.orm import PostCommitHooksTestMixin
-from maasserver.utils import async
-from maasserver.utils.async import DeferredHooks
+from maasserver.utils import asynchronous
+from maasserver.utils.asynchronous import DeferredHooks
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsFiredDeferred,
@@ -51,7 +51,7 @@ class TestGather(MAASTestCase):
 
     def test_gather_nothing(self):
         time_before = time()
-        results = list(async.gather([], timeout=10))
+        results = list(asynchronous.gather([], timeout=10))
         time_after = time()
         self.assertThat(results, Equals([]))
         # gather() should return well within 9 seconds; this shows
@@ -81,13 +81,13 @@ class TestGatherScenarios(MAASTestCase):
             self.wrap(lambda v=value: v)
             for value in values
         ]
-        results = list(async.gather(calls))
+        results = list(asynchronous.gather(calls))
         self.assertItemsEqual(values, results)
 
     def test_gatherCallResults_returns_use_once_iterator(self):
         calls = []
-        results = async.gatherCallResults(calls)
-        self.assertIsInstance(results, async.UseOnceIterator)
+        results = asynchronous.gatherCallResults(calls)
+        self.assertIsInstance(results, asynchronous.UseOnceIterator)
 
     def test_gather_from_calls_with_errors(self):
         calls = [
@@ -95,7 +95,7 @@ class TestGatherScenarios(MAASTestCase):
             (lambda: 1 / 0),  # ZeroDivisionError
         ]
         calls = [self.wrap(call) for call in calls]
-        results = list(async.gather(calls))
+        results = list(asynchronous.gather(calls))
 
         self.assertThat(results, Contains(sentinel.okay))
         results.remove(sentinel.okay)
@@ -113,7 +113,7 @@ class TestGatherScenarios(MAASTestCase):
             self.wrap(lambda v=value: v)
             for value in values
             ]
-        results = list(async.gatherCallResults(calls))
+        results = list(asynchronous.gatherCallResults(calls))
         expected_results = [
             (calls[0], values[0]), (calls[1], values[1])
         ]
@@ -124,16 +124,16 @@ class TestUseOnceIterator(MAASTestCase):
 
     def test_returns_correct_items_for_list(self):
         expected_values = list(range(10))
-        iterator = async.UseOnceIterator(expected_values)
+        iterator = asynchronous.UseOnceIterator(expected_values)
         actual_values = [val for val in iterator]
         self.assertEqual(expected_values, actual_values)
 
     def test_raises_stop_iteration(self):
-        iterator = async.UseOnceIterator([])
+        iterator = asynchronous.UseOnceIterator([])
         self.assertRaises(StopIteration, iterator.__next__)
 
     def test_raises_iterator_reused(self):
-        iterator = async.UseOnceIterator([])
+        iterator = asynchronous.UseOnceIterator([])
         # Loop over the iterator to get to the point where we might try
         # and reuse it.
         list(iterator)

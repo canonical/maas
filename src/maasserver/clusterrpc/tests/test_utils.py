@@ -21,7 +21,7 @@ from maasserver.clusterrpc.utils import call_racks_synchronously
 from maasserver.node_action import RPC_EXCEPTIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import async
+from maasserver.utils import asynchronous
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
@@ -51,12 +51,12 @@ class TestCallClusters(MAASServerTestCase):
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
-        async_gather = self.patch(async, "gatherCallResults")
+        async_gather = self.patch(asynchronous, "gatherCallResults")
         async_gather.return_value = []
 
         # call_clusters returns with nothing because we patched out
-        # async.gather, but we're interested in the side-effect: getClientFor
-        # has been called for the accepted nodegroup.
+        # asynchronous.gather, but we're interested in the side-effect:
+        # getClientFor has been called for the accepted nodegroup.
         self.assertItemsEqual([], utils.call_clusters(sentinel.command))
         self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
 
@@ -66,7 +66,7 @@ class TestCallClusters(MAASServerTestCase):
         getClientFor.return_value = lambda: None
         partial = self.patch(utils, "partial")
         partial.return_value = sentinel.partial
-        async_gather = self.patch(async, "gatherCallResults")
+        async_gather = self.patch(asynchronous, "gatherCallResults")
         async_gather.return_value = (
             result for result in [(sentinel.partial, sentinel.result)])
         available_callback = Mock()
@@ -95,7 +95,7 @@ class TestCallClusters(MAASServerTestCase):
         getClientFor.side_effect = NoConnectionsAvailable
         partial = self.patch(utils, "partial")
         partial.return_value = sentinel.partial
-        async_gather = self.patch(async, "gatherCallResults")
+        async_gather = self.patch(asynchronous, "gatherCallResults")
         async_gather.return_value = (iter([]))
         available_callback = Mock()
         unavailable_callback = Mock()
@@ -126,7 +126,7 @@ class TestCallClusters(MAASServerTestCase):
         getClientFor.return_value = lambda: None
         partial = self.patch(utils, "partial")
         partial.return_value = sentinel.partial
-        async_gather = self.patch(async, "gatherCallResults")
+        async_gather = self.patch(asynchronous, "gatherCallResults")
         async_gather.return_value = (
             result for result in [(sentinel.partial, MockFailure())])
         available_callback = Mock()
@@ -158,7 +158,7 @@ class TestCallClusters(MAASServerTestCase):
         getClientFor.return_value = lambda: None
         partial = self.patch(utils, "partial")
         partial.return_value = sentinel.partial
-        async_gather = self.patch(async, "gatherCallResults")
+        async_gather = self.patch(asynchronous, "gatherCallResults")
         async_gather.return_value = (result for result in [])
         available_callback = Mock()
         unavailable_callback = Mock()
@@ -190,12 +190,12 @@ class TestCallRacksSynchronously(MAASServerTestCase):
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
-        async_gather = self.patch(async, "gatherCallResults")
+        async_gather = self.patch(asynchronous, "gatherCallResults")
         async_gather.return_value = []
 
         # call_clusters returns with nothing because we patched out
-        # async.gather, but we're interested in the side-effect: getClientFor
-        # has been called for the accepted nodegroup.
+        # asynchronous.gather, but we're interested in the side-effect:
+        # getClientFor has been called for the accepted nodegroup.
         self.assertItemsEqual(
             [], call_racks_synchronously(sentinel.command).results)
         self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))

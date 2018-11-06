@@ -17,7 +17,7 @@ from maasserver import logger
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.models.node import RackController
 from maasserver.rpc import getClientFor
-from maasserver.utils import async
+from maasserver.utils import asynchronous
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from twisted.python.failure import Failure
 
@@ -150,7 +150,8 @@ def call_clusters(
             call = partial(client, command, **kwargs)
             calls[call] = controller
 
-    for call, response in async.gatherCallResults(calls, timeout=timeout):
+    for call, response in asynchronous.gatherCallResults(
+            calls, timeout=timeout):
         # When a call returns results, figure out which controller it came from
         # and remove it from the list, so we can report which controllers
         # timed out.

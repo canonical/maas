@@ -19,7 +19,7 @@ from maasserver.rpc import (
     getAllClients,
     getClientFor,
 )
-from maasserver.utils import async
+from maasserver.utils import asynchronous
 from maasserver.utils.orm import get_one
 from provisioningserver.rpc.cluster import (
     GetPreseedData,
@@ -67,7 +67,7 @@ def gen_all_known_operating_systems():
     RPC command. Exactly matching duplicates are suppressed.
     """
     seen = defaultdict(list)
-    responses = async.gather(
+    responses = asynchronous.gather(
         partial(client, ListOperatingSystems)
         for client in getAllClients())
     for response in suppress_failures(responses):
@@ -121,7 +121,7 @@ def validate_license_key(osystem, release, key):
 
     :return: True if valid, False otherwise.
     """
-    responses = async.gather(
+    responses = asynchronous.gather(
         partial(
             client, ValidateLicenseKey,
             osystem=osystem, release=release, key=key)
