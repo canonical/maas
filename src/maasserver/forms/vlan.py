@@ -9,6 +9,7 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
+from maasserver.enum import SERVICE_STATUS
 from maasserver.fields import (
     NodeChoiceField,
     SpecifierOrModelChoiceField,
@@ -17,6 +18,7 @@ from maasserver.forms import MAASModelForm
 from maasserver.models import (
     Fabric,
     RackController,
+    Service,
     Space,
 )
 from maasserver.models.vlan import VLAN
@@ -120,6 +122,29 @@ class VLANForm(MAASModelForm):
             raise ValidationError(
                 "The primary and secondary rack must be different"
             )
+
+        # Fix LP: #1798476 - When setting the secondary rack and the primary
+        # rack was originally set (and not being changed), require the primary
+        # rack to be up and running.
+        primary_rack = cleaned_data.get('primary_rack')
+        if (primary_rack and primary_rack == self.instance.primary_rack and
+                cleaned_data.get('secondary_rack') and
+                cleaned_data['secondary_rack'] != (
+                    self.instance.secondary_rack)):
+            # Uses the `rackd` service not `dhcpd` or `dhcpd6` because if
+            # the rackd is on it will ensure those services make it to a good
+            # state.
+            rackd_service = Service.objects.filter(
+                node=primary_rack, name='rackd').first()
+            if rackd_service and rackd_service.status == SERVICE_STATUS.DEAD:
+                raise ValidationError(
+                    "The primary rack controller must be up and running to "
+                    "set a secondary rack controller. Without the primary "
+                    "the secondary DHCP service will not be able to "
+                    "synchronize, preventing it from responding to DHCP "
+                    "requests."
+                )
+
         # Only allow dhcp_on when the primary_rack is set
         if (cleaned_data.get('dhcp_on') and
                 not self.cleaned_data.get('primary_rack') and

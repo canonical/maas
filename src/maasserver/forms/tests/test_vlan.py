@@ -7,8 +7,10 @@ __all__ = []
 
 import random
 
+from maasserver.enum import SERVICE_STATUS
 from maasserver.forms.vlan import VLANForm
 from maasserver.models.fabric import Fabric
+from maasserver.models.service import Service
 from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -223,6 +225,37 @@ class TestVLANForm(MAASServerTestCase):
             "secondary_rack": rack.system_id,
         })
         self.assertFalse(form.is_valid())
+
+    def test_update_setting_secondary_fails_when_primary_dead(self):
+        vlan = factory.make_VLAN()
+        rack = factory.make_RackController(vlan=vlan)
+        vlan.primary_rack = rack
+        vlan.save()
+        service = Service.objects.get(node=rack, name='rackd')
+        service.status = SERVICE_STATUS.DEAD
+        service.save()
+        second_rack = factory.make_RackController(vlan=vlan)
+        form = VLANForm(instance=vlan, data={
+            "secondary_rack": second_rack.system_id,
+        })
+        self.assertFalse(form.is_valid())
+
+    def test_update_setting_secondary_allowed_when_primary_on(self):
+        vlan = factory.make_VLAN()
+        rack = factory.make_RackController(vlan=vlan)
+        vlan.primary_rack = rack
+        vlan.save()
+        service = Service.objects.get(node=rack, name='rackd')
+        service.status = SERVICE_STATUS.RUNNING
+        service.save()
+        second_rack = factory.make_RackController(vlan=vlan)
+        form = VLANForm(instance=vlan, data={
+            "secondary_rack": second_rack.system_id,
+        })
+        self.assertTrue(form.is_valid())
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertEqual(second_rack, vlan.secondary_rack)
 
     def test_update_turns_dhcp_on(self):
         vlan = factory.make_VLAN()
