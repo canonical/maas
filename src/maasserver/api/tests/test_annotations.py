@@ -5,6 +5,7 @@
 
 __all__ = []
 
+
 from maasserver.api.annotations import APIDocstringParser
 from maasserver.testing.api import APITestCase
 
@@ -16,6 +17,18 @@ class TestAPIAnnotations(APITestCase.ForUser):
     allowed_tags = APIDocstringParser.allowed_tags
     # Allowed types
     allowed_types = APIDocstringParser.allowed_types
+
+    # URI templates for testing the examples database. The parser uses the
+    # URI template to name an examples database. So, here, the parser would
+    # look for "examples/for-tests.json". We have plural and singular beause
+    # the API often references both plural and singular operations. E.g.
+    # zone and zones. Both should use the same examples database.
+    #
+    # Also, we need to pass this to every parse method call so that we don't
+    # see spurious API warnings when the parse cannot find an examples database
+    # that the sample_api_annotated_docstring is referencing.
+    test_uri_singular = "/MAAS/api/2.0/for-test/{foobar}/"
+    test_uri_plural = "/MAAS/api/2.0/for-tests/{foobar}/"
 
     # Use this sample and modify it in various ways
     # inline to perform tests. Note that all allowed
@@ -44,6 +57,9 @@ class TestAPIAnnotations(APITestCase.ForUser):
     @success (content) "success_name" success description
     @success-example "success_name" success content
 
+    @success (content) "success_with_exdb" success description
+    @success-example "success_with_exdb" [exkey=key1] ignored content
+
     @error (http-status-code) "error_name" error description
     @error-example "error_name" error content
     """
@@ -70,7 +86,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
         self.assertTrue(pdict['warnings'].find("API_SYNTAX_ERROR") != -1)
 
     def do_parse(self, api_docstring_parser, docstring):
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         return api_docstring_parser.get_dict()
 
     def test_all_allowed_tags_are_represented_in_test(self):
@@ -92,16 +108,18 @@ class TestAPIAnnotations(APITestCase.ForUser):
 
         docstring = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
-        api_docstring_parser.parse(docstring, "method", "uri", "operation")
+        api_docstring_parser.parse(docstring, http_method="mymethod",
+                                   uri=self.test_uri_singular,
+                                   operation="myoperation")
         d = api_docstring_parser.get_dict()
 
         params = d['params']
         successes = d['successes']
         errors = d['errors']
 
-        self.assertEqual(d['http_method'], "method")
-        self.assertEqual(d['uri'], "uri")
-        self.assertEqual(d['operation'], "operation")
+        self.assertEqual(d['http_method'], "mymethod")
+        self.assertEqual(d['uri'], self.test_uri_singular)
+        self.assertEqual(d['operation'], "myoperation")
         self.assertEqual(d['description_title'], "Docstring title")
         self.assertEqual(
             " ".join(d['description'].split()),
@@ -164,7 +182,8 @@ class TestAPIAnnotations(APITestCase.ForUser):
         """Replace a good tag with a bad one and get a syntax error."""
         docstring = self.sample_api_annotated_docstring
         api_docstring_parser = APIDocstringParser()
-        api_docstring_parser.parse(docstring.replace("@param", "@bad"))
+        api_docstring_parser.parse(docstring.replace("@param", "@bad"),
+                                   uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()
         self.assert_has_syntax_error(d)
 
@@ -180,21 +199,21 @@ class TestAPIAnnotations(APITestCase.ForUser):
         docstring = docstring.replace(
             "@param-example \"param_name\"",
             "@param-example \"param_name_bad\"")
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()
         self.assert_has_api_warning(d)
 
         docstring = docstring.replace(
             "@error-example \"error_name\"",
             "@error-example \"error_name_bad\"")
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()
         self.assert_has_api_warning(d)
 
         docstring = docstring.replace(
             "@success-example \"success_name\"",
             "@success-example \"success_name_bad\"")
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()
         self.assert_has_api_warning(d)
 
@@ -206,7 +225,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
             "    multiple lines.\n\n    "
         )
         api_docstring_parser = APIDocstringParser()
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()
 
         # Note that we only test one description here because the
@@ -224,7 +243,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
             "        }\n\n    "
         )
         api_docstring_parser = APIDocstringParser()
-        api_docstring_parser.parse(docstring)
+        api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
         d = api_docstring_parser.get_dict()
 
         # Note that we only test one example here because the
@@ -486,3 +505,56 @@ class TestAPIAnnotations(APITestCase.ForUser):
 
         self.assert_has_api_warning(
             self.do_parse(api_docstring_parser, ds_md))
+
+    def test_find_examples_db(self):
+        """Ensure parser correctly finds example databases."""
+        ds = self.sample_api_annotated_docstring
+
+        api_docstring_parser = APIDocstringParser()
+        api_docstring_parser.parse(ds, uri=self.test_uri_singular)
+        d = api_docstring_parser.get_dict()
+
+        s = d['successes'][1]
+
+        self.assertEqual(" ".join(s['example'].split()), '{ "name": "value" }')
+
+        api_docstring_parser.parse(ds, uri=self.test_uri_plural)
+        d = api_docstring_parser.get_dict()
+
+        s = d['successes'][1]
+
+        self.assertEqual(" ".join(s['example'].split()), '{ "name": "value" }')
+
+    def test_warn_on_missing_example_db_entry(self):
+        """Ensure we see a warning if there is a missing examples db entry."""
+        ds_orig = self.sample_api_annotated_docstring
+
+        ds_bad_exkey = ds_orig.replace(
+            '"success_with_exdb" [exkey=key1]',
+            '"success_with_exdb" [exkey=badkey]')
+
+        api_docstring_parser = APIDocstringParser()
+        api_docstring_parser.parse(ds_bad_exkey, uri=self.test_uri_singular)
+        d = api_docstring_parser.get_dict()
+
+        self.assert_has_api_warning(d)
+
+    def test_warn_on_missing_example_db_when_entry_referenced(self):
+        """Missing examples db.
+
+        If an examples db does not exist for some given URI (like when it
+        simply hasn't been created yet) and a key from that missing DB is
+        referenced by the API, we should see a warning.
+
+        Note that _not_ having an examples db for a particular operation is a
+        normal and acceptable condition (it takes a while to create one). It
+        only becomes an error condition when the API tries to reference
+        something inside a non-existent examples database.
+        """
+        ds = self.sample_api_annotated_docstring
+
+        api_docstring_parser = APIDocstringParser()
+        api_docstring_parser.parse(ds, uri="bad_uri")
+        d = api_docstring_parser.get_dict()
+
+        self.assert_has_api_warning(d)

@@ -1,0 +1,2513 @@
+{
+  "get-tags": [
+    {
+      "name": "virtual",
+      "definition": "",
+      "comment": "",
+      "kernel_opts": null,
+      "resource_uri": "/MAAS/api/2.0/tags/virtual/"
+    }
+  ],
+  "get-tag-by-name": {
+    "name": "virtual",
+    "definition": "",
+    "comment": "",
+    "kernel_opts": null,
+    "resource_uri": "/MAAS/api/2.0/tags/virtual/"
+  },
+  "get-devices-by-tag": [
+    {
+      "tag_names": [
+        "virtual"
+      ],
+      "interface_set": [
+        {
+          "id": 130,
+          "name": "eth-tNqklu",
+          "tags": [
+            "tag-YYQK5S",
+            "tag-MUmKRU",
+            "tag-dh0kc2"
+          ],
+          "links": [],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "bb:f7:55:fd:0f:34",
+          "system_id": "nqg6dg",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5013,
+            "name": "untagged",
+            "fabric": "fabric-9",
+            "primary_rack": null,
+            "fabric_id": 9,
+            "secondary_rack": null,
+            "space": "undefined",
+            "resource_uri": "/MAAS/api/2.0/vlans/5013/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/nqg6dg/interfaces/130/"
+        }
+      ],
+      "zone": {
+        "name": "default",
+        "description": "",
+        "id": 1,
+        "resource_uri": "/MAAS/api/2.0/zones/default/"
+      },
+      "node_type": 1,
+      "hostname": "calm-bobcat",
+      "system_id": "nqg6dg",
+      "owner_data": {},
+      "parent": null,
+      "address_ttl": null,
+      "owner": null,
+      "ip_addresses": [],
+      "node_type_name": "Device",
+      "fqdn": "calm-bobcat.maas",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 0,
+        "name": "maas",
+        "resource_record_count": 0,
+        "is_default": true,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "resource_uri": "/MAAS/api/2.0/devices/nqg6dg/"
+    }
+  ],
+  "get-machines-by-tag": [
+    {
+      "pool": {
+        "name": "default",
+        "description": "Default pool",
+        "id": 0,
+        "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
+      },
+      "storage": 3865.490432,
+      "min_hwe_kernel": "",
+      "interface_set": [
+        {
+          "id": 94,
+          "name": "eth-x2dFvx",
+          "tags": [
+            "tag-fAzmsZ",
+            "tag-doKrVe",
+            "tag-ejryXL"
+          ],
+          "links": [
+            {
+              "id": 39,
+              "mode": "auto",
+              "subnet": {
+                "name": "name-rLI3eq",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "172.16.1.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.1.1",
+                "dns_servers": [
+                  "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "dd:c6:80:1a:c7:80",
+          "system_id": "ssqcgt",
+          "parents": [],
+          "children": [
+            "eth-x2dFvx.10"
+          ],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/94/"
+        },
+        {
+          "id": 95,
+          "name": "eth-gtMGIr",
+          "tags": [
+            "tag-rW3Lmf",
+            "tag-DdASuZ",
+            "tag-MS8EYC"
+          ],
+          "links": [
+            {
+              "id": 40,
+              "mode": "auto",
+              "subnet": {
+                "name": "name-rLI3eq",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "172.16.1.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.1.1",
+                "dns_servers": [
+                  "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "52:db:98:ef:1e:b5",
+          "system_id": "ssqcgt",
+          "parents": [],
+          "children": [
+            "eth-gtMGIr.10"
+          ],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/95/"
+        },
+        {
+          "id": 96,
+          "name": "eth-3cXhBN",
+          "tags": [
+            "tag-QisnXF",
+            "tag-duMUg2",
+            "tag-06ARMg"
+          ],
+          "links": [
+            {
+              "id": 41,
+              "mode": "static",
+              "ip_address": "172.16.1.22",
+              "subnet": {
+                "name": "name-rLI3eq",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "172.16.1.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.1.1",
+                "dns_servers": [
+                  "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "e3:72:73:60:9a:b9",
+          "system_id": "ssqcgt",
+          "parents": [],
+          "children": [
+            "eth-3cXhBN.10"
+          ],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/96/"
+        },
+        {
+          "id": 97,
+          "name": "eth-x2dFvx.10",
+          "tags": [
+            "tag-Y5zzv5",
+            "tag-w5vECc",
+            "tag-o4znE9"
+          ],
+          "links": [
+            {
+              "id": 42,
+              "mode": "static",
+              "ip_address": "172.16.4.56",
+              "subnet": {
+                "name": "name-c2ULe1",
+                "vlan": {
+                  "vid": 10,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "10",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "internal",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "172.16.4.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.4.1",
+                "dns_servers": [
+                  "fd08:fef7:5c1f:a2e6:3d8e:6c3b:89f9:80cb",
+                  "fc67:ad6a:88fe:9192:62f9:e882:8bcc:339e",
+                  "255.59.162.158"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 4,
+                "space": "internal",
+                "resource_uri": "/MAAS/api/2.0/subnets/4/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "dd:c6:80:1a:c7:80",
+          "system_id": "ssqcgt",
+          "parents": [
+            "eth-x2dFvx"
+          ],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "10",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "internal",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "vendor": null,
+          "type": "vlan",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/97/"
+        },
+        {
+          "id": 98,
+          "name": "eth-gtMGIr.10",
+          "tags": [
+            "tag-wS4OXL",
+            "tag-Wm3I55",
+            "tag-LE5UYY"
+          ],
+          "links": [
+            {
+              "id": 43,
+              "mode": "static",
+              "ip_address": "172.16.3.102",
+              "subnet": {
+                "name": "name-zznp45",
+                "vlan": {
+                  "vid": 10,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "10",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "internal",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "172.16.3.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.3.1",
+                "dns_servers": [
+                  "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+                  "11.209.150.208",
+                  "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 3,
+                "space": "internal",
+                "resource_uri": "/MAAS/api/2.0/subnets/3/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "52:db:98:ef:1e:b5",
+          "system_id": "ssqcgt",
+          "parents": [
+            "eth-gtMGIr"
+          ],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "10",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "internal",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "vendor": null,
+          "type": "vlan",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/98/"
+        },
+        {
+          "id": 99,
+          "name": "eth-3cXhBN.10",
+          "tags": [
+            "tag-Zp22Uh",
+            "tag-PhIZjP",
+            "tag-QtYg8x"
+          ],
+          "links": [
+            {
+              "id": 44,
+              "mode": "static",
+              "ip_address": "172.16.3.23",
+              "subnet": {
+                "name": "name-zznp45",
+                "vlan": {
+                  "vid": 10,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "10",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "internal",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "172.16.3.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.3.1",
+                "dns_servers": [
+                  "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+                  "11.209.150.208",
+                  "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 3,
+                "space": "internal",
+                "resource_uri": "/MAAS/api/2.0/subnets/3/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "e3:72:73:60:9a:b9",
+          "system_id": "ssqcgt",
+          "parents": [
+            "eth-3cXhBN"
+          ],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "10",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "internal",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "vendor": null,
+          "type": "vlan",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/99/"
+        }
+      ],
+      "iscsiblockdevice_set": [],
+      "node_type": 0,
+      "memory_test_status_name": "Failed",
+      "bcaches": [],
+      "memory_test_status": 3,
+      "ip_addresses": [
+        "172.16.1.22",
+        "172.16.4.56",
+        "172.16.3.102",
+        "172.16.3.23"
+      ],
+      "swap_size": null,
+      "volume_groups": [],
+      "testing_status": 3,
+      "node_type_name": "Machine",
+      "current_testing_result_id": 153,
+      "power_type": "virsh",
+      "fqdn": "chief-hippo.ubnt",
+      "storage_test_status_name": "Failed",
+      "storage_test_status": 3,
+      "status_name": "Rescue mode",
+      "locked": false,
+      "netboot": true,
+      "tag_names": [
+        "virtual"
+      ],
+      "zone": {
+        "name": "zone-north",
+        "description": "xsMaq90fRE",
+        "id": 2,
+        "resource_uri": "/MAAS/api/2.0/zones/zone-north/"
+      },
+      "boot_disk": {
+        "firmware_version": "firmware_version-rszebt",
+        "uuid": null,
+        "id": 65,
+        "model": "model-u038bu",
+        "name": "name-2V9gLL",
+        "tags": [
+          "tag-wSvQ4O",
+          "tag-52MbPv",
+          "tag-JKilHY"
+        ],
+        "partitions": [],
+        "partition_table_type": null,
+        "used_size": 0,
+        "storage_pool": "pool_id-aMRZUu",
+        "id_path": null,
+        "system_id": "ssqcgt",
+        "block_size": 512,
+        "filesystem": null,
+        "used_for": "Unused",
+        "serial": "serial-Lh6Yv9",
+        "path": "/dev/disk/by-dname/name-2V9gLL",
+        "type": "physical",
+        "size": 3865490432,
+        "available_size": 3865490432,
+        "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/blockdevices/65/"
+      },
+      "commissioning_status": 2,
+      "cpu_test_status": 3,
+      "current_installation_result_id": null,
+      "owner_data": {},
+      "power_state": "on",
+      "current_commissioning_result_id": 152,
+      "status": 16,
+      "hwe_kernel": null,
+      "boot_interface": {
+        "id": 94,
+        "name": "eth-x2dFvx",
+        "tags": [
+          "tag-fAzmsZ",
+          "tag-doKrVe",
+          "tag-ejryXL"
+        ],
+        "links": [
+          {
+            "id": 39,
+            "mode": "auto",
+            "subnet": {
+              "name": "name-rLI3eq",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": false,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "id": 5001,
+                "name": "untagged",
+                "fabric": "fabric-0",
+                "primary_rack": null,
+                "fabric_id": 0,
+                "secondary_rack": null,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+              },
+              "cidr": "172.16.1.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.1.1",
+              "dns_servers": [
+                "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+              ],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "id": 1,
+              "space": "management",
+              "resource_uri": "/MAAS/api/2.0/subnets/1/"
+            }
+          }
+        ],
+        "firmware_version": null,
+        "effective_mtu": 1500,
+        "product": null,
+        "mac_address": "dd:c6:80:1a:c7:80",
+        "system_id": "ssqcgt",
+        "parents": [],
+        "children": [
+          "eth-x2dFvx.10"
+        ],
+        "params": "",
+        "enabled": true,
+        "discovered": null,
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "id": 5001,
+          "name": "untagged",
+          "fabric": "fabric-0",
+          "primary_rack": null,
+          "fabric_id": 0,
+          "secondary_rack": null,
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "vendor": null,
+        "type": "physical",
+        "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/94/"
+      },
+      "special_filesystems": [],
+      "cpu_speed": 0,
+      "architecture": "amd64/generic",
+      "blockdevice_set": [
+        {
+          "id_path": null,
+          "size": 3865490432,
+          "block_size": 512,
+          "tags": [
+            "tag-wSvQ4O",
+            "tag-52MbPv",
+            "tag-JKilHY"
+          ],
+          "uuid": null,
+          "id": 65,
+          "model": "model-u038bu",
+          "name": "name-2V9gLL",
+          "partitions": [],
+          "partition_table_type": null,
+          "used_size": 0,
+          "storage_pool": "pool_id-aMRZUu",
+          "system_id": "ssqcgt",
+          "filesystem": null,
+          "used_for": "Unused",
+          "serial": "serial-Lh6Yv9",
+          "path": "/dev/disk/by-dname/name-2V9gLL",
+          "type": "physical",
+          "available_size": 3865490432,
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/blockdevices/65/"
+        }
+      ],
+      "cpu_test_status_name": "Failed",
+      "other_test_status": 2,
+      "hostname": "chief-hippo",
+      "memory": 4096,
+      "default_gateways": {
+        "ipv4": {
+          "gateway_ip": "172.16.1.1",
+          "link_id": null
+        },
+        "ipv6": {
+          "gateway_ip": null,
+          "link_id": null
+        }
+      },
+      "distro_series": "",
+      "status_action": "action-ft28IH",
+      "owner": "user1",
+      "commissioning_status_name": "Passed",
+      "hardware_info": {
+        "system_vendor": "Unknown",
+        "system_product": "Unknown",
+        "system_version": "Unknown",
+        "system_serial": "Unknown",
+        "cpu_model": "Unknown",
+        "mainboard_vendor": "Unknown",
+        "mainboard_product": "Unknown",
+        "mainboard_firmware_version": "Unknown",
+        "mainboard_firmware_date": "Unknown"
+      },
+      "pod": {
+        "id": 5,
+        "name": "normal-trout",
+        "resource_uri": "/MAAS/api/2.0/pods/5/"
+      },
+      "cache_sets": [],
+      "testing_status_name": "Failed",
+      "disable_ipv4": false,
+      "physicalblockdevice_set": [
+        {
+          "firmware_version": "firmware_version-rszebt",
+          "uuid": null,
+          "id": 65,
+          "model": "model-u038bu",
+          "name": "name-2V9gLL",
+          "tags": [
+            "tag-wSvQ4O",
+            "tag-52MbPv",
+            "tag-JKilHY"
+          ],
+          "partitions": [],
+          "partition_table_type": null,
+          "used_size": 0,
+          "storage_pool": "pool_id-aMRZUu",
+          "id_path": null,
+          "system_id": "ssqcgt",
+          "block_size": 512,
+          "filesystem": null,
+          "used_for": "Unused",
+          "serial": "serial-Lh6Yv9",
+          "path": "/dev/disk/by-dname/name-2V9gLL",
+          "type": "physical",
+          "size": 3865490432,
+          "available_size": 3865490432,
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/blockdevices/65/"
+        }
+      ],
+      "osystem": "",
+      "system_id": "ssqcgt",
+      "address_ttl": null,
+      "raids": [],
+      "cpu_count": 5,
+      "virtualblockdevice_set": [],
+      "other_test_status_name": "Passed",
+      "status_message": "desc-SfeEsi",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 2,
+        "name": "ubnt",
+        "resource_record_count": 0,
+        "is_default": false,
+        "resource_uri": "/MAAS/api/2.0/domains/2/"
+      },
+      "resource_uri": "/MAAS/api/2.0/machines/ssqcgt/"
+    }
+  ],
+  "get-nodes-by-tag": [
+    {
+      "interface_set": [
+        {
+          "id": 1,
+          "name": "ens3",
+          "tags": [
+            "tag-0wj45r",
+            "tag-ylwPaA",
+            "tag-s8HCFS"
+          ],
+          "links": [
+            {
+              "id": 59,
+              "mode": "static",
+              "ip_address": "10.55.32.42",
+              "subnet": {
+                "name": "10.55.32.0/20",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "10.55.32.0/20",
+                "rdns_mode": 2,
+                "gateway_ip": "10.55.32.1",
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 6,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/6/"
+              }
+            }
+          ],
+          "firmware_version": "N/A",
+          "effective_mtu": 1500,
+          "product": "OpenStack Nova",
+          "mac_address": "fa:16:3e:3d:03:02",
+          "system_id": "7xtf67",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": "OpenStack Foundation",
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/7xtf67/interfaces/1/"
+        },
+        {
+          "id": 134,
+          "name": "virbr0",
+          "tags": [],
+          "links": [
+            {
+              "id": 60,
+              "mode": "static",
+              "ip_address": "192.168.122.1",
+              "subnet": {
+                "name": "192.168.122.0/24",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5017,
+                  "name": "untagged",
+                  "fabric": "fabric-13",
+                  "primary_rack": null,
+                  "fabric_id": 13,
+                  "secondary_rack": null,
+                  "space": "undefined",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+                },
+                "cidr": "192.168.122.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": null,
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 7,
+                "space": "undefined",
+                "resource_uri": "/MAAS/api/2.0/subnets/7/"
+              }
+            }
+          ],
+          "firmware_version": "N/A",
+          "effective_mtu": 1500,
+          "product": "OpenStack Nova",
+          "mac_address": "52:54:00:95:f3:f3",
+          "system_id": "7xtf67",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5017,
+            "name": "untagged",
+            "fabric": "fabric-13",
+            "primary_rack": null,
+            "fabric_id": 13,
+            "secondary_rack": null,
+            "space": "undefined",
+            "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+          },
+          "vendor": "OpenStack Foundation",
+          "type": "bridge",
+          "resource_uri": "/MAAS/api/2.0/nodes/7xtf67/interfaces/134/"
+        }
+      ],
+      "node_type": 4,
+      "memory_test_status_name": "Unknown",
+      "memory_test_status": -1,
+      "ip_addresses": [
+        "10.55.32.42",
+        "192.168.122.1"
+      ],
+      "swap_size": null,
+      "testing_status": -1,
+      "node_type_name": "Region and rack controller",
+      "current_testing_result_id": null,
+      "power_type": "virsh",
+      "fqdn": "spence-devmaas.maas",
+      "storage_test_status_name": "Unknown",
+      "storage_test_status": -1,
+      "tag_names": [
+        "virtual"
+      ],
+      "zone": {
+        "name": "zone-obryVj",
+        "description": "qRwvQuFIpM",
+        "id": 4,
+        "resource_uri": "/MAAS/api/2.0/zones/zone-obryVj/"
+      },
+      "commissioning_status": 2,
+      "cpu_test_status": -1,
+      "current_installation_result_id": null,
+      "power_state": "on",
+      "current_commissioning_result_id": 228,
+      "cpu_speed": 2500,
+      "architecture": "amd64/generic",
+      "cpu_test_status_name": "Unknown",
+      "other_test_status": -1,
+      "hostname": "spence-devmaas",
+      "memory": 8192,
+      "commissioning_status_name": "Passed",
+      "distro_series": "bionic",
+      "status_action": "",
+      "hardware_info": {
+        "system_vendor": "OpenStack Foundation",
+        "system_product": "OpenStack Nova",
+        "system_version": "2013.2.3",
+        "system_serial": "30353036-3837-5a43-3331-353234584a58",
+        "cpu_model": "Westmere E56xx/L56xx/X56xx (Nehalem-C)",
+        "mainboard_vendor": "Unknown",
+        "mainboard_product": "Unknown",
+        "mainboard_firmware_version": "Bochs",
+        "mainboard_firmware_date": "01/01/2011"
+      },
+      "service_set": [
+        {
+          "name": "proxy",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "proxy_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "dhcpd6",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_rack",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_region",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "http",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "tftp",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "bind9",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "rackd",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_region",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "regiond",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "dns_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "dhcpd",
+          "status": "dead",
+          "status_info": ""
+        }
+      ],
+      "testing_status_name": "Unknown",
+      "osystem": "ubuntu",
+      "version": "",
+      "system_id": "7xtf67",
+      "cpu_count": 4,
+      "other_test_status_name": "Unknown",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 0,
+        "name": "maas",
+        "resource_record_count": 0,
+        "is_default": true,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "resource_uri": "/MAAS/api/2.0/rackcontrollers/7xtf67/"
+    },
+    {
+      "pool": {
+        "name": "default",
+        "description": "Default pool",
+        "id": 0,
+        "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
+      },
+      "storage": 3865.490432,
+      "min_hwe_kernel": "",
+      "interface_set": [
+        {
+          "id": 94,
+          "name": "eth-x2dFvx",
+          "tags": [
+            "tag-fAzmsZ",
+            "tag-doKrVe",
+            "tag-ejryXL"
+          ],
+          "links": [
+            {
+              "id": 39,
+              "mode": "auto",
+              "subnet": {
+                "name": "name-rLI3eq",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "172.16.1.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.1.1",
+                "dns_servers": [
+                  "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "dd:c6:80:1a:c7:80",
+          "system_id": "ssqcgt",
+          "parents": [],
+          "children": [
+            "eth-x2dFvx.10"
+          ],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/94/"
+        },
+        {
+          "id": 95,
+          "name": "eth-gtMGIr",
+          "tags": [
+            "tag-rW3Lmf",
+            "tag-DdASuZ",
+            "tag-MS8EYC"
+          ],
+          "links": [
+            {
+              "id": 40,
+              "mode": "auto",
+              "subnet": {
+                "name": "name-rLI3eq",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "172.16.1.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.1.1",
+                "dns_servers": [
+                  "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "52:db:98:ef:1e:b5",
+          "system_id": "ssqcgt",
+          "parents": [],
+          "children": [
+            "eth-gtMGIr.10"
+          ],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/95/"
+        },
+        {
+          "id": 96,
+          "name": "eth-3cXhBN",
+          "tags": [
+            "tag-QisnXF",
+            "tag-duMUg2",
+            "tag-06ARMg"
+          ],
+          "links": [
+            {
+              "id": 41,
+              "mode": "static",
+              "ip_address": "172.16.1.22",
+              "subnet": {
+                "name": "name-rLI3eq",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "172.16.1.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.1.1",
+                "dns_servers": [
+                  "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 1,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/1/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "e3:72:73:60:9a:b9",
+          "system_id": "ssqcgt",
+          "parents": [],
+          "children": [
+            "eth-3cXhBN.10"
+          ],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/96/"
+        },
+        {
+          "id": 97,
+          "name": "eth-x2dFvx.10",
+          "tags": [
+            "tag-Y5zzv5",
+            "tag-w5vECc",
+            "tag-o4znE9"
+          ],
+          "links": [
+            {
+              "id": 42,
+              "mode": "static",
+              "ip_address": "172.16.4.56",
+              "subnet": {
+                "name": "name-c2ULe1",
+                "vlan": {
+                  "vid": 10,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "10",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "internal",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "172.16.4.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.4.1",
+                "dns_servers": [
+                  "fd08:fef7:5c1f:a2e6:3d8e:6c3b:89f9:80cb",
+                  "fc67:ad6a:88fe:9192:62f9:e882:8bcc:339e",
+                  "255.59.162.158"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 4,
+                "space": "internal",
+                "resource_uri": "/MAAS/api/2.0/subnets/4/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "dd:c6:80:1a:c7:80",
+          "system_id": "ssqcgt",
+          "parents": [
+            "eth-x2dFvx"
+          ],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "10",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "internal",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "vendor": null,
+          "type": "vlan",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/97/"
+        },
+        {
+          "id": 98,
+          "name": "eth-gtMGIr.10",
+          "tags": [
+            "tag-wS4OXL",
+            "tag-Wm3I55",
+            "tag-LE5UYY"
+          ],
+          "links": [
+            {
+              "id": 43,
+              "mode": "static",
+              "ip_address": "172.16.3.102",
+              "subnet": {
+                "name": "name-zznp45",
+                "vlan": {
+                  "vid": 10,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "10",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "internal",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "172.16.3.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.3.1",
+                "dns_servers": [
+                  "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+                  "11.209.150.208",
+                  "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 3,
+                "space": "internal",
+                "resource_uri": "/MAAS/api/2.0/subnets/3/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "52:db:98:ef:1e:b5",
+          "system_id": "ssqcgt",
+          "parents": [
+            "eth-gtMGIr"
+          ],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "10",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "internal",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "vendor": null,
+          "type": "vlan",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/98/"
+        },
+        {
+          "id": 99,
+          "name": "eth-3cXhBN.10",
+          "tags": [
+            "tag-Zp22Uh",
+            "tag-PhIZjP",
+            "tag-QtYg8x"
+          ],
+          "links": [
+            {
+              "id": 44,
+              "mode": "static",
+              "ip_address": "172.16.3.23",
+              "subnet": {
+                "name": "name-zznp45",
+                "vlan": {
+                  "vid": 10,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5002,
+                  "name": "10",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "internal",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+                },
+                "cidr": "172.16.3.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": "172.16.3.1",
+                "dns_servers": [
+                  "fd98:8601:90d0:c8c:dd2e:ba51:fa5a:dcfa",
+                  "11.209.150.208",
+                  "fde6:f9ef:3ee9:c5de:2a66:1582:cc83:abaf"
+                ],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 3,
+                "space": "internal",
+                "resource_uri": "/MAAS/api/2.0/subnets/3/"
+              }
+            }
+          ],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "e3:72:73:60:9a:b9",
+          "system_id": "ssqcgt",
+          "parents": [
+            "eth-3cXhBN"
+          ],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 10,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5002,
+            "name": "10",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "internal",
+            "resource_uri": "/MAAS/api/2.0/vlans/5002/"
+          },
+          "vendor": null,
+          "type": "vlan",
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/99/"
+        }
+      ],
+      "iscsiblockdevice_set": [],
+      "node_type": 0,
+      "memory_test_status_name": "Failed",
+      "bcaches": [],
+      "memory_test_status": 3,
+      "ip_addresses": [
+        "172.16.1.22",
+        "172.16.4.56",
+        "172.16.3.102",
+        "172.16.3.23"
+      ],
+      "swap_size": null,
+      "volume_groups": [],
+      "testing_status": 3,
+      "node_type_name": "Machine",
+      "current_testing_result_id": 153,
+      "power_type": "virsh",
+      "fqdn": "chief-hippo.ubnt",
+      "storage_test_status_name": "Failed",
+      "storage_test_status": 3,
+      "status_name": "Rescue mode",
+      "locked": false,
+      "netboot": true,
+      "tag_names": [
+        "virtual"
+      ],
+      "zone": {
+        "name": "zone-north",
+        "description": "xsMaq90fRE",
+        "id": 2,
+        "resource_uri": "/MAAS/api/2.0/zones/zone-north/"
+      },
+      "boot_disk": {
+        "firmware_version": "firmware_version-rszebt",
+        "uuid": null,
+        "id": 65,
+        "model": "model-u038bu",
+        "name": "name-2V9gLL",
+        "tags": [
+          "tag-wSvQ4O",
+          "tag-52MbPv",
+          "tag-JKilHY"
+        ],
+        "partitions": [],
+        "partition_table_type": null,
+        "used_size": 0,
+        "storage_pool": "pool_id-aMRZUu",
+        "id_path": null,
+        "system_id": "ssqcgt",
+        "block_size": 512,
+        "filesystem": null,
+        "used_for": "Unused",
+        "serial": "serial-Lh6Yv9",
+        "path": "/dev/disk/by-dname/name-2V9gLL",
+        "type": "physical",
+        "size": 3865490432,
+        "available_size": 3865490432,
+        "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/blockdevices/65/"
+      },
+      "commissioning_status": 2,
+      "cpu_test_status": 3,
+      "current_installation_result_id": null,
+      "owner_data": {},
+      "power_state": "on",
+      "current_commissioning_result_id": 152,
+      "status": 16,
+      "hwe_kernel": null,
+      "boot_interface": {
+        "id": 94,
+        "name": "eth-x2dFvx",
+        "tags": [
+          "tag-fAzmsZ",
+          "tag-doKrVe",
+          "tag-ejryXL"
+        ],
+        "links": [
+          {
+            "id": 39,
+            "mode": "auto",
+            "subnet": {
+              "name": "name-rLI3eq",
+              "vlan": {
+                "vid": 0,
+                "mtu": 1500,
+                "dhcp_on": false,
+                "external_dhcp": null,
+                "relay_vlan": null,
+                "id": 5001,
+                "name": "untagged",
+                "fabric": "fabric-0",
+                "primary_rack": null,
+                "fabric_id": 0,
+                "secondary_rack": null,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+              },
+              "cidr": "172.16.1.0/24",
+              "rdns_mode": 2,
+              "gateway_ip": "172.16.1.1",
+              "dns_servers": [
+                "fd89:8724:81f1:5512:557f:99c3:6967:8d63"
+              ],
+              "allow_dns": true,
+              "allow_proxy": true,
+              "active_discovery": false,
+              "managed": true,
+              "id": 1,
+              "space": "management",
+              "resource_uri": "/MAAS/api/2.0/subnets/1/"
+            }
+          }
+        ],
+        "firmware_version": null,
+        "effective_mtu": 1500,
+        "product": null,
+        "mac_address": "dd:c6:80:1a:c7:80",
+        "system_id": "ssqcgt",
+        "parents": [],
+        "children": [
+          "eth-x2dFvx.10"
+        ],
+        "params": "",
+        "enabled": true,
+        "discovered": null,
+        "vlan": {
+          "vid": 0,
+          "mtu": 1500,
+          "dhcp_on": false,
+          "external_dhcp": null,
+          "relay_vlan": null,
+          "id": 5001,
+          "name": "untagged",
+          "fabric": "fabric-0",
+          "primary_rack": null,
+          "fabric_id": 0,
+          "secondary_rack": null,
+          "space": "management",
+          "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+        },
+        "vendor": null,
+        "type": "physical",
+        "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/interfaces/94/"
+      },
+      "special_filesystems": [],
+      "cpu_speed": 0,
+      "architecture": "amd64/generic",
+      "blockdevice_set": [
+        {
+          "id_path": null,
+          "size": 3865490432,
+          "block_size": 512,
+          "tags": [
+            "tag-wSvQ4O",
+            "tag-52MbPv",
+            "tag-JKilHY"
+          ],
+          "uuid": null,
+          "id": 65,
+          "model": "model-u038bu",
+          "name": "name-2V9gLL",
+          "partitions": [],
+          "partition_table_type": null,
+          "used_size": 0,
+          "storage_pool": "pool_id-aMRZUu",
+          "system_id": "ssqcgt",
+          "filesystem": null,
+          "used_for": "Unused",
+          "serial": "serial-Lh6Yv9",
+          "path": "/dev/disk/by-dname/name-2V9gLL",
+          "type": "physical",
+          "available_size": 3865490432,
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/blockdevices/65/"
+        }
+      ],
+      "cpu_test_status_name": "Failed",
+      "other_test_status": 2,
+      "hostname": "chief-hippo",
+      "memory": 4096,
+      "default_gateways": {
+        "ipv4": {
+          "gateway_ip": "172.16.1.1",
+          "link_id": null
+        },
+        "ipv6": {
+          "gateway_ip": null,
+          "link_id": null
+        }
+      },
+      "distro_series": "",
+      "status_action": "action-ft28IH",
+      "owner": "user1",
+      "commissioning_status_name": "Passed",
+      "hardware_info": {
+        "system_vendor": "Unknown",
+        "system_product": "Unknown",
+        "system_version": "Unknown",
+        "system_serial": "Unknown",
+        "cpu_model": "Unknown",
+        "mainboard_vendor": "Unknown",
+        "mainboard_product": "Unknown",
+        "mainboard_firmware_version": "Unknown",
+        "mainboard_firmware_date": "Unknown"
+      },
+      "pod": {
+        "id": 5,
+        "name": "normal-trout",
+        "resource_uri": "/MAAS/api/2.0/pods/5/"
+      },
+      "cache_sets": [],
+      "testing_status_name": "Failed",
+      "disable_ipv4": false,
+      "physicalblockdevice_set": [
+        {
+          "firmware_version": "firmware_version-rszebt",
+          "uuid": null,
+          "id": 65,
+          "model": "model-u038bu",
+          "name": "name-2V9gLL",
+          "tags": [
+            "tag-wSvQ4O",
+            "tag-52MbPv",
+            "tag-JKilHY"
+          ],
+          "partitions": [],
+          "partition_table_type": null,
+          "used_size": 0,
+          "storage_pool": "pool_id-aMRZUu",
+          "id_path": null,
+          "system_id": "ssqcgt",
+          "block_size": 512,
+          "filesystem": null,
+          "used_for": "Unused",
+          "serial": "serial-Lh6Yv9",
+          "path": "/dev/disk/by-dname/name-2V9gLL",
+          "type": "physical",
+          "size": 3865490432,
+          "available_size": 3865490432,
+          "resource_uri": "/MAAS/api/2.0/nodes/ssqcgt/blockdevices/65/"
+        }
+      ],
+      "osystem": "",
+      "system_id": "ssqcgt",
+      "address_ttl": null,
+      "raids": [],
+      "cpu_count": 5,
+      "virtualblockdevice_set": [],
+      "other_test_status_name": "Passed",
+      "status_message": "desc-SfeEsi",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 2,
+        "name": "ubnt",
+        "resource_record_count": 0,
+        "is_default": false,
+        "resource_uri": "/MAAS/api/2.0/domains/2/"
+      },
+      "resource_uri": "/MAAS/api/2.0/machines/ssqcgt/"
+    },
+    {
+      "tag_names": [
+        "virtual"
+      ],
+      "interface_set": [
+        {
+          "id": 130,
+          "name": "eth-tNqklu",
+          "tags": [
+            "tag-YYQK5S",
+            "tag-MUmKRU",
+            "tag-dh0kc2"
+          ],
+          "links": [],
+          "firmware_version": null,
+          "effective_mtu": 1500,
+          "product": null,
+          "mac_address": "bb:f7:55:fd:0f:34",
+          "system_id": "nqg6dg",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5013,
+            "name": "untagged",
+            "fabric": "fabric-9",
+            "primary_rack": null,
+            "fabric_id": 9,
+            "secondary_rack": null,
+            "space": "undefined",
+            "resource_uri": "/MAAS/api/2.0/vlans/5013/"
+          },
+          "vendor": null,
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/nqg6dg/interfaces/130/"
+        }
+      ],
+      "zone": {
+        "name": "default",
+        "description": "",
+        "id": 1,
+        "resource_uri": "/MAAS/api/2.0/zones/default/"
+      },
+      "node_type": 1,
+      "hostname": "calm-bobcat",
+      "system_id": "nqg6dg",
+      "owner_data": {},
+      "parent": null,
+      "address_ttl": null,
+      "owner": null,
+      "ip_addresses": [],
+      "node_type_name": "Device",
+      "fqdn": "calm-bobcat.maas",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 0,
+        "name": "maas",
+        "resource_record_count": 0,
+        "is_default": true,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "resource_uri": "/MAAS/api/2.0/devices/nqg6dg/"
+    }
+  ],
+  "get-rackc-by-tag": [
+    {
+      "interface_set": [
+        {
+          "id": 1,
+          "name": "ens3",
+          "tags": [
+            "tag-0wj45r",
+            "tag-ylwPaA",
+            "tag-s8HCFS"
+          ],
+          "links": [
+            {
+              "id": 59,
+              "mode": "static",
+              "ip_address": "10.55.32.42",
+              "subnet": {
+                "name": "10.55.32.0/20",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "10.55.32.0/20",
+                "rdns_mode": 2,
+                "gateway_ip": "10.55.32.1",
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 6,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/6/"
+              }
+            }
+          ],
+          "firmware_version": "N/A",
+          "effective_mtu": 1500,
+          "product": "OpenStack Nova",
+          "mac_address": "fa:16:3e:3d:03:02",
+          "system_id": "7xtf67",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": "OpenStack Foundation",
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/7xtf67/interfaces/1/"
+        },
+        {
+          "id": 134,
+          "name": "virbr0",
+          "tags": [],
+          "links": [
+            {
+              "id": 60,
+              "mode": "static",
+              "ip_address": "192.168.122.1",
+              "subnet": {
+                "name": "192.168.122.0/24",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5017,
+                  "name": "untagged",
+                  "fabric": "fabric-13",
+                  "primary_rack": null,
+                  "fabric_id": 13,
+                  "secondary_rack": null,
+                  "space": "undefined",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+                },
+                "cidr": "192.168.122.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": null,
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 7,
+                "space": "undefined",
+                "resource_uri": "/MAAS/api/2.0/subnets/7/"
+              }
+            }
+          ],
+          "firmware_version": "N/A",
+          "effective_mtu": 1500,
+          "product": "OpenStack Nova",
+          "mac_address": "52:54:00:95:f3:f3",
+          "system_id": "7xtf67",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5017,
+            "name": "untagged",
+            "fabric": "fabric-13",
+            "primary_rack": null,
+            "fabric_id": 13,
+            "secondary_rack": null,
+            "space": "undefined",
+            "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+          },
+          "vendor": "OpenStack Foundation",
+          "type": "bridge",
+          "resource_uri": "/MAAS/api/2.0/nodes/7xtf67/interfaces/134/"
+        }
+      ],
+      "node_type": 4,
+      "memory_test_status_name": "Unknown",
+      "memory_test_status": -1,
+      "ip_addresses": [
+        "10.55.32.42",
+        "192.168.122.1"
+      ],
+      "swap_size": null,
+      "testing_status": -1,
+      "node_type_name": "Region and rack controller",
+      "current_testing_result_id": null,
+      "power_type": "virsh",
+      "fqdn": "spence-devmaas.maas",
+      "storage_test_status_name": "Unknown",
+      "storage_test_status": -1,
+      "tag_names": [
+        "virtual"
+      ],
+      "zone": {
+        "name": "zone-obryVj",
+        "description": "qRwvQuFIpM",
+        "id": 4,
+        "resource_uri": "/MAAS/api/2.0/zones/zone-obryVj/"
+      },
+      "commissioning_status": 2,
+      "cpu_test_status": -1,
+      "current_installation_result_id": null,
+      "power_state": "on",
+      "current_commissioning_result_id": 228,
+      "cpu_speed": 2500,
+      "architecture": "amd64/generic",
+      "cpu_test_status_name": "Unknown",
+      "other_test_status": -1,
+      "hostname": "spence-devmaas",
+      "memory": 8192,
+      "commissioning_status_name": "Passed",
+      "distro_series": "bionic",
+      "status_action": "",
+      "hardware_info": {
+        "system_vendor": "OpenStack Foundation",
+        "system_product": "OpenStack Nova",
+        "system_version": "2013.2.3",
+        "system_serial": "30353036-3837-5a43-3331-353234584a58",
+        "cpu_model": "Westmere E56xx/L56xx/X56xx (Nehalem-C)",
+        "mainboard_vendor": "Unknown",
+        "mainboard_product": "Unknown",
+        "mainboard_firmware_version": "Bochs",
+        "mainboard_firmware_date": "01/01/2011"
+      },
+      "service_set": [
+        {
+          "name": "proxy",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "proxy_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "dhcpd6",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_rack",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_region",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "http",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "tftp",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "bind9",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "rackd",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_region",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "regiond",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "dns_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "dhcpd",
+          "status": "dead",
+          "status_info": ""
+        }
+      ],
+      "testing_status_name": "Unknown",
+      "osystem": "ubuntu",
+      "version": "",
+      "system_id": "7xtf67",
+      "cpu_count": 4,
+      "other_test_status_name": "Unknown",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 0,
+        "name": "maas",
+        "resource_record_count": 0,
+        "is_default": true,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "resource_uri": "/MAAS/api/2.0/rackcontrollers/7xtf67/"
+    }
+  ],
+  "get-regionc-by-tag": [
+    {
+      "interface_set": [
+        {
+          "id": 1,
+          "name": "ens3",
+          "tags": [
+            "tag-0wj45r",
+            "tag-ylwPaA",
+            "tag-s8HCFS"
+          ],
+          "links": [
+            {
+              "id": 59,
+              "mode": "static",
+              "ip_address": "10.55.32.42",
+              "subnet": {
+                "name": "10.55.32.0/20",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5001,
+                  "name": "untagged",
+                  "fabric": "fabric-0",
+                  "primary_rack": null,
+                  "fabric_id": 0,
+                  "secondary_rack": null,
+                  "space": "management",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+                },
+                "cidr": "10.55.32.0/20",
+                "rdns_mode": 2,
+                "gateway_ip": "10.55.32.1",
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 6,
+                "space": "management",
+                "resource_uri": "/MAAS/api/2.0/subnets/6/"
+              }
+            }
+          ],
+          "firmware_version": "N/A",
+          "effective_mtu": 1500,
+          "product": "OpenStack Nova",
+          "mac_address": "fa:16:3e:3d:03:02",
+          "system_id": "7xtf67",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5001,
+            "name": "untagged",
+            "fabric": "fabric-0",
+            "primary_rack": null,
+            "fabric_id": 0,
+            "secondary_rack": null,
+            "space": "management",
+            "resource_uri": "/MAAS/api/2.0/vlans/5001/"
+          },
+          "vendor": "OpenStack Foundation",
+          "type": "physical",
+          "resource_uri": "/MAAS/api/2.0/nodes/7xtf67/interfaces/1/"
+        },
+        {
+          "id": 134,
+          "name": "virbr0",
+          "tags": [],
+          "links": [
+            {
+              "id": 60,
+              "mode": "static",
+              "ip_address": "192.168.122.1",
+              "subnet": {
+                "name": "192.168.122.0/24",
+                "vlan": {
+                  "vid": 0,
+                  "mtu": 1500,
+                  "dhcp_on": false,
+                  "external_dhcp": null,
+                  "relay_vlan": null,
+                  "id": 5017,
+                  "name": "untagged",
+                  "fabric": "fabric-13",
+                  "primary_rack": null,
+                  "fabric_id": 13,
+                  "secondary_rack": null,
+                  "space": "undefined",
+                  "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+                },
+                "cidr": "192.168.122.0/24",
+                "rdns_mode": 2,
+                "gateway_ip": null,
+                "dns_servers": [],
+                "allow_dns": true,
+                "allow_proxy": true,
+                "active_discovery": false,
+                "managed": true,
+                "id": 7,
+                "space": "undefined",
+                "resource_uri": "/MAAS/api/2.0/subnets/7/"
+              }
+            }
+          ],
+          "firmware_version": "N/A",
+          "effective_mtu": 1500,
+          "product": "OpenStack Nova",
+          "mac_address": "52:54:00:95:f3:f3",
+          "system_id": "7xtf67",
+          "parents": [],
+          "children": [],
+          "params": "",
+          "enabled": true,
+          "discovered": null,
+          "vlan": {
+            "vid": 0,
+            "mtu": 1500,
+            "dhcp_on": false,
+            "external_dhcp": null,
+            "relay_vlan": null,
+            "id": 5017,
+            "name": "untagged",
+            "fabric": "fabric-13",
+            "primary_rack": null,
+            "fabric_id": 13,
+            "secondary_rack": null,
+            "space": "undefined",
+            "resource_uri": "/MAAS/api/2.0/vlans/5017/"
+          },
+          "vendor": "OpenStack Foundation",
+          "type": "bridge",
+          "resource_uri": "/MAAS/api/2.0/nodes/7xtf67/interfaces/134/"
+        }
+      ],
+      "node_type": 4,
+      "memory_test_status_name": "Unknown",
+      "memory_test_status": -1,
+      "ip_addresses": [
+        "10.55.32.42",
+        "192.168.122.1"
+      ],
+      "swap_size": null,
+      "testing_status": -1,
+      "node_type_name": "Region and rack controller",
+      "current_testing_result_id": null,
+      "power_type": "virsh",
+      "fqdn": "spence-devmaas.maas",
+      "storage_test_status_name": "Unknown",
+      "storage_test_status": -1,
+      "tag_names": [
+        "virtual"
+      ],
+      "zone": {
+        "name": "zone-obryVj",
+        "description": "qRwvQuFIpM",
+        "id": 4,
+        "resource_uri": "/MAAS/api/2.0/zones/zone-obryVj/"
+      },
+      "commissioning_status": 2,
+      "cpu_test_status": -1,
+      "current_installation_result_id": null,
+      "power_state": "on",
+      "current_commissioning_result_id": 228,
+      "cpu_speed": 2500,
+      "architecture": "amd64/generic",
+      "cpu_test_status_name": "Unknown",
+      "other_test_status": -1,
+      "hostname": "spence-devmaas",
+      "memory": 8192,
+      "commissioning_status_name": "Passed",
+      "distro_series": "bionic",
+      "status_action": "",
+      "hardware_info": {
+        "system_vendor": "OpenStack Foundation",
+        "system_product": "OpenStack Nova",
+        "system_version": "2013.2.3",
+        "system_serial": "30353036-3837-5a43-3331-353234584a58",
+        "cpu_model": "Westmere E56xx/L56xx/X56xx (Nehalem-C)",
+        "mainboard_vendor": "Unknown",
+        "mainboard_product": "Unknown",
+        "mainboard_firmware_version": "Bochs",
+        "mainboard_firmware_date": "01/01/2011"
+      },
+      "service_set": [
+        {
+          "name": "proxy",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "proxy_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "dhcpd6",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_rack",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_region",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "http",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "tftp",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "bind9",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "rackd",
+          "status": "dead",
+          "status_info": ""
+        },
+        {
+          "name": "ntp_region",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "regiond",
+          "status": "running",
+          "status_info": ""
+        },
+        {
+          "name": "dns_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "syslog_rack",
+          "status": "unknown",
+          "status_info": ""
+        },
+        {
+          "name": "dhcpd",
+          "status": "dead",
+          "status_info": ""
+        }
+      ],
+      "testing_status_name": "Unknown",
+      "osystem": "ubuntu",
+      "version": "",
+      "system_id": "7xtf67",
+      "cpu_count": 4,
+      "other_test_status_name": "Unknown",
+      "domain": {
+        "authoritative": true,
+        "ttl": null,
+        "id": 0,
+        "name": "maas",
+        "resource_record_count": 0,
+        "is_default": true,
+        "resource_uri": "/MAAS/api/2.0/domains/0/"
+      },
+      "resource_uri": "/MAAS/api/2.0/rackcontrollers/7xtf67/"
+    }
+  ],
+  "add-tag": {
+    "name": "footag",
+    "definition": "",
+    "comment": "some comment",
+    "kernel_opts": "",
+    "resource_uri": "/MAAS/api/2.0/tags/footag/"
+  },
+  "rebuild-tag": {
+    "rebuilding": "footag"
+  },
+  "update-nodes-tag": {
+    "added": 1,
+    "removed": 0
+  },
+  "update-tag": {
+    "name": "my_tag",
+    "definition": "",
+    "comment": "a comment about this tag",
+    "kernel_opts": "",
+    "resource_uri": "/MAAS/api/2.0/tags/my_tag/"
+  },
+  "delete-tag": "No content"
+}

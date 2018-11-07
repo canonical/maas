@@ -74,8 +74,7 @@ def check_rack_controller_access(request, rack_controller):
 
 
 class TagHandler(OperationsHandler):
-    """Manage a Tag.
-
+    """
     Tags are properties that can be associated with a Node and serve as
     criteria for selecting and allocating nodes.
 
@@ -92,23 +91,52 @@ class TagHandler(OperationsHandler):
         )
 
     def read(self, request, name):
-        """Read a specific Tag.
+        """@description-title Read a specific tag
+        @description Returns a JSON object containing information about a
+        specific tag.
 
-        Returns 404 if the tag is not found.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (http-status-code) "server-success" 200
+        @success (json) "success-json" A JSON object containing
+        information about the requested tag.
+        @success-example "success-json" [exkey=get-tag-by-name] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         return Tag.objects.get_tag_or_404(name=name, user=request.user)
 
     def update(self, request, name):
-        """Update a specific Tag.
+        """@description-title Update a tag
+        @description Update elements of a given tag.
 
-        :param name: The name of the Tag to be created. This should be a short
-            name, and will be used in the URL of the tag.
-        :param comment: A long form description of what the tag is meant for.
-            It is meant as a human readable description of the tag.
-        :param definition: An XPATH query that will be evaluated against the
-            hardware_details stored for all nodes (output of `lshw -xml`).
+        @param (url-string) "{name}" [required=true] The tag to update.
+        @param-example "{name}" oldname
+        @param (string) "name" [required=false] The new tag name. Because
+        the name will be used in urls, it should be short.
+        @param-example "name" virtual
+        @param (string) "comment" [required=false] A description of what the
+        the tag will be used for in natural language.
+        @param-example "comment" The 'virtual' tag represents virtual
+        machines.
+        @param (string) "definition" [required=false] An XPATH query that is
+        evaluated against the hardware_details stored for all nodes
+        (i.e. the output of ``lshw -xml``).
+        @param-example "definition"
+            //node[&#64;id="display"]/'clock units="Hz"' > 1000000000
 
-        Returns 404 if the tag is not found.
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON tag object.
+        @success-example "success-json" [exkey=update-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
@@ -125,10 +153,18 @@ class TagHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, name):
-        """Delete a specific Tag.
+        """@description-title Delete a tag
+        @description Deletes a tag by name.
 
-        Returns 404 if the tag is not found.
-        Returns 204 if the tag is successfully deleted.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
@@ -160,41 +196,101 @@ class TagHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def nodes(self, request, name):
-        """Get the list of nodes that have this tag.
+        """@description-title List nodes by tag
+        @description Get a JSON list containing node objects that match
+        the given tag name.
 
-        Returns 404 if the tag is not found.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (json) "success-json" A JSON list containing node objects
+        that match the given tag name.
+        @success-example "success-json" [exkey=get-nodes-by-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         return self._get_node_type(Node, request, name)
 
     @operation(idempotent=True)
     def machines(self, request, name):
-        """Get the list of machines that have this tag.
+        """@description-title List machines by tag
+        @description Get a JSON list containing machine objects that match
+        the given tag name.
 
-        Returns 404 if the tag is not found.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (json) "success-json" A JSON list containing machine objects
+        that match the given tag name.
+        @success-example "success-json" [exkey=get-machines-by-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         return self._get_node_type(Machine, request, name)
 
     @operation(idempotent=True)
     def devices(self, request, name):
-        """Get the list of devices that have this tag.
+        """@description-title List devices by tag
+        @description Get a JSON list containing device objects that match
+        the given tag name.
 
-        Returns 404 if the tag is not found.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (json) "success-json" A JSON list containing device objects
+        that match the given tag name.
+        @success-example "success-json" [exkey=get-devices-by-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         return self._get_node_type(Device, request, name)
 
     @operation(idempotent=True)
     def rack_controllers(self, request, name):
-        """Get the list of rack controllers that have this tag.
+        """@description-title List rack controllers by tag
+        @description Get a JSON list containing rack-controller objects
+        that match the given tag name.
 
-        Returns 404 if the tag is not found.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (json) "success-json" A JSON list containing rack-controller
+        objects that match the given tag name.
+        @success-example "success-json" [exkey=get-rackc-by-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         return self._get_node_type(RackController, request, name)
 
     @operation(idempotent=True)
     def region_controllers(self, request, name):
-        """Get the list of region controllers that have this tag.
+        """@description-title List region controllers by tag
+        @description Get a JSON list containing region-controller objects
+        that match the given tag name.
 
-        Returns 404 if the tag is not found.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
+
+        @success (json) "success-json" A JSON list containing region-controller
+        objects that match the given tag name.
+        @success-example "success-json" [exkey=get-regionc-by-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         return self._get_node_type(RegionController, request, name)
 
@@ -208,13 +304,23 @@ class TagHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def rebuild(self, request, name):
-        """Manually trigger a rebuild the tag <=> node mapping.
+        """@description-title Trigger a tag-node mapping rebuild
+        @description Tells MAAS to rebuild the tag-to-node mappings.
+        This is a maintenance operation and should not be necessary under
+        normal circumstances. Adding nodes or updating a tag definition
+        should automatically trigger the mapping rebuild.
 
-        This is considered a maintenance operation, which should normally not
-        be necessary. Adding nodes or updating a tag's definition should
-        automatically trigger the appropriate changes.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
 
-        Returns 404 if the tag is not found.
+        @success (json) "success-json" A JSON object indicating which tag-to-
+        node mapping is being rebuilt.
+        @success-example "success-json" [exkey=rebuild-tag] placeholder
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
                                          to_edit=True)
@@ -223,22 +329,52 @@ class TagHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def update_nodes(self, request, name):
-        """Add or remove nodes being associated with this tag.
+        """@description-title Add or remove nodes by tag
+        @description Add or remove nodes associated with the given tag.
+        Note that you must supply either the ``add`` or ``remove``
+        parameter.
 
-        :param add: system_ids of nodes to add to this tag.
-        :param remove: system_ids of nodes to remove from this tag.
-        :param definition: (optional) If supplied, the definition will be
-            validated against the current definition of the tag. If the value
-            does not match, then the update will be dropped (assuming this was
-            just a case of a worker being out-of-date)
-        :param rack_controller: A system ID of a rack controller that did the
-            processing. This value is optional. If not supplied, the requester
-            must be a superuser. If supplied, then the requester must be the
-            rack controller.
+        @param (url-string) "{name}" [required=true] A tag name.
+        @param-example "{name}" virtual
 
-        Returns 404 if the tag is not found.
-        Returns 401 if the user does not have permission to update the nodes.
-        Returns 409 if 'definition' doesn't match the current definition.
+        @param (string) "add" [required=false] The system_id to tag.
+        @param-example "add" ``fptcnd``
+
+        @param (string) "remove" [required=false] The system_id to untag.
+        @param-example "remove" ``xbpf3n``
+
+        @param (string) "definition" [required=false] If given, the
+        definition (XPATH expression) will be validated against the
+        current definition of the tag. If the value does not match, MAAS
+        assumes the worker is out of date and will drop the update.
+        @param-example "definition"
+            //node[&#64;id="display"]/'clock units="Hz"' > 1000000000
+
+        @param (string) "rack_controller" [required=false] The system ID
+        of the rack controller that processed the given tag initially.
+        If not given, the requester must be a MAAS admin. If given,
+        the requester must be the rack controller.
+
+        @success (json) "success-json" A JSON object representing the
+            updated node.
+        @success-example "success-json" [exkey=update-nodes-tag] placeholder
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to update the nodes.
+        @error-example "no-perms"
+            Must be a superuser or supply a rack_controller.
+
+        @error (http-status-code) "409" 409
+        @error (content) "no-def-match" The supplied definition doesn't match
+        the current definition.
+        @error-example "no-def-match"
+            Definition supplied 'foobar' doesn't match current definition ''
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested tag name is not found.
+        @error-example "not-found"
+            Not Found
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         rack_controller = None
@@ -278,26 +414,44 @@ class TagHandler(OperationsHandler):
 
 
 class TagsHandler(OperationsHandler):
-    """Manage the collection of all the Tags in this MAAS."""
+    """Manage all tags known to MAAS."""
     api_doc_section_name = "Tags"
     update = delete = None
 
     def create(self, request):
-        """Create a new Tag.
+        """@description-title Create a new tag
+        @description Create a new tag.
 
-        :param name: The name of the Tag to be created. This should be a short
-            name, and will be used in the URL of the tag.
-        :param comment: A long form description of what the tag is meant for.
-            It is meant as a human readable description of the tag.
-        :param definition: An XPATH query that will be evaluated against the
-            hardware_details stored for all nodes (output of `lshw -xml`).
-        :param kernel_opts: Can be None. If set, nodes associated with this tag
-            will add this string to their kernel options when booting. The
-            value overrides the global 'kernel_opts' setting. If more than one
-            tag is associated with a node, the one with the lowest alphabetical
-            name will be picked (eg 01-my-tag will be taken over 99-tag-name).
+        @param (string) "name" [required=true] The new tag name. Because
+        the name will be used in urls, it should be short.
+        @param-example "name" virtual
+        @param (string) "comment" [required=false] A description of what the
+        the tag will be used for in natural language.
+        @param-example "comment" The 'virtual' tag represents virtual
+        machines.
+        @param (string) "definition" [required=false] An XPATH query that is
+        evaluated against the hardware_details stored for all nodes
+        (i.e. the output of ``lshw -xml``).
+        @param-example "definition"
+            //node[&#64;id="display"]/'clock units="Hz"' > 1000000000
+        @param (string) "kernel_opts" [required=false] Nodes associated
+        with this tag will add this string to their kernel options
+        when booting. The value overrides the global ``kernel_opts``
+        setting. If more than one tag is associated with a node, the
+        one with the lower alphabetical name will be picked. For example,
+        ``01-my-tag`` will be chosen instead of ``99-tag-name``.
+        @param-example "kernel_opts"
+            nouveau.noaccel=1
 
-        Returns 401 if the user is not an admin.
+        @success (json) "success-json" A JSON object representing the
+        new tag.
+        @success-example "success-json" [exkey=add-tag] placeholder
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        required to create a tag.
+        @error-example "no-perms"
+            No content
         """
         if not request.user.is_superuser:
             raise PermissionDenied()
@@ -308,9 +462,13 @@ class TagsHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def read(self, request):
-        """List Tags.
+        """@description-title List tags
+        @description Outputs a JSON object containing an array of all
+        currently defined tag objects.
 
-        Get a listing of all tags that are currently defined.
+        @success (json) "success-json" A JSON object containing an array
+        of all currently defined tag objects.
+        @success-example "success-json" [exkey=get-tags] placeholder
         """
         return Tag.objects.all()
 

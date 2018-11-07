@@ -44,10 +44,7 @@ In most cases, formatting is preserved when presenting output.
 With the exception of the description tag, docstrings can
 contain as many tags as necessary to describe an API call.
 
-The [required=true|false] option is a requirement for the
-@param tag.
-
-Notes:
+Descriptions:
 
 Description annotations can be interpreted in a couple of ways:
 
@@ -58,7 +55,10 @@ Description annotations can be interpreted in a couple of ways:
 
   Explicit title:
     The APIDocstringParser also contains support for an explicit
-    title, which the CLI-help code should honor if present.
+    title (@description-title), which the CLI-help code should
+    honor if present.
+
+Example tags:
 
 For an example tag to be successfully associated with
 a tag, the name or ID fields of the annotations must match:
@@ -71,8 +71,42 @@ a tag, the name or ID fields of the annotations must match:
 In this case, param "p1" and param-example "p1" will be
 paired together in the output dictionary.
 
+Options:
+
+The [required=true|false] option is a requirement for the
+@param tag.
+
+Example tags can either include formatted examples inline:
+
+@success-example "some-name"
+    {
+        "name": "value"
+    }
+
+Or reference an example key for lookup in a JSON database
+in the examples directory based on the URI. For example:
+
+    /MAAS/api/2.0/zone/{name}/ -> examples/zones.json
+    /MAAS/api/2.0/zones/{name}/ -> examples/zones.json
+
+Use the "exkey" to do this:
+
+@success-example "some-name" [exkey=unique-key] ignored text
+
+Where:
+
+examples/zones.json contains:
+
+{
+    ...
+    "unique-key": { ...some JSON object...},
+    ...
+}
+
+Notes:
+
 This class is typically used in conjunction with the
-APITemplateRenderer class.
+APITemplateRenderer class (templates.py).
 
 OUTPUT:
 
@@ -81,7 +115,7 @@ OUTPUT:
 
     {
       "http_method": "GET",
-      "uri": "/myuri/{foo}/",
+      "uri": "/MAAS/api/2.0/myuri/{foo}/",
       "operation": "arg1=foo&arg2=bar",
       "description-title": "A brief, title-like description",
       "description": "Some longer description.",
@@ -133,6 +167,8 @@ __all__ = [
     'APIDocstringParser',
 ]
 
+import json
+import os
 import re
 from textwrap import indent
 
@@ -311,10 +347,44 @@ class APIDocstringParser:
         """
         return_list = []
         for tag in tags:
-            e = self._get_named_example_for_named_tag(
+            example = self._get_named_example_for_named_tag(
                 tag_cat, tag['name'], examples)
-            if e:
-                tag['example'] = e['description']
+            if example:
+                # We default to the description for this example given in the
+                # docstring.
+                example_desc = example['description']
+
+                # If the user has given options, check for the presence of
+                # 'exkey'.
+                example_options = example['options']
+                if example_options is not None and 'exkey' in example_options:
+                    example_options_exkey = example_options['exkey']
+                    # If the examples db is empty, since we have an exkey,
+                    # we need to warn.
+                    if self.examples_db is None:
+                        self._warn(
+                            "Found 'exkey'='%s' in example named '%s', but "
+                            "the examples database is empty." %
+                            (example_options_exkey, example['name']))
+                    elif example_options_exkey in self.examples_db:
+                        # Use indent=4 in order to tell json to format
+                        # the outgoing string as opposed to keeping it on
+                        # one line.
+                        example_desc = json.dumps(
+                            self.examples_db[example['options']['exkey']],
+                            indent=4)
+                    else:
+                        self._warn(
+                            "Found 'exkey'='%s' in example named '%s', "
+                            "but found no corresponding entry in the the "
+                            "examples database." %
+                            (example['options']['exkey'], example['name']))
+
+                # example will contain either the description provided in the
+                # docstring as is, or it will have been replaced with an
+                # entry from the examples_db
+                tag['example'] = example_desc
+
             else:
                 tag['example'] = ""
 
@@ -345,6 +415,8 @@ class APIDocstringParser:
         self.error_examples = []
         # Clear out any collected warnings
         self.warnings = ""
+        # Clear the examples database
+        self.examples_db = None
 
     # Strips multiple inline spaces, all newlines, and
     # leading and trailing spaces
@@ -503,6 +575,61 @@ class APIDocstringParser:
 
         return ""
 
+    def _get_operation_from_uri(self, uri):
+        """Parses out an operation name from a given URI.
+
+        Given, for example, /MAAS/api/2.0/resourcepool/{id}/, this
+        function returns "resourcepool".
+        """
+        m = re.search("/MAAS/api/[0-9]+\.[0-9]+/([a-z\-]+)/", uri)
+        if m:
+            return m.group(1)
+
+        # Note that *not* finding an operation in a URI is normal
+        # and acceptable because sometimes we're parsing a docstring
+        # that the user hasn't associated with a URI.
+
+        return ""
+
+    def _get_examples_dict(self, uri):
+        """Returns a dictionary containing examples data or None
+
+        Given an operation string like "zone" or "zones", this function tries
+        to open and slurp in the JSON of a matching file in the api/examples
+        directory (e.g. tags.json). Example objects look like this:
+
+            "uniquekey": {
+                ... any JSON object ...
+            }
+
+        If no database is associated with the operation, the function
+        returns None.
+        """
+        examples = {}
+
+        operation = self._get_operation_from_uri(uri)
+
+        if operation == "":
+            return None
+
+        # First, try the operation string as is:
+        json_file = ("%s/examples/%s.json" %
+                     (os.path.dirname(__file__), operation))
+
+        if not os.path.isfile(json_file):
+            # Not available, so try adding an 's' to make it plural
+            json_file = ("%s/examples/%ss.json" %
+                         (os.path.dirname(__file__), operation))
+
+            if not os.path.isfile(json_file):
+                # Give up
+                return None
+
+        with open(json_file, "r") as ex_db_file:
+            examples = json.load(ex_db_file)
+
+        return examples
+
     def parse(self, docstring, http_method='', uri='', operation=''):
         """State machine that parses annotated API docstrings.
 
@@ -541,6 +668,10 @@ class APIDocstringParser:
         self.uri = uri
         self.operation = operation
         self._clear_docstring_vars()
+
+        # Fetch and build a dictionary containing examples associated with
+        # the given URI (if any)
+        self.examples_db = self._get_examples_dict(uri)
 
         # Init parse state
         ps = ParseState.TAG

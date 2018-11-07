@@ -1,7 +1,7 @@
 .. raw:: html
 
   <details>
-    <summary>``{{ http_method }} {{ uri }}{{if operation != ""}}?op={{ operation }}{{endif}}``</summary>
+    <summary>``{{ http_method }} {{ uri }}{{if operation != ""}}?{{ operation }}{{endif}}``</summary>
 
 ######################################################################################################
 
@@ -58,9 +58,14 @@ THERE ARE PROBLEMS WITH THE DOCSTRING:
 
 *{{ p['type'] }}*
 
+{{py:
+from textwrap import indent
+example = indent(p['example'], '    ')
+}}
+
 ::
 
-    {{ p['example'] }}
+{{ example }}
 
 {{endif}}
 
@@ -93,5 +98,5 @@ THERE ARE PROBLEMS WITH THE DOCSTRING:
 
 .. raw:: html
 
+  <p>&nbsp;</p>
   </details>
-
