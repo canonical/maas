@@ -109,8 +109,15 @@
                                     <div class="row" data-ng-if="isSuperUser()">
                                         <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
                                             <li class="p-inline-list__item">
+                                                <label class="p-form__label">Additional installs:</label>
+                                            </li>
+                                            <li class="p-inline-list__item">
                                                 <input id="installKVM" type="checkbox" data-ng-model="deployOptions.installKVM"></input>
-                                                <label for="installKVM">Register as MAAS KVM host</label>
+                                                <label for="installKVM">MAAS-managed KVM</label>
+                                            </li>
+                                            <li class="p-inline-list__item">
+                                                <span class="p-icon--information"></span>
+                                                About <a href="https://docs.maas.io/2.5/en/manage-kvm-pods-networking">Virsh pods</a>
                                             </li>
                                         </ul>
                                     </div>

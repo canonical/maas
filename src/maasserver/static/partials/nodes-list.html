@@ -212,8 +212,15 @@
                                     <div class="row" data-ng-if="isSuperUser()">
                                     <ul class="p-inline-list--settings u-no-margin--left u-no-padding--left">
                                         <li class="p-inline-list__item">
+                                            <label class="p-form__label">Additional install:</label>
+                                        </li>
+                                        <li class="p-inline-list__item">
                                             <input id="{$ tab $}-installKVM" type="checkbox" data-ng-model="tabs[tab].deployOptions.installKVM"></input>
-                                            <label for="{$ tab $}-installKVM">Register as MAAS KVM host</label>
+                                            <label for="{$ tab $}-installKVM">MAAS-managed KVM</label>
+                                        </li>
+                                        <li class="p-inline-list__item">
+                                            <span class="p-icon--information"></span>
+                                            <a href="https://docs.maas.io/2.5/en/manage-kvm-pods-networking">Learn more</a>
                                         </li>
                                     </ul>
                                     </div>
