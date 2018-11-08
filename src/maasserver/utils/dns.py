@@ -1,15 +1,20 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""DNS-related utilities."""
+"""URL and DNS-related utilities."""
 
 __all__ = [
     'validate_hostname',
+    'validate_url',
     ]
 
 import re
 
 from django.core.exceptions import ValidationError
+from django.core.validators import (
+    _lazy_re_compile,
+    URLValidator,
+)
 from netaddr import (
     AddrConversionError,
     IPAddress,
@@ -88,3 +93,39 @@ def get_ip_based_hostname(ip):
     except AddrConversionError:
         hostname = str(IPAddress(ip).ipv6()).replace(':', '-')
     return hostname
+
+
+def validate_url(url, schemes=('http', 'https')):
+    """Validator for URLs.
+
+    Uses's django's URLValidator plumbing but isn't as restrictive and
+    URLs of the form http://foo are considered valid.
+
+    Built from:
+
+    `https://docs.djangoproject.com/en/2.1/_modules/django/
+        core/validators/#URLValidator`
+
+    :param url: Input value for a url.
+    :raise ValidationError: If the url is not valid.
+    """
+    # Re-structure django's regex.
+    url_validator = URLValidator
+    host_re = (
+        '(' + url_validator.hostname_re + url_validator.domain_re +
+        url_validator.tld_re + '|' + url_validator.hostname_re + '|localhost)')
+
+    regex = _lazy_re_compile(
+        r'^(?:[a-z0-9\.\-\+]*)://'  # scheme is validated separately
+        r'(?:\S+(?::\S*)?@)?'  # user:pass authentication
+        r'(?:' + url_validator.ipv4_re + '|' +
+        url_validator.ipv6_re + '|' + host_re + ')'
+        r'(?::\d{2,5})?'  # port
+        r'(?:[/?#][^\s]*)?'  # resource path
+        r'\Z', re.IGNORECASE)
+
+    url_validator.regex = regex
+    valid_url = url_validator(schemes=schemes)
+
+    # Validate the url.
+    return valid_url(url)

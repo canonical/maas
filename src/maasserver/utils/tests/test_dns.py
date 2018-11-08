@@ -12,6 +12,7 @@ from maasserver.utils.dns import (
     get_ip_based_hostname,
     validate_domain_name,
     validate_hostname,
+    validate_url,
 )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -19,6 +20,58 @@ from testtools.matchers import (
     Equals,
     HasLength,
 )
+
+
+EXTENDED_SCHEMES = ['http', 'https', 'ftp', 'ftps', 'git', 'file', 'git+ssh']
+
+
+class TestURLValidator(MAASTestCase):
+    """Test for the validation of URLs."""
+
+    def assertAccepts(self, url):
+        """Assertion: the validator accepts `url`."""
+        try:
+            validate_url(url)
+        except ValidationError as e:
+            raise AssertionError(str(e))
+
+    def test_accepts_domain_without_explicit_top_level_domain(self):
+        self.assertAccepts('http://foo')
+        self.assertAccepts('http://foo/')
+        self.assertAccepts('http://foo/bar')
+        self.assertAccepts('http://foo/bar/')
+
+    def test_accepts_localhost(self):
+        self.assertIsNone(validate_url(
+            'file://localhost/path', schemes=EXTENDED_SCHEMES))
+
+    def test_accepts_git_scheme(self):
+        self.assertIsNone(validate_url(
+            'git://example.com/', schemes=EXTENDED_SCHEMES))
+
+    def test_accepts_git_ssh_scheme(self):
+        self.assertIsNone(validate_url(
+            'git+ssh://git@github.com/example/hg-git.git',
+            schemes=EXTENDED_SCHEMES))
+
+    def test_fails_hostname_starting_with_hyphen(self):
+        self.assertRaises(
+            ValidationError, validate_url,
+            'git://-invalid.com', EXTENDED_SCHEMES)
+
+    def test_fails_newlines_at_end(self):
+        self.assertRaises(
+            ValidationError, validate_url, 'http://www.djangoproject.com/\n')
+        self.assertRaises(
+            ValidationError, validate_url, 'http://[::ffff:192.9.5.5]\n')
+
+    def test_fails_for_trailing_junk(self):
+        self.assertRaises(
+            ValidationError, validate_url,
+            'http://www.asdasdasdasdsadfm.com.br ')
+        self.assertRaises(
+            ValidationError, validate_url,
+            'http://www.asdasdasdasdsadfm.com.br z')
 
 
 class TestHostnameValidator(MAASTestCase):

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: configure the authentication source."""
@@ -14,7 +14,6 @@ from django.core.management.base import (
     BaseCommand,
     CommandError,
 )
-from django.core.validators import URLValidator
 from django.db import DEFAULT_DB_ALIAS
 from maascli.init import (
     add_candid_options,
@@ -23,6 +22,7 @@ from maascli.init import (
 from maasserver.management.commands.createadmin import read_input
 from maasserver.models import Config
 from maasserver.rbac import RBACUserClient
+from maasserver.utils.dns import validate_url
 from macaroonbakery.bakery import generate_key
 
 
@@ -115,12 +115,9 @@ def _pick_service(services):
     return services[service_name]
 
 
-valid_url = URLValidator(schemes=('http', 'https'))
-
-
 def is_valid_url(auth_url):
     try:
-        valid_url(auth_url)
+        validate_url(auth_url)
     except ValidationError:
         return False
     return True
