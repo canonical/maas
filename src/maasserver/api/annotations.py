@@ -32,6 +32,8 @@ embedded annoations of the form:
     string: a unicode string
     int: an integer
     json: a json object
+    boolean: True or False
+    float: a floating point number
     url-string: a URL-encoded string
     http-status-code: an HTTP status code
     content: content served via a MAAS server
@@ -191,7 +193,9 @@ class APIDocstringParser:
         "int",
         "content",
         "http-status-code",
-        "json"
+        "json",
+        "boolean",
+        "float"
     ]
 
     @staticmethod

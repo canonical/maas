@@ -54,6 +54,12 @@ class TestAPIAnnotations(APITestCase.ForUser):
             "foo": "bar"
         }
 
+    @param (boolean) "param_name5" [required=false] param5 description
+    @param-example "param_name5" True
+
+    @param (float) "param_name6" [required=false] param6 description
+    @param-example "param_name6" 1.5
+
     @success (content) "success_name" success description
     @success-example "success_name" success content
 
@@ -154,6 +160,20 @@ class TestAPIAnnotations(APITestCase.ForUser):
         self.assertEqual(
             " ".join(p['example'].split()),
             "{ \"id\": 1, \"foo\": \"bar\" }")
+
+        p = params[4]
+        self.assertEqual(p['type'], "Boolean")
+        self.assertEqual(p['name'], "param_name5")
+        self.assertEqual(
+            " ".join(p['description'].split()), "param5 description")
+        self.assertEqual(" ".join(p['example'].split()), "True")
+
+        p = params[5]
+        self.assertEqual(p['type'], "Float")
+        self.assertEqual(p['name'], "param_name6")
+        self.assertEqual(
+            " ".join(p['description'].split()), "param6 description")
+        self.assertEqual(" ".join(p['example'].split()), "1.5")
 
         s = successes[0]
         self.assertEqual(s['type'], "Content")
