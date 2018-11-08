@@ -106,7 +106,11 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_connectionMade_sets_the_request(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)
         self.patch_autospec(protocol, "authenticate")
-        self.patch_autospec(protocol, "processMessages")
+        # Be sure the request field is populated by the time that
+        # processMessages() is called.
+        processMessages_mock = self.patch_autospec(protocol, "processMessages")
+        processMessages_mock.side_effect = lambda: self.assertThat(
+            protocol.request.user, Equals(protocol.user))
         protocol.authenticate.return_value = defer.succeed(sentinel.user)
         protocol.connectionMade()
         self.addCleanup(protocol.connectionLost, "")

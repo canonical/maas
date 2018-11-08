@@ -93,6 +93,7 @@ class WebSocketProtocol(Protocol):
     def __init__(self):
         self.messages = deque()
         self.user = None
+        self.request = None
         self.cache = {}
 
     def connectionMade(self):
@@ -119,8 +120,6 @@ class WebSocketProtocol(Protocol):
                 # This user is a keeper. Record it and process any message
                 # that have already been received.
                 self.user = user
-                self.processMessages()
-                self.factory.clients.append(self)
 
                 # Create the request for the handlers for this connection.
                 self.request = HttpRequest()
@@ -147,6 +146,11 @@ class WebSocketProtocol(Protocol):
                     self.request.META['SERVER_PORT'] = port
                 else:
                     self.request.META['SERVER_PORT'] = 5248
+
+                # Be sure to process messages after the metadata is populated,
+                # in order to avoid bug #1802390.
+                self.processMessages()
+                self.factory.clients.append(self)
 
         d.addCallback(authenticated)
 
