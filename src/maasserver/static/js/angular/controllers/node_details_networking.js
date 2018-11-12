@@ -801,7 +801,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     subnet: nic.subnet,
                     ip_address: nic.ip_address,
                     ip_assignment: nic.ip_assignment,
-                    link_id: nic.link_id
+                    link_id: nic.link_id,
+                    type: nic.type,
+                    bridge_fd: nic.params.bridge_fd,
+                    bridge_stp: nic.params.bridge_stp,
+                    bond_mode: nic.params.bond_mode,
+                    xmitHashPolicy: nic.params.bond_xmit_hash_policy,
+                    lacpRate: nic.params.bond_lacp_rate
                 };
                 if(nic.subnet !== undefined && nic.subnet !== null) {
                     $scope.editInterface.defaultSubnet = nic.subnet;
@@ -819,7 +825,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     subnet: nic.subnet,
                     mode: nic.mode,
                     ip_address: nic.ip_address,
-                    link_id: nic.link_id
+                    link_id: nic.link_id,
+                    type: nic.type,
+                    bridge_fd: nic.params.bridge_fd,
+                    bridge_stp: nic.params.bridge_stp,
+                    bond_mode: nic.params.bond_mode,
+                    xmitHashPolicy: nic.params.bond_xmit_hash_policy,
+                    lacpRate: nic.params.bond_lacp_rate
                 };
             }
         };
@@ -944,6 +956,21 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 params.subnet = params.subnet.id;
             } else {
                 delete params.subnet;
+            }
+            if(nic.bridge_stp !== undefined && nic.bridge_stp !== null) {
+                params.bridge_stp = params.bridge_stp;
+            } else {
+                params.bridge_stp = null;
+            }
+            if(nic.bridge_fd !== undefined && nic.bridge_fd !== null) {
+                params.bridge_fd = params.bridge_fd;
+            } else {
+                params.bridge_fd = null;
+            }
+            if(nic.bond_mode !== undefined && nic.bond_mode !== null) {
+                params.bond_mode = params.bond_mode;
+            } else {
+                params.bond_mode = null;
             }
 
             if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
@@ -1355,14 +1382,34 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 $scope.selectedMode = SELECTION_MODE.CREATE_BOND;
 
                 var parents = getSelectedInterfaces();
+                var primary = parents[0];
+                var mac_address = '';
+                var fabric = '';
+                var vlan = {};
+                var subnet = '';
+                if (primary && primary.mac_address) {
+                    mac_address = primary.mac_address;
+                }
+                if (primary && primary.fabric) {
+                    fabric = primary.fabric;
+                }
+                if (primary && primary.vlan) {
+                    vlan = primary.vlan;
+                }
+                if (primary && primary.subnet) {
+                    subnet = primary.subnet;
+                }
                 $scope.newBondInterface = {
                     name: getNextName("bond"),
                     tags: [],
                     parents: parents,
-                    primary: parents[0],
-                    mac_address: "",
-                    mode: "active-backup",
-                    lacpRate: "slow",
+                    primary: primary,
+                    mac_address: mac_address,
+                    fabric: fabric,
+                    vlan: vlan,
+                    subnet: subnet,
+                    bond_mode: "active-backup",
+                    lacpRate: "fast",
                     xmitHashPolicy: "layer2"
                 };
             }
@@ -1406,15 +1453,41 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return true when the LACR rate selection should be shown.
         $scope.showLACPRate = function() {
-            return $scope.newBondInterface.mode === "802.3ad";
+            if ($scope.editInterface) {
+                return $scope.editInterface.bond_mode === "802.3ad";
+            } else {
+                return $scope.newBondInterface.bond_mode === "802.3ad";
+            }
+        };
+
+        // Return true when hash policy is not fully 802.3ad compliant.
+        $scope.modeAndPolicyCompliant = function() {
+            if ($scope.editInterface) {
+                return (
+                    $scope.editInterface.bond_mode === "802.3ad" &&
+                    ($scope.editInterface.xmitHashPolicy === "layer3+4" ||
+                    $scope.editInterface.xmitHashPolicy === "encap3+4"));
+            } else {
+                return (
+                    $scope.newBondInterface.bond_mode === "802.3ad" &&
+                    ($scope.newBondInterface.xmitHashPolicy === "layer3+4" ||
+                    $scope.newBondInterface.xmitHashPolicy === "encap3+4"));
+            }
         };
 
         // Return true when the XMIT hash policy should be shown.
         $scope.showXMITHashPolicy = function() {
-            return (
-                $scope.newBondInterface.mode === "balance-xor" ||
-                $scope.newBondInterface.mode === "802.3ad" ||
-                $scope.newBondInterface.mode === "balance-tlb");
+            if ($scope.editInterface) {
+                return (
+                    $scope.editInterface.bond_mode === "balance-xor" ||
+                    $scope.editInterface.bond_mode === "802.3ad" ||
+                    $scope.editInterface.bond_mode === "balance-tlb");
+            } else {
+                return (
+                    $scope.newBondInterface.bond_mode === "balance-xor" ||
+                    $scope.newBondInterface.bond_mode === "802.3ad" ||
+                    $scope.newBondInterface.bond_mode === "balance-tlb");
+            }
         };
 
         // Return true if cannot add the bond.
@@ -1450,7 +1523,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     function(tag) { return tag.text; }),
                 parents: parents,
                 vlan: vlan_id,
-                bond_mode: $scope.newBondInterface.mode,
+                bond_mode: $scope.newBondInterface.bond_mode,
                 bond_lacp_rate: $scope.newBondInterface.lacpRate,
                 bond_xmit_hash_policy: $scope.newBondInterface.xmitHashPolicy
             };
@@ -1496,6 +1569,34 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return $scope.selectedMode === SELECTION_MODE.CREATE_BRIDGE;
         };
 
+        // Return true when the edit bridge view is being shown.
+        $scope.isShowingEdit = function() {
+            return $scope.selectedMode === SELECTION_MODE.EDIT;
+        };
+
+        // Toogle interfaces in edit table
+        $scope.toggleInterfaces = function() {
+            $scope.isShowingInterfaces = !$scope.isShowingInterfaces;
+        };
+
+        // Checks if row is correct type and id
+        $scope.isCorrectInterfaceType = function(bondInterface, parents) {
+            var parentIds = parents.map(function(parent) {
+                return parent.id;
+            });
+
+            var parentType = parents[0].type;
+            var parentFabric = parents[0].fabric;
+
+            if (bondInterface.type === parentType
+                && bondInterface.fabric === parentFabric
+                && !parentIds.includes(bondInterface.id)) {
+                return true;
+            }
+
+            return false;
+        };
+
         // Show the create bridge view.
         $scope.showCreateBridge = function() {
             if($scope.selectedMode === SELECTION_MODE.SINGLE &&
@@ -1503,12 +1604,27 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 $scope.selectedMode = SELECTION_MODE.CREATE_BRIDGE;
 
                 var parents = getSelectedInterfaces();
+                var primary = parents[0];
+                var mac_address = '';
+                var fabric = '';
+                var vlan = {};
+                if (primary && primary.mac_address) {
+                    mac_address = primary.mac_address;
+                }
+                if (primary && primary.fabric) {
+                    fabric = primary.fabric;
+                }
+                if (primary && primary.vlan) {
+                    vlan = primary.vlan;
+                }
                 $scope.newBridgeInterface = {
                     name: getNextName("br"),
                     tags: [],
                     parents: parents,
-                    primary: parents[0],
-                    mac_address: "",
+                    primary: primary,
+                    mac_address: mac_address,
+                    fabric: fabric,
+                    vlan: vlan,
                     bridge_stp: false,
                     bridge_fd: 15
                 };
@@ -1531,16 +1647,26 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             var parents = [$scope.newBridgeInterface.primary.id];
             var mac_address = $scope.newBridgeInterface.mac_address;
+            var fabric = $scope.newBridgeInterface.fabric;
+            var vlan = $scope.newBridgeInterface.vlan;
             if(mac_address === "") {
                 mac_address = $scope.newBridgeInterface.primary.mac_address;
             }
+            if(fabric === "") {
+                fabric = $scope.newBridgeInterface.primary.fabric;
+            }
+            if(vlan === "") {
+                vlan = $scope.newBridgeInterface.primary.vlan;
+            }
+
             var params = {
                 name: $scope.newBridgeInterface.name,
                 mac_address: mac_address,
                 tags: $scope.newBridgeInterface.tags.map(
                     function(tag) { return tag.text; }),
                 parents: parents,
-                vlan: $scope.newBridgeInterface.primary.vlan.id,
+                vlan: vlan.id,
+                fabric: fabric.id,
                 bridge_stp: $scope.newBridgeInterface.bridge_stp,
                 bridge_fd: $scope.newBridgeInterface.bridge_fd
             };

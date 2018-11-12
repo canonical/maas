@@ -515,6 +515,10 @@ describe("NodeNetworkingController", function() {
             name: "eth0",
             ip_assignment: 'static',
             tags: [],
+            params: {
+                bridge_fd: 15,
+                bridge_stp: false
+            },
             subnet: $scope.subnets[1]
             };
         $scope.edit(nic);
@@ -530,6 +534,10 @@ describe("NodeNetworkingController", function() {
             name: "eth0",
             ip_assignment: 'static',
             tags: [],
+            params: {
+                bridge_fd: 15,
+                bridge_stp: false
+            },
             subnet: null
             };
         $scope.edit(nic);
@@ -3423,10 +3431,72 @@ describe("NodeNetworkingController", function() {
                 primary: nic1,
                 tags: [],
                 mac_address: "",
-                mode: "active-backup",
-                lacpRate: "slow",
+                bond_mode: "active-backup",
+                fabric: '',
+                vlan: {},
+                subnet: '',
+                lacpRate: "fast",
                 xmitHashPolicy: "layer2"
             });
+        });
+    });
+
+    describe("toggleInterfaces", function() {
+
+        it("sets isShowingInterfaces to false if showing", function() {
+            var controller = makeController();
+            $scope.isShowingInterfaces = true;
+            $scope.toggleInterfaces();
+            expect($scope.isShowingInterfaces).toBe(false);
+        });
+
+        it("sets isShowingInterfaces to true if not showing", function() {
+            var controller = makeController();
+            $scope.isShowingInterfaces = false;
+            $scope.toggleInterfaces();
+            expect($scope.isShowingInterfaces).toBe(true);
+        });
+    });
+
+    describe("isCorrectInterfaceType", function() {
+        var bondInterface = {
+            id: 35,
+            type: 'physical'
+        };
+
+        var parents = [
+            {
+                id: 34,
+                type: 'physical'
+            }
+        ];
+
+        it("returns true if not parent & type is same as parent", function() {
+            var controller = makeController();
+            expect(
+                $scope.isCorrectInterfaceType(bondInterface, parents)
+            ).toBe(true);
+        });
+
+        it("returns false if parent", function() {
+            var controller = makeController();
+
+            bondInterface.id = 34;
+
+            expect(
+                $scope.isCorrectInterfaceType(bondInterface, parents)
+            ).toBe(false);
+        });
+
+        it("returns false is type is not same as parent", function() {
+            var controller = makeController();
+
+            bondInterface.id = 33;
+            bondInterface.type = 'vlan';
+
+            expect(
+                $scope.isCorrectInterfaceType(bondInterface, parents)
+            ).toBe(false);
         });
     });
 
@@ -3513,13 +3583,37 @@ describe("NodeNetworkingController", function() {
 
         it("returns true if in 802.3ad mode", function() {
             var controller = makeController();
-            $scope.newBondInterface.mode = "802.3ad";
+            $scope.newBondInterface.bond_mode = "802.3ad";
             expect($scope.showLACPRate()).toBe(true);
         });
 
         it("returns false if not in 802.3ad mode", function() {
             var controller = makeController();
-            $scope.newBondInterface.mode = makeName("otherMode");
+            $scope.newBondInterface.bond_mode = makeName("otherMode");
+            expect($scope.showLACPRate()).toBe(false);
+        });
+    });
+
+    describe("modeAndPolicyCompliant", function() {
+
+        it("returns true if policy is layer3+4", function() {
+            var controller = makeController();
+            $scope.newBondInterface.bond_mode = "802.3ad";
+            $scope.newBondInterface.xmitHashPolicy = "layer3+4";
+            expect($scope.showLACPRate()).toBe(true);
+        });
+
+        it("returns true if policy is encap3+4", function() {
+            var controller = makeController();
+            $scope.newBondInterface.bond_mode = "802.3ad";
+            $scope.newBondInterface.xmitHashPolicy = "encap3+4";
+            expect($scope.showLACPRate()).toBe(true);
+        });
+
+        it("returns false if 802.3ad compliant", function() {
+            var controller = makeController();
+            $scope.newBondInterface.bond_mode = "802.3ad";
+            $scope.newBondInterface.xmitHashPolicy = "layer2+3";
             expect($scope.showLACPRate()).toBe(false);
         });
     });
@@ -3528,25 +3622,25 @@ describe("NodeNetworkingController", function() {
 
         it("returns true if in balance-xor mode", function() {
             var controller = makeController();
-            $scope.newBondInterface.mode = "balance-xor";
+            $scope.newBondInterface.bond_mode = "balance-xor";
             expect($scope.showXMITHashPolicy()).toBe(true);
         });
 
         it("returns true if in 802.3ad mode", function() {
             var controller = makeController();
-            $scope.newBondInterface.mode = "802.3ad";
+            $scope.newBondInterface.bond_mode = "802.3ad";
             expect($scope.showXMITHashPolicy()).toBe(true);
         });
 
         it("returns true if in balance-tlb mode", function() {
             var controller = makeController();
-            $scope.newBondInterface.mode = "balance-tlb";
+            $scope.newBondInterface.bond_mode = "balance-tlb";
             expect($scope.showXMITHashPolicy()).toBe(true);
         });
 
         it("returns false if not in other modes", function() {
             var controller = makeController();
-            $scope.newBondInterface.mode = makeName("otherMode");
+            $scope.newBondInterface.bond_mode = makeName("otherMode");
             expect($scope.showXMITHashPolicy()).toBe(false);
         });
     });
@@ -3655,7 +3749,7 @@ describe("NodeNetworkingController", function() {
                     parents: [nic1.id, nic2.id],
                     vlan: vlan.id,
                     bond_mode: "active-backup",
-                    bond_lacp_rate: "slow",
+                    bond_lacp_rate: "fast",
                     bond_xmit_hash_policy: "layer2"
                 });
             expect($scope.interfaces).toEqual([]);
@@ -3703,7 +3797,7 @@ describe("NodeNetworkingController", function() {
                     parents: [nic1.id, nic2.id],
                     vlan: null,
                     bond_mode: "active-backup",
-                    bond_lacp_rate: "slow",
+                    bond_lacp_rate: "fast",
                     bond_xmit_hash_policy: "layer2"
                 });
             expect($scope.interfaces).toEqual([]);
@@ -3812,6 +3906,21 @@ describe("NodeNetworkingController", function() {
         });
     });
 
+    describe("isShowingEdit", function() {
+
+        it("returns true in edit mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "edit";
+            expect($scope.isShowingEdit()).toBe(true);
+        });
+
+        it("returns false in single mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "single";
+            expect($scope.isShowingEdit()).toBe(false);
+        });
+    });
+
     describe("showCreateBridge", function() {
 
         it("sets mode to create-bridge", function() {
@@ -3843,6 +3952,8 @@ describe("NodeNetworkingController", function() {
                 primary: nic1,
                 tags: [],
                 mac_address: "",
+                vlan: {},
+                fabric: '',
                 bridge_stp: false,
                 bridge_fd: 15
             });
@@ -3903,16 +4014,20 @@ describe("NodeNetworkingController", function() {
                 MachinesManager.createBridgeInterface).not.toHaveBeenCalled();
         });
 
-        it("calls createBridgeInterface and removes selection", function() {
+        fit("calls createBridgeInterface and removes selection", function() {
             var controller = makeController();
             var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var fabric = {
                 id: makeInteger(0, 100)
             };
             var nic1 = {
                 id: makeInteger(0, 100),
                 link_id: makeInteger(0, 100),
                 type: "physical",
-                vlan: vlan
+                vlan: vlan,
+                fabric: fabric
             };
             $scope.interfaces = [nic1];
             $scope.interfaceLinksMap = {};
@@ -3935,6 +4050,7 @@ describe("NodeNetworkingController", function() {
                     tags: [],
                     parents: [nic1.id],
                     vlan: vlan.id,
+                    fabric: fabric.id,
                     bridge_stp: false,
                     bridge_fd: 15
                 });

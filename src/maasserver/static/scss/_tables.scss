@@ -52,6 +52,12 @@
     }
   }
 
+  .p-table__row {
+    &--muted {
+      background: $color-light;
+    }
+  }
+
   .p-table--network-discovery {
     $chevron-cell-width: 50px;
 

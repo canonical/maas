@@ -549,7 +549,7 @@ class TestNetplan(MAASServerTestCase):
             INTERFACE_TYPE.BOND,
             node=node, name='bond0', parents=[eth0, eth1], params={
                 "bond_mode": "active-backup",
-                "bond_lacp_rate": "slow",
+                "bond_lacp_rate": "fast",
                 "bond_xmit_hash_policy": "layer2",
                 "bond_num_grat_arp": 3,
             })
@@ -594,7 +594,7 @@ class TestNetplan(MAASServerTestCase):
             INTERFACE_TYPE.BOND,
             node=node, name='bond0', parents=[eth0, eth1], params={
                 "bond_mode": "802.3ad",
-                "bond_lacp_rate": "slow",
+                "bond_lacp_rate": "fast",
                 "bond_xmit_hash_policy": "layer2",
                 "bond_num_grat_arp": 3,
             })
@@ -620,7 +620,7 @@ class TestNetplan(MAASServerTestCase):
                         'mtu': 1500,
                         'parameters': {
                             "mode": "802.3ad",
-                            "lacp-rate": "slow",
+                            "lacp-rate": "fast",
                             "transmit-hash-policy": "layer2",
                         },
                     },
@@ -639,7 +639,7 @@ class TestNetplan(MAASServerTestCase):
             INTERFACE_TYPE.BOND,
             node=node, name='bond0', parents=[eth0, eth1], params={
                 "bond_mode": "active-backup",
-                "bond_lacp_rate": "slow",
+                "bond_lacp_rate": "fast",
                 "bond_xmit_hash_policy": "layer2",
                 "bond_num_unsol_na": 3,
             })

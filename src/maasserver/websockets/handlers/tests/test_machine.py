@@ -1269,7 +1269,7 @@ class TestMachineHandler(MAASServerTestCase):
         eth1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         bond_params = {
             "bond_downdelay": 0,
-            "bond_lacp_rate": "slow",
+            "bond_lacp_rate": "fast",
             "bond_miimon": 100,
             "bond_mode": "balance-xor",
             "bond_num_grat_arp": 1,

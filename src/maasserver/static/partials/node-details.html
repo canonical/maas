@@ -831,7 +831,962 @@
                         </div>
                     </div>
                 </div>
-                <div class="row">
+
+
+                <div class="row" data-ng-if="isShowingCreateBridge()">
+                    <div class="p-card--highlighted">
+                        <h2 class="p-heading--four">Create bridge</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="p-double-row">
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div>Name,</div>
+                                            <div>MAC</div>
+                                        </div>
+                                    </th>
+                                    <th>Type</th>
+                                    <th class="p-double-row">
+                                        <div>Fabric,</div>
+                                        <div>VLAN</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>Subnet,</div>
+                                        <div>Name</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>IP address,</div>
+                                        <div>IP mode</div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface)">
+                                    <td class="p-double-row" aria-label="Name">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row">
+                                                <div title="{$ interface.name $}">
+                                                    {$ interface.name $}
+                                                </div>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <div title="{$ interface.mac_address $}">
+                                                    {$ interface.mac_address $}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td aria-label="Type">
+                                        <span title="{$ getInterfaceTypeText(interface) $}">
+                                            {$ getInterfaceTypeText(interface) $}
+                                        </span>
+                                    </td>
+                                    <td aria-label="Type">
+                                        <span title="{$ getInterfaceTypeText(interface) $}">
+                                            {$ getInterfaceTypeText(interface) $}
+                                        </span>
+                                    </td>
+                                    <td class="p-double-row" aria-label="Fabric">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row">
+                                                <div title="{$ interface.fabric.name || 'Disconnected' $}">
+                                                    {$ interface.fabric.name $}
+                                                    <span data-ng-if="!interface.fabric.name">Disconnected</span>
+                                                </div>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <div title="{$ getVLANText(interface.vlan) $}">
+                                                    {$ getVLANText(interface.vlan) $}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-double-row" aria-label="Subnet CIDR">
+                                        <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ interface.subnet.cidr $}">
+                                            <span data-ng-if="interface.subnet.cidr">
+                                                <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
+                                            </span>
+                                            <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
+                                        </div>
+                                        <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
+                                            <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="p-strip is--shallow p-form--stacked">
+                            <div class="row">
+                                <div class="col-6">
+                                    <h3 class="p-heading--five">Bridge details</h3>
+                                    <div class="p-form__group u-vertically-center" data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBridgeInterface) }">
+                                        <label for="name" class="p-form__label">Bridge name</label>
+                                        <div class="p-form__control">
+                                            <input type="text" class="table__input editible" data-ng-model="newBridgeInterface.name">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center" data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
+                                        <label for="mac" class="p-form__label">MAC address</label>
+                                        <div class="p-form__control">
+                                            <input type="text" name="mac" placeholder="00:00:00:00:00:00" data-ng-model="newBridgeInterface.mac_address" data-ng-value="newBridgeInterface.mac_address" data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" maxlength="17" mac-address data-ng-placeholder="getInterfacePlaceholderMACAddress(newBridgeInterface)">
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">Tags</label>
+                                        <div class="p-form__control tags--inline">
+                                            <tags-input data-ng-model="newBridgeInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h3 class="p-heading--five">Network</h3>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">Fabric</label>
+                                        <div class="p-form__control">
+                                            <select
+                                                name="fabric"
+                                                data-ng-model="newBridgeInterface.fabric"
+                                                data-ng-options="fabric as fabric.name for fabric in fabrics"
+                                            >
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">VLAN</label>
+                                        <div class="p-form__control">
+                                            <select name="vlan"
+                                                data-ng-model="newBridgeInterface.vlan"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                            >
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">Subnet</label>
+                                        <div class="p-form__control">
+                                            <select name="subnet"
+                                                data-ng-model="newBridgeInterface.subnet"
+                                                data-ng-change="subnetChanged(newBridgeInterface)"
+                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newBridgeInterface.vlan">
+                                                <option value="" data-ng-hide="newBridgeInterface.type === 'alias'">Unconfigured</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-strip is--shallow p-form--stacked">
+                            <div class="row">
+                                <div class="col-6">
+                                    <h3 class="p-heading--five">Advanced options</h3>
+                                    <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
+                                        <label for="stp" class="p-form__label">
+                                            STP
+                                            <span class="p-tooltip p-tooltip--right" aria-describedby="stp">
+                                                <i class="p-icon--question"></i>
+                                                <span class="p-tooltip__message" role="tooltip" id="stp">Controls the participation of this bridge in the spanning tree protocol.</span>
+                                            </span>
+                                        </label>
+                                        <div class="p-form__control">
+                                            <div class="onoffswitch maas-p-switch">
+                                                <input id="bridge_stp" type="checkbox" name="bridge_stp" class="onoffswitch-checkbox maas-p-switch--input" data-ng-model="newBridgeInterface.bridge_stp">
+                                                <div class="maas-p-switch--mask"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center" data-ng-if="newBridgeInterface.bridge_stp">
+                                        <label for="fd" class="p-form__label">Forward delay (ms)</label>
+                                        <div class="p-form__control">
+                                            <input type="text" name="fd" data-ng-model="newBridgeInterface.bridge_fd">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row u-sv2">
+                            <hr />
+                        </div>
+                        <div class="row">
+                            <div class="u-float--right">
+                                <button class="p-button--base u-no-margin--bottom" data-ng-click="cancel()">Cancel</button>
+                                <button class="p-button--positive u-no-margin--bottom" data-ng-click="addBridge()" data-ng-disabled="cannotAddBridge()">Save bridge</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="row" data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface) && isShowingEdit()">
+                    <div class="p-card--highlighted">
+                        <h2 class="p-heading--four">Edit {$ getInterfaceTypeText(interface).toLowerCase() $}</h2>
+                        <table>
+                            <thead>
+                                <tr data-ng-if="isDevice" class="p-table--is-device">
+                                    <th>MAC</th>
+                                    <th>Subnet</th>
+                                    <th>IP Address</th>
+                                    <th><div class="u-align--right">Actions</div></th>
+                                </tr>
+
+                                <tr data-ng-if="!isDevice" class="p-table--is-not-device">
+                                    <th class="p-double-row">
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div>Name,</div>
+                                            <div>MAC</div>
+                                        </div>
+                                    </th>
+                                    <th><div data-ng-if="!isController">PXE</div></th>
+                                    <th>Type</th>
+                                    <th class="p-double-row">
+                                        <div>Fabric,</div>
+                                        <div>VLAN</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>Subnet,</div>
+                                        <div>Name</div>
+                                    </th>
+                                    <th class="p-double-row">
+                                        <div>IP Address,</div>
+                                        <div>IP Mode</div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-ng-repeat="interface in interfaces" data-ng-if="isInterfaceSelected(interface)">
+                                    <td class="p-double-row" aria-label="Name">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row">
+                                                <div title="{$ interface.name $}">
+                                                    {$ interface.name $}
+                                                </div>
+                                            </div>
+                                            <div class="p-double-row__muted-row">
+                                                <div title="{$ interface.mac_address $}">
+                                                    {$ interface.mac_address $}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td aria-label="Boot interface">
+                                        <span class="u-align--center u-hide u-show--large">
+                                            <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
+                                                data-ng-if="!isController && isBootInterface(interface)"
+                                                class="u-no-margin">
+                                            <label for="{$ interface.name $}"></label>
+                                        </span>
+                                        <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
+                                        <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
+                                    </td>
+                                    <td aria-label="Type">
+                                        <span title="{$ getInterfaceTypeText(interface) $}">
+                                            {$ getInterfaceTypeText(interface) $}
+                                        </span>
+                                    </td>
+                                    <td class="p-double-row">
+                                        <div class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Fabric">
+                                                <span  title="{$ interface.fabric.name || 'Disconnected' $}">
+                                                    <a class="p-link--soft" data-ng-if="interface.fabric" href="/#/fabric/{$ interface.fabric.id $}">{$ interface.fabric.name $}</a>
+                                                    <span data-ng-if="!interface.fabric.name">Disconnected</span>
+                                                </span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="VLAN">
+                                                <span title="{$ getVLANText(interface.vlan) $}">
+                                                    <a class="p-muted-text p-link--muted" data-ng-if="interface.vlan" href="/#/vlan/{$ interface.vlan.id $}">
+                                                        {$ getVLANText(interface.vlan) $}
+                                                    </a>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-double-row">
+                                        <div data-ng-if="((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))" title="{$ getSubnetText(interface.subnet) $}" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ interface.subnet.cidr $}">
+                                                <span data-ng-if="interface.subnet.cidr">
+                                                    <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
+                                                </span>
+                                                <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
+                                            </div>
+                                            <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
+                                                <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                            </div>
+                                        </div>
+                                        <div data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
+                                                {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Subnet name" title="">
+                                                &nbsp;
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-double-row">
+                                        <div data-ng-if="!interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
+                                                <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
+                                                <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
+                                                <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                            </div>
+                                        </div>
+                                        <div data-ng-if="interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                            <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.discovered[0].ip_address $}">
+                                                <span data-ng-if="interface.discovered[0].ip_address">{$ interface.discovered[0].ip_address $}</span>
+                                                <span data-ng-if="!interface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                            <div class="p-double-row__muted-row" aria-label="Link mode" title="DHCP">
+                                                <span data-ng-if="interface.discovered[0].ip_address">DHCP</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
+                            <div class="row" data-ng-if="isShowingAdd()">
+                                <div class="col-6">
+                                    <div class="p-form__group">
+                                        <label class="p-form__label">Name</label>
+                                        <div class="p-form__control">
+                                            <span class="col-4">{$ getAddName() $}</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="type" class="p-form__label">Type</label>
+                                        <div class="p-form__control">
+                                            <select name="type" data-ng-model="newInterface.type" data-ng-change="addTypeChanged()">
+                                                <option value="alias" data-ng-show="canAddAlias(newInterface.parent)">Alias</option>
+                                                <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterface.type !== 'alias'">
+                                        <label class="p-form__label">Tags</label>
+                                        <div class="p-form__control tags--inline">
+                                            <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-form__group">
+                                        <label for="fabric" class="p-form__label">Fabric</label>
+                                        <div class="p-form__control">
+                                            <select name="fabric"
+                                                data-ng-model="newInterface.parent.fabric"
+                                                data-ng-options="fabric as fabric.name for fabric in fabrics"
+                                                disabled="disabled">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterface.type === 'alias'">
+                                        <label for="vlan" class="p-form__label">VLAN</label>
+                                        <div class="p-form__control">
+                                            <select name="vlan"
+                                                data-ng-model="newInterface.vlan"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                                disabled="disabled">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterface.type === 'vlan'">
+                                        <label for="vlan" class="p-form__label">VLAN</label>
+                                        <div class="p-form__control">
+                                            <select name="vlan"
+                                                data-ng-model="newInterface.vlan"
+                                                data-ng-change="vlanChanged(newInterface)"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLAN | filterByFabric:newInterface.parent.fabric | filterByUnusedForInterface:newInterface.parent:originalInterfaces">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="subnet" class="p-form__label">Subnet</label>
+                                        <div class="p-form__control">
+                                            <select name="subnet"
+                                                data-ng-model="newInterface.subnet"
+                                                data-ng-change="subnetChanged(newInterface)"
+                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
+                                                <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newInterface)">
+                                        <label for="link-mode" class="p-form__label">IP mode</label>
+                                        <div class="p-form__control">
+                                            <select name="link-mode"
+                                                data-ng-model="newInterface.mode"
+                                                data-ng-change="modeChanged(newInterface)"
+                                                data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:newInterface">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="newInterface.mode == 'static'">
+                                        <label for="ip-address" class="p-form__label">IP address</label>
+                                        <div class="p-form__control"
+                                        data-ng-class="{ 'is-error': isIPAddressInvalid(newInterface) }">
+                                            <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newInterface.ip_address">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row" data-ng-if="isEditing(editInterface)">
+                                <div class="row" data-ng-if="editInterface.type !== 'bond'">
+                                    <maas-obj-form obj="editInterface" manager="nodesManager" manager-method="updateInterfaceForm"
+                                        table-form="true" save-on-blur="false" after-save="editSave" pre-process="preProcessInterface">
+                                        <div class="p-strip is-shallow">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <h3 class="p-heading--five">{$ getInterfaceTypeText(interface) $} details</h3>
+                                                    <maas-obj-field type="text" key="name" label="Name"
+                                                        data-ng-if="interface.type !== 'alias' && interface.type !== 'vlan'" disable-label="false"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
+                                                        input-class="table__input"></maas-obj-field>
+                                                    <div class="p-form__group">
+                                                        <label for="mac" class="p-form__label">MAC address</label>
+                                                        <div class="p-form__control p-form-validation"
+                                                            data-ng-class="{ 'is-error': isMACAddressInvalid(editInterface.mac_address) }">
+                                                            <input type="text" name="mac" class="p-form-validation__input"
+                                                                placeholder="00:00:00:00:00:00"
+                                                                data-ng-value="editInterface.mac_address"
+                                                                data-ng-model="editInterface.mac_address"
+                                                                data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
+                                                                data-ng-placeholder="getInterfacePlaceholderMACAddress(editInterface)"
+                                                            >
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group u-clearfix" data-ng-if="!isAllNetworkingDisabled(interface)">
+                                                        <label class="p-form__label col-2 mobile-col-2 tablet-col-2">Tags</label>
+                                                        <div class="p-form__control col-3 mobile-col-2 tablet-col-3 tags--inline">
+                                                            <tags-input data-ng-model="interface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6" data-ng-if="!isAllNetworkingDisabled(interface)">
+                                                    <h3 class="p-heading--five">Network</h3>
+                                                    <maas-obj-field type="options" key="fabric" label="Fabric"
+                                                        disable-label="false"
+                                                        placeholder="Disconnected" placeholder-enabled="true"
+                                                        on-change="fabricChangedForm"
+                                                        options="fabric as fabric.name for fabric in fabrics"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                                                    <maas-obj-field type="options" key="vlan" label="VLAN"
+                                                        disable-label="false"
+                                                        data-ng-show="!isController && editInterface.$maasForm.getValue('fabric')"
+                                                        on-change="vlanChangedForm"
+                                                        options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.$maasForm.getValue('fabric')"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
+                                                    </maas-obj-field>
+                                                    <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
+                                                        disable-label="false"
+                                                        data-ng-show="!isController && editInterface.$maasForm.getValue('fabric')"
+                                                        on-change="subnetChangedForm"
+                                                        options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.$maasForm.getValue('vlan')"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
+                                                        </maas-obj-field>
+                                                    <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
+                                                        data-ng-init="editInterface.subnet = editInterface.defaultSubnet"
+                                                        data-ng-if="!isController && editInterface.$maasForm.getValue('ip_assignment') === 'static'"
+                                                        on-change="subnetChangedForm"
+                                                        disable-label="false"
+                                                        options="subnet as getSubnetText(subnet) for subnet in subnets"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
+                                                    <maas-obj-field type="options" key="mode" label="IP mode"
+                                                        disable-label="false"
+                                                        data-ng-if="!isController && editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
+                                                        options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface.$maasForm"
+                                                        on-change="modeChangedForm"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
+                                                        </maas-obj-field>
+                                                    <maas-obj-field type="text" key="ip_address" label="IP address" placeholder="IP Address"
+                                                        disable-label="false" input-class="table__input"
+                                                        data-ng-if="!isController && editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static'"
+                                                        label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
+                                                        </maas-obj-field>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="p-strip is-shallow" data-ng-if="editInterface.type !== 'physical'">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <h3 class="p-heading--five">Advanced options</h3>
+                                                    <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
+                                                        <label for="stp" class="p-form__label">
+                                                            STP
+                                                            <span class="p-tooltip p-tooltip--right" aria-describedby="stp">
+                                                                <i class="p-icon--question"></i>
+                                                                <span class="p-tooltip__message" role="tooltip" id="stp">Controls the participation of this bridge in the spanning tree protocol.</span>
+                                                            </span>
+                                                        </label>
+                                                        <div class="p-form__control">
+                                                            <div class="onoffswitch maas-p-switch">
+                                                                <input id="bridge_stp" type="checkbox" name="bridge_stp" class="onoffswitch-checkbox maas-p-switch--input" data-ng-model="editInterface.bridge_stp">
+                                                                <div class="maas-p-switch--mask"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group u-vertically-center" data-ng-if="editInterface.bridge_stp">
+                                                        <label for="fd" class="p-form__label">Forward delay (ms)</label>
+                                                        <div class="p-form__control">
+                                                            <input type="text" name="fd" data-ng-model="editInterface.bridge_fd">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row u-sv2">
+                                            <hr />
+                                        </div>
+                                        <div class="row">
+                                            <div class="u-float--left">
+                                                <maas-obj-errors></maas-obj-errors>
+                                            </div>
+                                            <div class="u-float--right">
+                                                <button class="p-button--base u-no-margin--bottom"
+                                                    data-ng-click="editCancel()">Cancel</button>
+                                                <button class="p-button--positive u-no-margin--bottom"
+                                                data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                maas-obj-save>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
+                                            </div>
+                                        </div>
+                                    </maas-obj-form>
+                                </div>
+
+                                <div class="row" data-ng-if="editInterface.type === 'bond'">
+                                    <maas-obj-form obj="editInterface" manager="nodesManager" manager-method="updateInterfaceForm" table-form="true" save-on-blur="false" after-save="editSave" pre-process="preProcessInterface">
+                                        <div class="p-strip is-shallow">
+                                            <div class="row p-form--stacked">
+                                                <div class="col-6">
+                                                    <h3 class="p-heading--five">Bond details</h3>
+                                                    <div class="p-form__group">
+                                                        <label for="bond-mode" class="p-form__label">Bond mode</label>
+                                                        <div class="p-form__control">
+                                                            <select name="bond-mode"
+                                                                data-ng-model="editInterface.bond_mode"
+                                                                data-ng-options="mode[0] as mode[1] for mode in bondOptions.modes">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group p-form-validation" data-ng-if="showXMITHashPolicy()"
+                                                        data-ng-class="{ 'is-caution': showLACPRate() && modeAndPolicyCompliant() }">
+                                                        <label for="xmit-hash-policy" class="p-form__label">Hash policy</label>
+                                                        <div class="p-form__control">
+                                                            <select name="xmit-hash-policy"
+                                                                class="p-form-validation__input"
+                                                                data-ng-model="editInterface.xmitHashPolicy"
+                                                                data-ng-options="xmit[0] as xmit[1] for xmit in bondOptions.xmit_hash_policies">
+                                                            </select>
+                                                            <p class="p-form-validation__message" data-ng-if="showLACPRate() && modeAndPolicyCompliant()">
+                                                                <strong>Warning:</strong> This hash policy is not fully 802.3ad compliant.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group" data-ng-if="showLACPRate()">
+                                                        <label for="lacp-rate" class="p-form__label">LACP rate</label>
+                                                        <div class="p-form__control">
+                                                            <select name="lacp-rate"
+                                                                data-ng-model="editInterface.lacpRate"
+                                                                data-ng-options="rate[0] as rate[1] for rate in bondOptions.lacp_rates">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group">
+                                                        <label for="bond-name" class="p-form__label">Bond name</label>
+                                                        <div
+                                                            class="p-form__control p-form-validation"
+                                                            data-ng-class="{ 'is-error': isInterfaceNameInvalid(editInterface) }"
+                                                        >
+                                                            <input
+                                                                type="text"
+                                                                name="name"
+                                                                id="bond-name"
+                                                                class="p-form-validation__input"
+                                                                data-ng-model="editInterface.name"
+                                                            >
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group">
+                                                        <label class="p-form__label">Tags</label>
+                                                        <div class="p-form__control tags--inline">
+                                                            <tags-input data-ng-model="editInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <h3 class="p-heading--five">Network</h3>
+                                                    <div class="p-form__group u-vertically-center">
+                                                        <label class="p-form__label">Fabric</label>
+                                                        <div class="p-form__control">
+                                                            <select
+                                                                name="fabric"
+                                                                data-ng-model="editInterface.fabric"
+                                                                data-ng-options="fabric as fabric.name for fabric in fabrics"
+                                                            >
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group u-vertically-center">
+                                                        <label class="p-form__label">VLAN</label>
+                                                        <div class="p-form__control">
+                                                            <select name="vlan"
+                                                                data-ng-model="editInterface.vlan"
+                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                                            >
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-form__group u-vertically-center">
+                                                        <label class="p-form__label">Subnet</label>
+                                                        <div class="p-form__control">
+                                                            <select name="subnet"
+                                                                data-ng-model="editInterface.subnet"
+                                                                data-ng-change="subnetChanged(editInterface)"
+                                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.vlan">
+                                                                <option value="" data-ng-hide="editInterface.type === 'alias'">Unconfigured</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="p-strip is-shallow">
+                                            <div class="row p-form--stacked">
+                                                <div class="col-6">
+                                                    <h3 class="p-heading--five">Advanced options</h3>
+                                                    <div class="p-form__group">
+                                                        <label for="mac" class="p-form__label">MAC address</label>
+                                                        <div class="p-form__control p-form-validation"
+                                                            data-ng-class="{ 'is-error': isMACAddressInvalid(editInterface.mac_address) }">
+                                                            <input type="text" name="mac" class="p-form-validation__input"
+                                                                placeholder="00:00:00:00:00:00"
+                                                                data-ng-model="editInterface.mac_address"
+                                                                data-ng-value="editInterface.mac_address"
+                                                                data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
+                                                                data-ng-placeholder="getInterfacePlaceholderMACAddress(editInterface)"
+                                                            >
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row u-sv2">
+                                            <hr />
+                                        </div>
+                                        <div class="row">
+                                            <div class="u-float--left">
+                                                <maas-obj-errors></maas-obj-errors>
+                                            </div>
+                                            <div class="u-float--right">
+                                                <button class="p-button--base u-no-margin--bottom"
+                                                    data-ng-click="editCancel()">Cancel</button>
+                                                <button class="p-button--positive u-no-margin--bottom"
+                                                data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                maas-obj-save>Save {$ getInterfaceTypeText(interface).toLowerCase() $}</button>
+                                            </div>
+                                        </div>
+                                    </maas-obj-form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row is-active" data-ng-if="isShowingDeleteConfirm() && isInterfaceSelected(interface)">
+                            <hr />
+                            <div class="row">
+                                <div class="col-8">
+                                    <p class="u-no-margin--bottom"><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
+                                </div>
+                                <div class="col-4">
+                                    <div class="u-align--right">
+                                        <button class="p-button--base" data-ng-click="editCancel()">Cancel</button>
+                                        <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr data-ng-if="isShowingAdd() && !newInterface.saving" />
+                        <div class="row" data-ng-if="isShowingAdd() && !newInterface.saving">
+                            <div class="col-6">
+                                <button class="p-button--neutral"
+                                    data-ng-click="addInterface('alias')"
+                                    data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>alias</button>
+                                <button class="p-button--neutral u-no-margin--top"
+                                    data-ng-click="addInterface('vlan')"
+                                    data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
+                            </div>
+                            <div class="col-6">
+                                <div class="u-align--right">
+                                    <button class="p-button--base" data-ng-click="editCancel()">Cancel</button>
+                                    <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="row" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
+                    <div class="p-card--highlighted">
+                        <h2 class="p-heading--four">Create bond</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="p-double-row">
+                                        <div class="p-double-row__rows-container--checkbox">
+                                            <div>Name,</div>
+                                            <div>MAC</div>
+                                        </div>
+                                    </th>
+                                    <th>Primary</th>
+                                    <th>Type</th>
+                                    <th>Fabric</th>
+                                    <th>VLAN</th>
+                                    <th>Subnet</th>
+                                    <th>IP address</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
+                                    <td class="p-double-row" aria-label="Name">
+                                        <div class="p-double-row__main-row">
+                                            {$ parent.name $}
+                                        </div>
+                                        <div class="p-double-row__muted-row">
+                                            {$ parent.mac_address $}
+                                        </div>
+                                    </td>
+                                    <td aria-label="Primary">
+                                        <input type="radio" name="bondPrimary" id="{$ parent.name $}" data-ng-model="newBondInterface.primary" data-ng-value="parent">
+                                        <label for="{$ parent.name $}"></label>
+                                    </td>
+                                    <td aria-label="Type">
+                                        {$ getInterfaceTypeText(parent) $}
+                                    </td>
+                                    <td aria-label="Fabric">
+                                        <span title="{$ parent.fabric.name || 'Disconnected' $}">
+                                            {$ parent.fabric.name $}
+                                            <span data-ng-if="!parent.fabric.name">Disconnected</span>
+                                        </span>
+                                    </td>
+                                    <td aria-label="VLAN">
+                                        <span title="{$ getVLANText(parent.vlan) $}">
+                                            {$ getVLANText(parent.vlan) $}
+                                        </span>
+                                    </td>
+                                    <td aria-label="Subnet CIDR">
+                                        <span title="{$ parent.subnet.cidr $}">
+                                            <span data-ng-if="parent.subnet.cidr">
+                                                {$ parent.subnet.cidr $}
+                                            </span>
+                                            <span data-ng-if="!parent.subnet.cidr">
+                                                Unconfigured
+                                            </span>
+                                        </span>
+                                    </td>
+                                    <td aria-label="IP address">
+                                        <span title="{$ parent.ip_address $}">
+                                            <span data-ng-if="parent.ip_address">
+                                                {$ parent.ip_address $}
+                                            </span>
+                                            <span data-ng-if="!parent.ip_address">
+                                                {$ getLinkModeText(parent) $}
+                                            </span>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr class="p-table__row--muted" data-ng-repeat="interface in interfaces" data-ng-if="isShowingInterfaces && isCorrectInterfaceType(interface, newBondInterface.parents)">
+                                    <td class="p-double-row" aria-label="Name">
+                                        <div class="p-double-row__main-row">
+                                            {$ interface.name $}
+                                        </div>
+                                        <div class="p-double-row__muted-row">
+                                            {$ interface.mac_address $}
+                                        </div>
+                                    </td>
+                                    <td aria-label="Primary">
+                                        <input type="radio" name="bondPrimary" id="{$ interface.name $}" data-ng-model="newBondInterface.primary" data-ng-value="interface">
+                                        <label for="{$ interface.name $}"></label>
+                                    </td>
+                                    <td aria-label="Type">
+                                        {$ getInterfaceTypeText(interface) $}
+                                    </td>
+                                    <td aria-label="Fabric">
+                                        <span title="{$ interface.fabric.name || 'Disconnected' $}">
+                                            {$ interface.fabric.name $}
+                                            <span data-ng-if="!interface.fabric.name">Disconnected</span>
+                                        </span>
+                                    </td>
+                                    <td aria-label="VLAN">
+                                        <span title="{$ getVLANText(interface.vlan) $}">
+                                            {$ getVLANText(interface.vlan) $}
+                                        </span>
+                                    </td>
+                                    <td aria-label="Subnet CIDR">
+                                        <span title="{$ interface.subnet.cidr $}">
+                                            <span data-ng-if="interface.subnet.cidr">
+                                                {$ interface.subnet.cidr $}
+                                            </span>
+                                            <span data-ng-if="!interface.subnet.cidr">
+                                                Unconfigured
+                                            </span>
+                                        </span>
+                                    </td>
+                                    <td aria-label="IP address">
+                                        <span title="{$ interface.ip_address $}">
+                                            <span data-ng-if="interface.ip_address">
+                                                {$ interface.ip_address $}
+                                            </span>
+                                            <span data-ng-if="!interface.ip_address">
+                                                {$ getLinkModeText(interface) $}
+                                            </span>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <button class="p-button--neutral" data-ng-click="toggleInterfaces()">
+                            <span data-ng-if="isShowingInterfaces">Hide interfaces</span>
+                            <span data-ng-if="!isShowingInterfaces">Show all interfaces</span>
+                        </button>
+
+                        <div class="p-strip is-shallow">
+                            <div class="row p-form--stacked">
+                                <div class="col-6">
+                                    <h3 class="p-heading--five">Bond details</h3>
+                                    <div class="p-form__group">
+                                        <label for="bond-mode" class="p-form__label">Bond mode</label>
+                                        <div class="p-form__control">
+                                            <select name="bond-mode"
+                                                data-ng-model="newBondInterface.bond_mode"
+                                                data-ng-options="mode[0] as mode[1] for mode in bondOptions.modes">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group p-form-validation"
+                                        data-ng-if="showXMITHashPolicy()"
+                                        data-ng-class="{ 'is-caution': showLACPRate() && modeAndPolicyCompliant() }">
+                                        <label for="xmit-hash-policy" class="p-form__label">Hash policy</label>
+                                        <div class="p-form__control">
+                                            <select name="xmit-hash-policy"
+                                                class="p-form-validation__input"
+                                                data-ng-model="newBondInterface.xmitHashPolicy"
+                                                data-ng-options="xmit[0] as xmit[1] for xmit in bondOptions.xmit_hash_policies">
+                                            </select>
+                                            <p class="p-form-validation__message" data-ng-if="showLACPRate() && modeAndPolicyCompliant()">
+                                                <strong>Warning:</strong> This hash policy is not fully 802.3ad compliant.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group" data-ng-if="showLACPRate()">
+                                        <label for="lacp-rate" class="p-form__label">LACP rate</label>
+                                        <div class="p-form__control">
+                                            <select name="lacp-rate"
+                                                data-ng-model="newBondInterface.lacpRate"
+                                                data-ng-options="rate[0] as rate[1] for rate in bondOptions.lacp_rates">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label for="bond-name" class="p-form__label">Bond name</label>
+                                        <div
+                                            class="p-form__control p-form-validation"
+                                            data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }"
+                                        >
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                id="bond-name"
+                                                class="p-form-validation__input"
+                                                data-ng-model="newBondInterface.name"
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group">
+                                        <label class="p-form__label">Tags</label>
+                                        <div class="p-form__control tags--inline">
+                                            <tags-input data-ng-model="newBondInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h3 class="p-heading--five">Network</h3>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">Fabric</label>
+                                        <div class="p-form__control">
+                                            <select
+                                                name="fabric"
+                                                data-ng-model="newBondInterface.fabric"
+                                                data-ng-options="fabric as fabric.name for fabric in fabrics"
+                                            >
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">VLAN</label>
+                                        <div class="p-form__control">
+                                            <select name="vlan"
+                                                data-ng-model="newBondInterface.vlan"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
+                                            >
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="p-form__group u-vertically-center">
+                                        <label class="p-form__label">Subnet</label>
+                                        <div class="p-form__control">
+                                            <select name="subnet"
+                                                data-ng-model="newBondInterface.subnet"
+                                                data-ng-change="subnetChanged(newBondInterface)"
+                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newBondInterface.vlan">
+                                                <option value="" data-ng-hide="newBondInterface.type === 'alias'">Unconfigured</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-strip is-shallow">
+                            <div class="row p-form--stacked">
+                                <div class="col-6">
+                                    <h3 class="p-heading--five">Advanced options</h3>
+                                    <div class="p-form__group">
+                                        <label for="mac" class="p-form__label">MAC address</label>
+                                        <div class="p-form__control p-form-validation"
+                                            data-ng-class="{ 'is-error': isMACAddressInvalid(newBondInterface.mac_address) }">
+                                            <input type="text" name="mac" class="p-form-validation__input"
+                                                placeholder="00:00:00:00:00:00"
+                                                data-ng-value="newBondInterface.mac_address"
+                                                data-ng-model="newBondInterface.mac_address"
+                                                data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
+                                                data-ng-placeholder="getInterfacePlaceholderMACAddress(newBondInterface)"
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row u-sv2">
+                            <hr />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 u-align--right">
+                                <button class="p-button--base u-no-margin--bottom" type="button" data-ng-click="cancel()">Cancel</button>
+                                <button class="p-button--positive u-no-margin--bottom"
+                                    data-ng-click="addBond()"
+                                    data-ng-disabled="cannotAddBond()">Save bond</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="row" data-ng-if="!isShowingCreateBridge() && !isShowingEdit() && !isShowingCreateBond()">
                     <table class="p-table-expanding p-table--controller-interfaces">
                         <thead>
                             <tr data-ng-if="isDevice" class="p-table--is-device">
@@ -904,8 +1859,125 @@
                                         <div class="col-7"></div>
                                     </div>
                                 </td>
-                                <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface)">
-                                    <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
+
+                            </tr>
+
+                            <tr data-ng-if="!isDevice" class="p-table--is-not-device" data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
+                                data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:isAllNetworkingDisabled() | removeInterfaceParents:newBridgeInterface:isAllNetworkingDisabled()">
+                                <td class="p-double-row" aria-label="Name" data-ng-class="{ 'is-error': isInterfaceNameInvalid(editInterface) }">
+                                    <div class="p-double-row__checkbox" data-ng-if="!isController && !isAllNetworkingDisabled() && !isEditing(interface)">
+                                        <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
+                                            data-ng-hide="isAllNetworkingDisabled()"
+                                            data-ng-checked="isInterfaceSelected(interface)"
+                                            data-ng-click="toggleInterfaceSelect(interface)"
+                                            data-ng-disabled="isDisabled()">
+                                        <label for="{$ getUniqueKey(interface) $}"></label>
+                                    </div>
+                                    <div class="p-double-row__rows-container--checkbox">
+                                        <div class="p-double-row__main-row">
+                                            <div data-ng-if="!isEditing(interface) || (!isEditing(interface) && interface.type === 'vlan')" title="{$ interface.name $}">
+                                                {$ interface.name $}
+                                            </div>
+                                        </div>
+                                        <div class="p-double-row__muted-row">
+                                            <div data-ng-if="!isEditing(interface) || (!isEditing(interface) && interface.type === 'vlan')" title="{$ interface.mac_address $}">
+                                                {$ interface.mac_address $}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td aria-label="Boot interface">
+                                    <span class="u-align--center u-hide u-show--large">
+                                        <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
+                                            data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)"
+                                            class="u-no-margin">
+                                        <label for="{$ interface.name $}"></label>
+                                    </span>
+                                    <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
+                                    <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
+                                </td>
+                                <td aria-label="Type">
+                                    <span data-ng-if="!isEditing(interface)" title="{$ getInterfaceTypeText(interface) $}">{$ getInterfaceTypeText(interface) $}</span>
+                                </td>
+                                <td class="p-double-row">
+                                    <div class="p-double-row__rows-container">
+                                        <div class="p-double-row__main-row" aria-label="Fabric">
+                                            <span data-ng-if="!isEditing(interface)" title="{$ interface.fabric.name || 'Disconnected' $}">
+                                                <a class="p-link--soft" data-ng-if="interface.fabric" href="/#/fabric/{$ interface.fabric.id $}">{$ interface.fabric.name $}</a>
+                                                <span data-ng-if="!interface.fabric.name">Disconnected</span>
+                                            </span>
+                                        </div>
+                                        <div class="p-double-row__muted-row" aria-label="VLAN">
+                                            <span data-ng-if="!isEditing(interface)" title="{$ getVLANText(interface.vlan) $}">
+                                                <a class="p-muted-text p-link--muted" data-ng-if="interface.vlan" href="/#/vlan/{$ interface.vlan.id $}">
+                                                    {$ getVLANText(interface.vlan) $}
+                                                </a>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-double-row">
+                                    <div data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))" title="{$ getSubnetText(interface.subnet) $}" class="p-double-row__rows-container">
+                                        <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ interface.subnet.cidr $}">
+                                            <span data-ng-if="interface.subnet.cidr">
+                                                <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
+                                            </span>
+                                            <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
+                                        </div>
+                                        <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
+                                            <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
+                                        </div>
+                                    </div>
+                                    <div data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id" class="p-double-row__rows-container">
+                                        <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
+                                            {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
+                                        </div>
+                                        <div class="p-double-row__muted-row" aria-label="Subnet name" title="">
+                                            &nbsp;
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-double-row">
+                                    <div data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                        <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
+                                            <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
+                                            <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                        </div>
+                                        <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
+                                            <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
+                                        </div>
+                                    </div>
+                                    <div data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
+                                        <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.discovered[0].ip_address $}">
+                                            <span data-ng-if="interface.discovered[0].ip_address">{$ interface.discovered[0].ip_address $}</span>
+                                            <span data-ng-if="!interface.discovered[0].ip_address">DHCP</span>
+                                        </div>
+                                        <div class="p-double-row__muted-row" aria-label="Link mode" title="DHCP">
+                                            <span data-ng-if="interface.discovered[0].ip_address">DHCP</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-table--action-cell u-vertically-center u-align--right">
+                                    <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">
+                                        <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
+                                        <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
+                                            <button class="p-contextual-menu__link"
+                                                aria-label="Add Alias or VLAN"
+                                                data-ng-if="canAddAliasOrVLAN(interface)"
+                                                data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
+                                            <button class="p-contextual-menu__link"
+                                                data-ng-if="!cannotEditInterface(interface)"
+                                                aria-label="Edit"
+                                                data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
+                                            <button class="p-contextual-menu__link"
+                                                data-ng-if="canBeRemoved()"
+                                                aria-label="Remove"
+                                                data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-table-expanding__panel col-12"  data-ng-if="isInterfaceSelected(interface) && (isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving)">
+                                    <div class="row">
                                         <div class="u-position-relative u-clearfix" data-ng-if="windowWidth <= 768">
                                             <h2 data-ng-click="cancel()" class="u-float--left p-heading--four">
                                                 <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
@@ -917,6 +1989,7 @@
                                                 <i class="p-icon--remove">Cancel</i>
                                             </button>
                                         </div>
+                                        <hr />
                                         <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
                                             <div class="row" data-ng-if="isShowingAdd()">
                                                 <div class="col-6">
@@ -1079,122 +2152,6 @@
                                         </div>
                                     </div>
                                 </td>
-                            </tr>
-
-                            <tr data-ng-if="!isDevice" class="p-table--is-not-device" data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
-                                data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:isAllNetworkingDisabled() | removeInterfaceParents:newBridgeInterface:isAllNetworkingDisabled()">
-                                <td class="p-double-row" aria-label="Name" data-ng-class="{ 'is-error': isInterfaceNameInvalid(editInterface) }">
-                                    <div class="p-double-row__checkbox" data-ng-if="!isController && !isAllNetworkingDisabled() && !isEditing(interface)">
-                                        <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
-                                            data-ng-hide="isAllNetworkingDisabled()"
-                                            data-ng-checked="isInterfaceSelected(interface)"
-                                            data-ng-click="toggleInterfaceSelect(interface)"
-                                            data-ng-disabled="isDisabled()">
-                                        <label for="{$ getUniqueKey(interface) $}"></label>
-                                    </div>
-                                    <div class="p-double-row__rows-container--checkbox">
-                                        <div class="p-double-row__main-row">
-                                            <div data-ng-if="!isEditing(interface) || (!isEditing(interface) && interface.type === 'vlan')" title="{$ interface.name $}">
-                                                {$ interface.name $}
-                                            </div>
-                                        </div>
-                                        <div class="p-double-row__muted-row">
-                                            <div data-ng-if="!isEditing(interface) || (!isEditing(interface) && interface.type === 'vlan')" title="{$ interface.mac_address $}">
-                                                {$ interface.mac_address $}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td aria-label="Boot interface">
-                                    <span class="u-align--center u-hide u-show--large">
-                                        <input type="radio" name="bootInterface" id="{$ interface.name $}" checked
-                                            data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)"
-                                            class="u-no-margin">
-                                        <label for="{$ interface.name $}"></label>
-                                    </span>
-                                    <span class="u-hide--large" data-ng-if="!isController && isBootInterface(interface) && !isEditing(interface)">Yes</span>
-                                    <span class="u-hide--large" data-ng-if="!isController && !isBootInterface(interface) && !isEditing(interface)">No</span>
-                                </td>
-                                <td aria-label="Type">
-                                    <span data-ng-if="!isEditing(interface)" title="{$ getInterfaceTypeText(interface) $}">{$ getInterfaceTypeText(interface) $}</span>
-                                </td>
-                                <td class="p-double-row">
-                                    <div class="p-double-row__rows-container">
-                                        <div class="p-double-row__main-row" aria-label="Fabric">
-                                            <span data-ng-if="!isEditing(interface)" title="{$ interface.fabric.name || 'Disconnected' $}">
-                                                <a class="p-link--soft" data-ng-if="interface.fabric" href="/#/fabric/{$ interface.fabric.id $}">{$ interface.fabric.name $}</a>
-                                                <span data-ng-if="!interface.fabric.name">Disconnected</span>
-                                            </span>
-                                        </div>
-                                        <div class="p-double-row__muted-row" aria-label="VLAN">
-                                            <span data-ng-if="!isEditing(interface)" title="{$ getVLANText(interface.vlan) $}">
-                                                <a class="p-muted-text p-link--muted" data-ng-if="interface.vlan" href="/#/vlan/{$ interface.vlan.id $}">
-                                                    {$ getVLANText(interface.vlan) $}
-                                                </a>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="p-double-row">
-                                    <div data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))" title="{$ getSubnetText(interface.subnet) $}" class="p-double-row__rows-container">
-                                        <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ interface.subnet.cidr $}">
-                                            <span data-ng-if="interface.subnet.cidr">
-                                                <a class="p-link--soft" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.cidr $}</a>
-                                            </span>
-                                            <span data-ng-if="!interface.subnet.cidr">Unconfigured</span>
-                                        </div>
-                                        <div data-ng-if="interface.subnet.name" class="p-double-row__muted-row" aria-label="Subnet name" title="{$ interface.subnet.name $}">
-                                            <a class="p-muted-text p-link--muted" href="/#/subnet/{$ interface.subnet.id $}">{$ interface.subnet.name $}</a>
-                                        </div>
-                                    </div>
-                                    <div data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id" class="p-double-row__rows-container">
-                                        <div class="p-double-row__main-row" aria-label="Subnet CIDR" title="{$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}">
-                                            {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
-                                        </div>
-                                        <div class="p-double-row__muted-row" aria-label="Subnet name" title="">
-                                            &nbsp;
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="p-double-row">
-                                    <div data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
-                                        <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.ip_address $}">
-                                            <span data-ng-if="interface.ip_address">{$ interface.ip_address $}</span>
-                                            <span data-ng-if="!interface.ip_address">{$ getLinkModeText(interface) $}</span>
-                                        </div>
-                                        <div class="p-double-row__muted-row" aria-label="Link mode" title="{$ getLinkModeText(interface) $}">
-                                            <span data-ng-if="interface.ip_address">{$ getLinkModeText(interface) $}</span>
-                                        </div>
-                                    </div>
-                                    <div data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric" class="p-double-row__rows-container">
-                                        <div class="p-double-row__main-row" aria-label="IP address" title="{$ interface.discovered[0].ip_address $}">
-                                            <span data-ng-if="interface.discovered[0].ip_address">{$ interface.discovered[0].ip_address $}</span>
-                                            <span data-ng-if="!interface.discovered[0].ip_address">DHCP</span>
-                                        </div>
-                                        <div class="p-double-row__muted-row" aria-label="Link mode" title="DHCP">
-                                            <span data-ng-if="interface.discovered[0].ip_address">DHCP</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="p-table--action-cell u-vertically-center u-align--right">
-                                    <div class="p-contextual-menu" toggle-ctrl data-ng-if="(!isAllNetworkingDisabled() || isLimitedEditingAllowed(interface)) && !isEditing(interface) && !(isShowingDeleteConfirm() && isInterfaceSelected(interface))">
-                                        <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()"><i class="p-icon--contextual-menu u-no-margin--right">Actions</i></button>
-                                        <div class="p-contextual-menu__dropdown" role="menu" data-ng-show="isToggled">
-                                            <button class="p-contextual-menu__link"
-                                                aria-label="Add Alias or VLAN"
-                                                data-ng-if="canAddAliasOrVLAN(interface)"
-                                                data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
-                                            <button class="p-contextual-menu__link"
-                                                data-ng-if="!cannotEditInterface(interface)"
-                                                aria-label="Edit"
-                                                data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
-                                            <button class="p-contextual-menu__link"
-                                                data-ng-if="canBeRemoved()"
-                                                aria-label="Remove"
-                                                data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
-                                        </div>
-                                    </div>
-                                </td>
                                 <td class="p-table-expanding__panel col-12" data-ng-if="isShowingMembers(interface)">
                                     <div class="row" data-ng-class="{ 'is-active': isShowingMembers(interface) }"
                                         data-ng-repeat="member in interface.members"
@@ -1206,233 +2163,6 @@
                                         <div class="col-7"></div>
                                     </div>
                                 </td>
-
-                                <td class="p-table-expanding__panel col-12" data-ng-class="{ 'u-no-padding': !isShowingAdd() && !(isEditing(interface) || isShowingAdd()) && !isShowingDeleteConfirm() && !isShowingAdd() || newInterface.saving }" data-ng-if="isInterfaceSelected(interface)">
-                                    <div class="row" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
-                                        <div class="u-position-relative u-clearfix" data-ng-if="windowWidth <= 768">
-                                            <h2 data-ng-click="cancel()" class="u-float--left p-heading--four">
-                                                <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
-                                                <span data-ng-if="canAddVLAN(newInterface.parent)">Adding VLAN</span>
-                                                <span data-ng-if="isEditing(interface)">Editing {$ interface.name $}</span>
-                                                <span data-ng-if="isShowingDeleteConfirm()">Removing {$ interface.name $}</span>
-                                            </h2>
-                                            <button data-ng-click="cancel()" class="p-button--base u-float--right p-button--close">
-                                                <i class="p-icon--remove">Cancel</i>
-                                            </button>
-                                        </div>
-                                        <div class="p-form p-form--stacked" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
-                                            <div class="row" data-ng-if="isShowingAdd()">
-                                                <div class="col-6">
-                                                    <div class="p-form__group">
-                                                        <label class="p-form__label">Name</label>
-                                                        <div class="p-form__control">
-                                                            <span class="col-4">{$ getAddName() $}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group">
-                                                        <label for="type" class="p-form__label">Type</label>
-                                                        <div class="p-form__control">
-                                                            <select name="type" data-ng-model="newInterface.type" data-ng-change="addTypeChanged()">
-                                                                <option value="alias" data-ng-show="canAddAlias(newInterface.parent)">Alias</option>
-                                                                <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group" data-ng-if="newInterface.type !== 'alias'">
-                                                        <label class="p-form__label">Tags</label>
-                                                        <div class="p-form__control tags--inline">
-                                                            <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="p-form__group">
-                                                        <label for="fabric" class="p-form__label">Fabric</label>
-                                                        <div class="p-form__control">
-                                                            <select name="fabric"
-                                                                data-ng-model="newInterface.parent.fabric"
-                                                                data-ng-options="fabric as fabric.name for fabric in fabrics"
-                                                                disabled="disabled">
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group" data-ng-if="newInterface.type === 'alias'">
-                                                        <label for="vlan" class="p-form__label">VLAN</label>
-                                                        <div class="p-form__control">
-                                                            <select name="vlan"
-                                                                data-ng-model="newInterface.vlan"
-                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
-                                                                disabled="disabled">
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group" data-ng-if="newInterface.type === 'vlan'">
-                                                        <label for="vlan" class="p-form__label">VLAN</label>
-                                                        <div class="p-form__control">
-                                                            <select name="vlan"
-                                                                data-ng-model="newInterface.vlan"
-                                                                data-ng-change="vlanChanged(newInterface)"
-                                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLAN | filterByFabric:newInterface.parent.fabric | filterByUnusedForInterface:newInterface.parent:originalInterfaces">
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group">
-                                                        <label for="subnet" class="p-form__label">Subnet</label>
-                                                        <div class="p-form__control">
-                                                            <select name="subnet"
-                                                                data-ng-model="newInterface.subnet"
-                                                                data-ng-change="subnetChanged(newInterface)"
-                                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
-                                                                <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group" data-ng-if="!isLinkModeDisabled(newInterface)">
-                                                        <label for="link-mode" class="p-form__label">IP mode</label>
-                                                        <div class="p-form__control">
-                                                            <select name="link-mode"
-                                                                data-ng-model="newInterface.mode"
-                                                                data-ng-change="modeChanged(newInterface)"
-                                                                data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:newInterface">
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="p-form__group" data-ng-if="newInterface.mode == 'static'">
-                                                        <label for="ip-address" class="p-form__label">IP address</label>
-                                                        <div class="p-form__control"
-                                                        data-ng-class="{ 'is-error': isIPAddressInvalid(newInterface) }">
-                                                            <input name="ip-address" type="text" placeholder="IP address" data-ng-model="newInterface.ip_address">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-3 mobile-col-2 tablet-col-3" data-ng-if="windowWidth >= 768 && !isShowingDeleteConfirm() && !isShowingAdd()">
-                                                    <input type="text" class="p-form-validation__input"
-                                                        data-ng-if="isEditing(interface) && interface.type !== 'vlan'"
-                                                        data-ng-disabled="isController"
-                                                        data-ng-model="editInterface.name">
-                                                    <span data-ng-if="!isEditing(interface) || interface.type === 'vlan'"
-                                                        data-ng-show="tableInfo.column == 'name'"
-                                                        title="{$ interface.name $}">{$ interface.name $}</span>
-                                                </div>
-                                            </div>
-                                            <div class="row" data-ng-if="isEditing(editInterface)">
-                                                <hr />
-                                                <div class="row">
-                                                    <maas-obj-form obj="editInterface" manager="nodesManager" manager-method="updateInterfaceForm"
-                                                        table-form="true" save-on-blur="false" after-save="editSave" pre-process="preProcessInterface">
-                                                        <div class="row">
-                                                            <div class="col-6">
-                                                                <div class="p-form__group u-clearfix">
-                                                                    <label class="p-form__label col-2 mobile-col-2 tablet-col-2">Type</label>
-                                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3">
-                                                                        <span class="p-control-text">{$ getInterfaceTypeText(interface) $}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <maas-obj-field type="text" key="mac_address" label="MAC address"
-                                                                    data-ng-if="interface.type !== 'alias' && interface.type !== 'vlan'" disable-label="false"
-                                                                    disabled="isController"  label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"
-                                                                    input-class="table__input" placeholder="00:00:00:00:00:00"></maas-obj-field>
-                                                                <div class="p-form__group u-clearfix" data-ng-if="!isAllNetworkingDisabled(interface)">
-                                                                    <label class="p-form__label col-2 mobile-col-2 tablet-col-2">Tags</label>
-                                                                    <div class="p-form__control col-3 mobile-col-2 tablet-col-3 tags--inline">
-                                                                        <tags-input data-ng-model="interface.tags" allow-tags-pattern="[\w-]+"></tags-input>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-6" data-ng-if="!isAllNetworkingDisabled(interface)">
-                                                                <maas-obj-field type="options" key="fabric" label="Fabric"
-                                                                    disable-label="false"
-                                                                    placeholder="Disconnected" placeholder-enabled="true"
-                                                                    on-change="fabricChangedForm"
-                                                                    options="fabric as fabric.name for fabric in fabrics"
-                                                                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                                                                <maas-obj-field type="options" key="vlan" label="VLAN"
-                                                                    disable-label="false"
-                                                                    data-ng-show="!isController && editInterface.$maasForm.getValue('fabric')"
-                                                                    on-change="vlanChangedForm"
-                                                                    options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.$maasForm.getValue('fabric')"
-                                                                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
-                                                                </maas-obj-field>
-                                                                <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
-                                                                    disable-label="false"
-                                                                    data-ng-show="!isController && editInterface.$maasForm.getValue('fabric')"
-                                                                    on-change="subnetChangedForm"
-                                                                    options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.$maasForm.getValue('vlan')"
-                                                                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
-                                                                    </maas-obj-field>
-                                                                <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
-                                                                    data-ng-init="editInterface.subnet = editInterface.defaultSubnet"
-                                                                    data-ng-if="!isController && editInterface.$maasForm.getValue('ip_assignment') === 'static'"
-                                                                    on-change="subnetChangedForm"
-                                                                    disable-label="false"
-                                                                    options="subnet as getSubnetText(subnet) for subnet in subnets"
-                                                                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4"></maas-obj-field>
-                                                                <maas-obj-field type="options" key="mode" label="IP mode"
-                                                                    disable-label="false"
-                                                                    data-ng-if="!isController && editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
-                                                                    options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface.$maasForm"
-                                                                    on-change="modeChangedForm"
-                                                                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
-                                                                    </maas-obj-field>
-                                                                <maas-obj-field type="text" key="ip_address" label="IP address" placeholder="IP Address"
-                                                                    disable-label="false" input-class="table__input"
-                                                                    data-ng-if="!isController && editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static'"
-                                                                    label-width="2" label-width-tablet="2" input-width="3" input-width-tablet="4">
-                                                                    </maas-obj-field>
-                                                            </div>
-                                                        </div>
-                                                        <div class="row">
-                                                            <hr />
-                                                            <div class="u-float--left">
-                                                                <maas-obj-errors></maas-obj-errors>
-                                                            </div>
-                                                            <div class="u-float--right">
-                                                                <button class="p-button--base"
-                                                                    data-ng-click="editCancel()">Cancel</button>
-                                                                <button class="p-button--positive"
-                                                                data-ng-disabled="(isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
-                                                                maas-obj-save>Save</button>
-                                                            </div>
-                                                        </div>
-                                                    </maas-obj-form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row is-active" data-ng-if="isShowingDeleteConfirm() && isInterfaceSelected(interface)">
-                                            <hr />
-                                            <div class="row">
-                                                <div class="col-8">
-                                                    <p class="u-no-margin--bottom"><span class="p-icon--warning">Warning:</span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
-                                                </div>
-                                                <div class="col-4">
-                                                    <div class="u-align--right">
-                                                        <button class="p-button--base" data-ng-click="editCancel()">Cancel</button>
-                                                        <button class="p-button--negative u-no-margin--top" data-ng-click="confirmRemove(interface)">Remove</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <hr data-ng-if="isShowingAdd() && !newInterface.saving" />
-                                        <div class="row" data-ng-if="isShowingAdd() && !newInterface.saving">
-                                            <div class="col-6">
-                                                <button class="p-button--neutral"
-                                                    data-ng-click="addInterface('alias')"
-                                                    data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>alias</button>
-                                                <button class="p-button--neutral u-no-margin--top"
-                                                    data-ng-click="addInterface('vlan')"
-                                                    data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="u-align--right">
-                                                    <button class="p-button--base" data-ng-click="editCancel()">Cancel</button>
-                                                    <button class="p-button--positive u-no-margin--top" data-ng-click="addInterface()">Add</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
                             </tr>
                             <tr class="is-active" data-ng-if="isShowingCreateBond() && !isAllNetworkingDisabled()">
                                 <td>
@@ -1442,8 +2172,8 @@
                                                 <td class="table-col--16">
                                                     <input type="checkbox" class="checkbox u-float--left" id="bond-create" disabled="disabled" checked style="margin-top: 0.5rem;" />
                                                     <label for="bond-create"></label>
-                                                    <span data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }">
-                                                        <input type="text" name="name" class="editible p-form-validation__input" data-ng-model="newBondInterface.name" style="width: 82%;">
+                                                    <span data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBondInterface) }" style="padding-left: 2rem;">
+                                                        <input type="text" name="name" class="editible p-form-validation__input u-no-margin--bottom" data-ng-model="newBondInterface.name" style="width: 82%;">
                                                     </span>
                                                 </td>
                                                 <td class="table-col--7 u-align--center">
@@ -1551,92 +2281,6 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr class="is-active" data-ng-if="isShowingCreateBridge() && !isAllNetworkingDisabled()">
-                                <td class="p-table-expanding__panel col-12">
-                                    <div class="row">
-                                        <div class="col-12 u-hide--medium u-hide--small">
-                                            <table class="p-table-expanding u-no-margin--bottom p-table--controller-interfaces">
-                                                <tr class="p-table--is-not-device">
-                                                    <td class="p-table--add-bridge-checkbox">
-                                                        <span class="u-float--left">
-                                                            <input type="checkbox" class="checkbox u-float--left" id="bond-create" disabled="disabled" checked/>
-                                                            <label for="bridge-create"></label>
-                                                        </span>
-                                                        <span data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBridgeInterface) }">
-                                                            <input type="text" class="table__input editible" data-ng-model="newBridgeInterface.name">
-                                                        </span>
-                                                    </td>
-                                                    <td class="u-align--center">
-                                                        <input type="radio" id="{$ newBridgeInterface.name $}" name="bridgeBootInterface" checked data-ng-if="hasBootInterface(newBridgeInterface)">
-                                                    </td>
-                                                    <td>&nbsp;</td>
-                                                    <td>&nbsp;</td>
-                                                    <td>&nbsp;</td>
-                                                    <td>&nbsp;</td>
-                                                    <td>&nbsp;</td>
-                                                    <td>&nbsp;</td>
-                                                </tr>
-                                            </table>
-                                        </div>
-                                        <div class="u-hide--large">
-                                            <label for="bridge-name" class="p-form__label">Name</label>
-                                            <div class="p-form__control" data-ng-class="{ 'is-error': isInterfaceNameInvalid(newBridgeInterface) }">
-                                                <input type="text" id="bridge-name" data-ng-model="newBridgeInterface.name">
-                                            </div>
-                                        </div>
-                                        <hr>
-                                    </div>
-                                    <div class="row p-form--stacked">
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
-                                                    <label class="p-form__label">Primary</label>
-                                                    <div class="p-form__control">
-                                                        <span>{$ newBridgeInterface.primary.name $}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="p-form__group u-vertically-center" data-ng-class="{ 'is-error': isMACAddressInvalid(newBridgeInterface.mac_address) }">
-                                                    <label for="mac" class="p-form__label">MAC address</label>
-                                                    <div class="p-form__control">
-                                                        <input type="text" name="mac" placeholder="00:00:00:00:00:00" data-ng-model="newBridgeInterface.mac_address" data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17" data-ng-placeholder="getInterfacePlaceholderMACAddress(newBridgeInterface)">
-                                                    </div>
-                                                </div>
-                                                <div class="p-form__group u-vertically-center">
-                                                    <label class="p-form__label">Tags</label>
-                                                    <div class="p-form__control tags--inline">
-                                                        <tags-input data-ng-model="newBridgeInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="p-form__group u-vertically-center" style="min-height: 2.5rem;">
-                                                    <label for="stp" class="p-form__label">STP</label>
-                                                    <div class="p-form__control">
-                                                        <div class="onoffswitch maas-p-switch">
-                                                            <input id="bridge_stp" type="checkbox" name="bridge_stp" class="onoffswitch-checkbox maas-p-switch--input"
-                                                                data-ng-model="newBridgeInterface.bridge_stp">
-                                                            <div class="maas-p-switch--mask"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="p-form__group u-vertically-center" data-ng-if="newBridgeInterface.bridge_stp">
-                                                    <label for="fd" class="p-form__label">Forward delay</label>
-                                                    <div class="p-form__control">
-                                                        <input type="text" name="mac" data-ng-model="newBridgeInterface.bridge_fd">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <hr>
-                                        <div class="u-float--right">
-                                            <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
-                                            <button class="p-button--positive u-no-margin--top" data-ng-click="addBridge()" data-ng-disabled="cannotAddBridge()">Save</button>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
                             <tr class="is-active ng-hide" data-ng-show="isShowingCreatePhysical()">
                                 <td class="p-table-expanding__panel">
                                     <div class="row">
@@ -1677,6 +2321,8 @@
                                                         <input type="text" name="mac" class="p-form-validation__input"
                                                             placeholder="00:00:00:00:00:00"
                                                             data-ng-model="newInterface.mac_address"
+                                                            data-ng-keydown="$event.keyCode == 13 && $event.preventDefault()"
+                                                            data-ng-keyup="$event.keyCode == 13 && addPhysicalInterface()"
                                                             data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17">
                                                     </div>
                                                 </div>
@@ -1703,8 +2349,7 @@
                                                     <div class="p-form__control">
                                                         <select name="vlan"
                                                             data-ng-model="newInterface.vlan"
-                                                            data-ng-options="vlan as getVLANText(vlan) for vlan in vlans"
-                                                            disabled="disabled">
+                                                            data-ng-options="vlan as getVLANText(vlan) for vlan in vlans">
                                                         </select>
                                                     </div>
                                                 </div>
@@ -1810,7 +2455,7 @@
                                             <button class="p-button--base" data-ng-click="cancel()">Cancel</button>
                                             <button class="p-button--positive"
                                                 data-ng-click="addPhysicalInterface()"
-                                                data-ng-disabled="cannotAddPhysicalInterface()">Save</button>
+                                                data-ng-disabled="cannotAddPhysicalInterface()">Save interface</button>
                                         </div>
                                     </div>
                                 </td>
@@ -1818,7 +2463,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="row">
+                <div class="row" data-ng-if="!isShowingCreateBridge() && !isShowingEdit() && !isShowingCreateBond()  ">
                     <div data-ng-if="!isController && !isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
                         <button class="p-button--neutral"
                             data-ng-disabled="selectedMode !== null"
