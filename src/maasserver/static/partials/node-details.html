@@ -1891,7 +1891,7 @@
                                     <td class="col-4" aria-label="Used by" title="{$ cacheset.used_by $}">{$ cacheset.used_by $}</td>
                                     <td class="col-2 p-table--action-cell">
                                         <div class="u-align--right">
-                                        <div class="p-contextual-menu" toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset)">
+                                        <div class="p-contextual-menu" toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset) && !cacheset.$selected">
                                             <button class="p-button--base is-small p-contextual-menu__toggle" data-ng-click="toggleMenu()">
                                                 <i class="p-icon--contextual-menu u-no-margin--right">Actions</i>
                                             </button>
@@ -1904,15 +1904,12 @@
                                         </div>
                                         </div>
                                     </td>
-                                    <td class="p-table-expanding__panel col-12" data-ng-if="cachesetsMode === 'delete'">
+                                    <td class="p-table-expanding__panel col-12" data-ng-if="cacheset.$selected && cachesetsMode === 'delete'">
                                         <div class="row" data-ng-if="windowWidth <= 768">
                                             <div class="col-8">
                                                 <h2 data-ng-click="filesystemCancel()" class="p-heading--four">
                                                     <span data-ng-if="cachesetsMode === 'delete'">Removing {$ cacheset.name $}</span>
                                                 </h2>
-                                            </div>
-                                            <div class="col-4 u-float--right">
-                                                <i data-ng-click="filesystemCancel()" class="p-icon--close">Cancel</i>
                                             </div>
                                         </div>
                                         <div class="row" data-ng-class="{ 'is-active': cachesetsMode !== null && cachesetsMode !== 'multi' }">
@@ -1928,7 +1925,7 @@
                                                 <div class="col-4">
                                                     <div class="u-align--right">
                                                         <button class="p-button--base" type="button" data-ng-click="cacheSetCancel()">Cancel</button>
-                                                        <button class="p-button--negative u-no-margin--top" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
+                                                        <button class="p-button--negative u-no-margin--top" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove cache set</button>
                                                     </div>
                                                 </div>
                                             </div>
